@@ -1096,5 +1096,5 @@ void Grid<TF>::load()
 // }
 
 template class Grid<double>;
-// template class Grid<float>;
+template class Grid<float>;
 #endif

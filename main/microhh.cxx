@@ -36,28 +36,25 @@ int main(int argc, char *argv[])
         // Print the current version of the model.
         master.print_message("Microhh git-hash: " GITHASH "\n");
 
-        // Initialize the input class and read the input data from disk.
-        // Input input(&master);
-
         // Initialize the model class.
-        Model<double> model(&master, argc, argv);
-
-        // Initialize the master class.
-        // master.init(&input);
+        // Model<double> model(&master, argc, argv);
+        Model<float> model(&master, argc, argv);
 
         // Initialize the model components.
         model.init();
 
-        if (master.mode == "init")
-        {
-            // Initialize the allocated fields and save the data.
-            model.save();
-        }
-        else if (master.mode == "run" || master.mode == "post")
-        {
-            // Initialize the allocated fields using data from disk.
-            model.load();
-        }
+        model.save();
+
+        // if (master.mode == "init")
+        // {
+        //     // Initialize the allocated fields and save the data.
+        //     model.save();
+        // }
+        // else if (master.mode == "run" || master.mode == "post")
+        // {
+        //     // Initialize the allocated fields using data from disk.
+        //     model.load();
+        // }
 
         // Print warnings for input variables that are unused.
         // input.print_unused();

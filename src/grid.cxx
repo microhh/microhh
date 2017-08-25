@@ -499,4 +499,4 @@ void Grid<TF>::set_minimum_ghost_cells(const int igcin, const int jgcin, const i
 // }
 
 template class Grid<double>;
-// template class Grid<float>;
+template class Grid<float>;
