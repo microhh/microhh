@@ -30,6 +30,7 @@ class Input;
 class Data_block;
 
 template<typename> class Grid;
+template<typename> class Fields;
 
 template<typename TF>
 class Model
@@ -48,6 +49,7 @@ class Model
         Data_block* profs;
 
         Grid<TF>* grid;
+        Fields<TF>* fields;
 
         std::string simmode;
         std::string simname;

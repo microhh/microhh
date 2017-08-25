@@ -24,8 +24,9 @@
 #include <cstdio>
 #include <algorithm>
 #include "master.h"
-#include "grid.h"
 #include "input.h"
+#include "grid.h"
+#include "fields.h"
 #include "Data_block.h"
 #include "model.h"
 
@@ -79,6 +80,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
 
     // Initialize the pointers as nullptr.
     grid = nullptr;
+    fields = nullptr;
 
     try
     {
@@ -86,6 +88,9 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
 
         // Create an instance of the Grid class.
         grid = new Grid<TF>(*master, *input);
+
+        // Create an instance of the Fields class.
+        fields = new Fields<TF>(master, grid, input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)

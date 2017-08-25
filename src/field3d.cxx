@@ -47,8 +47,10 @@ Field3d<TF>::~Field3d()
 template<typename TF>
 int Field3d<TF>::init()
 {
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
     // Calculate the total field memory size
-    const long long field_memory_size = (grid->ncells + 6*grid->ijcells + grid->kcells)*sizeof(double);
+    const long long field_memory_size = (gd.ncells + 6*gd.ijcells + gd.kcells)*sizeof(double);
 
     // Keep track of the total memory in fields
     static long long total_memory_size = 0;
@@ -57,14 +59,14 @@ int Field3d<TF>::init()
         total_memory_size += field_memory_size;
 
         // Allocate all fields belonging to the 3d field
-        data       .resize(grid->ncells);
-        databot    .resize(grid->ijcells);
-        datatop    .resize(grid->ijcells);
-        datamean   .resize(grid->kcells);
-        datagradbot.resize(grid->ijcells);
-        datagradtop.resize(grid->ijcells);
-        datafluxbot.resize(grid->ijcells);
-        datafluxtop.resize(grid->ijcells);
+        data       .resize(gd.ncells);
+        databot    .resize(gd.ijcells);
+        datatop    .resize(gd.ijcells);
+        datamean   .resize(gd.kcells);
+        datagradbot.resize(gd.ijcells);
+        datagradtop.resize(gd.ijcells);
+        datafluxbot.resize(gd.ijcells);
+        datafluxtop.resize(gd.ijcells);
     }
     catch (std::exception &e)
     {
@@ -73,13 +75,13 @@ int Field3d<TF>::init()
     }
 
     // set all values to zero
-    for (int n=0; n<grid->ncells; ++n)
+    for (int n=0; n<gd.ncells; ++n)
         data[n] = 0.;
 
-    for (int n=0; n<grid->kcells; ++n)
+    for (int n=0; n<gd.kcells; ++n)
         datamean[n] = 0.;
 
-    for (int n=0; n<grid->ijcells; ++n)
+    for (int n=0; n<gd.ijcells; ++n)
     {
         databot    [n] = 0.;
         datatop    [n] = 0.;
@@ -92,3 +94,6 @@ int Field3d<TF>::init()
     return 0;
 }
 #endif
+
+template class Field3d<double>;
+template class Field3d<float>;

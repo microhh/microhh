@@ -361,6 +361,12 @@ void Grid<TF>::calculate()
     }
 }
 
+template<typename TF>
+Grid_data<TF>& Grid<TF>::get_grid_data()
+{
+    return gd;
+}
+
 /**
  * This function checks whether the number of ghost cells does not exceed the slice thickness.
  */
