@@ -293,7 +293,7 @@ void Grid<TF>::exit_mpi()
 
 // IO functions
 template<typename TF>
-void Grid<TF>::save()
+void Grid<TF>::save_grid()
 {
     // SAVE THE GRID
     FILE *pFile;
@@ -310,14 +310,18 @@ void Grid<TF>::save()
     else
         master->print_message("OK\n");
 
-    fwrite(&x [istart], sizeof(double), itot, pFile);
-    fwrite(&xh[istart], sizeof(double), itot, pFile);
-    fwrite(&y [jstart], sizeof(double), jtot, pFile);
-    fwrite(&yh[jstart], sizeof(double), jtot, pFile);
-    fwrite(&z [kstart], sizeof(double), ktot, pFile);
-    fwrite(&zh[kstart], sizeof(double), ktot, pFile);
+    fwrite(&x [istart], sizeof(TF), itot, pFile);
+    fwrite(&xh[istart], sizeof(TF), itot, pFile);
+    fwrite(&y [jstart], sizeof(TF), jtot, pFile);
+    fwrite(&yh[jstart], sizeof(TF), jtot, pFile);
+    fwrite(&z [kstart], sizeof(TF), ktot, pFile);
+    fwrite(&zh[kstart], sizeof(TF), ktot, pFile);
     fclose(pFile);
+}
 
+template<typename TF>
+void Grid<TF>::save_fftw()
+{
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // use the FFTW3 many interface in order to reduce function call overhead
     int rank = 1;
@@ -356,6 +360,13 @@ void Grid<TF>::save()
         else
             master->print_message("OK\n");
     }
+}
+
+template<typename TF>
+void Grid<TF>::save()
+{
+    save_grid();
+    save_fftw();
 }
 
 template<typename TF>

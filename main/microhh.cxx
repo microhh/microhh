@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
         master.print_message("Microhh git-hash: " GITHASH "\n");
 
         // Initialize the model class.
-        Model<double> model(&master, argc, argv);
-       // Model<float> model(&master, argc, argv);
+        // Model<double> model(&master, argc, argv);
+        Model<float> model(&master, argc, argv);
 
         // Initialize the model components.
         model.init();
