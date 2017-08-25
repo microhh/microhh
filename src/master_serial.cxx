@@ -55,16 +55,11 @@ void Master::start()
 
 void Master::init(Input *inputin)
 {
-    int nerror = 0;
-    nerror += inputin->get_item(&npx, "master", "npx", "", 1);
-    nerror += inputin->get_item(&npy, "master", "npy", "", 1);
+    npx = inputin->get_item<int>("master", "npx", "", 1);
+    npy = inputin->get_item<int>("master", "npy", "", 1);
 
     // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
-    double wall_clock_limit;
-    nerror += inputin->get_item(&wall_clock_limit, "master", "wallclocklimit", "", 1E8);
-
-    if (nerror)
-        throw 1;
+    double wall_clock_limit = inputin->get_item<double>("master", "wallclocklimit", "", 1E8);
 
     wall_clock_end = wall_clock_start + 3600.*wall_clock_limit;
 

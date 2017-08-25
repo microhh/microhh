@@ -37,13 +37,13 @@ int main(int argc, char *argv[])
         master.print_message("Microhh git-hash: " GITHASH "\n");
 
         // Initialize the input class and read the input data from disk.
-        Input input(&master);
+        // Input input(&master);
 
         // Initialize the model class.
-        Model<double> model(&master, &input, argc, argv);
+        Model<double> model(&master, argc, argv);
 
         // Initialize the master class.
-        master.init(&input);
+        // master.init(&input);
 
         // Initialize the model components.
         model.init();
@@ -60,10 +60,10 @@ int main(int argc, char *argv[])
         }
 
         // Print warnings for input variables that are unused.
-        input.print_unused();
+        // input.print_unused();
 
         // Free the memory taken by the input fields.
-        input.clear();
+        // input.clear();
 
         // Run the model.
         if (master.mode != "init")

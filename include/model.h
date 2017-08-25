@@ -34,7 +34,7 @@ template<typename TF>
 class Model
 {
     public:
-        Model(Master*, Input*, int, char**);
+        Model(Master*, int, char**);
         ~Model();
 
         void init();

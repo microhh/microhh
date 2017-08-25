@@ -63,22 +63,18 @@ Grid<TF>::Grid(Master* masterin, Input *inputin)
     fftinj  = 0;
     fftoutj = 0;
 
-    int nerror = 0;
-    nerror += inputin->get_item(&xsize, "grid", "xsize", "");
-    nerror += inputin->get_item(&ysize, "grid", "ysize", "");
-    nerror += inputin->get_item(&zsize, "grid", "zsize", "");
+    xsize = inputin->get_item<TF>("grid", "xsize", "");
+    ysize = inputin->get_item<TF>("grid", "ysize", "");
+    zsize = inputin->get_item<TF>("grid", "zsize", "");
 
-    nerror += inputin->get_item(&itot, "grid", "itot", "");
-    nerror += inputin->get_item(&jtot, "grid", "jtot", "");
-    nerror += inputin->get_item(&ktot, "grid", "ktot", "");
+    itot = inputin->get_item<int>("grid", "itot", "");
+    jtot = inputin->get_item<int>("grid", "jtot", "");
+    ktot = inputin->get_item<int>("grid", "ktot", "");
 
-    nerror += inputin->get_item(&utrans, "grid", "utrans", "", 0.);
-    nerror += inputin->get_item(&vtrans, "grid", "vtrans", "", 0.);
+    utrans = inputin->get_item<TF>("grid", "utrans", "", 0.);
+    vtrans = inputin->get_item<TF>("grid", "vtrans", "", 0.);
 
-    nerror += inputin->get_item(&swspatialorder, "grid", "swspatialorder", "");
-
-    if (nerror)
-        throw 1;
+    swspatialorder = inputin->get_item<std::string>("grid", "swspatialorder", "");
 
     if (!(swspatialorder == "2" || swspatialorder == "4"))
     {
@@ -242,8 +238,8 @@ template<typename TF>
 void Grid<TF>::create(Input *inputin)
 {
     // get the grid coordinates from the input
-    if (inputin->get_prof(&z[kstart], "z", kmax))
-        throw 1;
+    // if (inputin->get_prof(&z[kstart], "z", kmax))
+    //     throw 1;
 
     if (z[kend-1] > zsize)
     {

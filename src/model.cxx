@@ -58,17 +58,21 @@ namespace
             else
                 simname = "microhh";
         }
+
+        master.print_message("Simulation name: %s\n", simname.c_str());
+        master.print_message("Simulation mode: %s\n", simmode.c_str());
     }
 }
 
 // In the constructor all classes are initialized and their input is read.
 template<typename TF>
-Model<TF>::Model(Master *masterin, Input *inputin, int argc, char *argv[])
+Model<TF>::Model(Master *masterin, int argc, char *argv[])
 {
     master = masterin;
-    input  = inputin;
 
     process_command_line_options(simmode, simname, argc, argv, *master);
+
+    input = new Input(simname + ".ini");
 
     // Initialize the pointers as nullptr.
     grid = nullptr;
@@ -111,6 +115,7 @@ Model<TF>::~Model()
 template<typename TF>
 void Model<TF>::init()
 {
+    master->init(input);
     grid->init();
 }
 
