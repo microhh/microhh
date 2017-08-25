@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
         master.print_message("Microhh git-hash: " GITHASH "\n");
 
         // Initialize the model class.
-        // Model<double> model(&master, argc, argv);
-        Model<float> model(&master, argc, argv);
+        Model<double> model(&master, argc, argv);
+       // Model<float> model(&master, argc, argv);
 
         // Initialize the model components.
         model.init();
@@ -68,6 +68,11 @@ int main(int argc, char *argv[])
     }
 
     // Catch any exceptions and return 1.
+    catch (const std::exception& e)
+    {
+        master.print_message("EXCEPTION: %s\n", e.what());
+        return 1;
+    }
     catch (...)
     {
         return 1;
