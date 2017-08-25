@@ -300,15 +300,15 @@ void Grid<TF>::save_grid()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
     pFile = fopen(filename, "wbx");
-    master->print_message("Saving \"%s\" ... ", filename);
+    master.print_message("Saving \"%s\" ... ", filename);
 
     if (pFile == NULL)
     {
-        master->print_message("FAILED\n");
+        master.print_message("FAILED\n");
         throw 1;
     }
     else
-        master->print_message("OK\n");
+        master.print_message("OK\n");
 
     fwrite(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fwrite(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
@@ -344,21 +344,21 @@ void Grid<TF>::save_fftw()
 
     fftwplan = true;
 
-    if (master->mpiid == 0)
+    if (master.mpiid == 0)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-        master->print_message("Saving \"%s\" ... ", filename);
+        master.print_message("Saving \"%s\" ... ", filename);
 
         int n = fftw_export_wisdom_to_filename(filename);
         if (n == 0)
         {
-            master->print_message("FAILED\n");
+            master.print_message("FAILED\n");
             throw 1;
         }
         else
-            master->print_message("OK\n");
+            master.print_message("OK\n");
     }
 }
 
@@ -377,15 +377,15 @@ void Grid<TF>::load_grid()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
     pFile = fopen(filename, "rb");
-    master->print_message("Loading \"%s\" ... ", filename);
+    master.print_message("Loading \"%s\" ... ", filename);
 
     if (pFile == NULL)
     {
-        master->print_message("FAILED\n");
+        master.print_message("FAILED\n");
         throw 1;
     }
     else
-        master->print_message("OK\n");
+        master.print_message("OK\n");
 
     fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
@@ -406,16 +406,16 @@ void Grid<TF>::load_fftw()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    master->print_message("Loading \"%s\" ... ", filename);
+    master.print_message("Loading \"%s\" ... ", filename);
 
     int n = fftw_import_wisdom_from_filename(filename);
     if (n == 0)
     {
-        master->print_message("FAILED\n");
+        master.print_message("FAILED\n");
         throw 1;
     }
     else
-        master->print_message("OK\n");
+        master.print_message("OK\n");
 
     // use the FFTW3 many interface in order to reduce function call overhead
     int rank = 1;

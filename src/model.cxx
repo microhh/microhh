@@ -85,7 +85,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
         int nerror = 0;
 
         // Create an instance of the Grid class.
-        grid = new Grid<TF>(master, input);
+        grid = new Grid<TF>(*master, *input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -150,7 +150,7 @@ template<typename TF>
 void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
-    grid->create(profs);
+    grid->create(*profs);
 
     // Save the initialized data to disk for the run mode.
     grid->save();

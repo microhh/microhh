@@ -106,11 +106,11 @@ template<typename TF>
 class Grid
 {
     public:
-        Grid(Master*, Input*); ///< Constructor of the grid class.
+        Grid(Master&, Input&); ///< Constructor of the grid class.
         ~Grid();               ///< Destructor of the grid class.
 
         void init();              ///< Initialization of the grid arrays.
-        void create(Data_block*); ///< Creation of the grid data.
+        void create(Data_block&); ///< Creation of the grid data.
         void save();              ///< Saves grid data to file.
         void load();              ///< Loads grid data to file.
 
@@ -159,7 +159,8 @@ class Grid
         */
 
     private:
-        Master* master; ///< Pointer to master class.
+        Master& master; ///< Reference to master class.
+
         bool mpitypes;  ///< Boolean to check whether MPI datatypes are created.
         bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 

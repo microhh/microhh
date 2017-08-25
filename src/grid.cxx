@@ -37,12 +37,11 @@
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-Grid<TF>::Grid(Master* masterin, Input *inputin)
+Grid<TF>::Grid(Master& masterin, Input& input) :
+    master(masterin)
 {
-    master = masterin;
-
-    mpitypes  = false;
-    fftwplan  = false;
+    mpitypes = false;
+    fftwplan = false;
 
     // Initialize the pointers to zero.
     fftini  = nullptr;
@@ -50,22 +49,22 @@ Grid<TF>::Grid(Master* masterin, Input *inputin)
     fftinj  = nullptr;
     fftoutj = nullptr;
 
-    gd.xsize = inputin->get_item<TF>("grid", "xsize", "");
-    gd.ysize = inputin->get_item<TF>("grid", "ysize", "");
-    gd.zsize = inputin->get_item<TF>("grid", "zsize", "");
+    gd.xsize = input.get_item<TF>("grid", "xsize", "");
+    gd.ysize = input.get_item<TF>("grid", "ysize", "");
+    gd.zsize = input.get_item<TF>("grid", "zsize", "");
 
-    gd.itot = inputin->get_item<int>("grid", "itot", "");
-    gd.jtot = inputin->get_item<int>("grid", "jtot", "");
-    gd.ktot = inputin->get_item<int>("grid", "ktot", "");
+    gd.itot = input.get_item<int>("grid", "itot", "");
+    gd.jtot = input.get_item<int>("grid", "jtot", "");
+    gd.ktot = input.get_item<int>("grid", "ktot", "");
 
-    utrans = inputin->get_item<TF>("grid", "utrans", "", 0.);
-    vtrans = inputin->get_item<TF>("grid", "vtrans", "", 0.);
+    utrans = input.get_item<TF>("grid", "utrans", "", 0.);
+    vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    swspatialorder = inputin->get_item<std::string>("grid", "swspatialorder", "");
+    swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
     if (!(swspatialorder == "2" || swspatialorder == "4"))
     {
-        master->print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+        master.print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
         throw 1;
     }
     // 2nd order scheme requires only 1 ghost cell
@@ -120,30 +119,30 @@ template<typename TF>
 void Grid<TF>::init()
 {
     // Check whether the grid fits the processor configuration.
-    if (gd.itot % master->npx != 0)
+    if (gd.itot % master.npx != 0)
     {
-        master->print_error("itot = %d is not a multiple of npx = %d\n", gd.itot, master->npx);
+        master.print_error("itot = %d is not a multiple of npx = %d\n", gd.itot, master.npx);
         throw 1;
     }
-    if (gd.itot % master->npy != 0)
+    if (gd.itot % master.npy != 0)
     {
-        master->print_error("itot = %d is not a multiple of npy = %d\n", gd.itot, master->npy);
+        master.print_error("itot = %d is not a multiple of npy = %d\n", gd.itot, master.npy);
         throw 1;
     }
     // Check this one only when npy > 1, since the transpose in that direction only happens then.
-    if (gd.jtot % master->npx != 0)
+    if (gd.jtot % master.npx != 0)
     {
-        master->print_error("jtot = %d is not a multiple of npx = %d\n", gd.jtot, master->npx);
+        master.print_error("jtot = %d is not a multiple of npx = %d\n", gd.jtot, master.npx);
         throw 1;
     }
-    if (gd.jtot % master->npy != 0)
+    if (gd.jtot % master.npy != 0)
     {
-        master->print_error("jtot = %d is not a multiple of npy = %d\n", gd.jtot, master->npy);
+        master.print_error("jtot = %d is not a multiple of npy = %d\n", gd.jtot, master.npy);
         throw 1;
     }
-    if (gd.ktot % master->npx != 0)
+    if (gd.ktot % master.npx != 0)
     {
-        master->print_error("ERROR ktot = %d is not a multiple of npx = %d\n", gd.ktot, master->npx);
+        master.print_error("ERROR ktot = %d is not a multiple of npx = %d\n", gd.ktot, master.npx);
         throw 1;
     }
 
@@ -151,15 +150,15 @@ void Grid<TF>::init()
     gd.ntot = gd.itot*gd.jtot*gd.ktot;
 
     // Calculate the grid dimensions per process.
-    gd.imax = gd.itot / master->npx;
-    gd.jmax = gd.jtot / master->npy;
+    gd.imax = gd.itot / master.npx;
+    gd.jmax = gd.jtot / master.npy;
     gd.kmax = gd.ktot;
     gd.nmax = gd.imax*gd.jmax*gd.kmax;
 
     // Calculate the block sizes for the transposes.
-    gd.iblock = gd.itot / master->npy;
-    gd.jblock = gd.jtot / master->npx;
-    gd.kblock = gd.ktot / master->npx;
+    gd.iblock = gd.itot / master.npy;
+    gd.jblock = gd.jtot / master.npx;
+    gd.kblock = gd.ktot / master.npx;
 
     // Calculate the grid dimensions including ghost cells.
     gd.icells  = (gd.imax+2*gd.igc);
@@ -209,14 +208,14 @@ void Grid<TF>::init()
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-void Grid<TF>::create(Data_block* profs)
+void Grid<TF>::create(Data_block& profs)
 {
     // Get the grid coordinates from the input.
-    profs->get_vector(gd.z, "z", gd.kmax, 0, gd.kstart);
+    profs.get_vector(gd.z, "z", gd.kmax, 0, gd.kstart);
 
     if (gd.z[gd.kend-1] > gd.zsize)
     {
-        master->print_error("Highest grid point is above prescribed zsize\n");
+        master.print_error("Highest grid point is above prescribed zsize\n");
         throw 1;
     }
 
@@ -240,8 +239,8 @@ void Grid<TF>::calculate()
     gd.dyi = 1./gd.dy;
 
     // calculate the offset per process to get the true x- and y-coordinate
-    double xoff = master->mpicoordx * gd.xsize / master->npx;
-    double yoff = master->mpicoordy * gd.ysize / master->npy;
+    double xoff = master.mpicoordx * gd.xsize / master.npx;
+    double yoff = master.mpicoordy * gd.ysize / master.npy;
 
     // calculate the x and y coordinates
     for (i=0; i<gd.icells; ++i)
@@ -371,16 +370,16 @@ void Grid<TF>::check_ghost_cells()
     // Check whether the size per patch is larger than number of ghost cells for 3D runs.
     if (gd.imax < gd.igc)
     {
-	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
-	    master->print_error("Either increase itot or decrease npx.\n");
+	    master.print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
+	    master.print_error("Either increase itot or decrease npx.\n");
         throw 1;
     }
 
     // Check the jtot > 1 condition, to still allow for 2d runs.
     if (gd.jtot > 1 && gd.jmax < gd.jgc)
     {
-	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
-	    master->print_error("Either increase jtot or decrease npy.\n");
+	    master.print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
+	    master.print_error("Either increase jtot or decrease npy.\n");
         throw 1;
     }
 }
@@ -490,7 +489,7 @@ void Grid<TF>::set_minimum_ghost_cells(const int igcin, const int jgcin, const i
 //             }
 //     }
 // 
-//     master->sum(prof, krange);
+//     master.sum(prof, krange);
 // 
 //     const double n = itot*jtot;
 // 
