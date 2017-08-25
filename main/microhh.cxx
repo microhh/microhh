@@ -43,18 +43,7 @@ int main(int argc, char *argv[])
         // Initialize the model components.
         model.init();
 
-        model.save();
-
-        // if (master.mode == "init")
-        // {
-        //     // Initialize the allocated fields and save the data.
-        //     model.save();
-        // }
-        // else if (master.mode == "run" || master.mode == "post")
-        // {
-        //     // Initialize the allocated fields using data from disk.
-        //     model.load();
-        // }
+        model.load_or_save();
 
         // Print warnings for input variables that are unused.
         // input.print_unused();
@@ -63,8 +52,7 @@ int main(int argc, char *argv[])
         // input.clear();
 
         // Run the model.
-        if (master.mode != "init")
-            model.exec();
+        model.exec();
     }
 
     // Catch any exceptions and return 1.

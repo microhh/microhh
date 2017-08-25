@@ -122,6 +122,21 @@ void Model<TF>::init()
     grid->init();
 }
 
+template<typename TF>
+void Model<TF>::load_or_save()
+{
+    if (simmode == "init")
+    {
+        // Initialize the allocated fields and save the data.
+        save();
+    }
+    else if (simmode == "run" || simmode == "post")
+    {
+        // Initialize the allocated fields using data from disk.
+        load();
+    }
+}
+
 // In these functions data necessary to start the model is loaded from disk.
 template<typename TF>
 void Model<TF>::load()
@@ -144,6 +159,8 @@ void Model<TF>::save()
 template<typename TF>
 void Model<TF>::exec()
 {
+    if (simmode != "run")
+        return;
     master->print_message("Starting time integration\n");
 }
 

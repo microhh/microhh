@@ -39,8 +39,7 @@ class Model
         ~Model();
 
         void init();
-        void load();
-        void save();
+        void load_or_save();
         void exec();
 
     private:
@@ -52,6 +51,9 @@ class Model
 
         std::string simmode;
         std::string simname;
+
+        void load();
+        void save();
 
         void delete_objects();
         void print_status();
