@@ -36,6 +36,65 @@ class Data_block;
 
 enum Edge {East_west_edge, North_south_edge, Both_edges};
 
+template<typename TF>
+struct Grid_data
+{
+    int itot; ///< Total number of grid cells in the x-direction.
+    int jtot; ///< Total number of grid cells in the y-direction.
+    int ktot; ///< Total number of grid cells in the z-direction.
+    int ntot; ///< Total number of grid cells.
+
+    int imax; ///< Number of grid cells in the x-direction for one process.
+    int jmax; ///< Number of grid cells in the y-direction for one process.
+    int kmax; ///< Number of grid cells in the z-direction for one process.
+    int nmax; ///< Number of grid cells for one process.
+
+    int iblock; ///< Number of grid cells in the x-direction for calculation blocks in transposes.
+    int jblock; ///< Number of grid cells in the y-direction for calculation blocks in transposes.
+    int kblock; ///< Number of grid cells in the z-direction for calculation blocks in transposes.
+
+    int igc; ///< Number of ghost cells in the x-direction.
+    int jgc; ///< Number of ghost cells in the y-direction.
+    int kgc; ///< Number of ghost cells in the z-direction.
+
+    int icells;  ///< Number of grid cells in the x-direction including ghost cells for one process.
+    int jcells;  ///< Number of grid cells in the y-direction including ghost cells for one process.
+    int ijcells; ///< Number of grid cells in the xy-plane including ghost cells for one process.
+    int kcells;  ///< Number of grid cells in the z-direction including ghost cells for one process.
+    int ncells;  ///< Total number of grid cells for one process including ghost cells.
+    int istart;  ///< Index of the first grid point in the x-direction.
+    int jstart;  ///< Index of the first grid point in the y-direction.
+    int kstart;  ///< Index of the first grid point in the z-direction.
+    int iend;    ///< Index of the last gridpoint+1 in the x-direction.
+    int jend;    ///< Index of the last gridpoint+1 in the y-direction.
+    int kend;    ///< Index of the last gridpoint+1 in the z-direction.
+
+    TF xsize; ///< Size of the domain in the x-direction.
+    TF ysize; ///< Size of the domain in the y-direction.
+    TF zsize; ///< Size of the domain in the z-direction.
+
+    TF dx;     ///< Distance between the center of two grid cell in the x-direction.
+    TF dy;     ///< Distance between the center of two grid cell in the y-direction.
+    TF dxi;    ///< Reciprocal of dx.
+    TF dyi;    ///< Reciprocal of dy.
+    std::vector<TF> dz;    ///< Distance between the center of two grid cell in the z-direction.
+    std::vector<TF> dzh;   ///< Distance between the two grid cell faces in the z-direction.
+    std::vector<TF> dzi;   ///< Reciprocal of dz.
+    std::vector<TF> dzhi;  ///< Reciprocal of dzh.
+    std::vector<TF> dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
+    std::vector<TF> dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+
+    TF dzhi4bot;
+    TF dzhi4top;
+
+    std::vector<TF> x;  ///< Grid coordinate of cell center in x-direction.
+    std::vector<TF> y;  ///< Grid coordinate of cell center in y-direction.
+    std::vector<TF> z;  ///< Grid coordinate of cell center in z-direction.
+    std::vector<TF> xh; ///< Grid coordinate of cell faces in x-direction.
+    std::vector<TF> yh; ///< Grid coordinate of cell faces in x-direction.
+    std::vector<TF> zh; ///< Grid coordinate of cell faces in x-direction.
+};
+
 /**
  * Class for the grid settings and operators.
  * This class contains the grid properties, such as dimensions and resolution.
@@ -54,61 +113,6 @@ class Grid
         void create(Data_block*); ///< Creation of the grid data.
         void save();              ///< Saves grid data to file.
         void load();              ///< Loads grid data to file.
-
-        int itot; ///< Total number of grid cells in the x-direction.
-        int jtot; ///< Total number of grid cells in the y-direction.
-        int ktot; ///< Total number of grid cells in the z-direction.
-        int ntot; ///< Total number of grid cells.
-
-        int imax; ///< Number of grid cells in the x-direction for one process.
-        int jmax; ///< Number of grid cells in the y-direction for one process.
-        int kmax; ///< Number of grid cells in the z-direction for one process.
-        int nmax; ///< Number of grid cells for one process.
-
-        int iblock; ///< Number of grid cells in the x-direction for calculation blocks in transposes.
-        int jblock; ///< Number of grid cells in the y-direction for calculation blocks in transposes.
-        int kblock; ///< Number of grid cells in the z-direction for calculation blocks in transposes.
-
-        int igc; ///< Number of ghost cells in the x-direction.
-        int jgc; ///< Number of ghost cells in the y-direction.
-        int kgc; ///< Number of ghost cells in the z-direction.
-
-        int icells;  ///< Number of grid cells in the x-direction including ghost cells for one process.
-        int jcells;  ///< Number of grid cells in the y-direction including ghost cells for one process.
-        int ijcells; ///< Number of grid cells in the xy-plane including ghost cells for one process.
-        int kcells;  ///< Number of grid cells in the z-direction including ghost cells for one process.
-        int ncells;  ///< Total number of grid cells for one process including ghost cells.
-        int istart;  ///< Index of the first grid point in the x-direction.
-        int jstart;  ///< Index of the first grid point in the y-direction.
-        int kstart;  ///< Index of the first grid point in the z-direction.
-        int iend;    ///< Index of the last gridpoint+1 in the x-direction.
-        int jend;    ///< Index of the last gridpoint+1 in the y-direction.
-        int kend;    ///< Index of the last gridpoint+1 in the z-direction.
-
-        TF xsize; ///< Size of the domain in the x-direction.
-        TF ysize; ///< Size of the domain in the y-direction.
-        TF zsize; ///< Size of the domain in the z-direction.
-
-        TF dx;     ///< Distance between the center of two grid cell in the x-direction.
-        TF dy;     ///< Distance between the center of two grid cell in the y-direction.
-        TF dxi;    ///< Reciprocal of dx.
-        TF dyi;    ///< Reciprocal of dy.
-        std::vector<TF> dz;    ///< Distance between the center of two grid cell in the z-direction.
-        std::vector<TF> dzh;   ///< Distance between the two grid cell faces in the z-direction.
-        std::vector<TF> dzi;   ///< Reciprocal of dz.
-        std::vector<TF> dzhi;  ///< Reciprocal of dzh.
-        std::vector<TF> dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
-        std::vector<TF> dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
-
-        TF dzhi4bot;
-        TF dzhi4top;
-
-        std::vector<TF> x;  ///< Grid coordinate of cell center in x-direction.
-        std::vector<TF> y;  ///< Grid coordinate of cell center in y-direction.
-        std::vector<TF> z;  ///< Grid coordinate of cell center in z-direction.
-        std::vector<TF> xh; ///< Grid coordinate of cell faces in x-direction.
-        std::vector<TF> yh; ///< Grid coordinate of cell faces in x-direction.
-        std::vector<TF> zh; ///< Grid coordinate of cell faces in x-direction.
 
         TF utrans; ///< Galilean transformation velocity in x-direction.
         TF vtrans; ///< Galilean transformation velocity in y-direction.
@@ -163,6 +167,8 @@ class Grid
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
         void save_grid(); ///< Save the grid properties.
         void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
+
+        Grid_data<TF> gd;
 
         // Fourier tranforms
         double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.

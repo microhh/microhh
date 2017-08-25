@@ -310,12 +310,12 @@ void Grid<TF>::save_grid()
     else
         master->print_message("OK\n");
 
-    fwrite(&x [istart], sizeof(TF), itot, pFile);
-    fwrite(&xh[istart], sizeof(TF), itot, pFile);
-    fwrite(&y [jstart], sizeof(TF), jtot, pFile);
-    fwrite(&yh[jstart], sizeof(TF), jtot, pFile);
-    fwrite(&z [kstart], sizeof(TF), ktot, pFile);
-    fwrite(&zh[kstart], sizeof(TF), ktot, pFile);
+    fwrite(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
+    fwrite(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
+    fwrite(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile);
+    fwrite(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile);
+    fwrite(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile);
+    fwrite(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile);
     fclose(pFile);
 }
 
@@ -325,21 +325,21 @@ void Grid<TF>::save_fftw()
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
     int rank = 1;
-    int ni[] = {itot};
-    int nj[] = {jtot};
+    int ni[] = {gd.itot};
+    int nj[] = {gd.jtot};
     int istride = 1;
-    int jstride = iblock;
-    int idist = itot;
+    int jstride = gd.iblock;
+    int idist = gd.itot;
     int jdist = 1;
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
+    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
                                 fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
+    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
                                 fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
+    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
                                 fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
+    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
                                 fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
     fftwplan = true;
@@ -387,12 +387,12 @@ void Grid<TF>::load()
     else
         master->print_message("OK\n");
 
-    fread(&x [istart], sizeof(double), itot, pFile);
-    fread(&xh[istart], sizeof(double), itot, pFile);
-    fread(&y [jstart], sizeof(double), jtot, pFile);
-    fread(&yh[jstart], sizeof(double), jtot, pFile);
-    fread(&z [kstart], sizeof(double), ktot, pFile);
-    fread(&zh[kstart], sizeof(double), ktot, pFile);
+    fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
+    fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
+    fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile);
+    fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile);
+    fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile);
+    fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile);
     fclose(pFile);
 
     // calculate the missing coordinates
@@ -414,21 +414,21 @@ void Grid<TF>::load()
 
     // use the FFTW3 many interface in order to reduce function call overhead
     int rank = 1;
-    int ni[] = {itot};
-    int nj[] = {jtot};
+    int ni[] = {gd.itot};
+    int nj[] = {gd.jtot};
     int istride = 1;
-    int jstride = iblock;
-    int idist = itot;
+    int jstride = gd.iblock;
+    int idist = gd.itot;
     int jdist = 1;
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
+    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
             fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
+    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
             fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
+    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
             fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
+    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
             fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
     fftwplan = true;
