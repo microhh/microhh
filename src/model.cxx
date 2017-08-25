@@ -31,12 +31,44 @@
 #include <cuda_runtime_api.h>
 #endif
 
+namespace
+{
+    void process_command_line_options(std::string& simmode, std::string& simname,
+                                      int argc, char *argv[],
+                                      Master& master)
+    {
+        // Process the command line options.
+        if (argc <= 1)
+        {
+            master.print_error("Specify init, run or post mode\n");
+            throw 1;
+        }
+        else
+        {
+            // Check the execution mode.
+            simmode = argv[1];
+            if (simmode != "init" && simmode != "run" && simmode != "post")
+            {
+                master.print_error("Specify init, run or post mode\n");
+                throw 1;
+            }
+            // Set the name of the simulation.
+            if (argc > 2)
+                simname = argv[2];
+            else
+                simname = "microhh";
+        }
+    }
+}
+
 // In the constructor all classes are initialized and their input is read.
 template<typename TF>
-Model<TF>::Model(Master *masterin, Input *inputin)
+Model<TF>::Model(Master *masterin, Input *inputin, int argc, char *argv[])
 {
     master = masterin;
     input  = inputin;
+
+    process_command_line_options(simmode, simname, argc, argv, *master);
 
     // Initialize the pointers as nullptr.
     grid = nullptr;

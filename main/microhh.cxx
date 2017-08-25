@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     try
     {
         // Start up the master class and the Message Passing Interface.
-        master.start(argc, argv);
+        master.start();
 
         // Print the current version of the model.
         master.print_message("Microhh git-hash: " GITHASH "\n");
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         Input input(&master);
 
         // Initialize the model class.
-        Model<double> model(&master, &input);
+        Model<double> model(&master, &input, argc, argv);
 
         // Initialize the master class.
         master.init(&input);

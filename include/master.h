@@ -37,7 +37,7 @@ class Master
         Master();
         ~Master();
 
-        void start(int, char**);
+        void start();
         void init(Input*);
 
         double get_wall_clock_time();

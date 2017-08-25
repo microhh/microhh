@@ -37,7 +37,7 @@ Master::~Master()
     print_message("Finished run on %d processes\n", nprocs);
 }
 
-void Master::start(int argc, char *argv[])
+void Master::start()
 {
     initialized = true;
 
@@ -51,27 +51,6 @@ void Master::start(int argc, char *argv[])
 
     print_message("Starting run on %d processes\n", nprocs);
 
-    // Process the command line options.
-    if (argc <= 1)
-    {
-        print_error("Specify init, run or post mode\n");
-        throw 1;
-    }
-    else
-    {
-        // Check the execution mode.
-        mode = argv[1];
-        if (mode != "init" && mode != "run" && mode != "post")
-        {
-            print_error("Specify init, run or post mode\n");
-            throw 1;
-        }
-        // Set the name of the simulation.
-        if (argc > 2)
-            simname = argv[2];
-        else
-            simname = "microhh";
-    }
 }
 
 void Master::init(Input *inputin)

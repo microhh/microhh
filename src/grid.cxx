@@ -29,7 +29,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "model.h"
 
 /**
  * This function constructs the grid class.

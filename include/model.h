@@ -34,7 +34,7 @@ template<typename TF>
 class Model
 {
     public:
-        Model(Master*, Input*);
+        Model(Master*, Input*, int, char**);
         ~Model();
 
         void init();
@@ -46,6 +46,9 @@ class Model
         Master* master;
         Input*  input;
         Grid<TF>* grid;
+
+        std::string simmode;
+        std::string simname;
 
         void delete_objects();
         void print_status();
