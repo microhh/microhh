@@ -149,6 +149,8 @@ void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load();
+    // fields->load(timeloop->get_iotime());
+    fields->load(0);
 }
 
 // In these functions data necessary to start the model is saved to disk.

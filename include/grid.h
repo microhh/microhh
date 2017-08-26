@@ -144,7 +144,7 @@ class Grid
 
         // IO functions
         int save_field3d(TF*, TF*, TF*, char*, const TF); ///< Saves a full 3d field.
-        // int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
+        int load_field3d(TF*, TF*, TF*, char*, const TF); ///< Loads a full 3d field.
 
         // int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
         // int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.

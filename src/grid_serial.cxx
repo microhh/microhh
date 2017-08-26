@@ -483,40 +483,40 @@ int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
     return 0;
 }
 
-// 
-// template<typename TF>
-// int Grid<TF>::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-// {
-//     FILE *pFile;
-//     pFile = fopen(filename, "rb");
-// 
-//     if (pFile == NULL)
-//         return 1;
-// 
-//     const int jj = icells;
-//     const int kk = icells*jcells;
-// 
-//     // first, load the data from disk
-//     for (int k=kstart; k<kend; k++)
-//         for (int j=jstart; j<jend; j++)
-//         {
-//             const int ijk = istart + j*jj + k*kk;
-//             fread(&tmp1[ijk], sizeof(double), imax, pFile);
-//         }
-// 
-//     fclose(pFile);
-// 
-//     // second, remove the offset
-//     for (int k=kstart; k<kend; k++)
-//         for (int j=jstart; j<jend; j++)
-//             for (int i=istart; i<iend; i++)
-//             {
-//                 const int ijk = i + j*jj + k*kk;
-//                 data[ijk] = tmp1[ijk] - offset;
-//             }
-// 
-//     return 0;
-// }
+template<typename TF>
+int Grid<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        char* filename, const TF offset)
+{
+    FILE *pFile;
+    pFile = fopen(filename, "rb");
+
+    if (pFile == NULL)
+        return 1;
+
+    const int jj = gd.icells;
+    const int kk = gd.icells*gd.jcells;
+
+    // first, load the data from disk
+    for (int k=gd.kstart; k<gd.kend; k++)
+        for (int j=gd.jstart; j<gd.jend; j++)
+        {
+            const int ijk = gd.istart + j*jj + k*kk;
+            fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile);
+        }
+
+    fclose(pFile);
+
+    // second, remove the offset
+    for (int k=gd.kstart; k<gd.kend; k++)
+        for (int j=gd.jstart; j<gd.jend; j++)
+            for (int i=gd.istart; i<gd.iend; i++)
+            {
+                const int ijk = i + j*jj + k*kk;
+                data[ijk] = tmp1[ijk] - offset;
+            }
+
+    return 0;
+}
 // 
 // template<typename TF>
 // void Grid<TF>::fft_forward(double* restrict data,   double* restrict tmp1,

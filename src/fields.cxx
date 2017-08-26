@@ -871,33 +871,6 @@ int Fields::add_mean_prof(Input* inputin, std::string fld, double* restrict data
     return 0;
 }
 
-void Fields::load(int n)
-{
-    const double NoOffset = 0.;
-
-    int nerror = 0;
-
-    for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-    {
-        // the offset is kept at zero, otherwise bitwise identical restarts is not possible
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-        master->print_message("Loading \"%s\" ... ", filename);
-        if (grid->load_field3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
-        {
-            master->print_message("FAILED\n");
-            ++nerror;
-        }
-        else
-        {
-            master->print_message("OK\n");
-        }  
-    }
-
-    if (nerror)
-        throw 1;
-}
-
 void Fields::create_stats()
 {
     int nerror = 0;
@@ -989,6 +962,35 @@ void Fields<TF>::save(int n)
         {
             master->print_message("OK\n");
         }
+    }
+
+    if (nerror)
+        throw 1;
+}
+
+template<typename TF>
+void Fields<TF>::load(int n)
+{
+    const double no_offset = 0.;
+
+    int nerror = 0;
+
+    for (auto& f : ap)
+    {
+        // The offset is kept at zero, otherwise bitwise identical restarts is not possible.
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
+        master->print_message("Loading \"%s\" ... ", filename);
+        if (grid->load_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+                    filename, no_offset))
+        {
+            master->print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master->print_message("OK\n");
+        }  
     }
 
     if (nerror)
