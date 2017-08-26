@@ -266,11 +266,13 @@ std::vector<T> Input::get_list(const std::string& blockname,
 }
 
 // Explicitly instantiate templates.
+template bool Input::get_item<bool>(const std::string&, const std::string&, const std::string&);
 template int Input::get_item<int>(const std::string&, const std::string&, const std::string&);
 template double Input::get_item<double>(const std::string&, const std::string&, const std::string&);
 template float Input::get_item<float>(const std::string&, const std::string&, const std::string&);
 template std::string Input::get_item<std::string>(const std::string&, const std::string&, const std::string&);
 
+template bool Input::get_item<bool>(const std::string&, const std::string&, const std::string&, const bool);
 template int Input::get_item<int>(const std::string&, const std::string&, const std::string&, const int);
 template double Input::get_item<double>(const std::string&, const std::string&, const std::string&, const double);
 template float Input::get_item<float>(const std::string&, const std::string&, const std::string&, const float);

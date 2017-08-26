@@ -48,7 +48,7 @@ class Fields
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
         // void create_stats(); ///< Initialization of the fields statistics.
 
-        void exec();
+        // void exec();
         // void get_mask(Field3d*, Field3d*, Mask*);
         // void exec_stats(Mask*);
 

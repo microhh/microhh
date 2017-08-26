@@ -202,7 +202,7 @@ void Model<TF>::exec()
     // boundary->exec();
 
     // Calculate the field means, in case needed.
-    fields->exec();
+    // fields->exec();
 
     // Get the viscosity to be used in diffusion.
     // diff->exec_viscosity();
@@ -350,7 +350,7 @@ void Model<TF>::exec()
         // boundary->exec();
 
         // Calculate the field means, in case needed.
-        fields->exec();
+        // fields->exec();
 
         // Get the viscosity to be used in diffusion.
         // diff->exec_viscosity();
