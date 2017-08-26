@@ -45,7 +45,7 @@ class Fields
         ~Fields(); ///< Destructor of the fields class.
 
         void init();         ///< Initialization of the field arrays.
-        void create(Input*); ///< Initialization of the fields (random perturbations, vortices).
+        void create(Input*, Data_block*); ///< Initialization of the fields (random perturbations, vortices).
         // void create_stats(); ///< Initialization of the fields statistics.
 
         void exec();
@@ -91,8 +91,8 @@ class Fields
 
         FieldMap<TF> atmp; ///< Map containing all temporary field3d instances
 
-        TF* rhoref;  ///< Reference density at full levels 
-        TF* rhorefh; ///< Reference density at half levels
+        std::vector<TF> rhoref;  ///< Reference density at full levels 
+        std::vector<TF> rhorefh; ///< Reference density at half levels
 
         // TODO remove these to and bring them to diffusion model
         TF visc;
@@ -159,6 +159,7 @@ class Fields
         // double calc_tke_2nd     (double*, double*, double*, double*);
         // double calc_mass        (double*, double*);
 
+        void add_mean_profs(Data_block&);
         // int add_mean_prof(Input*, std::string, double*, double);
         // int randomize    (Input*, std::string, double*);
         // int add_vortex_pair(Input*);

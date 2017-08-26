@@ -29,6 +29,8 @@
 #include "grid.h"
 #include "fields.h"
 #include "field3d.h"
+#include "input.h"
+#include "Data_block.h"
 #include "defines.h"
 #include "finite_difference.h"
 // #include "model.h"
@@ -47,9 +49,6 @@ Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
     calc_mean_profs = false;
 
     // Initialize the pointers.
-    rhoref  = nullptr;
-    rhorefh = nullptr;
-
     // umodel  = 0;
     // vmodel  = 0;
 
@@ -124,10 +123,6 @@ Fields<TF>::~Fields()
     for (auto& it : atmp)
         delete it.second;
 
-    // delete the arrays
-    delete[] rhoref;
-    delete[] rhorefh;
-
     // delete[] umodel;
     // delete[] vmodel;
 
@@ -184,16 +179,13 @@ void Fields<TF>::init()
     // Get the grid data.
     const Grid_data<TF>& gd = grid->get_grid_data();
 
-    rhoref  = new TF[gd.kcells];
-    rhorefh = new TF[gd.kcells];
+    rhoref .resize(gd.kcells);
+    rhorefh.resize(gd.kcells);
 
     // \TODO Define a reference density. Needs to be replaced once anelastic is there
     // BvS: Always init rhoref at 1 for situation with e.g. thermo=0? For anelastic, overwrite it.
-    for (int k=0; k<gd.kcells; ++k)
-    {
-        rhoref[k] = 1.;
-        rhorefh[k] = 1.; 
-    }
+    std::fill(rhoref .begin(), rhoref .end(), 1.);
+    std::fill(rhorefh.begin(), rhorefh.end(), 1.);
 
     // allocate help arrays for statistics;
     // umodel = new double[grid->kcells];
@@ -676,31 +668,37 @@ void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::
     atmp[fldname] = new Field3d<TF>(*master, *grid, fldname, longname, unit);
 }
 
-/*
-void Fields::create(Input *inputin)
+template<typename TF>
+void Fields<TF>::create(Input *inputin, Data_block* profs)
 {
     int nerror = 0;
 
+    /*
     // Randomize the momentum
     nerror += randomize(inputin, "u", u->data);
     nerror += randomize(inputin, "w", w->data);
+
     // Only add perturbation to v in case of a 3d run.
     if (grid->jtot > 1)
         nerror += randomize(inputin, "v", v->data);
 
     // Randomize the scalars
-    for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-        nerror += randomize(inputin, it->first, it->second->data);
+    for (auto& it : sp)
+        nerror += randomize(inputin, it.first, it.second->data);
 
     // Add Vortices
     nerror += add_vortex_pair(inputin);
+    */
 
     // Add the mean profiles to the fields
+    add_mean_profs(*profs);
+
+    /*
     nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid->utrans);
     nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid->vtrans);
 
-    for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-        nerror += add_mean_prof(inputin, it->first, it->second->data, 0.);
+    for (auto& it : sp)
+        nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
 
     // set w equal to zero at the boundaries, just to be sure
     int lbot = grid->kstart*grid->ijcells;
@@ -713,8 +711,56 @@ void Fields::create(Input *inputin)
 
     if (nerror)
         throw 1;
+        */
 }
 
+namespace
+{
+    template<typename TF>
+    void add_mean_prof_to_field(TF* restrict const data, 
+                                const TF* restrict const dataprof,
+                                const TF offset,
+                                const int istart, const int iend,
+                                const int jstart, const int jend,
+                                const int kstart, const int kend,
+                                const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    data[ijk] += dataprof[k-kstart] - offset;
+                }
+    }
+}
+
+template<typename TF>
+void Fields<TF>::add_mean_profs(Data_block& profs)
+{
+    Grid_data<TF> gd = grid->get_grid_data();
+    std::vector<TF> prof(gd.ktot);
+
+    profs.get_vector(prof, "u", gd.ktot, 0, 0);
+    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), 0.,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    profs.get_vector(prof, "v", gd.ktot, 0, 0);
+    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), 0.,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    for (auto& f : sp)
+    {
+        profs.get_vector(prof, f.first, gd.ktot, 0, 0);
+        add_mean_prof_to_field<TF>(f.second->data.data(), prof.data(), 0.,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+}
+
+/*
 int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
 {
     int nerror = 0;

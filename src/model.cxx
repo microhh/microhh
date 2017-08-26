@@ -157,9 +157,12 @@ void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
     grid->create(*profs);
+    fields->create(input, profs);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
+    // fields->save(timeloop->get_iotime());
+    // fields->save(0);
 }
 
 template<typename TF>
