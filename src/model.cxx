@@ -154,8 +154,9 @@ void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load();
-    // fields->load(timeloop->get_iotime());
-    fields->load(0);
+    timeloop->load(timeloop->get_iotime());
+
+    fields->load(timeloop->get_iotime());
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -168,14 +169,14 @@ void Model<TF>::save()
 
     // Save the initialized data to disk for the run mode.
     grid->save();
-    // fields->save(timeloop->get_iotime());
-    fields->save(0);
+    fields->save(timeloop->get_iotime());
+    timeloop->save(timeloop->get_iotime());
 }
 
 template<typename TF>
 void Model<TF>::exec()
 {
-    if (simmode != "run")
+    if (simmode == "init")
         return;
 
     // #ifdef USECUDA
@@ -305,7 +306,7 @@ void Model<TF>::exec()
             break;
 
         // RUN MODE: In case of run mode do the time stepping.
-        if (master->mode == "run")
+        if (simmode == "run")
         {
             // Integrate in time.
             timeloop->exec();
@@ -321,14 +322,14 @@ void Model<TF>::exec()
                 // boundary->backward_device();
                 // #endif
 
-                // // Save data to disk.
-                // timeloop->save(timeloop->get_iotime());
-                // fields  ->save(timeloop->get_iotime());
+                // Save data to disk.
+                timeloop->save(timeloop->get_iotime());
+                fields  ->save(timeloop->get_iotime());
             }
         }
 
         // POST PROCESS MODE: In case of post-process mode, load a new set of files.
-        else if (master->mode == "post")
+        else if (simmode == "post")
         {
             // Step to the next time step.
             timeloop->step_post_proc_time();

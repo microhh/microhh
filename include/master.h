@@ -69,9 +69,6 @@ class Master
         void print_warning(const char *format, ...);
         void print_error  (const char *format, ...);
 
-        std::string mode;
-        std::string simname;
-
         int nprocs;
         int npx;
         int npy;

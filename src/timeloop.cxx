@@ -29,7 +29,6 @@
 #include "timeloop.h"
 #include "defines.h"
 #include "constants.h"
-#include "model.h"
 
 template<typename TF>
 Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -58,8 +57,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     outputiter   = input.get_item<int> ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int> ("time", "iotimeprec"  , "", 0              );
 
-    if (master.mode == "post")
-        postproctime = input.get_item<TF>("time", "postproctime", "");
+    //if (master.mode == "post")
+    //    postproctime = input.get_item<TF>("time", "postproctime", "");
 
     // 3 and 4 are the only valid values for the rkorder
     if (!(rkorder == 3 || rkorder == 4))
@@ -82,8 +81,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     idt           = (unsigned long)(ifactor * dt + 0.5);
     idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
     isavetime     = (unsigned long)(ifactor * savetime + 0.5);
-    if (master.mode == "post")
-        ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
+    //if (master.mode == "post")
+    //    ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
     idtlim = idt;
 
