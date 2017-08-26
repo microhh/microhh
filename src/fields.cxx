@@ -61,7 +61,7 @@ Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
     visc = inputin->get_item<TF>("fields", "visc", "");
 
     // read the name of the passive scalars
-    std::vector<std::string> slist = inputin->get_list<std::string>("fields", "slist", "");
+    std::vector<std::string> slist = inputin->get_list<std::string>("fields", "slist", "", std::vector<std::string>());
 
     // initialize the scalars
     for (std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)

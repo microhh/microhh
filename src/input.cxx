@@ -221,6 +221,45 @@ std::vector<T> Input::get_list(const std::string& blockname,
     return list;
 }
 
+template<typename T>
+std::vector<T> Input::get_list(const std::string& blockname,
+                               const std::string& itemname,
+                               const std::string& subitemname,
+                               const std::vector<T> default_value)
+{
+    bool set_default_value = false;
+    std::string value;
+
+    try
+    {
+        value = get_item_string(itemlist, blockname, itemname, subitemname);
+    }
+    catch (std::runtime_error& e)
+    {
+        set_default_value = true;
+        // itemqualifier = "(default)";
+    }
+
+    if (!set_default_value)
+    {
+        std::vector<std::string> listitems;
+        boost::split(listitems, value, boost::is_any_of(","));
+
+        std::vector<T> list;
+        for (std::string itemstring : listitems)
+        {
+            std::istringstream ss(itemstring);
+            T item = get_item_from_stream<T>(ss);
+            check_item(item);
+            list.push_back(item);
+        }
+
+        return list;
+    }
+    else
+        return default_value;
+}
+
 // Explicitly instantiate templates.
 template int Input::get_item<int>(const std::string&, const std::string&, const std::string&);
 template double Input::get_item<double>(const std::string&, const std::string&, const std::string&);
@@ -237,3 +276,7 @@ template std::vector<double> Input::get_list<double>(const std::string&, const s
 template std::vector<float> Input::get_list<float>(const std::string&, const std::string&, const std::string&);
 template std::vector<std::string> Input::get_list<std::string>(const std::string&, const std::string&, const std::string&);
 
+template std::vector<int> Input::get_list<int>(const std::string&, const std::string&, const std::string&, const std::vector<int>);
+template std::vector<double> Input::get_list<double>(const std::string&, const std::string&, const std::string&, const std::vector<double>);
+template std::vector<float> Input::get_list<float>(const std::string&, const std::string&, const std::string&, const std::vector<float>);
+template std::vector<std::string> Input::get_list<std::string>(const std::string&, const std::string&, const std::string&, const std::vector<std::string>);
