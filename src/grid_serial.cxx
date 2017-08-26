@@ -475,7 +475,8 @@ int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
         for (int j=gd.jstart; j<gd.jend; ++j)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile);
+            if( fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax)
+                return 1;
         }
 
     fclose(pFile);
@@ -501,7 +502,8 @@ int Grid<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
         for (int j=gd.jstart; j<gd.jend; j++)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile);
+            if( fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax )
+                return 1;
         }
 
     fclose(pFile);
