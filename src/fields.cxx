@@ -966,20 +966,23 @@ void Fields::create_stats()
     if (nerror)
         throw 1;
 }
+*/
 
-void Fields::save(int n)
+template<typename TF>
+void Fields<TF>::save(int n)
 {
-    const double NoOffset = 0.;
+    const double no_offset = 0.;
 
     int nerror = 0;
-    for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+    for (auto& f : ap)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+        std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master->print_message("Saving \"%s\" ... ", filename);
 
-        // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-        if (grid->save_field3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
+        // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
+        if (grid->save_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+                    filename, no_offset))
         {
             master->print_message("FAILED\n");
             ++nerror;
@@ -994,6 +997,7 @@ void Fields::save(int n)
         throw 1;
 }
 
+/*
 #ifndef USECUDA
 double Fields::check_momentum()
 {

@@ -448,39 +448,41 @@ void Grid<TF>::load()
     load_fftw();
 }
 
-// template<typename TF>
-// int Grid<TF>::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-// {
-//     FILE *pFile;
-//     pFile = fopen(filename, "wbx");
-// 
-//     if (pFile == NULL)
-//         return 1;
-// 
-//     const int jj = icells;
-//     const int kk = icells*jcells;
-// 
-//     // first, add the offset to the data
-//     for (int k=kstart; k<kend; k++)
-//         for (int j=jstart; j<jend; j++)
-//             for (int i=istart; i<iend; i++)
-//             {
-//                 const int ijk = i + j*jj + k*kk;
-//                 tmp1[ijk] = data[ijk] + offset;
-//             }
-// 
-//     // second, save the data to disk
-//     for (int k=kstart; k<kend; k++)
-//         for (int j=jstart; j<jend; j++)
-//         {
-//             const int ijk = istart + j*jj + k*kk;
-//             fwrite(&tmp1[ijk], sizeof(double), imax, pFile);
-//         }
-// 
-//     fclose(pFile);
-// 
-//     return 0;
-// }
+template<typename TF>
+int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        char* filename, const TF offset)
+{
+    FILE *pFile;
+    pFile = fopen(filename, "wbx");
+
+    if (pFile == NULL)
+        return 1;
+
+    const int jj = gd.icells;
+    const int kk = gd.icells*gd.jcells;
+
+    // first, add the offset to the data
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                tmp1[ijk] = data[ijk] + offset;
+            }
+
+    // second, save the data to disk
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            const int ijk = gd.istart + j*jj + k*kk;
+            fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile);
+        }
+
+    fclose(pFile);
+
+    return 0;
+}
+
 // 
 // template<typename TF>
 // int Grid<TF>::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)

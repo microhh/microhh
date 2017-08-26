@@ -162,7 +162,7 @@ void Model<TF>::save()
     // Save the initialized data to disk for the run mode.
     grid->save();
     // fields->save(timeloop->get_iotime());
-    // fields->save(0);
+    fields->save(0);
 }
 
 template<typename TF>
