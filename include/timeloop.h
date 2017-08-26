@@ -77,14 +77,7 @@ class Timeloop
         timeval end;
 
         int rkorder;
-
         int outputiter;
-
-        void rk3(double*, double*, double);
-        void rk4(double*, double*, double);
-
-        double rk3subdt(double);
-        double rk4subdt(double);
 
         // Variables
         bool loop;

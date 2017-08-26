@@ -219,17 +219,17 @@ void Timeloop<TF>::set_time_step()
 namespace
 {
     template<typename TF>
-    void rk3(TF* restrict const a, const TF* restrict const at, const int substep, const TF dt,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
+    void rk3(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
+             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+             const int jj, const int kk)
     {
         const double cA [] = {0., -5./9., -153./128.};
         const double cB [] = {1./3., 15./16., 8./15.};
     
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     a[ijk] += cB[substep]*dt*at[ijk];
@@ -238,20 +238,20 @@ namespace
         const int substepn = (substep+1) % 3;
     
         // substep 0 resets the tendencies, because cA[0] == 0
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     at[ijk] *= cA[substepn];
                 }
     }
-    
+
     template<typename TF>
-    void rk4(TF* restrict const a, const TF* restrict const at, const int substep, const TF dt,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
+    void rk4(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
+             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+             const int jj, const int kk)
     {
         const double cA [] = {
             0.,
@@ -267,10 +267,10 @@ namespace
             3134564353537./ 4481467310338.,
             2277821191437./14882151754819.};
     
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
@@ -279,14 +279,33 @@ namespace
         const int substepn = (substep+1) % 5;
     
         // substep 0 resets the tendencies, because cA[0] == 0
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     at[ijk] = cA[substepn]*at[ijk];
                 }
+    }
+
+    template<typename TF>
+    inline TF rk3subdt(const TF dt, const int substep)
+    {
+        const TF cB [] = {1./3., 15./16., 8./15.};
+        return cB[substep]*dt;
+    }
+
+    template<typename TF>
+    inline TF rk4subdt(const TF dt, const int substep)
+    {
+        const TF cB [] = {
+            1432997174477./ 9575080441755.,
+            5161836677717./13612068292357.,
+            1720146321549./ 2090206949498.,
+            3134564353537./ 4481467310338.,
+            2277821191437./14882151754819.};
+        return cB[substep]*dt;
     }
 }
 
@@ -322,30 +341,11 @@ double Timeloop<TF>::get_sub_time_step()
 {
     double subdt = 0.;
     if (rkorder == 3)
-        subdt = rk3subdt(dt);
+        subdt = rk3subdt(dt, substep);
     else if (rkorder == 4)
-        subdt = rk4subdt(dt);
+        subdt = rk4subdt(dt, substep);
 
     return subdt;
-}
-
-template<typename TF>
-inline double Timeloop<TF>::rk3subdt(const double dt)
-{
-    const double cB [] = {1./3., 15./16., 8./15.};
-    return cB[substep]*dt;
-}
-
-template<typename TF>
-inline double Timeloop<TF>::rk4subdt(const double dt)
-{
-    const double cB [] = {
-        1432997174477./ 9575080441755.,
-        5161836677717./13612068292357.,
-        1720146321549./ 2090206949498.,
-        3134564353537./ 4481467310338.,
-        2277821191437./14882151754819.};
-    return cB[substep]*dt;
 }
 
 template<typename TF>
