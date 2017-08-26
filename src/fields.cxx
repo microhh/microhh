@@ -41,11 +41,10 @@
 
 
 template<typename TF>
-Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
+Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
+    master(masterin),
+    grid(gridin)
 {
-    master = masterin;
-    grid   = gridin;
-
     calc_mean_profs = false;
 
     // Initialize the pointers.
@@ -57,14 +56,14 @@ Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
     // rhorefh_g = 0;
 
     // obligatory parameters
-    visc = inputin->get_item<TF>("fields", "visc", "");
+    visc = input.get_item<TF>("fields", "visc", "");
 
     // Initialize the passive scalars
-    std::vector<std::string> slist = inputin->get_list<std::string>("fields", "slist", "", std::vector<std::string>());
+    std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
         init_prognostic_field(s, s, "-");
-        sp[s]->visc = inputin->get_item<TF>("fields", "svisc", s);
+        sp[s]->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
     // initialize the basic set of fields
@@ -79,16 +78,16 @@ Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
 
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     /*
-    if (master->mode == "run")
+    if (master.mode == "run")
     {
-        inputin->flag_as_used("fields", "rndamp");
-        inputin->flag_as_used("fields", "rndexp");
-        inputin->flag_as_used("fields", "rndseed");
-        inputin->flag_as_used("fields", "rndz");
+        input.flag_as_used("fields", "rndamp");
+        input.flag_as_used("fields", "rndexp");
+        input.flag_as_used("fields", "rndseed");
+        input.flag_as_used("fields", "rndz");
 
-        inputin->flag_as_used("fields", "vortexnpair");
-        inputin->flag_as_used("fields", "vortexamp"  );
-        inputin->flag_as_used("fields", "vortexaxis" );
+        input.flag_as_used("fields", "vortexnpair");
+        input.flag_as_used("fields", "vortexamp"  );
+        input.flag_as_used("fields", "vortexaxis" );
     }
     */
 }
@@ -175,7 +174,7 @@ void Fields<TF>::init()
         throw 1;
 
     // Get the grid data.
-    const Grid_data<TF>& gd = grid->get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
     rhoref .resize(gd.kcells);
     rhorefh.resize(gd.kcells);
@@ -186,12 +185,12 @@ void Fields<TF>::init()
     std::fill(rhorefh.begin(), rhorefh.end(), 1.);
 
     // allocate help arrays for statistics;
-    // umodel = new double[grid->kcells];
-    // vmodel = new double[grid->kcells];
+    // umodel = new double[grid.kcells];
+    // vmodel = new double[grid.kcells];
 
     // Initialize at zero
     /*
-    for (int k=0; k<grid->kcells; ++k)
+    for (int k=0; k<grid.kcells; ++k)
     {
         umodel[k] = 0.;
         vmodel[k] = 0.; 
@@ -247,7 +246,7 @@ void Fields::check_added_cross(std::string var, std::string type, std::vector<st
     if (position != crosslist->end()) 
     {
         // don't allow lngrad in 2nd order mode
-        if (!(type == "lngrad" && grid->swspatialorder == "2"))
+        if (!(type == "lngrad" && grid.swspatialorder == "2"))
         {
             typelist->push_back(var);
             crosslist->erase(position);
@@ -262,7 +261,7 @@ void Fields::exec()
     if (calc_mean_profs)
     {
         for (FieldMap::iterator it=ap.begin(); it!=ap.end(); ++it)
-            grid->calc_mean(it->second->datamean, it->second->data, grid->kcells);
+            grid.calc_mean(it->second->datamean, it->second->data, grid.kcells);
     }
 }
 #endif
@@ -283,18 +282,18 @@ void Fields::calc_mask_wplus(double* restrict mask, double* restrict maskh, doub
 {
     int ijk,ij,jj,kk,kstart;
 
-    jj = grid->icells;
-    kk = grid->ijcells;
-    kstart = grid->kstart;
+    jj = grid.icells;
+    kk = grid.ijcells;
+    kstart = grid.kstart;
 
     int ntmp;
 
-    for (int k=grid->kstart; k<grid->kend; k++)
+    for (int k=grid.kstart; k<grid.kend; k++)
     {
         nmask[k] = 0;
-        for (int j=grid->jstart; j<grid->jend; j++)
+        for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid.istart; i<grid.iend; i++)
             {
                 ijk = i + j*jj + k*kk;
                 ntmp = (w[ijk] + w[ijk+kk]) > 0.;
@@ -303,12 +302,12 @@ void Fields::calc_mask_wplus(double* restrict mask, double* restrict maskh, doub
             }
     }
 
-    for (int k=grid->kstart; k<grid->kend+1; k++)
+    for (int k=grid.kstart; k<grid.kend+1; k++)
     {
         nmaskh[k] = 0;
-        for (int j=grid->jstart; j<grid->jend; j++)
+        for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid.istart; i<grid.iend; i++)
             {
                 ijk = i + j*jj + k*kk;
                 ntmp = w[ijk] > 0.;
@@ -319,38 +318,38 @@ void Fields::calc_mask_wplus(double* restrict mask, double* restrict maskh, doub
 
     // Set the mask for surface projected quantities
     // In this case: velocity at surface, so zero
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid.istart; i<grid.iend; i++)
         {
             ij  = i + j*jj;
             ijk = i + j*jj + kstart*kk;
             maskbot[ij] = maskh[ijk];
         }
 
-    grid->boundary_cyclic(mask);
-    grid->boundary_cyclic(maskh);
-    grid->boundary_cyclic_2d(maskbot);
+    grid.boundary_cyclic(mask);
+    grid.boundary_cyclic(maskh);
+    grid.boundary_cyclic_2d(maskbot);
 
-    master->sum(nmask , grid->kcells);
-    master->sum(nmaskh, grid->kcells);
-    *nmaskbot = nmaskh[grid->kstart];
+    master.sum(nmask , grid.kcells);
+    master.sum(nmaskh, grid.kcells);
+    *nmaskbot = nmaskh[grid.kstart];
 }
 
 void Fields::calc_mask_wmin(double* restrict mask, double* restrict maskh, double* restrict maskbot,
         int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot,
         double* restrict w)
 {
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-    const int kstart = grid->kstart;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int kstart = grid.kstart;
 
-    for (int k=grid->kstart; k<grid->kend; k++)
+    for (int k=grid.kstart; k<grid.kend; k++)
     {
         nmask[k] = 0;
-        for (int j=grid->jstart; j<grid->jend; j++)
+        for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid.istart; i<grid.iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
                 const int ntmp = (w[ijk] + w[ijk+kk]) <= 0.;
@@ -359,12 +358,12 @@ void Fields::calc_mask_wmin(double* restrict mask, double* restrict maskh, doubl
             }
     }
 
-    for (int k=grid->kstart; k<grid->kend+1; k++)
+    for (int k=grid.kstart; k<grid.kend+1; k++)
     {
         nmaskh[k] = 0;
-        for (int j=grid->jstart; j<grid->jend; j++)
+        for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid.istart; i<grid.iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
                 const int ntmp = w[ijk] <= 0.;
@@ -375,22 +374,22 @@ void Fields::calc_mask_wmin(double* restrict mask, double* restrict maskh, doubl
 
     // Set the mask for surface projected quantities
     // In this case: velocity at surface, so zero
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid.jstart; j<grid.jend; j++)
 #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid.istart; i<grid.iend; i++)
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
             maskbot[ij] = maskh[ijk];
         }
 
-    grid->boundary_cyclic(mask);
-    grid->boundary_cyclic(maskh);
-    grid->boundary_cyclic_2d(maskbot);
+    grid.boundary_cyclic(mask);
+    grid.boundary_cyclic(maskh);
+    grid.boundary_cyclic_2d(maskbot);
 
-    master->sum(nmask , grid->kcells);
-    master->sum(nmaskh, grid->kcells);
-    *nmaskbot = nmaskh[grid->kstart];
+    master.sum(nmask , grid.kcells);
+    master.sum(nmaskh, grid.kcells);
+    *nmaskbot = nmaskh[grid.kstart];
 }
 
 void Fields::exec_stats(Mask *m)
@@ -423,8 +422,8 @@ void Fields::exec_stats(Mask *m)
 
     // calculate the stats on the u location
     // interpolate the mask horizontally onto the u coordinate
-    grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
-    stats->calc_mean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
+    grid.interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
+    stats->calc_mean(m->profs["u"].data, u->data, grid.utrans, uloc, atmp["tmp1"]->data, stats->nmask);
     stats->calc_mean(umodel            , u->data, NoOffset   , uloc, atmp["tmp1"]->data, stats->nmask);
     for (int n=2; n<5; ++n)
     {
@@ -436,37 +435,37 @@ void Fields::exec_stats(Mask *m)
     }
 
     // interpolate the mask on half level horizontally onto the u coordinate
-    grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
-    if (grid->swspatialorder == "2")
+    grid.interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
+    if (grid.swspatialorder == "2")
     {
-        stats->calc_grad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
+        stats->calc_grad_2nd(u->data, m->profs["ugrad"].data, grid.dzhi, uloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         stats->calc_flux_2nd(u->data, umodel, w->data, m->profs["w"].data,
                             m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         if (model->diff->get_switch() == "smag2")
             stats->calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
-                                m->profs["udiff"].data, grid->dzhi,
+                                m->profs["udiff"].data, grid.dzhi,
                                 u->datafluxbot, u->datafluxtop, 1., uloc,
                                 atmp["tmp1"]->data, stats->nmaskh);
         else
-            stats->calc_diff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+            stats->calc_diff_2nd(u->data, m->profs["udiff"].data, grid.dzhi, visc, uloc,
                                 atmp["tmp1"]->data, stats->nmaskh);
 
     }
-    else if (grid->swspatialorder == "4")
+    else if (grid.swspatialorder == "4")
     {
-        stats->calc_grad_4th(u->data, m->profs["ugrad"].data, grid->dzhi4, uloc,
+        stats->calc_grad_4th(u->data, m->profs["ugrad"].data, grid.dzhi4, uloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         stats->calc_flux_4th(u->data, w->data, m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                             atmp["tmp1"]->data, stats->nmaskh);
-        stats->calc_diff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+        stats->calc_diff_4th(u->data, m->profs["udiff"].data, grid.dzhi4, visc, uloc,
                             atmp["tmp1"]->data, stats->nmaskh);
     }
 
     // calculate the stats on the v location
-    grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
-    stats->calc_mean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
+    grid.interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
+    stats->calc_mean(m->profs["v"].data, v->data, grid.vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
     stats->calc_mean(vmodel            , v->data, NoOffset   , vloc, atmp["tmp1"]->data, stats->nmask);
     for (int n=2; n<5; ++n)
     {
@@ -478,31 +477,31 @@ void Fields::exec_stats(Mask *m)
     }
 
     // interpolate the mask on half level horizontally onto the u coordinate
-    grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
-    if (grid->swspatialorder == "2")
+    grid.interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
+    if (grid.swspatialorder == "2")
     {
-        stats->calc_grad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
+        stats->calc_grad_2nd(v->data, m->profs["vgrad"].data, grid.dzhi, vloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         stats->calc_flux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
                             m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         if (model->diff->get_switch() == "smag2")
             stats->calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
-                                m->profs["vdiff"].data, grid->dzhi,
+                                m->profs["vdiff"].data, grid.dzhi,
                                 v->datafluxbot, v->datafluxtop, 1., vloc,
                                 atmp["tmp1"]->data, stats->nmaskh);
         else
-            stats->calc_diff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+            stats->calc_diff_2nd(v->data, m->profs["vdiff"].data, grid.dzhi, visc, vloc,
                                 atmp["tmp1"]->data, stats->nmaskh);
 
     }
-    else if (grid->swspatialorder == "4")
+    else if (grid.swspatialorder == "4")
     {
-        stats->calc_grad_4th(v->data, m->profs["vgrad"].data, grid->dzhi4, vloc,
+        stats->calc_grad_4th(v->data, m->profs["vgrad"].data, grid.dzhi4, vloc,
                             atmp["tmp1"]->data, stats->nmaskh);
         stats->calc_flux_4th(v->data, w->data, m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                             atmp["tmp1"]->data, stats->nmaskh);
-        stats->calc_diff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+        stats->calc_diff_4th(v->data, m->profs["vdiff"].data, grid.dzhi4, visc, vloc,
                             atmp["tmp1"]->data, stats->nmaskh);
     }
 
@@ -519,29 +518,29 @@ void Fields::exec_stats(Mask *m)
             stats->calc_moment(it->second->data, m->profs[it->first].data, m->profs[it->first+sn].data, n, sloc,
                     atmp["tmp3"]->data, stats->nmask);
         }
-        if (grid->swspatialorder == "2")
+        if (grid.swspatialorder == "2")
         {
-            stats->calc_grad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi, sloc,
+            stats->calc_grad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid.dzhi, sloc,
                                 atmp["tmp4"]->data, stats->nmaskh);
             stats->calc_flux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
                                 m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                                 atmp["tmp4"]->data, stats->nmaskh);
             if (model->diff->get_switch() == "smag2")
                 stats->calc_diff_2nd(it->second->data, w->data, sd["evisc"]->data,
-                                    m->profs[it->first+"diff"].data, grid->dzhi,
+                                    m->profs[it->first+"diff"].data, grid.dzhi,
                                     it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                                     atmp["tmp4"]->data, stats->nmaskh);
             else
-                stats->calc_diff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
+                stats->calc_diff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid.dzhi, it->second->visc, sloc,
                                     atmp["tmp4"]->data, stats->nmaskh);
         }
-        else if (grid->swspatialorder == "4")
+        else if (grid.swspatialorder == "4")
         {
-            stats->calc_grad_4th(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+            stats->calc_grad_4th(it->second->data, m->profs[it->first+"grad"].data, grid.dzhi4, sloc,
                                 atmp["tmp4"]->data, stats->nmaskh);
             stats->calc_flux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                                 atmp["tmp4"]->data, stats->nmaskh);
-            stats->calc_diff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+            stats->calc_diff_4th(it->second->data, m->profs[it->first+"diff"].data, grid.dzhi4, it->second->visc, sloc,
                                 atmp["tmp4"]->data, stats->nmaskh);
         }
     }
@@ -550,17 +549,17 @@ void Fields::exec_stats(Mask *m)
     stats->calc_mean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
     stats->calc_moment(sd["p"]->data, m->profs["p"].data, m->profs["p2"].data, 2, sloc,
                       atmp["tmp1"]->data, stats->nmask);
-    if (grid->swspatialorder == "2")
+    if (grid.swspatialorder == "2")
     {
-        stats->calc_grad_2nd(sd["p"]->data, m->profs["pgrad"].data, grid->dzhi, sloc,
+        stats->calc_grad_2nd(sd["p"]->data, m->profs["pgrad"].data, grid.dzhi, sloc,
                              atmp["tmp4"]->data, stats->nmaskh);
         stats->calc_flux_2nd(sd["p"]->data, m->profs["p"].data, w->data, m->profs["w"].data,
                             m->profs["pw"].data, atmp["tmp1"]->data, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
     }
-    else if (grid->swspatialorder == "4")
+    else if (grid.swspatialorder == "4")
     {
-        stats->calc_grad_4th(sd["p"]->data, m->profs["pgrad"].data, grid->dzhi4, sloc,
+        stats->calc_grad_4th(sd["p"]->data, m->profs["pgrad"].data, grid.dzhi4, sloc,
                              atmp["tmp4"]->data, stats->nmaskh);
         stats->calc_flux_4th(sd["p"]->data, w->data, m->profs["pw"].data, atmp["tmp1"]->data, sloc,
                              atmp["tmp4"]->data, stats->nmaskh);
@@ -592,18 +591,18 @@ void Fields<TF>::init_momentum_field(Field3d<TF>*& fld, Field3d<TF>*& fldt, std:
 {
     if (mp.find(fldname)!=mp.end())
     {
-        master->print_error("\"%s\" already exists\n", fldname.c_str());
+        master.print_error("\"%s\" already exists\n", fldname.c_str());
         throw 1;
     }
 
     // add a new prognostic momentum variable
-    mp[fldname] = new Field3d<TF>(*master, *grid, fldname, longname, unit);
+    mp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
 
     // add a new tendency for momentum variable
     std::string fldtname  = fldname + "t";
     std::string tunit     = unit + "s-1";
     std::string tlongname = "Tendency of " + longname;
-    mt[fldname] = new Field3d<TF>(*master, *grid, fldtname, tlongname, tunit);
+    mt[fldname] = new Field3d<TF>(master, grid, fldtname, tlongname, tunit);
 
     // TODO remove these from the model?
     fld  = mp[fldname];
@@ -621,18 +620,18 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 {
     if (sp.find(fldname)!=sp.end())
     {
-        master->print_error("\"%s\" already exists\n", fldname.c_str());
+        master.print_error("\"%s\" already exists\n", fldname.c_str());
         throw 1;
     }
 
     // add a new scalar variable
-    sp[fldname] = new Field3d<TF>(*master, *grid, fldname, longname, unit);
+    sp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
 
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = unit + "s-1";
-    st[fldname] = new Field3d<TF>(*master, *grid, fldtname, tlongname, tunit);
+    st[fldname] = new Field3d<TF>(master, grid, fldtname, tlongname, tunit);
 
     // add the prognostic variable and its tendency to the collection
     // of all fields and tendencies
@@ -646,11 +645,11 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
 {
     if (sd.find(fldname)!=sd.end())
     {
-        master->print_error("\"%s\" already exists\n", fldname.c_str());
+        master.print_error("\"%s\" already exists\n", fldname.c_str());
         throw 1;
     }
 
-    sd[fldname] = new Field3d<TF>(*master, *grid, fldname, longname, unit);
+    sd[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
     a [fldname] = sd[fldname];
 }
 
@@ -659,15 +658,15 @@ void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::
 {
     if (atmp.find(fldname) != atmp.end())
     {
-        master->print_error("\"%s\" already exists\n", fldname.c_str());
+        master.print_error("\"%s\" already exists\n", fldname.c_str());
         throw 1;
     }
 
-    atmp[fldname] = new Field3d<TF>(*master, *grid, fldname, longname, unit);
+    atmp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
 }
 
 template<typename TF>
-void Fields<TF>::create(Input *inputin, Data_block* profs)
+void Fields<TF>::create(Input& inputin, Data_block& profs)
 {
     // int nerror = 0;
 
@@ -677,7 +676,7 @@ void Fields<TF>::create(Input *inputin, Data_block* profs)
     nerror += randomize(inputin, "w", w->data);
 
     // Only add perturbation to v in case of a 3d run.
-    if (grid->jtot > 1)
+    if (grid.jtot > 1)
         nerror += randomize(inputin, "v", v->data);
 
     // Randomize the scalars
@@ -689,19 +688,19 @@ void Fields<TF>::create(Input *inputin, Data_block* profs)
     */
 
     // Add the mean profiles to the fields
-    add_mean_profs(*profs);
+    add_mean_profs(profs);
 
     /*
-    nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid->utrans);
-    nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid->vtrans);
+    nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid.utrans);
+    nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid.vtrans);
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
 
     // set w equal to zero at the boundaries, just to be sure
-    int lbot = grid->kstart*grid->ijcells;
-    int ltop = grid->kend  *grid->ijcells;
-    for (int l=0; l<grid->ijcells; ++l)
+    int lbot = grid.kstart*grid.ijcells;
+    int ltop = grid.kend  *grid.ijcells;
+    for (int l=0; l<grid.ijcells; ++l)
     {
         w->data[lbot+l] = 0.;
         w->data[ltop+l] = 0.;
@@ -736,16 +735,16 @@ namespace
 template<typename TF>
 void Fields<TF>::add_mean_profs(Data_block& profs)
 {
-    Grid_data<TF> gd = grid->get_grid_data();
+    Grid_data<TF> gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
     profs.get_vector(prof, "u", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), grid->utrans,
+    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     profs.get_vector(prof, "v", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), grid->vtrans,
+    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
@@ -768,39 +767,39 @@ int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
 
     if (!seed)
     {
-        nerror += inputin->get_item(&seed, "fields", "rndseed", "", 0);
-        seed += master->mpiid + 2;
+        nerror += input.get_item(&seed, "fields", "rndseed", "", 0);
+        seed += master.mpiid + 2;
         std::srand(seed);
     }
 
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
     // Look up the specific randomizer variables.
-    nerror += inputin->get_item(&rndamp, "fields", "rndamp", fld, 0.);
-    nerror += inputin->get_item(&rndz  , "fields", "rndz"  , fld, 0.);
-    nerror += inputin->get_item(&rndexp, "fields", "rndexp", fld, 0.);
+    nerror += input.get_item(&rndamp, "fields", "rndamp", fld, 0.);
+    nerror += input.get_item(&rndz  , "fields", "rndz"  , fld, 0.);
+    nerror += input.get_item(&rndexp, "fields", "rndexp", fld, 0.);
 
-    if (rndz > grid->zsize)
+    if (rndz > grid.zsize)
     {
-        master->print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, grid->zsize);
+        master.print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, grid.zsize);
         return 1;
     }
 
     // Find the location of the randomizer height.
-    int kendrnd = grid->kstart;
-    while (grid->z[kendrnd] < rndz)
+    int kendrnd = grid.kstart;
+    while (grid.z[kendrnd] < rndz)
         ++kendrnd;
 
     // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
-    if (kendrnd == grid->kstart && rndz > 0.)
-        master->print_warning("randomization depth is less than the height of the first model level\n");
+    if (kendrnd == grid.kstart && rndz > 0.)
+        master.print_warning("randomization depth is less than the height of the first model level\n");
 
-    for (int k=grid->kstart; k<kendrnd; ++k)
+    for (int k=grid.kstart; k<kendrnd; ++k)
     {
-        const double rndfac = std::pow((rndz-grid->z [k])/rndz, rndexp);
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            for (int i=grid->istart; i<grid->iend; ++i)
+        const double rndfac = std::pow((rndz-grid.z [k])/rndz, rndexp);
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 data[ijk] = rndfac * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
@@ -815,35 +814,35 @@ int Fields::add_vortex_pair(Input* inputin)
     int nerror = 0;
 
     // optional parameters
-    nerror += inputin->get_item(&vortexnpair, "fields", "vortexnpair", "", 0    );
-    nerror += inputin->get_item(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
-    nerror += inputin->get_item(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
+    nerror += input.get_item(&vortexnpair, "fields", "vortexnpair", "", 0    );
+    nerror += input.get_item(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
+    nerror += input.get_item(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
 
     // add a double vortex to the initial conditions
     const double pi = std::acos((double)-1.);
 
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
     if (vortexnpair > 0)
     {
         if (vortexaxis == "y")
-            for (int k=grid->kstart; k<grid->kend; ++k)
-                for (int j=grid->jstart; j<grid->jend; ++j)
-                    for (int i=grid->istart; i<grid->iend; ++i)
+            for (int k=grid.kstart; k<grid.kend; ++k)
+                for (int j=grid.jstart; j<grid.jend; ++j)
+                    for (int i=grid.istart; i<grid.iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        u->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid->xh[i])/grid->xsize)*std::cos(pi*grid->z [k]/grid->zsize);
-                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid->x [i])/grid->xsize)*std::sin(pi*grid->zh[k]/grid->zsize);
+                        u->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid.xh[i])/grid.xsize)*std::cos(pi*grid.z [k]/grid.zsize);
+                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid.x [i])/grid.xsize)*std::sin(pi*grid.zh[k]/grid.zsize);
                     }
         else if (vortexaxis == "x")
-            for (int k=grid->kstart; k<grid->kend; ++k)
-                for (int j=grid->jstart; j<grid->jend; ++j)
-                    for (int i=grid->istart; i<grid->iend; ++i)
+            for (int k=grid.kstart; k<grid.kend; ++k)
+                for (int j=grid.jstart; j<grid.jend; ++j)
+                    for (int i=grid.istart; i<grid.iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        v->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid->yh[j])/grid->ysize)*std::cos(pi*grid->z [k]/grid->zsize);
-                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid->y [j])/grid->ysize)*std::sin(pi*grid->zh[k]/grid->zsize);
+                        v->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid.yh[j])/grid.ysize)*std::cos(pi*grid.z [k]/grid.zsize);
+                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid.y [j])/grid.ysize)*std::sin(pi*grid.zh[k]/grid.zsize);
                     }
     }
 
@@ -852,20 +851,20 @@ int Fields::add_vortex_pair(Input* inputin)
 
 int Fields::add_mean_prof(Input* inputin, std::string fld, double* restrict data, double offset)
 {
-    double proftemp[grid->kmax];
+    double proftemp[grid.kmax];
 
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
-    if (inputin->get_prof(proftemp, fld, grid->kmax))
+    if (input.get_prof(proftemp, fld, grid.kmax))
         return 1;
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            for (int i=grid->istart; i<grid->iend; ++i)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                data[ijk] += proftemp[k-grid->kstart] - offset;
+                data[ijk] += proftemp[k-grid.kstart] - offset;
             }
 
     return 0;
@@ -949,18 +948,18 @@ void Fields<TF>::save(int n)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
-        master->print_message("Saving \"%s\" ... ", filename);
+        master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (grid->save_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+        if (grid.save_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
                     filename, no_offset))
         {
-            master->print_message("FAILED\n");
+            master.print_message("FAILED\n");
             ++nerror;
         }  
         else
         {
-            master->print_message("OK\n");
+            master.print_message("OK\n");
         }
     }
 
@@ -980,16 +979,16 @@ void Fields<TF>::load(int n)
         // The offset is kept at zero, otherwise bitwise identical restarts is not possible.
         char filename[256];
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
-        master->print_message("Loading \"%s\" ... ", filename);
-        if (grid->load_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+        master.print_message("Loading \"%s\" ... ", filename);
+        if (grid.load_field3d(f.second->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
                     filename, no_offset))
         {
-            master->print_message("FAILED\n");
+            master.print_message("FAILED\n");
             ++nerror;
         }
         else
         {
-            master->print_message("OK\n");
+            master.print_message("OK\n");
         }  
     }
 
@@ -1001,14 +1000,14 @@ void Fields<TF>::load(int n)
 #ifndef USECUDA
 double Fields::check_momentum()
 {
-    return calc_momentum_2nd(u->data, v->data, w->data, grid->dz);
+    return calc_momentum_2nd(u->data, v->data, w->data, grid.dz);
 }
 #endif
 
 #ifndef USECUDA
 double Fields::check_tke()
 {
-    return calc_tke_2nd(u->data, v->data, w->data, grid->dz);
+    return calc_tke_2nd(u->data, v->data, w->data, grid.dz);
 }
 #endif
 
@@ -1018,7 +1017,7 @@ double Fields::check_mass()
     // CvH for now, do the mass check on the first scalar... Do we want to change this?
     FieldMap::const_iterator itProg=sp.begin();
     if (sp.begin() != sp.end())
-        return calc_mass(itProg->second->data, grid->dz);
+        return calc_mass(itProg->second->data, grid.dz);
     else
         return 0.;
 }
@@ -1026,23 +1025,23 @@ double Fields::check_mass()
 
 double Fields::calc_mass(double* restrict s, double* restrict dz)
 {
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
     double mass = 0;
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 mass += s[ijk]*dz[k];
             }
 
-    grid->get_sum(&mass);
+    grid.get_sum(&mass);
 
-    mass /= (grid->itot*grid->jtot*grid->zsize);
+    mass /= (grid.itot*grid.jtot*grid.zsize);
 
     return mass;
 }
@@ -1052,23 +1051,23 @@ double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double*
     using Finite_difference::O2::interp2;
 
     const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
     double momentum = 0;
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
             }
 
-    grid->get_sum(&momentum);
+    grid.get_sum(&momentum);
 
-    momentum /= (grid->itot*grid->jtot*grid->zsize);
+    momentum /= (grid.itot*grid.jtot*grid.zsize);
 
     return momentum;
 }
@@ -1078,15 +1077,15 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
     using Finite_difference::O2::interp2;
 
     const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
 
     double tke = 0;
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii]) 
@@ -1094,9 +1093,9 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
                        + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
             }
 
-    grid->get_sum(&tke);
+    grid.get_sum(&tke);
 
-    tke /= (grid->itot*grid->jtot*grid->zsize);
+    tke /= (grid.itot*grid.jtot*grid.zsize);
     tke *= 0.5;
 
     return tke;
@@ -1112,7 +1111,7 @@ void Fields::exec_cross()
         nerror += cross->cross_simple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
 
     for (std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-        nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+        nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid.dzi4, a[*it]->name + "lngrad");
 
     for (std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
         nerror += cross->cross_plane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");

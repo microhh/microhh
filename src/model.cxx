@@ -90,7 +90,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
         grid = new Grid<TF>(*master, *input);
 
         // Create an instance of the Fields class.
-        fields = new Fields<TF>(master, grid, input);
+        fields = new Fields<TF>(*master, *grid, *input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -109,7 +109,11 @@ template<typename TF>
 void Model<TF>::delete_objects()
 {
     // Delete the components in reversed order.
+    delete fields;
     delete grid;
+
+    delete profs;
+    delete input;
 }
 
 // In the destructor the deletion of all class instances is triggered.
@@ -159,7 +163,7 @@ void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
     grid->create(*profs);
-    fields->create(input, profs);
+    fields->create(*input, *profs);
 
     // Save the initialized data to disk for the run mode.
     grid->save();

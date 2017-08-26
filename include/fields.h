@@ -41,11 +41,11 @@ template<typename TF>
 class Fields
 {
     public:
-        Fields(Master*, Grid<TF>*, Input*); ///< Constructor of the fields class.
+        Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
         void init();         ///< Initialization of the field arrays.
-        void create(Input*, Data_block*); ///< Initialization of the fields (random perturbations, vortices).
+        void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
         // void create_stats(); ///< Initialization of the fields statistics.
 
         void exec();
@@ -120,13 +120,13 @@ class Fields
         */
 
     private:
-        Master* master;
-        Grid<TF>* grid;
+        Master& master;
+        Grid<TF>& grid;
         // Stats*  stats;
 
         bool calc_mean_profs;
 
-        int n_tmp_fields;   // number of temporary fields
+        int n_tmp_fields;   ///< Number of temporary fields.
 
         // cross sections
         // std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
