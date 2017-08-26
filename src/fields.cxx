@@ -59,14 +59,12 @@ Fields<TF>::Fields(Master* masterin, Grid<TF>* gridin, Input *inputin)
     // obligatory parameters
     visc = inputin->get_item<TF>("fields", "visc", "");
 
-    // read the name of the passive scalars
+    // Initialize the passive scalars
     std::vector<std::string> slist = inputin->get_list<std::string>("fields", "slist", "", std::vector<std::string>());
-
-    // initialize the scalars
-    for (std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
+    for (auto& s : slist)
     {
-        init_prognostic_field(*it, *it, "-");
-        sp[*it]->visc = inputin->get_item<TF>("fields", "svisc", *it);
+        init_prognostic_field(s, s, "-");
+        sp[s]->visc = inputin->get_item<TF>("fields", "svisc", s);
     }
 
     // initialize the basic set of fields
