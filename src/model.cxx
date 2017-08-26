@@ -125,6 +125,7 @@ void Model<TF>::init()
 {
     master->init(input);
     grid->init();
+    fields->init();
 }
 
 template<typename TF>
