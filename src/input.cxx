@@ -28,9 +28,14 @@ namespace
         if (ititem == itblock->second.end())
             throw std::runtime_error("Item does not exist");
 
+        // If the subitem is empty, it finds the default option "".
         auto itsubitem = ititem->second.find(subitemname);
         if (itsubitem == ititem->second.end())
-            throw std::runtime_error("Subitem does not exist");
+        {
+            itsubitem = ititem->second.find(std::string(""));
+            if (itsubitem == ititem->second.end())
+                throw std::runtime_error("Subitem does not exist");
+        }
 
         return itsubitem->second;
     }
