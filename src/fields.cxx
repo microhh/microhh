@@ -669,7 +669,7 @@ void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::
 template<typename TF>
 void Fields<TF>::create(Input *inputin, Data_block* profs)
 {
-    int nerror = 0;
+    // int nerror = 0;
 
     /*
     // Randomize the momentum
@@ -740,12 +740,12 @@ void Fields<TF>::add_mean_profs(Data_block& profs)
     std::vector<TF> prof(gd.ktot);
 
     profs.get_vector(prof, "u", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), 0.,
+    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), grid->utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     profs.get_vector(prof, "v", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), 0.,
+    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), grid->vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
