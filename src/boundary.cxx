@@ -39,12 +39,11 @@
 // #include "boundary_patch.h"
 
 template<typename TF>
-Boundary<TF>::Boundary(Master* masterin, Grid<TF>* gridin, Fields<TF>* fieldsin, Input* inputin)
+Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    master(masterin),
+    grid(gridin),
+    fields(fieldsin)
 {
-    master = masterin;
-    grid = gridin;
-    fields = fieldsin;
-
     swboundary = "default";
 }
 
@@ -69,17 +68,17 @@ std::string Boundary<TF>::get_switch()
 }
 
 template<typename TF>
-void Boundary<TF>::process_bcs(Input* inputin)
+void Boundary<TF>::process_bcs(Input& input)
 {
     int nerror = 0;
 
-    std::string swbot = inputin->get_item<std::string>("boundary", "mbcbot", "");
-    std::string swtop = inputin->get_item<std::string>("boundary", "mbctop", "");
+    std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
+    std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
-    ubot  = inputin->get_item<TF>("boundary", "ubot", "", 0.);
-    utop  = inputin->get_item<TF>("boundary", "utop", "", 0.);
-    vbot  = inputin->get_item<TF>("boundary", "vbot", "", 0.);
-    vtop  = inputin->get_item<TF>("boundary", "vtop", "", 0.);
+    ubot  = input.get_item<TF>("boundary", "ubot", "", 0.);
+    utop  = input.get_item<TF>("boundary", "utop", "", 0.);
+    vbot  = input.get_item<TF>("boundary", "vbot", "", 0.);
+    vtop  = input.get_item<TF>("boundary", "vtop", "", 0.);
 
     // set the bottom bc
     if (swbot == "noslip")
@@ -90,7 +89,7 @@ void Boundary<TF>::process_bcs(Input* inputin)
         mbcbot = Boundary_type::Ustar_type;
     else
     {
-        master->print_error("%s is illegal value for mbcbot\n", swbot.c_str());
+        master.print_error("%s is illegal value for mbcbot\n", swbot.c_str());
         nerror++;
     }
 
@@ -103,18 +102,18 @@ void Boundary<TF>::process_bcs(Input* inputin)
         mbctop = Boundary_type::Ustar_type;
     else
     {
-        master->print_error("%s is illegal value for mbctop\n", swtop.c_str());
+        master.print_error("%s is illegal value for mbctop\n", swtop.c_str());
         nerror++;
     }
 
     // read the boundaries per field
-    for (auto& it : fields->sp)
+    for (auto& it : fields.sp)
     {
         sbc[it.first] = new Field3dBc;
-        swbot = inputin->get_item<std::string>("boundary", "sbcbot", it.first);
-        swtop = inputin->get_item<std::string>("boundary", "sbctop", it.first);
-        sbc[it.first]->bot = inputin->get_item<double>("boundary", "sbot", it.first);
-        sbc[it.first]->top = inputin->get_item<double>("boundary", "stop", it.first);
+        swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
+        swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
+        sbc[it.first]->bot = input.get_item<double>("boundary", "sbot", it.first);
+        sbc[it.first]->top = input.get_item<double>("boundary", "stop", it.first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
@@ -125,7 +124,7 @@ void Boundary<TF>::process_bcs(Input* inputin)
             sbc[it.first]->bcbot = Boundary_type::Flux_type;
         else
         {
-            master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
+            master.print_error("%s is illegal value for sbcbot\n", swbot.c_str());
             nerror++;
         }
 
@@ -138,42 +137,42 @@ void Boundary<TF>::process_bcs(Input* inputin)
             sbc[it.first]->bctop = Boundary_type::Flux_type;
         else
         {
-            master->print_error("%s is illegal value for sbctop\n", swtop.c_str());
+            master.print_error("%s is illegal value for sbctop\n", swtop.c_str());
             nerror++;
         }
     }
 
     // get the list of time varying variables
-    swtimedep   = inputin->get_item<std::string>("boundary", "swtimedep"  , "", "0");
-    timedeplist = inputin->get_list<std::string>("boundary", "timedeplist", "");
+    swtimedep   = input.get_item<std::string>("boundary", "swtimedep"  , "", "0");
+    timedeplist = input.get_list<std::string>("boundary", "timedeplist", "");
 
     if (nerror)
         throw 1;
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input *inputin)
+void Boundary<TF>::init(Input& input)
 {
     // Read the boundary information from the ini files, it throws at error.
-    process_bcs(inputin);
+    process_bcs(input);
 
     int nerror = 0;
 
     // there is no option (yet) for prescribing ustar without surface model
     if (mbcbot == Boundary_type::Ustar_type || mbctop == Boundary_type::Ustar_type)
     {
-        master->print_error("ustar bc is not supported for default boundary\n");
+        master.print_error("ustar bc is not supported for default boundary\n");
         ++nerror;
     }
 
     if (nerror)
-        throw 1;
+        throw std::runtime_error("Cannot use ustar bc for default boundary");
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input* inputin)
+void Boundary<TF>::create(Input& input)
 {
-    // process_time_dependent(inputin);
+    // process_time_dependent(input);
 }
 
 /*
@@ -188,7 +187,7 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
         std::vector<std::string> tmplist = timedeplist;
 
         // see if there is data available for the surface boundary conditions
-        for (auto& it : fields->sp)
+        for (auto& it : fields.sp)
         {
             std::string name = "sbot[" + it.first + "]";
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
@@ -204,7 +203,7 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
 
         // display a warning for the non-supported 
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-            master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+            master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
     if (nerror)
@@ -255,7 +254,7 @@ void Boundary<TF>::update_time_dependent()
     }
 
     // process time dependent bcs for the surface fluxes
-    for (FieldMap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
+    for (FieldMap::const_iterator it1=fields.sp.begin(); it1!=fields.sp.end(); ++it1)
     {
         std::string name = "sbot[" + it1->first + "]";
         std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
@@ -323,25 +322,25 @@ namespace
 template<typename TF>
 void Boundary<TF>::set_values()
 {
-    const Grid_data<TF>& gd = grid->get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    set_bc<TF>(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
-           mbcbot, ubot, fields->visc, grid->utrans,
+    set_bc<TF>(fields.u->databot.data(), fields.u->datagradbot.data(), fields.u->datafluxbot.data(),
+           mbcbot, ubot, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
-           mbcbot, vbot, fields->visc, grid->vtrans,
+    set_bc<TF>(fields.v->databot.data(), fields.v->datagradbot.data(), fields.v->datafluxbot.data(),
+           mbcbot, vbot, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    set_bc<TF>(fields->u->datatop.data(), fields->u->datagradtop.data(), fields->u->datafluxtop.data(),
-           mbctop, utop, fields->visc, grid->utrans,
+    set_bc<TF>(fields.u->datatop.data(), fields.u->datagradtop.data(), fields.u->datafluxtop.data(),
+           mbctop, utop, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields->v->datatop.data(), fields->v->datagradtop.data(), fields->v->datafluxtop.data(),
-           mbctop, vtop, fields->visc, grid->vtrans,
+    set_bc<TF>(fields.v->datatop.data(), fields.v->datagradtop.data(), fields.v->datafluxtop.data(),
+           mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
     const double no_offset = 0.;
 
-    for (auto& it : fields->sp)
+    for (auto& it : fields.sp)
     {
         set_bc<TF>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                sbc[it.first]->bcbot, sbc[it.first]->bot, it.second->visc, no_offset,
@@ -571,35 +570,35 @@ template<typename TF>
 void Boundary<TF>::exec()
 {
     // Cyclic boundary conditions, do this before the bottom BC's
-    grid->boundary_cyclic(fields->u->data.data());
-    grid->boundary_cyclic(fields->v->data.data());
-    grid->boundary_cyclic(fields->w->data.data());
+    grid.boundary_cyclic(fields.u->data.data());
+    grid.boundary_cyclic(fields.v->data.data());
+    grid.boundary_cyclic(fields.w->data.data());
 
-    for (auto& it : fields->sp)
-        grid->boundary_cyclic(it.second->data.data());
+    for (auto& it : fields.sp)
+        grid.boundary_cyclic(it.second->data.data());
 
     // Update the boundary values.
     update_bcs();
 
-    const Grid_data<TF>& gd = grid->get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid->swspatialorder == "2")
+    if (grid.swspatialorder == "2")
     {
-        calc_ghost_cells_bot_2nd<TF>(fields->u->data.data(), gd.dzh.data(), mbcbot,
-                fields->u->databot.data(), fields->u->datagradbot.data(),
+        calc_ghost_cells_bot_2nd<TF>(fields.u->data.data(), gd.dzh.data(), mbcbot,
+                fields.u->databot.data(), fields.u->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_2nd<TF>(fields->u->data.data(), gd.dzh.data(), mbctop,
-                fields->u->datatop.data(), fields->u->datagradtop.data(),
+        calc_ghost_cells_top_2nd<TF>(fields.u->data.data(), gd.dzh.data(), mbctop,
+                fields.u->datatop.data(), fields.u->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_bot_2nd<TF>(fields->v->data.data(), gd.dzh.data(), mbcbot,
-                fields->v->databot.data(), fields->v->datagradbot.data(),
+        calc_ghost_cells_bot_2nd<TF>(fields.v->data.data(), gd.dzh.data(), mbcbot,
+                fields.v->databot.data(), fields.v->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_2nd<TF>(fields->v->data.data(), gd.dzh.data(), mbctop,
-                fields->v->datatop.data(), fields->v->datagradtop.data(),
+        calc_ghost_cells_top_2nd<TF>(fields.v->data.data(), gd.dzh.data(), mbctop,
+                fields.v->datatop.data(), fields.v->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        for (auto& it : fields->sp)
+        for (auto& it : fields.sp)
         {
             calc_ghost_cells_bot_2nd<TF>(it.second->data.data(), gd.dzh.data(),
                     sbc[it.first]->bcbot, it.second->databot.data(), it.second->datagradbot.data(),
@@ -609,28 +608,28 @@ void Boundary<TF>::exec()
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
-    else if (grid->swspatialorder == "4")
+    else if (grid.swspatialorder == "4")
     {
-        calc_ghost_cells_bot_4th<TF>(fields->u->data.data(), gd.z.data(), mbcbot,
-                fields->u->databot.data(), fields->u->datagradbot.data(),
+        calc_ghost_cells_bot_4th<TF>(fields.u->data.data(), gd.z.data(), mbcbot,
+                fields.u->databot.data(), fields.u->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_4th<TF>(fields->u->data.data(), gd.z.data(), mbctop,
-                fields->u->datatop.data(), fields->u->datagradtop.data(),
+        calc_ghost_cells_top_4th<TF>(fields.u->data.data(), gd.z.data(), mbctop,
+                fields.u->datatop.data(), fields.u->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_bot_4th<TF>(fields->v->data.data(), gd.z.data(), mbcbot,
-                fields->v->databot.data(), fields->v->datagradbot.data(),
+        calc_ghost_cells_bot_4th<TF>(fields.v->data.data(), gd.z.data(), mbcbot,
+                fields.v->databot.data(), fields.v->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_4th<TF>(fields->v->data.data(), gd.z.data(), mbctop,
-                fields->v->datatop.data(), fields->v->datagradtop.data(),
+        calc_ghost_cells_top_4th<TF>(fields.v->data.data(), gd.z.data(), mbctop,
+                fields.v->datatop.data(), fields.v->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_botw_4th<TF>(fields->w->data.data(),
+        calc_ghost_cells_botw_4th<TF>(fields.w->data.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_topw_4th<TF>(fields->w->data.data(),
+        calc_ghost_cells_topw_4th<TF>(fields.w->data.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        for (auto& it : fields->sp)
+        for (auto& it : fields.sp)
         {
             calc_ghost_cells_bot_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first]->bcbot,
                     it.second->databot.data(), it.second->datagradbot.data(),
@@ -648,22 +647,22 @@ void Boundary<TF>::exec()
 template<typename TF>
 void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 {
-    const Grid_data<TF>& gd = grid->get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid->swspatialorder == "4")
+    if (grid.swspatialorder == "4")
     {
         if (boundary_w_type == Boundary_w_type::Normal_type)
         {
-            calc_ghost_cells_botw_4th<TF>(fields->w->data.data(),
+            calc_ghost_cells_botw_4th<TF>(fields.w->data.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_topw_4th<TF>(fields->w->data.data(),
+            calc_ghost_cells_topw_4th<TF>(fields.w->data.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
         else if (boundary_w_type == Boundary_w_type::Conservation_type)
         {
-            calc_ghost_cells_botw_cons_4th<TF>(fields->w->data.data(),
+            calc_ghost_cells_botw_cons_4th<TF>(fields.w->data.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_topw_cons_4th<TF>(fields->w->data.data(),
+            calc_ghost_cells_topw_cons_4th<TF>(fields.w->data.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
@@ -733,39 +732,39 @@ namespace
 template<typename TF>
 void Boundary<TF>::update_slave_bcs()
 {
-    const Grid_data<TF>& gd = grid->get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid->swspatialorder == "2")
+    if (grid.swspatialorder == "2")
     {
-        calc_slave_bc_bot<TF,2>(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
-                                fields->u->data.data(), gd.dzhi.data(),
-                                mbcbot, fields->u->visc,
+        calc_slave_bc_bot<TF,2>(fields.u->databot.data(), fields.u->datagradbot.data(), fields.u->datafluxbot.data(),
+                                fields.u->data.data(), gd.dzhi.data(),
+                                mbcbot, fields.u->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,2>(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
-                                fields->v->data.data(), gd.dzhi.data(),
-                                mbcbot, fields->v->visc,
+        calc_slave_bc_bot<TF,2>(fields.v->databot.data(), fields.v->datagradbot.data(), fields.v->datafluxbot.data(),
+                                fields.v->data.data(), gd.dzhi.data(),
+                                mbcbot, fields.v->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        for (auto& it : fields->sp)
+        for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,2>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi.data(),
                                     sbc[it.first]->bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
-    else if (grid->swspatialorder == "4")
+    else if (grid.swspatialorder == "4")
     {
-        calc_slave_bc_bot<TF,4>(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
-                                fields->u->data.data(), gd.dzhi4.data(),
-                                mbcbot, fields->u->visc,
+        calc_slave_bc_bot<TF,4>(fields.u->databot.data(), fields.u->datagradbot.data(), fields.u->datafluxbot.data(),
+                                fields.u->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields.u->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,4>(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
-                                fields->v->data.data(), gd.dzhi4.data(),
-                                mbcbot, fields->v->visc,
+        calc_slave_bc_bot<TF,4>(fields.v->databot.data(), fields.v->datagradbot.data(), fields.v->datafluxbot.data(),
+                                fields.v->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields.v->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        for (auto& it : fields->sp)
+        for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,4>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi4.data(),
                                     sbc[it.first]->bcbot, it.second->visc,
@@ -779,10 +778,10 @@ void Boundary<TF>::update_bcs()
 }
 
 template<typename TF>
-Boundary<TF>* Boundary<TF>::factory(Master* masterin, Grid<TF>* gridin, Fields<TF>* fieldsin, Input* inputin)
+Boundary<TF>* Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
-    swboundary = inputin->get_item<std::string>("boundary", "swboundary", "", "default");
+    swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
     // if (swboundary == "surface")
     //     return new Boundary_surface(modelin, inputin);
@@ -794,10 +793,10 @@ Boundary<TF>* Boundary<TF>::factory(Master* masterin, Grid<TF>* gridin, Fields<T
     //     return new Boundary_patch(modelin, inputin);
     // else if (swboundary == "default")
     if (swboundary == "default")
-        return new Boundary(masterin, gridin, fieldsin, inputin);
+        return new Boundary(master, grid, fields, input);
     else
     {
-        masterin->print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+        master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
         throw std::runtime_error("Illegal value for swboundary");
     }
 }
@@ -806,11 +805,11 @@ template<typename TF>
 void Boundary<TF>::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 {
     // Set surface mask
-    for (int i=0; i<grid->ijcells; ++i)
+    for (int i=0; i<grid.ijcells; ++i)
         fieldh->databot[i] = 1;
 
     // Set atmospheric mask
-    for (int i=0; i<grid->ncells; ++i)
+    for (int i=0; i<grid.ncells; ++i)
     {
         field ->data[i] = 1;
         fieldh->data[i] = 1;
@@ -821,7 +820,7 @@ template<typename TF>
 void Boundary<TF>::get_surface_mask(Field3d* field)
 {
     // Set surface mask
-    for (int i=0; i<grid->ijcells; ++i)
+    for (int i=0; i<grid.ijcells; ++i)
         field->databot[i] = 1;
 }
 

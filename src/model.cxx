@@ -94,7 +94,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
 
         timeloop = new Timeloop<TF>(*master, *grid, *fields, *input, simmode);
 
-        boundary = Boundary<TF>::factory(master, grid, fields, input);
+        boundary = Boundary<TF>::factory(*master, *grid, *fields, *input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -136,7 +136,7 @@ void Model<TF>::init()
     grid->init();
     fields->init();
 
-    boundary->init(input);
+    boundary->init(*input);
 }
 
 template<typename TF>
@@ -164,7 +164,7 @@ void Model<TF>::load()
 
     fields->load(timeloop->get_iotime());
 
-    boundary->create(input);
+    boundary->create(*input);
 }
 
 // In these functions data necessary to start the model is saved to disk.
