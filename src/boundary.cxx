@@ -57,8 +57,8 @@ Boundary<TF>::~Boundary()
     sbc.clear();
 
     // clean up time dependent data
-    for (auto& i : timedepdata)
-        delete[] i.second;
+    // for (auto& i : timedepdata)
+    //     delete[] i.second;
 }
 
 template<typename TF>
