@@ -144,7 +144,7 @@ void Boundary<TF>::process_bcs(Input& input)
 
     // get the list of time varying variables
     swtimedep   = input.get_item<std::string>("boundary", "swtimedep"  , "", "0");
-    timedeplist = input.get_list<std::string>("boundary", "timedeplist", "");
+    timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
 
     if (nerror)
         throw 1;
