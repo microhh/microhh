@@ -43,22 +43,22 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     // if (master.mode == "init")
     //     starttime = 0.;
     // else
-    //     starttime = input.get_item<TF>("time", "starttime", "");
-    starttime = input.get_item<TF>("time", "starttime", "");
+    //     starttime = input.get_item<double>("time", "starttime", "");
+    starttime = input.get_item<double>("time", "starttime", "");
 
-    endtime  = input.get_item<TF>("time", "endtime" , "");
-    savetime = input.get_item<TF>("time", "savetime", "");
+    endtime  = input.get_item<double>("time", "endtime" , "");
+    savetime = input.get_item<double>("time", "savetime", "");
 
     // optional parameters
     adaptivestep = input.get_item<bool>("time", "adaptivestep", "", true           );
-    dtmax        = input.get_item<TF>  ("time", "dtmax"       , "", Constants::dbig);
-    dt           = input.get_item<TF>  ("time", "dt"          , "", dtmax          );
+    dtmax        = input.get_item<double>  ("time", "dtmax"       , "", Constants::dbig);
+    dt           = input.get_item<double>  ("time", "dt"          , "", dtmax          );
     rkorder      = input.get_item<int> ("time", "rkorder"     , "", 3              );
     outputiter   = input.get_item<int> ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int> ("time", "iotimeprec"  , "", 0              );
 
     //if (master.mode == "post")
-    //    postproctime = input.get_item<TF>("time", "postproctime", "");
+    //    postproctime = input.get_item<double>("time", "postproctime", "");
 
     // 3 and 4 are the only valid values for the rkorder
     if (!(rkorder == 3 || rkorder == 4))
@@ -288,17 +288,15 @@ namespace
                 }
     }
 
-    template<typename TF>
-    inline TF rk3subdt(const TF dt, const int substep)
+    inline double rk3subdt(const double dt, const int substep)
     {
-        const TF cB [] = {1./3., 15./16., 8./15.};
+        const double cB [] = {1./3., 15./16., 8./15.};
         return cB[substep]*dt;
     }
 
-    template<typename TF>
-    inline TF rk4subdt(const TF dt, const int substep)
+    inline double rk4subdt(const double dt, const int substep)
     {
-        const TF cB [] = {
+        const double cB [] = {
             1432997174477./ 9575080441755.,
             5161836677717./13612068292357.,
             1720146321549./ 2090206949498.,
@@ -338,13 +336,11 @@ void Timeloop<TF>::exec()
 template<typename TF>
 double Timeloop<TF>::get_sub_time_step()
 {
-    double subdt = 0.;
+    // Value rkorder is 3 or 4, because it is checked in the constructor.
     if (rkorder == 3)
-        subdt = rk3subdt(dt, substep);
-    else if (rkorder == 4)
-        subdt = rk4subdt(dt, substep);
-
-    return subdt;
+        return rk3subdt(dt, substep);
+    else
+        return rk4subdt(dt, substep);
 }
 
 template<typename TF>
