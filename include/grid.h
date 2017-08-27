@@ -77,6 +77,7 @@ struct Grid_data
     TF dy;     ///< Distance between the center of two grid cell in the y-direction.
     TF dxi;    ///< Reciprocal of dx.
     TF dyi;    ///< Reciprocal of dy.
+
     std::vector<TF> dz;    ///< Distance between the center of two grid cell in the z-direction.
     std::vector<TF> dzh;   ///< Distance between the two grid cell faces in the z-direction.
     std::vector<TF> dzi;   ///< Reciprocal of dz.
