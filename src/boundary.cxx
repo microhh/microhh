@@ -530,7 +530,7 @@ namespace
     }
     
     template<typename TF>
-    void calc_ghost_cells_botw_4th(double* restrict w,
+    void calc_ghost_cells_botw_4th(TF* restrict w,
             const int kstart, const int icells, const int jcells, const int ijcells)
     {
         const int jj  = icells;
@@ -698,7 +698,7 @@ namespace
         using namespace Finite_difference;
 
         // Variable dzhi in this case is dzhi for 2nd order and dzhi4 for 4th order.
-        if (boundary_type == Boundary<TF>::Dirichlet_type)
+        if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep

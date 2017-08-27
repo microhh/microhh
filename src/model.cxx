@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "Data_block.h"
 #include "timeloop.h"
+#include "boundary.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -92,6 +93,8 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
         fields = new Fields<TF>(*master, *grid, *input);
 
         timeloop = new Timeloop<TF>(*master, *grid, *fields, *input, simmode);
+
+        boundary = Boundary<TF>::factory(master, grid, fields, input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)

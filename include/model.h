@@ -32,6 +32,7 @@ class Data_block;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Timeloop;
+template<typename> class Boundary;
 
 template<typename TF>
 class Model
@@ -52,6 +53,7 @@ class Model
         Grid<TF>* grid;
         Fields<TF>* fields;
         Timeloop<TF>* timeloop;
+        Boundary<TF>* boundary;
 
         std::string simmode;
         std::string simname;
