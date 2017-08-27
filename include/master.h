@@ -38,7 +38,7 @@ class Master
         ~Master();
 
         void start();
-        void init(Input*);
+        void init(Input&);
 
         double get_wall_clock_time();
         bool at_wall_clock_limit();

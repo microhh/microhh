@@ -132,7 +132,7 @@ Model<TF>::~Model()
 template<typename TF>
 void Model<TF>::init()
 {
-    master->init(input);
+    master->init(*input);
     grid->init();
     fields->init();
 
