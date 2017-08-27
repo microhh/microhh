@@ -35,7 +35,8 @@ template<typename TF>
 class Timeloop
 {
     public:
-        Timeloop(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Timeloop(Master&, Grid<TF>&, Fields<TF>&,
+                Input&, const std::string&);
         ~Timeloop();
 
         void step_time();

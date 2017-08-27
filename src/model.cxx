@@ -91,7 +91,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
 
         fields = new Fields<TF>(*master, *grid, *input);
 
-        timeloop = new Timeloop<TF>(*master, *grid, *fields, *input);
+        timeloop = new Timeloop<TF>(*master, *grid, *fields, *input, simmode);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)

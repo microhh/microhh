@@ -31,7 +31,8 @@
 #include "constants.h"
 
 template<typename TF>
-Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
+Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
+        Input& input, const std::string& simmode) :
     master(masterin),
     grid(gridin),
     fields(fieldsin)
@@ -40,25 +41,24 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     ifactor = 1e9;
 
     // obligatory parameters
-    // if (master.mode == "init")
-    //     starttime = 0.;
-    // else
-    //     starttime = input.get_item<double>("time", "starttime", "");
-    starttime = input.get_item<double>("time", "starttime", "");
+    if (simmode == "init")
+        starttime = 0.;
+    else
+        starttime = input.get_item<double>("time", "starttime", "");
 
     endtime  = input.get_item<double>("time", "endtime" , "");
     savetime = input.get_item<double>("time", "savetime", "");
 
     // optional parameters
-    adaptivestep = input.get_item<bool>("time", "adaptivestep", "", true           );
-    dtmax        = input.get_item<double>  ("time", "dtmax"       , "", Constants::dbig);
-    dt           = input.get_item<double>  ("time", "dt"          , "", dtmax          );
-    rkorder      = input.get_item<int> ("time", "rkorder"     , "", 3              );
-    outputiter   = input.get_item<int> ("time", "outputiter"  , "", 20             );
-    iotimeprec   = input.get_item<int> ("time", "iotimeprec"  , "", 0              );
+    adaptivestep = input.get_item<bool>  ("time", "adaptivestep", "", true           );
+    dtmax        = input.get_item<double>("time", "dtmax"       , "", Constants::dbig);
+    dt           = input.get_item<double>("time", "dt"          , "", dtmax          );
+    rkorder      = input.get_item<int>   ("time", "rkorder"     , "", 3              );
+    outputiter   = input.get_item<int>   ("time", "outputiter"  , "", 20             );
+    iotimeprec   = input.get_item<int>   ("time", "iotimeprec"  , "", 0              );
 
-    //if (master.mode == "post")
-    //    postproctime = input.get_item<double>("time", "postproctime", "");
+    if (simmode == "post")
+        postproctime = input.get_item<double>("time", "postproctime", "");
 
     // 3 and 4 are the only valid values for the rkorder
     if (!(rkorder == 3 || rkorder == 4))
@@ -81,8 +81,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     idt           = (unsigned long)(ifactor * dt + 0.5);
     idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
     isavetime     = (unsigned long)(ifactor * savetime + 0.5);
-    //if (master.mode == "post")
-    //    ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
+    if (simmode == "post")
+        ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
     idtlim = idt;
 
