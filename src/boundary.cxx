@@ -440,25 +440,23 @@ void Boundary<TF>::exec_stats(Mask* m)
 namespace
 {
     template<typename TF, int spatial_order>
-    void calc_slave_bc_bot(double* const restrict abot, double* const restrict agradbot, double* const restrict afluxbot,
-                           const double* const restrict a,
-                           const Grid<TF>* const grid, const double* const restrict dzhi,
-                           const Boundary_type boundary_type, const double visc)
+    void calc_slave_bc_bot(TF* const restrict abot, TF* const restrict agradbot, TF* const restrict afluxbot,
+                           const TF* const restrict a, const TF* const restrict dzhi,
+                           const Boundary_type boundary_type, const TF visc,
+                           const int kstart, const int icells, const int jcells, const int ijcells)
     {
-        const int jj = grid->icells;
-        const int kk1 = 1*grid->ijcells;
-        const int kk2 = 2*grid->ijcells;
-
-        const int kstart = grid->kstart;
+        const int jj = icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
 
         using namespace Finite_difference;
 
         // Variable dzhi in this case is dzhi for 2nd order and dzhi4 for 4th order.
         if (boundary_type == Boundary<TF>::Dirichlet_type)
         {
-            for (int j=0; j<grid->jcells; ++j)
+            for (int j=0; j<jcells; ++j)
                 #pragma ivdep
-                for (int i=0; i<grid->icells; ++i)
+                for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
@@ -469,11 +467,11 @@ namespace
                     afluxbot[ij] = -visc*agradbot[ij];
                 }
         }
-        else if (boundary_type == Boundary<TF>::Neumann_type || boundary_type == Boundary<TF>::Flux_type)
+        else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
-            for (int j=0; j<grid->jcells; ++j)
+            for (int j=0; j<jcells; ++j)
                 #pragma ivdep
-                for (int i=0; i<grid->icells; ++i)
+                for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
@@ -489,41 +487,43 @@ namespace
 template<typename TF>
 void Boundary<TF>::update_slave_bcs()
 {
+    Grid_data<TF>& gd = grid->get_grid_data();
+
     if (grid->swspatialorder == "2")
     {
-        calc_slave_bc_bot<2>(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-                             fields->u->data,
-                             grid, grid->dzhi,
-                             mbcbot, fields->u->visc);
+        calc_slave_bc_bot<TF,2>(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
+                                fields->u->data.data(), gd.dzhi.data(),
+                                mbcbot, fields->u->visc,
+                                gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<2>(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-                             fields->v->data,
-                             grid, grid->dzhi,
-                             mbcbot, fields->v->visc);
+        calc_slave_bc_bot<TF,2>(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
+                                fields->v->data.data(), gd.dzhi.data(),
+                                mbcbot, fields->v->visc,
+                                gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields->sp)
-            calc_slave_bc_bot<2>(it.second->databot, it.second->datagradbot, it.second->datafluxbot,
-                                 it.second->data,
-                                 grid, grid->dzhi,
-                                 sbc[it.first]->bcbot, it.second->visc);
+            calc_slave_bc_bot<TF,2>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
+                                    it.second->data.data(), gd.dzhi.data(),
+                                    sbc[it.first]->bcbot, it.second->visc,
+                                    gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
     else if (grid->swspatialorder == "4")
     {
-        calc_slave_bc_bot<4>(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-                             fields->u->data,
-                             grid, grid->dzhi4,
-                             mbcbot, fields->u->visc);
+        calc_slave_bc_bot<TF,4>(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
+                                fields->u->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields->u->visc,
+                                gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<4>(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-                             fields->v->data,
-                             grid, grid->dzhi4,
-                             mbcbot, fields->v->visc);
+        calc_slave_bc_bot<TF,4>(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
+                                fields->v->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields->v->visc,
+                                gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields->sp)
-            calc_slave_bc_bot<4>(it.second->databot, it.second->datagradbot, it.second->datafluxbot,
-                                 it.second->data,
-                                 grid, grid->dzhi4,
-                                 sbc[it.first]->bcbot, it.second->visc);
+            calc_slave_bc_bot<TF,4>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
+                                    it.second->data.data(), gd.dzhi4.data(),
+                                    sbc[it.first]->bcbot, it.second->visc,
+                                    gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
 }
 
