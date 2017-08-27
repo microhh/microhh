@@ -112,68 +112,69 @@ void Grid<TF>::exit_mpi()
 //         }
 //     }
 // }
-// 
-// template<typename TF>
-// void Grid<TF>::boundary_cyclic_2d(double* restrict data)
-// {
-//     const int jj = icells;
-// 
-//     // first, east west boundaries
-//     for (int j=0; j<jcells; j++)
-// #pragma ivdep
-//         for (int i=0; i<igc; i++)
-//         {
-//             const int ij0 = i          + j*jj;
-//             const int ij1 = iend-igc+i + j*jj;
-//             data[ij0] = data[ij1];
-//         }
-// 
-//     for (int j=0; j<jcells; j++)
-// #pragma ivdep
-//         for (int i=0; i<igc; i++)
-//         {
-//             const int ij0 = i+iend   + j*jj;
-//             const int ij1 = i+istart + j*jj;
-//             data[ij0] = data[ij1];
-//         }
-// 
-//     // if the run is 3D, apply the BCs
-//     if (jtot > 1)
-//     {
-//         // second, send and receive the ghost cells in the north-south direction
-//         for (int j=0; j<jgc; j++)
-// #pragma ivdep
-//             for (int i=0; i<icells; i++)
-//             {
-//                 const int ij0 = i + j           *jj;
-//                 const int ij1 = i + (jend-jgc+j)*jj;
-//                 data[ij0] = data[ij1];
-//             }
-// 
-//         for (int j=0; j<jgc; j++)
-// #pragma ivdep
-//             for (int i=0; i<icells; i++)
-//             {
-//                 const int ij0 = i + (j+jend  )*jj;
-//                 const int ij1 = i + (j+jstart)*jj;
-//                 data[ij0] = data[ij1];
-//             }
-//     }
-//     // in case of 2D, fill all the ghost cells with the current value
-//     else
-//     {
-//         for (int j=0; j<jgc; j++)
-// #pragma ivdep
-//             for (int i=0; i<icells; i++)
-//             {
-//                 const int ijref   = i + jstart*jj;
-//                 const int ijnorth = i + j*jj;
-//                 const int ijsouth = i + (jend+j)*jj;
-//                 data[ijnorth] = data[ijref];
-//                 data[ijsouth] = data[ijref];
-//             }
-//     }
-// }
+
+template<typename TF>
+void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
+{
+    const int jj = gd.icells;
+
+    // First, east west boundaries.
+    for (int j=0; j<gd.jcells; ++j)
+        #pragma ivdep
+        for (int i=0; i<igd.gc; ++i)
+        {
+            const int ij0 = i                + j*jj;
+            const int ij1 = gd.iend-gd.igc+i + j*jj;
+            data[ij0] = data[ij1];
+        }
+
+    for (int j=0; j<gd.jcells; ++j)
+        #pragma ivdep
+        for (int i=0; i<gd.igc; ++i)
+        {
+            const int ij0 = i+gd.iend   + j*jj;
+            const int ij1 = i+gd.istart + j*jj;
+            data[ij0] = data[ij1];
+        }
+
+    // If the run is 3D, apply the BCs.
+    if (gd.jtot > 1)
+    {
+        // Second, send and receive the ghost cells in the north-south direction.
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ij0 = i + j                 *jj;
+                const int ij1 = i + (gd.jend-gd.jgc+j)*jj;
+                data[ij0] = data[ij1];
+            }
+
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ij0 = i + (j+gd.jend  )*jj;
+                const int ij1 = i + (j+gd.jstart)*jj;
+                data[ij0] = data[ij1];
+            }
+    }
+    // In case of 2D, fill all the ghost cells with the current value.
+    else
+    {
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ijref   = i + gd.jstart*jj;
+                const int ijnorth = i + j*jj;
+                const int ijsouth = i + (gd.jend+j)*jj;
+                data[ijnorth] = data[ijref];
+                data[ijsouth] = data[ijref];
+            }
+    }
+}
+
 // 
 // template<typename TF>
 // void Grid<TF>::transpose_zx(double* restrict ar, double* restrict as)
