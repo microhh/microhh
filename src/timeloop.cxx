@@ -309,7 +309,7 @@ namespace
 template<typename TF>
 void Timeloop<TF>::exec()
 {
-    Grid_data<TF> gd = grid.get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
     if (rkorder == 3)
     {

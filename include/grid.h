@@ -119,7 +119,7 @@ class Grid
 
         std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
-        Grid_data<TF>& get_grid_data();
+        const Grid_data<TF>& get_grid_data();
 
         void set_minimum_ghost_cells(int, int, int);
 

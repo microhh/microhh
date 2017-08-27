@@ -735,7 +735,7 @@ namespace
 template<typename TF>
 void Fields<TF>::add_mean_profs(Data_block& profs)
 {
-    Grid_data<TF> gd = grid.get_grid_data();
+    const Grid_data<TF>& gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
     profs.get_vector(prof, "u", gd.ktot, 0, 0);

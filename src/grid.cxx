@@ -362,7 +362,7 @@ void Grid<TF>::calculate()
 }
 
 template<typename TF>
-Grid_data<TF>& Grid<TF>::get_grid_data()
+const Grid_data<TF>& Grid<TF>::get_grid_data()
 {
     return gd;
 }
