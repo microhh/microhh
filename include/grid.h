@@ -34,7 +34,7 @@ class Master;
 class Input;
 class Data_block;
 
-enum Edge {East_west_edge, North_south_edge, Both_edges};
+enum class Edge {East_west_edge, North_south_edge, Both_edges};
 
 template<typename TF>
 struct Grid_data
@@ -127,7 +127,7 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        // void boundary_cyclic   (double*, Edge=Both_edges); ///< Fills the ghost cells in the periodic directions.
+        void boundary_cyclic   (double*, Edge=Edge::Both_edges); ///< Fills the ghost cells in the periodic directions.
         // void boundary_cyclic_2d(double*); ///< Fills the ghost cells of one slice in the periodic direction.
         // void transpose_zx(double*, double*); ///< Changes the transpose orientation from z to x.
         // void transpose_xz(double*, double*); ///< Changes the transpose orientation from x to z.
