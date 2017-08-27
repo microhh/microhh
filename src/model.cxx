@@ -113,6 +113,7 @@ template<typename TF>
 void Model<TF>::delete_objects()
 {
     // Delete the components in reversed order.
+    delete boundary;
     delete fields;
     delete grid;
 
@@ -134,6 +135,8 @@ void Model<TF>::init()
     master->init(input);
     grid->init();
     fields->init();
+
+    boundary->init(input);
 }
 
 template<typename TF>
@@ -160,6 +163,8 @@ void Model<TF>::load()
     timeloop->load(timeloop->get_iotime());
 
     fields->load(timeloop->get_iotime());
+
+    boundary->create(input);
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -203,7 +208,7 @@ void Model<TF>::exec()
     // force   ->update_time_dependent();
 
     // Set the boundary conditions.
-    // boundary->exec();
+    boundary->exec();
 
     // Calculate the field means, in case needed.
     // fields->exec();
@@ -224,9 +229,9 @@ void Model<TF>::exec()
         set_time_step();
 
         // Calculate the advection tendency.
-        // boundary->set_ghost_cells_w(Boundary::Conservation_type);
+        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
         // advec->exec();
-        // boundary->set_ghost_cells_w(Boundary::Normal_type);
+        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Calculate the diffusion tendency.
         // diff->exec();
@@ -241,9 +246,9 @@ void Model<TF>::exec()
         // force->exec(timeloop->get_sub_time_step());
 
         // Solve the poisson equation for pressure.
-        // boundary->set_ghost_cells_w(Boundary::Conservation_type);
+        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
         // pres->exec(timeloop->get_sub_time_step());
-        // boundary->set_ghost_cells_w(Boundary::Normal_type);
+        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
@@ -351,7 +356,7 @@ void Model<TF>::exec()
         // force   ->update_time_dependent();
 
         // Set the boundary conditions.
-        // boundary->exec();
+        boundary->exec();
 
         // Calculate the field means, in case needed.
         // fields->exec();
