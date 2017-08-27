@@ -276,27 +276,79 @@ void Boundary<TF>::update_time_dependent()
 }
 */
 
+namespace
+{
+    template<typename TF>
+    void set_bc(TF* restrict a, TF* restrict agrad, TF* restrict aflux,
+            Boundary_type sw, TF aval, TF visc, TF offset,
+            const int icells, const int jcells)
+    {
+        const int jj = icells;
+    
+        if (sw == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    a[ij] = aval - offset;
+                }
+        }
+        else if (sw == Boundary_type::Neumann_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    agrad[ij] = aval;
+                    aflux[ij] = -aval*visc;
+                }
+        }
+        else if (sw == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    aflux[ij] = aval;
+                    agrad[ij] = -aval/visc;
+                }
+        }
+    }
+}
+
 template<typename TF>
 void Boundary<TF>::set_values()
 {
+    Grid_data<TF>& gd = grid->get_grid_data();
+
     set_bc(fields->u->databot.data(), fields->u->datagradbot.data(), fields->u->datafluxbot.data(),
-            mbcbot, ubot, fields->visc, grid->utrans);
+           mbcbot, ubot, fields->visc, grid->utrans,
+           gd.icells, gd.jcells);
     set_bc(fields->v->databot.data(), fields->v->datagradbot.data(), fields->v->datafluxbot.data(),
-            mbcbot, vbot, fields->visc, grid->vtrans);
+           mbcbot, vbot, fields->visc, grid->vtrans,
+           gd.icells, gd.jcells);
 
     set_bc(fields->u->datatop.data(), fields->u->datagradtop.data(), fields->u->datafluxtop.data(),
-            mbctop, utop, fields->visc, grid->utrans);
+           mbctop, utop, fields->visc, grid->utrans,
+           gd.icells, gd.jcells);
     set_bc(fields->v->datatop.data(), fields->v->datagradtop.data(), fields->v->datafluxtop.data(),
-            mbctop, vtop, fields->visc, grid->vtrans);
+           mbctop, vtop, fields->visc, grid->vtrans,
+           gd.icells, gd.jcells);
 
     const double no_offset = 0.;
 
     for (auto& it : fields->sp)
     {
         set_bc(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
-                sbc[it.first]->bcbot, sbc[it.first]->bot, it.second->visc, no_offset);
+               sbc[it.first]->bcbot, sbc[it.first]->bot, it.second->visc, no_offset,
+               gd.icells, gd.jcells);
         set_bc(it.second->datatop.data(), it.second->datagradtop.data(), it.second->datafluxtop.data(),
-                sbc[it.first]->bctop, sbc[it.first]->top, it.second->visc, no_offset);
+               sbc[it.first]->bctop, sbc[it.first]->top, it.second->visc, no_offset,
+               gd.icells, gd.jcells);
     }
 }
 
@@ -504,50 +556,10 @@ Boundary<TF>* Boundary<TF>::factory(Master* masterin, Grid<TF>* gridin, Fields<T
     }
 }
 
-template<typename TF>
-void Boundary<TF>::set_bc(double* restrict a, double* restrict agrad, double* restrict aflux, Boundary_type sw, double aval, double visc, double offset)
-{
-    int ij,jj;
-    jj = grid->icells;
-
-    if (sw == Boundary_type::Dirichlet_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                ij = i + j*jj;
-                a[ij] = aval - offset;
-            }
-    }
-    else if (sw == Boundary_type::Neumann_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                ij = i + j*jj;
-                agrad[ij] = aval;
-                aflux[ij] = -aval*visc;
-            }
-    }
-    else if (sw == Boundary_type::Flux_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                ij = i + j*jj;
-                aflux[ij] = aval;
-                agrad[ij] = -aval/visc;
-            }
-    }
-}
-
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
 template<typename TF>
 void Boundary<TF>::calc_ghost_cells_bot_2nd(double* restrict a, double* restrict dzh, Boundary_type boundary_type,
-                                        double* restrict abot, double* restrict agradbot)
+                                            double* restrict abot, double* restrict agradbot)
 {
     int ij,ijk,jj,kk,kstart;
 
