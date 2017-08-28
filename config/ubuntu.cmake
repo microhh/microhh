@@ -3,8 +3,8 @@ if(USEMPI)
   set(ENV{CC}  mpicc ) # C compiler for parallel build
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
 else()
-  set(ENV{CC}  icc ) # C compiler for serial build
-  set(ENV{CXX} icpc) # C++ compiler for serial build
+  set(ENV{CC}  gcc) # C compiler for serial build
+  set(ENV{CXX} g++) # C++ compiler for serial build
 endif()
 
 set(USER_CXX_FLAGS "")
