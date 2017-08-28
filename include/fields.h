@@ -70,14 +70,6 @@ class Fields
         // void exec_cross();
         // void exec_dump();
 
-        Field3d<TF>* u; ///< Field3d instance of x velocity component
-        Field3d<TF>* v; ///< Field3d instance of y velocity component
-        Field3d<TF>* w; ///< Field3d instance of vertical velocity component
-
-        Field3d<TF>* ut; ///< Field3d instance of x velocity component tendency 
-        Field3d<TF>* vt; ///< Field3d instance of y velocity component tendency
-        Field3d<TF>* wt; ///< Field3d instance of vertical velocity component tendency 
-
         FieldMap<TF> a;  ///< Map containing all field3d instances
         FieldMap<TF> ap; ///< Map containing all prognostic field3d instances
         FieldMap<TF> at; ///< Map containing all tendency field3d instances

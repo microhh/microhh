@@ -67,9 +67,9 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     }
 
     // initialize the basic set of fields
-    init_momentum_field(u, ut, "u", "U velocity", "m s-1");
-    init_momentum_field(v, vt, "v", "V velocity", "m s-1");
-    init_momentum_field(w, wt, "w", "Vertical velocity", "m s-1");
+    init_momentum_field(mp["u"], mt["u"], "u", "U velocity", "m s-1");
+    init_momentum_field(mp["v"], mt["v"], "v", "V velocity", "m s-1");
+    init_momentum_field(mp["w"], mt["w"], "w", "Vertical velocity", "m s-1");
     init_diagnostic_field("p", "Pressure", "Pa");
 
     // Set a default of 4 temporary fields. Other classes can increase this number
@@ -739,12 +739,12 @@ void Fields<TF>::add_mean_profs(Data_block& profs)
     std::vector<TF> prof(gd.ktot);
 
     profs.get_vector(prof, "u", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(u->data.data(), prof.data(), grid.utrans,
+    add_mean_prof_to_field<TF>(mp["u"]->data.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     profs.get_vector(prof, "v", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(v->data.data(), prof.data(), grid.vtrans,
+    add_mean_prof_to_field<TF>(mp["v"]->data.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
