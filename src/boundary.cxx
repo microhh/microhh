@@ -50,10 +50,8 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 template<typename TF>
 Boundary<TF>::~Boundary()
 {
-    for (auto& i : sbc)
-        delete i.second;
-
     // empty the map
+    // CvH: is this necessary?
     sbc.clear();
 
     // clean up time dependent data
@@ -75,10 +73,10 @@ void Boundary<TF>::process_bcs(Input& input)
     std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
     std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
-    ubot  = input.get_item<TF>("boundary", "ubot", "", 0.);
-    utop  = input.get_item<TF>("boundary", "utop", "", 0.);
-    vbot  = input.get_item<TF>("boundary", "vbot", "", 0.);
-    vtop  = input.get_item<TF>("boundary", "vtop", "", 0.);
+    ubot = input.get_item<TF>("boundary", "ubot", "", 0.);
+    utop = input.get_item<TF>("boundary", "utop", "", 0.);
+    vbot = input.get_item<TF>("boundary", "vbot", "", 0.);
+    vtop = input.get_item<TF>("boundary", "vtop", "", 0.);
 
     // set the bottom bc
     if (swbot == "noslip")
@@ -109,19 +107,19 @@ void Boundary<TF>::process_bcs(Input& input)
     // read the boundaries per field
     for (auto& it : fields.sp)
     {
-        sbc[it.first] = new Field3dBc;
+        sbc.emplace(it.first, Field3dBc());
         swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
         swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
-        sbc[it.first]->bot = input.get_item<double>("boundary", "sbot", it.first);
-        sbc[it.first]->top = input.get_item<double>("boundary", "stop", it.first);
+        sbc[it.first].bot = input.get_item<double>("boundary", "sbot", it.first);
+        sbc[it.first].top = input.get_item<double>("boundary", "stop", it.first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
-            sbc[it.first]->bcbot = Boundary_type::Dirichlet_type;
+            sbc[it.first].bcbot = Boundary_type::Dirichlet_type;
         else if (swbot == "neumann")
-            sbc[it.first]->bcbot = Boundary_type::Neumann_type;
+            sbc[it.first].bcbot = Boundary_type::Neumann_type;
         else if (swbot == "flux")
-            sbc[it.first]->bcbot = Boundary_type::Flux_type;
+            sbc[it.first].bcbot = Boundary_type::Flux_type;
         else
         {
             master.print_error("%s is illegal value for sbcbot\n", swbot.c_str());
@@ -130,11 +128,11 @@ void Boundary<TF>::process_bcs(Input& input)
 
         // set the top bc
         if (swtop == "dirichlet")
-            sbc[it.first]->bctop = Boundary_type::Dirichlet_type;
+            sbc[it.first].bctop = Boundary_type::Dirichlet_type;
         else if (swtop == "neumann")
-            sbc[it.first]->bctop = Boundary_type::Neumann_type;
+            sbc[it.first].bctop = Boundary_type::Neumann_type;
         else if (swtop == "flux")
-            sbc[it.first]->bctop = Boundary_type::Flux_type;
+            sbc[it.first].bctop = Boundary_type::Flux_type;
         else
         {
             master.print_error("%s is illegal value for sbctop\n", swtop.c_str());
@@ -343,10 +341,10 @@ void Boundary<TF>::set_values()
     for (auto& it : fields.sp)
     {
         set_bc<TF>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
-               sbc[it.first]->bcbot, sbc[it.first]->bot, it.second->visc, no_offset,
+               sbc[it.first].bcbot, sbc[it.first].bot, it.second->visc, no_offset,
                gd.icells, gd.jcells);
         set_bc<TF>(it.second->datatop.data(), it.second->datagradtop.data(), it.second->datafluxtop.data(),
-               sbc[it.first]->bctop, sbc[it.first]->top, it.second->visc, no_offset,
+               sbc[it.first].bctop, sbc[it.first].top, it.second->visc, no_offset,
                gd.icells, gd.jcells);
     }
 }
@@ -601,10 +599,10 @@ void Boundary<TF>::exec()
         for (auto& it : fields.sp)
         {
             calc_ghost_cells_bot_2nd<TF>(it.second->data.data(), gd.dzh.data(),
-                    sbc[it.first]->bcbot, it.second->databot.data(), it.second->datagradbot.data(),
+                    sbc[it.first].bcbot, it.second->databot.data(), it.second->datagradbot.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
             calc_ghost_cells_top_2nd<TF>(it.second->data.data(), gd.dzh.data(),
-                    sbc[it.first]->bctop, it.second->datatop.data(), it.second->datagradtop.data(),
+                    sbc[it.first].bctop, it.second->datatop.data(), it.second->datagradtop.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
@@ -631,10 +629,10 @@ void Boundary<TF>::exec()
 
         for (auto& it : fields.sp)
         {
-            calc_ghost_cells_bot_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first]->bcbot,
+            calc_ghost_cells_bot_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first].bcbot,
                     it.second->databot.data(), it.second->datagradbot.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_top_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first]->bctop,
+            calc_ghost_cells_top_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first].bctop,
                     it.second->datatop.data(), it.second->datagradtop.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
@@ -749,7 +747,7 @@ void Boundary<TF>::update_slave_bcs()
         for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,2>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi.data(),
-                                    sbc[it.first]->bcbot, it.second->visc,
+                                    sbc[it.first].bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
     else if (grid.swspatialorder == "4")
@@ -767,7 +765,7 @@ void Boundary<TF>::update_slave_bcs()
         for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,4>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi4.data(),
-                                    sbc[it.first]->bcbot, it.second->visc,
+                                    sbc[it.first].bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
 }

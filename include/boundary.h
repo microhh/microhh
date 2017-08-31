@@ -95,7 +95,7 @@ class Boundary
             Boundary_type bctop; ///< Switch for the top boundary.
         };
 
-        typedef std::map<std::string, Field3dBc*> BcMap;
+        typedef std::map<std::string, Field3dBc> BcMap;
         BcMap sbc;
 
         // Variables to handle time dependency.
