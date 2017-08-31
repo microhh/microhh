@@ -67,9 +67,9 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     }
 
     // initialize the basic set of fields
-    init_momentum_field(mp["u"], mt["u"], "u", "U velocity", "m s-1");
-    init_momentum_field(mp["v"], mt["v"], "v", "V velocity", "m s-1");
-    init_momentum_field(mp["w"], mt["w"], "w", "Vertical velocity", "m s-1");
+    init_momentum_field("u", "U velocity", "m s-1");
+    init_momentum_field("v", "V velocity", "m s-1");
+    init_momentum_field("w", "Vertical velocity", "m s-1");
     init_diagnostic_field("p", "Pressure", "Pa");
 
     // Set a default of 4 temporary fields. Other classes can increase this number
@@ -587,7 +587,7 @@ void Fields::set_minimum_tmp_fields(int n)
 */
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(Field3d<TF>*& fld, Field3d<TF>*& fldt, std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit)
 {
     if (mp.find(fldname)!=mp.end())
     {
@@ -595,21 +595,17 @@ void Fields<TF>::init_momentum_field(Field3d<TF>*& fld, Field3d<TF>*& fldt, std:
         throw 1;
     }
 
-    // add a new prognostic momentum variable
+    // Add a new prognostic momentum variable.
     mp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
 
-    // add a new tendency for momentum variable
+    // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
     std::string tunit     = unit + "s-1";
     std::string tlongname = "Tendency of " + longname;
     mt[fldname] = new Field3d<TF>(master, grid, fldtname, tlongname, tunit);
 
-    // TODO remove these from the model?
-    fld  = mp[fldname];
-    fldt = mt[fldname];
-
-    // add the prognostic variable and its tendency to the collection
-    // of all fields and tendencies
+    // Add the prognostic variable and its tendency to the collection
+    // of all fields and tendencies.
     a [fldname] = mp[fldname];
     ap[fldname] = mp[fldname];
     at[fldname] = mt[fldname];

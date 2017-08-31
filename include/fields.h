@@ -52,7 +52,7 @@ class Fields
         // void get_mask(Field3d*, Field3d*, Mask*);
         // void exec_stats(Mask*);
 
-        void init_momentum_field  (Field3d<TF>*&, Field3d<TF>*&, std::string, std::string, std::string);
+        void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);
         void init_diagnostic_field(std::string, std::string, std::string);
         void init_tmp_field       (std::string, std::string, std::string);
