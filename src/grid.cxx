@@ -26,7 +26,7 @@
 #include "master.h"
 #include "grid.h"
 #include "input.h"
-#include "Data_block.h"
+#include "data_block.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"

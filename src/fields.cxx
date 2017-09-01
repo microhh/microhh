@@ -30,7 +30,7 @@
 #include "fields.h"
 #include "field3d.h"
 #include "input.h"
-#include "Data_block.h"
+#include "data_block.h"
 #include "defines.h"
 #include "finite_difference.h"
 // #include "model.h"

@@ -6,8 +6,8 @@
 #include <sstream>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include "Data_block.h"
-#include "Convert.h"
+#include "data_block.h"
+#include "convert.h"
 
 namespace
 {

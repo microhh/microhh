@@ -27,7 +27,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "Data_block.h"
+#include "data_block.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "model.h"

@@ -8,8 +8,8 @@
 #include <iostream>
 #include <iomanip>
 #include <boost/algorithm/string.hpp>
-#include "Input.h"
-#include "Convert.h"
+#include "input.h"
+#include "convert.h"
 
 namespace
 {
