@@ -33,9 +33,9 @@ template<typename> class Grid;
 //class Stats;
 //struct Mask;
 
-// typedef std::map<std::string, Field3d*> FieldMap;
+// typedef std::map<std::string, Field3d*> Field_map;
 template<typename TF>
-using FieldMap = std::map<std::string, Field3d<TF>*>;
+using Field_map = std::map<std::string, Field3d<TF>*>;
 
 template<typename TF>
 class Fields
@@ -70,18 +70,18 @@ class Fields
         // void exec_cross();
         // void exec_dump();
 
-        FieldMap<TF> a;  ///< Map containing all field3d instances
-        FieldMap<TF> ap; ///< Map containing all prognostic field3d instances
-        FieldMap<TF> at; ///< Map containing all tendency field3d instances
+        Field_map<TF> a;  ///< Map containing all field3d instances
+        Field_map<TF> ap; ///< Map containing all prognostic field3d instances
+        Field_map<TF> at; ///< Map containing all tendency field3d instances
 
-        FieldMap<TF> mp; ///< Map containing all momentum field3d instances
-        FieldMap<TF> mt; ///< Map containing all momentum tendency field3d instances
+        Field_map<TF> mp; ///< Map containing all momentum field3d instances
+        Field_map<TF> mt; ///< Map containing all momentum tendency field3d instances
 
-        FieldMap<TF> sd; ///< Map containing all diagnostic scalar field3d instances
-        FieldMap<TF> sp; ///< Map containing all prognostic scalar field3d instances
-        FieldMap<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
+        Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances
+        Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
+        Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
 
-        FieldMap<TF> atmp; ///< Map containing all temporary field3d instances
+        Field_map<TF> atmp; ///< Map containing all temporary field3d instances
 
         std::vector<TF> rhoref;  ///< Reference density at full levels 
         std::vector<TF> rhorefh; ///< Reference density at half levels

@@ -202,7 +202,7 @@ void Fields<TF>::init()
     std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
 
     // Check different type of crosses and put them in their respective lists 
-    for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+    for (Field_map::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     {
         check_added_cross(it->first, "",        crosslist_global, &crosssimple);
         check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
@@ -212,7 +212,7 @@ void Fields<TF>::init()
         check_added_cross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
     }
 
-    for (FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+    for (Field_map::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     {
         check_added_cross(it->first, "",        crosslist_global, &crosssimple);
         check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
@@ -260,7 +260,7 @@ void Fields::exec()
     // calculate the means for the prognostic scalars
     if (calc_mean_profs)
     {
-        for (FieldMap::iterator it=ap.begin(); it!=ap.end(); ++it)
+        for (Field_map::iterator it=ap.begin(); it!=ap.end(); ++it)
             grid.calc_mean(it->second->datamean, it->second->data, grid.kcells);
     }
 }
@@ -507,7 +507,7 @@ void Fields::exec_stats(Mask *m)
 
     // calculate stats for the prognostic scalars
     Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
-    for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     {
         stats->calc_mean(m->profs[it->first].data, it->second->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
         for (int n=2; n<5; ++n)
@@ -568,7 +568,7 @@ void Fields::exec_stats(Mask *m)
     // calculate the total fluxes
     stats->add_fluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
     stats->add_fluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
-    for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
         stats->add_fluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
     if (model->diff->get_switch() == "smag2")
@@ -878,7 +878,7 @@ void Fields::create_stats()
         stats->add_prof(v->name, v->longname, v->unit, "z" );
         stats->add_prof(w->name, w->longname, w->unit, "zh" );
 
-        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
             stats->add_prof(it->first,it->second->longname, it->second->unit, "z");
 
         stats->add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
@@ -900,32 +900,32 @@ void Fields::create_stats()
             stats->add_prof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
             stats->add_prof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
             stats->add_prof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
-            for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+            for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
                 stats->add_prof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
         }
 
         // gradients
         stats->add_prof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
         stats->add_prof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
-        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
             stats->add_prof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
 
         // turbulent fluxes
         stats->add_prof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
         stats->add_prof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
-        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
             stats->add_prof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
         // Diffusive fluxes
         stats->add_prof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
         stats->add_prof("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
-        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
             stats->add_prof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
         //Total fluxes
         stats->add_prof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
         stats->add_prof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
-        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
             stats->add_prof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
     }
 
@@ -1011,7 +1011,7 @@ double Fields::check_tke()
 double Fields::check_mass()
 {
     // CvH for now, do the mass check on the first scalar... Do we want to change this?
-    FieldMap::const_iterator itProg=sp.begin();
+    Field_map::const_iterator itProg=sp.begin();
     if (sp.begin() != sp.end())
         return calc_mass(itProg->second->data, grid.dz);
     else
