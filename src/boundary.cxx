@@ -110,8 +110,8 @@ void Boundary<TF>::process_bcs(Input& input)
         sbc.emplace(it.first, Field3dBc());
         swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
         swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
-        sbc[it.first].bot = input.get_item<double>("boundary", "sbot", it.first);
-        sbc[it.first].top = input.get_item<double>("boundary", "stop", it.first);
+        sbc.at(it.first).bot = input.get_item<double>("boundary", "sbot", it.first);
+        sbc.at(it.first).top = input.get_item<double>("boundary", "stop", it.first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
@@ -322,17 +322,17 @@ void Boundary<TF>::set_values()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    set_bc<TF>(fields.mp["u"]->databot.data(), fields.mp["u"]->datagradbot.data(), fields.mp["u"]->datafluxbot.data(),
+    set_bc<TF>(fields.mp.at("u")->databot.data(), fields.mp.at("u")->datagradbot.data(), fields.mp.at("u")->datafluxbot.data(),
            mbcbot, ubot, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp["v"]->databot.data(), fields.mp["v"]->datagradbot.data(), fields.mp["v"]->datafluxbot.data(),
+    set_bc<TF>(fields.mp.at("v")->databot.data(), fields.mp.at("v")->datagradbot.data(), fields.mp.at("v")->datafluxbot.data(),
            mbcbot, vbot, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    set_bc<TF>(fields.mp["u"]->datatop.data(), fields.mp["u"]->datagradtop.data(), fields.mp["u"]->datafluxtop.data(),
+    set_bc<TF>(fields.mp.at("u")->datatop.data(), fields.mp.at("u")->datagradtop.data(), fields.mp.at("u")->datafluxtop.data(),
            mbctop, utop, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp["v"]->datatop.data(), fields.mp["v"]->datagradtop.data(), fields.mp["v"]->datafluxtop.data(),
+    set_bc<TF>(fields.mp.at("v")->datatop.data(), fields.mp.at("v")->datagradtop.data(), fields.mp.at("v")->datafluxtop.data(),
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
@@ -568,9 +568,9 @@ template<typename TF>
 void Boundary<TF>::exec()
 {
     // Cyclic boundary conditions, do this before the bottom BC's
-    grid.boundary_cyclic(fields.mp["u"]->data.data());
-    grid.boundary_cyclic(fields.mp["v"]->data.data());
-    grid.boundary_cyclic(fields.mp["w"]->data.data());
+    grid.boundary_cyclic(fields.mp.at("u")->data.data());
+    grid.boundary_cyclic(fields.mp.at("v")->data.data());
+    grid.boundary_cyclic(fields.mp.at("w")->data.data());
 
     for (auto& it : fields.sp)
         grid.boundary_cyclic(it.second->data.data());
@@ -582,18 +582,18 @@ void Boundary<TF>::exec()
 
     if (grid.swspatialorder == "2")
     {
-        calc_ghost_cells_bot_2nd<TF>(fields.mp["u"]->data.data(), gd.dzh.data(), mbcbot,
-                fields.mp["u"]->databot.data(), fields.mp["u"]->datagradbot.data(),
+        calc_ghost_cells_bot_2nd<TF>(fields.mp.at("u")->data.data(), gd.dzh.data(), mbcbot,
+                fields.mp.at("u")->databot.data(), fields.mp.at("u")->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_2nd<TF>(fields.mp["u"]->data.data(), gd.dzh.data(), mbctop,
-                fields.mp["u"]->datatop.data(), fields.mp["u"]->datagradtop.data(),
+        calc_ghost_cells_top_2nd<TF>(fields.mp.at("u")->data.data(), gd.dzh.data(), mbctop,
+                fields.mp.at("u")->datatop.data(), fields.mp.at("u")->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_bot_2nd<TF>(fields.mp["v"]->data.data(), gd.dzh.data(), mbcbot,
-                fields.mp["v"]->databot.data(), fields.mp["v"]->datagradbot.data(),
+        calc_ghost_cells_bot_2nd<TF>(fields.mp.at("v")->data.data(), gd.dzh.data(), mbcbot,
+                fields.mp.at("v")->databot.data(), fields.mp.at("v")->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_2nd<TF>(fields.mp["v"]->data.data(), gd.dzh.data(), mbctop,
-                fields.mp["v"]->datatop.data(), fields.mp["v"]->datagradtop.data(),
+        calc_ghost_cells_top_2nd<TF>(fields.mp.at("v")->data.data(), gd.dzh.data(), mbctop,
+                fields.mp.at("v")->datatop.data(), fields.mp.at("v")->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
@@ -608,23 +608,23 @@ void Boundary<TF>::exec()
     }
     else if (grid.swspatialorder == "4")
     {
-        calc_ghost_cells_bot_4th<TF>(fields.mp["u"]->data.data(), gd.z.data(), mbcbot,
-                fields.mp["u"]->databot.data(), fields.mp["u"]->datagradbot.data(),
+        calc_ghost_cells_bot_4th<TF>(fields.mp.at("u")->data.data(), gd.z.data(), mbcbot,
+                fields.mp.at("u")->databot.data(), fields.mp.at("u")->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_4th<TF>(fields.mp["u"]->data.data(), gd.z.data(), mbctop,
-                fields.mp["u"]->datatop.data(), fields.mp["u"]->datagradtop.data(),
+        calc_ghost_cells_top_4th<TF>(fields.mp.at("u")->data.data(), gd.z.data(), mbctop,
+                fields.mp.at("u")->datatop.data(), fields.mp.at("u")->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_bot_4th<TF>(fields.mp["v"]->data.data(), gd.z.data(), mbcbot,
-                fields.mp["v"]->databot.data(), fields.mp["v"]->datagradbot.data(),
+        calc_ghost_cells_bot_4th<TF>(fields.mp.at("v")->data.data(), gd.z.data(), mbcbot,
+                fields.mp.at("v")->databot.data(), fields.mp.at("v")->datagradbot.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_top_4th<TF>(fields.mp["v"]->data.data(), gd.z.data(), mbctop,
-                fields.mp["v"]->datatop.data(), fields.mp["v"]->datagradtop.data(),
+        calc_ghost_cells_top_4th<TF>(fields.mp.at("v")->data.data(), gd.z.data(), mbctop,
+                fields.mp.at("v")->datatop.data(), fields.mp.at("v")->datagradtop.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_ghost_cells_botw_4th<TF>(fields.mp["w"]->data.data(),
+        calc_ghost_cells_botw_4th<TF>(fields.mp.at("w")->data.data(),
                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-        calc_ghost_cells_topw_4th<TF>(fields.mp["w"]->data.data(),
+        calc_ghost_cells_topw_4th<TF>(fields.mp.at("w")->data.data(),
                 gd.kend, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
@@ -651,16 +651,16 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
     {
         if (boundary_w_type == Boundary_w_type::Normal_type)
         {
-            calc_ghost_cells_botw_4th<TF>(fields.mp["w"]->data.data(),
+            calc_ghost_cells_botw_4th<TF>(fields.mp.at("w")->data.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_topw_4th<TF>(fields.mp["w"]->data.data(),
+            calc_ghost_cells_topw_4th<TF>(fields.mp.at("w")->data.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
         else if (boundary_w_type == Boundary_w_type::Conservation_type)
         {
-            calc_ghost_cells_botw_cons_4th<TF>(fields.mp["w"]->data.data(),
+            calc_ghost_cells_botw_cons_4th<TF>(fields.mp.at("w")->data.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_topw_cons_4th<TF>(fields.mp["w"]->data.data(),
+            calc_ghost_cells_topw_cons_4th<TF>(fields.mp.at("w")->data.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
@@ -734,14 +734,14 @@ void Boundary<TF>::update_slave_bcs()
 
     if (grid.swspatialorder == "2")
     {
-        calc_slave_bc_bot<TF,2>(fields.mp["u"]->databot.data(), fields.mp["u"]->datagradbot.data(), fields.mp["u"]->datafluxbot.data(),
-                                fields.mp["u"]->data.data(), gd.dzhi.data(),
-                                mbcbot, fields.mp["u"]->visc,
+        calc_slave_bc_bot<TF,2>(fields.mp.at("u")->databot.data(), fields.mp.at("u")->datagradbot.data(), fields.mp.at("u")->datafluxbot.data(),
+                                fields.mp.at("u")->data.data(), gd.dzhi.data(),
+                                mbcbot, fields.mp.at("u")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,2>(fields.mp["v"]->databot.data(), fields.mp["v"]->datagradbot.data(), fields.mp["v"]->datafluxbot.data(),
-                                fields.mp["v"]->data.data(), gd.dzhi.data(),
-                                mbcbot, fields.mp["v"]->visc,
+        calc_slave_bc_bot<TF,2>(fields.mp.at("v")->databot.data(), fields.mp.at("v")->datagradbot.data(), fields.mp.at("v")->datafluxbot.data(),
+                                fields.mp.at("v")->data.data(), gd.dzhi.data(),
+                                mbcbot, fields.mp.at("v")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
@@ -752,14 +752,14 @@ void Boundary<TF>::update_slave_bcs()
     }
     else if (grid.swspatialorder == "4")
     {
-        calc_slave_bc_bot<TF,4>(fields.mp["u"]->databot.data(), fields.mp["u"]->datagradbot.data(), fields.mp["u"]->datafluxbot.data(),
-                                fields.mp["u"]->data.data(), gd.dzhi4.data(),
-                                mbcbot, fields.mp["u"]->visc,
+        calc_slave_bc_bot<TF,4>(fields.mp.at("u")->databot.data(), fields.mp.at("u")->datagradbot.data(), fields.mp.at("u")->datafluxbot.data(),
+                                fields.mp.at("u")->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields.mp.at("u")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,4>(fields.mp["v"]->databot.data(), fields.mp["v"]->datagradbot.data(), fields.mp["v"]->datafluxbot.data(),
-                                fields.mp["v"]->data.data(), gd.dzhi4.data(),
-                                mbcbot, fields.mp["v"]->visc,
+        calc_slave_bc_bot<TF,4>(fields.mp.at("v")->databot.data(), fields.mp.at("v")->datagradbot.data(), fields.mp.at("v")->datafluxbot.data(),
+                                fields.mp.at("v")->data.data(), gd.dzhi4.data(),
+                                mbcbot, fields.mp.at("v")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
