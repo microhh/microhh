@@ -114,6 +114,7 @@ void Model<TF>::delete_objects()
 {
     // Delete the components in reversed order.
     delete boundary;
+    delete timeloop;
     delete fields;
     delete grid;
 
