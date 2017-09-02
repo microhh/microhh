@@ -115,11 +115,11 @@ void Boundary<TF>::process_bcs(Input& input)
 
         // set the bottom bc
         if (swbot == "dirichlet")
-            sbc[it.first].bcbot = Boundary_type::Dirichlet_type;
+            sbc.at(it.first).bcbot = Boundary_type::Dirichlet_type;
         else if (swbot == "neumann")
-            sbc[it.first].bcbot = Boundary_type::Neumann_type;
+            sbc.at(it.first).bcbot = Boundary_type::Neumann_type;
         else if (swbot == "flux")
-            sbc[it.first].bcbot = Boundary_type::Flux_type;
+            sbc.at(it.first).bcbot = Boundary_type::Flux_type;
         else
         {
             master.print_error("%s is illegal value for sbcbot\n", swbot.c_str());
@@ -128,11 +128,11 @@ void Boundary<TF>::process_bcs(Input& input)
 
         // set the top bc
         if (swtop == "dirichlet")
-            sbc[it.first].bctop = Boundary_type::Dirichlet_type;
+            sbc.at(it.first).bctop = Boundary_type::Dirichlet_type;
         else if (swtop == "neumann")
-            sbc[it.first].bctop = Boundary_type::Neumann_type;
+            sbc.at(it.first).bctop = Boundary_type::Neumann_type;
         else if (swtop == "flux")
-            sbc[it.first].bctop = Boundary_type::Flux_type;
+            sbc.at(it.first).bctop = Boundary_type::Flux_type;
         else
         {
             master.print_error("%s is illegal value for sbctop\n", swtop.c_str());
@@ -188,7 +188,7 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
         for (auto& it : fields.sp)
         {
             std::string name = "sbot[" + it.first + "]";
-            if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
+            if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 nerror += inputin->get_time(&timedepdata[name], &timedeptime, name);
 
@@ -199,7 +199,7 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
             }
         }
 
-        // display a warning for the non-supported 
+        // display a warning for the non-supported
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
@@ -281,7 +281,7 @@ namespace
             const int icells, const int jcells)
     {
         const int jj = icells;
-    
+
         if (sw == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -341,10 +341,10 @@ void Boundary<TF>::set_values()
     for (auto& it : fields.sp)
     {
         set_bc<TF>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
-               sbc[it.first].bcbot, sbc[it.first].bot, it.second->visc, no_offset,
+               sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
                gd.icells, gd.jcells);
         set_bc<TF>(it.second->datatop.data(), it.second->datagradtop.data(), it.second->datafluxtop.data(),
-               sbc[it.first].bctop, sbc[it.first].top, it.second->visc, no_offset,
+               sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
                gd.icells, gd.jcells);
     }
 }
@@ -358,7 +358,7 @@ namespace
     {
         const int jj = icells;
         const int kk = ijcells;
-    
+
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -382,7 +382,7 @@ namespace
                 }
         }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_top_2nd(TF* const restrict a, const TF* const restrict dzh, Boundary_type boundary_type,
                                   TF* const restrict atop, TF* const restrict agradtop,
@@ -390,7 +390,7 @@ namespace
     {
         const int jj = icells;
         const int kk = ijcells;
-    
+
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -414,7 +414,7 @@ namespace
                 }
         }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_bot_4th(TF* const restrict a, const TF* const restrict z, Boundary_type boundary_type,
                                   TF* const restrict abot, TF* restrict agradbot,
@@ -423,7 +423,7 @@ namespace
         const int jj  = icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
-    
+
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -439,7 +439,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             using Finite_difference::O4::grad4x;
-    
+
             for (int j=0; j<jcells; ++j)
     #pragma ivdep
                 for (int i=0; i<icells; ++i)
@@ -451,7 +451,7 @@ namespace
                 }
         }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_top_4th(TF* const restrict a, const TF* const restrict z, Boundary_type boundary_type,
                                   TF* const restrict atop, TF* const restrict agradtop,
@@ -460,7 +460,7 @@ namespace
         const int jj  = icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
-    
+
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -476,7 +476,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             using Finite_difference::O4::grad4x;
-    
+
             for (int j=0; j<jcells; ++j)
     #pragma ivdep
                 for (int i=0; i<icells; ++i)
@@ -497,7 +497,7 @@ namespace
         const int jj  = icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
-    
+
         for (int j=0; j<jcells; ++j)
     #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -507,7 +507,7 @@ namespace
                 w[ijk-kk2] = -w[ijk+kk2];
             }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_topw_cons_4th(TF* const restrict w,
             const int kend, const int icells, const int jcells, const int ijcells)
@@ -515,7 +515,7 @@ namespace
         const int jj  = icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
-    
+
         for (int j=0; j<jcells; ++j)
     #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -525,7 +525,7 @@ namespace
                 w[ijk+kk2] = -w[ijk-kk2];
             }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_botw_4th(TF* restrict w,
             const int kstart, const int icells, const int jcells, const int ijcells)
@@ -534,7 +534,7 @@ namespace
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
-    
+
         for (int j=0; j<jcells; ++j)
     #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -543,7 +543,7 @@ namespace
                 w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
             }
     }
-    
+
     template<typename TF>
     void calc_ghost_cells_topw_4th(TF* restrict w,
             const int kend, const int icells, const int jcells, const int ijcells)
@@ -552,7 +552,7 @@ namespace
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
-    
+
         for (int j=0; j<jcells; ++j)
     #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -599,10 +599,10 @@ void Boundary<TF>::exec()
         for (auto& it : fields.sp)
         {
             calc_ghost_cells_bot_2nd<TF>(it.second->data.data(), gd.dzh.data(),
-                    sbc[it.first].bcbot, it.second->databot.data(), it.second->datagradbot.data(),
+                    sbc.at(it.first).bcbot, it.second->databot.data(), it.second->datagradbot.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
             calc_ghost_cells_top_2nd<TF>(it.second->data.data(), gd.dzh.data(),
-                    sbc[it.first].bctop, it.second->datatop.data(), it.second->datagradtop.data(),
+                    sbc.at(it.first).bctop, it.second->datatop.data(), it.second->datagradtop.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
@@ -629,10 +629,10 @@ void Boundary<TF>::exec()
 
         for (auto& it : fields.sp)
         {
-            calc_ghost_cells_bot_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first].bcbot,
+            calc_ghost_cells_bot_4th<TF>(it.second->data.data(), gd.z.data(), sbc.at(it.first).bcbot,
                     it.second->databot.data(), it.second->datagradbot.data(),
                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
-            calc_ghost_cells_top_4th<TF>(it.second->data.data(), gd.z.data(), sbc[it.first].bctop,
+            calc_ghost_cells_top_4th<TF>(it.second->data.data(), gd.z.data(), sbc.at(it.first).bctop,
                     it.second->datatop.data(), it.second->datagradtop.data(),
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
@@ -747,7 +747,7 @@ void Boundary<TF>::update_slave_bcs()
         for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,2>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi.data(),
-                                    sbc[it.first].bcbot, it.second->visc,
+                                    sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
     else if (grid.swspatialorder == "4")
@@ -765,7 +765,7 @@ void Boundary<TF>::update_slave_bcs()
         for (auto& it : fields.sp)
             calc_slave_bc_bot<TF,4>(it.second->databot.data(), it.second->datagradbot.data(), it.second->datafluxbot.data(),
                                     it.second->data.data(), gd.dzhi4.data(),
-                                    sbc[it.first].bcbot, it.second->visc,
+                                    sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
 }
@@ -840,4 +840,3 @@ void Boundary<TF>::backward_device()
 
 template class Boundary<double>;
 template class Boundary<float>;
-
