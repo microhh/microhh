@@ -63,7 +63,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     for (auto& s : slist)
     {
         init_prognostic_field(s, s, "-");
-        sp[s]->visc = input.get_item<TF>("fields", "svisc", s);
+        sp.at(s)->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
     // initialize the basic set of fields
