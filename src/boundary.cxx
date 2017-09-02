@@ -276,8 +276,8 @@ void Boundary<TF>::update_time_dependent()
 namespace
 {
     template<typename TF>
-    void set_bc(TF* restrict a, TF* restrict agrad, TF* restrict aflux,
-            Boundary_type sw, TF aval, TF visc, TF offset,
+    void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
+            const Boundary_type sw, const TF aval, const TF visc, const TF offset,
             const int icells, const int jcells)
     {
         const int jj = icells;
