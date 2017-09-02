@@ -38,7 +38,7 @@ template<typename TF>
 class Model
 {
     public:
-        Model(Master*, int, char**);
+        Model(Master&, int, char**);
         ~Model();
 
         void init();
@@ -46,14 +46,15 @@ class Model
         void exec();
 
     private:
-        Master* master;
-        Input*  input;
-        Data_block* profs;
+        Master& master;
 
-        Grid<TF>* grid;
-        Fields<TF>* fields;
-        Timeloop<TF>* timeloop;
-        Boundary<TF>* boundary;
+        std::shared_ptr<Input> input;
+        std::shared_ptr<Data_block> profs;
+
+        std::shared_ptr<Grid<TF>> grid;
+        std::shared_ptr<Fields<TF>> fields;
+        std::shared_ptr<Timeloop<TF>> timeloop;
+        std::shared_ptr<Boundary<TF>> boundary;
 
         std::string simmode;
         std::string simname;

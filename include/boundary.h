@@ -44,7 +44,7 @@ class Boundary
         Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
         virtual ~Boundary();      ///< Destructor of the boundary class.
 
-        static Boundary* factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
+        static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&);   ///< Initialize the fields.
         virtual void create(Input&); ///< Create the fields.

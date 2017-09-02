@@ -776,7 +776,7 @@ void Boundary<TF>::update_bcs()
 }
 
 template<typename TF>
-Boundary<TF>* Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
+std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
@@ -791,7 +791,7 @@ Boundary<TF>* Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& 
     //     return new Boundary_patch(modelin, inputin);
     // else if (swboundary == "default")
     if (swboundary == "default")
-        return new Boundary(master, grid, fields, input);
+        return std::make_shared<Boundary<TF>>(master, grid, fields, input);
     else
     {
         master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());

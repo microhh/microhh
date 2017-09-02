@@ -71,14 +71,13 @@ namespace
 
 // In the constructor all classes are initialized and their input is read.
 template<typename TF>
-Model<TF>::Model(Master *masterin, int argc, char *argv[])
+Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
+    master(masterin)
 {
-    master = masterin;
+    process_command_line_options(simmode, simname, argc, argv, master);
 
-    process_command_line_options(simmode, simname, argc, argv, *master);
-
-    input = new Input(simname + ".ini");
-    profs = new Data_block(simname + ".prof");
+    input = std::make_shared<Input>(simname + ".ini");
+    profs = std::make_shared<Data_block>(simname + ".prof");
 
     // Initialize the pointers as nullptr.
     grid = nullptr;
@@ -88,13 +87,13 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
     {
         int nerror = 0;
 
-        grid = new Grid<TF>(*master, *input);
+        grid = std::make_shared<Grid<TF>>(master, *input);
 
-        fields = new Fields<TF>(*master, *grid, *input);
+        fields = std::make_shared<Fields<TF>>(master, *grid, *input);
 
-        timeloop = new Timeloop<TF>(*master, *grid, *fields, *input, simmode);
+        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, simmode);
 
-        boundary = Boundary<TF>::factory(*master, *grid, *fields, *input);
+        boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -112,14 +111,6 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
 template<typename TF>
 void Model<TF>::delete_objects()
 {
-    // Delete the components in reversed order.
-    delete boundary;
-    delete timeloop;
-    delete fields;
-    delete grid;
-
-    delete profs;
-    delete input;
 }
 
 // In the destructor the deletion of all class instances is triggered.
@@ -133,7 +124,8 @@ Model<TF>::~Model()
 template<typename TF>
 void Model<TF>::init()
 {
-    master->init(*input);
+    master.init(*input);
+
     grid->init();
     fields->init();
 
@@ -202,7 +194,7 @@ void Model<TF>::exec()
     // pres    ->prepare_device(); 
     // #endif
 
-    master->print_message("Starting time integration\n");
+    master.print_message("Starting time integration\n");
 
     // Update the time dependent parameters.
     // boundary->update_time_dependent();
