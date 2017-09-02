@@ -22,6 +22,7 @@
 
 #ifndef FIELDS
 #define FIELDS
+#include <memory>
 #include <map>
 #include <vector>
 #include "field3d.h"
@@ -35,7 +36,7 @@ template<typename> class Grid;
 
 // typedef std::map<std::string, Field3d*> Field_map;
 template<typename TF>
-using Field_map = std::map<std::string, Field3d<TF>*>;
+using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 
 template<typename TF>
 class Fields

@@ -95,31 +95,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 template<typename TF>
 Fields<TF>::~Fields()
 {
-    // DEALLOCATE ALL THE FIELDS
-    // deallocate the prognostic velocity fields
-    for (auto& it : mp)
-        delete it.second;
-
-    // deallocate the velocity tendency fields
-    for (auto& it : mt)
-        delete it.second;
-
-    // deallocate the prognostic scalar fields
-    for (auto& it : sp)
-        delete it.second;
-
-    // deallocate the scalar tendency fields
-    for (auto& it : st)
-        delete it.second;
-
-    // deallocate the diagnostic scalars
-    for (auto& it : sd)
-        delete it.second;
-
-    // deallocate the tmp fields
-    for (auto& it : atmp)
-        delete it.second;
-
     // delete[] umodel;
     // delete[] vmodel;
 
@@ -589,20 +564,20 @@ void Fields::set_minimum_tmp_fields(int n)
 template<typename TF>
 void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit)
 {
-    if (mp.find(fldname)!=mp.end())
+    if (mp.find(fldname) != mp.end())
     {
         master.print_error("\"%s\" already exists\n", fldname.c_str());
         throw 1;
     }
 
     // Add a new prognostic momentum variable.
-    mp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
+    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
     std::string tunit     = unit + "s-1";
     std::string tlongname = "Tendency of " + longname;
-    mt[fldname] = new Field3d<TF>(master, grid, fldtname, tlongname, tunit);
+    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
 
     // Add the prognostic variable and its tendency to the collection
     // of all fields and tendencies.
@@ -621,13 +596,13 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
     }
 
     // add a new scalar variable
-    sp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
+    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
 
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = unit + "s-1";
-    st[fldname] = new Field3d<TF>(master, grid, fldtname, tlongname, tunit);
+    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
 
     // add the prognostic variable and its tendency to the collection
     // of all fields and tendencies
@@ -645,7 +620,7 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
         throw 1;
     }
 
-    sd[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
+    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
     a [fldname] = sd[fldname];
 }
 
@@ -658,7 +633,7 @@ void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::
         throw 1;
     }
 
-    atmp[fldname] = new Field3d<TF>(master, grid, fldname, longname, unit);
+    atmp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
 }
 
 template<typename TF>
