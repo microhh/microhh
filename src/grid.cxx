@@ -193,13 +193,26 @@ void Grid<TF>::init()
     gd.dzhi4.resize(gd.kmax+2*gd.kgc);
 
     // allocate the data for the fourier transforms
+    allocate_fftw();
+
+    // initialize the communication functions
+    init_mpi();
+}
+
+template<> void Grid<double>::allocate_fftw()
+{
     fftini  = fftw_alloc_real(gd.itot*gd.jmax);
     fftouti = fftw_alloc_real(gd.itot*gd.jmax);
     fftinj  = fftw_alloc_real(gd.jtot*gd.iblock);
     fftoutj = fftw_alloc_real(gd.jtot*gd.iblock);
+}
 
-    // initialize the communication functions
-    init_mpi();
+template<> void Grid<float>::allocate_fftw()
+{
+    fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
+    fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
+    fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
+    fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
 }
 
 /**

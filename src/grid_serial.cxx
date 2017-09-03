@@ -520,116 +520,116 @@ int Grid<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
 
     return 0;
 }
-// 
-// template<typename TF>
-// void Grid<TF>::fft_forward(double* restrict data,   double* restrict tmp1,
-//                        double* restrict fftini, double* restrict fftouti,
-//                        double* restrict fftinj, double* restrict fftoutj)
-// {
-//     int kk = itot*jmax;
-// 
-//     // process the fourier transforms slice by slice
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftini[ij] = data[ijk];
-//         }
-// 
-//         fftw_execute(iplanf);
-// 
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             data[ijk] = fftouti[ij];
-//         }
-//     }
-// 
-//     kk = iblock*jtot;
-// 
-//     // do the second fourier transform
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftinj[ij] = data[ijk];
-//         }
-// 
-//         fftw_execute(jplanf);
-// 
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             // shift to use p in pressure solver
-//             data[ijk] = fftoutj[ij];
-//         }
-//     }
-// }
-// 
-// template<typename TF>
-// void Grid<TF>::fft_backward(double* restrict data,   double* restrict tmp1,
-//                             double* restrict fftini, double* restrict fftouti,
-//                             double* restrict fftinj, double* restrict fftoutj)
-// {
-//     int kk = iblock*jtot;
-// 
-//     // transform the second transform back
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftinj[ij] = data[ijk];
-//         }
-// 
-//         fftw_execute(jplanb);
-// 
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             data[ijk] = fftoutj[ij] / jtot;
-//         }
-//     }
-// 
-//     kk = itot*jmax;
-// 
-//     // transform the first transform back
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftini[ij] = data[ijk];
-//         }
-// 
-//         fftw_execute(iplanb);
-// 
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             // swap array here to avoid unnecessary 3d loop
-//             tmp1[ijk] = fftouti[ij] / itot;
-//         }
-//     }
-// }
+
+template<typename TF>
+void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
+                           TF* const restrict fftini, TF* const restrict fftouti,
+                           TF* const restrict fftinj, TF* const restrict fftoutj)
+{
+    int kk = gd.itot*gd.jmax;
+
+    // Process the fourier transforms slice by slice.
+    for (int k=0; k<gd.kblock; ++k)
+    {
+#pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftini[ij] = data[ijk];
+        }
+
+        fftw_execute(iplanf);
+
+#pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            data[ijk] = fftouti[ij];
+        }
+    }
+
+    kk = gd.iblock*gd.jtot;
+
+    // do the second fourier transform
+    for (int k=0; k<gd.kblock; ++k)
+    {
+#pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftinj[ij] = data[ijk];
+        }
+
+        fftw_execute(jplanf);
+
+#pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            // shift to use p in pressure solver
+            data[ijk] = fftoutj[ij];
+        }
+    }
+}
+
+template<typename TF>
+void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
+                            TF* const restrict fftini, TF* const restrict fftouti,
+                            TF* const restrict fftinj, TF* const restrict fftoutj)
+{
+    int kk = gd.iblock*gd.jtot;
+
+    // transform the second transform back
+    for (int k=0; k<gd.kblock; ++k)
+    {
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftinj[ij] = data[ijk];
+        }
+
+        fftw_execute(jplanb);
+
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            data[ijk] = fftoutj[ij] / gd.jtot;
+        }
+    }
+
+    kk = gd.itot*gd.jmax;
+
+    // transform the first transform back
+    for (int k=0; k<gd.kblock; k++)
+    {
+#pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftini[ij] = data[ijk];
+        }
+
+        fftw_execute(iplanb);
+
+#pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            // swap array here to avoid unnecessary 3d loop
+            tmp1[ijk] = fftouti[ij] / gd.itot;
+        }
+    }
+}
 // 
 // template<typename TF>
 // int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)

@@ -69,7 +69,7 @@ class Pres_2 : public Pres<TF>
 
         void input(double* const restrict, 
                    const double* const restrict, const double* const restrict, const double* const restrict,
-                   const double* const restrict, const double* const restrict, const double* const restrict,
+                   double* const restrict, double* const restrict, double* const restrict,
                    const double* const restrict, const double* const restrict, const double* const restrict,
                    const double);
 

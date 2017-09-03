@@ -133,35 +133,37 @@ void Pres_2<TF>::set_values()
 
 template<typename TF>
 void Pres_2<TF>::input(double* const restrict p, 
-                       const double* const restrict u , const double* const restrict v , const double* const restrict w ,
-                       const double* const restrict ut, const double* const restrict vt, const double* const restrict wt,
+                       const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                       double* const restrict ut, double* const restrict vt, double* const restrict wt,
                        const double* const restrict dzi, const double* const restrict rhoref, const double* const restrict rhorefh,
                        const double dt)
 {
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
     const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
 
-    const int jjp = grid->imax;
-    const int kkp = grid->imax*grid->jmax;
+    const int jjp = gd.imax;
+    const int kkp = gd.imax*gd.jmax;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
     const double dti = 1./dt;
 
-    const int igc = grid->igc;
-    const int jgc = grid->jgc;
-    const int kgc = grid->kgc;
+    const int igc = gd.igc;
+    const int jgc = gd.jgc;
+    const int kgc = gd.kgc;
 
     // set the cyclic boundary conditions for the tendencies
-    grid->boundary_cyclic(ut, Edge::East_west_edge  );
-    grid->boundary_cyclic(vt, Edge::North_south_edge);
+    grid.boundary_cyclic(ut, Edge::East_west_edge  );
+    grid.boundary_cyclic(vt, Edge::North_south_edge);
 
     // write pressure as a 3d array without ghost cells
-    for (int k=0; k<grid->kmax; k++)
-        for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
-            for (int i=0; i<grid->imax; i++)
+    for (int k=0; k<gd.kmax; ++k)
+        for (int j=0; j<gd.jmax; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.imax; ++i)
             {
                 const int ijkp = i + j*jjp + k*kkp;
                 const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -178,19 +180,21 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
                        double* const restrict fftini, double* const restrict fftouti, 
                        double* const restrict fftinj, double* const restrict fftoutj)
 {
-    const int imax   = grid->imax;
-    const int jmax   = grid->jmax;
-    const int kmax   = grid->kmax;
-    const int iblock = grid->iblock;
-    const int jblock = grid->jblock;
-    const int igc    = grid->igc;
-    const int jgc    = grid->jgc;
-    const int kgc    = grid->kgc;
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    const int imax   = gd.imax;
+    const int jmax   = gd.jmax;
+    const int kmax   = gd.kmax;
+    const int iblock = gd.iblock;
+    const int jblock = gd.jblock;
+    const int igc    = gd.igc;
+    const int jgc    = gd.jgc;
+    const int kgc    = gd.kgc;
 
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
-    grid->fft_forward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    grid.fft_forward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
     jj = iblock;
     kk = iblock*jblock;
@@ -203,12 +207,12 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
     // create vectors that go into the tridiagonal matrix solver
     for (k=0; k<kmax; k++)
         for (j=0; j<jblock; j++)
-#pragma ivdep
+            #pragma ivdep
             for (i=0; i<iblock; i++)
             {
                 // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-                iindex = master->mpicoordy * iblock + i;
-                jindex = master->mpicoordx * jblock + j;
+                iindex = master.mpicoordy * iblock + i;
+                jindex = master.mpicoordx * jblock + j;
 
                 ijk  = i + j*jj + k*kk;
                 b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
@@ -216,11 +220,11 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
             }
 
     for (j=0; j<jblock; j++)
-#pragma ivdep
+        #pragma ivdep
         for (i=0; i<iblock; i++)
         {
-            iindex = master->mpicoordy * iblock + i;
-            jindex = master->mpicoordx * jblock + j;
+            iindex = master.mpicoordy * iblock + i;
+            jindex = master.mpicoordx * jblock + j;
 
             // substitute BC's
             ijk = i + j*jj;
@@ -238,20 +242,20 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
     // call tdma solver
     tdma(a, b, c, p, work2d, work3d);
 
-    grid->fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    grid.fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
     jj = imax;
     kk = imax*jmax;
 
     int ijkp,jjp,kkp;
-    jjp = grid->icells;
-    kkp = grid->ijcells;
+    jjp = gd.icells;
+    kkp = gd.ijcells;
 
     // put the pressure back onto the original grid including ghost cells
-    for (int k=0; k<grid->kmax; k++)
-        for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
-            for (int i=0; i<grid->imax; i++)
+    for (int k=0; k<gd.kmax; ++k)
+        for (int j=0; j<gd.jmax; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.imax; ++i)
             {
                 ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
                 ijk  = i + j*jj + k*kk;
@@ -260,16 +264,16 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
 
     // set the boundary conditions
     // set a zero gradient boundary at the bottom
-    for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+    for (int j=gd.jstart; j<gd.jend; ++j)
+        #pragma ivdep
+        for (int i=gd.istart; i<gd.iend; ++i)
         {
             ijk = i + j*jjp + grid->kstart*kkp;
             p[ijk-kkp] = p[ijk];
         }
 
     // set the cyclic boundary conditions
-    grid->boundary_cyclic(p);
+    grid.boundary_cyclic(p);
 }
 
 template<typename TF>

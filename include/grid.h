@@ -29,6 +29,7 @@
 #include <fftw3.h>
 #include <string>
 #include <vector>
+#include "defines.h"
 
 class Master;
 class Input;
@@ -152,10 +153,10 @@ class Grid
         // int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         // int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
-        /*
-        void fft_forward (double*, double*, double*, double*, double*, double*); ///< Forward fast-fourier transform.
-        void fft_backward(double*, double*, double*, double*, double*, double*); ///< Backward fast-fourier transform.
+        void fft_forward (TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
+        void fft_backward(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.
 
+        /*
         // interpolation functions
         void interpolate_2nd(double*, const double*, const int[3], const int[3]); ///< Second order interpolation
         void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
@@ -163,8 +164,8 @@ class Grid
 
         // CvH: TO BE PUT IN STRUCT
         // Fourier tranforms
-        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
-        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
+        TF *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
+        TF *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
         fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
@@ -178,10 +179,11 @@ class Grid
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
         void save_grid(); ///< Save the grid properties.
-        void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
-
         void load_grid(); ///< Load the grid properties.
+
+        void allocate_fftw();
         void load_fftw(); ///< Load the FFTW plan for bitwise identical results.
+        void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
 
         Grid_data<TF> gd;
 
