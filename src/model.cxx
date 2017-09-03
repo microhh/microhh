@@ -404,6 +404,12 @@ void Model<TF>::calc_stats(std::string maskname)
 template<typename TF>
 void Model<TF>::print_status()
 {
+    const double time = timeloop->get_time();
+    boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+    const TF div = pres->check_divergence();
+    boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+    master.print_message("CvH: %E: %E\n", time, div);
 }
 
 template class Model<double>;
