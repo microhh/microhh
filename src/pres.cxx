@@ -88,3 +88,6 @@ template<typename TF>
 void Pres<TF>::prepare_device()
 {
 }
+
+template class Pres<double>;
+template class Pres<float>;

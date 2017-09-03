@@ -24,6 +24,7 @@
 #define PRES_2
 
 #include "pres.h"
+#include "defines.h"
 
 class Master;
 template<typename> class Grid;
@@ -52,11 +53,11 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::grid;
         using Pres<TF>::fields;
 
-        double* bmati;
-        double* bmatj;
-        double* a;
-        double* c;
-        double* work2d;
+        std::vector<TF> bmati;
+        std::vector<TF> bmatj;
+        std::vector<TF> a;
+        std::vector<TF> c;
+        std::vector<TF> work2d;
 
 #ifdef USECUDA
         double* bmati_g;
@@ -66,22 +67,24 @@ class Pres_2 : public Pres<TF>
         double* work2d_g;
 #endif
 
-        void input(double*, 
-                   double*, double*, double*,
-                   double*, double*, double*,
-                   double*, double*, double*,
-                   double);
+        void input(double* const restrict, 
+                   const double* const restrict, const double* const restrict, const double* const restrict,
+                   const double* const restrict, const double* const restrict, const double* const restrict,
+                   const double* const restrict, const double* const restrict, const double* const restrict,
+                   const double);
 
-        void solve(double*, double*, double*,
-                   double*, double*,
-                   double*, double*, double*, double*);
+        void solve(double* const restrict, double* const restrict, double*,
+                   const double* const restrict, const double* const restrict,
+                   double* const restrict, double* const restrict, double*, double*);
 
-        void output(double*, double*, double*,
-                    double*, double*);
+        void output(double* const restrict, double* const restrict, double* const restrict,
+                    const double* const restrict, const double* const restrict);
 
         void tdma(double*, double*, double*, double*, 
                   double*, double*);
 
-        double calc_divergence(double*, double*, double*, double*, double*, double*);
+        double calc_divergence(const double* const restrict, const double* const restrict, const double* const restrict,
+                               const double* const restrict,
+                               const double* const restrict, const double* const restrict);
 };
 #endif

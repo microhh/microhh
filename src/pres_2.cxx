@@ -35,55 +35,44 @@ template<typename TF>
 Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : 
     Pres<TF>(masterin, gridin, fieldsin, inputin)
 {
-    a = 0;
-    c = 0;
-    work2d = 0;
-    bmati  = 0;
-    bmatj  = 0;
-
-#ifdef USECUDA
+    #ifdef USECUDA
     a_g = 0;
     c_g = 0;
     work2d_g = 0;
     bmati_g  = 0;
     bmatj_g  = 0;
-#endif
+    #endif
 }
 
 template<typename TF>
 Pres_2<TF>::~Pres_2()
 {
-    delete[] a;
-    delete[] c;
-    delete[] work2d;
-
-    delete[] bmati;
-    delete[] bmatj;
-
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Pres_2<TF>::exec(double dt)
+void Pres_2<TF>::exec(const double dt)
 {
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
     // create the input for the pressure solver
-    input(fields.sd["p"]->data,
-          fields.mp.at("u")->data, fields.mp.at("v")->data->data, fields.mp.at("w")->data->data,
-          fields.mt.at("u")->data, fields.mt.at("v")->data->data, fields.mt.at("w")->data->data,
-          grid->dzi, fields.rhoref, fields.rhorefh,
+    input(fields.sd.at("p")->data.data(),
+          fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+          fields.mt.at("u")->data.data(), fields.mt.at("v")->data.data(), fields.mt.at("w")->data.data(),
+          gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data(),
           dt);
 
     // solve the system
-    solve(fields.sd.at("p")->data, fields.atmp.at("tmp1")->data, fields.atmp.at("tmp2")->data,
-          grid->dz, fields.rhoref,
-          grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+    solve(fields.sd.at("p")->data.data(), fields.atmp.at("tmp1")->data.data(), fields.atmp.at("tmp2")->data.data(),
+          gd.dz.data(), fields.rhoref.data(),
+          grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
 
     // get the pressure tendencies from the pressure field
-    output(fields.mt.at("u")->data, fields.mt.at("v")->data->data, fields.mt.at("w")->data->data, 
-           fields.sd.at("p")->data, grid->dzhi);
+    output(fields.mt.at("u")->data.data(), fields.mt.at("v")->data.data(), fields.mt.at("w")->data.data(), 
+           fields.sd.at("p")->data.data(), gd.dzhi.data());
 }
 #endif
 
@@ -91,69 +80,63 @@ void Pres_2<TF>::exec(double dt)
 template<typename TF>
 double Pres_2<TF>::check_divergence()
 {
-    return calc_divergence(fields.u->data, fields.v->data, fields.w->data, grid->dzi,
-                           fields.rhoref, fields.rhorefh);
+    const Grid_data<TF>& gd = grid.get_grid_data();
+    return calc_divergence(fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+                           gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data());
 }
 #endif
 
 template<typename TF>
 void Pres_2<TF>::init()
 {
-    const int itot = grid->itot;
-    const int jtot = grid->jtot;
-    const int imax = grid->imax;
-    const int jmax = grid->jmax;
-    const int kmax = grid->kmax;
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    bmati = new double[itot];
-    bmatj = new double[jtot];
+    bmati.resize(gd.itot);
+    bmatj.resize(gd.jtot);
 
-    a = new double[kmax];
-    c = new double[kmax];
+    a.resize(gd.kmax);
+    c.resize(gd.kmax);
 
-    work2d = new double[imax*jmax];
+    work2d.resize(gd.imax*gd.jmax);
 }
 
 template<typename TF>
 void Pres_2<TF>::set_values()
 {
-    const int itot = grid->itot;
-    const int jtot = grid->jtot;
-    const int kmax = grid->kmax;
-    const int kgc  = grid->kgc;
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    // compute the modified wave numbers of the 2nd order scheme
-    const double dxidxi = 1./(grid->dx*grid->dx);
-    const double dyidyi = 1./(grid->dy*grid->dy);
+    // Compute the modified wave numbers of the 2nd order scheme.
+    const double dxidxi = 1./(gd.dx*gd.dx);
+    const double dyidyi = 1./(gd.dy*gd.dy);
 
     const double pi = std::acos(-1.);
 
-    for (int j=0; j<jtot/2+1; j++)
-        bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)jtot)-1.) * dyidyi;
+    for (int j=0; j<gd.jtot/2+1; ++j)
+        bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)gd.jtot)-1.) * dyidyi;
 
-    for (int j=jtot/2+1; j<jtot; j++)
-        bmatj[j] = bmatj[jtot-j];
+    for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
+        bmatj[j] = bmatj[gd.jtot-j];
 
-    for (int i=0; i<itot/2+1; i++)
-        bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)itot)-1.) * dxidxi;
+    for (int i=0; i<gd.itot/2+1; ++i)
+        bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)gd.itot)-1.) * dxidxi;
 
-    for (int i=itot/2+1; i<itot; i++)
-        bmati[i] = bmati[itot-i];
+    for (int i=gd.itot/2+1; i<gd.itot; ++i)
+        bmati[i] = bmati[gd.itot-i];
 
     // create vectors that go into the tridiagonal matrix solver
-    for (int k=0; k<kmax; k++)
+    for (int k=0; k<gd.kmax; ++k)
     {
-        a[k] = grid->dz[k+kgc] * fields.rhorefh[k+kgc  ]*grid->dzhi[k+kgc  ];
-        c[k] = grid->dz[k+kgc] * fields.rhorefh[k+kgc+1]*grid->dzhi[k+kgc+1];
+        a[k] = gd.dz[k+gd.kgc] * fields.rhorefh[k+gd.kgc  ]*gd.dzhi[k+gd.kgc  ];
+        c[k] = gd.dz[k+gd.kgc] * fields.rhorefh[k+gd.kgc+1]*gd.dzhi[k+gd.kgc+1];
     }
 }
 
 template<typename TF>
-void Pres_2<TF>::input(double* restrict p, 
-                       double* restrict u , double* restrict v , double* restrict w ,
-                       double* restrict ut, double* restrict vt, double* restrict wt,
-                       double* restrict dzi, double* restrict rhoref, double* restrict rhorefh,
-                       double dt)
+void Pres_2<TF>::input(double* const restrict p, 
+                       const double* const restrict u , const double* const restrict v , const double* const restrict w ,
+                       const double* const restrict ut, const double* const restrict vt, const double* const restrict wt,
+                       const double* const restrict dzi, const double* const restrict rhoref, const double* const restrict rhorefh,
+                       const double dt)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -190,10 +173,10 @@ void Pres_2<TF>::input(double* restrict p,
 }
 
 template<typename TF>
-void Pres_2<TF>::solve(double* restrict p, double* restrict work3d, double* restrict b,
-                   double* restrict dz, double* restrict rhoref,
-                   double* restrict fftini, double* restrict fftouti, 
-                   double* restrict fftinj, double* restrict fftoutj)
+void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, double* const restrict b,
+                       const double* const restrict dz, const double* const restrict rhoref,
+                       double* const restrict fftini, double* const restrict fftouti, 
+                       double* const restrict fftinj, double* const restrict fftoutj)
 {
     const int imax   = grid->imax;
     const int jmax   = grid->jmax;
@@ -290,8 +273,8 @@ void Pres_2<TF>::solve(double* restrict p, double* restrict work3d, double* rest
 }
 
 template<typename TF>
-void Pres_2<TF>::output(double* restrict ut, double* restrict vt, double* restrict wt, 
-                        double* restrict p , double* restrict dzhi)
+void Pres_2<TF>::output(double* const restrict ut, double* const restrict vt, double* const restrict wt, 
+                        const double* const restrict p , const double* const restrict dzhi)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -385,8 +368,9 @@ void Pres_2<TF>::tdma(double* restrict a, double* restrict b, double* restrict c
 
 #ifndef USECUDA
 template<typename TF>
-double Pres_2<TF>::calc_divergence(double* restrict u, double* restrict v, double* restrict w, double* restrict dzi,
-                                   double* restrict rhoref, double* restrict rhorefh)
+double Pres_2<TF>::calc_divergence(const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                                   const double* const restrict dzi,
+                                   const double* const restrict rhoref, const double* const restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -415,3 +399,6 @@ double Pres_2<TF>::calc_divergence(double* restrict u, double* restrict v, doubl
     return divmax;
 }
 #endif
+
+template class Pres_2<double>;
+template class Pres_2<float>;

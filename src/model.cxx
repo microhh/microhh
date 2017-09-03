@@ -30,6 +30,7 @@
 #include "data_block.h"
 #include "timeloop.h"
 #include "boundary.h"
+#include "pres.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -95,6 +96,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
 
+        pres = Pres<TF>::factory(master, *grid, *fields, *input, grid->swspatialorder);
+
         // if one or more arguments fails, then crash
         if (nerror > 0)
             throw 1;
@@ -128,8 +131,8 @@ void Model<TF>::init()
 
     grid->init();
     fields->init();
-
     boundary->init(*input);
+    pres->init();
 }
 
 template<typename TF>
@@ -158,6 +161,8 @@ void Model<TF>::load()
     fields->load(timeloop->get_iotime());
 
     boundary->create(*input);
+
+    pres->set_values();
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -240,7 +245,7 @@ void Model<TF>::exec()
 
         // Solve the poisson equation for pressure.
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-        // pres->exec(timeloop->get_sub_time_step());
+        pres->exec(timeloop->get_sub_time_step());
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Allow only for statistics when not in substep and not directly after restart.

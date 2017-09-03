@@ -53,6 +53,7 @@ class Pres
         Grid<TF>& grid;
         Fields<TF>& fields;
 
+    private:
         #ifdef USECUDA
         void make_cufft_plan();
         void fft_forward (double*, double*, double*);
@@ -65,7 +66,6 @@ class Pres
         cufftHandle jplanb;
         #endif
 
-    private:
 #ifdef USECUDA
         void check_cufft_memory();
 #endif

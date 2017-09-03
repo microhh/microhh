@@ -161,6 +161,13 @@ class Grid
         void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
         */
 
+        // CvH: TO BE PUT IN STRUCT
+        // Fourier tranforms
+        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
+        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
+        fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
+        fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
+
     private:
         Master& master; ///< Reference to master class.
 
@@ -177,12 +184,6 @@ class Grid
         void load_fftw(); ///< Load the FFTW plan for bitwise identical results.
 
         Grid_data<TF> gd;
-
-        // Fourier tranforms
-        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
-        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
-        fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
-        fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
         #ifdef USEMPI
         // MPI Datatypes

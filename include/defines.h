@@ -20,5 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef DEFINES
+#define DEFINES
 #define restrict RESTRICTKEYWORD
-
+#endif
