@@ -85,6 +85,15 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(Master& masterin, Grid<TF>& gridin, 
 }
 
 template<typename TF>
+void Pres<TF>::init() {}
+
+template<typename TF>
+void Pres<TF>::set_values() {}
+
+template<typename TF>
+void Pres<TF>::exec(double dt) {}
+
+template<typename TF>
 void Pres<TF>::prepare_device()
 {
 }
