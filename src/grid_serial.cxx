@@ -607,6 +607,23 @@ int Grid<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
     return 0;
 }
 
+namespace
+{
+    template<typename> void fftw_execute_wrapper(const fftw_plan&, const fftwf_plan&);
+
+    template<>
+    void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftw_execute(p);
+    }
+
+    template<>
+    void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftwf_execute(pf);
+    }
+}
+
 template<typename TF>
 void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
                            TF* const restrict fftini, TF* const restrict fftouti,
@@ -625,7 +642,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
             fftini[ij] = data[ijk];
         }
 
-        fftw_execute(iplanf);
+        fftw_execute_wrapper<TF>(iplanf, iplanff);
 
 #pragma ivdep
         for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -649,7 +666,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
             fftinj[ij] = data[ijk];
         }
 
-        fftw_execute(jplanf);
+        fftw_execute_wrapper<TF>(jplanf, jplanff);
 
 #pragma ivdep
         for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -680,7 +697,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
             fftinj[ij] = data[ijk];
         }
 
-        fftw_execute(jplanb);
+        fftw_execute_wrapper<TF>(jplanb, jplanbf);
 
         #pragma ivdep
         for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -704,7 +721,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
             fftini[ij] = data[ijk];
         }
 
-        fftw_execute(iplanb);
+        fftw_execute_wrapper<TF>(iplanb, iplanbf);
 
 #pragma ivdep
         for (int n=0; n<gd.itot*gd.jmax; ++n)
