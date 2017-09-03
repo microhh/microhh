@@ -154,7 +154,7 @@ class Fields
 
         void add_mean_profs(Data_block&);
         // int add_mean_prof(Input*, std::string, double*, double);
-        // int randomize    (Input*, std::string, double*);
+        void randomize(Input&, std::string, TF* const restrict);
         // int add_vortex_pair(Input*);
 
         // statistics
