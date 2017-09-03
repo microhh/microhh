@@ -129,7 +129,7 @@ void Fields<TF>::init()
         nerror += it.second->init();
 
     // allocate the diagnostic scalars
-    for (auto& it : sp)
+    for (auto& it : sd)
         nerror += it.second->init();
 
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
