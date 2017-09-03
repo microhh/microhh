@@ -86,6 +86,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
 /**
  * This function destructs the grid class.
  */
+
+
 template<typename TF>
 Grid<TF>::~Grid()
 {

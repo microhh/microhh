@@ -666,19 +666,17 @@ void Fields<TF>::create(Input& inputin, Data_block& profs)
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
+    */
 
-    // set w equal to zero at the boundaries, just to be sure
-    int lbot = grid.kstart*grid.ijcells;
-    int ltop = grid.kend  *grid.ijcells;
-    for (int l=0; l<grid.ijcells; ++l)
+    // Make sure the boundaries of w are zero. Non-zero initialization is not recoverable.
+    int lbot = gd.kstart*gd.ijcells;
+    int ltop = gd.kend  *gd.ijcells;
+
+    for (int l=0; l<gd.ijcells; ++l)
     {
-        w->data[lbot+l] = 0.;
-        w->data[ltop+l] = 0.;
+        mp.at("w")->data[lbot+l] = 0.;
+        mp.at("w")->data[ltop+l] = 0.;
     }
-
-    if (nerror)
-        throw 1;
-        */
 }
 
 template<typename TF>
