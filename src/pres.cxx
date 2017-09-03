@@ -59,9 +59,9 @@ Pres<TF>::~Pres()
 }
 
 template<typename TF>
-double Pres<TF>::check_divergence()
+TF Pres<TF>::check_divergence()
 {
-    double divmax = 0.;
+    TF divmax = 0.;
     return divmax;
 }
 

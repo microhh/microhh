@@ -78,7 +78,7 @@ void Pres_2<TF>::exec(const double dt)
 
 #ifndef USECUDA
 template<typename TF>
-double Pres_2<TF>::check_divergence()
+TF Pres_2<TF>::check_divergence()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     return calc_divergence(fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
@@ -132,11 +132,11 @@ void Pres_2<TF>::set_values()
 }
 
 template<typename TF>
-void Pres_2<TF>::input(double* const restrict p, 
-                       const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                       double* const restrict ut, double* const restrict vt, double* const restrict wt,
-                       const double* const restrict dzi, const double* const restrict rhoref, const double* const restrict rhorefh,
-                       const double dt)
+void Pres_2<TF>::input(TF* const restrict p, 
+                       const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+                       TF* const restrict ut, TF* const restrict vt, TF* const restrict wt,
+                       const TF* const restrict dzi, const TF* const restrict rhoref, const TF* const restrict rhorefh,
+                       const TF dt)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -175,10 +175,10 @@ void Pres_2<TF>::input(double* const restrict p,
 }
 
 template<typename TF>
-void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, double* const restrict b,
-                       const double* const restrict dz, const double* const restrict rhoref,
-                       double* const restrict fftini, double* const restrict fftouti, 
-                       double* const restrict fftinj, double* const restrict fftoutj)
+void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* const restrict b,
+                       const TF* const restrict dz, const TF* const restrict rhoref,
+                       TF* const restrict fftini, TF* const restrict fftouti, 
+                       TF* const restrict fftinj, TF* const restrict fftoutj)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -198,10 +198,6 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
 
     jj = iblock;
     kk = iblock*jblock;
-
-    //for (int i=0; i<itot*jtot; ++i)
-    //  printf("%i %e\n",i,p[i]);
-    //exit(1);
 
     // solve the tridiagonal system
     // create vectors that go into the tridiagonal matrix solver
@@ -240,7 +236,7 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
         }
 
     // call tdma solver
-    tdma(a, b, c, p, work2d, work3d);
+    tdma(a.data(), b, c.data(), p, work2d.data(), work3d);
 
     grid.fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
@@ -268,7 +264,7 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
         #pragma ivdep
         for (int i=gd.istart; i<gd.iend; ++i)
         {
-            ijk = i + j*jjp + grid->kstart*kkp;
+            ijk = i + j*jjp + gd.kstart*kkp;
             p[ijk-kkp] = p[ijk];
         }
 
@@ -277,20 +273,22 @@ void Pres_2<TF>::solve(double* const restrict p, double* const restrict work3d, 
 }
 
 template<typename TF>
-void Pres_2<TF>::output(double* const restrict ut, double* const restrict vt, double* const restrict wt, 
-                        const double* const restrict p , const double* const restrict dzhi)
+void Pres_2<TF>::output(TF* const restrict ut, TF* const restrict vt, TF* const restrict wt, 
+                        const TF* const restrict p, const TF* const restrict dzhi)
 {
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
     const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
-    for (int k=grid->kstart; k<grid->kend; k++)
-        for (int j=grid->jstart; j<grid->jend; j++)
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
 #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
@@ -301,25 +299,26 @@ void Pres_2<TF>::output(double* const restrict ut, double* const restrict vt, do
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
 template<typename TF>
-void Pres_2<TF>::tdma(double* restrict a, double* restrict b, double* restrict c, 
-                      double* restrict p, double* restrict work2d, double* restrict work3d)
+void Pres_2<TF>::tdma(TF* restrict a, TF* restrict b, TF* restrict c, 
+                      TF* restrict p, TF* restrict work2d, TF* restrict work3d)
 
 {
-    int i,j,k,jj,kk,ijk,ij;
-    int iblock,jblock,kmax;
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-    iblock = grid->iblock;
-    jblock = grid->jblock;
-    kmax = grid->kmax;
+    const int iblock = gd.iblock;
+    const int jblock = gd.jblock;
+    const int kmax = gd.kmax;
 
-    jj = iblock;
-    kk = iblock*jblock;
+    const int jj = iblock;
+    const int kk = iblock*jblock;
+
+    int i,j,k;
 
     for (j=0;j<jblock;j++)
 #pragma ivdep
         for (i=0;i<iblock;i++)
         {
-            ij = i + j*jj;
+            const int ij = i + j*jj;
             work2d[ij] = b[ij];
         }
 
@@ -327,7 +326,7 @@ void Pres_2<TF>::tdma(double* restrict a, double* restrict b, double* restrict c
 #pragma ivdep
         for (i=0;i<iblock;i++)
         {
-            ij = i + j*jj;
+            const int ij = i + j*jj;
             p[ij] /= work2d[ij];
         }
 
@@ -337,24 +336,24 @@ void Pres_2<TF>::tdma(double* restrict a, double* restrict b, double* restrict c
 #pragma ivdep
             for (i=0;i<iblock;i++)
             {
-                ij  = i + j*jj;
-                ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
                 work3d[ijk] = c[k-1] / work2d[ij];
             }
         for (j=0;j<jblock;j++)
 #pragma ivdep
             for (i=0;i<iblock;i++)
             {
-                ij  = i + j*jj;
-                ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
                 work2d[ij] = b[ijk] - a[k]*work3d[ijk];
             }
         for (j=0;j<jblock;j++)
 #pragma ivdep
             for (i=0;i<iblock;i++)
             {
-                ij  = i + j*jj;
-                ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
                 p[ijk] -= a[k]*p[ijk-kk];
                 p[ijk] /= work2d[ij];
             }
@@ -365,31 +364,33 @@ void Pres_2<TF>::tdma(double* restrict a, double* restrict b, double* restrict c
 #pragma ivdep
             for (i=0;i<iblock;i++)
             {
-                ijk = i + j*jj + k*kk;
+                const int ijk = i + j*jj + k*kk;
                 p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
             }
 }
 
 #ifndef USECUDA
 template<typename TF>
-double Pres_2<TF>::calc_divergence(const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                                   const double* const restrict dzi,
-                                   const double* const restrict rhoref, const double* const restrict rhorefh)
+TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+                               const TF* const restrict dzi,
+                               const TF* const restrict rhoref, const TF* const restrict rhorefh)
 {
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
     const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
-    double div    = 0.;
-    double divmax = 0.;
+    TF div = 0.;
+    TF divmax = 0.;
 
-    for (int k=grid->kstart; k<grid->kend; k++)
-        for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi) 
@@ -398,7 +399,7 @@ double Pres_2<TF>::calc_divergence(const double* const restrict u, const double*
                 divmax = std::max(divmax, std::abs(div));
             }
 
-    grid->get_max(&divmax);
+    master.max(&divmax, 1);
 
     return divmax;
 }

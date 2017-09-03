@@ -44,7 +44,7 @@ class Pres
         virtual void set_values();
 
         virtual void exec(double);
-        virtual double check_divergence();
+        virtual TF check_divergence();
 
         virtual void prepare_device();
 

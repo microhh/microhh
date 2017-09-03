@@ -53,7 +53,7 @@ class Master
         void broadcast(unsigned long*, int);
 
         // Overload the sum function.
-        void sum(int *, int);
+        void sum(int*, int);
         void sum(double*, int);
         void sum(float*, int);
 

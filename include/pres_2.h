@@ -41,7 +41,7 @@ class Pres_2 : public Pres<TF>
         void set_values();
 
         void exec(double);
-        double check_divergence();
+        TF check_divergence();
 
 #ifdef USECUDA
         void prepare_device();
@@ -60,31 +60,31 @@ class Pres_2 : public Pres<TF>
         std::vector<TF> work2d;
 
 #ifdef USECUDA
-        double* bmati_g;
-        double* bmatj_g;
-        double* a_g;
-        double* c_g;
-        double* work2d_g;
+        TF* bmati_g;
+        TF* bmatj_g;
+        TF* a_g;
+        TF* c_g;
+        TF* work2d_g;
 #endif
 
-        void input(double* const restrict, 
-                   const double* const restrict, const double* const restrict, const double* const restrict,
-                   double* const restrict, double* const restrict, double* const restrict,
-                   const double* const restrict, const double* const restrict, const double* const restrict,
-                   const double);
+        void input(TF* const restrict, 
+                   const TF* const restrict, const TF* const restrict, const TF* const restrict,
+                   TF* const restrict, TF* const restrict, TF* const restrict,
+                   const TF* const restrict, const TF* const restrict, const TF* const restrict,
+                   const TF);
 
-        void solve(double* const restrict, double* const restrict, double*,
-                   const double* const restrict, const double* const restrict,
-                   double* const restrict, double* const restrict, double*, double*);
+        void solve(TF* const restrict, TF* const restrict, TF*,
+                   const TF* const restrict, const TF* const restrict,
+                   TF* const restrict, TF* const restrict, TF*, TF*);
 
-        void output(double* const restrict, double* const restrict, double* const restrict,
-                    const double* const restrict, const double* const restrict);
+        void output(TF* const restrict, TF* const restrict, TF* const restrict,
+                    const TF* const restrict, const TF* const restrict);
 
-        void tdma(double*, double*, double*, double*, 
-                  double*, double*);
+        void tdma(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, 
+                  TF* const restrict, TF* const restrict);
 
-        double calc_divergence(const double* const restrict, const double* const restrict, const double* const restrict,
-                               const double* const restrict,
-                               const double* const restrict, const double* const restrict);
+        TF calc_divergence(const TF* const restrict, const TF* const restrict, const TF* const restrict,
+                           const TF* const restrict,
+                           const TF* const restrict, const TF* const restrict);
 };
 #endif
