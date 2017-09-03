@@ -404,12 +404,31 @@ void Model<TF>::calc_stats(std::string maskname)
 template<typename TF>
 void Model<TF>::print_status()
 {
-    const double time = timeloop->get_time();
-    boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-    const TF div = pres->check_divergence();
-    boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+    double cputime, end;
+    static double start;
 
-    master.print_message("CvH: %E: %E\n", time, div);
+    static bool first = true;
+    if (first)
+    {
+        start = master.get_wall_clock_time();
+        first = false;
+    }
+
+    if (timeloop->do_check())
+    {
+        const double time = timeloop->get_time();
+        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+        const TF div = pres->check_divergence();
+        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+        const int iter = timeloop->get_iteration();
+
+        end     = master.get_wall_clock_time();
+        cputime = end - start;
+        start   = end;
+
+        master.print_message("CvH: %8d, %11.5E, %10.4f: %16.8E\n", iter, time, cputime, div);
+    }
 }
 
 template class Model<double>;

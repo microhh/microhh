@@ -186,6 +186,7 @@ class Grid
         void allocate_fftw();
         void load_fftw(); ///< Load the FFTW plan for bitwise identical results.
         void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
+        void fftw_finish();
 
         Grid_data<TF> gd;
 

@@ -83,13 +83,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     }
 }
 
-/**
- * This function destructs the grid class.
- */
-
-
-template<typename TF>
-Grid<TF>::~Grid()
+template<>
+void Grid<double>::fftw_finish()
 {
     if (fftwplan)
     {
@@ -105,10 +100,35 @@ Grid<TF>::~Grid()
     fftw_free(fftoutj);
 
     fftw_cleanup();
+}
 
-#ifdef USECUDA
+template<>
+void Grid<float>::fftw_finish()
+{
+    if (fftwplan)
+    {
+        fftwf_destroy_plan(iplanff);
+        fftwf_destroy_plan(iplanbf);
+        fftwf_destroy_plan(jplanff);
+        fftwf_destroy_plan(jplanbf);
+    }
+
+    fftwf_free(fftini);
+    fftwf_free(fftouti);
+    fftwf_free(fftinj);
+    fftwf_free(fftoutj);
+
+    fftwf_cleanup();
+}
+
+template<typename TF>
+Grid<TF>::~Grid()
+{
+    fftw_finish();
+
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 
     exit_mpi();
 }
