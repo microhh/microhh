@@ -106,19 +106,19 @@ void Pres_2<TF>::set_values()
     const Grid_data<TF>& gd = grid.get_grid_data();
 
     // Compute the modified wave numbers of the 2nd order scheme.
-    const double dxidxi = 1./(gd.dx*gd.dx);
-    const double dyidyi = 1./(gd.dy*gd.dy);
+    const TF dxidxi = 1./(gd.dx*gd.dx);
+    const TF dyidyi = 1./(gd.dy*gd.dy);
 
-    const double pi = std::acos(-1.);
+    const TF pi = std::acos(-1.);
 
     for (int j=0; j<gd.jtot/2+1; ++j)
-        bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)gd.jtot)-1.) * dyidyi;
+        bmatj[j] = 2. * (std::cos(2.*pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
 
     for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
         bmatj[j] = bmatj[gd.jtot-j];
 
     for (int i=0; i<gd.itot/2+1; ++i)
-        bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)gd.itot)-1.) * dxidxi;
+        bmati[i] = 2. * (std::cos(2.*pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
 
     for (int i=gd.itot/2+1; i<gd.itot; ++i)
         bmati[i] = bmati[gd.itot-i];
@@ -147,9 +147,9 @@ void Pres_2<TF>::input(TF* const restrict p,
     const int jjp = gd.imax;
     const int kkp = gd.imax*gd.jmax;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
-    const double dti = 1./dt;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
+    const TF dti = 1./dt;
 
     const int igc = gd.igc;
     const int jgc = gd.jgc;
@@ -172,6 +172,74 @@ void Pres_2<TF>::input(TF* const restrict p,
                         + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] * dti) 
                           - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
             }
+}
+
+namespace
+{
+    // tridiagonal matrix solver, taken from Numerical Recipes, Press
+    template<typename TF>
+    void tdma(TF* const restrict a, TF* const restrict b, TF* const restrict c, 
+              TF* const restrict p, TF* const restrict work2d, TF* const restrict work3d,
+              const int iblock, const int jblock, const int kmax)
+    
+    {
+        const int jj = iblock;
+        const int kk = iblock*jblock;
+    
+        for (int j=0; j<jblock; j++)
+            #pragma ivdep
+            for (int i=0; i<iblock; i++)
+            {
+                const int ij = i + j*jj;
+                work2d[ij] = b[ij];
+            }
+    
+        for (int j=0; j<jblock; j++)
+            #pragma ivdep
+            for (int i=0; i<iblock; i++)
+            {
+                const int ij = i + j*jj;
+                p[ij] /= work2d[ij];
+            }
+    
+        for (int k=1; k<kmax; k++)
+        {
+            for (int j=0; j<jblock; j++)
+                #pragma ivdep
+                for (int i=0; i<iblock; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    work3d[ijk] = c[k-1] / work2d[ij];
+                }
+            for (int j=0; j<jblock; j++)
+                #pragma ivdep
+                for (int i=0; i<iblock; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    work2d[ij] = b[ijk] - a[k]*work3d[ijk];
+                }
+            for (int j=0; j<jblock; j++)
+                #pragma ivdep
+                for (int i=0; i<iblock; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    p[ijk] -= a[k]*p[ijk-kk];
+                    p[ijk] /= work2d[ij];
+                }
+        }
+    
+        for (int k=kmax-2; k>=0; k--)
+            for (int j=0; j<jblock; j++)
+                #pragma ivdep
+                for (int i=0; i<iblock; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+                }
+    }
 }
 
 template<typename TF>
@@ -236,7 +304,8 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
         }
 
     // call tdma solver
-    tdma(a.data(), b, c.data(), p, work2d.data(), work3d);
+    tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
+         gd.iblock, gd.jblock, gd.kmax);
 
     grid.fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
@@ -287,85 +356,13 @@ void Pres_2<TF>::output(TF* const restrict ut, TF* const restrict vt, TF* const 
 
     for (int k=gd.kstart; k<gd.kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
                 vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
                 wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
-            }
-}
-
-// tridiagonal matrix solver, taken from Numerical Recipes, Press
-template<typename TF>
-void Pres_2<TF>::tdma(TF* restrict a, TF* restrict b, TF* restrict c, 
-                      TF* restrict p, TF* restrict work2d, TF* restrict work3d)
-
-{
-    const Grid_data<TF>& gd = grid.get_grid_data();
-
-    const int iblock = gd.iblock;
-    const int jblock = gd.jblock;
-    const int kmax = gd.kmax;
-
-    const int jj = iblock;
-    const int kk = iblock*jblock;
-
-    int i,j,k;
-
-    for (j=0;j<jblock;j++)
-#pragma ivdep
-        for (i=0;i<iblock;i++)
-        {
-            const int ij = i + j*jj;
-            work2d[ij] = b[ij];
-        }
-
-    for (j=0;j<jblock;j++)
-#pragma ivdep
-        for (i=0;i<iblock;i++)
-        {
-            const int ij = i + j*jj;
-            p[ij] /= work2d[ij];
-        }
-
-    for (k=1; k<kmax; k++)
-    {
-        for (j=0;j<jblock;j++)
-#pragma ivdep
-            for (i=0;i<iblock;i++)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-                work3d[ijk] = c[k-1] / work2d[ij];
-            }
-        for (j=0;j<jblock;j++)
-#pragma ivdep
-            for (i=0;i<iblock;i++)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-                work2d[ij] = b[ijk] - a[k]*work3d[ijk];
-            }
-        for (j=0;j<jblock;j++)
-#pragma ivdep
-            for (i=0;i<iblock;i++)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-                p[ijk] -= a[k]*p[ijk-kk];
-                p[ijk] /= work2d[ij];
-            }
-    }
-
-    for (k=kmax-2; k>=0; k--)
-        for (j=0;j<jblock;j++)
-#pragma ivdep
-            for (i=0;i<iblock;i++)
-            {
-                const int ijk = i + j*jj + k*kk;
-                p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
             }
 }
 

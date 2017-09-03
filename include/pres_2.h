@@ -80,9 +80,6 @@ class Pres_2 : public Pres<TF>
         void output(TF* const restrict, TF* const restrict, TF* const restrict,
                     const TF* const restrict, const TF* const restrict);
 
-        void tdma(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, 
-                  TF* const restrict, TF* const restrict);
-
         TF calc_divergence(const TF* const restrict, const TF* const restrict, const TF* const restrict,
                            const TF* const restrict,
                            const TF* const restrict, const TF* const restrict);
