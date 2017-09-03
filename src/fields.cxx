@@ -639,21 +639,20 @@ void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::
 template<typename TF>
 void Fields<TF>::create(Input& inputin, Data_block& profs)
 {
-    // int nerror = 0;
-
-    /*
     // Randomize the momentum
-    nerror += randomize(inputin, "u", u->data);
-    nerror += randomize(inputin, "w", w->data);
+    randomize(inputin, "u", mp.at("u")->data.data());
+    randomize(inputin, "w", mp.at("w")->data.data());
 
     // Only add perturbation to v in case of a 3d run.
-    if (grid.jtot > 1)
-        nerror += randomize(inputin, "v", v->data);
+    const Grid_data<TF>& gd = grid.get_grid_data();
+    if (gd.jtot > 1)
+        randomize(inputin, "v", mp.at("v")->data.data());
 
     // Randomize the scalars
     for (auto& it : sp)
-        nerror += randomize(inputin, it.first, it.second->data);
+        randomize(inputin, it.first, it.second->data.data());
 
+    /*
     // Add Vortices
     nerror += add_vortex_pair(inputin);
     */
@@ -680,6 +679,56 @@ void Fields<TF>::create(Input& inputin, Data_block& profs)
     if (nerror)
         throw 1;
         */
+}
+
+template<typename TF>
+void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict data)
+{
+    // Set mpiid as random seed to avoid having the same field at all procs
+    int static seed = 0;
+
+    if (!seed)
+    {
+        seed = input.get_item<int>("fields", "rndseed", "", 0);
+        seed += master.mpiid + 2;
+        std::srand(seed);
+    }
+
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+
+    // Look up the specific randomizer variables.
+    rndamp = input.get_item<TF>("fields", "rndamp", fld, 0.);
+    rndz   = input.get_item<TF>("fields", "rndz"  , fld, 0.);
+    rndexp = input.get_item<TF>("fields", "rndexp", fld, 0.);
+
+    if (rndz > gd.zsize)
+    {
+        master.print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, gd.zsize);
+        throw std::runtime_error("Randomizer error");
+    }
+
+    // Find the location of the randomizer height.
+    int kendrnd = gd.kstart;
+    while (gd.z[kendrnd] < rndz)
+        ++kendrnd;
+
+    // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
+    if (kendrnd == gd.kstart && rndz > 0.)
+        master.print_warning("randomization depth is less than the height of the first model level\n");
+
+    for (int k=gd.kstart; k<kendrnd; ++k)
+    {
+        const TF rndfac = std::pow((rndz-gd.z[k])/rndz, rndexp);
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                data[ijk] = rndfac * rndamp * ((TF) std::rand() / (TF) RAND_MAX - 0.5);
+            }
+    }
 }
 
 namespace
@@ -729,56 +778,6 @@ void Fields<TF>::add_mean_profs(Data_block& profs)
 }
 
 /*
-int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
-{
-    int nerror = 0;
-
-    // Set mpiid as random seed to avoid having the same field at all procs
-    int static seed = 0;
-
-    if (!seed)
-    {
-        nerror += input.get_item(&seed, "fields", "rndseed", "", 0);
-        seed += master.mpiid + 2;
-        std::srand(seed);
-    }
-
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    // Look up the specific randomizer variables.
-    nerror += input.get_item(&rndamp, "fields", "rndamp", fld, 0.);
-    nerror += input.get_item(&rndz  , "fields", "rndz"  , fld, 0.);
-    nerror += input.get_item(&rndexp, "fields", "rndexp", fld, 0.);
-
-    if (rndz > grid.zsize)
-    {
-        master.print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, grid.zsize);
-        return 1;
-    }
-
-    // Find the location of the randomizer height.
-    int kendrnd = grid.kstart;
-    while (grid.z[kendrnd] < rndz)
-        ++kendrnd;
-
-    // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
-    if (kendrnd == grid.kstart && rndz > 0.)
-        master.print_warning("randomization depth is less than the height of the first model level\n");
-
-    for (int k=grid.kstart; k<kendrnd; ++k)
-    {
-        const double rndfac = std::pow((rndz-grid.z [k])/rndz, rndexp);
-        for (int j=grid.jstart; j<grid.jend; ++j)
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                data[ijk] = rndfac * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
-            }
-    }
-
-    return nerror;
-}
 
 int Fields::add_vortex_pair(Input* inputin)
 {
