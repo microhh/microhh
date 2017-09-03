@@ -10,7 +10,7 @@ endif()
 set(GNU_SED "gsed")
 
 set(USER_CXX_FLAGS "")
-set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
+set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/local/include")
