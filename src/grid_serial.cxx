@@ -320,8 +320,8 @@ void Grid<TF>::save_grid()
     fclose(pFile);
 }
 
-template<typename TF>
-void Grid<TF>::save_fftw()
+template<>
+void Grid<double>::save_fftw()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
@@ -353,6 +353,49 @@ void Grid<TF>::save_fftw()
         master.print_message("Saving \"%s\" ... ", filename);
 
         int n = fftw_export_wisdom_to_filename(filename);
+        if (n == 0)
+        {
+            master.print_message("FAILED\n");
+            throw 1;
+        }
+        else
+            master.print_message("OK\n");
+    }
+}
+
+template<>
+void Grid<float>::save_fftw()
+{
+    // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
+    // Use the FFTW3 many interface in order to reduce function call overhead.
+    int rank = 1;
+    int ni[] = {gd.itot};
+    int nj[] = {gd.jtot};
+    int istride = 1;
+    int jstride = gd.iblock;
+    int idist = gd.itot;
+    int jdist = 1;
+    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
+    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                  fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                  fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                  fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                  fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+
+    fftwplan = true;
+
+    if (master.mpiid == 0)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        int n = fftwf_export_wisdom_to_filename(filename);
         if (n == 0)
         {
             master.print_message("FAILED\n");
@@ -400,8 +443,8 @@ void Grid<TF>::load_grid()
     calculate();
 }
 
-template<typename TF>
-void Grid<TF>::load_fftw()
+template<>
+void Grid<double>::load_fftw()
 {
     // LOAD THE FFTW PLAN
     char filename[256];
@@ -440,6 +483,49 @@ void Grid<TF>::load_fftw()
     fftwplan = true;
 
     fftw_forget_wisdom();
+}
+
+
+template<>
+void Grid<float>::load_fftw()
+{
+    // LOAD THE FFTW PLAN
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    int n = fftwf_import_wisdom_from_filename(filename);
+    if (n == 0)
+    {
+        master.print_message("FAILED\n");
+        throw 1;
+    }
+    else
+        master.print_message("OK\n");
+
+    // use the FFTW3 many interface in order to reduce function call overhead
+    int rank = 1;
+    int ni[] = {gd.itot};
+    int nj[] = {gd.jtot};
+    int istride = 1;
+    int jstride = gd.iblock;
+    int idist = gd.itot;
+    int jdist = 1;
+    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
+    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+
+    fftwplan = true;
+
+    fftwf_forget_wisdom();
 }
 
 template<typename TF>

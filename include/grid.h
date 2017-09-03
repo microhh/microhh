@@ -168,6 +168,8 @@ class Grid
         TF *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
         fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
+        fftwf_plan iplanff, iplanbf; ///< FFTW3 plans for forward and backward transforms in x-direction.
+        fftwf_plan jplanff, jplanbf; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
     private:
         Master& master; ///< Reference to master class.
