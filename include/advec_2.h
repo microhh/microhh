@@ -53,12 +53,5 @@ class Advec_2 : public Advec<TF>
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
         using Advec<TF>::swadvec;
-
-        double calc_cfl(double*, double*, double*, double*, double); ///< Calculate the CFL number.
-
-        void advec_u(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate longitudinal velocity advection.
-        void advec_v(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate latitudinal velocity advection.
-        void advec_w(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate vertical velocity advection.
-        void advec_s(double*, double*, double*, double*, double*, double*, double*, double*); ///< Calculate scalar advection.
 };
 #endif
