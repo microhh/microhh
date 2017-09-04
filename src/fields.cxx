@@ -909,7 +909,7 @@ void Fields::create_stats()
 template<typename TF>
 void Fields<TF>::save(int n)
 {
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     int nerror = 0;
     for (auto& f : ap)
@@ -938,7 +938,7 @@ void Fields<TF>::save(int n)
 template<typename TF>
 void Fields<TF>::load(int n)
 {
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     int nerror = 0;
 
