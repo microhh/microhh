@@ -111,7 +111,7 @@ namespace
     
     template<typename TF>
     void advec_v(TF* const restrict vt,
-            const TF* const restrict u, TF* const restrict v, TF* const restrict w,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict dzi, const TF dx, const TF dy,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -142,7 +142,7 @@ namespace
     
     template<typename TF>
     void advec_w(TF* const restrict wt,
-            TF* const restrict u, TF* const restrict v, TF* const restrict w,
+            const TF* const restrict u, const TF* const restrict v, TF* const restrict w,
             const TF* const restrict dzhi, const TF dx, const TF dy,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -173,7 +173,7 @@ namespace
     
     template<typename TF>
     void advec_s(TF* const restrict st, const TF* const restrict s,
-            const TF* const restrict u, const TF* const restrict v, TF* const restrict w,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict dzi, const TF dx, const TF dy,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -264,5 +264,6 @@ void Advec_2<TF>::exec()
                 gd.icells, gd.ijcells);
 }
 #endif
+
 template class Advec_2<double>;
 template class Advec_2<float>;
