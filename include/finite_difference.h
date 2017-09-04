@@ -33,17 +33,20 @@ namespace Finite_difference
 {
     namespace O2
     {
-        CUDA_MACRO inline double interp2(const double a, const double b)
+        template<typename TF>
+        CUDA_MACRO inline TF interp2(const TF a, const TF b)
         {
             return 0.5 * (a + b);
         }
 
-        CUDA_MACRO inline double interp22(const double a, const double b, const double c, const double d)
+        template<typename TF>
+        CUDA_MACRO inline TF interp22(const TF a, const TF b, const TF c, const TF d)
         {
             return 0.25 * (a + b + c + d);
         }
 
-        CUDA_MACRO inline double grad2x(const double a, const double b)
+        template<typename TF>
+        CUDA_MACRO inline TF grad2x(const TF a, const TF b)
         {
             return (b - a);
         }
