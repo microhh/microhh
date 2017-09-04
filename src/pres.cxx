@@ -32,37 +32,30 @@
 #include "model.h"
 
 #include "pres.h"
+#include "pres_disabled.h"
 #include "pres_2.h"
-//#include "pres_4.h"
 
 template<typename TF>
 Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-#ifdef USECUDA
+    #ifdef USECUDA
     iplanf = 0;
     jplanf = 0;
     iplanb = 0;
     jplanb = 0;
-#endif
+    #endif
 }
 
 template<typename TF>
 Pres<TF>::~Pres()
 {
-#ifdef USECUDA
+    #ifdef USECUDA
     cufftDestroy(iplanf);
     cufftDestroy(jplanf);
     cufftDestroy(iplanb);
     cufftDestroy(jplanb);
-#endif
-}
-
-template<typename TF>
-TF Pres<TF>::check_divergence()
-{
-    TF divmax = 0.;
-    return divmax;
+    #endif
 }
 
 template<typename TF>
@@ -72,7 +65,7 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(Master& masterin, Grid<TF>& gridin, 
     std::string swpres = inputin.get_item<std::string>("pres", "swpres", "", swspatialorder);
 
     if (swpres == "0")
-        return std::make_shared<Pres<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swpres == "2")
         return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, inputin);
     // else if (swpres == "4")
@@ -82,20 +75,6 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(Master& masterin, Grid<TF>& gridin, 
         masterin.print_error("\"%s\" is an illegal value for swpres\n", swpres.c_str());
         throw 1;
     }
-}
-
-template<typename TF>
-void Pres<TF>::init() {}
-
-template<typename TF>
-void Pres<TF>::set_values() {}
-
-template<typename TF>
-void Pres<TF>::exec(double dt) {}
-
-template<typename TF>
-void Pres<TF>::prepare_device()
-{
 }
 
 template class Pres<double>;

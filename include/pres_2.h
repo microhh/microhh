@@ -43,10 +43,10 @@ class Pres_2 : public Pres<TF>
         void exec(double);
         TF check_divergence();
 
-#ifdef USECUDA
+        #ifdef USECUDA
         void prepare_device();
         void clear_device();
-#endif
+        #endif
 
     private:
         using Pres<TF>::master;

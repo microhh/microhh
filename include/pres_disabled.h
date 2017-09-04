@@ -20,56 +20,37 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PRES
-#define PRES
+#ifndef PRES_DISABLED
+#define PRES_DISABLED
+
+#include "pres.h"
+#include "defines.h"
 
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
 
-#ifdef USECUDA
-#include <cufft.h>
-#endif
-
 template<typename TF>
-class Pres
+class Pres_disabled : public Pres<TF>
 {
     public:
-        Pres(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Pres();
+        Pres_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Pres_disabled();
 
-        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const std::string); ///< Factory function for pres class generation.
+        void init();
+        void set_values();
 
-        virtual void init() = 0;
-        virtual void set_values() = 0;
-
-        virtual void exec(double) = 0;
-        virtual TF check_divergence() = 0;
+        void exec(double);
+        TF check_divergence();
 
         #ifdef USECUDA
-        virtual void prepare_device() = 0;
+        void prepare_device();
+        void clear_device();
         #endif
-
-    protected:
-        Master& master;
-        Grid<TF>& grid;
-        Fields<TF>& fields;
 
     private:
-        #ifdef USECUDA
-        void make_cufft_plan();
-        void fft_forward (double*, double*, double*);
-        void fft_backward(double*, double*, double*);
-
-        bool FFTPerSlice;
-        cufftHandle iplanf;
-        cufftHandle jplanf;
-        cufftHandle iplanb;
-        cufftHandle jplanb;
-        #endif
-
-#ifdef USECUDA
-        void check_cufft_memory();
-#endif
+        using Pres<TF>::master;
+        using Pres<TF>::grid;
+        using Pres<TF>::fields;
 };
 #endif
