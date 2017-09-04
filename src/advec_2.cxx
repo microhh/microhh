@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
