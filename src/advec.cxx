@@ -29,7 +29,7 @@
 
 #include "advec.h"
 #include "advec_disabled.h"
-// #include "advec_2.h"
+#include "advec_2.h"
 // #include "advec_2i4.h"
 // #include "advec_4.h"
 // #include "advec_4m.h"
@@ -54,8 +54,8 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(Master& masterin, Grid<TF>& gridin
 
     if (swadvec == "0")
         return std::make_shared<Advec_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-    // else if (swadvec == "2")
-    //     return new Advec_2(modelin, inputin);
+    else if (swadvec == "2")
+        return std::make_shared<Advec_2<TF>>(masterin, gridin, fieldsin, inputin);
     // else if (swadvec == "2i4")
     //     return new Advec_2i4(modelin, inputin);
     // else if (swadvec == "4")

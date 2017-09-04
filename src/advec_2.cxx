@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "advec_2.h"
@@ -44,18 +45,54 @@ template<typename TF>
 Advec_2<TF>::~Advec_2() {}
 
 #ifndef USECUDA
+namespace
+{
+    template<typename TF>
+    double calc_cfl(TF* const restrict u, TF* const restrict v, TF* const restrict w,
+            TF* const restrict dzi, const TF dx, const TF dy, const TF dt, Master& master,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii = 1;
+    
+        const TF dxi = 1./dx;
+        const TF dyi = 1./dy;
+    
+        TF cfl = 0;
+    
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+    #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
+                }
+    
+        master.max(&cfl, 1);
+    
+        cfl = cfl*dt;
+    
+        return cfl;
+    }
+}
+
 template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    return calc_cfl(fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(), gd.dzi, dt);
+    return calc_cfl(fields.mp.at("u")->data.data(),fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+            gd.dzi.data(), gd.dx, gd.dy, dt, master,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 }
 
 template<typename TF>
 unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
 {
     // Calculate cfl and prevent zero divisons.
-    double cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+    auto& gd = grid.get_grid_data();
+    double cfl = calc_cfl(fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(), gd.dzi.data(), dt);
     cfl = std::max(cflmin, cfl);
     return idt * cflmax / cfl;
 }
@@ -64,50 +101,23 @@ template<typename TF>
 void Advec_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
-    advec_u(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
-            fields->rhoref, fields->rhorefh);
-    advec_v(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
-            fields->rhoref, fields->rhorefh);
-    advec_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi,
-            fields->rhoref, fields->rhorefh);
+    advec_u(fields.mt.at("u")->data.data(), fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(), gd.dzi.data(),
+            fields.rhoref.data(), fields.rhorefh.data());
+    advec_v(fields.mt.at("v")->data.data(), fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(), gd.dzi.data(),
+            fields.rhoref.data(), fields.rhorefh.data());
+    advec_w(fields.mt.at("w")->data.data(), fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(), gd.dzhi.data(),
+            fields.rhoref.data(), fields.rhorefh.data());
 
     for (auto& it : fields.st)
-        advec_s(it.second->data, fields->sp.at(it.first)->data, fields->u->data, fields->v->data, fields->w->data,
+        advec_s(it.second->data.data(), fields->sp.at(it.first)->data.data(),
+                fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
                 gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data());
 }
 #endif
 
 template<typename TF>
-double Advec_2<TF>::calc_cfl(double* restrict u, double* restrict v, double* restrict w, double* restrict dzi, double dt)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
-
-    double cfl = 0;
-
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
-            }
-
-    grid->get_max(&cfl);
-
-    cfl = cfl*dt;
-
-    return cfl;
-}
-
-template<typename TF>
-void Advec_2<TF>::advec_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,
-                          double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
+void Advec_2<TF>::advec_u(TF* const restrict ut, TF* const restrict u, TF* const restrict v, TF* const restrict w,
+                          TF* const restrict dzi, TF* const restrict rhoref, TF* const restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -135,8 +145,8 @@ void Advec_2<TF>::advec_u(double* restrict ut, double* restrict u, double* restr
 }
 
 template<typename TF>
-void Advec_2<TF>::advec_v(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
-                          double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
+void Advec_2<TF>::advec_v(TF* const restrict vt, TF* const restrict u, TF* const restrict v, TF* const restrict w,
+                          TF* const restrict dzi, TF* const restrict rhoref, TF* const restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -164,8 +174,8 @@ void Advec_2<TF>::advec_v(double* restrict vt, double* restrict u, double* restr
 }
 
 template<typename TF>
-void Advec_2<TF>::advec_w(double* restrict wt, double* restrict u, double* restrict v, double* restrict w,
-                          double* restrict dzhi, double* restrict rhoref, double* restrict rhorefh)
+void Advec_2<TF>::advec_w(TF* const restrict wt, TF* const restrict u, TF* const restrict v, TF* const restrict w,
+                          TF* const restrict dzhi, TF* const restrict rhoref, TF* const restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -193,8 +203,8 @@ void Advec_2<TF>::advec_w(double* restrict wt, double* restrict u, double* restr
 }
 
 template<typename TF>
-void Advec_2<TF>::advec_s(double* restrict st, double* restrict s, double* restrict u, double* restrict v, double* restrict w,
-                          double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
+void Advec_2<TF>::advec_s(TF* const restrict st, TF* const restrict s, TF* const restrict u, TF* const restrict v, TF* const restrict w,
+                          TF* const restrict dzi, TF* const restrict rhoref, TF* const restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -220,3 +230,6 @@ void Advec_2<TF>::advec_s(double* restrict st, double* restrict s, double* restr
                            - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
             }
 }
+
+template class Advec_2<double>;
+template class Advec_2<float>;
