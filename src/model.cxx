@@ -30,6 +30,7 @@
 #include "data_block.h"
 #include "timeloop.h"
 #include "boundary.h"
+#include "advec.h"
 #include "pres.h"
 #include "model.h"
 
@@ -95,8 +96,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, simmode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
-
-        pres = Pres<TF>::factory(master, *grid, *fields, *input, grid->swspatialorder);
+        advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
+        pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -228,7 +229,7 @@ void Model<TF>::exec()
 
         // Calculate the advection tendency.
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-        // advec->exec();
+        advec->exec();
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Calculate the diffusion tendency.
@@ -383,7 +384,7 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    // timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
