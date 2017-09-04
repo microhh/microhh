@@ -29,7 +29,6 @@
 #include "fields.h"
 #include "pres_2.h"
 #include "defines.h"
-#include "model.h"
 
 template<typename TF>
 Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : 

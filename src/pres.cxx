@@ -29,7 +29,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include "model.h"
 
 #include "pres.h"
 #include "pres_disabled.h"

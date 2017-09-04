@@ -81,14 +81,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     input = std::make_shared<Input>(simname + ".ini");
     profs = std::make_shared<Data_block>(simname + ".prof");
 
-    // Initialize the pointers as nullptr.
-    grid = nullptr;
-    fields = nullptr;
-
     try
     {
-        int nerror = 0;
-
         grid = std::make_shared<Grid<TF>>(master, *input);
 
         fields = std::make_shared<Fields<TF>>(master, *grid, *input);
@@ -98,12 +92,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-
-        // if one or more arguments fails, then crash
-        if (nerror > 0)
-            throw 1;
     }
-    catch (int &e)
+    catch (std::exception& e)
     {
         // In case of a failing constructor, delete the class objects and rethrow.
         delete_objects();

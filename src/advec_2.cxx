@@ -28,7 +28,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "model.h"
 
 namespace
 {
