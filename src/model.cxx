@@ -31,6 +31,7 @@
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
+#include "diff.h"
 #include "pres.h"
 #include "model.h"
 
@@ -91,6 +92,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
+        diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
     }
     catch (std::exception& e)
