@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     }
     catch (...)
     {
+        master.print_message("UNHANDLED EXEPTION!\n");
         return 1;
     }
 
