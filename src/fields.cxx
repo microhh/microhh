@@ -25,6 +25,8 @@
 #include <cmath>
 #include <algorithm>
 #include <sstream>
+#include <iostream>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -652,10 +654,8 @@ void Fields<TF>::create(Input& inputin, Data_block& profs)
     for (auto& it : sp)
         randomize(inputin, it.first, it.second->data.data());
 
-    /*
     // Add Vortices
-    nerror += add_vortex_pair(inputin);
-    */
+    add_vortex_pair(inputin);
 
     // Add the mean profiles to the fields
     add_mean_profs(profs);
@@ -775,47 +775,44 @@ void Fields<TF>::add_mean_profs(Data_block& profs)
     }
 }
 
-/*
 
-int Fields::add_vortex_pair(Input* inputin)
+template<typename TF>
+void Fields<TF>::add_vortex_pair(Input& inputin)
 {
-    int nerror = 0;
+    auto& gd = grid.get_grid_data();
 
-    // optional parameters
-    nerror += input.get_item(&vortexnpair, "fields", "vortexnpair", "", 0    );
-    nerror += input.get_item(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
-    nerror += input.get_item(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
+    // Optional parameters.
+    vortexnpair = inputin.get_item<int>        ("fields", "vortexnpair", "", 0    );
+    vortexamp   = inputin.get_item<TF>         ("fields", "vortexamp"  , "", 1.e-3);
+    vortexaxis  = inputin.get_item<std::string>("fields", "vortexaxis" , "", "y"  );
 
-    // add a double vortex to the initial conditions
+    // Add a double vortex to the initial conditions.
     const double pi = std::acos((double)-1.);
-
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
 
     if (vortexnpair > 0)
     {
         if (vortexaxis == "y")
-            for (int k=grid.kstart; k<grid.kend; ++k)
-                for (int j=grid.jstart; j<grid.jend; ++j)
-                    for (int i=grid.istart; i<grid.iend; ++i)
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    for (int i=gd.istart; i<gd.iend; ++i)
                     {
-                        const int ijk = i + j*jj + k*kk;
-                        u->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid.xh[i])/grid.xsize)*std::cos(pi*grid.z [k]/grid.zsize);
-                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid.x [i])/grid.xsize)*std::sin(pi*grid.zh[k]/grid.zsize);
+                        const int ijk = i + j*gd.icells + k*gd.ijcells;
+                        mp["u"]->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.xh[i])/gd.xsize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp["w"]->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.x [i])/gd.xsize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
         else if (vortexaxis == "x")
-            for (int k=grid.kstart; k<grid.kend; ++k)
-                for (int j=grid.jstart; j<grid.jend; ++j)
-                    for (int i=grid.istart; i<grid.iend; ++i)
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    for (int i=gd.istart; i<gd.iend; ++i)
                     {
-                        const int ijk = i + j*jj + k*kk;
-                        v->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid.yh[j])/grid.ysize)*std::cos(pi*grid.z [k]/grid.zsize);
-                        w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid.y [j])/grid.ysize)*std::sin(pi*grid.zh[k]/grid.zsize);
+                        const int ijk = i + j*gd.icells + k*gd.ijcells;
+                        mp["u"]->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp["w"]->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
     }
-
-    return nerror;
 }
+
+/*
 
 int Fields::add_mean_prof(Input* inputin, std::string fld, double* restrict data, double offset)
 {
@@ -930,6 +927,24 @@ void Fields<TF>::save(int n)
             master.print_message("OK\n");
         }
     }
+
+    // --------------- Hack BvS ----------------------
+    // For now, also dump pressure field for testing the Taylor Green vortex
+    std::cout << "BvS: hardcoded save of P field for testing Taylor Green vortex............" << std::endl;
+    char filename[256];
+    std::sprintf(filename, "p.%07d", n);
+    master.print_message("Saving \"%s\" ... ", filename);
+    if (grid.save_field3d(sd.at("p")->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+                filename, no_offset))
+    {
+        master.print_message("FAILED\n");
+        ++nerror;
+    }
+    else
+    {
+        master.print_message("OK\n");
+    }
+    // --------------- end Hack BvS -------------------
 
     if (nerror)
         throw 1;

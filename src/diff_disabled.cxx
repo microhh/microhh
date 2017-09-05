@@ -20,38 +20,47 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "constants.h"
-#include "master.h"
 
-#include "advec.h"
-#include "advec_disabled.h"
+// Diffusion schemes
+#include "diff.h"
+#include "diff_disabled.h"
+//#include "diff_2.h"
+//#include "diff_4.h"
+//#include "diff_smag2.h"
+
 
 template<typename TF>
-Advec_disabled<TF>::Advec_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Advec<TF>(masterin, gridin, fieldsin, inputin)
+Diff_disabled<TF>::Diff_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swadvec = "0";
+}
+
+template <typename TF>
+Diff_disabled<TF>::~Diff_disabled()
+{
+}
+
+template <typename TF>
+Diffusion_type Diff_disabled<TF>::get_switch()
+{
+    return swdiff;
 }
 
 template<typename TF>
-Advec_disabled<TF>::~Advec_disabled() {}
-
-template<typename TF>
-unsigned long Advec_disabled<TF>::get_time_limit(unsigned long idt, const double dt)
+unsigned long Diff_disabled<TF>::get_time_limit(const unsigned long idtlim, const double dt)
 {
     return Constants::ulhuge;
 }
 
 template<typename TF>
-double Advec_disabled<TF>::get_cfl(const double dt)
+double Diff_disabled<TF>::get_dn(const double dt)
 {
-    return cflmin;
+    return Constants::dsmall;
 }
 
-template<typename TF>
-void Advec_disabled<TF>::exec() {}
-
-template class Advec_disabled<double>;
-template class Advec_disabled<float>;
+template class Diff_disabled<double>;
+template class Diff_disabled<float>;

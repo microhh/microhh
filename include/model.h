@@ -35,6 +35,7 @@ template<typename> class Fields;
 template<typename> class Timeloop;
 template<typename> class Boundary;
 template<typename> class Advec;
+template<typename> class Diff;
 template<typename> class Pres;
 
 template<typename TF>
@@ -59,6 +60,7 @@ class Model
         std::shared_ptr<Timeloop<TF>> timeloop;
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Advec<TF>> advec;
+        std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
 
         std::string simmode;
