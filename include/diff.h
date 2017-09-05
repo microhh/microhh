@@ -29,7 +29,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-enum class Diffusion_type {Disabled};
+enum class Diffusion_type {Disabled, Diff_2};
 
 template <typename TF>
 class Diff
@@ -58,7 +58,5 @@ class Diff
         Grid<TF>& grid;
         Fields<TF>& fields;
         Master& master;
-
-        double dnmax;
 };
 #endif

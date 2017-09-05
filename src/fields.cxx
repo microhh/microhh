@@ -25,6 +25,8 @@
 #include <cmath>
 #include <algorithm>
 #include <sstream>
+#include <iostream>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -930,6 +932,24 @@ void Fields<TF>::save(int n)
             master.print_message("OK\n");
         }
     }
+
+    // --------------- Hack BvS ----------------------
+    // For now, also dump pressure field for testing the Taylor Green vortex
+    std::cout << "BvS: hardcoded save of P field for testing Taylor Green vortex............" << std::endl;
+    char filename[256];
+    std::sprintf(filename, "p.%07d", n);
+    master.print_message("Saving \"%s\" ... ", filename);
+    if (grid.save_field3d(sd.at("p")->data.data(), atmp["tmp1"]->data.data(), atmp["tmp2"]->data.data(),
+                filename, no_offset))
+    {
+        master.print_message("FAILED\n");
+        ++nerror;
+    }
+    else
+    {
+        master.print_message("OK\n");
+    }
+    // --------------- end Hack BvS -------------------
 
     if (nerror)
         throw 1;

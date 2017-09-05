@@ -36,7 +36,7 @@
 // diffusion schemes
 #include "diff.h"
 #include "diff_disabled.h"
-//#include "diff_2.h"
+#include "diff_2.h"
 //#include "diff_4.h"
 //#include "diff_smag2.h"
 
@@ -59,6 +59,8 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(Master& masterin, Grid<TF>& gridin, 
 
     if (swdiff == "0")
         return std::make_shared<Diff_disabled<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swdiff == "2")
+        return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         masterin.print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());

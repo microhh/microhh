@@ -156,6 +156,7 @@ void Model<TF>::load()
     boundary->create(*input);
 
     pres->set_values();
+    diff->set_values();
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -205,7 +206,7 @@ void Model<TF>::exec()
     // fields->exec();
 
     // Get the viscosity to be used in diffusion.
-    // diff->exec_viscosity();
+    diff->exec_viscosity();
 
     // Set the time step.
     set_time_step();
@@ -225,7 +226,7 @@ void Model<TF>::exec()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Calculate the diffusion tendency.
-        // diff->exec();
+        diff->exec();
 
         // Calculate the thermodynamics and the buoyancy tendency.
         // thermo->exec();
@@ -353,7 +354,7 @@ void Model<TF>::exec()
         // fields->exec();
 
         // Get the viscosity to be used in diffusion.
-        // diff->exec_viscosity();
+        diff->exec_viscosity();
 
         // Write status information to disk.
         print_status();
@@ -377,7 +378,7 @@ void Model<TF>::set_time_step()
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
     timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    // timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
     // timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
