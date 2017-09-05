@@ -39,11 +39,11 @@ class Advec_2 : public Advec<TF>
 {
     public:
         Advec_2(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        ~Advec_2();              ///< Destructor of the advection class.
+        virtual ~Advec_2();              ///< Destructor of the advection class.
 
-        void exec(); ///< Execute the advection scheme.
-        unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-        double get_cfl(double); ///< Get the CFL number.
+        virtual void exec(); ///< Execute the advection scheme.
+        virtual unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+        virtual double get_cfl(double); ///< Get the CFL number.
 
     private:
         using Advec<TF>::master;
