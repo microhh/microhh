@@ -241,7 +241,7 @@ void Advec_2<TF>::exec()
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    advec_u(fields.mt.at("v")->data.data(),
+    advec_v(fields.mt.at("v")->data.data(),
             fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
             gd.dzi.data(), gd.dx, gd.dy,
             fields.rhoref.data(), fields.rhorefh.data(),
