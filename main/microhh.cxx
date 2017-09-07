@@ -36,19 +36,14 @@ int main(int argc, char *argv[])
         // Print the current version of the model.
         master.print_message("Microhh git-hash: " GITHASH "\n");
 
-        // Initialize the model class.
+        // Initialize the model in double precision.
         Model<double> model(master, argc, argv);
 
         // Initialize the model components.
         model.init();
 
+        // Load or save the data depending on the run mode.
         model.load_or_save();
-
-        // Print warnings for input variables that are unused.
-        // input.print_unused();
-
-        // Free the memory taken by the input fields.
-        // input.clear();
 
         // Run the model.
         model.exec();
@@ -62,7 +57,7 @@ int main(int argc, char *argv[])
     }
     catch (...)
     {
-        master.print_message("UNHANDLED EXEPTION!\n");
+        master.print_message("UNHANDLED EXCEPTION!\n");
         return 1;
     }
 

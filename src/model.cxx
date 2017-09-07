@@ -141,6 +141,14 @@ void Model<TF>::load_or_save()
         // Initialize the allocated fields using data from disk.
         load();
     }
+
+    // This marks the end of the entire initialization.
+    // Print warnings for input variables that are unused.
+    // input.print_unused();
+
+    // Free the memory taken by the input fields.
+    // input.clear();
+
 }
 
 // In these functions data necessary to start the model is loaded from disk.
