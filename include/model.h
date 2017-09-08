@@ -38,6 +38,8 @@ template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
 
+enum class Sim_mode { Init, Run, Post };
+
 template<typename TF>
 class Model
 {
@@ -63,8 +65,8 @@ class Model
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
 
-        std::string simmode;
-        std::string simname;
+        Sim_mode sim_mode;
+        std::string sim_name;
 
         void load();
         void save();

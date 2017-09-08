@@ -30,13 +30,14 @@ class Master;
 template<typename> class Grid;
 template<typename> class Fields;
 class Input;
+enum class Sim_mode;
 
 template<typename TF>
 class Timeloop
 {
     public:
         Timeloop(Master&, Grid<TF>&, Fields<TF>&,
-                Input&, const std::string&);
+                Input&, const Sim_mode);
         ~Timeloop();
 
         void step_time();

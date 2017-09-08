@@ -22,5 +22,7 @@
 
 #ifndef DEFINES
 #define DEFINES
+
 #define restrict RESTRICTKEYWORD
+
 #endif

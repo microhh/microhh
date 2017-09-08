@@ -41,7 +41,7 @@
 
 namespace
 {
-    void process_command_line_options(std::string& simmode, std::string& simname,
+    void process_command_line_options(Sim_mode& sim_mode, std::string& sim_name,
                                       int argc, char *argv[],
                                       Master& master)
     {
@@ -49,26 +49,36 @@ namespace
         if (argc <= 1)
         {
             master.print_error("Specify init, run or post mode\n");
-            throw 1;
+            throw std::runtime_error("No run mode specified");
         }
         else
         {
             // Check the execution mode.
-            simmode = argv[1];
-            if (simmode != "init" && simmode != "run" && simmode != "post")
+            std::string sim_mode_str = argv[1];
+            if (sim_mode_str != "init" && sim_mode_str != "run" && sim_mode_str != "post")
             {
                 master.print_error("Specify init, run or post mode\n");
-                throw 1;
+                throw std::runtime_error("Illegal run mode specified");
             }
+            else
+            {
+                if (sim_mode_str == "init")
+                    sim_mode = Sim_mode::Init;
+                else if (sim_mode_str == "run")
+                    sim_mode = Sim_mode::Run;
+                else
+                    sim_mode = Sim_mode::Post;
+            }
+
             // Set the name of the simulation.
             if (argc > 2)
-                simname = argv[2];
+                sim_name = argv[2];
             else
-                simname = "microhh";
-        }
+                sim_name = "microhh";
 
-        master.print_message("Simulation name: %s\n", simname.c_str());
-        master.print_message("Simulation mode: %s\n", simmode.c_str());
+            master.print_message("Simulation name: %s\n", sim_name.c_str());
+            master.print_message("Simulation mode: %s\n", sim_mode_str.c_str());
+        }
     }
 }
 
@@ -77,10 +87,10 @@ template<typename TF>
 Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     master(masterin)
 {
-    process_command_line_options(simmode, simname, argc, argv, master);
+    process_command_line_options(sim_mode, sim_name, argc, argv, master);
 
-    input = std::make_shared<Input>(simname + ".ini");
-    profs = std::make_shared<Data_block>(simname + ".prof");
+    input = std::make_shared<Input>(sim_name + ".ini");
+    profs = std::make_shared<Data_block>(sim_name + ".prof");
 
     try
     {
@@ -88,7 +98,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         fields = std::make_shared<Fields<TF>>(master, *grid, *input);
 
-        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, simmode);
+        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
@@ -131,12 +141,12 @@ void Model<TF>::init()
 template<typename TF>
 void Model<TF>::load_or_save()
 {
-    if (simmode == "init")
+    if (sim_mode == Sim_mode::Init)
     {
         // Initialize the allocated fields and save the data.
         save();
     }
-    else if (simmode == "run" || simmode == "post")
+    else if (sim_mode == Sim_mode::Run || sim_mode == Sim_mode::Post)
     {
         // Initialize the allocated fields using data from disk.
         load();
@@ -184,7 +194,7 @@ void Model<TF>::save()
 template<typename TF>
 void Model<TF>::exec()
 {
-    if (simmode == "init")
+    if (sim_mode == Sim_mode::Init)
         return;
 
     // #ifdef USECUDA
@@ -314,7 +324,7 @@ void Model<TF>::exec()
             break;
 
         // RUN MODE: In case of run mode do the time stepping.
-        if (simmode == "run")
+        if (sim_mode == Sim_mode::Run)
         {
             // Integrate in time.
             timeloop->exec();
@@ -337,7 +347,7 @@ void Model<TF>::exec()
         }
 
         // POST PROCESS MODE: In case of post-process mode, load a new set of files.
-        else if (simmode == "post")
+        else if (sim_mode == Sim_mode::Post)
         {
             // Step to the next time step.
             timeloop->step_post_proc_time();

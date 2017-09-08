@@ -29,10 +29,11 @@
 #include "timeloop.h"
 #include "defines.h"
 #include "constants.h"
+#include "model.h"
 
 template<typename TF>
 Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Input& input, const std::string& simmode) :
+        Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
     fields(fieldsin)
@@ -41,7 +42,7 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     ifactor = 1e9;
 
     // obligatory parameters
-    if (simmode == "init")
+    if (sim_mode == Sim_mode::Init)
         starttime = 0.;
     else
         starttime = input.get_item<double>("time", "starttime", "");
@@ -57,7 +58,7 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     outputiter   = input.get_item<int>   ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int>   ("time", "iotimeprec"  , "", 0              );
 
-    if (simmode == "post")
+    if (sim_mode == Sim_mode::Post)
         postproctime = input.get_item<double>("time", "postproctime", "");
 
     // 3 and 4 are the only valid values for the rkorder
@@ -81,7 +82,7 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     idt           = (unsigned long)(ifactor * dt + 0.5);
     idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
     isavetime     = (unsigned long)(ifactor * savetime + 0.5);
-    if (simmode == "post")
+    if (sim_mode == Sim_mode::Post)
         ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
     idtlim = idt;
