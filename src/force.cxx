@@ -315,45 +315,6 @@ void Force::update_time_dependent()
     }
 }
 
-namespace
-{
-    void calc_time_interpolation_factors(int& index0, int&index1, double& fac0, double& fac1, const double time, std::vector<double> timevec)
-    {
-        // 1. Get the indexes and factors for the interpolation in time
-        index0 = 0;
-        index1 = 0;
-
-        for (auto& t : timevec)
-        {
-            if (time < t)
-                break;
-            else
-                ++index1;
-        }
-
-        // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
-        if (index1 == 0)
-        {
-            fac0   = 0.;
-            fac1   = 1.;
-            index0 = 0;
-        }
-        else if (index1 == timevec.size())
-        {
-            fac0   = 1.;
-            fac1   = 0.;
-            index0 = index1-1;
-            index1 = index0;
-        }
-        else
-        {
-            index0 = index1-1;
-            fac0 = (timevec[index1] - time) / (timevec[index1] - timevec[index0]);
-            fac1 = (time - timevec[index0]) / (timevec[index1] - timevec[index0]);
-        }
-    }
-}
-
 #ifndef USECUDA
 void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles, std::map<std::string, double*> time_profiles,
                                         std::map<std::string, std::vector<double>> times, std::string suffix)
@@ -372,9 +333,8 @@ void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles
             // Get/calculate the interpolation indexes/factors
             int index0, index1;
             double fac0, fac1;
-            const double time = model->timeloop->get_time();
 
-            calc_time_interpolation_factors(index0, index1, fac0, fac1, time, times[name]);
+            model->timeloop->get_interpolation_factors(index0, index1, fac0, fac1, times[name]);
 
             // Calculate the new vertical profile
             for (int k=0; k<grid->kmax; ++k)
@@ -392,10 +352,9 @@ void Force::update_time_dependent_prof(double* const restrict prof, const double
     const int kgc = grid->kgc;
 
     // Get/calculate the interpolation indexes/factors
-    const double time = model->timeloop->get_time();
     int index0, index1;
     double fac0, fac1;
-    calc_time_interpolation_factors(index0, index1, fac0, fac1, time, times);
+    model->timeloop->get_interpolation_factors(index0, index1, fac0, fac1, times);
 
     // Calculate the new vertical profile
     for (int k=0; k<grid->kmax; ++k)

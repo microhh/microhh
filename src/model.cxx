@@ -237,6 +237,7 @@ void Model::exec()
     // Update the time dependent parameters.
     boundary->update_time_dependent();
     force   ->update_time_dependent();
+    thermo  ->update_time_dependent();
 
     // Set the boundary conditions.
     boundary->exec();
@@ -384,6 +385,7 @@ void Model::exec()
         // Update the time dependent parameters.
         boundary->update_time_dependent();
         force   ->update_time_dependent();
+        thermo  ->update_time_dependent();
 
         // Set the boundary conditions.
         boundary->exec();

@@ -67,6 +67,7 @@ class Thermo_dry : public Thermo
 
         // Empty functions that are allowed to pass.
         void get_mask(Field3d*, Field3d*, Mask*) {}
+        void update_time_dependent() {}
 
     private:
         void init_stat();  ///< Initialize the thermo statistics

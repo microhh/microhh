@@ -25,6 +25,7 @@
 
 #include <sys/time.h>
 #include <string>
+#include <vector>
 
 class Input;
 class Master;
@@ -44,6 +45,8 @@ class Timeloop
         void set_time_step_limit();
         void set_time_step_limit(unsigned long);
         double get_sub_time_step();
+
+        void get_interpolation_factors(int&, int&, double&, double&, std::vector<double>);
 
         void exec();
 

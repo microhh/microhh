@@ -913,6 +913,9 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
     nerror += inputin->get_item(&swupdatebasestate, "thermo", "swupdatebasestate", "");
+    
+    // Time variable surface pressure
+    nerror += inputin->get_item(&swtimedeppbot, "thermo", "swtimedeppbot", "", 0);
 
     // Remove the data from the input that is not used, to avoid warnings.
     if (master->mode == "init")
@@ -1015,6 +1018,14 @@ void Thermo_moist::create(Input* inputin)
             thvref[k]          = thvref0;
             thvrefh[k]         = thvref0;
         }
+    }
+
+    // 6. Process the time dependent surface pressure
+    if (swtimedeppbot == 1)
+    {
+        const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
+        if (nerror > 0)
+            throw 1;
     }
 
     init_stat();
@@ -1618,6 +1629,19 @@ bool Thermo_moist::check_field_exists(const std::string name)
         return true;
     else
         return false;
+}
+
+void Thermo_moist::update_time_dependent()
+{
+    if (swtimedeppbot == 0)
+        return;
+
+    int index0, index1;
+    double fac0, fac1;
+
+    model->timeloop->get_interpolation_factors(index0, index1, fac0, fac1, timedeptime);
+
+    pbot = fac0 * timedeppbot[index0] + fac1 * timedeppbot[index1];
 }
 
 #ifndef USECUDA

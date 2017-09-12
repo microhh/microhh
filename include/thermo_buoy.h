@@ -58,6 +58,7 @@ class Thermo_buoy : public Thermo
         void exec_cross() {}
         void exec_dump() {}
         void get_mask(Field3d*, Field3d*, Mask*) {}
+        void update_time_dependent() {}
         
 #ifdef USECUDA
     void prepare_device() {};
