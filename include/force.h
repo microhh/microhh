@@ -106,6 +106,11 @@ class Force
         std::map<std::string, std::vector<double>> timedeptime_nudge;
         std::map<std::string, double*> timedepdata_nudge;
 
+        // Time dependence subsidence
+        std::string swtimedep_wls;
+        std::vector<double> timedeptime_wls;
+        double* timedepdata_wls;
+
         int create_timedep(std::map<std::string, double*>&, std::map<std::string, std::vector<double>>&,
                             std::vector<std::string>&, std::vector<std::string>, std::string);
 

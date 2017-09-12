@@ -75,8 +75,8 @@ Force::Force(Model* modelin, Input* inputin)
 
     if (swls == "1")
     {
-        nerror += inputin->get_list(&lslist,         "force", "lslist",         "");
         nerror += inputin->get_item(&swtimedep_ls,   "force", "swtimedep_ls",   "", "0");
+        nerror += inputin->get_list(&lslist,         "force", "lslist",         "");
         nerror += inputin->get_list(&timedeplist_ls, "force", "timedeplist_ls", "");
     }
     else if (swls != "0")
@@ -86,7 +86,10 @@ Force::Force(Model* modelin, Input* inputin)
     }
 
     if (swwls == "1")
+    {
+        nerror += inputin->get_item(&swtimedep_wls, "force", "swtimedep_wls", "", "0");
         fields->set_calc_mean_profs(true);
+    }
     else if (swwls != "0")
     {
         ++nerror;
@@ -224,7 +227,12 @@ void Force::create(Input *inputin)
 
     // Get the large scale vertical velocity from the input
     if (swwls == "1")
+    {
         nerror += inputin->get_prof(&wls[grid->kstart], "wls", grid->kmax);
+
+        if (swtimedep_wls == "1")
+            nerror += model->input->get_time_prof(&timedepdata_wls, &timedeptime_wls, "wls", grid->kmax);
+    }
 
     if (nerror)
         throw 1;
@@ -313,6 +321,9 @@ void Force::update_time_dependent()
         update_time_dependent_prof(ug, timedepdata_geo["ug"], timedeptime_geo["ug"]);
         update_time_dependent_prof(vg, timedepdata_geo["vg"], timedeptime_geo["vg"]);
     }
+
+    if (swtimedep_wls == "1")
+        update_time_dependent_prof(wls, timedepdata_wls, timedeptime_wls);
 }
 
 #ifndef USECUDA

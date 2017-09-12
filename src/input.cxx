@@ -967,7 +967,7 @@ int Input::get_time_prof(double** timeprof, std::vector<double>* timelist, std::
     for (Data_map::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
     {
         // check whether the item name is of type double
-        char inputstring[256], temp[256];
+        char inputstring[2048], temp[2048];
         std::strcpy(inputstring, it->first.c_str());
         double timedouble;
         int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
