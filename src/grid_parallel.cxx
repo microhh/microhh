@@ -27,6 +27,13 @@
 #include "grid.h"
 #include "defines.h"
 
+namespace
+{
+    template<typename TF> MPI_Datatype mpi_fp_type();
+    template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
+    template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
+}
+
 // MPI functions
 template<typename TF>
 void Grid<TF>::init_mpi()
@@ -38,79 +45,79 @@ void Grid<TF>::init_mpi()
     datacount  = gd.jcells*gd.kcells;
     datablock  = gd.igc;
     datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &eastwestedge);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge);
     MPI_Type_commit(&eastwestedge);
 
     // north south
     datacount  = gd.kcells;
     datablock  = gd.icells*gd.jgc;
     datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &northsouthedge);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge);
     MPI_Type_commit(&northsouthedge);
 
     // east west 2d
     datacount  = gd.jcells;
     datablock  = gd.igc;
     datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &eastwestedge2d);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge2d);
     MPI_Type_commit(&eastwestedge2d);
 
     // north south 2d
     datacount  = 1;
     datablock  = gd.icells*gd.jgc;
     datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &northsouthedge2d);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge2d);
     MPI_Type_commit(&northsouthedge2d);
 
     // transposez
     datacount = gd.imax*gd.jmax*gd.kblock;
-    MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
     MPI_Type_commit(&transposez);
 
     // transposez iblock/jblock/kblock
     datacount = gd.iblock*gd.jblock*gd.kblock;
-    MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez2);
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
     MPI_Type_commit(&transposez2);
 
     // transposex imax
     datacount  = gd.jmax*gd.kblock;
     datablock  = gd.imax;
     datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex);
     MPI_Type_commit(&transposex);
 
     // transposex iblock
     datacount  = gd.jmax*gd.kblock;
     datablock  = gd.iblock;
     datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex2);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex2);
     MPI_Type_commit(&transposex2);
 
     // transposey
     datacount  = gd.kblock;
     datablock  = gd.iblock*gd.jmax;
     datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey);
     MPI_Type_commit(&transposey);
 
     // transposey2
     datacount  = gd.kblock;
     datablock  = gd.iblock*gd.jblock;
     datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey2);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey2);
     MPI_Type_commit(&transposey2);
 
     // file saving and loading, take C-ordering into account
     int totsizei  = gd.itot;
     int subsizei  = gd.imax;
     int substarti = master.mpicoordx*gd.imax;
-    MPI_Type_create_subarray(1, &totsizei, &subsizei, &substarti, MPI_ORDER_C, MPI_DOUBLE, &subi);
+    MPI_Type_create_subarray(1, &totsizei, &subsizei, &substarti, MPI_ORDER_C, mpi_fp_type<TF>(), &subi);
     MPI_Type_commit(&subi);
 
     int totsizej  = gd.jtot;
     int subsizej  = gd.jmax;
     int substartj = master.mpicoordy*gd.jmax;
-    MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, MPI_DOUBLE, &subj);
+    MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, mpi_fp_type<TF>(), &subj);
     MPI_Type_commit(&subj);
 
     // the lines below describe the array in case transposes are not used before saving
@@ -120,28 +127,28 @@ void Grid<TF>::init_mpi()
     int totsize [3] = {gd.kmax  , gd.jtot, gd.itot};
     int subsize [3] = {gd.kblock, gd.jmax, gd.itot};
     int substart[3] = {master.mpicoordx*gd.kblock, master.mpicoordy*gd.jmax, 0};
-    MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
+    MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
     MPI_Type_commit(&subarray);
 
     // save mpitype for a xz-slice for cross section processing
     int totxzsize [2] = {gd.kmax, gd.itot};
     int subxzsize [2] = {gd.kmax, gd.imax};
     int subxzstart[2] = {0, master.mpicoordx*gd.imax};
-    MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, MPI_DOUBLE, &subxzslice);
+    MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxzslice);
     MPI_Type_commit(&subxzslice);
     
     // save mpitype for a yz-slice for cross section processing
     int totyzsize [2] = {gd.kmax, gd.jtot};
     int subyzsize [2] = {gd.kmax, gd.jmax};
     int subyzstart[2] = {0, master.mpicoordy*gd.jmax};
-    MPI_Type_create_subarray(2, totyzsize, subyzsize, subyzstart, MPI_ORDER_C, MPI_DOUBLE, &subyzslice);
+    MPI_Type_create_subarray(2, totyzsize, subyzsize, subyzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subyzslice);
     MPI_Type_commit(&subyzslice);
 
     // save mpitype for a xy-slice for cross section processing
     int totxysize [2] = {gd.jtot, gd.itot};
     int subxysize [2] = {gd.jmax, gd.imax};
     int subxystart[2] = {master.mpicoordy*gd.jmax, master.mpicoordx*gd.imax};
-    MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, MPI_DOUBLE, &subxyslice);
+    MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
     MPI_Type_commit(&subxyslice);
 
     // allocate the array for the profiles
@@ -462,7 +469,7 @@ void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
 // void Grid<TF>::get_max(double *var)
 // {
 //     double varl = *var;
-//     MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master.commxy);
+//     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_MAX, master.commxy);
 // }
 // 
 // template<typename TF>
@@ -476,7 +483,7 @@ void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
 // void Grid<TF>::get_sum(double *var)
 // {
 //     double varl = *var;
-//     MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master.commxy);
+//     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
 // }
 // 
 // template<typename TF>
@@ -485,7 +492,7 @@ void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
 //     for (int k=0; k<kcellsin; k++)
 //         profl[k] = prof[k] / master.nprocs;
 // 
-//     MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master.commxy);
+//     MPI_Allreduce(profl, prof, kcellsin, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
 // }
 
 template<typename TF>
@@ -506,27 +513,27 @@ void Grid<TF>::save_grid()
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
 
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+    MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subi, name, MPI_INFO_NULL);
     if (master.mpicoordy == 0)
-        MPI_File_write(fh, &gd.x[gd.istart], gd.imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+        MPI_File_write(fh, &gd.x[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
     fileoff += gd.itot*sizeof(double);
 
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+    MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subi, name, MPI_INFO_NULL);
     if (master.mpicoordy == 0)
-        MPI_File_write(fh, &gd.xh[gd.istart], gd.imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+        MPI_File_write(fh, &gd.xh[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
     fileoff += gd.itot*sizeof(double);
 
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+    MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
     if (master.mpicoordx == 0)
-        MPI_File_write(fh, &gd.y[gd.jstart], gd.jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+        MPI_File_write(fh, &gd.y[gd.jstart], gd.jmax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
     fileoff += gd.jtot*sizeof(double);
 
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+    MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
     if (master.mpicoordx == 0)
-        MPI_File_write(fh, &gd.yh[gd.jstart], gd.jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+        MPI_File_write(fh, &gd.yh[gd.jstart], gd.jmax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
 
     MPI_File_sync(fh);
@@ -625,10 +632,10 @@ int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
 
-    if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+    if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL))
         return 1;
 
-    if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    if (MPI_File_write_all(fh, tmp2, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
 
     if (MPI_File_close(&fh))
@@ -651,12 +658,12 @@ int Grid<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF*
     // select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+    MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL);
 
     // extract the data from the 3d field without the ghost cells
     int count = gd.imax*gd.jmax*gd.kmax;
 
-    if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    if (MPI_File_read_all(fh, tmp1, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
 
     if (MPI_File_close(&fh))
@@ -845,12 +852,12 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //         char name[] = "native";
 // 
 //         if (!nerror)
-//             if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+//             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxzslice, name, MPI_INFO_NULL))
 //                 ++nerror;
 // 
 //         // only write at the procs that contain the slice
 //         if (!nerror)
-//             if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //                 ++nerror;
 // 
 //         if (!nerror)
@@ -904,12 +911,12 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //         char name[] = "native";
 // 
 //         if (!nerror)
-//             if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subyzslice, name, MPI_INFO_NULL))
+//             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subyzslice, name, MPI_INFO_NULL))
 //                 ++nerror;
 // 
 //         // only write at the procs that contain the slice
 //         if (!nerror)
-//             if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //                 ++nerror;
 // 
 //         if (!nerror)
@@ -960,11 +967,11 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     MPI_Offset fileoff = 0; // the offset within the file (header size)
 //     char name[] = "native";
 // 
-//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+//     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
 //         return 1;
 // 
 //     // only write at the procs that contain the slice
-//     if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//     if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //         return 1;
 // 
 //     MPI_File_sync(fh);
@@ -999,11 +1006,11 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     MPI_Offset fileoff = 0; // the offset within the file (header size)
 //     char name[] = "native";
 // 
-//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+//     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
 //         return 1;
 // 
 //     // only write at the procs that contain the slice
-//     if (MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//     if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //         return 1;
 // 
 //     if (MPI_File_close(&fh))
