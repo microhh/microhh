@@ -517,19 +517,19 @@ void Grid<TF>::save_grid()
     if (master.mpicoordy == 0)
         MPI_File_write(fh, &gd.x[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
-    fileoff += gd.itot*sizeof(double);
+    fileoff += gd.itot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subi, name, MPI_INFO_NULL);
     if (master.mpicoordy == 0)
         MPI_File_write(fh, &gd.xh[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
-    fileoff += gd.itot*sizeof(double);
+    fileoff += gd.itot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
     if (master.mpicoordx == 0)
         MPI_File_write(fh, &gd.y[gd.jstart], gd.jmax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
     MPI_Barrier(master.commxy);
-    fileoff += gd.jtot*sizeof(double);
+    fileoff += gd.jtot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
     if (master.mpicoordx == 0)
@@ -544,8 +544,8 @@ void Grid<TF>::save_grid()
     {
         FILE *pFile;
         pFile = fopen(filename, "ab");
-        fwrite(&gd.z [gd.kstart], sizeof(double), gd.kmax, pFile);
-        fwrite(&gd.zh[gd.kstart], sizeof(double), gd.kmax, pFile);
+        fwrite(&gd.z [gd.kstart], sizeof(TF), gd.kmax, pFile);
+        fwrite(&gd.zh[gd.kstart], sizeof(TF), gd.kmax, pFile);
         fclose(pFile);
     }
 
@@ -573,10 +573,10 @@ void Grid<TF>::load_grid()
         }
         else
         {
-            int n = (2*gd.itot+2*gd.jtot)*sizeof(double);
+            int n = (2*gd.itot+2*gd.jtot)*sizeof(TF);
             fseek(pFile, n, SEEK_SET);
-            fread(&gd.z [gd.kstart], sizeof(double), gd.kmax, pFile);
-            fread(&gd.zh[gd.kstart], sizeof(double), gd.kmax, pFile);
+            fread(&gd.z [gd.kstart], sizeof(TF), gd.kmax, pFile);
+            fread(&gd.zh[gd.kstart], sizeof(TF), gd.kmax, pFile);
             fclose(pFile);
         }
     }
@@ -690,6 +690,23 @@ int Grid<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF*
     return 0;
 }
 
+namespace
+{
+    template<typename> void fftw_execute_wrapper(const fftw_plan&, const fftwf_plan&);
+
+    template<>
+    void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftw_execute(p);
+    }
+
+    template<>
+    void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftwf_execute(pf);
+    }
+}
+
 template<typename TF>
 void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
                            TF* const restrict fftini, TF* const restrict fftouti,
@@ -711,7 +728,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
             fftini[ij] = tmp1[ijk];
         }
 
-        fftw_execute(iplanf);
+        fftw_execute_wrapper<TF>(iplanf, iplanff);
 
         #pragma ivdep
         for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -738,7 +755,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
             fftinj[ij] = data[ijk];
         }
 
-        fftw_execute(jplanf);
+        fftw_execute_wrapper<TF>(jplanf, jplanff);
 
         #pragma ivdep
         for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -775,7 +792,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
             fftinj[ij] = tmp1[ijk];
         }
 
-        fftw_execute(jplanb);
+        fftw_execute_wrapper<TF>(jplanb, jplanbf);
 
         #pragma ivdep
         for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -802,7 +819,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
             fftini[ij] = tmp1[ijk];
         }
 
-        fftw_execute(iplanb);
+        fftw_execute_wrapper<TF>(iplanb, iplanbf);
 
         #pragma ivdep
         for (int n=0; n<gd.itot*gd.jmax; ++n)
