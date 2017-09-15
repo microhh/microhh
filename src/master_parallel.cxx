@@ -52,7 +52,7 @@ Master::~Master()
         MPI_Finalize();
 }
 
-void Master::start(int argc, char *argv[])
+void Master::start()
 {
     // initialize the MPI
     int n = MPI_Init(NULL, NULL);
@@ -79,49 +79,22 @@ void Master::start(int argc, char *argv[])
         throw 1;
 
     print_message("Starting run on %d processes\n", nprocs);
-
-    // process the command line options
-    if (argc <= 1)
-    {
-        print_error("Specify init, run or post mode\n");
-        throw 1;
-    }
-    else
-    {
-        // check the execution mode
-        mode = argv[1];
-        if (mode != "init" && mode != "run" && mode != "post")
-        {
-            print_error("Specify init, run or post mode\n");
-            throw 1;
-        }
-        // set the name of the simulation
-        if (argc > 2)
-            simname = argv[2];
-        else
-            simname = "microhh";
-    }
 }
 
-void Master::init(Input *inputin)
+void Master::init(Input& input)
 {
-    int nerror = 0;
-    nerror += inputin->get_item(&npx, "master", "npx", "", 1);
-    nerror += inputin->get_item(&npy, "master", "npy", "", 1);
+    npx = input.get_item<int>("master", "npx", "", 1);
+    npy = input.get_item<int>("master", "npy", "", 1);
 
-    // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
-    double wall_clock_limit;
-    nerror += inputin->get_item(&wall_clock_limit, "master", "wallclocklimit", "", 1E8);
-
-    if (nerror)
-        throw 1;
+    // Get the wall clock limit with a default value of 1E8 hours, which will be never hit.
+    double wall_clock_limit = input.get_item<double>("master", "wallclocklimit", "", 1E8);
 
     wall_clock_end = wall_clock_start + 3600.*wall_clock_limit;
 
     if (nprocs != npx*npy)
     {
         print_error("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
-        throw 1;
+        throw std::runtime_error("nprocs does not equal npx*npy");
     }
 
     int n;
@@ -131,28 +104,28 @@ void Master::init(Input *inputin)
     // define the dimensions of the 2-D grid layout
     n = MPI_Dims_create(nprocs, 2, dims);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // create a 2-D grid communicator that is optimized for grid to grid transfer
     // first, free our temporary copy of COMM_WORLD
     n = MPI_Comm_free(&commxy);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // for now, do not reorder processes, blizzard gives large performance loss
     n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     n = MPI_Comm_rank(commxy, &mpiid);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // retrieve the x- and y-coordinates in the 2-D grid for each process
     int mpicoords[2];
     n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     mpicoordx = mpicoords[1];
     mpicoordy = mpicoords[0];
@@ -162,20 +135,20 @@ void Master::init(Input *inputin)
 
     n = MPI_Cart_sub(commxy, dimx, &commx);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     n = MPI_Cart_sub(commxy, dimy, &commy);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // find out who are the neighbors of this process to facilitate the communication routines
     n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // create the requests arrays for the nonblocking sends
     int npmax;
@@ -223,38 +196,58 @@ void Master::broadcast(char *data, int datasize)
 }
 
 // overloaded broadcast functions
-void Master::broadcast(int *data, int datasize)
+void Master::broadcast(int* data, int datasize)
 {
     MPI_Bcast(data, datasize, MPI_INT, 0, commxy);
 }
 
-void Master::broadcast(unsigned long *data, int datasize)
+void Master::broadcast(unsigned long* data, int datasize)
 {
     MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, commxy);
 }
 
-void Master::broadcast(double *data, int datasize)
+void Master::broadcast(double* data, int datasize)
 {
     MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
 }
 
-void Master::sum(int *var, int datasize)
+void Master::broadcast(float* data, int datasize)
+{
+    MPI_Bcast(data, datasize, MPI_FLOAT, 0, commxy);
+}
+
+void Master::sum(int* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, commxy);
 }
 
-void Master::sum(double *var, int datasize)
+void Master::sum(double* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
 }
 
-void Master::max(double *var, int datasize)
+void Master::sum(float* var, int datasize)
+{
+    MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_SUM, commxy);
+}
+
+void Master::max(double* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MAX, commxy);
 }
 
-void Master::min(double *var, int datasize)
+void Master::max(float* var, int datasize)
+{
+    MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_MAX, commxy);
+}
+
+void Master::min(double* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, commxy);
+}
+
+void Master::min(float* var, int datasize)
+{
+    MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_MIN, commxy);
 }
 #endif
