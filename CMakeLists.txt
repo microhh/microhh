@@ -122,27 +122,3 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(main)
-
-# Documentation generation
-add_custom_target(todo ALL)
-# If a non-default sed is not set revert to standard sed.
-if(NOT GNU_SED)
-  set(GNU_SED "sed")
-endif()
-add_custom_command(TARGET todo POST_BUILD
-  COMMAND echo "MICROHH TODO LIST" > TODO
-  COMMAND date >> TODO
-  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/ *\\/\\/.*TODO */ /I' >> TODO
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
-
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  configure_file(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
-    COMMENT "Generating API documentation with Doxygen." VERBATIM
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
-else(DOXYGEN)
-  message(STATUS "WARNING: Doxygen not found - Reference manual will not be created.")
-endif()
