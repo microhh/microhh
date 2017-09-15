@@ -306,30 +306,32 @@ void Grid<TF>::exit_mpi()
 //             }
 //     }
 // }
-// 
-// template<typename TF>
-// void Grid<TF>::transpose_zx(double* restrict ar, double* restrict as)
-// {
-//     const int ncount = 1;
-//     const int tag = 1;
-// 
-//     const int jj = imax;
-//     const int kk = imax*jmax;
-// 
-//     for (int n=0; n<master.npx; n++)
-//     {
-//         // determine where to fetch the data and where to store it
-//         const int ijks = n*kblock*kk;
-//         const int ijkr = n*jj;
-// 
-//         // send and receive the data
-//         MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//         MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//     }
-//     master.wait_all();
-// }
+
+template<typename TF>
+void Grid<TF>::transpose_zx(TF* const restrict ar, TF* const restrict as)
+{
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.imax;
+    const int kk = gd.imax*gd.jmax;
+
+    for (int n=0; n<master.npx; ++n)
+    {
+        // Determine where to fetch the data and where to store it.
+        const int ijks = n*gd.kblock*kk;
+        const int ijkr = n*jj;
+
+        // Send and receive the data.
+        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, &master.reqs[master.reqsn]);
+        master.reqsn++;
+        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, &master.reqs[master.reqsn]);
+        master.reqsn++;
+    }
+
+    master.wait_all();
+}
+
 // 
 // template<typename TF>
 // void Grid<TF>::transpose_xz(double* restrict ar, double* restrict as)
@@ -584,225 +586,226 @@ void Grid<TF>::load_grid()
     calculate();
 }
 
-// template<typename TF>
-// int Grid<TF>::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-// {
-//     // save the data in transposed order to have large chunks of contiguous disk space
-//     // MPI-IO is not stable on Juqueen and supermuc otherwise
-// 
-//     // extract the data from the 3d field without the ghost cells
-//     const int jj  = icells;
-//     const int kk  = icells*jcells;
-//     const int jjb = imax;
-//     const int kkb = imax*jmax;
-// 
-//     int count = imax*jmax*kmax;
-// 
-//     for (int k=0; k<kmax; k++)
-//         for (int j=0; j<jmax; j++)
-// #pragma ivdep
-//             for (int i=0; i<imax; i++)
-//             {
-//                 const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-//                 const int ijkb = i + j*jjb + k*kkb;
-//                 tmp1[ijkb] = data[ijk] + offset;
-//             }
-// 
-//     transpose_zx(tmp2, tmp1);
-// 
-//     MPI_File fh;
-//     if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-//         return 1;
-// 
-//     // select noncontiguous part of 3d array to store the selected data
-//     MPI_Offset fileoff = 0; // the offset within the file (header size)
-//     char name[] = "native";
-// 
-//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
-//         return 1;
-// 
-//     if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-//         return 1;
-// 
-//     if (MPI_File_close(&fh))
-//         return 1;
-// 
-//     return 0;
-// }
-// 
-// template<typename TF>
-// int Grid<TF>::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-// {
-//     // save the data in transposed order to have large chunks of contiguous disk space
-//     // MPI-IO is not stable on Juqueen and supermuc otherwise
-// 
-//     // read the file
-//     MPI_File fh;
-//     if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-//         return 1;
-// 
-//     // select noncontiguous part of 3d array to store the selected data
-//     MPI_Offset fileoff = 0; // the offset within the file (header size)
-//     char name[] = "native";
-//     MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
-// 
-//     // extract the data from the 3d field without the ghost cells
-//     int count = imax*jmax*kmax;
-// 
-//     if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-//         return 1;
-// 
-//     if (MPI_File_close(&fh))
-//         return 1;
-// 
-//     // transpose the data back
-//     transpose_xz(tmp2, tmp1);
-// 
-//     const int jj  = icells;
-//     const int kk  = icells*jcells;
-//     const int jjb = imax;
-//     const int kkb = imax*jmax;
-// 
-//     for (int k=0; k<kmax; k++)
-//         for (int j=0; j<jmax; j++)
-// #pragma ivdep
-//             for (int i=0; i<imax; i++)
-//             {
-//                 const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-//                 const int ijkb = i + j*jjb + k*kkb;
-//                 data[ijk] = tmp2[ijkb] - offset;
-//             }
-// 
-//     return 0;
-// }
-// 
-// template<typename TF>
-// void Grid<TF>::fft_forward(double* restrict data,   double* restrict tmp1,
-//                        double* restrict fftini, double* restrict fftouti,
-//                        double* restrict fftinj, double* restrict fftoutj)
-// {
-//     // transpose the pressure field
-//     transpose_zx(tmp1,data);
-// 
-//     int kk = itot*jmax;
-// 
-//     // process the fourier transforms slice by slice
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftini[ij] = tmp1[ijk];
-//         }
-// 
-//         fftw_execute(iplanf);
-// 
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             tmp1[ijk] = fftouti[ij];
-//         }
-//     }
-// 
-//     // transpose again
-//     transpose_xy(data,tmp1);
-// 
-//     kk = iblock*jtot;
-// 
-//     // do the second fourier transform
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftinj[ij] = data[ijk];
-//         }
-// 
-//         fftw_execute(jplanf);
-// 
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             // shift to use p in pressure solver
-//             tmp1[ijk] = fftoutj[ij];
-//         }
-//     }
-// 
-//     // transpose back to original orientation
-//     transpose_yz(data,tmp1);
-// }
-// 
-// template<typename TF>
-// void Grid<TF>::fft_backward(double* restrict data,   double* restrict tmp1,
-//                         double* restrict fftini, double* restrict fftouti,
-//                         double* restrict fftinj, double* restrict fftoutj)
-// {
-//     // transpose back to y
-//     transpose_zy(tmp1, data);
-// 
-//     int kk = iblock*jtot;
-// 
-//     // transform the second transform back
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftinj[ij] = tmp1[ijk];
-//         }
-// 
-//         fftw_execute(jplanb);
-// 
-// #pragma ivdep
-//         for (int n=0; n<iblock*jtot; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             data[ijk] = fftoutj[ij] / jtot;
-//         }
-//     }
-// 
-//     // transpose back to x
-//     transpose_yx(tmp1, data);
-// 
-//     kk = itot*jmax;
-// 
-//     // transform the first transform back
-//     for (int k=0; k<kblock; k++)
-//     {
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             fftini[ij] = tmp1[ijk];
-//         }
-// 
-//         fftw_execute(iplanb);
-// 
-// #pragma ivdep
-//         for (int n=0; n<itot*jmax; n++)
-//         {
-//             const int ij  = n;
-//             const int ijk = n + k*kk;
-//             // swap array here to avoid unnecessary 3d loop
-//             data[ijk] = fftouti[ij] / itot;
-//         }
-//     }
-// 
-//     // and transpose back...
-//     transpose_xz(tmp1, data);
-// }
+template<typename TF>
+int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2, char* filename, TF offset)
+{
+    // save the data in transposed order to have large chunks of contiguous disk space
+    // MPI-IO is not stable on Juqueen and supermuc otherwise
+
+    // extract the data from the 3d field without the ghost cells
+    const int jj  = gd.icells;
+    const int kk  = gd.icells*gd.jcells;
+    const int jjb = gd.imax;
+    const int kkb = gd.imax*gd.jmax;
+
+    int count = gd.imax*gd.jmax*gd.kmax;
+
+    for (int k=0; k<gd.kmax; ++k)
+        for (int j=0; j<gd.jmax; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.imax; ++i)
+            {
+                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
+                const int ijkb = i + j*jjb + k*kkb;
+                tmp1[ijkb] = data[ijk] + offset;
+            }
+
+    transpose_zx(tmp2, tmp1);
+
+    MPI_File fh;
+    if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        return 1;
+
+    // select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+
+    if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+        return 1;
+
+    if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+        return 1;
+
+    if (MPI_File_close(&fh))
+        return 1;
+
+    return 0;
+}
+
+template<typename TF>
+int Grid<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2, char* filename, TF offset)
+{
+    // Save the data in transposed order to have large chunks of contiguous disk space.
+    // MPI-IO is not stable on Juqueen and supermuc otherwise.
+
+    // read the file
+    MPI_File fh;
+    if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+        return 1;
+
+    // select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+    // extract the data from the 3d field without the ghost cells
+    int count = gd.imax*gd.jmax*gd.kmax;
+
+    if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+        return 1;
+
+    if (MPI_File_close(&fh))
+        return 1;
+
+    // transpose the data back
+    transpose_xz(tmp2, tmp1);
+
+    const int jj  = gd.icells;
+    const int kk  = gd.icells*gd.jcells;
+    const int jjb = gd.imax;
+    const int kkb = gd.imax*gd.jmax;
+
+    for (int k=0; k<gd.kmax; ++k)
+        for (int j=0; j<gd.jmax; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.imax; ++i)
+            {
+                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
+                const int ijkb = i + j*jjb + k*kkb;
+                data[ijk] = tmp2[ijkb] - offset;
+            }
+
+    return 0;
+}
+
+template<typename TF>
+void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
+                           TF* const restrict fftini, TF* const restrict fftouti,
+                           TF* const restrict fftinj, TF* const restrict fftoutj)
+{
+    // Transpose the pressure field.
+    transpose_zx(tmp1, data);
+
+    int kk = gd.itot*gd.jmax;
+
+    // Process the fourier transforms slice by slice.
+    for (int k=0; k<gd.kblock; ++k)
+    {
+        #pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftini[ij] = tmp1[ijk];
+        }
+
+        fftw_execute(iplanf);
+
+        #pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            tmp1[ijk] = fftouti[ij];
+        }
+    }
+
+    // Transpose again.
+    transpose_xy(data, tmp1);
+
+    kk = gd.iblock*gd.jtot;
+
+    // Do the second fourier transform.
+    for (int k=0; k<gd.kblock; ++k)
+    {
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftinj[ij] = data[ijk];
+        }
+
+        fftw_execute(jplanf);
+
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            // Shift to use p in pressure solver.
+            tmp1[ijk] = fftoutj[ij];
+        }
+    }
+
+    // Transpose back to original orientation.
+    transpose_yz(data, tmp1);
+}
+
+template<typename TF>
+void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
+                            TF* const restrict fftini, TF* const restrict fftouti,
+                            TF* const restrict fftinj, TF* const restrict fftoutj)
+{
+    // Transpose back to y.
+    transpose_zy(tmp1, data);
+
+    int kk = gd.iblock*gd.jtot;
+
+    // Transform the second transform back.
+    for (int k=0; k<gd.kblock; ++k)
+    {
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftinj[ij] = tmp1[ijk];
+        }
+
+        fftw_execute(jplanb);
+
+        #pragma ivdep
+        for (int n=0; n<gd.iblock*gd.jtot; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            data[ijk] = fftoutj[ij] / gd.jtot;
+        }
+    }
+
+    // Transpose back to x.
+    transpose_yx(tmp1, data);
+
+    kk = gd.itot*gd.jmax;
+
+    // Transform the first transform back.
+    for (int k=0; k<gd.kblock; ++k)
+    {
+        #pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            fftini[ij] = tmp1[ijk];
+        }
+
+        fftw_execute(iplanb);
+
+        #pragma ivdep
+        for (int n=0; n<gd.itot*gd.jmax; ++n)
+        {
+            const int ij = n;
+            const int ijk = n + k*kk;
+            // swap array here to avoid unnecessary 3d loop
+            data[ijk] = fftouti[ij] / gd.itot;
+        }
+    }
+
+    // And transpose back...
+    transpose_xz(tmp1, data);
+}
+
 // 
 // template<typename TF>
 // int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)

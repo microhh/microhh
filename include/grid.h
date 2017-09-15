@@ -131,12 +131,12 @@ class Grid
 
         void boundary_cyclic(TF*, Edge=Edge::Both_edges); ///< Fills the ghost cells in the periodic directions.
         void boundary_cyclic_2d(TF*); ///< Fills the ghost cells of one slice in the periodic direction.
-        // void transpose_zx(double*, double*); ///< Changes the transpose orientation from z to x.
-        // void transpose_xz(double*, double*); ///< Changes the transpose orientation from x to z.
-        // void transpose_xy(double*, double*); ///< changes the transpose orientation from x to y.
-        // void transpose_yx(double*, double*); ///< Changes the transpose orientation from y to x.
-        // void transpose_yz(double*, double*); ///< Changes the transpose orientation from y to z.
-        // void transpose_zy(double*, double*); ///< Changes the transpose orientation from z to y.
+        void transpose_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
+        void transpose_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
+        void transpose_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
+        void transpose_yx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to x.
+        void transpose_yz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to z.
+        void transpose_zy(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to y.
 
         // void get_max (double*);      ///< Gets the maximum of a number over all processes.
         // void get_max (int*);         ///< Gets the maximum of a number over all processes.
