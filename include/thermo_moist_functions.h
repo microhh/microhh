@@ -57,6 +57,11 @@ namespace Thermo_moist_functions
         return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
     }
 
+    CUDA_MACRO inline double thv_flux_no_ql(const double thl, const double thlflux, const double qt, const double qtflux)
+    {
+        return thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux;
+    }
+
     //CUDA_MACRO inline double esat(const double T)
     //{
     //    #ifdef __CUDACC__
