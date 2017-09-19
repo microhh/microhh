@@ -97,7 +97,7 @@ int Field3d<TF>::init()
 template<typename TF>
 void Field3d<TF>::calc_mean_profile()
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    const auto& gd = grid.get_grid_data();
 
     for (int k=0; k<gd.kcells; ++k)
     {
@@ -124,7 +124,7 @@ void Field3d<TF>::calc_mean_profile()
 template<typename TF>
 TF Field3d<TF>::calc_mean()
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    const auto& gd = grid.get_grid_data();
 
     TF sum = 0;
 
