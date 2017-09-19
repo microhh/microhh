@@ -36,6 +36,20 @@
 
 using namespace Finite_difference::O2;
 
+namespace
+{
+    template<typename TF>
+    void enforce_fixed_flux(TF* restrict ut,
+                            const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
+                            const TF dt, const int ncells)
+    {
+        const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
+
+        for (int n=0; n<ncells; n++)
+            ut[n] += fbody;
+    }
+}
+
 template<typename TF>
 Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
@@ -49,7 +63,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "uflux")
     {
         swlspres = Large_scale_pressure_type::fixed_flux;
-        uflux = inputin.get_item<double>("force", "uflux", "");
+        uflux = inputin.get_item<TF>("force", "uflux", "");
     }
     else if (swlspres_in == "geo")
     {
@@ -148,8 +162,15 @@ void Force<TF>::create(Input& inputin)
 template <typename TF>
 void Force<TF>::exec(double dt)
 {
-    //if (swlspres == "uflux")
-    //    calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
+    auto& gd = grid.get_grid_data();
+
+    if (swlspres == Large_scale_pressure_type::fixed_flux)
+    {
+        const TF u_mean  = fields.ap.at("u") ->calc_mean();
+        const TF ut_mean = fields.at.at("ut")->calc_mean();
+
+        enforce_fixed_flux<TF>(fields.at.at("ut")->data.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.ncells);
+    }
 
     //else if (swlspres == "geo")
     //{
