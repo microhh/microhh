@@ -33,6 +33,7 @@
 #include "advec.h"
 #include "diff.h"
 #include "pres.h"
+#include "force.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -94,16 +95,16 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid = std::make_shared<Grid<TF>>(master, *input);
-
-        fields = std::make_shared<Fields<TF>>(master, *grid, *input);
-
+        grid     = std::make_shared<Grid<TF>>(master, *input);
+        fields   = std::make_shared<Fields<TF>>(master, *grid, *input);
         timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
+
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
     }
     catch (std::exception& e)
     {
@@ -136,6 +137,7 @@ void Model<TF>::init()
     fields->init();
     boundary->init(*input);
     pres->init();
+    force->init();
 }
 
 template<typename TF>
@@ -172,6 +174,7 @@ void Model<TF>::load()
     fields->load(timeloop->get_iotime());
 
     boundary->create(*input);
+    force->create(*input);
 
     pres->set_values();
     diff->set_values();
@@ -253,7 +256,7 @@ void Model<TF>::exec()
         // buffer->exec();
 
         // Apply the large scale forcings. Keep this one always right before the pressure.
-        // force->exec(timeloop->get_sub_time_step());
+        force->exec(timeloop->get_sub_time_step());
 
         // Solve the poisson equation for pressure.
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);

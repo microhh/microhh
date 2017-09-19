@@ -37,6 +37,7 @@ template<typename> class Boundary;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
+template<typename> class Force;
 
 enum class Sim_mode { Init, Run, Post };
 
@@ -64,6 +65,7 @@ class Model
         std::shared_ptr<Advec<TF>> advec;
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
+        std::shared_ptr<Force<TF>> force;
 
         Sim_mode sim_mode;
         std::string sim_name;
