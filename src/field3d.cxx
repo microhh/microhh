@@ -93,6 +93,55 @@ int Field3d<TF>::init()
 
     return 0;
 }
+
+template<typename TF>
+void Field3d<TF>::calc_mean_profile()
+{
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    for (int k=0; k<gd.kcells; ++k)
+    {
+        datamean[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk  = i + j*gd.icells + k*gd.ijcells;
+                datamean[k] += data[ijk];
+            }
+    }
+
+    master.sum(datamean.data(), gd.kcells);
+
+    const double n = gd.itot * gd.jtot;
+
+    for (int k=0; k<gd.kcells; ++k)
+        datamean[k] /= n;
+}
+
+// Calculate the volume weighted total mean
+// BvS: for now only at full levels
+template<typename TF>
+TF Field3d<TF>::calc_mean()
+{
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    TF sum = 0;
+
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk  = i + j*gd.icells + k*gd.ijcells;
+                sum += data[ijk] * gd.dz[k];
+            }
+
+    master.sum(&sum, 1);
+    const TF mean = sum / (gd.itot * gd.jtot * gd.zsize);
+
+    return mean;
+}
 #endif
 
 template class Field3d<double>;

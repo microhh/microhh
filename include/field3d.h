@@ -32,13 +32,15 @@ template<typename TF>
 class Field3d
 {
     public:
-        // functions
+        // Functions
         Field3d(Master&, Grid<TF>&, std::string, std::string, std::string);
         ~Field3d();
 
         int init();
+        void calc_mean_profile();   ///< Calculate mean profile into datamean
+        TF calc_mean();             ///< Calculate volume weighted total mean
 
-        // variables at CPU
+        // Variables at CPU.
         std::vector<TF> data;
         std::vector<TF> databot;
         std::vector<TF> datatop;
