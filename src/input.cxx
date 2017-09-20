@@ -10,6 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include "input.h"
 #include "convert.h"
+#include "master.h"
 
 namespace
 {
@@ -50,15 +51,14 @@ namespace
     }
 }
 
-Input::Input(const std::string& file_name)
+Input::Input(Master& master, const std::string& file_name) : master(master)
 {
     std::string blockname;
 
     // Read file and throw exception on error.
     std::ifstream infile;
-    // infile.exceptions(std::ifstream::failbit);
     infile.open(file_name);
-    if (!infile.good())
+    if (!infile)
         throw std::runtime_error("Illegal file name");
 
     std::string line;
