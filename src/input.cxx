@@ -70,7 +70,6 @@ namespace
             if (master.mpiid != 0)
                 line.resize(line_size);
             master.broadcast(const_cast<char*>(line.data()), line_size);
-            std::cout << "CvH: " << master.mpiid << ", " << line_size << ", " << line << std::endl;
         }
         return has_line;
     }

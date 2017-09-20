@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 #include "data_block.h"
 #include "convert.h"
+#include "master.h"
 
 namespace
 {
@@ -47,16 +48,41 @@ namespace
 
         return item;
     }
+
+    bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
+    {
+        int has_line = false;
+        if (master.mpiid == 0)
+        {
+            if (std::getline(infile, line))
+                has_line = true;
+        }
+
+        master.broadcast(&has_line, 1);
+        if (has_line)
+        {
+            // Broadcasting a std::string. This is ugly!
+            int line_size = line.size();
+            master.broadcast(&line_size, 1);
+            if (master.mpiid != 0)
+                line.resize(line_size);
+            master.broadcast(const_cast<char*>(line.data()), line_size);
+        }
+        return has_line;
+    }
 }
 
-Data_block::Data_block(const std::string& file_name)
+Data_block::Data_block(Master& master, const std::string& file_name) : master(master)
 {
     // Read file and throw exception on error.
     std::ifstream infile;
 
-    infile.open(file_name);
-    if (!infile.good())
-        throw std::runtime_error("Illegal file name");
+    if (master.mpiid == 0)
+    {
+        infile.open(file_name);
+        if (!infile.good())
+            throw std::runtime_error("Illegal file name");
+    }
 
     std::string line;
 
@@ -65,7 +91,7 @@ Data_block::Data_block(const std::string& file_name)
     int line_number = 0;
     std::vector<std::string> header_items;
 
-    while (std::getline(infile, line))
+    while (get_line_from_input(infile, line, master))
     {
         ++line_number;
         std::vector<std::string> strings = split_line(line, " \t");
@@ -86,7 +112,7 @@ Data_block::Data_block(const std::string& file_name)
     }
 
     // Second, read the data.
-    while (std::getline(infile, line))
+    while (get_line_from_input(infile, line, master))
     {
         ++line_number;
         std::vector<std::string> strings = split_line(line, " \t");
