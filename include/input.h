@@ -16,7 +16,7 @@ class Input
         template<typename T> std::vector<T> get_list(const std::string&, const std::string&, const std::string&, const std::vector<T>);
         void print_itemlist();
 
-        typedef std::map<std::string, std::map< std::string, std::map<std::string, std::string>>> Itemlist;
+        typedef std::map<std::string, std::map< std::string, std::map<std::string, std::pair<std::string, bool>>>> Itemlist;
 
     private:
         Master& master;

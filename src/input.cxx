@@ -16,7 +16,7 @@ namespace
 {
     using namespace Convert;
 
-    std::string get_item_string(const Input::Itemlist& itemlist,
+    std::string get_item_string(Input::Itemlist& itemlist,
                                 const std::string& blockname,
                                 const std::string& itemname,
                                 const std::string& subitemname)
@@ -47,7 +47,9 @@ namespace
             }
         }
 
-        return itsubitem->second;
+        // Mark the item as read, and return the value.
+        itsubitem->second.second = true;
+        return itsubitem->second.first;
     }
 }
 
@@ -135,7 +137,8 @@ Input::Input(Master& master, const std::string& file_name) : master(master)
 
             // Leave the checking of the right string for later
             // when the type is known.
-            itemlist[blockname][left][leftsub] = right;
+            itemlist[blockname][left][leftsub].first = right;
+            itemlist[blockname][left][leftsub].second = false;
         }
         // Throw an error.
         else
@@ -154,7 +157,9 @@ void Input::print_itemlist()
             for (auto& is : i.second)
             {
                 std::ostringstream ss;
-                ss << b.first << "," << i.first << "," << is.first << "," << is.second << ";" << std::endl;
+                ss << b.first << "," << i.first << "," << is.first 
+                   << "," << is.second.first 
+                   << " (" << std::boolalpha << is.second.second << ")" << ";" << std::endl;
                 master.print_message(ss);
             }
 }
@@ -179,7 +184,7 @@ T Input::get_item(const std::string& blockname,
                   const std::string& subitemname)
 {
     std::string value = get_item_string(itemlist, blockname, itemname, subitemname);
-    T item = convert_value_to_item<T>(value); 
+    T item = convert_value_to_item<T>(value);
 
     std::string itemout = "[" + blockname + "][" + itemname + "]";
     if (!subitemname.empty())
