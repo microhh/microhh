@@ -22,11 +22,17 @@ namespace
     {
         auto itblock = itemlist.find(blockname);
         if (itblock == itemlist.end())
-            throw std::runtime_error("Block does not exist");
+        {
+            std::string error_message = "Block \"" + blockname + "\" does not exist";
+            throw std::runtime_error(error_message);
+        }
 
         auto ititem = itblock->second.find(itemname);
         if (ititem == itblock->second.end())
-            throw std::runtime_error("Item does not exist");
+        {
+            std::string error_message = "Item \"" + itemname + "\" in group \"" + blockname + "\" does not exist";
+            throw std::runtime_error(error_message);
+        }
 
         // If the subitem is empty, it finds the default option "".
         auto itsubitem = ititem->second.find(subitemname);
@@ -34,7 +40,10 @@ namespace
         {
             itsubitem = ititem->second.find(std::string(""));
             if (itsubitem == ititem->second.end())
-                throw std::runtime_error("Subitem does not exist");
+            {
+                std::string error_message = "Subitem \"" + subitemname + "\" in item \"" + itemname + "\" does not exist";
+                throw std::runtime_error(error_message);
+            }
         }
 
         return itsubitem->second;
@@ -89,7 +98,10 @@ Input::Input(const std::string& file_name)
                 check_item(blockname);
             }
             else
-                throw std::runtime_error("Illegal line");
+            {
+                std::string error_message = "Line \"" + line + "\" is illegal";
+                throw std::runtime_error(error_message);
+            }
         }
         // Read item.
         else if (strings.size() == 2)
@@ -127,7 +139,10 @@ Input::Input(const std::string& file_name)
         }
         // Throw an error.
         else
-            throw std::runtime_error("Illegal line");
+        {
+            std::string error_message = "Line \"" + line + "\" is illegal";
+            throw std::runtime_error(error_message);
+        }
     }
 }
 
