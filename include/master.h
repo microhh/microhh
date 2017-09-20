@@ -66,6 +66,9 @@ class Master
         void min(float*, int);
 
         void print_message(const char *format, ...);
+        void print_message(const std::ostringstream&);
+        void print_message(const std::string&);
+
         void print_warning(const char *format, ...);
         void print_error  (const char *format, ...);
 

@@ -181,9 +181,12 @@ T Input::get_item(const std::string& blockname,
     if (!subitemname.empty())
         itemout += "[" + subitemname + "]";
 
-    std::cout << std::left << std::setw(30) << itemout << "= " 
-        << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
-        << std::endl;
+    std::ostringstream ss;
+    ss << std::left << std::setw(30) << itemout << "= " 
+       << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
+       << std::endl;
+
+    master.print_message(ss);
 
     return item;
 }
@@ -212,9 +215,12 @@ T Input::get_item(const std::string& blockname,
     if (!subitemname.empty())
         itemout += "[" + subitemname + "]";
 
-    std::cout << std::left << std::setw(30) << itemout << "= " 
-        << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
-        << "   " << itemqualifier << std::endl;
+    std::ostringstream ss;
+    ss << std::left << std::setw(30) << itemout << "= " 
+       << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
+       << "   " << itemqualifier << std::endl;
+
+    master.print_message(ss);
 
     return item;
 }

@@ -22,6 +22,8 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <iostream>
+#include <sstream>
 #include "master.h"
 
 void Master::print_message(const char *format, ...)
@@ -33,6 +35,18 @@ void Master::print_message(const char *format, ...)
         std::vfprintf(stdout, format, args);
         va_end(args);
     }
+}
+
+void Master::print_message(const std::ostringstream& ss)
+{
+    if (mpiid == 0)
+        std::cout << ss.str();
+}
+
+void Master::print_message(const std::string& s)
+{
+    if (mpiid == 0)
+        std::cout << s;
 }
 
 void Master::print_warning(const char *format, ...)
