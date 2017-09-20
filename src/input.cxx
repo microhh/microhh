@@ -51,6 +51,29 @@ namespace
         itsubitem->second.second = true;
         return itsubitem->second.first;
     }
+
+    bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
+    {
+        int has_line = false;
+        if (master.mpiid == 0)
+        {
+            if (std::getline(infile, line))
+                has_line = true;
+        }
+
+        master.broadcast(&has_line, 1);
+        if (has_line)
+        {
+            // Broadcasting a std::string. This is ugly!
+            int line_size = line.size();
+            master.broadcast(&line_size, 1);
+            if (master.mpiid != 0)
+                line.resize(line_size);
+            master.broadcast(const_cast<char*>(line.data()), line_size);
+            std::cout << "CvH: " << master.mpiid << ", " << line_size << ", " << line << std::endl;
+        }
+        return has_line;
+    }
 }
 
 Input::Input(Master& master, const std::string& file_name) : master(master)
@@ -59,13 +82,17 @@ Input::Input(Master& master, const std::string& file_name) : master(master)
 
     // Read file and throw exception on error.
     std::ifstream infile;
-    infile.open(file_name);
-    if (!infile)
-        throw std::runtime_error("Illegal file name");
+
+    if (master.mpiid == 0)
+    {
+        infile.open(file_name);
+        if (!infile)
+            throw std::runtime_error("Illegal file name");
+    }
 
     std::string line;
 
-    while (std::getline(infile, line))
+    while (get_line_from_input(infile, line, master))
     {
         // Strip of the comments.
         std::vector<std::string> strings;
@@ -163,12 +190,10 @@ void Input::flag_as_used(const std::string& blockname,
             {
                 auto it_subitem = it_item->second.find(subitemname);
                 if (it_subitem != it_item->second.end())
-                master.print_message("CvH: Flagging subitem!");
                 itemlist[it_block->first][it_item->first][it_subitem->first].second = true;
             }
             else
             {
-                master.print_message("CvH: Flagging item!");
                 itemlist[it_block->first][it_item->first][""].second = true;
             }
         }
