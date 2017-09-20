@@ -166,10 +166,10 @@ void Force<TF>::exec(double dt)
 
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {
-        const TF u_mean  = fields.ap.at("u") ->calc_mean();
-        const TF ut_mean = fields.at.at("ut")->calc_mean();
+        const TF u_mean  = fields.ap.at("u")->calc_mean();
+        const TF ut_mean = fields.at.at("u")->calc_mean();
 
-        enforce_fixed_flux<TF>(fields.at.at("ut")->data.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.ncells);
+        enforce_fixed_flux<TF>(fields.at.at("u")->data.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.ncells);
     }
 
     //else if (swlspres == "geo")
