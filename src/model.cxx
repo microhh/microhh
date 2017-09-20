@@ -156,10 +156,10 @@ void Model<TF>::load_or_save()
 
     // This marks the end of the entire initialization.
     // Print warnings for input variables that are unused.
-    // input.print_unused();
+    input->print_itemlist();
 
     // Free the memory taken by the input fields.
-    // input.clear();
+    input.reset();
 
 }
 

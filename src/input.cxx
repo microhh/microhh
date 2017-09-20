@@ -152,7 +152,11 @@ void Input::print_itemlist()
     for (auto& b : itemlist)
         for (auto& i : b.second)
             for (auto& is : i.second)
-                std::cout << b.first << "," << i.first << "," << is.first << "," << is.second << ";" << std::endl;
+            {
+                std::ostringstream ss;
+                ss << b.first << "," << i.first << "," << is.first << "," << is.second << ";" << std::endl;
+                master.print_message(ss);
+            }
 }
 
 namespace
