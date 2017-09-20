@@ -70,6 +70,9 @@ class Master
         void print_message(const std::string&);
 
         void print_warning(const char *format, ...);
+        void print_warning(const std::ostringstream&);
+        void print_warning(const std::string&);
+
         void print_error  (const char *format, ...);
 
         int nprocs;

@@ -149,6 +149,51 @@ Input::Input(Master& master, const std::string& file_name) : master(master)
     }
 }
 
+void Input::flag_as_used(const std::string& blockname,
+                         const std::string& itemname,
+                         const std::string& subitemname)
+{
+    auto it_block = itemlist.find(blockname);
+    if (it_block != itemlist.end())
+    {
+        auto it_item = it_block->second.find(itemname);
+        if (it_item != it_block->second.end())
+        {
+            if (subitemname != "")
+            {
+                auto it_subitem = it_item->second.find(subitemname);
+                if (it_subitem != it_item->second.end())
+                master.print_message("CvH: Flagging subitem!");
+                itemlist[it_block->first][it_item->first][it_subitem->first].second = true;
+            }
+            else
+            {
+                master.print_message("CvH: Flagging item!");
+                itemlist[it_block->first][it_item->first][""].second = true;
+            }
+        }
+    }
+}
+
+void Input::print_unused_items()
+{
+    // Print the list as a test.
+    for (auto& b : itemlist)
+        for (auto& i : b.second)
+            for (auto& is : i.second)
+            {
+                if (!is.second.second)
+                {
+                    std::string itemout = "[" + b.first + "][" + i.first + "]";
+                    if (!is.first.empty())
+                    itemout += "[" + is.first + "]";
+
+                    master.print_warning(itemout + " is not used!");
+                }
+            }
+}
+
+/*
 void Input::print_itemlist()
 {
     // Print the list as a test.
@@ -163,6 +208,7 @@ void Input::print_itemlist()
                 master.print_message(ss);
             }
 }
+*/
 
 namespace
 {

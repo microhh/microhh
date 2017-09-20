@@ -101,8 +101,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 
     gettimeofday(&start, NULL);
 
-    // if (master.mode == "init")
-    //     inputin.flag_as_used("time", "starttime");
+    if (sim_mode == Sim_mode::Init)
+        input.flag_as_used("time", "starttime", "");
 }
 
 template<typename TF>

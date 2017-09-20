@@ -46,7 +46,7 @@ void Master::print_message(const std::ostringstream& ss)
 void Master::print_message(const std::string& s)
 {
     if (mpiid == 0)
-        std::cout << s;
+        std::cout << s << std::endl;
 }
 
 void Master::print_warning(const char *format, ...)
@@ -63,6 +63,18 @@ void Master::print_warning(const char *format, ...)
         std::vfprintf(stdout, warningformat, args);
         va_end(args);
     }
+}
+
+void Master::print_warning(const std::ostringstream& ss)
+{
+    if (mpiid == 0)
+        std::cout << "WARNING: " << ss.str();
+}
+
+void Master::print_warning(const std::string& s)
+{
+    if (mpiid == 0)
+        std::cout << "WARNING: " << s << std::endl;
 }
 
 void Master::print_error(const char *format, ...)
