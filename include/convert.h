@@ -1,4 +1,6 @@
 #ifndef CONVERT
+#include "master.h"
+
 namespace Convert
 {
     template<typename T>
@@ -32,6 +34,28 @@ namespace Convert
             throw std::runtime_error("Item does not match type");
     
         return item;
+    }
+
+    inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
+    {
+        int has_line = false;
+        if (master.mpiid == 0)
+        {
+            if (std::getline(infile, line))
+                has_line = true;
+        }
+
+        master.broadcast(&has_line, 1);
+        if (has_line)
+        {
+            // Broadcasting a std::string. This is ugly!
+            int line_size = line.size();
+            master.broadcast(&line_size, 1);
+            if (master.mpiid != 0)
+                line.resize(line_size);
+            master.broadcast(const_cast<char*>(line.data()), line_size);
+        }
+        return has_line;
     }
 }
 #endif

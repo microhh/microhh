@@ -51,28 +51,6 @@ namespace
         itsubitem->second.second = true;
         return itsubitem->second.first;
     }
-
-    bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
-    {
-        int has_line = false;
-        if (master.mpiid == 0)
-        {
-            if (std::getline(infile, line))
-                has_line = true;
-        }
-
-        master.broadcast(&has_line, 1);
-        if (has_line)
-        {
-            // Broadcasting a std::string. This is ugly!
-            int line_size = line.size();
-            master.broadcast(&line_size, 1);
-            if (master.mpiid != 0)
-                line.resize(line_size);
-            master.broadcast(const_cast<char*>(line.data()), line_size);
-        }
-        return has_line;
-    }
 }
 
 Input::Input(Master& master, const std::string& file_name) : master(master)
