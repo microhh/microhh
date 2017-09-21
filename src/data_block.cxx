@@ -57,12 +57,16 @@ Data_block::Data_block(Master& master, const std::string& file_name) : master(ma
     // Read file and throw exception on error.
     std::ifstream infile;
 
+    int open_error = false;
     if (master.mpiid == 0)
     {
         infile.open(file_name);
-        if (!infile.good())
-            throw std::runtime_error("Illegal file name");
+        if (!infile)
+            open_error = true;
     }
+    master.broadcast(&open_error, 1);
+    if (open_error)
+        throw std::runtime_error("\"" + file_name + "\" cannot be opened ");
 
     std::string line;
 

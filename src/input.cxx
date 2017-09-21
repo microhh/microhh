@@ -60,12 +60,16 @@ Input::Input(Master& master, const std::string& file_name) : master(master)
     // Read file and throw exception on error.
     std::ifstream infile;
 
+    int open_error = false;
     if (master.mpiid == 0)
     {
         infile.open(file_name);
         if (!infile)
-            throw std::runtime_error("Illegal file name");
+            open_error = true;
     }
+    master.broadcast(&open_error, 1);
+    if (open_error)
+        throw std::runtime_error("\"" + file_name + "\" cannot be opened ");
 
     std::string line;
 
@@ -240,7 +244,7 @@ T Input::get_item(const std::string& blockname,
 
     std::ostringstream ss;
     ss << std::left << std::setw(30) << itemout << "= " 
-       << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
+       << std::right << std::setw(11) << std::setprecision(5) << item 
        << std::endl;
 
     master.print_message(ss);
@@ -274,7 +278,7 @@ T Input::get_item(const std::string& blockname,
 
     std::ostringstream ss;
     ss << std::left << std::setw(30) << itemout << "= " 
-       << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << item 
+       << std::right << std::setw(11) << std::setprecision(5) << item 
        << "   " << itemqualifier << std::endl;
 
     master.print_message(ss);
