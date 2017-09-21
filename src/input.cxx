@@ -9,12 +9,12 @@
 #include <iomanip>
 #include <boost/algorithm/string.hpp>
 #include "input.h"
-#include "convert.h"
+#include "input_tools.h"
 #include "master.h"
 
 namespace
 {
-    using namespace Convert;
+    using namespace Input_tools;
 
     std::string get_item_string(Input::Itemlist& itemlist,
                                 const std::string& blockname,

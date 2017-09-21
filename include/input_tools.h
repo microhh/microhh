@@ -1,7 +1,7 @@
-#ifndef CONVERT
+#ifndef INPUT_TOOLS 
 #include "master.h"
 
-namespace Convert
+namespace Input_tools
 {
     template<typename T>
     inline void check_item(const T& t) {}

@@ -7,12 +7,12 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "data_block.h"
-#include "convert.h"
+#include "input_tools.h"
 #include "master.h"
 
 namespace
 {
-    using namespace Convert;
+    using namespace Input_tools;
 
     std::vector<std::string> split_line(std::string& line, const std::string splitter)
     {
@@ -45,8 +45,8 @@ namespace
     {
         std::istringstream ss(value);
 
-        T item = Convert::get_item_from_stream<T>(ss);
-        Convert::check_item<T>(item);
+        T item = get_item_from_stream<T>(ss);
+        check_item<T>(item);
 
         return item;
     }
