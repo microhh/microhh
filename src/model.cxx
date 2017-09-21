@@ -34,6 +34,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "stats.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -103,8 +104,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-
+        
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
+        stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
     }
     catch (std::exception& e)
     {
@@ -135,9 +137,12 @@ void Model<TF>::init()
 
     grid->init();
     fields->init();
+
     boundary->init(*input);
     pres->init();
     force->init();
+
+    stats->init(timeloop->get_ifactor());
 }
 
 template<typename TF>
@@ -170,6 +175,9 @@ void Model<TF>::load()
     // First load the grid and time to make their information available.
     grid->load();
     timeloop->load(timeloop->get_iotime());
+
+    // Initialize the statistics file to open the possiblity to add profiles in other routines
+    stats->create(timeloop->get_iotime());
 
     fields->load(timeloop->get_iotime());
 

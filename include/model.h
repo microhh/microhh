@@ -32,12 +32,15 @@ class Data_block;
 
 template<typename> class Grid;
 template<typename> class Fields;
+
 template<typename> class Timeloop;
 template<typename> class Boundary;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
 template<typename> class Force;
+
+template<typename> class Stats;
 
 enum class Sim_mode { Init, Run, Post };
 
@@ -60,12 +63,15 @@ class Model
 
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
+
         std::shared_ptr<Timeloop<TF>> timeloop;
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Advec<TF>> advec;
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
         std::shared_ptr<Force<TF>> force;
+
+        std::shared_ptr<Stats<TF>> stats;
 
         Sim_mode sim_mode;
         std::string sim_name;
