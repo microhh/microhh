@@ -282,6 +282,42 @@ T Input::get_item(const std::string& blockname,
     return item;
 }
 
+namespace
+{
+    template<typename T>
+    void print_list(const std::string& blockname,
+                    const std::string& itemname,
+                    const std::string& subitemname,
+                    const std::vector<T>& list,
+                    Master& master,
+                    bool default_list = false)
+    {
+        std::string itemout = "[" + blockname + "][" + itemname + "]";
+        if (!subitemname.empty())
+            itemout += "[" + subitemname + "]";
+
+        std::ostringstream items;
+        if (list.empty())
+            items << "EMPTY LIST";
+        else
+        {
+            for (int i=0; i<list.size()-1; ++i)
+                items << list[i] << ",";
+            items << list.back();
+        }
+
+        std::ostringstream ss;
+        ss << std::left << std::setw(30) << itemout << "= " 
+           << std::right << std::setw(11) 
+           << items.str();
+        if (default_list)
+           ss << "   " << "(default)";
+        ss << std::endl;
+
+        master.print_message(ss);
+    }
+}
+
 template<typename T>
 std::vector<T> Input::get_list(const std::string& blockname,
                                const std::string& itemname,
@@ -300,6 +336,8 @@ std::vector<T> Input::get_list(const std::string& blockname,
         check_item(item);
         list.push_back(item);
     }
+
+    print_list(blockname, itemname, subitemname, list, master);
 
     return list;
 }
@@ -320,7 +358,6 @@ std::vector<T> Input::get_list(const std::string& blockname,
     catch (std::runtime_error& e)
     {
         set_default_value = true;
-        // itemqualifier = "(default)";
     }
 
     if (!set_default_value)
@@ -337,10 +374,16 @@ std::vector<T> Input::get_list(const std::string& blockname,
             list.push_back(item);
         }
 
+        print_list(blockname, itemname, subitemname, list, master);
+
         return list;
     }
     else
+    {
+        print_list(blockname, itemname, subitemname, default_value, master, true);
+
         return default_value;
+    }
 }
 
 // Explicitly instantiate templates.
