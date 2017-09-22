@@ -156,11 +156,9 @@ class Grid
         void fft_forward (TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
         void fft_backward(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.
 
-        /*
         // interpolation functions
-        void interpolate_2nd(double*, const double*, const int[3], const int[3]); ///< Second order interpolation
-        void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
-        */
+        void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); ///< Second order interpolation
+        //void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
 
         // CvH: TO BE PUT IN STRUCT
         // Fourier tranforms

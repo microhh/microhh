@@ -87,16 +87,16 @@ class Stats
 
         void get_mask(Field3d<TF>&, Field3d<TF>&);
 
-        //void exec(int, double, unsigned long);
+        void exec(int, double, unsigned long);
 
-        //// Container for all stats, masks as uppermost in hierarchy
+        // Container for all stats, masks as uppermost in hierarchy
         Mask_map<TF> masks;
         std::vector<int> nmask;
         std::vector<int> nmaskh;
         int nmaskbot;
         std::vector<std::string>& get_mask_list();
 
-        //// Interface functions.
+        // Interface functions.
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string);
 
@@ -104,16 +104,13 @@ class Stats
         //void add_time_series(std::string, std::string, std::string);
 
         void calc_area(TF*, const int[3], int*);
-
-        //void calc_mean(double* const, const double* const,
-        //               const double, const int[3],
-        //               const double* const, const int* const);
+        void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
 
         //void calc_mean2d(double* const, const double* const,
         //                 const double,
         //                 const double* const, const int* const);
 
-        //void calc_moment  (double*, double*, double*, double, const int[3], double*, int*);
+        void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 
         //void calc_diff_2nd(double*, double*, double*, double, const int[3], double*, int*);
         //void calc_diff_2nd(double*, double*, double*, double*, double*,
@@ -140,7 +137,7 @@ class Stats
 
         bool swstats;           ///< Statistics on/off switch
 
-        int nstats;             ///< Statistics counter
+        int statistics_counter;
         double sampletime;
         unsigned long isampletime;
 
@@ -148,16 +145,6 @@ class Stats
 
         //// mask calculations
         //void calc_mask(double*, double*, double*, int*, int*, int*);
-
-        //Model*  model;
-        //Grid*   grid;
-        //Fields* fields;
-        //Master* master;
-
-        //double sampletime;
-        //unsigned long isampletime;
-
-        //std::string swstats;
 
         static const int nthres = 0;
 };

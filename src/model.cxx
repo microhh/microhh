@@ -290,13 +290,7 @@ void Model<TF>::exec()
 
             // Do the statistics.
             if (stats->do_statistics(timeloop->get_itime()))
-            {
-                std::cout << "Calculating stats for " << timeloop->get_time() << std::endl;
-                // Calculate statistics for all the different masks.
                 calculate_statistics();
-                // Store the statistics data.
-                //stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
-            }
 
             // // Save the selected cross sections to disk, cross sections are handled on CPU.
             // if (cross->do_cross())
@@ -440,11 +434,14 @@ void Model<TF>::calculate_statistics()
         }
 
         // Calculate statistics
-        //fields  ->exec_stats(&stats->masks[maskname]);
+        fields  ->exec_stats(*stats, mask_name);
         //thermo  ->exec_stats(&stats->masks[maskname]);
         //budget  ->exec_stats(&stats->masks[maskname]);
         //boundary->exec_stats(&stats->masks[maskname]);
     }
+
+    // Store the statistics data.
+    stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
 }
 
 // Print the status information to the .out file.

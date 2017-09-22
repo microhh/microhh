@@ -105,7 +105,7 @@ void Stats<TF>::init(double ifactor)
     auto& gd = grid.get_grid_data();
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
-    nstats = 0;
+    statistics_counter = 0;
 
     // Vectors which hold the amount of grid points sampled on each model level.
     nmask. resize(gd.kcells);
@@ -220,52 +220,56 @@ bool Stats<TF>::do_statistics(unsigned long itime)
     return true;
 }
 
-//void Stats::exec(int iteration, double time, unsigned long itime)
-//{
-//    // This function is only called when stats are enabled no need for swstats check.
-//
-//    // check if time for execution
-//    if (itime % isampletime != 0)
-//        return;
-//
-//    // write message in case stats is triggered
-//    master->print_message("Saving stats for time %f\n", model->timeloop->get_time());
-//
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
-//
-//        // put the data into the NetCDF file
-//        if (master->mpiid == 0)
-//        {
-//            const std::vector<size_t> time_index = {static_cast<size_t>(nstats)};
-//
-//            m->t_var   .putVar(time_index, &time     );
-//            m->iter_var.putVar(time_index, &iteration);
-//
-//            const std::vector<size_t> time_height_index = {static_cast<size_t>(nstats), 0};
-//            std::vector<size_t> time_height_size  = {1, 0};
-//
-//            for (Prof_map::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
-//            {
-//                time_height_size[1] = m->profs[it->first].ncvar.getDim(1).getSize();
-//                m->profs[it->first].ncvar.putVar(time_height_index, time_height_size, &m->profs[it->first].data[grid->kstart]);
-//            }
-//
-//            for (Time_series_map::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
-//                m->tseries[it->first].ncvar.putVar(time_index, &m->tseries[it->first].data);
-//
-//            // Synchronize the NetCDF file
-//            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-//            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-//            //m->dataFile->sync();
-//            nc_sync(m->dataFile->getId());
-//        }
-//    }
-//
-//    ++nstats;
-//}
+template<typename TF>
+void Stats<TF>::exec(int iteration, double time, unsigned long itime)
+{
+    auto& gd = grid.get_grid_data();
+
+    // check if time for execution
+    // BvS: why was this used? This function is only called after a stats->do_statistics(), which already checks the sampletime...
+    //if (itime % isampletime != 0)
+    //    return;
+
+    // Write message in case stats is triggered
+    master.print_message("Saving statistics for time %f\n", time);
+
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Put the data into the NetCDF file
+        if (master.mpiid == 0)
+        {
+            const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
+
+            // Write the time and iteration number
+            m.t_var   .putVar(time_index, &time     );
+            m.iter_var.putVar(time_index, &iteration);
+
+            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
+            std::vector<size_t> time_height_size  = {1, 0};
+
+            //for (Prof_map::const_iterator it=m.profs.begin(); it!=m.profs.end(); ++it)
+            for (auto& p : m.profs)
+            {
+                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
+                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
+            }
+
+            for (auto& ts: m.tseries)
+                m.tseries[ts.first].ncvar.putVar(time_index, &m.tseries[ts.first].data);
+
+            // Synchronize the NetCDF file
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m.dataFile->sync();
+            nc_sync(m.data_file->getId());
+        }
+    }
+
+    // Increment the statistics index
+    ++statistics_counter;
+}
 
 // Retrieve the user input list of requested masks
 template<typename TF>
@@ -424,42 +428,42 @@ void Stats<TF>::calc_area(TF* restrict area, const int loc[3], int* restrict nma
     for (int k=gd.kstart; k<gd.kend+loc[2]; k++)
     {
         if (nmask[k] > nthres)
-            area[k] = (double)(nmask[k]) / (double)ijtot;
+            area[k] = static_cast<TF>(nmask[k]) / static_cast<TF>(ijtot);
         else
             area[k] = 0.;
     }
 }
 
-//void Stats::calc_mean(double* const restrict prof, const double* const restrict data,
-//                      const double offset, const int loc[3],
-//                      const double* const restrict mask, const int * const restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ijk  = i + j*jj + k*kk;
-//                prof[k] += mask[ijk]*(data[ijk] + offset);
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
+
+template<typename TF>
+void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data,
+                          const TF offset, const TF* const restrict mask, const int * const restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (int k=gd.kstart; k<gd.kend+1; k++)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; j++)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; i++)
+            {
+                const int ijk  = i + j*gd.icells + k*gd.ijcells;
+                prof[k] += mask[ijk]*(data[ijk] + offset);
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=gd.kstart; k<gd.kend+1; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
 //void Stats::calc_mean2d(double* const restrict mean, const double* const restrict data,
 //                        const double offset,
 //                        const double* const restrict mask, const int * const restrict nmask)
@@ -638,36 +642,36 @@ void Stats<TF>::calc_area(TF* restrict area, const int loc[3], int* restrict nma
 //            prof[k] = NC_FILL_DOUBLE;
 //    }
 //}
-//
-//void Stats::calc_moment(double* restrict data, double* restrict datamean, double* restrict prof, double power, const int loc[3],
-//                        double* restrict mask, int* restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
+
+template<typename TF>
+void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restrict prof, TF power,
+                            TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=gd.kstart; k<gd.kend+1; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
 //void Stats::calc_flux_2nd(double* restrict data, double* restrict datamean, double* restrict w, double* restrict wmean,
 //                          double* restrict prof, double* restrict tmp1, const int loc[3],
 //                          double* restrict mask, int* restrict nmask)

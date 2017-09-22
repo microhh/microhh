@@ -49,7 +49,7 @@ class Fields
 
         // void exec();
         // void get_mask(Field3d*, Field3d*, Mask*);
-        void exec_stats(Mask<TF>&);
+        void exec_stats(Stats<TF>&, std::string);   ///< Calculate the statistics
 
         void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);
