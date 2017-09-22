@@ -90,15 +90,7 @@ void Stats<TF>::create(int iotime)
     if (!swstats)
         return;
    
-     
-    
 
-//    // do not create file if stats is disabled
-//    if (swstats == "0")
-//        return;
-//
-//    int nerror = 0;
-//
 //    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
 //    {
 //        // shortcut
@@ -169,10 +161,6 @@ void Stats<TF>::create(int iotime)
 //    add_prof("area" , "Fractional area contained in mask", "-", "z" );
 //    add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
-
-
-
-
 
 
 //unsigned long Stats::get_time_limit(unsigned long itime)
@@ -250,12 +238,21 @@ void Stats<TF>::create(int iotime)
 //    return swstats;
 //}
 //
-//void Stats::add_mask(const std::string maskname)
-//{
-//    masks[maskname].name = maskname;
-//    masks[maskname].dataFile = 0;
-//}
-//
+
+// Retrieve the user input list of requested masks
+template<typename TF>
+std::vector<std::string>& Stats<TF>::get_mask_list()
+{
+    return masklist;
+}
+
+template<typename TF>
+void Stats<TF>::add_mask(const std::string maskname)
+{
+    masks[maskname].name = maskname;
+    masks[maskname].dataFile = 0;
+}
+
 //void Stats::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
 //{
 //    // add the profile to all files

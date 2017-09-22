@@ -78,6 +78,9 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     // before the init phase, where they are initialized in Fields::init()
     n_tmp_fields = 4;
 
+    // Specify the masks that fields can provide / calculate
+    available_masks.insert(available_masks.end(), {"wplus", "wmin"});
+
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     /*
     if (master.mode == "run")
@@ -1118,6 +1121,15 @@ void Fields::exec_dump()
         model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it);
 }
 */
+
+template<typename TF>
+bool Fields<TF>::has_mask(std::string mask_name)
+{
+    if (std::find(available_masks.begin(), available_masks.end(), mask_name) != available_masks.end())
+        return true;
+    else
+        return false;
+}
 
 template class Fields<double>;
 template class Fields<float>;

@@ -31,38 +31,46 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-//// struct for profiles
-//struct Prof_var
-//{
-//    NcVar ncvar;
-//    double* data;
-//};
-//
-//// struct for time series
-//struct Time_series_var
-//{
-//    NcVar ncvar;
-//    double data;
-//};
-//
-//// typedefs for containers of profiles and time series
-//typedef std::map<std::string, Prof_var> Prof_map;
-//typedef std::map<std::string, Time_series_var> Time_series_map;
-//
-//// structure
-//struct Mask
-//{
-//    std::string name;
-//    NcFile* dataFile;
-//    NcDim z_dim;
-//    NcDim zh_dim;
-//    NcDim t_dim;
-//    NcVar iter_var;
-//    NcVar t_var;
-//    Prof_map profs;
-//    Time_series_map tseries;
-//};
-//
+// Struct for profiles
+template<typename TF>
+struct Prof_var
+{
+    NcVar ncvar;
+    std::vector<TF> data;
+};
+
+// Struct for time series
+template<typename TF>
+struct Time_series_var
+{
+    NcVar ncvar;
+    TF data;
+};
+
+// Typedefs for containers of profiles and time series
+template<typename TF>
+using Prof_map = std::map<std::string, Prof_var<TF>>;
+template<typename TF>
+using Time_series_map = std::map<std::string, Time_series_var<TF>>;
+
+// structure
+template<typename TF>
+struct Mask
+{
+    std::string name;
+    NcFile* dataFile;
+    NcDim z_dim;
+    NcDim zh_dim;
+    NcDim t_dim;
+    NcVar iter_var;
+    NcVar t_var;
+    Prof_map<TF> profs;
+    Time_series_map<TF> tseries;
+};
+
+template<typename TF>
+using Mask_map = std::map<std::string, Mask<TF>>;
+
 //typedef std::map<std::string, Mask> Mask_map;
 
 template<typename TF>
@@ -82,13 +90,14 @@ class Stats
         //std::string get_switch();
 
         //// Container for all stats, masks as uppermost in hierarchy
-        //Mask_map masks;
+        Mask_map<TF> masks;
         std::vector<int> nmask;
         std::vector<int> nmaskh;
         int nmaskbot;
+        std::vector<std::string>& get_mask_list();
 
         //// Interface functions.
-        //void add_mask(const std::string);
+        void add_mask(const std::string);
         //void add_prof(std::string, std::string, std::string, std::string);
         //void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
         //void add_time_series(std::string, std::string, std::string);

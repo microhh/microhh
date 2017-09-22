@@ -65,6 +65,8 @@ class Fields
         double check_tke();
         double check_mass();
 
+        bool has_mask(std::string);
+
         // void set_calc_mean_profs(bool);
         // void set_minimum_tmp_fields(int);
 
@@ -136,6 +138,7 @@ class Fields
         // void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
 
         // // masks
+        std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
         // void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);
         // void calc_mask_wmin (double*, double*, double*, int*, int*, int*, double*);
 

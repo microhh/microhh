@@ -83,5 +83,7 @@ class Model
         void print_status();
         void calc_stats(std::string);
         void set_time_step();
+
+        void add_statistics_masks();
 };
 #endif
