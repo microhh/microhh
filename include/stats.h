@@ -58,7 +58,7 @@ template<typename TF>
 struct Mask
 {
     std::string name;
-    NcFile* dataFile;
+    NcFile* data_file;
     NcDim z_dim;
     NcDim zh_dim;
     NcDim t_dim;
@@ -71,8 +71,6 @@ struct Mask
 template<typename TF>
 using Mask_map = std::map<std::string, Mask<TF>>;
 
-//typedef std::map<std::string, Mask> Mask_map;
-
 template<typename TF>
 class Stats
 {
@@ -81,7 +79,7 @@ class Stats
         ~Stats();
 
         void init(double);
-        void create(int);
+        void create(int, std::string);
 
         //unsigned long get_time_limit(unsigned long);
         //void get_mask(Field3d*, Field3d*, Mask*);

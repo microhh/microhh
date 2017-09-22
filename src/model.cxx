@@ -180,7 +180,7 @@ void Model<TF>::load()
     timeloop->load(timeloop->get_iotime());
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
-    stats->create(timeloop->get_iotime());
+    stats->create(timeloop->get_iotime(), sim_name);
 
     fields->load(timeloop->get_iotime());
 
@@ -426,10 +426,12 @@ void Model<TF>::add_statistics_masks()
 {
     std::vector<std::string> mask_list = stats->get_mask_list();
 
-    // Check whether the mask can be retrieved from the mask-providing classes
+    // Check whether the mask can be retrieved from any of the mask-providing classes
     for (auto& mask_name : mask_list)
     {
-        if (fields->has_mask(mask_name))
+        if (mask_name == "default")
+            stats->add_mask(mask_name);
+        else if (fields->has_mask(mask_name))
             stats->add_mask(mask_name);
         else
         {

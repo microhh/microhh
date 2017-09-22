@@ -43,6 +43,13 @@
 using namespace netCDF;
 using namespace netCDF::exceptions;
 
+namespace
+{
+    template<typename TF> NcType netcdf_fp_type();
+    template<> NcType netcdf_fp_type<double>() { return ncDouble; }
+    template<> NcType netcdf_fp_type<float>()  { return ncFloat; }
+}
+
 template<typename TF>
 Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
     master(masterin), grid(gridin), fields(fieldsin)
@@ -53,6 +60,8 @@ Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
+        // Add the default mask, which calculates the domain mean without sampling
+        masklist.push_back("default");
     }
 }
 
@@ -84,84 +93,84 @@ void Stats<TF>::init(double ifactor)
 }
 
 template<typename TF>
-void Stats<TF>::create(int iotime)
+void Stats<TF>::create(int iotime, std::string sim_name)
 {
     // Do not create statistics file if stats is disabled
     if (!swstats)
         return;
-   
 
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
-//
-//        // create a NetCDF file for the statistics
-//        if (master->mpiid == 0)
-//        {
-//            std::stringstream filename;
-//            filename << master->simname << "." << m->name << "." << std::setfill('0') << std::setw(7) << n << ".nc";
-//
-//            try
-//            {
-//                m->dataFile = new NcFile(filename.str(), NcFile::newFile);
-//            }
-//            catch(NcException& e)
-//            {
-//                master->print_error("NetCDF exception: %s\n",e.what());
-//                ++nerror;
-//            }
-//        }
-//
-//        // Crash on all processes in case the file could not be written
-//        master->broadcast(&nerror, 1);
-//        if (nerror)
-//            throw 1;
-//
-//        // create dimensions
-//        if (master->mpiid == 0)
-//        {
-//            m->z_dim  = m->dataFile->addDim("z" , grid->kmax);
-//            m->zh_dim = m->dataFile->addDim("zh", grid->kmax+1);
-//            m->t_dim  = m->dataFile->addDim("t");
-//
-//            NcVar z_var;
-//            NcVar zh_var;
-//
-//            // create variables belonging to dimensions
-//            m->iter_var = m->dataFile->addVar("iter", ncInt, m->t_dim);
-//            m->iter_var.putAtt("units", "-");
-//            m->iter_var.putAtt("long_name", "Iteration number");
-//
-//            m->t_var = m->dataFile->addVar("t", ncDouble, m->t_dim);
-//            m->t_var.putAtt("units", "s");
-//            m->t_var.putAtt("long_name", "Time");
-//
-//            z_var = m->dataFile->addVar("z", ncDouble, m->z_dim);
-//            z_var.putAtt("units", "m");
-//            z_var.putAtt("long_name", "Full level height");
-//
-//            zh_var = m->dataFile->addVar("zh", ncDouble, m->zh_dim);
-//            zh_var.putAtt("units", "m");
-//            zh_var.putAtt("long_name", "Half level height");
-//
-//            // save the grid variables
-//            z_var .putVar(&grid->z [grid->kstart]);
-//            zh_var.putVar(&grid->zh[grid->kstart]);
-//
-//            // Synchronize the NetCDF file
-//            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-//            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-//            //m->dataFile->sync();
-//            nc_sync(m->dataFile->getId());
-//        }
-//    }
-//
-//    // for each mask add the area as a variable
-//    add_prof("area" , "Fractional area contained in mask", "-", "z" );
-//    add_prof("areah", "Fractional area contained in mask", "-", "zh");
+    int nerror = 0;
+    auto& gd = grid.get_grid_data();
+
+    // Create a NetCDF file for each of the masks
+    for (auto& mask : masks)
+    {
+        Mask<TF>* m = &mask.second;
+
+        if (master.mpiid == 0)
+        {
+            std::stringstream filename;
+            filename << sim_name << "." << m->name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+
+            try
+            {
+                m->data_file = new NcFile(filename.str(), NcFile::newFile);
+            }
+            catch(NcException& e)
+            {
+                master.print_error("NetCDF exception: %s\n",e.what());
+                ++nerror;
+            }
+        }
+
+        // Crash on all processes in case the file could not be written
+        master.broadcast(&nerror, 1);
+        if (nerror)
+            throw 1;
+
+        // Create dimensions
+        if (master.mpiid == 0)
+        {
+            m->z_dim  = m->data_file->addDim("z" , gd.kmax);
+            m->zh_dim = m->data_file->addDim("zh", gd.kmax+1);
+            m->t_dim  = m->data_file->addDim("t");
+
+            NcVar z_var;
+            NcVar zh_var;
+
+            // create variables belonging to dimensions
+            m->iter_var = m->data_file->addVar("iter", ncInt, m->t_dim);
+            m->iter_var.putAtt("units", "-");
+            m->iter_var.putAtt("long_name", "Iteration number");
+
+            m->t_var = m->data_file->addVar("t", ncDouble, m->t_dim);
+            m->t_var.putAtt("units", "s");
+            m->t_var.putAtt("long_name", "Time");
+
+            z_var = m->data_file->addVar("z", netcdf_fp_type<TF>(), m->z_dim);
+            z_var.putAtt("units", "m");
+            z_var.putAtt("long_name", "Full level height");
+
+            zh_var = m->data_file->addVar("zh", netcdf_fp_type<TF>(), m->zh_dim);
+            zh_var.putAtt("units", "m");
+            zh_var.putAtt("long_name", "Half level height");
+
+            // save the grid variables
+            z_var .putVar(&gd.z [gd.kstart]);
+            zh_var.putVar(&gd.zh[gd.kstart]);
+
+            // Synchronize the NetCDF file
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m->data_file->sync();
+            nc_sync(m->data_file->getId());
+        }
+    }
+
+    // for each mask add the area as a variable
+    //add_prof("area" , "Fractional area contained in mask", "-", "z" );
+    //add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
-
 
 //unsigned long Stats::get_time_limit(unsigned long itime)
 //{
@@ -250,7 +259,7 @@ template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
     masks[maskname].name = maskname;
-    masks[maskname].dataFile = 0;
+    masks[maskname].data_file = 0;
 }
 
 //void Stats::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
