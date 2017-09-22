@@ -103,7 +103,7 @@ class Stats
         //void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
         //void add_time_series(std::string, std::string, std::string);
 
-        //void calc_area(double*, const int[3], int*);
+        void calc_area(TF*, const int[3], int*);
 
         //void calc_mean(double* const, const double* const,
         //               const double, const int[3],
@@ -159,6 +159,6 @@ class Stats
 
         //std::string swstats;
 
-        //static const int nthres = 0;
+        static const int nthres = 0;
 };
 #endif

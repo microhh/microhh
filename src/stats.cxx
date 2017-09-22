@@ -415,23 +415,21 @@ void Stats<TF>::get_mask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
 //}
 
 
+template<typename TF>
+void Stats<TF>::calc_area(TF* restrict area, const int loc[3], int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int ijtot = gd.itot*gd.jtot;
 
+    for (int k=gd.kstart; k<gd.kend+loc[2]; k++)
+    {
+        if (nmask[k] > nthres)
+            area[k] = (double)(nmask[k]) / (double)ijtot;
+        else
+            area[k] = 0.;
+    }
+}
 
-
-//
-//void Stats::calc_area(double* restrict area, const int loc[3], int* restrict nmask)
-//{
-//    const int ijtot = grid->itot*grid->jtot;
-//
-//    for (int k=grid->kstart; k<grid->kend+loc[2]; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            area[k] = (double)(nmask[k]) / (double)ijtot;
-//        else
-//            area[k] = 0.;
-//    }
-//}
-//
 //void Stats::calc_mean(double* const restrict prof, const double* const restrict data,
 //                      const double offset, const int loc[3],
 //                      const double* const restrict mask, const int * const restrict nmask)

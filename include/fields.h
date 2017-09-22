@@ -30,11 +30,9 @@
 class Master;
 class Input;
 template<typename> class Grid;
+template<typename> class Stats;
+template<typename> struct Mask;
 
-//class Stats;
-//struct Mask;
-
-// typedef std::map<std::string, Field3d*> Field_map;
 template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 
@@ -45,13 +43,13 @@ class Fields
         Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
-        void init();         ///< Initialization of the field arrays.
+        void init();                      ///< Initialization of the field arrays.
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
-        // void create_stats(); ///< Initialization of the fields statistics.
+        void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
 
         // void exec();
         // void get_mask(Field3d*, Field3d*, Mask*);
-        // void exec_stats(Mask*);
+        void exec_stats(Mask<TF>&);
 
         void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);

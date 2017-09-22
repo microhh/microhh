@@ -182,7 +182,9 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(timeloop->get_iotime(), sim_name);
 
+    // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
+    fields->create_stats(*stats);
 
     boundary->create(*input);
     force->create(*input);
