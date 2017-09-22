@@ -48,6 +48,19 @@ namespace
     template<typename TF> NcType netcdf_fp_type();
     template<> NcType netcdf_fp_type<double>() { return ncDouble; }
     template<> NcType netcdf_fp_type<float>()  { return ncFloat; }
+
+    template<typename TF>
+    TF netcdf_fp_fillvalue()
+    {
+        if (typeid(TF) == typeid(double))
+            return NC_FILL_DOUBLE;
+        else
+            return NC_FILL_FLOAT;
+    }
+
+    //template<typename TF>
+    //template<> TF netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
+    //template<> TF netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 }
 
 template<typename TF>
@@ -86,8 +99,8 @@ void Stats<TF>::init(double ifactor)
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
     nstats = 0;
- 
-    // Vectors which hold the amount of grid points sampled on each model level. 
+
+    // Vectors which hold the amount of grid points sampled on each model level.
     nmask. resize(gd.kcells);
     nmaskh.resize(gd.kcells);
 }
@@ -105,16 +118,18 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     // Create a NetCDF file for each of the masks
     for (auto& mask : masks)
     {
-        Mask<TF>* m = &mask.second;
+        Mask<TF>& m = mask.second;
 
         if (master.mpiid == 0)
         {
             std::stringstream filename;
-            filename << sim_name << "." << m->name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+            filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
+            // Create new NetCDF file, and catch any exceptions locally, to be able
+            // to communicate them to the other processes
             try
             {
-                m->data_file = new NcFile(filename.str(), NcFile::newFile);
+                m.data_file = new NcFile(filename.str(), NcFile::newFile);
             }
             catch(NcException& e)
             {
@@ -131,27 +146,27 @@ void Stats<TF>::create(int iotime, std::string sim_name)
         // Create dimensions
         if (master.mpiid == 0)
         {
-            m->z_dim  = m->data_file->addDim("z" , gd.kmax);
-            m->zh_dim = m->data_file->addDim("zh", gd.kmax+1);
-            m->t_dim  = m->data_file->addDim("t");
+            m.z_dim  = m.data_file->addDim("z" , gd.kmax);
+            m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
+            m.t_dim  = m.data_file->addDim("t");
 
             NcVar z_var;
             NcVar zh_var;
 
             // create variables belonging to dimensions
-            m->iter_var = m->data_file->addVar("iter", ncInt, m->t_dim);
-            m->iter_var.putAtt("units", "-");
-            m->iter_var.putAtt("long_name", "Iteration number");
+            m.iter_var = m.data_file->addVar("iter", ncInt, m.t_dim);
+            m.iter_var.putAtt("units", "-");
+            m.iter_var.putAtt("long_name", "Iteration number");
 
-            m->t_var = m->data_file->addVar("t", ncDouble, m->t_dim);
-            m->t_var.putAtt("units", "s");
-            m->t_var.putAtt("long_name", "Time");
+            m.t_var = m.data_file->addVar("t", ncDouble, m.t_dim);
+            m.t_var.putAtt("units", "s");
+            m.t_var.putAtt("long_name", "Time");
 
-            z_var = m->data_file->addVar("z", netcdf_fp_type<TF>(), m->z_dim);
+            z_var = m.data_file->addVar("z", netcdf_fp_type<TF>(), m.z_dim);
             z_var.putAtt("units", "m");
             z_var.putAtt("long_name", "Full level height");
 
-            zh_var = m->data_file->addVar("zh", netcdf_fp_type<TF>(), m->zh_dim);
+            zh_var = m.data_file->addVar("zh", netcdf_fp_type<TF>(), m.zh_dim);
             zh_var.putAtt("units", "m");
             zh_var.putAtt("long_name", "Half level height");
 
@@ -162,14 +177,14 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             // Synchronize the NetCDF file
             // BvS: only the last netCDF4-c++ includes the NcFile->sync()
             //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-            //m->data_file->sync();
-            nc_sync(m->data_file->getId());
+            //m.data_file->sync();
+            nc_sync(m.data_file->getId());
         }
     }
 
-    // for each mask add the area as a variable
-    //add_prof("area" , "Fractional area contained in mask", "-", "z" );
-    //add_prof("areah", "Fractional area contained in mask", "-", "zh");
+    // For each mask, add the area as a variable
+    add_prof("area" , "Fractional area contained in mask", "-", "z" );
+    add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
 //unsigned long Stats::get_time_limit(unsigned long itime)
@@ -262,43 +277,45 @@ void Stats<TF>::add_mask(const std::string maskname)
     masks[maskname].data_file = 0;
 }
 
-//void Stats::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
-//{
-//    // add the profile to all files
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
-//
-//        // create the NetCDF variable
-//        if (master->mpiid == 0)
-//        {
-//            std::vector<NcDim> dim_vector = {m->t_dim};
-//
-//            if (zloc == "z")
-//            {
-//                dim_vector.push_back(m->z_dim);
-//                m->profs[name].ncvar = m->dataFile->addVar(name, ncDouble, dim_vector);
-//                m->profs[name].data = NULL;
-//            }
-//            else if (zloc == "zh")
-//            {
-//                dim_vector.push_back(m->zh_dim);
-//                m->profs[name].ncvar = m->dataFile->addVar(name.c_str(), ncDouble, dim_vector);
-//                m->profs[name].data = NULL;
-//            }
-//            m->profs[name].ncvar.putAtt("units", unit.c_str());
-//            m->profs[name].ncvar.putAtt("long_name", longname.c_str());
-//            m->profs[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
-//        }
-//
-//        // and allocate the memory and initialize at zero
-//        m->profs[name].data = new double[grid->kcells];
-//        for (int k=0; k<grid->kcells; ++k)
-//            m->profs[name].data[k] = 0.;
-//    }
-//}
-//
+template<typename TF>
+void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Add profile to all the NetCDF files
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable
+        if (master.mpiid == 0)
+        {
+            std::vector<NcDim> dim_vector = {m.t_dim};
+
+            if (zloc == "z")
+            {
+                dim_vector.push_back(m.z_dim);
+                m.profs[name].ncvar = m.data_file->addVar(name, netcdf_fp_type<TF>(), dim_vector);
+                //m.profs[name].data = NULL;
+            }
+            else if (zloc == "zh")
+            {
+                dim_vector.push_back(m.zh_dim);
+                m.profs[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
+                //m.profs[name].data = NULL;
+            }
+            m.profs[name].ncvar.putAtt("units", unit.c_str());
+            m.profs[name].ncvar.putAtt("long_name", longname.c_str());
+            m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+            nc_sync(m.data_file->getId());
+        }
+
+        // Resize the vector holding the data at all processes
+        m.profs[name].data.resize(gd.kcells);
+    }
+}
+
 //void Stats::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, double* restrict prof)
 //{
 //    // add the profile to all files
