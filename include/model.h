@@ -81,7 +81,7 @@ class Model
 
         void delete_objects();
         void print_status();
-        void calc_stats(std::string);
+        void calculate_statistics();
         void set_time_step();
 
         void add_statistics_masks();

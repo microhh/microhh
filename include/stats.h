@@ -81,11 +81,13 @@ class Stats
         void init(double);
         void create(int, std::string);
 
-        //unsigned long get_time_limit(unsigned long);
-        //void get_mask(Field3d*, Field3d*, Mask*);
+        unsigned long get_time_limit(unsigned long);
+        bool get_switch() { return swstats; }
+        bool do_statistics(unsigned long);
+
+        void get_mask(Field3d<TF>&, Field3d<TF>&);
+
         //void exec(int, double, unsigned long);
-        //bool doStats();
-        //std::string get_switch();
 
         //// Container for all stats, masks as uppermost in hierarchy
         Mask_map<TF> masks;
@@ -97,6 +99,7 @@ class Stats
         //// Interface functions.
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string);
+
         //void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
         //void add_time_series(std::string, std::string, std::string);
 

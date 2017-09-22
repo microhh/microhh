@@ -45,22 +45,39 @@ using namespace netCDF::exceptions;
 
 namespace
 {
+    // Help functions to switch between the different NetCDF data types
     template<typename TF> NcType netcdf_fp_type();
     template<> NcType netcdf_fp_type<double>() { return ncDouble; }
     template<> NcType netcdf_fp_type<float>()  { return ncFloat; }
 
-    template<typename TF>
-    TF netcdf_fp_fillvalue()
-    {
-        if (typeid(TF) == typeid(double))
-            return NC_FILL_DOUBLE;
-        else
-            return NC_FILL_FLOAT;
-    }
+    template<typename TF> TF netcdf_fp_fillvalue();
+    template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
+    template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 
-    //template<typename TF>
-    //template<> TF netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
-    //template<> TF netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
+    // Sets all the mask values to one (non-masked field)
+    template<typename TF>
+    void calc_mask(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom,
+                   int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
+                   const int itot, const int jtot, const int kcells, const int ijcells, const int ncells)
+    {
+        const int ijtot = itot*jtot;
+        nmask_bottom = ijtot;
+
+        for (int n=0; n<ncells; ++n)
+        {
+            mask_full[n] = 1.;
+            mask_half[n] = 1.;
+        }
+
+        for (int n=0; n<ijcells; ++n)
+            mask_bottom[n] = 1.;
+
+        for (int k=0; k<kcells; ++k)
+        {
+            nmask_full[k] = ijtot;
+            nmask_half[k] = ijtot;
+        }
+    }
 }
 
 template<typename TF>
@@ -73,29 +90,19 @@ Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
-        // Add the default mask, which calculates the domain mean without sampling
-        masklist.push_back("default");
+        masklist.push_back("default");  // Add the default mask, which calculates the domain mean without sampling.
     }
 }
 
 template<typename TF>
 Stats<TF>::~Stats()
 {
-    //// delete the profiles
-    //for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-    //{
-    //    delete it->second.dataFile;
-    //    for (Prof_map::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
-    //        delete[] it2->second.data;
-    //}
 }
 
 template<typename TF>
 void Stats<TF>::init(double ifactor)
 {
     auto& gd = grid.get_grid_data();
-
-    //add_mask("default");  // Add the default mask
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
     nstats = 0;
@@ -108,14 +115,14 @@ void Stats<TF>::init(double ifactor)
 template<typename TF>
 void Stats<TF>::create(int iotime, std::string sim_name)
 {
-    // Do not create statistics file if stats is disabled
+    // Do not create statistics file if stats is disabled.
     if (!swstats)
         return;
 
     int nerror = 0;
     auto& gd = grid.get_grid_data();
 
-    // Create a NetCDF file for each of the masks
+    // Create a NetCDF file for each of the masks.
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
@@ -126,7 +133,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
             // Create new NetCDF file, and catch any exceptions locally, to be able
-            // to communicate them to the other processes
+            // to communicate them to the other processes.
             try
             {
                 m.data_file = new NcFile(filename.str(), NcFile::newFile);
@@ -138,12 +145,12 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             }
         }
 
-        // Crash on all processes in case the file could not be written
+        // Crash on all processes in case the file could not be written.
         master.broadcast(&nerror, 1);
         if (nerror)
             throw 1;
 
-        // Create dimensions
+        // Create dimensions.
         if (master.mpiid == 0)
         {
             m.z_dim  = m.data_file->addDim("z" , gd.kmax);
@@ -153,7 +160,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             NcVar z_var;
             NcVar zh_var;
 
-            // create variables belonging to dimensions
+            // Create variables belonging to dimensions.
             m.iter_var = m.data_file->addVar("iter", ncInt, m.t_dim);
             m.iter_var.putAtt("units", "-");
             m.iter_var.putAtt("long_name", "Iteration number");
@@ -170,11 +177,11 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             zh_var.putAtt("units", "m");
             zh_var.putAtt("long_name", "Half level height");
 
-            // save the grid variables
+            // Save the grid variables.
             z_var .putVar(&gd.z [gd.kstart]);
             zh_var.putVar(&gd.zh[gd.kstart]);
 
-            // Synchronize the NetCDF file
+            // Synchronize the NetCDF file.
             // BvS: only the last netCDF4-c++ includes the NcFile->sync()
             //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
             //m.data_file->sync();
@@ -182,34 +189,37 @@ void Stats<TF>::create(int iotime, std::string sim_name)
         }
     }
 
-    // For each mask, add the area as a variable
+    // For each mask, add the area as a variable.
     add_prof("area" , "Fractional area contained in mask", "-", "z" );
     add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
-//unsigned long Stats::get_time_limit(unsigned long itime)
-//{
-//    if (swstats == "0")
-//        return Constants::ulhuge;
-//
-//    unsigned long idtlim = isampletime - itime % isampletime;
-//    return idtlim;
-//}
-//
-//bool Stats::doStats()
-//{
-//    // check if stats are enabled
-//    if (swstats == "0")
-//        return false;
-//
-//    // check if time for execution
-//    if (model->timeloop->get_itime() % isampletime != 0)
-//        return false;
-//
-//    // return true such that stats are computed
-//    return true;
-//}
-//
+template<typename TF>
+unsigned long Stats<TF>::get_time_limit(unsigned long itime)
+{
+    // If statistics is disabled, return large (... huge!) value.
+    if (!swstats)
+        return Constants::ulhuge;
+
+    unsigned long idtlim = isampletime - itime % isampletime;
+    return idtlim;
+}
+
+template<typename TF>
+bool Stats<TF>::do_statistics(unsigned long itime)
+{
+    // Check if stats are enabled.
+    if (!swstats)
+        return false;
+
+    // Check if time for execution.
+    if (itime % isampletime != 0)
+        return false;
+
+    // Return true such that stats are computed.
+    return true;
+}
+
 //void Stats::exec(int iteration, double time, unsigned long itime)
 //{
 //    // This function is only called when stats are enabled no need for swstats check.
@@ -256,12 +266,6 @@ void Stats<TF>::create(int iotime, std::string sim_name)
 //
 //    ++nstats;
 //}
-//
-//std::string Stats::get_switch()
-//{
-//    return swstats;
-//}
-//
 
 // Retrieve the user input list of requested masks
 template<typename TF>
@@ -270,6 +274,7 @@ std::vector<std::string>& Stats<TF>::get_mask_list()
     return masklist;
 }
 
+// Add a new mask to the mask map
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
@@ -277,6 +282,7 @@ void Stats<TF>::add_mask(const std::string maskname)
     masks[maskname].data_file = 0;
 }
 
+// Add a new profile to each of the NetCDF files
 template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
@@ -372,13 +378,18 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 //        m->tseries[name].data = 0.;
 //    }
 //}
-//
-//void Stats::get_mask(Field3d* mfield, Field3d* mfieldh, Mask* m)
-//{
-//    calc_mask(mfield->data, mfieldh->data, mfieldh->databot,
-//              nmask, nmaskh, &nmaskbot);
-//}
-//
+
+template<typename TF>
+void Stats<TF>::get_mask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_mask<TF>(mask_full.data.data(), mask_half.data.data(), mask_half.databot.data(),
+                  nmask.data(), nmaskh.data(), nmaskbot,
+                  gd.itot, gd.jtot, gd.kcells, gd.ijcells, gd.ncells);
+}
+
+
 //// COMPUTATIONAL KERNELS BELOW
 //void Stats::calc_mask(double* restrict mask, double* restrict maskh, double* restrict maskbot,
 //                      int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot)
@@ -402,6 +413,11 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 //    }
 //    *nmaskbot = ijtot;
 //}
+
+
+
+
+
 //
 //void Stats::calc_area(double* restrict area, const int loc[3], int* restrict nmask)
 //{

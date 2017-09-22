@@ -286,36 +286,15 @@ void Model<TF>::exec()
             // }
             // #endif
 
-            // // Do the statistics.
-            // if (stats->doStats())
-            // {
-            //     // Always process the default mask (the full field)
-            //     stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-            //     calc_stats("default");
-
-            //     // Work through the potential masks for the statistics.
-            //     for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
-            //     {
-            //         if (*it == "wplus" || *it == "wmin")
-            //         {
-            //             fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            //             calc_stats(*it);
-            //         }
-            //         else if (*it == "ql" || *it == "qlcore")
-            //         {
-            //             thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            //             calc_stats(*it);
-            //         }
-            //         else if (*it == "patch_high" || *it == "patch_low")
-            //         {
-            //             boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            //             calc_stats(*it);
-            //         }
-            //     }
-
-            //     // Store the stats data.
-            //     stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
-            // }
+            // Do the statistics.
+            if (stats->do_statistics(timeloop->get_itime()))
+            {
+                std::cout << "Calculating stats for " << timeloop->get_time() << std::endl;
+                // Calculate statistics for all the different masks.
+                calculate_statistics();
+                // Store the statistics data.
+                //stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+            }
 
             // // Save the selected cross sections to disk, cross sections are handled on CPU.
             // if (cross->do_cross())
@@ -412,7 +391,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    // timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
     // timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
     // timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
 
@@ -443,8 +422,27 @@ void Model<TF>::add_statistics_masks()
 
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
-void Model<TF>::calc_stats(std::string maskname)
+void Model<TF>::calculate_statistics()
 {
+    std::vector<std::string> mask_list = stats->get_mask_list();
+
+    for (auto& mask_name : mask_list)
+    {
+        // Get the mask from one of the mask providing classes
+        if (mask_name == "default")
+            stats->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"]);
+        else
+        {
+            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            throw std::runtime_error(error_message);
+        }
+
+        // Calculate statistics
+        //fields  ->exec_stats(&stats->masks[maskname]);
+        //thermo  ->exec_stats(&stats->masks[maskname]);
+        //budget  ->exec_stats(&stats->masks[maskname]);
+        //boundary->exec_stats(&stats->masks[maskname]);
+    }
 }
 
 // Print the status information to the .out file.
