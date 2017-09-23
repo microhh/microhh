@@ -672,56 +672,56 @@ void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restri
     }
 }
 
-//void Stats::calc_flux_2nd(double* restrict data, double* restrict datamean, double* restrict w, double* restrict wmean,
-//                          double* restrict prof, double* restrict tmp1, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    // set a pointer to the field that contains w, either interpolated or the original
-//    double* restrict calcw = w;
-//
-//    // define the locations
-//    const int wloc [3] = {0,0,1};
-//    const int uwloc[3] = {1,0,1};
-//    const int vwloc[3] = {0,1,1};
-//
-//    if (loc[0] == 1)
-//    {
-//        grid->interpolate_2nd(tmp1, w, wloc, uwloc);
-//        calcw = tmp1;
-//    }
-//    else if (loc[1] == 1)
-//    {
-//        grid->interpolate_2nd(tmp1, w, wloc, vwloc);
-//        calcw = tmp1;
-//    }
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk  = i + j*jj + k*kk;
-//                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
-//                // prof[k] += mask[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; ++k)
-//    {
-//        if (nmask[k] > nthres && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
+template<typename TF>
+void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict datamean, TF* restrict w, TF* restrict wmean,
+                              TF* restrict prof, TF* restrict tmp1, const int loc[3],
+                              TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int kk = gd.ijcells;
+
+    // set a pointer to the field that contains w, either interpolated or the original
+    TF* restrict calcw = w;
+
+    // define the locations
+    const int wloc [3] = {0,0,1};
+    const int uwloc[3] = {1,0,1};
+    const int vwloc[3] = {0,1,1};
+
+    if (loc[0] == 1)
+    {
+        grid.interpolate_2nd(tmp1, w, wloc, uwloc);
+        calcw = tmp1;
+    }
+    else if (loc[1] == 1)
+    {
+        grid.interpolate_2nd(tmp1, w, wloc, vwloc);
+        calcw = tmp1;
+    }
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk  = i + j*gd.icells + k*kk;
+                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; ++k)
+    {
+        if (nmask[k] > nthres && datamean[k-1] != netcdf_fp_fillvalue<TF>() && datamean[k] != netcdf_fp_fillvalue<TF>())
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
 //void Stats::calc_flux_4th(double* restrict data, double* restrict w, double* restrict prof, double* restrict tmp1, const int loc[3],
 //                          double* restrict mask, int* restrict nmask)
 //{

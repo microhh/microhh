@@ -405,9 +405,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
     if (grid.swspatialorder == "2")
     {
         stats.calc_grad_2nd(mp["u"]->data.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), atmp["tmp1"]->data.data(), stats.nmaskh.data());
-        //stats.calc_flux_2nd(u->data, umodel, w->data, m.profs["w"].data,
-        //                    m.profs["uw"].data, atmp["tmp2"]->data, uloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
+        stats.calc_flux_2nd(mp["u"]->data.data(), umodel.data(), mp["w"]->data.data(), m.profs["w"].data.data(),
+                            m.profs["uw"].data.data(), atmp["tmp2"]->data.data(), uloc, atmp["tmp1"]->data.data(), stats.nmaskh.data());
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
         //                        m.profs["udiff"].data, grid.dzhi,
@@ -446,9 +445,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
     if (grid.swspatialorder == "2")
     {
         stats.calc_grad_2nd(mp["v"]->data.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), atmp["tmp1"]->data.data(), stats.nmaskh.data());
-        //stats.calc_flux_2nd(v->data, vmodel, w->data, m.profs["w"].data,
-        //                    m.profs["vw"].data, atmp["tmp2"]->data, vloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
+        stats.calc_flux_2nd(mp["v"]->data.data(), vmodel.data(), mp["w"]->data.data(), m.profs["w"].data.data(),
+                            m.profs["vw"].data.data(), atmp["tmp2"]->data.data(), vloc, atmp["tmp1"]->data.data(), stats.nmaskh.data());
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
         //                        m.profs["vdiff"].data, grid.dzhi,
@@ -484,9 +482,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         if (grid.swspatialorder == "2")
         {
             stats.calc_grad_2nd(it.second->data.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), atmp["tmp4"]->data.data(), stats.nmaskh.data());
-            //stats.calc_flux_2nd(it.second->data, m.profs[it.first].data, w->data, m.profs["w"].data,
-            //                    m.profs[it.first+"w"].data, atmp["tmp1"]->data, sloc,
-            //                    atmp["tmp4"]->data, stats.nmaskh);
+            stats.calc_flux_2nd(it.second->data.data(), m.profs[it.first].data.data(), mp["w"]->data.data(), m.profs["w"].data.data(),
+                                m.profs[it.first+"w"].data.data(), atmp["tmp1"]->data.data(), sloc, atmp["tmp4"]->data.data(), stats.nmaskh.data());
             //if (model->diff->get_switch() == "smag2")
             //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
             //                        m.profs[it.first+"diff"].data, grid.dzhi,
@@ -514,9 +511,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
     if (grid.swspatialorder == "2")
     {
         stats.calc_grad_2nd(sd["p"]->data.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), atmp["tmp4"]->data.data(), stats.nmaskh.data());
-        //stats.calc_flux_2nd(sd["p"]->data, m.profs["p"].data, w->data, m.profs["w"].data,
-        //                    m.profs["pw"].data, atmp["tmp1"]->data, sloc,
-        //                    atmp["tmp4"]->data, stats.nmaskh);
+        stats.calc_flux_2nd(sd["p"]->data.data(), m.profs["p"].data.data(), mp["w"]->data.data(), m.profs["w"].data.data(),
+                            m.profs["pw"].data.data(), atmp["tmp1"]->data.data(), sloc, atmp["tmp4"]->data.data(), stats.nmaskh.data());
     }
     else if (grid.swspatialorder == "4")
     {

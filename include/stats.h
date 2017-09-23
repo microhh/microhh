@@ -120,7 +120,7 @@ class Stats
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
         //void calc_grad_4th(double*, double*, double*, const int[3], double*, int*);
 
-        //void calc_flux_2nd(double*, double*, double*, double*, double*, double*, const int[3], double*, int*);
+        void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
         //void calc_flux_4th(double*, double*, double*, double*, const int[3], double*, int*);
 
         //void add_fluxes   (double*, double*, double*);
