@@ -413,8 +413,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         //                        u->datafluxbot, u->datafluxtop, 1., uloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
-        //    stats.calc_diff_2nd(u->data, m.profs["udiff"].data, grid.dzhi, visc, uloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
+            stats.calc_diff_2nd(mp["u"]->data.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, atmp["tmp1"]->data.data(), stats.nmaskh.data());
 
     }
     else if (grid.swspatialorder == "4")
@@ -453,8 +452,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         //                        v->datafluxbot, v->datafluxtop, 1., vloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
-        //    stats.calc_diff_2nd(v->data, m.profs["vdiff"].data, grid.dzhi, visc, vloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
+            stats.calc_diff_2nd(mp["v"]->data.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, atmp["tmp1"]->data.data(), stats.nmaskh.data());
 
     }
     else if (grid.swspatialorder == "4")
@@ -485,13 +483,15 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
             stats.calc_flux_2nd(it.second->data.data(), m.profs[it.first].data.data(), mp["w"]->data.data(), m.profs["w"].data.data(),
                                 m.profs[it.first+"w"].data.data(), atmp["tmp1"]->data.data(), sloc, atmp["tmp4"]->data.data(), stats.nmaskh.data());
             //if (model->diff->get_switch() == "smag2")
+            //{
             //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
             //                        m.profs[it.first+"diff"].data, grid.dzhi,
             //                        it.second->datafluxbot, it.second->datafluxtop, diffptr->tPr, sloc,
             //                        atmp["tmp4"]->data, stats.nmaskh);
+            //}
             //else
-            //    stats.calc_diff_2nd(it.second->data, m.profs[it.first+"diff"].data, grid.dzhi, it.second->visc, sloc,
-            //                        atmp["tmp4"]->data, stats.nmaskh);
+                stats.calc_diff_2nd(it.second->data.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(), 
+                                    it.second->visc, sloc, atmp["tmp4"]->data.data(), stats.nmaskh.data());
         }
         else if (grid.swspatialorder == "4")
         {
@@ -522,11 +522,11 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         //                     atmp["tmp4"]->data, stats.nmaskh);
     }
 
-    // calculate the total fluxes
-    //stats.add_fluxes(m.profs["uflux"].data, m.profs["uw"].data, m.profs["udiff"].data);
-    //stats.add_fluxes(m.profs["vflux"].data, m.profs["vw"].data, m.profs["vdiff"].data);
-    //for (Field_map::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    //    stats.add_fluxes(m.profs[it->first+"flux"].data, m.profs[it->first+"w"].data, m.profs[it->first+"diff"].data);
+    // Calculate the total fluxes
+    stats.add_fluxes(m.profs["uflux"].data.data(), m.profs["uw"].data.data(), m.profs["udiff"].data.data());
+    stats.add_fluxes(m.profs["vflux"].data.data(), m.profs["vw"].data.data(), m.profs["vdiff"].data.data());
+    for (auto& it : sp)
+        stats.add_fluxes(m.profs[it.first+"flux"].data.data(), m.profs[it.first+"w"].data.data(), m.profs[it.first+"diff"].data.data());
 
     //if (model->diff->get_switch() == "smag2")
     //    stats.calc_mean(m.profs["evisc"].data, sd["evisc"]->data, no_offset, sloc, atmp["tmp3"]->data, stats.nmask);

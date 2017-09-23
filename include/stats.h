@@ -112,7 +112,7 @@ class Stats
 
         void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 
-        //void calc_diff_2nd(double*, double*, double*, double, const int[3], double*, int*);
+        void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
         //void calc_diff_2nd(double*, double*, double*, double*, double*,
         //                   double*, double*, double, const int[3], double*, int*);
         //void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
@@ -123,7 +123,7 @@ class Stats
         void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
         //void calc_flux_4th(double*, double*, double*, double*, const int[3], double*, int*);
 
-        //void add_fluxes   (double*, double*, double*);
+        void add_fluxes   (TF*, TF*, TF*);
         //void calc_count   (double*, double*, double, double*, int*);
         //void calc_path    (double*, double*, int*, double*);
         //void calc_cover   (double*, double*, int*, double*, double);

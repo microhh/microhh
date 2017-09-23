@@ -865,37 +865,39 @@ void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* re
 //            prof[k] = NC_FILL_DOUBLE;
 //    }
 //}
-//
-//void Stats::calc_diff_2nd(double* restrict data, double* restrict prof, double* restrict dzhi, double visc, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
-//
+
+template<typename TF>
+void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi, TF visc, const int loc[3],
+                              TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=gd.kstart; k<gd.kend+1; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
+
 //void Stats::calc_diff_2nd(double* restrict data, double* restrict w, double* restrict evisc,
 //                          double* restrict prof, double* restrict dzhi,
 //                          double* restrict fluxbot, double* restrict fluxtop, double tPr, const int loc[3],
@@ -991,18 +993,21 @@ void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* re
 //            prof[k] = NC_FILL_DOUBLE;
 //    }
 //}
-//
-//void Stats::add_fluxes(double* restrict flux, double* restrict turb, double* restrict diff)
-//{
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        if (turb[k] == NC_FILL_DOUBLE || diff[k] == NC_FILL_DOUBLE)
-//            flux[k] = NC_FILL_DOUBLE;
-//        else
-//            flux[k] = turb[k] + diff[k];
-//    }
-//}
-//
+
+template<typename TF>
+void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        if (turb[k] == netcdf_fp_fillvalue<TF>() || diff[k] == netcdf_fp_fillvalue<TF>())
+            flux[k] = netcdf_fp_fillvalue<TF>();
+        else
+            flux[k] = turb[k] + diff[k];
+    }
+}
+
 ///**
 // * This function calculates the total domain integrated path of variable data over maskbot
 // */
