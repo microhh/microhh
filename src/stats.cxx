@@ -772,36 +772,36 @@ void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restri
 //            prof[k] = NC_FILL_DOUBLE;
 //    }
 //}
-//
-//void Stats::calc_grad_2nd(double* restrict data, double* restrict prof, double* restrict dzhi, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                prof[k] += mask[ijk]*(data[ijk]-data[ijk-kk])*dzhi[k];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
+
+template<typename TF>
+void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi,
+                              TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                prof[k] += mask[ijk]*(data[ijk]-data[ijk-gd.ijcells])*dzhi[k];
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=gd.kstart; k<gd.kend+1; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
 //void Stats::calc_grad_4th(double* restrict data, double* restrict prof, double* restrict dzhi4, const int loc[3],
 //                          double* restrict mask, int* restrict nmask)
 //{
