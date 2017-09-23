@@ -159,6 +159,8 @@ class Fields
         void add_vortex_pair(Input&);
 
         // statistics
+        std::vector<TF> umodel;
+        std::vector<TF> vmodel;
         // double* umodel;
         // double* vmodel;
 
