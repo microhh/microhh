@@ -787,7 +787,7 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
                     for (int i=gd.istart; i<gd.iend; ++i)
                     {
                         const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        mp["u"]->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp["v"]->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
                         mp["w"]->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
     }
