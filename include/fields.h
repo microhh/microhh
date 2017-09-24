@@ -37,6 +37,8 @@ template<typename> struct Mask;
 template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 
+enum class Fields_mask_type {Wplus, Wmin};
+
 template<typename TF>
 class Fields
 {

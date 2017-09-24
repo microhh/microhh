@@ -43,7 +43,7 @@
 
 namespace
 {
-    template<typename TF, bool positive>
+    template<typename TF, Fields_mask_type mode>
     void calc_mask_w(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
                      int* const restrict nmask, int* const restrict nmaskh, const TF* const restrict w,
                      const int istart, const int jstart, const int kstart,
@@ -62,7 +62,7 @@ namespace
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if (positive)
+                    if (mode == Fields_mask_type::Wplus)
                         ntmp = (w[ijk] + w[ijk+ijcells]) >  0.;
                     else
                         ntmp = (w[ijk] + w[ijk+ijcells]) <= 0.;
@@ -82,7 +82,7 @@ namespace
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if (positive)
+                    if (mode == Fields_mask_type::Wplus)
                         ntmp = w[ijk] >  0.;
                     else
                         ntmp = w[ijk] <= 0.;
@@ -300,13 +300,13 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
     auto& gd = grid.get_grid_data();
 
     if (mask_name == "wplus")
-        calc_mask_w<TF, true>(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
-                              stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
-                              gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        calc_mask_w<TF, Fields_mask_type::Wplus>(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
+                                                 stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
+                                                 gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     else if (mask_name == "wmin")
-        calc_mask_w<TF, false>(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
-                               stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
-                               gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        calc_mask_w<TF, Fields_mask_type::Wmin >(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
+                                                 stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
+                                                 gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
 
     grid.boundary_cyclic(mfield.data.data());
     grid.boundary_cyclic(mfieldh.data.data());
