@@ -252,68 +252,69 @@ void Grid<TF>::boundary_cyclic(TF* const restrict data, Edge edge)
     }
 }
 
-// 
-// template<typename TF>
-// void Grid<TF>::boundary_cyclic_2d(double* restrict data)
-// {
-//     int ncount = 1;
-// 
-//     // communicate east-west edges
-//     int eastout = iend-igc;
-//     int westin  = 0;
-//     int westout = istart;
-//     int eastin  = iend;
-// 
-//     // communicate north-south edges
-//     int northout = (jend-jgc)*icells;
-//     int southin  = 0;
-//     int southout = jstart*icells;
-//     int northin  = jend  *icells;
-// 
-//     // first, send and receive the ghost cells in east-west direction
-//     MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
-//     master.reqsn++;
-//     MPI_Irecv(&data[westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
-//     master.reqsn++;
-//     MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
-//     master.reqsn++;
-//     MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
-//     master.reqsn++;
-//     // wait here for the mpi to have correct values in the corners of the cells
-//     master.wait_all();
-// 
-//     // if the run is 3D, apply the BCs
-//     if (jtot > 1)
-//     {
-//         // second, send and receive the ghost cells in the north-south direction
-//         MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//         MPI_Irecv(&data[southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//         MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//         MPI_Irecv(&data[northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
-//         master.reqsn++;
-//         master.wait_all();
-//     }
-//     // in case of 2D, fill all the ghost cells with the current value
-//     else
-//     {
-//         // 2d essential variables
-//         const int jj = icells;
-// 
-//         for (int j=0; j<jgc; j++)
-// #pragma ivdep
-//             for (int i=0; i<icells; i++)
-//             {
-//                 const int ijref   = i + jstart*jj;
-//                 const int ijnorth = i + j*jj;
-//                 const int ijsouth = i + (jend+j)*jj;
-//                 data[ijnorth] = data[ijref];
-//                 data[ijsouth] = data[ijref];
-//             }
-//     }
-// }
+template<typename TF>
+void Grid<TF>::boundary_cyclic_2d(TF* const restrict data)
+{
+    const int ncount = 1;
+
+    // Communicate east-west edges.
+    const int eastout = gd.iend-gd.igc;
+    const int westin  = 0;
+    const int westout = gd.istart;
+    const int eastin  = gd.iend;
+
+    // Communicate north-south edges.
+    const int northout = (gd.jend-gd.jgc)*gd.icells;
+    const int southin  = 0;
+    const int southout = gd.jstart*gd.icells;
+    const int northin  = gd.jend  *gd.icells;
+
+    // First, send and receive the ghost cells in east-west direction.
+    MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
+    master.reqsn++;
+    MPI_Irecv(&data[westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
+    master.reqsn++;
+    MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
+    master.reqsn++;
+    MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
+    master.reqsn++;
+    // Wait here for the mpi to have correct values in the corners of the cells.
+    master.wait_all();
+
+    // If the run is 3D, apply the BCs.
+    if (gd.jtot > 1)
+    {
+        // Second, send and receive the ghost cells in the north-south direction.
+        MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
+        master.reqsn++;
+        MPI_Irecv(&data[southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
+        master.reqsn++;
+        MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
+        master.reqsn++;
+        MPI_Irecv(&data[northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
+        master.reqsn++;
+        master.wait_all();
+    }
+    // In case of 2D, fill all the ghost cells with the current value.
+    else
+    {
+        // Local copies for fast performance in loop.
+        const int jj = gd.icells;
+        const int jstart = gd.jstart;
+        const int jend = gd.jend;
+
+        for (int j=0; j<gd.jgc; ++j)
+#pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ijref   = i + jstart*jj;
+                const int ijnorth = i + j*jj;
+                const int ijsouth = i + (jend+j)*jj;
+                data[ijnorth] = data[ijref];
+                data[ijsouth] = data[ijref];
+            }
+    }
+}
 
 template<typename TF>
 void Grid<TF>::transpose_zx(TF* const restrict ar, TF* const restrict as)
