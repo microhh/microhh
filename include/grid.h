@@ -129,8 +129,8 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        void boundary_cyclic(TF*, Edge=Edge::Both_edges); ///< Fills the ghost cells in the periodic directions.
-        void boundary_cyclic_2d(TF*); ///< Fills the ghost cells of one slice in the periodic direction.
+        void boundary_cyclic(TF* const restrict, Edge=Edge::Both_edges); ///< Fills the ghost cells in the periodic directions.
+        void boundary_cyclic_2d(TF* const restrict); ///< Fills the ghost cells of one slice in the periodic direction.
         void transpose_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
         void transpose_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
         void transpose_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
