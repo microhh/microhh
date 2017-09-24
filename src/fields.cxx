@@ -41,6 +41,71 @@
 // #include "dump.h"
 // #include "diff_smag2.h"
 
+namespace
+{
+    template<typename TF, bool positive>
+    void calc_mask_w(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
+                     int* const restrict nmask, int* const restrict nmaskh, const TF* const restrict w,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int icells, const int ijcells)
+    {
+        int ntmp = 0;
+
+        // Calculate mask at full levels
+        for (int k=kstart; k<kend; k++)
+        {
+            nmask[k] = 0;
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if (positive)
+                        ntmp = (w[ijk] + w[ijk+ijcells]) >  0.;
+                    else
+                        ntmp = (w[ijk] + w[ijk+ijcells]) <= 0.;
+
+                    nmask[k] += ntmp;
+                    mask[ijk] = static_cast<TF>(ntmp);
+                }
+        }
+
+        // Calculate mask at half levels
+        for (int k=kstart; k<kend+1; k++)
+        {
+            nmaskh[k] = 0;
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if (positive)
+                        ntmp = w[ijk] >  0.;
+                    else
+                        ntmp = w[ijk] <= 0.;
+
+                    nmaskh[k] += ntmp;
+                    maskh[ijk] = static_cast<TF>(ntmp);
+                }
+        }
+
+        // Set the mask for surface projected quantities
+        // In this case: velocity at surface, so zero
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+
+                maskbot[ij] = maskh[ijk];
+            }
+    }
+}
+
 
 template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
@@ -163,9 +228,9 @@ void Fields<TF>::init()
 
     /*
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
+    std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
 
-    // Check different type of crosses and put them in their respective lists 
+    // Check different type of crosses and put them in their respective lists
     for (Field_map::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     {
         check_added_cross(it->first, "",        crosslist_global, &crosssimple);
@@ -183,7 +248,7 @@ void Fields<TF>::init()
     }
 
     // Get global dump-list from cross.cxx
-    std::vector<std::string> *dumplist_global = model->dump->get_dumplist(); 
+    std::vector<std::string> *dumplist_global = model->dump->get_dumplist();
 
     // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
     std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
@@ -201,168 +266,63 @@ void Fields<TF>::init()
     */
 }
 
-/*
-void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+//void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+//{
+//    std::vector<std::string>::iterator position;
+//
+//    position = std::find(crosslist->begin(), crosslist->end(), var + type);
+//    if (position != crosslist->end())
+//    {
+//        // don't allow lngrad in 2nd order mode
+//        if (!(type == "lngrad" && grid.swspatialorder == "2"))
+//        {
+//            typelist->push_back(var);
+//            crosslist->erase(position);
+//        }
+//    }
+//}
+//
+//#ifndef USECUDA
+//void Fields::exec()
+//{
+//    // calculate the means for the prognostic scalars
+//    if (calc_mean_profs)
+//    {
+//        for (Field_map::iterator it=ap.begin(); it!=ap.end(); ++it)
+//            grid.calc_mean(it->second->datamean, it->second->data, grid.kcells);
+//    }
+//}
+//#endif
+
+template<typename TF>
+void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
 {
-    std::vector<std::string>::iterator position;
+    auto& gd = grid.get_grid_data();
 
-    position = std::find(crosslist->begin(), crosslist->end(), var + type);
-    if (position != crosslist->end()) 
-    {
-        // don't allow lngrad in 2nd order mode
-        if (!(type == "lngrad" && grid.swspatialorder == "2"))
-        {
-            typelist->push_back(var);
-            crosslist->erase(position);
-        }
-    }
+    if (mask_name == "wplus")
+        calc_mask_w<TF, true>(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
+                              stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
+                              gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+    else if (mask_name == "wmin")
+        calc_mask_w<TF, false>(mfield.data.data(), mfieldh.data.data(), mfieldh.databot.data(),
+                               stats.nmask.data(), stats.nmaskh.data(), mp["w"]->data.data(),
+                               gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+
+    grid.boundary_cyclic(mfield.data.data());
+    grid.boundary_cyclic(mfieldh.data.data());
+    grid.boundary_cyclic_2d(mfieldh.databot.data());
+
+    master.sum(stats.nmask.data() , gd.kcells);
+    master.sum(stats.nmaskh.data(), gd.kcells);
+    stats.nmaskbot = stats.nmaskh[gd.kstart];
 }
-
-#ifndef USECUDA
-void Fields::exec()
-{
-    // calculate the means for the prognostic scalars
-    if (calc_mean_profs)
-    {
-        for (Field_map::iterator it=ap.begin(); it!=ap.end(); ++it)
-            grid.calc_mean(it->second->datamean, it->second->data, grid.kcells);
-    }
-}
-#endif
-
-void Fields::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
-{
-    if (m->name == "wplus")
-        calc_mask_wplus(mfield->data, mfieldh->data, mfieldh->databot, 
-                        stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
-    else if (m->name == "wmin")                                                  
-        calc_mask_wmin(mfield->data, mfieldh->data, mfieldh->databot,
-                       stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
-}
-
-void Fields::calc_mask_wplus(double* restrict mask, double* restrict maskh, double* restrict maskbot,
-        int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot,
-        double* restrict w)
-{
-    int ijk,ij,jj,kk,kstart;
-
-    jj = grid.icells;
-    kk = grid.ijcells;
-    kstart = grid.kstart;
-
-    int ntmp;
-
-    for (int k=grid.kstart; k<grid.kend; k++)
-    {
-        nmask[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; i++)
-            {
-                ijk = i + j*jj + k*kk;
-                ntmp = (w[ijk] + w[ijk+kk]) > 0.;
-                nmask[k] += ntmp;
-                mask[ijk] = (double)ntmp;
-            }
-    }
-
-    for (int k=grid.kstart; k<grid.kend+1; k++)
-    {
-        nmaskh[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; i++)
-            {
-                ijk = i + j*jj + k*kk;
-                ntmp = w[ijk] > 0.;
-                nmaskh[k] += ntmp;
-                maskh[ijk] = (double)ntmp;
-            }
-    }
-
-    // Set the mask for surface projected quantities
-    // In this case: velocity at surface, so zero
-    for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-        for (int i=grid.istart; i<grid.iend; i++)
-        {
-            ij  = i + j*jj;
-            ijk = i + j*jj + kstart*kk;
-            maskbot[ij] = maskh[ijk];
-        }
-
-    grid.boundary_cyclic(mask);
-    grid.boundary_cyclic(maskh);
-    grid.boundary_cyclic_2d(maskbot);
-
-    master.sum(nmask , grid.kcells);
-    master.sum(nmaskh, grid.kcells);
-    *nmaskbot = nmaskh[grid.kstart];
-}
-
-void Fields::calc_mask_wmin(double* restrict mask, double* restrict maskh, double* restrict maskbot,
-        int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot,
-        double* restrict w)
-{
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-    const int kstart = grid.kstart;
-
-    for (int k=grid.kstart; k<grid.kend; k++)
-    {
-        nmask[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk;
-                const int ntmp = (w[ijk] + w[ijk+kk]) <= 0.;
-                nmask[k] += ntmp;
-                mask[ijk] = (double)ntmp;
-            }
-    }
-
-    for (int k=grid.kstart; k<grid.kend+1; k++)
-    {
-        nmaskh[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk;
-                const int ntmp = w[ijk] <= 0.;
-                nmaskh[k] += ntmp;
-                maskh[ijk] = (double)ntmp;
-            }
-    }
-
-    // Set the mask for surface projected quantities
-    // In this case: velocity at surface, so zero
-    for (int j=grid.jstart; j<grid.jend; j++)
-#pragma ivdep
-        for (int i=grid.istart; i<grid.iend; i++)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            maskbot[ij] = maskh[ijk];
-        }
-
-    grid.boundary_cyclic(mask);
-    grid.boundary_cyclic(maskh);
-    grid.boundary_cyclic_2d(maskbot);
-
-    master.sum(nmask , grid.kcells);
-    master.sum(nmaskh, grid.kcells);
-    *nmaskbot = nmaskh[grid.kstart];
-}
-*/
 
 template<typename TF>
 void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
 {
     auto& gd = grid.get_grid_data();
 
-    Mask<TF>& m = stats.masks[mask_name]; 
+    Mask<TF>& m = stats.masks[mask_name];
 
     // Define locations
     const int uloc[] = {1,0,0};

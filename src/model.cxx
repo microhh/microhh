@@ -427,6 +427,8 @@ void Model<TF>::calculate_statistics()
         // Get the mask from one of the mask providing classes
         if (mask_name == "default")
             stats->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"]);
+        else if (fields->has_mask(mask_name))
+            fields->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"], *stats, mask_name);
         else
         {
             std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";

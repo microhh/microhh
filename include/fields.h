@@ -31,6 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Field3d;
 template<typename> struct Mask;
 
 template<typename TF>
@@ -48,7 +49,7 @@ class Fields
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
 
         // void exec();
-        // void get_mask(Field3d*, Field3d*, Mask*);
+        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
         void exec_stats(Stats<TF>&, std::string);   ///< Calculate the statistics
 
         void init_momentum_field  (std::string, std::string, std::string);
