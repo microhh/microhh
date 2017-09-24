@@ -273,7 +273,7 @@ void Stats<TF>::exec(int iteration, double time, unsigned long itime)
 
 // Retrieve the user input list of requested masks
 template<typename TF>
-std::vector<std::string>& Stats<TF>::get_mask_list()
+const std::vector<std::string>& Stats<TF>::get_mask_list()
 {
     return masklist;
 }

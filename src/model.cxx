@@ -399,7 +399,7 @@ void Model<TF>::set_time_step()
 template<typename TF>
 void Model<TF>::add_statistics_masks()
 {
-    std::vector<std::string> mask_list = stats->get_mask_list();
+    const std::vector<std::string>& mask_list = stats->get_mask_list();
 
     // Check whether the mask can be retrieved from any of the mask-providing classes
     for (auto& mask_name : mask_list)
@@ -420,7 +420,7 @@ void Model<TF>::add_statistics_masks()
 template<typename TF>
 void Model<TF>::calculate_statistics()
 {
-    std::vector<std::string> mask_list = stats->get_mask_list();
+    const std::vector<std::string>& mask_list = stats->get_mask_list();
 
     for (auto& mask_name : mask_list)
     {

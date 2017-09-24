@@ -94,7 +94,7 @@ class Stats
         std::vector<int> nmask;
         std::vector<int> nmaskh;
         int nmaskbot;
-        std::vector<std::string>& get_mask_list();
+        const std::vector<std::string>& get_mask_list();
 
         // Interface functions.
         void add_mask(const std::string);
