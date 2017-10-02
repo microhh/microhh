@@ -62,7 +62,8 @@ def write_output(file_name, variables, n):
 #gr = Stretched_grid(96, 40, 10, 2.0, 4.0)
 #gr = Stretched_grid(64, 40, 10, 5.0, 10.0)
 #gr = Stretched_grid(72,  50, 10, 3.0, 20.0)
-gr = Stretched_grid(144, 110, 20, 1.5, 15.0)
+#gr = Stretched_grid(144, 120, 20, 1.0, 15.0)
+gr = Stretched_grid(192, 180, 10, 0.5, 15.0)
 gr.plot()
 
 # Write back vertical extent domain
@@ -75,11 +76,11 @@ thl = np.ones(gr.z.size)*318
 qt  = 6.4 - gr.z * 0.0030
 qt /= 1000
 
-u   = np.ones(gr.z.size)*5
-ug  = np.zeros(gr.z.size)
+u   = np.ones(gr.z.size)*6.25
+ug  = np.ones(gr.z.size)*3
 
-v   = np.ones(gr.z.size)*3
-vg  = np.zeros(gr.z.size)
+v   = np.ones(gr.z.size)*3.6
+vg  = np.ones(gr.z.size)*7
 
 # Large scale tendencies thl and qt
 #thlls = -1.395 + 0.00069 * gr.z
