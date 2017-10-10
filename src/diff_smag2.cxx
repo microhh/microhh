@@ -152,26 +152,10 @@ void Diff_smag_2::exec()
 
     if(model->boundary->get_switch() == "surface")
     {
-        // ----------------------------------------------------
-        calc_uflux(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-                   fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi,
-                   fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
-
-        model->immersed_boundary->exec_uflux(fields->atmp["tmp3"]->data);
-
-        calc_divergence(fields->ut->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-                          grid->dzi, fields->rhoref, fields->rhorefh, uloc);
-
-        // ----------------------------------------------------
-        calc_vflux(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-                   fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi,
-                   fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
-
-        model->immersed_boundary->exec_vflux(fields->atmp["tmp3"]->data);
-
-        calc_divergence(fields->vt->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-                          grid->dzi, fields->rhoref, fields->rhorefh, vloc);
-
+        diff_u<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+        diff_v<false>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
         diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
                fields->rhoref, fields->rhorefh);
 
@@ -435,145 +419,6 @@ void Diff_smag_2::calc_evisc_neutral(double* restrict evisc,
     }
 
 }
-
-void Diff_smag_2::calc_divergence(double* const restrict ut,
-                                  const double* const restrict flux_x, const double* const restrict flux_y, const double* const restrict flux_z,
-                                  const double* const restrict dzi, const double* const restrict rhoref, const double* const restrict rhorefh, const int loc[3])
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-    const int kstart = grid->kstart;
-    const int kend   = grid->kend;
-
-
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
-
-    for (int k=grid->kstart; k<grid->kend; ++k)
-    {
-        const double rhorefi = 1./rhoref[k];
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-
-                ut[ijk] += (flux_x[ijk+(1-loc[0])*ii] - flux_x[ijk-loc[0]*ii]) * dxi +
-                           (flux_y[ijk+(1-loc[1])*jj] - flux_y[ijk-loc[1]*jj]) * dyi +
-                           (flux_z[ijk+(1-loc[2])*kk] - flux_z[ijk-loc[2]*kk]) * dzi[k] * rhorefi;
-            }
-    }
-}
-
-void Diff_smag_2::calc_uflux(double* const restrict flux_x, double* const restrict flux_y, double* const restrict flux_z,
-                             const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                             const double* const restrict dzi, const double* const restrict dzhi, const double* const restrict evisc,
-                             const double* const restrict fluxbot, const double* const restrict fluxtop,
-                             const double* const restrict rhoref, const double* const restrict rhorefh)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-    const int kstart = grid->kstart;
-    const int kend   = grid->kend;
-
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
-
-    double eviscs, eviscb;
-
-    // Interior
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-
-                // Km * (du/dx + du/dx)
-                flux_x[ijk] = evisc[ijk] * 2 * (u[ijk+ii] - u[ijk]) * dxi;
-
-                // Km * (du/dy + dv/dx)
-                eviscs = 0.25 * (evisc[ijk] + evisc[ijk-ii] + evisc[ijk-ii-jj] + evisc[ijk-jj]);
-                flux_y[ijk] = eviscs * ((u[ijk] - u[ijk-jj]) * dyi + (v[ijk] - v[ijk-ii]) * dxi);
-
-                // Km * (du/dz + dw/dx)
-                eviscb = 0.25 * (evisc[ijk] + evisc[ijk-ii] + evisc[ijk-ii-kk] + evisc[ijk-kk]);
-                flux_z[ijk] = rhorefh[k] * eviscb * ((u[ijk] - u[ijk-kk]) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi);
-            }
-
-    // Top & bottom boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-        #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ijkb = i + j*jj + kstart*kk;
-            const int ijkt = i + j*jj + kend  *kk;
-            const int ij  = i + j*jj;
-
-            flux_z[ijkb] = -rhorefh[kstart] * fluxbot[ij];
-            flux_z[ijkt] = -rhorefh[kend  ] * fluxtop[ij];
-        }
-
-    grid->boundary_cyclic(flux_x);
-    grid->boundary_cyclic(flux_y);
-}
-
-void Diff_smag_2::calc_vflux(double* const restrict flux_x, double* const restrict flux_y, double* const restrict flux_z,
-                             const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                             const double* const restrict dzi, const double* const restrict dzhi, const double* const restrict evisc,
-                             const double* const restrict fluxbot, const double* const restrict fluxtop,
-                             const double* const restrict rhoref, const double* const restrict rhorefh)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-    const int kstart = grid->kstart;
-    const int kend   = grid->kend;
-
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
-
-    double eviscw, eviscb;
-
-    // Interior
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-
-                // Km * (dv/dx + du/dy)
-                eviscw = 0.25 * (evisc[ijk] + evisc[ijk-ii] + evisc[ijk-ii-jj] + evisc[ijk-jj]);
-                flux_x[ijk] = eviscw * ((u[ijk] - u[ijk-jj]) * dyi + (v[ijk] - v[ijk-ii]) * dxi);
-
-                // Km * (dv/dy + dv/dy)
-                flux_y[ijk] = evisc[ijk] * 2 * (v[ijk+jj] - v[ijk]) * dyi;
-
-                // Km * (dv/dz + dw/dy)
-                eviscb = 0.25 * (evisc[ijk] + evisc[ijk-jj] + evisc[ijk-jj-kk] + evisc[ijk-kk]);
-                flux_z[ijk] = rhorefh[k] * eviscb * ((v[ijk] - v[ijk-kk]) * dzhi[k] + (w[ijk] - w[ijk-jj]) * dyi);
-            }
-
-    // Top & bottom boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-        #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ijkb = i + j*jj + kstart*kk;
-            const int ijkt = i + j*jj + kend  *kk;
-            const int ij  = i + j*jj;
-
-            flux_z[ijkb] = -rhorefh[kstart] * fluxbot[ij];
-            flux_z[ijkt] = -rhorefh[kend  ] * fluxtop[ij];
-        }
-
-    grid->boundary_cyclic(flux_x);
-    grid->boundary_cyclic(flux_y);
-}
-
 
 template <bool resolved_wall>
 void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,

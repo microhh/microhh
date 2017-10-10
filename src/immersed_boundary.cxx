@@ -130,54 +130,6 @@ namespace
         }
     }
 
-    // BvS: REMOVE ME
-    void calc_mask_block(double* const restrict mask, double* const restrict maskh, double* const restrict maskbot,
-                         int* const restrict nmask, int* const restrict nmaskh, int* const restrict nmaskbot,
-                         const double* const restrict x, const double* const restrict y,
-                         const double* const restrict z, const double* const restrict zh,
-                         const double x0, const double x1, const double y0, const double y1, const double z1,
-                         const int istart, const int iend,
-                         const int jstart, const int jend,
-                         const int kstart, const int kend,
-                         const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        // Set the mask for outside (1) or inside (0) IB
-        for (int k=kstart; k<kend; ++k)
-        {
-            nmask[k]  = 0;
-            nmaskh[k] = 0;
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
-                    const int is_not_ib   = !(x[i] > x0 && x[i] < x1 && y[j] > y0 && y[j] < y1 && z [k] < z1);
-                    const int is_not_ib_h = !(x[i] > x0 && x[i] < x1 && y[j] > y0 && y[j] < y1 && zh[k] < z1);
-
-                    mask[ijk]  = static_cast<double>(is_not_ib);
-                    maskh[ijk] = static_cast<double>(is_not_ib_h);
-
-                    nmask[k]  += is_not_ib;
-                    nmaskh[k] += is_not_ib_h;
-                }
-        }
-
-        // Mask for surface projected quantities
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                maskbot[ij] = maskh[ijk];
-            }
-
-    }
-
     void zero_ib(double* const restrict field,
                  const double* const restrict x, const double* const restrict y,
                  const double* const restrict z,
@@ -768,28 +720,13 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
 void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
 {
     // Mask is currently only implemented for boundaries set up from f(x,y)
-    //if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type) && (ib_type != Flat_type))
-    //{
-    //    model->master->print_error("Get_mask() not yet implemented for chosen IB type\n");
-    //    throw 1;
-    //}
-
-    if (ib_type == User_type)
+    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type) && (ib_type != Flat_type))
     {
-        // BvS: REMOVE ME
-        // Specific for u-location, so use xh
-        calc_mask_block(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->xh, grid->y, grid->z, grid->zh,
-                        x0_block, x1_block, y0_block, y1_block, z1_block, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-
-        grid->boundary_cyclic(mfield->data);
-        grid->boundary_cyclic(mfieldh->data);
-        grid->boundary_cyclic_2d(mfieldh->databot);
-
-        model->master->sum(stats->nmask , grid->kcells);
-        model->master->sum(stats->nmaskh, grid->kcells);
-        stats->nmaskbot = stats->nmaskh[grid->kstart];
+        model->master->print_error("Get_mask() not yet implemented for chosen IB type\n");
+        throw 1;
     }
-    else if (ib_type == Flat_type)
+
+    if (ib_type == Flat_type)
         calc_mask<Flat_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
     else if (xy_dims == 1)
     {
@@ -864,65 +801,5 @@ void Immersed_boundary::zero_ib_tendencies()
         zero_ib(fields->at[it->first]->data, grid->x, grid->y, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
                 grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
         grid->boundary_cyclic(fields->at[it->first]->data);
-    }
-}
-
-void Immersed_boundary::exec_uflux(double* const restrict flux)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const double minval = 1.e-2;
-    const double ustar = 0.2;
-
-    const double* u = fields->u->data;
-    const double* v = fields->v->data;
-    const double* zh = grid->zh;
-
-    for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
-    {
-        const int ijk = it->i + it->j*jj + (it->k+1)*kk;
-
-        // 1. Calculate v^2 above u, and u^2 and ustar^4
-        const double v2  = std::max(minval, 0.25*(std::pow(v[ijk],2) + std::pow(v[ijk+jj],2) + std::pow(v[ijk+jj-ii],2) + std::pow(v[ijk-ii],2)));
-        const double u2  = std::max(minval, std::pow(u[ijk], 2));
-        const double us4 = std::pow(ustar, 4);
-
-        // 2. Calculate flux at boundary
-        const double ib_flux = copysign(1., u[ijk]) * std::pow(us4 / (1. + v2 / u2), 0.5);
-
-        // 3. Intrapolate/extrapolate to flux level
-        flux[ijk] = ib_flux + (flux[ijk+kk] - ib_flux) / (zh[it->k+2] - it->zB) * (zh[it->k+1] - it->zB);
-    }
-}
-
-void Immersed_boundary::exec_vflux(double* const restrict flux)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const double minval = 1.e-2;
-    const double ustar = 0.2;
-
-    const double* u = fields->u->data;
-    const double* v = fields->v->data;
-    const double* zh = grid->zh;
-
-    for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
-    {
-        const int ijk = it->i + it->j*jj + (it->k+1)*kk;
-
-        // 1. Calculate u^2 above v, and v^2 and ustar^4
-        const double u2  = std::max(minval, 0.25*(std::pow(u[ijk],2) + std::pow(u[ijk+ii],2) + std::pow(u[ijk+ii-jj],2) + std::pow(u[ijk-jj],2)));
-        const double v2  = std::max(minval, std::pow(v[ijk], 2));
-        const double us4 = std::pow(ustar, 4);
-
-        // 2. Calculate flux at boundary
-        const double ib_flux = copysign(1., v[ijk]) * std::pow(us4 / (1. + u2 / v2), 0.5);
-
-        // 3. Intrapolate/extrapolate to flux level
-        flux[ijk] = ib_flux + (flux[ijk+kk] - ib_flux) / (zh[it->k+2] - it->zB) * (zh[it->k+1] - it->zB);
     }
 }
