@@ -34,7 +34,51 @@ class Grid:
         pl.figure()
         pl.plot(self.z, self.dz, '-x')
         pl.xlabel('z (m)')
-        pl.ylabel('dz (m)') 
+        pl.ylabel('dz (m)')
+
+def z_spectral(itot, jtot, k1, fac1, k2, fac2, ks2, dz, z_offset):
+    x = np.linspace(0.+ 0.5//itot, 1.-0.5//itot, itot)
+    y = np.linspace(0.+ 0.5//jtot, 1.-0.5//jtot, jtot)
+
+    xfft = np.linspace(0, itot//2, itot//2+1)
+    yfft = np.linspace(0, jtot//2, jtot//2+1)
+
+    np.random.seed(103)
+    arnd = 2.*np.pi*np.random.rand(jtot, itot//2+1)
+    afftrnd = np.cos(arnd) + 1j*np.sin(arnd)
+
+    # Calculate the radial wave numbers
+    l = np.zeros(afftrnd.shape)
+    for i in range(0,itot//2+1):
+        for j in range(0,jtot//2+1):
+            l[i,j] = (i**2. + j**2.)**.5
+    for i in range(itot//2+1,itot):
+        for j in range(0,jtot//2+1):
+            l[i,j] = ((itot-i)**2. + j**2.)**.5
+
+    # Filter on radial wave number using a gaussian function
+    factor  = fac1*np.exp(-(l-k1)**2. / (2.*ks2))
+    factor += fac2*np.exp(-(l-k2)**2. / (2.*ks2))
+
+    # Create the filtered field
+    afft = factor*afftrnd
+
+    # Make sure the mean is exactly 0
+    afft[0,0] = 0.
+
+    a = np.fft.irfft2(afft)
+
+    # Add ofset to set lower boundary at z=0
+    a -= a.min()
+
+    # Scale to requested max height
+    a *= dz / a.max()
+
+    # Add offset
+    a += z_offset
+
+    return a
+
 
 if __name__ == "__main__":
     # Read the .ini file
@@ -42,11 +86,7 @@ if __name__ == "__main__":
 
     # Create stretched grid
     grid = Grid(96, 40, 5, 0.0004, 0.0007)
-    #grid = Grid(128, 40, 5, 0.0002, 0.0005)
-    #grid = Grid(256, 122, 10, 0.0001, 0.0003)
-    #grid = Grid(384, 180, 20, 0.00006, 0.00021)
-
-    grid.plot()
+    #grid.plot()
 
     # Write `zsize` and `ktot` back to .ini file
     replace_namelist_value('zsize', grid.zsize)
@@ -65,31 +105,16 @@ if __name__ == "__main__":
     proffile.close()
 
     # Create 2D IB height
-    amplitude    = 0.00254
-    wavelength_x = 0.0508
-    wavelength_y = 0.0508*2
-    z_offset     = 0.005
+    zIB = z_spectral(ini['grid']['itot'], ini['grid']['jtot'], k1=2, fac1=4, k2=6, fac2=1, ks2=1.5**2., dz=0.01, z_offset=grid.z[2])
 
     dx = ini['grid']['xsize'] / ini['grid']['itot']
-    dy = ini['grid']['xsize'] / ini['grid']['itot']
-
+    dy = ini['grid']['ysize'] / ini['grid']['jtot']
     x  = np.arange(0.5*dx, ini['grid']['xsize'], dx)
     y  = np.arange(0.5*dy, ini['grid']['ysize'], dy)
 
-    zIB = np.zeros((ini['grid']['jtot'], ini['grid']['itot']))
-
-    for j in range(ini['grid']['jtot']):
-        for i in range(ini['grid']['itot']):
-            zIB[j,i] = z_offset + amplitude + amplitude * np.sin(2*np.pi*x[i] / wavelength_x)\
-                                                        * np.sin(2*np.pi*y[j] / wavelength_y)
-
-    # Chiels snow script
-    from snow2 import *
-    zIB=a
-
-    pl.figure()
-    pl.pcolormesh(x,y,zIB)
-    pl.colorbar()
+    #pl.figure()
+    #pl.pcolormesh(x,y,zIB)
+    #pl.colorbar()
 
     # Write to input file for MicroHH
     write_restart_file(zIB[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1, 'dem.0000000')
