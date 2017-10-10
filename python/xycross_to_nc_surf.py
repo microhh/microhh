@@ -36,6 +36,10 @@ else:
 # calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
 
+# in case of one variable, convert into list
+if (not isinstance(variables, list)):
+    variables = [variables]
+
 # load the dimensions
 n   = nx*ny*nz
 fin = open("grid.{:07d}".format(0),"rb")
