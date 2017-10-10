@@ -129,6 +129,33 @@ namespace
             }
         }
     }
+
+    // Interpolate (bi-linear) the IB DEM to the requested location
+    double interp2_dem(const double x_req, const double y_req,
+                       const double* const restrict x, const double* const restrict y,
+                       const double* const restrict dem,
+                       const double dx, const double dy,
+                       const int igc, const int jgc, const int icells,
+                       const int imax, const int jmax,
+                       const int mpicoordx, const int mpicoordy)
+    {
+        const int ii = 1;
+        const int jj = icells;
+
+        const int i0 = (x_req - 0.5*dx) / dx - mpicoordx*imax + igc;
+        const int j0 = (y_req - 0.5*dy) / dy - mpicoordy*jmax + jgc;
+        const int ij = i0 + j0*jj;
+
+        const double f1x = (x_req - x[i0]) / dx;
+        const double f1y = (y_req - y[j0]) / dy;
+        const double f0x = 1 - f1x;
+        const double f0y = 1 - f1y;
+
+        const double z = f0y * (f0x * dem[ij   ] + f1x * dem[ij+ii   ]) +
+                         f1y * (f0x * dem[ij+jj] + f1x * dem[ij+ii+jj]);
+
+        return z;
+    }
 }
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
@@ -298,9 +325,12 @@ void Immersed_boundary::create()
                 model->master->print_message("OK\n");
             grid->boundary_cyclic_2d(dem.data());
 
-
-
-
+            // Find ghost cells
+            find_ghost_cells<Dem_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+            find_ghost_cells<Dem_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+            find_ghost_cells<Dem_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+            if (fields->sp.size() > 0)
+                find_ghost_cells<Dem_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
         }
         if (ib_type == Flat_type)
         {
@@ -393,6 +423,10 @@ double Immersed_boundary::boundary_function(const double x, const double y)
 {
     if (sw == Flat_type)
         return z_offset;
+    else if (sw == Dem_type)
+        return interp2_dem(x, y, grid->x, grid->y, dem.data(), grid->dx, grid->dy,
+                           grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
+                           model->master->mpicoordx, model->master->mpicoordy);
     else if (dims == 1)
     {
         if (sw == Sine_type)
@@ -714,13 +748,15 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
 void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
 {
     // Mask is currently only implemented for boundaries set up from f(x,y)
-    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type) && (ib_type != Flat_type))
+    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type) && (ib_type != Flat_type) && (ib_type != Dem_type))
     {
         model->master->print_error("Get_mask() not yet implemented for chosen IB type\n");
         throw 1;
     }
 
-    if (ib_type == Flat_type)
+    if (ib_type == Dem_type)
+        calc_mask<Dem_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
+    else if (ib_type == Flat_type)
         calc_mask<Flat_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
     else if (xy_dims == 1)
     {
