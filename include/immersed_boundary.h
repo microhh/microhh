@@ -69,7 +69,7 @@ struct Ghost_cell
 class Immersed_boundary
 {
     public:
-        enum IB_type       {None_type, Sine_type, Gaus_type, Agnesi_type, Flat_type, User_type};
+        enum IB_type       {None_type, Sine_type, Gaus_type, Agnesi_type, Flat_type, User_type, Dem_type};
         enum Boundary_type {Dirichlet_type, Neumann_type, Flux_type};
 
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
@@ -78,7 +78,6 @@ class Immersed_boundary
         void init();
         void create();
         void exec();                   ///< Set the immersed boundary ghost cells
-        void zero_ib_tendencies();     ///< Set the immersed boundary ghost cells
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
         void get_mask(Field3d*, Field3d*);
         IB_type get_switch() { return ib_type; }
@@ -129,6 +128,9 @@ class Immersed_boundary
 
         double visc_wall;
 
+        // User elevation map (DEM)
+        std::vector<double> dem;
+
         // Boundary conditions
         struct Field3dBc
         {
@@ -138,13 +140,5 @@ class Immersed_boundary
 
         typedef std::map<std::string, Field3dBc*> BcMap;    ///< Map with boundary conditions per scalar
         BcMap sbc;                                          ///< Map with boundary conditions per scalar
-
-
-        // TMP BvS
-        double x0_block;
-        double x1_block;
-        double y0_block;
-        double y1_block;
-        double z1_block;
 };
 #endif

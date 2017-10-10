@@ -129,31 +129,6 @@ namespace
             }
         }
     }
-
-    void zero_ib(double* const restrict field,
-                 const double* const restrict x, const double* const restrict y,
-                 const double* const restrict z,
-                 const double x0, const double x1, const double y0, const double y1, const double z1,
-                 const int istart, const int iend,
-                 const int jstart, const int jend,
-                 const int kstart, const int kend,
-                 const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
-                    const int is_not_ib   = !(x[i] > x0 && x[i] < x1 && y[j] > y0 && y[j] < y1 && z [k] < z1);
-
-                    field[ijk] *= static_cast<double>(is_not_ib);
-                }
-    }
 }
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
@@ -164,24 +139,16 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     int nerror = 0;
 
+    // Get the IB switch, default to sw_ib = false
     inputin->get_item(&sw_ib, "IB", "sw_ib", "", "0");
 
     // Get the IB type, and required parameters for that type
     if (sw_ib == "0")
-    {
         ib_type = None_type;
-    }
     else if (sw_ib == "user")
-    {
         ib_type = User_type;
-
-        // BvS: REMOVE ME
-        nerror += inputin->get_item(&x0_block,    "IB", "x0_block",    ""    );
-        nerror += inputin->get_item(&x1_block,    "IB", "x1_block",    ""    );
-        nerror += inputin->get_item(&y0_block,    "IB", "y0_block",    ""    );
-        nerror += inputin->get_item(&y1_block,    "IB", "y1_block",    ""    );
-        nerror += inputin->get_item(&z1_block,    "IB", "z1_block",    ""    );
-    }
+    else if (sw_ib == "dem")
+        ib_type = Dem_type;
     else if (sw_ib == "sine")
     {
         ib_type = Sine_type;
@@ -219,7 +186,10 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     if (ib_type != None_type)
     {
         nerror += inputin->get_item(&n_idw,     "IB", "n_idw", "");      // Number of grid points used in interpolation
-        nerror += inputin->get_item(&visc_wall, "IB", "visc_wall", "");  // Fixed viscosity at the wall
+
+        // Fixed viscosity at the wall, in case of LES
+        if (model->diff->get_switch() == "smag2")
+            nerror += inputin->get_item(&visc_wall, "IB", "visc_wall", "");
 
         grid->set_minimum_ghost_cells(2, 2, 1);  // Set at leat two ghost cells in the horizontal
 
@@ -275,6 +245,12 @@ void Immersed_boundary::init()
 
     if (ib_type == None_type)
         return;
+
+    if (ib_type == Dem_type)
+    {
+        // Resize the 2D DEM field
+        dem.resize(grid->ijcells);
+    }
 }
 
 void Immersed_boundary::create()
@@ -308,6 +284,24 @@ void Immersed_boundary::create()
             bc = sbc[fields->sp.begin()->first]->bcbot;
 
         // Find the IB ghost cells
+        if (ib_type == Dem_type)
+        {
+            // 1. Read input DEM
+            char filename[256] = "dem.0000000";
+            model->master->print_message("Loading \"%s\" ... ", filename);
+            if(grid->load_xy_slice(dem.data(), fields->atmp["tmp1"]->data, filename))
+            {
+                model->master->print_message("FAILED\n");
+                throw 1;
+            }
+            else
+                model->master->print_message("OK\n");
+            grid->boundary_cyclic_2d(dem.data());
+
+
+
+
+        }
         if (ib_type == Flat_type)
         {
             find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
@@ -775,31 +769,5 @@ void Immersed_boundary::exec()
         set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
                         grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc);
         grid->boundary_cyclic(fields->ap[it->first]->data);
-    }
-}
-
-void Immersed_boundary::zero_ib_tendencies()
-{
-    if (ib_type == None_type)
-        return;
-
-    zero_ib(fields->ut->data, grid->xh, grid->y, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
-            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-    zero_ib(fields->vt->data, grid->x, grid->yh, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
-            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-    zero_ib(fields->wt->data, grid->x, grid->y, grid->zh, x0_block, x1_block, y0_block, y1_block, z1_block,
-            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-
-    grid->boundary_cyclic(fields->ut->data);
-    grid->boundary_cyclic(fields->vt->data);
-    grid->boundary_cyclic(fields->wt->data);
-
-    // Set the ghost cells for scalars, depending on their BC
-    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    {
-
-        zero_ib(fields->at[it->first]->data, grid->x, grid->y, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
-                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-        grid->boundary_cyclic(fields->at[it->first]->data);
     }
 }
