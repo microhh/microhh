@@ -59,10 +59,10 @@ int Field3d<TF>::init()
         total_memory_size += field_memory_size;
 
         // Allocate all fields belonging to the 3d field
-        fld       .resize(gd.ncells);
-        fld_bot    .resize(gd.ijcells);
-        fld_top    .resize(gd.ijcells);
-        fld_mean   .resize(gd.kcells);
+        fld     .resize(gd.ncells);
+        fld_bot .resize(gd.ijcells);
+        fld_top .resize(gd.ijcells);
+        fld_mean.resize(gd.kcells);
         grad_bot.resize(gd.ijcells);
         grad_top.resize(gd.ijcells);
         flux_bot.resize(gd.ijcells);
