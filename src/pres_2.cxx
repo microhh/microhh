@@ -58,20 +58,20 @@ void Pres_2<TF>::exec(const double dt)
     const Grid_data<TF>& gd = grid.get_grid_data();
 
     // create the input for the pressure solver
-    input(fields.sd.at("p")->data.data(),
-          fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
-          fields.mt.at("u")->data.data(), fields.mt.at("v")->data.data(), fields.mt.at("w")->data.data(),
+    input(fields.sd.at("p")->fld.data(),
+          fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+          fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
           gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data(),
           dt);
 
     // solve the system
-    solve(fields.sd.at("p")->data.data(), fields.atmp.at("tmp1")->data.data(), fields.atmp.at("tmp2")->data.data(),
+    solve(fields.sd.at("p")->fld.data(), fields.atmp.at("tmp1")->fld.data(), fields.atmp.at("tmp2")->fld.data(),
           gd.dz.data(), fields.rhoref.data(),
           grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
 
     // get the pressure tendencies from the pressure field
-    output(fields.mt.at("u")->data.data(), fields.mt.at("v")->data.data(), fields.mt.at("w")->data.data(), 
-           fields.sd.at("p")->data.data(), gd.dzhi.data());
+    output(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(), 
+           fields.sd.at("p")->fld.data(), gd.dzhi.data());
 }
 #endif
 
@@ -80,7 +80,7 @@ template<typename TF>
 TF Pres_2<TF>::check_divergence()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    return calc_divergence(fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    return calc_divergence(fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                            gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data());
 }
 #endif

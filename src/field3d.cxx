@@ -59,7 +59,7 @@ int Field3d<TF>::init()
         total_memory_size += field_memory_size;
 
         // Allocate all fields belonging to the 3d field
-        data       .resize(gd.ncells);
+        fld       .resize(gd.ncells);
         databot    .resize(gd.ijcells);
         datatop    .resize(gd.ijcells);
         datamean   .resize(gd.kcells);
@@ -76,7 +76,7 @@ int Field3d<TF>::init()
 
     // set all values to zero
     for (int n=0; n<gd.ncells; ++n)
-        data[n] = 0.;
+        fld[n] = 0.;
 
     for (int n=0; n<gd.kcells; ++n)
         datamean[n] = 0.;
@@ -107,7 +107,7 @@ void Field3d<TF>::calc_mean_profile()
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                datamean[k] += data[ijk];
+                datamean[k] += fld[ijk];
             }
     }
 
@@ -134,7 +134,7 @@ TF Field3d<TF>::calc_mean()
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                sum += data[ijk] * gd.dz[k];
+                sum += fld[ijk] * gd.dz[k];
             }
 
     master.sum(&sum, 1);

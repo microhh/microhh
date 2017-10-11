@@ -41,7 +41,7 @@ class Field3d
         TF calc_mean();             ///< Calculate volume weighted total mean
 
         // Variables at CPU.
-        std::vector<TF> data;
+        std::vector<TF> fld;
         std::vector<TF> databot;
         std::vector<TF> datatop;
         std::vector<TF> datamean;

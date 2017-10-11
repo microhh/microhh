@@ -137,20 +137,20 @@ void Diff_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
-    diff_c<TF>(fields.mt.at("u")->data.data(), fields.mp.at("u")->data.data(), fields.visc, 
+    diff_c<TF>(fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), fields.visc, 
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
     
-    diff_c<TF>(fields.mt.at("v")->data.data(), fields.mp.at("v")->data.data(), fields.visc, 
+    diff_c<TF>(fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), fields.visc, 
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
     
-    diff_w<TF>(fields.mt.at("w")->data.data(), fields.mp.at("w")->data.data(), fields.visc, 
+    diff_w<TF>(fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), fields.visc, 
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
     
     for (auto& it : fields.st)
-        diff_c<TF>(it.second->data.data(), fields.sp.at(it.first)->data.data(), fields.sp.at(it.first)->visc, 
+        diff_c<TF>(it.second->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->visc, 
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
 }

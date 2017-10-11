@@ -207,7 +207,7 @@ template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {
     auto& gd = grid.get_grid_data();
-    return calc_cfl<TF>(fields.mp.at("u")->data.data(),fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    return calc_cfl<TF>(fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             gd.dzi.data(), gd.dx, gd.dy,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -220,7 +220,7 @@ unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
     // Calculate cfl and prevent zero divisons.
     auto& gd = grid.get_grid_data();
 
-    double cfl = calc_cfl<TF>(fields.mp.at("u")->data.data(),fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    double cfl = calc_cfl<TF>(fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             gd.dzi.data(), gd.dx, gd.dy,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -234,30 +234,30 @@ template<typename TF>
 void Advec_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
-    advec_u(fields.mt.at("u")->data.data(),
-            fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    advec_u(fields.mt.at("u")->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             gd.dzi.data(), gd.dx, gd.dy,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    advec_v(fields.mt.at("v")->data.data(),
-            fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    advec_v(fields.mt.at("v")->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             gd.dzi.data(), gd.dx, gd.dy,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    advec_w(fields.mt.at("w")->data.data(),
-            fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+    advec_w(fields.mt.at("w")->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             gd.dzhi.data(), gd.dx, gd.dy,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& it : fields.st)
-        advec_s(it.second->data.data(), fields.sp.at(it.first)->data.data(),
-                fields.mp.at("u")->data.data(), fields.mp.at("v")->data.data(), fields.mp.at("w")->data.data(),
+        advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzi.data(), gd.dx, gd.dy,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
