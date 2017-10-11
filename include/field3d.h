@@ -45,8 +45,8 @@ class Field3d
         std::vector<TF> fld_bot;
         std::vector<TF> fld_top;
         std::vector<TF> datamean;
-        std::vector<TF> datagradbot;
-        std::vector<TF> datagradtop;
+        std::vector<TF> grad_bot;
+        std::vector<TF> grad_top;
         std::vector<TF> datafluxbot;
         std::vector<TF> datafluxtop;
 
@@ -65,8 +65,8 @@ class Field3d
         double* fld_bot_g;
         double* fld_top_g;
         double* datamean_g;
-        double* datagradbot_g;
-        double* datagradtop_g;
+        double* grad_bot_g;
+        double* grad_top_g;
         double* datafluxbot_g;
         double* datafluxtop_g;
         */

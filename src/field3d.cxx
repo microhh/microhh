@@ -63,8 +63,8 @@ int Field3d<TF>::init()
         fld_bot    .resize(gd.ijcells);
         fld_top    .resize(gd.ijcells);
         datamean   .resize(gd.kcells);
-        datagradbot.resize(gd.ijcells);
-        datagradtop.resize(gd.ijcells);
+        grad_bot.resize(gd.ijcells);
+        grad_top.resize(gd.ijcells);
         datafluxbot.resize(gd.ijcells);
         datafluxtop.resize(gd.ijcells);
     }
@@ -85,8 +85,8 @@ int Field3d<TF>::init()
     {
         fld_bot    [n] = 0.;
         fld_top    [n] = 0.;
-        datagradbot[n] = 0.;
-        datagradtop[n] = 0.;
+        grad_bot[n] = 0.;
+        grad_top[n] = 0.;
         datafluxbot[n] = 0.;
         datafluxtop[n] = 0.;
     }
