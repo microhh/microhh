@@ -37,18 +37,18 @@ class Field3d
         ~Field3d();
 
         int init();
-        void calc_mean_profile();   ///< Calculate mean profile into datamean
+        void calc_mean_profile();   ///< Calculate mean profile into fld_mean
         TF calc_mean();             ///< Calculate volume weighted total mean
 
         // Variables at CPU.
         std::vector<TF> fld;
         std::vector<TF> fld_bot;
         std::vector<TF> fld_top;
-        std::vector<TF> datamean;
+        std::vector<TF> fld_mean;
         std::vector<TF> grad_bot;
         std::vector<TF> grad_top;
-        std::vector<TF> datafluxbot;
-        std::vector<TF> datafluxtop;
+        std::vector<TF> flux_bot;
+        std::vector<TF> flux_top;
 
         std::string name;
         std::string unit;
@@ -64,11 +64,11 @@ class Field3d
         double* data_g;
         double* fld_bot_g;
         double* fld_top_g;
-        double* datamean_g;
+        double* fld_mean_g;
         double* grad_bot_g;
         double* grad_top_g;
-        double* datafluxbot_g;
-        double* datafluxtop_g;
+        double* flux_bot_g;
+        double* flux_top_g;
         */
 
     private:

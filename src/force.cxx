@@ -189,7 +189,7 @@ void Force<TF>::exec(double dt)
     //if (swwls == "1")
     //{
     //    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    //        advec_wls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
+    //        advec_wls_2nd(it->second->data, fields->sp[it->first]->fld_mean, wls, grid->dzhi);
     //}
 }
 //#endif

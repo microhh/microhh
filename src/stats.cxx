@@ -644,7 +644,7 @@ void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data
 //}
 
 template<typename TF>
-void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restrict prof, TF power,
+void Stats<TF>::calc_moment(TF* restrict data, TF* restrict fld_mean, TF* restrict prof, TF power,
                             TF* restrict mask, int* restrict nmask)
 {
     auto& gd = grid.get_grid_data();
@@ -657,7 +657,7 @@ void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restri
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
+                prof[k] += mask[ijk]*std::pow(data[ijk]-fld_mean[k], power);
             }
     }
 
@@ -673,7 +673,7 @@ void Stats<TF>::calc_moment(TF* restrict data, TF* restrict datamean, TF* restri
 }
 
 template<typename TF>
-void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict datamean, TF* restrict w, TF* restrict wmean,
+void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict fld_mean, TF* restrict w, TF* restrict wmean,
                               TF* restrict prof, TF* restrict tmp1, const int loc[3],
                               TF* restrict mask, int* restrict nmask)
 {
@@ -707,7 +707,7 @@ void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict datamean, TF* rest
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*kk;
-                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
             }
     }
 
@@ -715,7 +715,7 @@ void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict datamean, TF* rest
 
     for (int k=1; k<gd.kcells; ++k)
     {
-        if (nmask[k] > nthres && datamean[k-1] != netcdf_fp_fillvalue<TF>() && datamean[k] != netcdf_fp_fillvalue<TF>())
+        if (nmask[k] > nthres && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
             prof[k] /= static_cast<TF>(nmask[k]);
         else
             prof[k] = netcdf_fp_fillvalue<TF>();

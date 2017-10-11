@@ -264,9 +264,9 @@ void Boundary<TF>::update_time_dependent()
             const double noOffset = 0.;
 
 #ifndef USECUDA
-            set_bc(it1->second->fld_bot, it1->second->grad_bot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+            set_bc(it1->second->fld_bot, it1->second->grad_bot, it1->second->flux_bot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
 #else
-            set_bc_g(it1->second->fld_bot_g, it1->second->grad_bot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+            set_bc_g(it1->second->fld_bot_g, it1->second->grad_bot_g, it1->second->flux_bot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
 #endif
         }
     }
@@ -322,17 +322,17 @@ void Boundary<TF>::set_values()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->datafluxbot.data(),
+    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
            mbcbot, ubot, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->datafluxbot.data(),
+    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
            mbcbot, vbot, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    set_bc<TF>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->datafluxtop.data(),
+    set_bc<TF>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
            mbctop, utop, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->datafluxtop.data(),
+    set_bc<TF>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
@@ -340,10 +340,10 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->datafluxbot.data(),
+        set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
                sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
                gd.icells, gd.jcells);
-        set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->datafluxtop.data(),
+        set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
                sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
                gd.icells, gd.jcells);
     }
@@ -734,36 +734,36 @@ void Boundary<TF>::update_slave_bcs()
 
     if (grid.swspatialorder == "2")
     {
-        calc_slave_bc_bot<TF,2>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->datafluxbot.data(),
+        calc_slave_bc_bot<TF,2>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
                                 fields.mp.at("u")->fld.data(), gd.dzhi.data(),
                                 mbcbot, fields.mp.at("u")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,2>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->datafluxbot.data(),
+        calc_slave_bc_bot<TF,2>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
                                 fields.mp.at("v")->fld.data(), gd.dzhi.data(),
                                 mbcbot, fields.mp.at("v")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
-            calc_slave_bc_bot<TF,2>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->datafluxbot.data(),
+            calc_slave_bc_bot<TF,2>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
                                     it.second->fld.data(), gd.dzhi.data(),
                                     sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
     else if (grid.swspatialorder == "4")
     {
-        calc_slave_bc_bot<TF,4>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->datafluxbot.data(),
+        calc_slave_bc_bot<TF,4>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
                                 fields.mp.at("u")->fld.data(), gd.dzhi4.data(),
                                 mbcbot, fields.mp.at("u")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
-        calc_slave_bc_bot<TF,4>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->datafluxbot.data(),
+        calc_slave_bc_bot<TF,4>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
                                 fields.mp.at("v")->fld.data(), gd.dzhi4.data(),
                                 mbcbot, fields.mp.at("v")->visc,
                                 gd.kstart, gd.icells, gd.jcells, gd.ijcells);
 
         for (auto& it : fields.sp)
-            calc_slave_bc_bot<TF,4>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->datafluxbot.data(),
+            calc_slave_bc_bot<TF,4>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
                                     it.second->fld.data(), gd.dzhi4.data(),
                                     sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);

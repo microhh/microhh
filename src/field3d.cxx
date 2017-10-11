@@ -62,11 +62,11 @@ int Field3d<TF>::init()
         fld       .resize(gd.ncells);
         fld_bot    .resize(gd.ijcells);
         fld_top    .resize(gd.ijcells);
-        datamean   .resize(gd.kcells);
+        fld_mean   .resize(gd.kcells);
         grad_bot.resize(gd.ijcells);
         grad_top.resize(gd.ijcells);
-        datafluxbot.resize(gd.ijcells);
-        datafluxtop.resize(gd.ijcells);
+        flux_bot.resize(gd.ijcells);
+        flux_top.resize(gd.ijcells);
     }
     catch (std::exception &e)
     {
@@ -79,7 +79,7 @@ int Field3d<TF>::init()
         fld[n] = 0.;
 
     for (int n=0; n<gd.kcells; ++n)
-        datamean[n] = 0.;
+        fld_mean[n] = 0.;
 
     for (int n=0; n<gd.ijcells; ++n)
     {
@@ -87,8 +87,8 @@ int Field3d<TF>::init()
         fld_top    [n] = 0.;
         grad_bot[n] = 0.;
         grad_top[n] = 0.;
-        datafluxbot[n] = 0.;
-        datafluxtop[n] = 0.;
+        flux_bot[n] = 0.;
+        flux_top[n] = 0.;
     }
 
     return 0;
@@ -101,22 +101,22 @@ void Field3d<TF>::calc_mean_profile()
 
     for (int k=0; k<gd.kcells; ++k)
     {
-        datamean[k] = 0.;
+        fld_mean[k] = 0.;
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                datamean[k] += fld[ijk];
+                fld_mean[k] += fld[ijk];
             }
     }
 
-    master.sum(datamean.data(), gd.kcells);
+    master.sum(fld_mean.data(), gd.kcells);
 
     const double n = gd.itot * gd.jtot;
 
     for (int k=0; k<gd.kcells; ++k)
-        datamean[k] /= n;
+        fld_mean[k] /= n;
 }
 
 // Calculate the volume weighted total mean

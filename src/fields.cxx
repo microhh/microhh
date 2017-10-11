@@ -291,7 +291,7 @@ void Fields<TF>::init()
 //    if (calc_mean_profs)
 //    {
 //        for (Field_map::iterator it=ap.begin(); it!=ap.end(); ++it)
-//            grid.calc_mean(it->second->datamean, it->second->data, grid.kcells);
+//            grid.calc_mean(it->second->fld_mean, it->second->data, grid.kcells);
 //    }
 //}
 //#endif
@@ -372,7 +372,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
         //                        m.profs["udiff"].data, grid.dzhi,
-        //                        u->datafluxbot, u->datafluxtop, 1., uloc,
+        //                        u->flux_bot, u->flux_top, 1., uloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
             stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
@@ -411,7 +411,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
         //                        m.profs["vdiff"].data, grid.dzhi,
-        //                        v->datafluxbot, v->datafluxtop, 1., vloc,
+        //                        v->flux_bot, v->flux_top, 1., vloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
             stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
@@ -448,7 +448,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
             //{
             //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
             //                        m.profs[it.first+"diff"].data, grid.dzhi,
-            //                        it.second->datafluxbot, it.second->datafluxtop, diffptr->tPr, sloc,
+            //                        it.second->flux_bot, it.second->flux_top, diffptr->tPr, sloc,
             //                        atmp["tmp4"]->data, stats.nmaskh);
             //}
             //else
@@ -1036,10 +1036,10 @@ void Fields::exec_cross()
         nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid.dzi4, a[*it]->name + "lngrad");
 
     for (std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
+        nerror += cross->cross_plane(a[*it]->flux_bot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
 
     for (std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
+        nerror += cross->cross_plane(a[*it]->flux_top, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
     for (std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
         nerror += cross->cross_plane(a[*it]->fld_bot, atmp["tmp1"]->data, a[*it]->name + "bot");
