@@ -42,8 +42,8 @@ class Field3d
 
         // Variables at CPU.
         std::vector<TF> fld;
-        std::vector<TF> databot;
-        std::vector<TF> datatop;
+        std::vector<TF> fld_bot;
+        std::vector<TF> fld_top;
         std::vector<TF> datamean;
         std::vector<TF> datagradbot;
         std::vector<TF> datagradtop;
@@ -62,8 +62,8 @@ class Field3d
         void clear_device(); ///< Deallocate Field3D fields at device 
 
         double* data_g;
-        double* databot_g;
-        double* datatop_g;
+        double* fld_bot_g;
+        double* fld_top_g;
         double* datamean_g;
         double* datagradbot_g;
         double* datagradtop_g;

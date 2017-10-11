@@ -388,7 +388,7 @@ void Stats<TF>::get_mask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_mask<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.databot.data(),
+    calc_mask<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
                   nmask.data(), nmaskh.data(), nmaskbot,
                   gd.itot, gd.jtot, gd.kcells, gd.ijcells, gd.ncells);
 }

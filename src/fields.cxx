@@ -302,17 +302,17 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
     auto& gd = grid.get_grid_data();
 
     if (mask_name == "wplus")
-        calc_mask_w<TF, Mask_type::Wplus>(mfield.fld.data(), mfieldh.fld.data(), mfieldh.databot.data(),
+        calc_mask_w<TF, Mask_type::Wplus>(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
                                           stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
                                           gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     else if (mask_name == "wmin")
-        calc_mask_w<TF, Mask_type::Wmin >(mfield.fld.data(), mfieldh.fld.data(), mfieldh.databot.data(),
+        calc_mask_w<TF, Mask_type::Wmin >(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
                                           stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
                                           gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
 
     grid.boundary_cyclic(mfield.fld.data());
     grid.boundary_cyclic(mfieldh.fld.data());
-    grid.boundary_cyclic_2d(mfieldh.databot.data());
+    grid.boundary_cyclic_2d(mfieldh.fld_bot.data());
 
     master.sum(stats.nmask.data() , gd.kcells);
     master.sum(stats.nmaskh.data(), gd.kcells);
@@ -1042,10 +1042,10 @@ void Fields::exec_cross()
         nerror += cross->cross_plane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
     for (std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
+        nerror += cross->cross_plane(a[*it]->fld_bot, atmp["tmp1"]->data, a[*it]->name + "bot");
 
     for (std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+        nerror += cross->cross_plane(a[*it]->fld_top, atmp["tmp1"]->data, a[*it]->name + "top");
 
     if (nerror)
         throw 1;

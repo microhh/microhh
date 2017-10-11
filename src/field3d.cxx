@@ -60,8 +60,8 @@ int Field3d<TF>::init()
 
         // Allocate all fields belonging to the 3d field
         fld       .resize(gd.ncells);
-        databot    .resize(gd.ijcells);
-        datatop    .resize(gd.ijcells);
+        fld_bot    .resize(gd.ijcells);
+        fld_top    .resize(gd.ijcells);
         datamean   .resize(gd.kcells);
         datagradbot.resize(gd.ijcells);
         datagradtop.resize(gd.ijcells);
@@ -83,8 +83,8 @@ int Field3d<TF>::init()
 
     for (int n=0; n<gd.ijcells; ++n)
     {
-        databot    [n] = 0.;
-        datatop    [n] = 0.;
+        fld_bot    [n] = 0.;
+        fld_top    [n] = 0.;
         datagradbot[n] = 0.;
         datagradtop[n] = 0.;
         datafluxbot[n] = 0.;
