@@ -172,8 +172,8 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     // Get the IB type, and required parameters for that type
     if (sw_ib == "0")
         ib_type = None_type;
-    else if (sw_ib == "user")
-        ib_type = User_type;
+    else if (sw_ib == "poly")
+        ib_type = Poly_type;
     else if (sw_ib == "dem")
         ib_type = Dem_type;
     else if (sw_ib == "sine")
@@ -285,7 +285,7 @@ void Immersed_boundary::create()
     if (ib_type == None_type)
         return;
 
-    if (ib_type == User_type)
+    if (ib_type == Poly_type)
     {
         std::string file_name;
 
