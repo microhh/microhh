@@ -180,6 +180,8 @@ def flag_ghost_cells_2d(inside_ib):
     """
 
     ghost = np.ones_like(inside_ib, dtype=int) * -1
+    itot  = ghost.shape[1]
+    jtot  = ghost.shape[0]
 
     ij_in = np.where(inside_ib != -1)
     for n in range(ij_in[0].size):
@@ -193,8 +195,8 @@ def flag_ghost_cells_2d(inside_ib):
 
         # Don't allow IB near domain edge, otherwhise we can't
         # search for e.g. interpolation points
-        if (i < 2 or i > gr.x.size-3 or \
-            j < 2 or j > gr.y.size-3):
+        if (i < 2 or i > itot-3 or \
+            j < 2 or j > jtot-3):
             sys.exit('NEIN!, object too close to edge of domain')
         else:
             if (inside_ib[j,i-1] == -1 or inside_ib[j,i+1] == -1 or \
@@ -343,89 +345,53 @@ def write_output(ghost_cells, file_name):
 
 
 if __name__ == "__main__":
-    import microhh_tools as mht
-
-    # Read the namelist, and grid info:
-    nl = mht.Read_namelist()
-    gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], nl['grid']['zsize'])
-
-    # Offset inside model domain compared to input location containers:
-    x_offset = 0
-    y_offset = 0
-
-    if "poly" not in locals():
-
-        # Read the polygon input as a list of dictionaries, with each dict having x,y,z keys:
-        poly = read_polygon_unstructured('poly_coordinates.txt', x_offset, y_offset)
-
-        # Find all grid points inside IB
-        inside_u_2d = flag_inside_ib_2d(gr.xh, gr.y,  poly)
-        inside_v_2d = flag_inside_ib_2d(gr.x,  gr.yh, poly)
-        inside_w_2d = flag_inside_ib_2d(gr.x,  gr.y,  poly)
-
-        # Find the lateral ghost cells
-        ghost_u_2d = flag_ghost_cells_2d(inside_u_2d)
-        ghost_v_2d = flag_ghost_cells_2d(inside_v_2d)
-        ghost_w_2d = flag_ghost_cells_2d(inside_w_2d)
-
-        # Calculate all ghost cell properties (nearest location wall, interpolation points, ....)
-        ghost_u = calc_ghost_cell_properties(ghost_u_2d, inside_u_2d, poly, gr.xh, gr.y,  gr.z,  nl['IB']['n_idw'], 'u')
-        ghost_v = calc_ghost_cell_properties(ghost_v_2d, inside_v_2d, poly, gr.x,  gr.yh, gr.z,  nl['IB']['n_idw'], 'v')
-        ghost_w = calc_ghost_cell_properties(ghost_w_2d, inside_w_2d, poly, gr.x,  gr.y,  gr.zh, nl['IB']['n_idw'], 'w', kstart=1)
-        ghost_s = calc_ghost_cell_properties(ghost_w_2d, inside_w_2d, poly, gr.x,  gr.y,  gr.z,  nl['IB']['n_idw'], 's')
-
-        # Some debugging output
-        print('Found {} u-ghost cells'.format(len(ghost_u)))
-        print('Found {} v-ghost cells'.format(len(ghost_v)))
-        print('Found {} w-ghost cells'.format(len(ghost_w)))
-        print('Found {} s-ghost cells'.format(len(ghost_s)))
-
-    write_output(ghost_u, 'u.ib_input')
-    write_output(ghost_v, 'v.ib_input')
-    write_output(ghost_w, 'w.ib_input')
-    write_output(ghost_s, 's.ib_input')
+    # Cython optimized version of some ib_tools
+    import ib_tools_cython as ibtc
 
 
+    if (True):
+        import microhh_tools as mht
 
-    if (False):
-        def scatter_obj(arr, xloc, yloc):
-            ij_in = np.where(arr != -1)
-            for n in range(ij_in[0].size):
-                j = ij_in[0][n]
-                i = ij_in[1][n]
-                pl.scatter(xloc[i], yloc[j], marker='.', s=5, color='g')
+        # Read the namelist, and grid info:
+        nl = mht.Read_namelist()
+        gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], nl['grid']['zsize'])
 
-        def plot_poly(poly):
-            for p in poly:
-                pl.plot(p['x'], p['y'], 'k-')
+        # Offset inside model domain compared to input location containers:
+        x_offset = 0
+        y_offset = 0
 
-        def plot_ghost(ghost, xloc, yloc):
-            for g in ghost:
-                if g['k'] == 0:
-                    i = g['i']
-                    j = g['j']
-                    pl.scatter(xloc[i], yloc[j], marker='o', s=15, color='r')
-                    pl.scatter(g['xi'], g['yi'], marker='o', s=15, color='m')
-                    pl.scatter(g['xb'], g['yb'], marker='o', s=15, color='b')
-                    pl.plot([xloc[i],g['xi']], [yloc[j],g['yi']], linewidth=1, color='k', dashes=[4,2])
+        if "poly" not in locals():
 
-                    for i in range(g['in'].size):
-                        pl.scatter(xloc[g['in'][i]], yloc[g['jn'][i]], marker='o', s=15, color='g')
-                        pl.plot([g['xi'], xloc[g['in'][i]]], [g['yi'], yloc[g['jn'][i]]], color='k', dashes=[1,1])
+            # Read the polygon input as a list of dictionaries, with each dict having x,y,z keys:
+            poly = read_polygon_unstructured('poly_coordinates.txt', x_offset, y_offset)
+
+            t = Timer()
+
+            # Find all grid points inside IB
+            inside_u_2d = ibtc.flag_inside_ib_2d(gr.xh, gr.y,  poly)
+            inside_v_2d = ibtc.flag_inside_ib_2d(gr.x,  gr.yh, poly)
+            inside_w_2d = ibtc.flag_inside_ib_2d(gr.x,  gr.y,  poly)
+
+            # Find the lateral ghost cells
+            ghost_u_2d = flag_ghost_cells_2d(inside_u_2d)
+            ghost_v_2d = flag_ghost_cells_2d(inside_v_2d)
+            ghost_w_2d = flag_ghost_cells_2d(inside_w_2d)
+
+            # Calculate all ghost cell properties (nearest location wall, interpolation points, ....)
+            ghost_u = calc_ghost_cell_properties(ghost_u_2d, inside_u_2d, poly, gr.xh, gr.y,  gr.z,  nl['IB']['n_idw'], 'u')
+            ghost_v = calc_ghost_cell_properties(ghost_v_2d, inside_v_2d, poly, gr.x,  gr.yh, gr.z,  nl['IB']['n_idw'], 'v')
+            ghost_w = calc_ghost_cell_properties(ghost_w_2d, inside_w_2d, poly, gr.x,  gr.y,  gr.zh, nl['IB']['n_idw'], 'w', kstart=1)
+            ghost_s = calc_ghost_cell_properties(ghost_w_2d, inside_w_2d, poly, gr.x,  gr.y,  gr.z,  nl['IB']['n_idw'], 's')
+
+            # Some debugging output
+            print('Found {} u-ghost cells'.format(len(ghost_u)))
+            print('Found {} v-ghost cells'.format(len(ghost_v)))
+            print('Found {} w-ghost cells'.format(len(ghost_w)))
+            print('Found {} s-ghost cells'.format(len(ghost_s)))
+
+        write_output(ghost_u, 'u.ib_input')
+        write_output(ghost_v, 'v.ib_input')
+        write_output(ghost_w, 'w.ib_input')
+        write_output(ghost_s, 's.ib_input')
 
 
-        pl.figure()
-        pl.subplot(121, aspect='equal')
-        pl.title('Inside IB', loc='left')
-        scatter_obj(inside_u_2d, gr.xh, gr.y)
-        plot_poly(poly)
-
-        pl.subplot(122, aspect='equal')
-        pl.title('Ghost cells', loc='left')
-        scatter_obj(ghost_u_2d, gr.xh, gr.y)
-        plot_poly(poly)
-
-        pl.figure()
-        pl.subplot(111, aspect='equal')
-        plot_poly(poly)
-        plot_ghost(ghost_u, gr.xh, gr.y)

@@ -236,3 +236,19 @@ def get_cross_indices(variable, mode):
     indices = [int(f.split('.')[-2]) for f in files]
     indices.sort()
     return indices
+
+
+def write_output(file_name, variables, n):
+    """ Write input files for MicroHH; e.g. initial vertical profiles or time series """
+    f = open(file_name, 'w')
+
+    for var in variables.keys():
+        f.write('{0:^21s} '.format(var))
+    f.write('\n')
+
+    for k in range(n):
+        for var in variables.keys():
+            f.write('{0:+1.14E} '.format(variables[var][k]))
+        f.write('\n')
+
+    f.close()
