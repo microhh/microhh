@@ -28,11 +28,20 @@ def is_left(xp, yp, x0, y0, x1, y1):
 def is_inside(xp, yp, x_set, y_set):
     """
     Given location (xp,yp) and set of line segments (x_set, y_set), determine
-    whether (xp,yp) is inside polygon.
+    whether (xp,yp) is inside (or on) polygon.
     """
+
+    # First simple check on bounds
+    if (xp < x_set.min() or xp > x_set.max() or yp < y_set.min() or yp > y_set.max()):
+        return False
 
     wn = 0
     for i in range(x_set.size-1):
+        # Second check: see if point exactly on line segment:
+        if (is_left(xp, yp, x_set[i], y_set[i], x_set[i+1], y_set[i+1]) == 0):
+            return True 
+
+        # Calculate winding number
         if (y_set[i] <= yp):
             if (y_set[i+1] > yp):
                 if (is_left(xp, yp, x_set[i], y_set[i], x_set[i+1], y_set[i+1]) > 0):
@@ -53,13 +62,12 @@ def is_inside_vec(xp, yp, x_set, y_set):
     Vectorized version of is_inside()
     """
 
-    # First simple check
-    if (xp < x_set.min() or xp > x_set.max() or yp < y_set.min() or yp > y_set.max()):
-        return False
-
-    wn = np.ones(x_set.size-1)*1000
-
     left   = is_left(xp, yp, x_set[:-1], y_set[:-1], x_set[1:], y_set[1:])
+
+    # Return true if exactly on line
+    if (np.any(left == 0)):
+        return True
+
     ydiff1 = y_set[:-1]-yp
     ydiff2 = y_set[1:] -yp
 
@@ -136,8 +144,8 @@ def read_polygon_unstructured(file_name, xoffs=0, yoffs=0):
             # Split line on comma, and read height and x,y coordinates
             data = l.split(',')
             z = float(data[0])
-            x = np.array(data[1::2]).astype(float)
-            y = np.array(data[2::2]).astype(float)
+            x = np.array(data[1::2]).astype(float) + xoffs
+            y = np.array(data[2::2]).astype(float) + yoffs
 
             # Check if polygon is closed, if not close it
             if (x[0] != x[-1]) or (y[0] != y[-1]):
@@ -167,7 +175,7 @@ def flag_inside_ib_2d(x, y, poly):
         print('Working on object {0:4d} of {1:4d}'.format(id+1, len(poly)))
         for i in range(x.size):
             for j in range(y.size):
-                if (is_inside_vec(x[i], y[j],  poly[id]['x'], poly[id]['y'])):
+                if (is_inside(x[i], y[j],  poly[id]['x'], poly[id]['y'])):
                     inside[j,i] = id
 
     return inside
@@ -342,3 +350,15 @@ def write_output(ghost_cells, file_name):
         f.write('\n')
 
     f.close()
+
+
+if __name__ == '__main__':
+    x = np.array([0,1,1,0,0])
+    y = np.array([0,0,1,1,0])
+
+    print(True,  is_inside(0.5, 0.5, x, y))   # in
+    print(True,  is_inside(0.0, 0.5, x, y))   # boundary x0
+    print(True,  is_inside(1.0, 0.5, x, y))   # boundary x1
+    print(True,  is_inside(0.5, 0.0, x, y))   # boundary y0
+    print(True,  is_inside(0.5, 1.0, x, y))   # boundary y1
+    print(False, is_inside(1.5, 0.5, x, y))   # out

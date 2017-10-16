@@ -19,6 +19,10 @@ cdef bool is_inside(double xp, double yp,\
     cdef double wn = 0
 
     for i in range(n-1):
+        # First check: see if point exactly on line segment:
+        if (is_left(xp, yp, x_set[i], y_set[i], x_set[i+1], y_set[i+1]) == 0):
+            return True 
+
         if (y_set[i] <= yp):
             if (y_set[i+1] > yp):
                 if (is_left(xp, yp, x_set[i], y_set[i], x_set[i+1], y_set[i+1]) > 0):
@@ -32,6 +36,7 @@ cdef bool is_inside(double xp, double yp,\
         return False
     else:
         return True
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
