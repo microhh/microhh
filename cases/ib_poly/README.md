@@ -1,5 +1,6 @@
 Simple example case of how to setup the Immersed Boundaries for
-objects defined as polygons.
+objects defined as polygons. Requires the `microhh_tools.py` and `ib_tools.py`
+scripts from the `microhh_root/python/` directory.
 
 The polygons are defined in `poly_coordinates.txt`. To run the case,
 first create the vertical grid and input profiles:
