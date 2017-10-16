@@ -231,6 +231,11 @@ def find_interpolation_points(xi, yi, zi, x, y, z, i, j, k, ib_mask, n_idw, kmax
     k_n = []
     d   = []
 
+    dx = x[1]-x[0]
+    dy = y[1]-y[0]
+    dz = z[k+1]-z[k]
+    mind = np.min([dx,dy,dz])
+
     # Loop over a +/- 2 grid point stencil to
     # find potential interpolation points
     for di in range(-2, 3):
@@ -245,10 +250,15 @@ def find_interpolation_points(xi, yi, zi, x, y, z, i, j, k, ib_mask, n_idw, kmax
 
     # Sort on distance, and clip to the requested amount of interpolation points
     inds = np.array(d).argsort()
-    d    = np.array(d)  [inds][:n_idw]
-    i_n  = np.array(i_n)[inds][:n_idw]
-    j_n  = np.array(j_n)[inds][:n_idw]
-    k_n  = np.array(k_n)[inds][:n_idw]
+    d_tmp = np.array(d)[inds]
+    
+    # Exclude grid points which are too close to the boundary
+    too_close = np.where(d_tmp < 0.1*mind)[0].size
+
+    d    = np.array(d)  [inds][too_close:n_idw+too_close]
+    i_n  = np.array(i_n)[inds][too_close:n_idw+too_close]
+    j_n  = np.array(j_n)[inds][too_close:n_idw+too_close]
+    k_n  = np.array(k_n)[inds][too_close:n_idw+too_close]
 
     return i_n, j_n, k_n
 

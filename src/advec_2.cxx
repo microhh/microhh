@@ -55,12 +55,12 @@ unsigned long Advec_2::get_time_limit(unsigned long idt, double dt)
     double cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
     cfl = std::max(cflmin, cfl);
 
-    //return idt * cflmax / cfl;
+    return idt * cflmax / cfl;
 
     // BvS: temporary hack to slowly increase the initial time steps
-    const double time = model->timeloop->get_time();
-    const double fac = std::max(0.1, std::min(1., time / 1.));
-    return fac * idt * cflmax / cfl;
+    //const double time = model->timeloop->get_time();
+    //const double fac = std::max(0.1, std::min(1., time / 1.));
+    //return fac * idt * cflmax / cfl;
 }
 
 void Advec_2::exec()
