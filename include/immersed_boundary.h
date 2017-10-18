@@ -96,7 +96,7 @@ class Immersed_boundary
 
         void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
 
-        template <IB_type, int> void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, Boundary_type); ///< Function which determines the ghost cells
+        template <IB_type, int> void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, const int, Boundary_type); ///< Function which determines the ghost cells
         template <IB_type, int> double boundary_function(const double, const double); ///< Function describing boundary
         template <IB_type, int> bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
         template <IB_type, int> void find_nearest_location_wall(double&, double&, double&, double&,
@@ -104,10 +104,12 @@ class Immersed_boundary
                                                                 const int, const int, const int); ///< Function which checks if a cell is a ghost cell
         template <IB_type, int> void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, Boundary_type); ///< Function which searched for the nearest neighbours
         template <IB_type, int> void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*);
+        template <IB_type, int> void zero_ib_tendency(double*, double*, const double*, const double*, const double*);
 
         // General settings IB
-        std::string sw_ib; ///< Namelist IB switch
-        IB_type ib_type;   ///< Internal IB switch
+        std::string sw_ib;    ///< Namelist IB switch
+        IB_type ib_type;      ///< Internal IB switch
+        bool zero_ghost_tend; ///< Zero tendencies (velocity/scalar) in ghost cells
 
         // Interpolation settings
         int n_idw; ///< Number of points used for inverse distance weighted interpolation

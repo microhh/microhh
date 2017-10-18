@@ -100,7 +100,7 @@ namespace
     void set_ghost_cells(std::vector<Ghost_cell> const &ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
                          const int n_idw, const int ii, const int jj, const int kk,
-                         Immersed_boundary::Boundary_type bc, const double visc)
+                         Immersed_boundary::Boundary_type bc, const double visc, bool print=false)
     {
         const int n = (bc == Immersed_boundary::Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
 
@@ -128,6 +128,14 @@ namespace
                 field[it->ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
             }
         }
+    }
+
+    // Set the tendencies in the ghost cells to zero
+    void zero_ghost_tendency(std::vector<Ghost_cell> const &ghost_cells, double* const restrict ft)
+    {
+
+        for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+            ft[it->ijk] = 0;
     }
 
     // Interpolate (bi-linear) the IB DEM to the requested location
@@ -212,7 +220,8 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     if (ib_type != None_type)
     {
-        nerror += inputin->get_item(&n_idw,     "IB", "n_idw", "");      // Number of grid points used in interpolation
+        nerror += inputin->get_item(&n_idw,           "IB", "n_idw",           "");          // Number of grid points used in interpolation
+        nerror += inputin->get_item(&zero_ghost_tend, "IB", "zero_ghost_tend", "", false);   // Zero tendencies in ghost cells
 
         // Fixed viscosity at the wall, in case of LES
         if (model->diff->get_switch() == "smag2")
@@ -326,72 +335,72 @@ void Immersed_boundary::create()
             grid->boundary_cyclic_2d(dem.data());
 
             // Find ghost cells
-            find_ghost_cells<Dem_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-            find_ghost_cells<Dem_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-            find_ghost_cells<Dem_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+            find_ghost_cells<Dem_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+            find_ghost_cells<Dem_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+            find_ghost_cells<Dem_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
             if (fields->sp.size() > 0)
-                find_ghost_cells<Dem_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                find_ghost_cells<Dem_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
         }
         if (ib_type == Flat_type)
         {
-            find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-            find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-            find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+            find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+            find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+            find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
             if (fields->sp.size() > 0)
-                find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
         }
         else if (xy_dims == 1)
         {
             if (ib_type == Sine_type)
             {
-                find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
             else if (ib_type == Gaus_type)
             {
-                find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
             else if (ib_type == Agnesi_type)
             {
-                find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
         }
         else if (xy_dims == 2)
         {
             if (ib_type == Sine_type)
             {
-                find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
             else if (ib_type == Gaus_type)
             {
-                find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
             else if (ib_type == Agnesi_type)
             {
-                find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
-                find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
-                find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
                 if (fields->sp.size() > 0)
-                    find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+                    find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
             }
         }
     }
@@ -514,10 +523,15 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
 
     // Minimal distance that a grid point used in the interpolation has to be
     // away from the IB, to prevent getting extreme extrapolated values in the ghost cells
-    const double d_lim = 0.25 * std::min(std::min(grid->dx, grid->dy), grid->dz[k]);
+    const double d_lim = 0.1 * std::min(std::min(grid->dx, grid->dy), grid->dz[k]);
+
+    // Limit vertical stencil near surface
+    double dk0 = -2;
+    if (k+dk0 < grid->kstart)
+        dk0 = grid->kstart - k;
 
     // Find the neighbouring grid points outside the IB
-    for (int dk=-1; dk<3; ++dk)
+    for (int dk=dk0; dk<3; ++dk)
         for (int dj=-2; dj<3; ++dj)
             for (int di=-2; di<3; ++di)
             {
@@ -632,7 +646,7 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
 template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                                         Boundary_type bc)
+                                         const int kstart_search, Boundary_type bc)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -640,7 +654,7 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
 
     double d_wall;  // Distance to IB (m)
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int k=kstart_search; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
             #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
@@ -778,6 +792,37 @@ void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
     }
 }
 
+template <Immersed_boundary::IB_type sw, int dims>
+void Immersed_boundary::zero_ib_tendency(double* const restrict tend, double* const restrict tmp2d,
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    // Calculate IB height in 2D tmp field
+    for (int j=grid->jstart; j<grid->jend; j++)
+        #pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij  = i + j*jj;
+            tmp2d[ij] = boundary_function<sw,dims>(x[i], y[j]);
+        }
+
+
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                if (z[k] < tmp2d[ij])
+                    tend[ijk] = 0.;
+            }
+}
+
 void Immersed_boundary::exec()
 {
     if (ib_type == None_type)
@@ -803,7 +848,25 @@ void Immersed_boundary::exec()
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
-                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc);
+                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, true);
         grid->boundary_cyclic(fields->ap[it->first]->data);
+    }
+
+    // Zero ghost cell tendencies
+    if (zero_ghost_tend)
+    {
+        zero_ghost_tendency(ghost_cells_u, fields->at["u"]->data);
+        zero_ghost_tendency(ghost_cells_v, fields->at["v"]->data);
+        zero_ghost_tendency(ghost_cells_w, fields->at["w"]->data);
+
+        grid->boundary_cyclic(fields->at["u"]->data);
+        grid->boundary_cyclic(fields->at["v"]->data);
+        grid->boundary_cyclic(fields->at["w"]->data);
+
+        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        {
+            zero_ghost_tendency(ghost_cells_s, fields->st[it->first]->data);
+            grid->boundary_cyclic(fields->at[it->first]->data);
+        }
     }
 }
