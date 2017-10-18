@@ -16,7 +16,7 @@ nz         = nl['grid']['ktot']
 starttime  = 0
 endtime    = nl['time']['endtime']
 sampletime = nl['cross']['sampletime']
-iotimeprec = 0
+iotimeprec = nl['time'].get('iotimeprec', default=0)
 nxsave     = nx
 nzsave     = nz
 endian     = 'little'
