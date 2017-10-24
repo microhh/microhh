@@ -79,6 +79,9 @@ class Read_namelist:
             itot = nl['grid']['itot']
             enttime = nl['time']['endtime']
             printing e.g. nl['grid'] provides an overview of the available variables in a group
+
+        Arguments:
+            namelist_file -- path to .ini file (optional)
     """
     def __init__(self, namelist_file=None):
         if (namelist_file is None):
@@ -108,7 +111,13 @@ class Read_namelist:
 
 
 def replace_namelist_value(variable, new_value, namelist_file=None):
-    """ Replace a variables value in an existing namelist """
+    """
+    Replace a variables value in an existing namelist
+    Arguments:
+        variable -- name of variable to replace
+        new_value -- value to set
+        namelist_file -- path to .ini file (optional)
+    """
     if namelist_file is None:
         namelist_file = _find_namelist_file()
 
@@ -126,8 +135,9 @@ class Read_statistics:
         print(f) prints a list with the available variables
         The data can be accessed as either f['th'] or f.th, which returns the numpy array with data
         The variable names can be accessed as f.names['th'], the units as f.units['th'], the dimensions as f.dimensions['th']
-        This allows you to automatically format axis labels as e.g.:
-        pl.xlabel("{0:} ({1:})".format(f.names['th'], f.units['th']))
+
+        Arguments:
+            stat_file -- path to statistics file
         """
     def __init__(self, stat_file):
         f = nc4.Dataset(stat_file, 'r')
@@ -164,11 +174,40 @@ class Read_statistics:
 
 
 class Read_grid:
-    """ Read the grid file from MicroHH.
-        If no file name is provided, grid.0000000 from the current directory is read """
-    def __init__(self, itot, jtot, ktot, zsize, filename=None, endian='little'):
+    """
+    Read the grid file from MicroHH.
+    If no file name is provided, grid.0000000 from the current directory is read
+    If no dimensions (itot=None, ..) are provided, they are read from the namelist from the
+    current directory.
+
+    Arguments:
+        itot -- number of grid points in x direction
+        jtot -- number of grid points in y direction
+        ktot -- number of grid points in z direction
+        zsize -- vertical size of domain
+        file_name -- path to grid file (optional)
+        endian -- Endianess file ('little'/'big') (default: 'little')
+
+    Provides:
+        Full and half level x, y, and z (i.e. x, xh, y, yh, z, zh) as class members
+
+    Example usage:
+        grid = Read_grid()
+        grid = Read_grid(itot, jtot, ktot, zsize)
+        x = grid.x
+    """
+    def __init__(self, itot=None, jtot=None, ktot=None, zsize=None, filename=None, endian='little'):
         self.en  = _process_endian(endian)
         filename = 'grid.0000000' if filename is None else filename
+
+        if None in [itot, jtot, ktot, zsize]:
+            print('No grid dimensions provided to Read_grid(), trying to read from ini ... ', end='')
+            nl    = Read_namelist()
+            itot  = nl['grid']['itot']
+            jtot  = nl['grid']['itot']
+            ktot  = nl['grid']['itot']
+            zsize = nl['grid']['zsize']
+            print('Success!')
 
         self.fin = open(filename, 'rb')
         self.x  = self.read(itot)
@@ -196,8 +235,18 @@ class Read_grid:
 
 
 def read_restart_file(path, itot, jtot, ktot, endian='little'):
-    """ Read a MicroHH restart file into a 3D (or 2D if ktot=1) numpy array
-        The returned array has the dimensions ordered as [z,y,x] """
+    """
+    Read a MicroHH restart file as a Nd Numpy array
+
+    Arguments:
+        itot -- number of grid points in x direction
+        jtot -- number of grid points in y direction
+        ktot -- number of grid points in z direction
+        endian -- Endianness of file (https://en.wikipedia.org/wiki/Endianness) (default='little')
+
+    Return:
+        Numpy array (dimensions: [z,y,x]) with restart file
+    """
 
     en = _process_endian(endian)
 
@@ -217,9 +266,19 @@ def read_restart_file(path, itot, jtot, ktot, endian='little'):
     return field
 
 
-def write_restart_file(data, itot, jtot, ktot, path, per_slice=True, endian='little'):
-    """ Write a restart file in the format requires by MicroHH.
-        The input array should be indexed as [z,y,x] """
+def write_restart_file(path, array, itot, jtot, ktot, per_slice=True, endian='little'):
+    """
+    Write a MicroHH restart file from a Nd Numpy array
+
+    Arguments:
+        path -- file name/path of restart file
+        array -- Numpy array (dimensions: [z,y,x]) containing restart file data
+        itot -- number of grid points in x direction
+        jtot -- number of grid points in y direction
+        ktot -- number of grid points in z direction
+        per_slice -- write 3D field at once (with False) or per xy-slice (with True) (default=True)
+        endian -- Endianness of file (https://en.wikipedia.org/wiki/Endianness) (default='little')
+    """
 
     en = _process_endian(endian)
 
@@ -227,13 +286,13 @@ def write_restart_file(data, itot, jtot, ktot, path, per_slice=True, endian='lit
         # Write level by level (less memory hungry.....)
         fout  = open(path, "wb")
         for k in range(ktot):
-            tmp  = data[k,:,:].reshape(itot*jtot)
+            tmp  = array[k,:,:].reshape(itot*jtot)
             tmp2 = st.pack('{0}{1}d'.format(en, tmp.size), *tmp)
             fout.write(tmp2)
         fout.close()
     else:
         # Write entire field at once (memory hungry....)
-        tmp  = data.reshape(data.size)
+        tmp  = array.reshape(array.size)
         tmp2 = st.pack('{0}{1}d'.format(en, tmp.size), *tmp)
         fout = open(path, "wb")
         fout.write(tmp2)
@@ -241,7 +300,17 @@ def write_restart_file(data, itot, jtot, ktot, path, per_slice=True, endian='lit
 
 
 def get_cross_indices(variable, mode):
-    """ Find the cross-section indices given a variable name and mode (in 'xy','xz','yz') """
+    """
+    Find the cross-section indices
+
+    Arguments:
+        variable -- name of variable (..)
+        mode -- cross section mode (\"xy\", \"xz\", \"yz\")
+
+    Returns:
+        List with cross section indices
+    """
+
     if mode not in ['xy','xz','yz']:
         raise ValueError('\"mode\" should be in {\"xy\", \"xz\", \"yz\"}')
 
@@ -260,17 +329,43 @@ def get_cross_indices(variable, mode):
     return indices
 
 
-def write_output(file_name, variables, n):
-    """ Write input files for MicroHH; e.g. initial vertical profiles or time series """
+def write_output(file_name, data):
+    """
+    Write input files for MicroHH; e.g. initial vertical profiles or time series
+
+    Arguments:
+        file_name -- file name/path to save the file
+        data -- dictionary with column names as keys, and list/numpy arrays as data
+
+    Example:
+        z = np.arange(100)
+        u = np.random.random(100)
+
+        data = {'z':z, 'u':u}
+        write_output('case.prof', data)
+
+        # Creates file case.prof like:
+        #           z                     u
+        # +0.00000000000000E+00 +2.44790854944653E-01
+        # +1.00000000000000E+00 +6.45343637327276E-01
+        # +2.00000000000000E+00 +5.28456216105296E-01
+        # et cetera...
+    """
+
     f = open(file_name, 'w')
 
-    for var in variables.keys():
+    # Get size of data
+    size = data[list(data.keys())[0]].size
+
+    # Write header
+    for var in data.keys():
         f.write('{0:^21s} '.format(var))
     f.write('\n')
 
-    for k in range(n):
-        for var in variables.keys():
-            f.write('{0:+1.14E} '.format(variables[var][k]))
+    # Write data
+    for k in range(size):
+        for var in data.keys():
+            f.write('{0:+1.14E} '.format(data[var][k]))
         f.write('\n')
 
     f.close()
