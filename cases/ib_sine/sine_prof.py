@@ -41,12 +41,14 @@ if __name__ == "__main__":
     ini = Read_namelist()
 
     # Create stretched grid
-    grid = Grid(96, 40, 5, 0.0004, 0.0007)
-    #grid = Grid(128, 40, 5, 0.0002, 0.0005)
-    #grid = Grid(256, 122, 10, 0.0001, 0.0003)
-    #grid = Grid(384, 180, 20, 0.00006, 0.00021)
+    #grid = Grid(96, 40, 5, 0.0004, 0.0007)
+    grid = Grid(128, 40, 5, 0.0002, 0.0005373)
+    #grid = Grid(256, 122, 10, 0.0001, 0.000322)
+    #grid = Grid(384, 180, 20, 0.00006, 0.00021831)
 
-    grid.plot()
+    print('Effective zsize = {}'.format(grid.zsize-ini['IB']['z_offset']-ini['IB']['amplitude']))
+
+    #grid.plot()
 
     # Write `zsize` and `ktot` back to .ini file
     replace_namelist_value('zsize', grid.zsize)
