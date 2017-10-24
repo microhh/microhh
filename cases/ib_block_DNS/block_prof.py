@@ -58,7 +58,7 @@ if __name__ == "__main__":
         # Create stretched grid
         #grid = Grid(96, 70, 5, 0.02, 0.06)
         #grid = Grid(96, 40, 5, 0.01, 0.04)
-        grid = Grid(120, 75, 5, 0.017, 0.04)
+        grid = Grid(120, 80, 5, 0.017, 0.04)
         grid.plot()
 
         # Write `zsize` and `ktot` back to .ini file
@@ -69,8 +69,7 @@ if __name__ == "__main__":
 
     # Create initial profiles:
     z = grid.z
-    #u = ini['force']['uflux'] * np.ones(z.size)
-    u = 0.1 * np.ones(z.size)
+    u = ini['force']['uflux'] * np.ones(z.size)
 
     # Write the data to a .prof file for MicroHH
     proffile = open('block.prof','w')
