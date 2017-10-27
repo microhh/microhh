@@ -14,8 +14,8 @@ gr = mht.Read_grid()
 # Location block
 x0 = 3
 x1 = 4
-y0 = 1.1
-y1 = 2.1
+y0 = 2.7
+y1 = 3.7
 z1 = 1
 
 # Coordinates block
