@@ -204,8 +204,8 @@ class Read_grid:
             print('No grid dimensions provided to Read_grid(), trying to read from ini ... ', end='')
             nl    = Read_namelist()
             itot  = nl['grid']['itot']
-            jtot  = nl['grid']['itot']
-            ktot  = nl['grid']['itot']
+            jtot  = nl['grid']['jtot']
+            ktot  = nl['grid']['ktot']
             zsize = nl['grid']['zsize']
             print('Success!')
 

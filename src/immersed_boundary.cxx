@@ -584,7 +584,9 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
     Data_map input;
 
     // Read the input data into a std::map< header_name, std::vecor<data> >
-    model->input->read_data_file(&input, file_name, is_optional);
+    const int nerror = model->input->read_data_file(&input, file_name, is_optional);
+    if (nerror > 0)
+        throw 1;
 
     const int mpioffsx = model->master->mpicoordx * grid->imax;
     const int mpioffsy = model->master->mpicoordy * grid->jmax;
