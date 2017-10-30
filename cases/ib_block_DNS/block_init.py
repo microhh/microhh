@@ -9,7 +9,7 @@ import microhh_tools as mht
 
 # Read namelist and grid:
 nl = mht.Read_namelist()
-gr = mht.Read_grid()
+gr = mht.Create_grid('block.prof')
 
 # Location block
 x0 = 3

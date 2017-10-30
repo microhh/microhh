@@ -28,12 +28,12 @@ class Stretched_grid:
 
         self.zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
         print('Grid: kmax=%i, zsize=%f'%(kmax,self.zsize))
-        
+
     def plot(self):
         pl.figure()
         pl.plot(self.dz, self.z, '-x')
         pl.xlabel('dz (m)')
-        pl.ylabel('z (m)')      
+        pl.ylabel('z (m)')
 
 
 if (__name__ == '__main__'):
@@ -42,15 +42,15 @@ if (__name__ == '__main__'):
     # Create stretched grid
     gr = Stretched_grid(64, 40, 10, 2.0, 10.0)
     #gr.plot()
-    
+
     # Write back vertical extent domain
     mht.replace_namelist_value('zsize', gr.zsize)
     mht.replace_namelist_value('ktot', gr.z.size)
-    
+
     # Create initial vertical profiles
     u = 0.09/0.4 * np.log(gr.z)
     v = np.zeros_like(gr.z)
-    
+
     # Write to .prof file as input for MicroHH
     variables = {'z':gr.z, 'u':u, 'v':v}
-    mht.write_output('ib_poly.prof', variables, gr.z.size)
+    mht.write_output('ib_poly.prof', variables)

@@ -7,7 +7,7 @@ import ib_tools as ibt
 
 # Read the namelist, and grid info:
 nl = mht.Read_namelist()
-gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], nl['grid']['zsize'])
+gr = mht.Create_grid('ib_poly.prof')
 
 # Offset inside model domain compared to input location objects:
 x_offset = 0
