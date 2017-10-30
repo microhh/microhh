@@ -3,6 +3,7 @@ import numpy   as np
 import struct  as st
 import glob
 import re
+import sys
 
 # -------------------------
 # General help functions
@@ -40,10 +41,12 @@ def _find_namelist_file():
 
 
 def _process_endian(endian):
+    if endian is None:
+        endian = sys.byteorder
     if endian not in ['little', 'big']:
         raise ValueError('endian has to be \"little\" or \"big\"!')
-    endian = '<' if endian == 'little' else '>'
-    return endian
+    end = '<' if endian == 'little' else '>'
+    return end
 
 
 class _Namelist_group:
@@ -67,10 +70,10 @@ class _Namelist_group:
     def __repr__(self):
         return self.vars.__repr__()
 
+
 # -------------------------
 # Classes and functions to read and write MicroHH things
 # -------------------------
-
 
 class Read_namelist:
     """ Reads a MicroHH .ini file to memory
@@ -110,22 +113,38 @@ class Read_namelist:
         return 'Available groups:\n{}'.format(', '.join(self.groups.keys()))
 
 
-def replace_namelist_value(variable, new_value, namelist_file=None):
+def replace_namelist_value(variable, new_value, group=None, namelist_file=None):
     """
     Replace a variables value in an existing namelist
+    If no group is provided, all occurances are replaced (e.g.
+    sampletime, which is used in stats, cross, dump, ...)
+
     Arguments:
         variable -- name of variable to replace
         new_value -- value to set
+        group -- which group to change (optional)
         namelist_file -- path to .ini file (optional)
     """
     if namelist_file is None:
         namelist_file = _find_namelist_file()
 
+    # Read the entire namelist to memory
     with open(namelist_file, "r") as source:
         lines = source.readlines()
+
+    # Loop over lines, and replace if match
+    curr_group = None
     with open(namelist_file, "w") as source:
         for line in lines:
-            source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
+            lstrip = line.strip()
+            if (len(lstrip) > 0 and lstrip[0] != "#"):
+                if lstrip[0] == '[' and lstrip[-1] == ']':
+                    curr_group = lstrip[1:-1]
+
+            if curr_group == group or group is None:
+                source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
+            else:
+                source.write(line)
 
 
 class Read_statistics:
@@ -186,7 +205,7 @@ class Read_grid:
         ktot -- number of grid points in z direction
         zsize -- vertical size of domain
         file_name -- path to grid file (optional)
-        endian -- Endianess file ('little'/'big') (default: 'little')
+        endian -- Endianess file ('little'/'big'), with None it is automatically determined
 
     Provides:
         Full and half level x, y, and z (i.e. x, xh, y, yh, z, zh) as class members
@@ -196,7 +215,7 @@ class Read_grid:
         grid = Read_grid(itot, jtot, ktot, zsize)
         x = grid.x
     """
-    def __init__(self, itot=None, jtot=None, ktot=None, zsize=None, filename=None, endian='little'):
+    def __init__(self, itot=None, jtot=None, ktot=None, zsize=None, filename=None, endian=None):
         self.en  = _process_endian(endian)
         filename = 'grid.0000000' if filename is None else filename
 
@@ -296,7 +315,7 @@ class Create_grid:
         self.zsize = zsize
 
 
-def read_restart_file(path, itot, jtot, ktot, endian='little'):
+def read_restart_file(path, itot, jtot, ktot, endian=None):
     """
     Read a MicroHH restart file as a Nd Numpy array
 
@@ -304,7 +323,7 @@ def read_restart_file(path, itot, jtot, ktot, endian='little'):
         itot -- number of grid points in x direction
         jtot -- number of grid points in y direction
         ktot -- number of grid points in z direction
-        endian -- Endianness of file (https://en.wikipedia.org/wiki/Endianness) (default='little')
+        endian -- Endianess file ('little'/'big'), with None it is automatically determined
 
     Return:
         Numpy array (dimensions: [z,y,x]) with restart file
@@ -328,7 +347,7 @@ def read_restart_file(path, itot, jtot, ktot, endian='little'):
     return field
 
 
-def write_restart_file(path, array, itot, jtot, ktot, per_slice=True, endian='little'):
+def write_restart_file(path, array, itot, jtot, ktot, per_slice=True, endian=None):
     """
     Write a MicroHH restart file from a Nd Numpy array
 
@@ -339,7 +358,7 @@ def write_restart_file(path, array, itot, jtot, ktot, per_slice=True, endian='li
         jtot -- number of grid points in y direction
         ktot -- number of grid points in z direction
         per_slice -- write 3D field at once (with False) or per xy-slice (with True) (default=True)
-        endian -- Endianness of file (https://en.wikipedia.org/wiki/Endianness) (default='little')
+        endian -- Endianess file ('little'/'big'), with None it is automatically determined
     """
 
     en = _process_endian(endian)
@@ -406,12 +425,13 @@ def write_output(file_name, data):
         data = {'z':z, 'u':u}
         write_output('case.prof', data)
 
-        # Creates file case.prof like:
-        #           z                     u
-        # +0.00000000000000E+00 +2.44790854944653E-01
-        # +1.00000000000000E+00 +6.45343637327276E-01
-        # +2.00000000000000E+00 +5.28456216105296E-01
-        # et cetera...
+        Creates file case.prof like:
+
+                  z                     u
+        +0.00000000000000E+00 +2.44790854944653E-01
+        +1.00000000000000E+00 +6.45343637327276E-01
+        +2.00000000000000E+00 +5.28456216105296E-01
+        et cetera...
     """
 
     f = open(file_name, 'w')
