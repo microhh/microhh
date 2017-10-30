@@ -264,8 +264,8 @@ class Create_grid:
         if None in [itot, jtot, ktot, xsize, ysize, zsize]:
             nl    = Read_namelist()
             itot  = nl['grid']['itot']
-            jtot  = nl['grid']['itot']
-            ktot  = nl['grid']['itot']
+            jtot  = nl['grid']['jtot']
+            ktot  = nl['grid']['ktot']
             xsize = nl['grid']['xsize']
             ysize = nl['grid']['ysize']
             zsize = nl['grid']['zsize']

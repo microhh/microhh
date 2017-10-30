@@ -39,7 +39,7 @@ def is_inside(xp, yp, x_set, y_set):
     for i in range(x_set.size-1):
         # Second check: see if point exactly on line segment:
         if (is_left(xp, yp, x_set[i], y_set[i], x_set[i+1], y_set[i+1]) == 0):
-            return True 
+            return True
 
         # Calculate winding number
         if (y_set[i] <= yp):
@@ -251,7 +251,7 @@ def find_interpolation_points(xi, yi, zi, x, y, z, i, j, k, ib_mask, n_idw, kmax
     # Sort on distance, and clip to the requested amount of interpolation points
     inds = np.array(d).argsort()
     d_tmp = np.array(d)[inds]
-    
+
     # Exclude grid points which are too close to the boundary
     too_close = np.where(d_tmp < 0.1*mind)[0].size
 
@@ -318,10 +318,15 @@ def calc_ghost_cell_properties(ghost_cells, inside_ib, polygons, x, y, z, n_idw,
         else:
             k = kmax-1
 
+            # Top wall, so x,y location is directly above ghost cell
+            xb = x[i]
+            yb = y[j]
+            zb = polygons[o]['z']
+
             # Interpolation location:
             xi = x[i]
             yi = y[j]
-            zi = 2*polygons[o]['z']-z[k]
+            zi = 2*zb-z[k]
 
             # Nearest grid point to interpolation location
             kk = np.abs(z-zi).argmin()
