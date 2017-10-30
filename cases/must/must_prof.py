@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     # Write to .prof file as input for MicroHH
     variables = {'z':gr.z, 'thl':thl, 'qt':qt, 'u':u_grid, 'ug':ug_grid, 'v':v_grid, 'vg':vg_grid, 'thlls':thlls2, 'qtls':qtls2}
-    mht.write_output('must.prof', variables, gr.z.size)
+    mht.write_output('must.prof', variables)
 
     # Create surface time dependent input
     time = np.arange(0.5,5.7501,0.25)       # h UTC
@@ -141,4 +141,4 @@ if __name__ == "__main__":
     qbot = RHbot * qsbot
 
     variables = {'t':time, 'sbot[thl]':th1cm_fit, 'sbot[qt]':qbot}
-    mht.write_output('must.time', variables, time.size)
+    mht.write_output('must.time', variables)

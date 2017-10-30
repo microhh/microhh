@@ -8,11 +8,11 @@ import ib_tools_cython as ibtc
 
 # Read the namelist, and grid info:
 nl = mht.Read_namelist()
-gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], nl['grid']['zsize'])
+gr = mht.Create_grid('must.prof')
 
 # Offset inside model domain compared to input location objects:
-x_offset = 25
-y_offset = 25
+x_offset = 20
+y_offset = 35
 
 # Read the polygon input as a list of dictionaries, with each dict having x,y,z keys:
 poly = ibt.read_polygon_unstructured('container_corners.txt', x_offset, y_offset)
