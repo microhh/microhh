@@ -201,13 +201,11 @@ class Read_grid:
         filename = 'grid.0000000' if filename is None else filename
 
         if None in [itot, jtot, ktot, zsize]:
-            print('No grid dimensions provided to Read_grid(), trying to read from ini ... ', end='')
             nl    = Read_namelist()
             itot  = nl['grid']['itot']
             jtot  = nl['grid']['jtot']
             ktot  = nl['grid']['ktot']
             zsize = nl['grid']['zsize']
-            print('Success!')
 
         self.fin = open(filename, 'rb')
         self.x  = self.read(itot)
@@ -232,6 +230,70 @@ class Read_grid:
 
     def read(self, n):
         return np.array(st.unpack('{0}{1}d'.format(self.en, n), self.fin.read(n*8)))
+
+
+class Create_grid:
+    """
+    Create the grid as used in MicroHH.
+    If no dimensions (itot=None, ..) are provided, they are read from the namelist from the
+    current directory.
+
+    Arguments:
+        vgrid_file -- file which contains the vertical grid (the .prof file)
+        order -- numerical order of the model (only 2 for now)
+        itot -- number of grid points in x direction
+        jtot -- number of grid points in y direction
+        ktot -- number of grid points in z direction
+        xsize -- x size of domain
+        ysize -- y size of domain
+        zsize -- vertical size of domain
+
+    Provides:
+        Full and half level x, y, and z (i.e. x, xh, y, yh, z, zh) as class members
+
+    Example usage:
+        grid = Create_grid('drycblles.prof')
+        x = grid.x
+    """
+    def __init__(self, vgrid_file, order=2, itot=None, jtot=None, ktot=None, xsize=None, ysize=None, zsize=None):
+
+        if (order != 2):
+            raise RuntimeError('Only 2nd order (order=2) supported for now..')
+
+        # If no grid parameters are provided, try to read from namelist
+        if None in [itot, jtot, ktot, xsize, ysize, zsize]:
+            nl    = Read_namelist()
+            itot  = nl['grid']['itot']
+            jtot  = nl['grid']['itot']
+            ktot  = nl['grid']['itot']
+            xsize = nl['grid']['xsize']
+            ysize = nl['grid']['ysize']
+            zsize = nl['grid']['zsize']
+
+        self.dx = xsize / itot
+        self.dy = ysize / jtot
+
+        # Full level grid
+        self.x = np.arange(0.5*self.dx, xsize, self.dx)
+        self.y = np.arange(0.5*self.dy, ysize, self.dy)
+
+        # Read vertical grid from prof file
+        f = np.genfromtxt(vgrid_file, names=True)
+        self.z = f['z']
+
+        # Half level grid
+        self.xh = np.arange(0, xsize, self.dx)
+        self.yh = np.arange(0, ysize, self.dy)
+        self.zh = np.zeros(ktot)
+        self.zh[1:] = 0.5*(self.z[1:] + self.z[:-1])
+
+        # Save other parameters to make it equal to the Read_grid() class
+        self.itot = itot
+        self.jtot = jtot
+        self.ktot = ktot
+        self.xsize = xsize
+        self.ysize = ysize
+        self.zsize = zsize
 
 
 def read_restart_file(path, itot, jtot, ktot, endian='little'):
