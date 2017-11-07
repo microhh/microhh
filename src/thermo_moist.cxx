@@ -915,7 +915,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     nerror += inputin->get_item(&swupdatebasestate, "thermo", "swupdatebasestate", "");
     
     // Time variable surface pressure
-    nerror += inputin->get_item(&swtimedeppbot, "thermo", "swtimedeppbot", "", 0);
+    nerror += inputin->get_item(&swtimedep_pbot, "thermo", "swtimedep_pbot", "", 0);
 
     // Remove the data from the input that is not used, to avoid warnings.
     if (master->mode == "init")
@@ -1021,7 +1021,7 @@ void Thermo_moist::create(Input* inputin)
     }
 
     // 6. Process the time dependent surface pressure
-    if (swtimedeppbot == 1)
+    if (swtimedep_pbot == 1)
     {
         const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
         if (nerror > 0)
@@ -1633,7 +1633,7 @@ bool Thermo_moist::check_field_exists(const std::string name)
 
 void Thermo_moist::update_time_dependent()
 {
-    if (swtimedeppbot == 0)
+    if (swtimedep_pbot == 0)
         return;
 
     int index0, index1;
