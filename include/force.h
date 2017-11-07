@@ -142,7 +142,7 @@ class Force
         double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
-        std::map<std::string, double*> timedepdata_g;
+        std::map<std::string, double*> timedepdata_ls_g;
 
 };
 #endif
