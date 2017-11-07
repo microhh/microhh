@@ -4,6 +4,7 @@ Example case with time varying (surface and large scale) forcings
 - Large scale advection of moisture (`swls` & `swtimedep_ls`)
 - Nudging of a scalar "s" (`swnudge` & `swtimedep_nudge`)
 - Subsidence (`swwls` & `swtimedep_wls`)
+- Time varying geostrophic wind (`swtimedep_geo`)
 
 `[thermo]`:
 - Surface pressure (`swtimedep_pbot`)
