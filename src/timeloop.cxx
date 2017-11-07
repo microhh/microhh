@@ -213,6 +213,42 @@ void Timeloop::set_time_step()
     }
 }
 
+void Timeloop::get_interpolation_factors(int& index0, int&index1, double& fac0, double& fac1, std::vector<double> timevec)
+{
+    // 1. Get the indexes and factors for the interpolation in time
+    index0 = 0;
+    index1 = 0;
+
+    for (auto& t : timevec)
+    {
+        if (time < t)
+            break;
+        else
+            ++index1;
+    }
+
+    // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
+    if (index1 == 0)
+    {
+        fac0   = 0.;
+        fac1   = 1.;
+        index0 = 0;
+    }
+    else if (index1 == timevec.size())
+    {
+        fac0   = 1.;
+        fac1   = 0.;
+        index0 = index1-1;
+        index1 = index0;
+    }
+    else
+    {
+        index0 = index1-1;
+        fac0 = (timevec[index1] - time) / (timevec[index1] - timevec[index0]);
+        fac1 = (time - timevec[index0]) / (timevec[index1] - timevec[index0]);
+    }
+}
+
 #ifndef USECUDA
 void Timeloop::exec()
 {

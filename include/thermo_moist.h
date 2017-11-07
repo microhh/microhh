@@ -53,6 +53,7 @@ class Thermo_moist : public Thermo
         void get_buoyancy_surf(Field3d*);
         void get_buoyancy_fluxbot(Field3d*);
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
+        void update_time_dependent();
         double get_buoyancy_diffusivity();
 
 #ifdef USECUDA
@@ -66,13 +67,17 @@ class Thermo_moist : public Thermo
         void init_cross(); ///< Initialize the thermo cross-sections
         void init_dump();  ///< Initialize the thermo field dumps
 
-        int swupdatebasestate;
+        int swupdatebasestate; ///< Update base state pressure/density in thermo calculations
+        int swtimedep_pbot; ///< Update surface pressure
         std::string thvar; ///< Name of prognostic potential temperature variable
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+
+        std::vector<double> timedeptime;
+        double* timedeppbot;
 
         Stats *stats;
 

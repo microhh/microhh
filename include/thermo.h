@@ -63,6 +63,8 @@ class Thermo
 
         virtual double get_buoyancy_diffusivity() = 0;
 
+        virtual void update_time_dependent() = 0;
+
         #ifdef USECUDA
         // GPU functions and variables.
         virtual void prepare_device() = 0;

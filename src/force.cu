@@ -30,6 +30,7 @@
 #include "tools.h"
 #include "boundary.h"
 #include "model.h"
+#include "timeloop.h"
 
 using namespace Finite_difference::O2;
 
@@ -209,13 +210,13 @@ void Force::prepare_device()
         cuda_safe_call(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
     }
 
-    if (swtimedep == "1")
+    if (swtimedep_ls == "1")
     {
-        int nmemsize2 = grid->kmax*timedeptime.size()*sizeof(double);
-        for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+        int nmemsize2 = grid->kmax*timedeptime_ls.size()*sizeof(double);
+        for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
         {
-            cuda_safe_call(cudaMalloc(&timedepdata_g[it->first], nmemsize2));
-            cuda_safe_call(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            cuda_safe_call(cudaMalloc(&timedepdata_ls_g[it->first], nmemsize2));
+            cuda_safe_call(cudaMemcpy(timedepdata_ls_g[it->first], timedepdata_ls[it->first], nmemsize2, cudaMemcpyHostToDevice));
         }
     }
 }
@@ -237,10 +238,10 @@ void Force::clear_device()
     if (swwls == "1")
         cuda_safe_call(cudaFree(wls_g));
 
-    if (swtimedep == "1")
+    if (swtimedep_ls == "1")
     {
-        for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-            cuda_safe_call(cudaFree(timedepdata_g[it->first]));
+        for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+            cuda_safe_call(cudaFree(timedepdata_ls_g[it->first]));
     }
 }
 
@@ -347,23 +348,48 @@ void Force::exec(double dt)
 #endif
 
 #ifdef USECUDA
-void Force::update_time_dependent_profs(double fac0, double fac1, int index0, int index1)
+void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles, std::map<std::string, double*> time_profiles,
+                                        std::map<std::string, std::vector<double>> times, std::string suffix)
 {
     const int blockk = 128;
     const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
 
-    for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+    // Loop over all profiles which might be time dependent
+    for (auto& it : profiles)
     {
-        std::string name = *it1 + "ls";
-        std::map<std::string, double *>::const_iterator it2 = timedepdata_g.find(name);
+        std::string name = it.first + suffix;
 
-        // update the profile
-        if (it2 != timedepdata.end())
+        // Check if they have time dependent data
+        if (time_profiles.find(name) != time_profiles.end())
         {
+            // Get/calculate the interpolation indexes/factors
+            int index0, index1;
+            double fac0, fac1;
+
+            model->timeloop->get_interpolation_factors(index0, index1, fac0, fac1, times[name]);
+
+            // Calculate the new vertical profile
             update_time_dependent_prof_g<<<gridk, blockk>>>(
-                lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+                it.second, time_profiles[name], fac0, fac1, index0, index1, grid->kmax, grid->kgc);
             cuda_check_error();
         }
     }
+
+
+
+
+    //for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+    //{
+    //    std::string name = *it1 + "ls";
+    //    std::map<std::string, double *>::const_iterator it2 = timedepdata_g.find(name);
+
+    //    // update the profile
+    //    if (it2 != timedepdata.end())
+    //    {
+    //        update_time_dependent_prof_g<<<gridk, blockk>>>(
+    //            lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+    //        cuda_check_error();
+    //    }
+    //}
 }
 #endif

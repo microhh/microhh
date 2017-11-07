@@ -47,6 +47,7 @@ class Thermo_disabled : public Thermo
         void exec_dump() {}
         void get_mask(Field3d*, Field3d*, Mask*) {}
         void get_prog_vars(std::vector<std::string>*) {}
+        void update_time_dependent() {}
         double get_buoyancy_diffusivity();
 
         unsigned long get_time_limit(unsigned long, double);
