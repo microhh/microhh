@@ -68,7 +68,7 @@ class Thermo_moist : public Thermo
         void init_dump();  ///< Initialize the thermo field dumps
 
         int swupdatebasestate; ///< Update base state pressure/density in thermo calculations
-        int swtimedeppbot; ///< Update surface pressure
+        int swtimedep_pbot; ///< Update surface pressure
         std::string thvar; ///< Name of prognostic potential temperature variable
 
         // cross sections
