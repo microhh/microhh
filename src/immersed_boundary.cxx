@@ -827,14 +827,13 @@ void Immersed_boundary::zero_ib_tendency(double* const restrict tend, double* co
             }
 }
 
-void Immersed_boundary::exec()
+void Immersed_boundary::exec_momentum()
 {
     if (ib_type == None_type)
         return;
 
     const int ii = 1;
     const double no_slip = 0.;
-    const double fixed_visc = visc_wall;
 
     // Set the immersed boundary ghost cells to enforce a no-slip BC for the velocity components
     set_ghost_cells(ghost_cells_u, fields->u->data, no_slip, grid->xh, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
@@ -845,6 +844,34 @@ void Immersed_boundary::exec()
     grid->boundary_cyclic(fields->v->data);
     grid->boundary_cyclic(fields->w->data);
 
+    // Zero ghost cell tendencies
+    if (zero_ghost_tend)
+    {
+        zero_ghost_tendency(ghost_cells_u, fields->at["u"]->data);
+        zero_ghost_tendency(ghost_cells_v, fields->at["v"]->data);
+        zero_ghost_tendency(ghost_cells_w, fields->at["w"]->data);
+
+        grid->boundary_cyclic(fields->at["u"]->data);
+        grid->boundary_cyclic(fields->at["v"]->data);
+        grid->boundary_cyclic(fields->at["w"]->data);
+
+        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        {
+            zero_ghost_tendency(ghost_cells_s, fields->st[it->first]->data);
+            grid->boundary_cyclic(fields->at[it->first]->data);
+        }
+    }
+}
+
+void Immersed_boundary::exec_scalars()
+{
+    if (ib_type == None_type)
+        return;
+
+    const int ii = 1;
+    const double fixed_visc = visc_wall;
+
+    // For LES, prescribe a fixed viscosity at the IB wall
     if (model->diff->get_switch() == "smag2")
         set_ghost_cells(ghost_cells_s, fields->sd["evisc"]->data, visc_wall, grid->x, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
 
@@ -859,14 +886,6 @@ void Immersed_boundary::exec()
     // Zero ghost cell tendencies
     if (zero_ghost_tend)
     {
-        zero_ghost_tendency(ghost_cells_u, fields->at["u"]->data);
-        zero_ghost_tendency(ghost_cells_v, fields->at["v"]->data);
-        zero_ghost_tendency(ghost_cells_w, fields->at["w"]->data);
-
-        grid->boundary_cyclic(fields->at["u"]->data);
-        grid->boundary_cyclic(fields->at["v"]->data);
-        grid->boundary_cyclic(fields->at["w"]->data);
-
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         {
             zero_ghost_tendency(ghost_cells_s, fields->st[it->first]->data);

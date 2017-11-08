@@ -77,7 +77,8 @@ class Immersed_boundary
 
         void init();
         void create();
-        void exec();                   ///< Set the immersed boundary ghost cells
+        void exec_momentum();   ///< Set the immersed boundary ghost cells (velocity components)
+        void exec_scalars();    ///< Set the immersed boundary ghost cells (scalars)
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
         void get_mask(Field3d*, Field3d*);
         IB_type get_switch() { return ib_type; }

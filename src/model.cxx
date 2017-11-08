@@ -248,7 +248,7 @@ void Model::exec()
     boundary->exec();
 
     // Set the immersed boundary conditions
-    //immersed_boundary->exec();
+    immersed_boundary->exec_momentum();
 
     // Calculate the field means, in case needed.
     fields->exec();
@@ -268,8 +268,8 @@ void Model::exec()
         // Determine the time step.
         set_time_step();
 
-        // Set the immersed boundary conditions
-        // not any more
+        // Set the immersed boundary conditions for scalars
+        immersed_boundary->exec_scalars();
 
         // Calculate the advection tendency.
         boundary->set_ghost_cells_w(Boundary::Conservation_type);
@@ -287,8 +287,8 @@ void Model::exec()
         // Apply the large scale forcings. Keep this one always right before the pressure.
         force->exec(timeloop->get_sub_time_step());
 
-        // Set the immersed boundary conditions
-        immersed_boundary->exec();
+        // Set the immersed boundary conditions for momentum.
+        immersed_boundary->exec_momentum();
 
         // Add the previous pressure gradient.
         pres->exec_0();
