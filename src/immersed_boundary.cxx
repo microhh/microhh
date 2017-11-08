@@ -299,18 +299,19 @@ void Immersed_boundary::create()
         std::string file_name;
 
         file_name = "u.ib_input";
-        read_ghost_cells(ghost_cells_u, file_name, grid->xh, grid->y, grid->z);
+        read_ghost_cells(ghost_cells_u, file_name, grid->xh, grid->y, grid->z, Dirichlet_type);
 
         file_name = "v.ib_input";
-        read_ghost_cells(ghost_cells_v, file_name, grid->x, grid->yh, grid->z);
+        read_ghost_cells(ghost_cells_v, file_name, grid->x, grid->yh, grid->z, Dirichlet_type);
 
         file_name = "w.ib_input";
-        read_ghost_cells(ghost_cells_w, file_name, grid->x, grid->y, grid->zh);
+        read_ghost_cells(ghost_cells_w, file_name, grid->x, grid->y, grid->zh, Dirichlet_type);
 
         if (fields->sp.size() > 0)
         {
+            Boundary_type bc = sbc[fields->sp.begin()->first]->bcbot;
             file_name = "s.ib_input";
-            read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
+            read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z, bc);
         }
     }
     else
@@ -574,7 +575,8 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
 
 
 void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, std::string file_name,
-                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                                         Boundary_type bc)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -583,7 +585,7 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
     bool is_optional = false;
     Data_map input;
 
-    // Read the input data into a std::map< header_name, std::vecor<data> >
+    // Read the input data into a std::map< header_name, std::vector<data> >
     const int nerror = model->input->read_data_file(&input, file_name, is_optional);
     if (nerror > 0)
         throw 1;
@@ -623,7 +625,7 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
             tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
             // Neighbours
-            const int n_neighbours = input["nn"][n];
+            const int n_neighbours = (bc == Immersed_boundary::Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
 
             for (int nn=0; nn<n_neighbours; ++nn)
             {
@@ -850,7 +852,7 @@ void Immersed_boundary::exec()
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
-                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, true);
+                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, false);
         grid->boundary_cyclic(fields->ap[it->first]->data);
     }
 
