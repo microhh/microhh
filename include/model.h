@@ -85,8 +85,6 @@ class Model
         void print_status();
         void calc_stats(std::string);
         void set_time_step();
-        void do_stat(int iteration, double time, unsigned long itime);
-        void do_cross();        
-        void do_dump();
+        void do_stat(bool doStats, bool doCross, bool doDump, int iteration, double time, unsigned long itime);
 };
 #endif
