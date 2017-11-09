@@ -43,6 +43,7 @@
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
+#include <thread>
 #endif
 
 // In the constructor all classes are initialized and their input is read.
@@ -230,6 +231,8 @@ void Model::exec()
     force   ->prepare_device();
     // Prepare pressure last, for memory check
     pres    ->prepare_device(); 
+    
+    std::thread t_dump, t_stat, t_cross;
     #endif
 
     master->print_message("Starting time integration\n");
@@ -296,47 +299,37 @@ void Model::exec()
             // Do the statistics.
             if (stats->doStats())
             {
-                // Always process the default mask (the full field)
-                stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-                calc_stats("default");
-
-                // Work through the potential masks for the statistics.
-                for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
-                {
-                    if (*it == "wplus" || *it == "wmin")
-                    {
-                        fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-                        calc_stats(*it);
-                    }
-                    else if (*it == "ql" || *it == "qlcore")
-                    {
-                        thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-                        calc_stats(*it);
-                    }
-                    else if (*it == "patch_high" || *it == "patch_low")
-                    {
-                        boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-                        calc_stats(*it);
-                    }
-                }
-
-                // Store the stats data.
-                stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                 #ifdef USECUDA
+                if(t_stat.joinable())
+                    t_stat.join();
+                t_stat=std::thread(&Model::do_stat,this,timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                #else
+                do_stat(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                #endif             
             }
 
             // Save the selected cross sections to disk, cross sections are handled on CPU.
             if (cross->do_cross())
             {
-                fields  ->exec_cross();
-                thermo  ->exec_cross();
-                boundary->exec_cross();
-            }
+                #ifdef USECUDA
+                if(t_cross.joinable())
+                    t_cross.join();
+                t_cross=std::thread(&Model::do_cross,this);
+                #else
+                do_cross();
+                #endif
+           }
 
             // Save the 3d dumps to disk
             if (dump->do_dump())
             {
-                fields->exec_dump();
-                thermo->exec_dump();
+                #ifdef USECUDA
+                if(t_dump.joinable())
+                    t_dump.join();
+                t_dump=std::thread(&Model::do_dump,this);
+                #else
+                do_dump();
+                #endif
             }
         }
 
@@ -357,6 +350,12 @@ void Model::exec()
             if (timeloop->do_save())
             {
                 #ifdef USECUDA
+                if(t_stat.joinable())
+                    t_stat.join();
+                if(t_cross.joinable())
+                    t_cross.join();
+                if(t_dump.joinable())
+                    t_dump.join();
                 fields  ->backward_device();
                 boundary->backward_device();
                 #endif
@@ -403,11 +402,57 @@ void Model::exec()
 
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
+    if(t_stat.joinable())
+        t_stat.join();
+    if(t_cross.joinable())
+        t_cross.join();
+    if(t_dump.joinable())
+        t_dump.join();
     fields  ->backward_device();
     boundary->backward_device();
     #endif
 }
 
+void Model::do_stat(int iteration, double time, unsigned long itime)
+{
+    // Always process the default mask (the full field)
+    stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+    calc_stats("default");
+
+    // Work through the potential masks for the statistics.
+    for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+    {
+        if (*it == "wplus" || *it == "wmin")
+        {
+            fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calc_stats(*it);
+        }
+        else if (*it == "ql" || *it == "qlcore")
+        {
+            thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calc_stats(*it);
+        }
+        else if (*it == "patch_high" || *it == "patch_low")
+        {
+            boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calc_stats(*it);
+        }
+    }
+
+    // Store the stats data.
+    stats->exec(iteration, time, itime);
+}
+void Model::do_cross()
+{
+    fields  ->exec_cross();
+    thermo  ->exec_cross();
+    boundary->exec_cross();
+}
+void Model::do_dump()
+{
+    fields->exec_dump();
+    thermo->exec_dump();
+}
 void Model::set_time_step()
 {
     // Only set the time step if the model is not in a substep.
