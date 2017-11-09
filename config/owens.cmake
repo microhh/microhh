@@ -2,7 +2,7 @@
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
   set(CUDALIBS "-rdynamic /usr/local/cuda/8.0.61/lib64/libcufft.so")
-  set(USER_CUDA_NVCC_FLAGS "-arch=sm_60")
+  set(USER_CUDA_NVCC_FLAGS "-arch=sm_60 -std=c++11")
   add_definitions(-DRESTRICTKEYWORD=__restrict__)
 else()
   add_definitions(-DRESTRICTKEYWORD=restrict)
