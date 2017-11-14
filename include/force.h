@@ -62,7 +62,8 @@ class Force
         void prepare_device();
         void clear_device();
 
-        std::map<std::string, double*> lsprofs_g; ///< Map of profiles with forcings stored by its name.
+        std::map<std::string, double*> lsprofs_g;    ///< Map of profiles with forcings stored by its name.
+        std::map<std::string, double*> nudgeprofs_g; ///< Map of nudging profiles stored by its name.
 
         // Accessor functions
         std::string get_switch_lspres()      { return swlspres; }
@@ -142,7 +143,12 @@ class Force
         double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+        double* nudge_factor_g; ///< Pointer to GPU array nudge factor.
         std::map<std::string, double*> timedepdata_ls_g;
+        std::map<std::string, double*> timedepdata_geo_g;
+        std::vector<double> timedeptime_wls_g;
+        double* timedepdata_wls_g;
+        std::map<std::string, double*> timedepdata_nudge_g;
 
 };
 #endif

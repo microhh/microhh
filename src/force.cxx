@@ -323,9 +323,8 @@ void Force::update_time_dependent()
     {
         #ifndef USECUDA
         update_time_dependent_profs(nudgeprofs, timedepdata_nudge, timedeptime_nudge, "nudge");
-        #else
-        master->print_error("Nudging not (yet) implemented in GPU version\n");
-        throw 1;
+        #elif USECUDA
+        update_time_dependent_profs(nudgeprofs_g, timedepdata_nudge_g, timedeptime_nudge, "nudge");
         #endif
     }
 
@@ -334,9 +333,9 @@ void Force::update_time_dependent()
         #ifndef USECUDA
         update_time_dependent_prof(ug, timedepdata_geo["ug"], timedeptime_geo["ug"]);
         update_time_dependent_prof(vg, timedepdata_geo["vg"], timedeptime_geo["vg"]);
-        #else
-        master->print_error("Time dependent geostrophic wind not (yet) implemented in GPU version\n");
-        throw 1;
+        #elif USECUDA
+        update_time_dependent_prof(ug_g, timedepdata_geo_g["ug"], timedeptime_geo["ug"]);
+        update_time_dependent_prof(vg_g, timedepdata_geo_g["vg"], timedeptime_geo["vg"]);
         #endif
     }
 
@@ -344,9 +343,8 @@ void Force::update_time_dependent()
     {
         #ifndef USECUDA
         update_time_dependent_prof(wls, timedepdata_wls, timedeptime_wls);
-        #else
-        master->print_error("Time dependent subsidence not (yet) implemented in GPU version\n");
-        throw 1;
+        #elif USECUDA
+        update_time_dependent_prof(wls_g, timedepdata_wls_g, timedeptime_wls);
         #endif
     }
 }
@@ -379,7 +377,7 @@ void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles
     }
 }
 #endif
-
+#ifndef USECUDA
 void Force::update_time_dependent_prof(double* const restrict prof, const double* const restrict data,
                                        const std::vector<double> times)
 {
@@ -395,7 +393,7 @@ void Force::update_time_dependent_prof(double* const restrict prof, const double
     for (int k=0; k<grid->kmax; ++k)
         prof[k+kgc] = fac0 * data[index0*kk+k] + fac1 * data[index1*kk+k];
 }
-
+#endif
 void Force::calc_flux(double* const restrict ut, const double* const restrict u,
                       const double* const restrict dz, const double dt)
 {

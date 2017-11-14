@@ -295,6 +295,7 @@ void Model::exec()
                     t_stat.join();
                 fields  ->backward_device();
                 boundary->backward_device();
+                thermo  ->backward_device();                
                 t_stat=std::thread(&Model::do_stat,this, stats->doStats(), cross->do_cross(), dump->do_dump(), timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
                 #else
                 do_stat(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
@@ -323,6 +324,7 @@ void Model::exec()
                     t_stat.join();
                 fields  ->backward_device();
                 boundary->backward_device();
+                thermo  ->backward_device();
                 #endif
 
                 // Save data to disk.
@@ -371,6 +373,7 @@ void Model::exec()
         t_stat.join();
     fields  ->backward_device();
     boundary->backward_device();
+    thermo  ->backward_device();
     #endif
 }
 
