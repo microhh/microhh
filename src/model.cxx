@@ -466,7 +466,7 @@ void Model::print_status()
         std::string outputname = master->simname + ".out";
         dnsout = std::fopen(outputname.c_str(), "a");
         std::setvbuf(dnsout, NULL, _IOLBF, 1024);
-        std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+        std::fprintf(dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
                 "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
         start = master->get_wall_clock_time();
     }
@@ -496,7 +496,7 @@ void Model::print_status()
 
         // Write the status information to disk.
         if (master->mpiid == 0)
-            std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+            std::fprintf(dnsout, "%8d %13.5E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
 
