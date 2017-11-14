@@ -63,6 +63,8 @@ class Thermo_dry : public Thermo
         // GPU functions and variables
         void prepare_device();
         void clear_device();
+        void forward_device();
+        void backward_device();
 #endif
 
         // Empty functions that are allowed to pass.

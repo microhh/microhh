@@ -69,6 +69,9 @@ class Thermo
         // GPU functions and variables.
         virtual void prepare_device() = 0;
         virtual void clear_device() = 0;
+        virtual void forward_device() = 0;
+        virtual void backward_device() = 0;
+
         #endif
 
     protected:

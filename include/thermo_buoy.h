@@ -63,6 +63,8 @@ class Thermo_buoy : public Thermo
 #ifdef USECUDA
     void prepare_device() {};
     void clear_device() {};
+    void forward_device() {};
+    void backward_device() {};
 #endif
 
 private:

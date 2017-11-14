@@ -55,6 +55,8 @@ class Thermo_disabled : public Thermo
 #ifdef USECUDA
         void prepare_device() {};
         void clear_device() {};
+        void forward_device() {};
+        void backward_device() {};
 #endif
 
         // Empty functions that shall throw.

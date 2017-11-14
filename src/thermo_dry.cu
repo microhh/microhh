@@ -134,6 +134,8 @@ void Thermo_dry::prepare_device()
     cuda_safe_call(cudaMalloc(&prefh_g,   nmemsize));
     cuda_safe_call(cudaMalloc(&exnref_g,  nmemsize));
     cuda_safe_call(cudaMalloc(&exnrefh_g, nmemsize));
+    
+    
 
     // Copy fields to device
     cuda_safe_call(cudaMemcpy(thref_g,   thref,   nmemsize, cudaMemcpyHostToDevice));
@@ -153,6 +155,24 @@ void Thermo_dry::clear_device()
     cuda_safe_call(cudaFree(prefh_g ));
     cuda_safe_call(cudaFree(exnref_g ));
     cuda_safe_call(cudaFree(exnrefh_g));
+}
+
+void Thermo_dry::forward_device()
+{
+    const int nmemsize = grid->kcells*sizeof(double);
+    // Copy fields to device
+    cuda_safe_call(cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
+}            
+void Thermo_dry::backward_device()
+{
+    const int nmemsize = grid->kcells*sizeof(double);
+    cudaMemcpy(pref_g,    pref,    grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(prefh_g,   prefh,   grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(exnref_g,  exnref,  grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(exnrefh_g, exnrefh, grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
 }
 
 #ifdef USECUDA
