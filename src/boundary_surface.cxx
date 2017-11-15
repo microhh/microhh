@@ -205,16 +205,16 @@ void Boundary_surface::init_surface()
         }
 }
 
-void Boundary_surface::exec_cross()
+void Boundary_surface::exec_cross(int iotime)
 {
     int nerror = 0;
 
     for (std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
     {
         if (*it == "ustar")
-            nerror += model->cross->cross_plane(ustar, fields->atmp["tmp1"]->data, "ustar");
+            nerror += model->cross->cross_plane(ustar, fields->atmp["tmp1"]->data, "ustar",iotime);
         else if (*it == "obuk")
-            nerror += model->cross->cross_plane(obuk,  fields->atmp["tmp1"]->data, "obuk");
+            nerror += model->cross->cross_plane(obuk,  fields->atmp["tmp1"]->data, "obuk",iotime);
     }  
 
     if (nerror)

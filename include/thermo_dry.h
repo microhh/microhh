@@ -49,8 +49,8 @@ class Thermo_dry : public Thermo
 
 
         void exec_stats(Mask*);
-        void exec_cross();
-        void exec_dump();
+        void exec_cross(int);
+        void exec_dump(int);
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d*, Field3d*, std::string name, bool cyclic);

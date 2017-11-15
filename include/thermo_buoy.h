@@ -55,8 +55,8 @@ class Thermo_buoy : public Thermo
         void init() {}
         void create(Input*) {}
         void exec_stats(Mask*) {}
-        void exec_cross() {}
-        void exec_dump() {}
+        void exec_cross(int) {}
+        void exec_dump(int) {}
         void get_mask(Field3d*, Field3d*, Mask*) {}
         void update_time_dependent() {}
         

@@ -287,7 +287,7 @@ bool Cross::do_cross()
         return false;
 }
 
-int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string name)
+int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string name, int iotime)
 {
     int nerror = 0;
     char filename[256];
@@ -297,7 +297,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     {
         for (std::vector<int>::iterator it=jxzh.begin(); it<jxzh.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
             nerror += check_save(grid->save_xz_slice(data, tmp, filename, *it), filename);    
         }
     }
@@ -305,7 +305,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     {
         for (std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
             nerror += check_save(grid->save_xz_slice(data, tmp, filename, *it), filename);    
         }
     }
@@ -315,7 +315,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     {
         for (std::vector<int>::iterator it=ixzh.begin(); it<ixzh.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, iotime);
             nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
         }
     }
@@ -323,7 +323,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     {
         for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, iotime);
             nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
         }
     }
@@ -333,7 +333,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
         // loop over the index arrays to save all xy cross sections
         for (std::vector<int>::iterator it=kxyh.begin(); it<kxyh.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
             nerror += check_save(grid->save_xy_slice(data, tmp, filename, *it), filename);
         }
     }
@@ -341,7 +341,7 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     {
         for (std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
             nerror += check_save(grid->save_xy_slice(data, tmp, filename, *it), filename);
         }
     }
@@ -349,18 +349,18 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
     return nerror;
 }
 
-int Cross::cross_plane(double* restrict data, double* restrict tmp, std::string name)
+int Cross::cross_plane(double* restrict data, double* restrict tmp, std::string name, int iotime)
 {
     int nerror = 0;
     char filename[256];
 
-    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->get_iotime());
+    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", iotime);
     nerror += check_save(grid->save_xy_slice(data, tmp, filename), filename);
 
     return nerror;
 } 
 
-int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* restrict tmp, double* restrict dzi4, std::string name)
+int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* restrict tmp, double* restrict dzi4, std::string name, int iotime)
 {
     using namespace Finite_difference::O4;
 
@@ -458,28 +458,28 @@ int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* res
     // loop over the index arrays to save all xz cross sections
     for (std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
         nerror += check_save(grid->save_xz_slice(lngrad, tmp, filename, *it),filename);
     }
     
     // loop over the index arrays to save all yz cross sections
     for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, iotime);
         nerror += check_save(grid->save_yz_slice(lngrad, tmp, filename, *it),filename);
     }
 
     // loop over the index arrays to save all xy cross sections
     for (std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
         nerror += check_save(grid->save_xy_slice(lngrad, tmp, filename, *it),filename);
     }
 
     return nerror;
 }
 
-int Cross::cross_path(double* restrict data, double* restrict tmp, double* restrict tmp1, std::string name)
+int Cross::cross_path(double* restrict data, double* restrict tmp, double* restrict tmp1, std::string name, int iotime)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -507,7 +507,7 @@ int Cross::cross_path(double* restrict data, double* restrict tmp, double* restr
                 tmp[ijk1] += fields->rhoref[k] * data[ijk] * grid->dz[k];       
             }
 
-    nerror += cross_plane(&tmp[kstart*kk], tmp1, name);
+    nerror += cross_plane(&tmp[kstart*kk], tmp1, name, iotime);
 
     return nerror;
 }
@@ -523,7 +523,7 @@ int Cross::cross_path(double* restrict data, double* restrict tmp, double* restr
  * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom) 
  * @param name String containing the output name of the cross-section 
  */
-int Cross::cross_height_threshold(double* restrict data, double* restrict height, double* restrict tmp1, double* restrict z, double threshold, Direction direction, std::string name)
+int Cross::cross_height_threshold(double* restrict data, double* restrict height, double* restrict tmp1, double* restrict z, double threshold, Direction direction, std::string name, int iotime)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -574,7 +574,7 @@ int Cross::cross_height_threshold(double* restrict data, double* restrict height
                 }
     }
 
-    nerror += cross_plane(height, tmp1, name);
+    nerror += cross_plane(height, tmp1, name, iotime);
 
     return nerror;
 }

@@ -103,12 +103,12 @@ bool Dump::do_dump()
         return false;
 }
 
-void Dump::save_dump(double * restrict data, double * restrict tmp, std::string varname)
+void Dump::save_dump(double * restrict data, double * restrict tmp, std::string varname,int iotime)
 {
     const double NoOffset = 0.;
     char filename[256];
 
-    std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
+    std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
     master->print_message("Saving \"%s\" ... ", filename);
 
     if (grid->save_field3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))

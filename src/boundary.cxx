@@ -355,7 +355,7 @@ void Boundary::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 }
 #endif
 
-void Boundary::exec_cross()
+void Boundary::exec_cross(int iotime)
 {
 }
 

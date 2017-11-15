@@ -44,8 +44,8 @@ class Thermo_moist : public Thermo
 
         void get_mask(Field3d*, Field3d*, Mask*);
         void exec_stats(Mask*);
-        void exec_cross();
-        void exec_dump();
+        void exec_cross(int);
+        void exec_dump(int);
 
         // functions to retrieve buoyancy properties, to be called from other classes
         bool check_field_exists(std::string name);

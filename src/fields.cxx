@@ -1038,36 +1038,36 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
     return tke;
 }
 
-void Fields::exec_cross()
+void Fields::exec_cross(int iotime)
 {
     int nerror = 0;
 
     Cross* cross = model->cross;
 
     for (std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-        nerror += cross->cross_simple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
+        nerror += cross->cross_simple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name, iotime);
 
     for (std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-        nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+        nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad", iotime);
 
     for (std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
+        nerror += cross->cross_plane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot", iotime);
 
     for (std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
+        nerror += cross->cross_plane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop", iotime);
 
     for (std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
+        nerror += cross->cross_plane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot", iotime);
 
     for (std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+        nerror += cross->cross_plane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top", iotime);
 
     if (nerror)
         throw 1;
 }
 
-void Fields::exec_dump()
+void Fields::exec_dump(int iotime)
 {
     for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
-        model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it);
+        model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it, iotime);
 }

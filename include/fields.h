@@ -65,8 +65,8 @@ class Fields
         void set_calc_mean_profs(bool);
         void set_minimum_tmp_fields(int);
 
-        void exec_cross();
-        void exec_dump();
+        void exec_cross(int);
+        void exec_dump(int);
 
         Field3d* u; ///< Field3d instance of x velocity component
         Field3d* v; ///< Field3d instance of y velocity component

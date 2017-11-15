@@ -42,7 +42,7 @@ class Boundary_surface : public Boundary
         virtual void set_values();
 
         void exec_stats(Mask*); ///< Execute statistics of surface
-        void exec_cross();      ///< Execute cross sections of surface
+        void exec_cross(int);      ///< Execute cross sections of surface
 
         // Make these variables public for out-of-class usage.
         double* obuk;

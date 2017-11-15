@@ -47,11 +47,11 @@ class Cross
         std::string swcross;
         bool do_cross();
 
-        int cross_simple(double*, double*, std::string);
-        int cross_lngrad(double*, double*, double*, double*, std::string);
-        int cross_plane (double*, double*, std::string);
-        int cross_path  (double*, double*, double*, std::string);
-        int cross_height_threshold(double*, double*, double*, double*, double, Direction, std::string);
+        int cross_simple(double*, double*, std::string, int);
+        int cross_lngrad(double*, double*, double*, double*, std::string, int);
+        int cross_plane (double*, double*, std::string, int);
+        int cross_path  (double*, double*, double*, std::string, int);
+        int cross_height_threshold(double*, double*, double*, double*, double, Direction, std::string, int);
 
     private:
         Master* master;

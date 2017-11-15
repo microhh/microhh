@@ -43,7 +43,7 @@ class Dump
 
         std::string swdump;
         bool do_dump();
-        void save_dump(double*, double*, std::string);
+        void save_dump(double*, double*, std::string, int);
 
     private:
         Master* master;

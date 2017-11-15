@@ -1533,7 +1533,7 @@ void Thermo_moist::exec_stats(Mask *m)
     }
 }
 
-void Thermo_moist::exec_cross()
+void Thermo_moist::exec_cross(int iotime)
 {
     int nerror = 0;
 
@@ -1548,43 +1548,43 @@ void Thermo_moist::exec_cross()
         if (*it == "b")
         {
             calc_buoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
-            nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
+            nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it, iotime);
         }
         else if (*it == "ql")
         {
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-            nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
+            nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it, iotime);
         }
         else if (*it == "blngrad")
         {
             calc_buoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
             // Note: tmp1 twice used as argument -> overwritten in crosspath()
-            nerror += cross->cross_lngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
+            nerror += cross->cross_lngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it, iotime);
         }
         else if (*it == "qlpath")
         {
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
             // Note: tmp1 twice used as argument -> overwritten in crosspath()
-            nerror += cross->cross_path(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
+            nerror += cross->cross_path(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath", iotime);
         }
         else if (*it == "qlbase")
         {
             const double ql_threshold = 0.;
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Bottom_to_top, "qlbase");
+            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Bottom_to_top, "qlbase", iotime);
         }
         else if (*it == "qltop")
         {
             const double ql_threshold = 0.;
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Top_to_bottom, "qltop");
+            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Top_to_bottom, "qltop", iotime);
         }
         else if (*it == "maxthvcloud")
         {
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
             calc_maximum_thv_perturbation_cloud(fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->data,
                                                 fields->sp["thl"]->data, fields->sp["qt"]->data, fields->atmp["tmp1"]->data, pref, fields->atmp["tmp2"]->datamean);
-            nerror += cross->cross_plane(fields->atmp["tmp2"]->databot, fields->atmp["tmp1"]->data, "maxthvcloud");
+            nerror += cross->cross_plane(fields->atmp["tmp2"]->databot, fields->atmp["tmp1"]->data, "maxthvcloud", iotime);
         }
         else if (*it == "bbot" or *it == "bfluxbot")
         {
@@ -1592,14 +1592,14 @@ void Thermo_moist::exec_cross()
             calc_buoyancy_fluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
             if (*it == "bbot")
-                nerror += cross->cross_plane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
+                nerror += cross->cross_plane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot", iotime);
             else if (*it == "bfluxbot")
-                nerror += cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
+                nerror += cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot", iotime);
         }
         // BvS:micro 
         else if (*it == "qrpath")
         {
-            nerror += cross->cross_path(fields->sp["qr"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qrpath");
+            nerror += cross->cross_path(fields->sp["qr"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qrpath", iotime);
         }
     }
 
@@ -1607,7 +1607,7 @@ void Thermo_moist::exec_cross()
         throw 1;
 }
 
-void Thermo_moist::exec_dump()
+void Thermo_moist::exec_dump(int iotime)
 {
     for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
     {
@@ -1619,7 +1619,7 @@ void Thermo_moist::exec_dump()
         else
             throw 1;
 
-        model->dump->save_dump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
+        model->dump->save_dump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it, iotime);
     }
 }
 

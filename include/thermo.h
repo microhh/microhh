@@ -49,8 +49,8 @@ class Thermo
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec_stats(Mask*) = 0;
-        virtual void exec_cross() = 0;
-        virtual void exec_dump() = 0;
+        virtual void exec_cross(int) = 0;
+        virtual void exec_dump(int) = 0;
 
         virtual void get_mask(Field3d*, Field3d*, Mask*) = 0;
 

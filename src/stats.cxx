@@ -211,7 +211,7 @@ void Stats::exec(int iteration, double time, unsigned long itime)
         return;
 
     // write message in case stats is triggered
-    master->print_message("Saving stats for time %f\n", model->timeloop->get_time());
+    master->print_message("Saving stats for time %f\n", time);
 
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {

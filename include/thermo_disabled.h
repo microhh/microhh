@@ -43,8 +43,8 @@ class Thermo_disabled : public Thermo
         void create(Input*) {}
         void exec() {}
         void exec_stats(Mask*) {}
-        void exec_cross() {}
-        void exec_dump() {}
+        void exec_cross(int) {}
+        void exec_dump(int) {}
         void get_mask(Field3d*, Field3d*, Mask*) {}
         void get_prog_vars(std::vector<std::string>*) {}
         void update_time_dependent() {}

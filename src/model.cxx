@@ -296,9 +296,10 @@ void Model::exec()
                 fields  ->backward_device();
                 boundary->backward_device();
                 thermo  ->backward_device();                
-                t_stat=std::thread(&Model::do_stat,this, stats->doStats(), cross->do_cross(), dump->do_dump(), timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                t_stat=std::thread(&Model::do_stat,this, stats->doStats(), cross->do_cross(), dump->do_dump(), 
+                                    timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
                 #else
-                do_stat(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                do_stat(stats->doStats(), cross->do_cross(), dump->do_dump(),timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
                 #endif             
             }
         }
@@ -377,7 +378,7 @@ void Model::exec()
     #endif
 }
 
-void Model::do_stat(bool doStats, bool doCross, bool doDump, int iteration, double time, unsigned long itime)
+void Model::do_stat(bool doStats, bool doCross, bool doDump, int iteration, double time, unsigned long itime, int iotime)
 {
     // Always process the default mask (the full field)
     stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
@@ -411,15 +412,15 @@ void Model::do_stat(bool doStats, bool doCross, bool doDump, int iteration, doub
     // Save the selected cross sections to disk, cross sections are handled on CPU.
     if(doCross)
     {
-        fields  ->exec_cross();
-        thermo  ->exec_cross();
-        boundary->exec_cross();
+        fields  ->exec_cross(iotime);
+        thermo  ->exec_cross(iotime);
+        boundary->exec_cross(iotime);
     }
 // Save the 3d dumps to disk
     if(doDump)
     {
-        fields->exec_dump();
-        thermo->exec_dump();
+        fields->exec_dump(iotime);
+        thermo->exec_dump(iotime);
     }
 }
 void Model::set_time_step()
@@ -499,7 +500,7 @@ void Model::print_status()
 
         // Write the status information to disk.
         if (master->mpiid == 0)
-            std::fprintf(dnsout, "%8d %13.5E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
 
