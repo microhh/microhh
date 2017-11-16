@@ -182,7 +182,9 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k])*nudge_fac[k]*tau_i;
+
+            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k])*tau_i;
+
         }
     }
 
@@ -211,6 +213,15 @@ void Force::prepare_device()
 
         cuda_safe_call(cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
+        if (swtimedep_geo == "1")
+        {
+            int nmemsize2 = grid->kmax*timedeptime_geo.size()*sizeof(double);
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_geo.begin(); it!=timedepdata_geo.end(); ++it)
+            {
+                cuda_safe_call(cudaMalloc(&timedepdata_geo_g[it->first], nmemsize2));
+                cuda_safe_call(cudaMemcpy(timedepdata_geo_g[it->first], timedepdata_geo[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            }
+        }
     }
 
     if (swls == "1")
@@ -220,6 +231,15 @@ void Force::prepare_device()
             cuda_safe_call(cudaMalloc(&lsprofs_g[*it], nmemsize));
             cuda_safe_call(cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice));
         }
+        if (swtimedep_ls == "1")
+        {
+            int nmemsize2 = grid->kmax*timedeptime_ls.size()*sizeof(double);
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+            {
+                cuda_safe_call(cudaMalloc(&timedepdata_ls_g[it->first], nmemsize2));
+                cuda_safe_call(cudaMemcpy(timedepdata_ls_g[it->first], timedepdata_ls[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            }
+        }
     }
 
     if (swnudge == "1")
@@ -228,8 +248,17 @@ void Force::prepare_device()
         {
             cuda_safe_call(cudaMalloc(&nudgeprofs_g[*it], nmemsize));
             cuda_safe_call(cudaMemcpy(nudgeprofs_g[*it], nudgeprofs[*it], nmemsize, cudaMemcpyHostToDevice));
-            cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
-            cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
+        }
+        cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
+        cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
+        if (swtimedep_nudge == "1")
+        {
+            int nmemsize2 = grid->kmax*timedeptime_nudge.size()*sizeof(double);
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_nudge.begin(); it!=timedepdata_nudge.end(); ++it)
+            {
+                cuda_safe_call(cudaMalloc(&timedepdata_nudge_g[it->first], nmemsize2));
+                cuda_safe_call(cudaMemcpy(timedepdata_nudge_g[it->first], timedepdata_nudge[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            }
         }
     }
 
@@ -237,17 +266,17 @@ void Force::prepare_device()
     {
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
-    }
-
-    if (swtimedep_ls == "1")
-    {
-        int nmemsize2 = grid->kmax*timedeptime_ls.size()*sizeof(double);
-        for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+        if (swtimedep_wls == "1")
         {
-            cuda_safe_call(cudaMalloc(&timedepdata_ls_g[it->first], nmemsize2));
-            cuda_safe_call(cudaMemcpy(timedepdata_ls_g[it->first], timedepdata_ls[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            int nmemsize2 = grid->kmax*sizeof(double);
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+            {
+                cuda_safe_call(cudaMalloc(&timedepdata_wls_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(&timedepdata_wls_g, &timedepdata_wls, nmemsize2, cudaMemcpyHostToDevice));
+            }
         }
     }
+
 }
 
 void Force::clear_device()
@@ -256,28 +285,43 @@ void Force::clear_device()
     {
         cuda_safe_call(cudaFree(ug_g));
         cuda_safe_call(cudaFree(vg_g));
+        if (swtimedep_geo == "1")
+        {
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_geo.begin(); it!=timedepdata_geo.end(); ++it)
+                cuda_safe_call(cudaFree(timedepdata_geo_g[it->first]));
+        }
     }
 
     if (swls == "1")
     {
         for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
             cuda_safe_call(cudaFree(lsprofs_g[*it]));
+        if (swtimedep_ls == "1")
+        {
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+                cuda_safe_call(cudaFree(timedepdata_ls_g[it->first]));
+        }
     }
 
     if (swnudge == "1")
     {
-        for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+        for(std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             cuda_safe_call(cudaFree(nudgeprofs_g[*it]));
         cuda_safe_call(cudaFree(nudge_factor_g));
+        if (swtimedep_nudge == "1")
+        {
+            for (std::map<std::string, double *>::const_iterator it=timedepdata_nudge.begin(); it!=timedepdata_nudge.end(); ++it)
+                cuda_safe_call(cudaFree(timedepdata_nudge_g[it->first]));
+        }
     }
 
     if (swwls == "1")
-        cuda_safe_call(cudaFree(wls_g));
-
-    if (swtimedep_ls == "1")
     {
-        for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
-            cuda_safe_call(cudaFree(timedepdata_ls_g[it->first]));
+        cuda_safe_call(cudaFree(wls_g));
+        if (swtimedep_wls == "1")
+        {
+            cuda_safe_call(cudaFree(timedepdata_wls_g));
+        }
     }
 }
 
@@ -370,10 +414,10 @@ void Force::exec(double dt)
 
     if (swnudge == "1")
     {
-        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+         for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         {
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
-                &fields->st[*it]->data_g[offs],  fields->sp[*it]->datamean_g, nudgeprofs_g[*it], nudge_factor_g, nudge_tau,
+                &fields->st[it->first]->data_g[offs],  fields->sp[it->first]->datamean_g, nudgeprofs_g[it->first], nudge_factor_g, nudge_tau,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);

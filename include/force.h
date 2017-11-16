@@ -146,7 +146,6 @@ class Force
         double* nudge_factor_g; ///< Pointer to GPU array nudge factor.
         std::map<std::string, double*> timedepdata_ls_g;
         std::map<std::string, double*> timedepdata_geo_g;
-        std::vector<double> timedeptime_wls_g;
         double* timedepdata_wls_g;
         std::map<std::string, double*> timedepdata_nudge_g;
 

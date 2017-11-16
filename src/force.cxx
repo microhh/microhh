@@ -119,6 +119,7 @@ Force::~Force()
     delete[] ug;
     delete[] vg;
     delete[] wls;
+    delete[] timedepdata_wls;
 
     if (swls == "1")
     {
@@ -134,7 +135,15 @@ Force::~Force()
     {
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             delete[] nudgeprofs[*it];
+
+        // Clean up time dependent data
+        for (std::map<std::string, double*>::const_iterator it=timedepdata_nudge.begin(); it!=timedepdata_nudge.end(); ++it)
+            delete[] it->second;
     }
+        // Clean up time dependent data
+    for (std::map<std::string, double*>::const_iterator it=timedepdata_geo.begin(); it!=timedepdata_geo.end(); ++it)
+        delete[] it->second;
+
 
     #ifdef USECUDA
     clear_device();
