@@ -178,11 +178,11 @@ namespace
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z + kstart;
-
+        const double tau_i = 1./tau;
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            st[ijk] += (snudge[k]-smn[k])*nudge_fac[k]/tau;
+            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k])*nudge_fac[k]*tau_i;
         }
     }
 
@@ -224,7 +224,7 @@ void Force::prepare_device()
 
     if (swnudge == "1")
     {
-        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
         {
             cuda_safe_call(cudaMalloc(&nudgeprofs_g[*it], nmemsize));
             cuda_safe_call(cudaMemcpy(nudgeprofs_g[*it], nudgeprofs[*it], nmemsize, cudaMemcpyHostToDevice));
