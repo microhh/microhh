@@ -2,25 +2,6 @@ import numpy as np
 import matplotlib.pylab as pl
 from scipy.special import erf
 
-def components_to_direction(u, v):
-    return np.rad2deg(np.arctan2(u, v)) + 180, (u**2. + v**2)**0.5
-
-def direction_to_components(dir, speed):
-    return -np.abs(speed) * np.sin(np.deg2rad(dir)), -np.abs(speed) * np.cos(np.deg2rad(dir))
-
-def rotate_components(u, v, rotation):
-    direction,velocity = components_to_direction(u, v)
-    direction += rotation
-    direction[direction>360] -= 360
-    direction[direction<0  ] += 360
-    return direction_to_components(direction, velocity)
-
-def esat(T):
-    return 0.611e3 * np.exp(17.2694 * (T - 273.16) / (T - 35.86))
-
-def qsat(T,p):
-    return 0.622 * esat(T) / p
-
 # Create stretched grid
 class Stretched_grid:
     def __init__(self, kmax, nloc1, nbuf1, dz1, dz2):
@@ -74,12 +55,7 @@ if __name__ == "__main__":
     import microhh_tools as mht
 
     # Create stretched grid
-    #gr = Stretched_grid(96, 40, 10, 2.0, 4.0)
-    #gr = Stretched_grid(64, 40, 10, 5.0, 10.0)
-    #gr = Stretched_grid(72,  50, 10, 3.0, 20.0)
-    #gr = Stretched_grid(144, 120, 20, 1.0, 15.0)
-    #gr = Stretched_grid(192, 180, 10, 0.5, 15.0)
-    gr = Stretched_grid(384, 370, 20, 0.25, 15.0)
+    gr = Stretched_grid(64, 40, 10, 2.0, 5.0)
     gr.plot()
 
     # Write back vertical extent domain
@@ -87,58 +63,9 @@ if __name__ == "__main__":
     mht.replace_namelist_value('ktot', gr.z.size)
 
     # Create initial vertical profiles
-    thl = np.ones(gr.z.size)*318
-    qt  = 6.4 - gr.z * 0.0030
-    qt /= 1000
-
-    #u   = np.ones(gr.z.size)*6.25
-    ug  = np.ones(gr.z.size)*3
-
-    #v   = np.ones(gr.z.size)*3.6
-    vg  = np.ones(gr.z.size)*7
-
-    u = 1.4*np.log(gr.z+10) - 0.006*gr.z
-    v = 0.6*np.log(gr.z+5) #- 0.001*z
-
-    # Rotate all wind components from north oriented to grid oriented grid
-    u_grid, v_grid   = rotate_components(u, v, 27.25)
-    ug_grid, vg_grid = rotate_components(ug, vg, 27.25)
-
-    # Large scale tendencies thl and qt
-    thlls = -1.395 + 0.00089 * gr.z
-    qtls  = 0.0015 + 0.0002  * gr.z
-
-    # To MicroHH units (hours -> sec, g kg-1 -> kg kg-1
-    thlls /= 3600.
-    qtls  /= (3600. * 1000.)
-
-    # Remove tendency in/near SBL
-    zt   = 100       # Height of transition
-    dz   = 100       # Depth of transition layer
-    fac  = 0.5 + 0.5*erf((gr.z-zt)/(0.25*dz))
-
-    thlls2 = thlls #* fac
-    qtls2  = qtls  #* fac
+    u = 0.3 / 0.4 * np.log(gr.z / 0.03)
 
     # Write to .prof file as input for MicroHH
-    variables = {'z':gr.z, 'thl':thl, 'qt':qt, 'u':u_grid, 'ug':ug_grid, 'v':v_grid, 'vg':vg_grid, 'thlls':thlls2, 'qtls':qtls2}
+    variables = {'z':gr.z, 'u':u}
     mht.write_output('must.prof', variables)
 
-    # Create surface time dependent input
-    time = np.arange(0.5,5.7501,0.25)       # h UTC
-    # Surface potential temperature fitted to observations
-    ths_func = np.array([ -2.89610375e-01,   3.46630020e+00,  -1.46448338e+01, 3.25322260e+02])
-    th1cm_fit = ths_func[3] + ths_func[2]*time + ths_func[1]*time**2 + ths_func[0]*time**3
-    time -= 0.5                             # h since start of experiment
-    time *= 3600                            # s   "    "           "
-
-    pbot = 87000
-    exnbot = (pbot / 1e5)**(287.04/1005.)
-    Tbot = th1cm_fit * exnbot
-    qsbot = qsat(Tbot, pbot)
-
-    RHbot = (0.18 + 0.07 * (time/time.max()))
-    qbot = RHbot * qsbot
-
-    variables = {'t':time, 'sbot[thl]':th1cm_fit, 'sbot[qt]':qbot}
-    mht.write_output('must.time', variables)
