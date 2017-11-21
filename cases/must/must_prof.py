@@ -55,7 +55,8 @@ if __name__ == "__main__":
     import microhh_tools as mht
 
     # Create stretched grid
-    gr = Stretched_grid(64, 40, 10, 2.0, 5.0)
+    #gr = Stretched_grid(64, 40, 10, 2.0, 5.0)
+    gr = Stretched_grid(192, 70, 20, 0.4, 2.0)
     gr.plot()
 
     # Write back vertical extent domain
