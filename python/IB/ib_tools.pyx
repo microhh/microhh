@@ -13,10 +13,14 @@ cdef double is_left(double xp, double yp, double x0, double y0, double x1, doubl
 cdef bool is_inside(double xp, double yp,\
                     np.ndarray[np.double_t, ndim=1] x_set,\
                     np.ndarray[np.double_t, ndim=1] y_set,
-                    int n):
+                    int n, double xmin, double xmax, double ymin, double ymax):
 
     cdef int i,j
     cdef double wn = 0
+
+    # First simple check on bounds
+    if (xp < xmin or xp > xmax or yp < ymin or yp > ymax):
+        return False
 
     for i in range(n-1):
         # First check: see if point exactly on line segment:
@@ -45,14 +49,16 @@ cdef flag_inside(np.ndarray[np.double_t, ndim=1] xgr,\
                  np.ndarray[np.double_t, ndim=1] xobj,\
                  np.ndarray[np.double_t, ndim=1] yobj,
                  np.ndarray[np.int_t,    ndim=2] inside,
-                 int itot, int jtot, int idobj, int objsize):
+                 int itot, int jtot, int idobj, int objsize,
+                 double xmin, double xmax, double ymin, double ymax):
 
     cdef int i,j
 
     for i in range(itot):
         for j in range(jtot):
-            if (is_inside(xgr[i], ygr[j], xobj, yobj, objsize)):
+            if (is_inside(xgr[i], ygr[j], xobj, yobj, objsize, xmin, xmax, ymin, ymax)):
                 inside[j,i] = idobj
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -64,13 +70,23 @@ def flag_inside_ib_2d(np.ndarray[np.double_t, ndim=1] x,\
     cdef int jtot = y.size
     cdef int n, idobj
 
+    cdef double xmin,xmax,ymin,ymax
+
     cdef np.ndarray[np.int_t, ndim=2] inside = np.ones([jtot, itot], dtype=np.int) * -1
 
     # Loop over objects inside dict outside the fast Cython code
     for idobj in range(len(poly)):
         print('Working on object {0:4d} of {1:4d}'.format(idobj+1, len(poly)))
 
+        # Last bit of python interactions...
         n = poly[idobj]['x'].size
-        flag_inside(x, y, poly[idobj]['x'], poly[idobj]['y'], inside, itot, jtot, idobj, n)
+
+        xmin = poly[idobj]['x'].min()
+        xmax = poly[idobj]['x'].max()
+        ymin = poly[idobj]['y'].min()
+        ymax = poly[idobj]['y'].max()
+
+        flag_inside(x, y, poly[idobj]['x'], poly[idobj]['y'], inside, itot, jtot, idobj, n,
+                    xmin, xmax, ymin, ymax)
 
     return inside
