@@ -64,7 +64,7 @@ qtls[-1,:] = 0.0000005
 
 # Nudging
 nudgefac = np.zeros(z.size)
-nudgefac[z>1000] = 1. 
+nudgefac[z>1000] = 1./3600. 
 snudge = np.zeros((time_p.size, z.size))
 snudge[-1,:] = 1.
 
