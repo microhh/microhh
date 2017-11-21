@@ -87,8 +87,7 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
-        double nudge_tau;                  ///< Nudging time scale (s)
-        std::vector<double> nudge_factor;  ///< Height varying nudging factor (-)
+        double* nudge_factor;  ///< Height varying nudging factor (1/s)
 
         // Time dependence geostrophic wind
         std::string swtimedep_geo;

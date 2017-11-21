@@ -170,7 +170,7 @@ namespace
 
     __global__ 
     void nudging_tendency_g(double* const __restrict__ st, double* const __restrict__ smn,
-			    double* const __restrict__ snudge, double* const __restrict__ nudge_fac, double const tau,
+			    double* const __restrict__ snudge, double* const __restrict__ nudge_fac,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int jj,     const int kk)
@@ -178,12 +178,12 @@ namespace
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z + kstart;
-        const double tau_i = 1./tau;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
 
-            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k])*tau_i;
+            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k]);
 
         }
     }
@@ -215,9 +215,10 @@ void Force::prepare_device()
         cuda_safe_call(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
         if (swtimedep_geo == "1")
         {
-            int nmemsize2 = grid->kmax*timedeptime_geo.size()*sizeof(double);
+
             for (std::map<std::string, double *>::const_iterator it=timedepdata_geo.begin(); it!=timedepdata_geo.end(); ++it)
             {
+                int nmemsize2 = grid->kmax*timedeptime_geo[it->first].size()*sizeof(double);
                 cuda_safe_call(cudaMalloc(&timedepdata_geo_g[it->first], nmemsize2));
                 cuda_safe_call(cudaMemcpy(timedepdata_geo_g[it->first], timedepdata_geo[it->first], nmemsize2, cudaMemcpyHostToDevice));
             }
@@ -233,9 +234,9 @@ void Force::prepare_device()
         }
         if (swtimedep_ls == "1")
         {
-            int nmemsize2 = grid->kmax*timedeptime_ls.size()*sizeof(double);
             for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
             {
+                int nmemsize2 = grid->kmax*timedeptime_ls[it->first].size()*sizeof(double);
                 cuda_safe_call(cudaMalloc(&timedepdata_ls_g[it->first], nmemsize2));
                 cuda_safe_call(cudaMemcpy(timedepdata_ls_g[it->first], timedepdata_ls[it->first], nmemsize2, cudaMemcpyHostToDevice));
             }
@@ -250,12 +251,12 @@ void Force::prepare_device()
             cuda_safe_call(cudaMemcpy(nudgeprofs_g[*it], nudgeprofs[*it], nmemsize, cudaMemcpyHostToDevice));
         }
         cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
-        cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor, nmemsize, cudaMemcpyHostToDevice));
         if (swtimedep_nudge == "1")
         {
-            int nmemsize2 = grid->kmax*timedeptime_nudge.size()*sizeof(double);
             for (std::map<std::string, double *>::const_iterator it=timedepdata_nudge.begin(); it!=timedepdata_nudge.end(); ++it)
             {
+                int nmemsize2 = grid->kmax*timedeptime_nudge[it->first].size()*sizeof(double);
                 cuda_safe_call(cudaMalloc(&timedepdata_nudge_g[it->first], nmemsize2));
                 cuda_safe_call(cudaMemcpy(timedepdata_nudge_g[it->first], timedepdata_nudge[it->first], nmemsize2, cudaMemcpyHostToDevice));
             }
@@ -268,12 +269,9 @@ void Force::prepare_device()
         cuda_safe_call(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
         if (swtimedep_wls == "1")
         {
-            int nmemsize2 = grid->kmax*sizeof(double);
-            for (std::map<std::string, double *>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
-            {
-                cuda_safe_call(cudaMalloc(&timedepdata_wls_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(&timedepdata_wls_g, &timedepdata_wls, nmemsize2, cudaMemcpyHostToDevice));
-            }
+            int nmemsize2 = grid->kmax*timedeptime_wls.size()*sizeof(double);
+            cuda_safe_call(cudaMalloc(&timedepdata_wls_g, nmemsize2));
+            cuda_safe_call(cudaMemcpy(timedepdata_wls_g, timedepdata_wls, nmemsize2, cudaMemcpyHostToDevice));
         }
     }
 
@@ -417,11 +415,13 @@ void Force::exec(double dt)
          for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         {
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
-                &fields->st[it->first]->data_g[offs],  fields->sp[it->first]->datamean_g, nudgeprofs_g[it->first], nudge_factor_g, nudge_tau,
+                &fields->st[it->first]->data_g[offs],  fields->sp[it->first]->datamean_g, 
+                nudgeprofs_g[it->first], nudge_factor_g,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
             cuda_check_error();
+
         }
     } 
     

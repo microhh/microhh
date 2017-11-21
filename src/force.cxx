@@ -46,10 +46,12 @@ Force::Force(Model* modelin, Input* inputin)
     ug  = 0;
     vg  = 0;
     wls = 0;
+    nudge_factor = 0;
 
     ug_g  = 0;
     vg_g  = 0;
     wls_g = 0;
+    nudge_factor_g = 0;
 
     int nerror = 0;
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
@@ -99,7 +101,6 @@ Force::Force(Model* modelin, Input* inputin)
     if (swnudge == "1")
     {
         nerror += inputin->get_list(&nudgelist,         "force", "nudgelist", "");
-        nerror += inputin->get_item(&nudge_tau,         "force", "nudgetimescale", "");
         nerror += inputin->get_item(&swtimedep_nudge,   "force", "swtimedep_nudge",   "", "0");
         nerror += inputin->get_list(&timedeplist_nudge, "force", "timedeplist_nudge", "");
         fields->set_calc_mean_profs(true);
@@ -120,6 +121,7 @@ Force::~Force()
     delete[] vg;
     delete[] wls;
     delete[] timedepdata_wls;
+    delete[] nudge_factor;
 
     if (swls == "1")
     {
@@ -169,8 +171,7 @@ void Force::init()
 
     if (swnudge == "1")
     {
-        nudge_factor.resize(grid->kcells); 
-
+        nudge_factor = new double[grid->kcells];
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             nudgeprofs[*it] = new double[grid->kcells];
     }
@@ -231,7 +232,9 @@ void Force::create(Input *inputin)
 
         // Process the time dependent data
         if (swtimedep_nudge == "1")
+        {
             nerror += create_timedep(timedepdata_nudge, timedeptime_nudge, timedeplist_nudge, nudgelist, "nudge");
+        }
     }
 
     // Get the large scale vertical velocity from the input
@@ -265,7 +268,6 @@ int Force::create_timedep(std::map<std::string, double*>& data, std::map<std::st
 
             // Get the time dependent data and time
             nerror += model->input->get_time_prof(&data[name], &time[name], name, grid->kmax);
-
             // Remove from tmplist
             std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), it);
             if (ittmp != tmplist.end())
@@ -312,7 +314,7 @@ void Force::exec(double dt)
     if (swnudge == "1")
     {
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
-            calc_nudging_tendency(fields->at[*it]->data, fields->ap[*it]->datamean, nudgeprofs[*it], nudge_factor.data());
+            calc_nudging_tendency(fields->at[*it]->data, fields->ap[*it]->datamean, nudgeprofs[*it], nudge_factor);
     }
 }
 #endif
@@ -529,11 +531,9 @@ void Force::calc_nudging_tendency(double* const restrict fldtend, const double* 
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    const double tau_i = 1./nudge_tau;
-
     for (int k=grid->kstart; k<grid->kend; ++k)
     {
-        const double tend = -factor[k] * (fldmean[k] - ref[k]) * tau_i;
+        const double tend = -factor[k] * (fldmean[k] - ref[k]);
         for (int j=grid->jstart; j<grid->jend; ++j)
             for (int i=grid->istart; i<grid->iend; ++i)
             {
