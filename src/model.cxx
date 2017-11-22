@@ -23,6 +23,7 @@
 #include <string>
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -502,6 +503,13 @@ void Model::print_status()
         if (master->mpiid == 0)
             std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+        
+        if (!std::isfinite(cfl))
+        {
+            master->print_error("Simulation has non-finite numbers.\n");
+            master->abort();
+        }
+
     }
 
     if (timeloop->is_finished())
