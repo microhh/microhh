@@ -17,8 +17,8 @@ starttime  = 0
 endtime    = nl['time']['endtime']
 sampletime = nl['cross']['sampletime']
 iotimeprec = nl['time'].get('iotimeprec', default=0)
-nxsave     = nx
-nysave     = ny
+xsave      = [0,nx]
+ysave      = [0,ny]
 endian     = 'little'
 savetype   = 'float'
 # End settings ---
@@ -38,6 +38,12 @@ elif (savetype == 'float'):
     sa = 'f4'
 else:
     raise RuntimeError("The savetype has to be float or double")
+
+# Number of grid points to save
+nxsave = xsave[1]-xsave[0]
+nysave = ysave[1]-ysave[0]
+slicex = np.s_[xsave[0]:xsave[1]]
+slicey = np.s_[ysave[0]:ysave[1]]
 
 # calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
@@ -86,21 +92,21 @@ for crossname in variables:
     dim_y  = crossfile.createDimension(locy,   nysave)
     dim_z  = crossfile.createDimension(locz,   np.size(indexes_local))
     dim_t  = crossfile.createDimension('time', None)
-    
+
     # create dimension variables
     var_t  = crossfile.createVariable('time', sa, ('time',))
     var_x  = crossfile.createVariable(locx,   sa, (locx,  ))
     var_y  = crossfile.createVariable(locy,   sa, (locy,  ))
     var_z  = crossfile.createVariable(locz,   sa, (locz,  ))
     var_t.units = "Seconds since start of experiment"
-    
+
     # save the data
-    var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
-    var_y[:]  = y[:nysave] if locy=='y' else yh[:nysave]
-    
+    var_x[:]  = x[slicex] if locx=='x' else xh[slicex]
+    var_y[:]  = y[slicey] if locy=='y' else yh[slicey]
+
     var_s = crossfile.createVariable(crossname, sa, ('time', locz, locy, locx,))
-    
-    stop = False 
+
+    stop = False
     for t in range(niter):
         if (stop):
             break
@@ -108,7 +114,7 @@ for crossname in variables:
             index = indexes_local[k]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
             f_in  = "{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime)
-    
+
             try:
                 fin = open(f_in, "rb")
             except:
@@ -116,20 +122,20 @@ for crossname in variables:
                 crossfile.sync()
                 stop = True
                 break
-    
+
             print("Processing %8s, time=%7i, index=%4i"%(crossname, otime, index))
 
             var_t[t] = otime * 10**iotimeprec
-            var_z[k] = z[index] if locz=='z' else zh[index] 
-    
+            var_z[k] = z[index] if locz=='z' else zh[index]
+
             fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
             raw = fin.read(nx*ny*8)
             tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
             del(raw)
             s = tmp.reshape((ny, nx))
             del(tmp)
-            var_s[t,k,:,:] = s[:nysave,:nxsave]
+            var_s[t,k,:,:] = s[slicey,slicex]
             del(s)
-    
+
             fin.close()
-    crossfile.close() 
+    crossfile.close()

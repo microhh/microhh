@@ -17,8 +17,8 @@ starttime  = 0
 endtime    = nl['time']['endtime']
 sampletime = nl['cross']['sampletime']
 iotimeprec = nl['time'].get('iotimeprec', default=0)
-nxsave     = nx
-nzsave     = nz
+xsave      = [0,nx]
+zsave      = [0,nz]
 endian     = 'little'
 savetype   = 'float'
 # End settings ---
@@ -38,6 +38,12 @@ elif (savetype == 'float'):
     sa = 'f4'
 else:
     raise RuntimeError("The savetype has to be float or double")
+
+# Number of grid points to save
+nxsave = xsave[1]-xsave[0]
+nzsave = zsave[1]-zsave[0]
+slicex = np.s_[xsave[0]:xsave[1]]
+slicez = np.s_[zsave[0]:zsave[1]]
 
 # calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
@@ -95,8 +101,8 @@ for crossname in variables:
     var_t.units = "Seconds since start of experiment"
     
     # save the data
-    var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
-    var_z[:]  = z[:nzsave] if locz=='z' else zh[:nzsave]
+    var_x[:]  = x[slicex] if locx=='x' else xh[slicex]
+    var_z[:]  = z[slicez] if locz=='z' else zh[slicez]
     
     var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
     
@@ -127,7 +133,7 @@ for crossname in variables:
             del(raw)
             s = tmp.reshape((nz, nx))
             del(tmp)
-            var_s[t,:,:,i] = s[:nzsave,:nxsave]
+            var_s[t,:,:,i] = s[slicez,slicex]
             del(s)
             fin.close()
 
