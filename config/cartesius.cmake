@@ -1,4 +1,14 @@
 # Cartesius SurfSARA
+# Tested with (nov. 2017):
+#
+# module purge
+# module load cmake
+# module load compilerwrappers
+# module load c/intel/17.0.4
+# module load mpi/impi/5.1.4
+# module load hdf5/serial/intel/1.8.10-patch1
+# module load netcdf/serial/intel/4.3.3.1
+
 if(USEMPI)
   set(ENV{CC}  mpiicc)  # compiler for parallel build
   set(ENV{CXX} mpiicpc) # compiler for parallel build

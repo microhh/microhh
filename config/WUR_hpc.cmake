@@ -1,4 +1,11 @@
 # WUR HPC cluster
+# Tested with (nov. 2017):
+
+# module purge
+# module load intel/compiler/64/2017 
+# module load netcdf/intel/64/4.4.1
+# module load mpich/intel/64/3.1.3
+
 if(USEMPI) 
   set(ENV{CXX} mpiicpc) # compiler for parallel build
 else()
