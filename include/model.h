@@ -24,6 +24,7 @@
 #define MODEL
 
 #include <string>
+#include <thread>
 
 class Master;
 class Input;
@@ -79,6 +80,9 @@ class Model
     private:
         // list of masks for statistics
         std::vector<std::string> masklist;
+        #ifdef USECUDA
+        std::thread t_stat;
+        #endif
 
         void delete_objects();
 

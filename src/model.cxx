@@ -44,7 +44,6 @@
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
-#include <thread>
 #endif
 
 // In the constructor all classes are initialized and their input is read.
@@ -154,6 +153,8 @@ Model::~Model()
     delete_objects();
     #ifdef USECUDA
     cudaDeviceReset();
+    if(t_stat.joinable())
+        t_stat.join();
     #endif
 }
 
@@ -233,7 +234,6 @@ void Model::exec()
     // Prepare pressure last, for memory check
     pres    ->prepare_device(); 
     
-    std::thread t_dump, t_stat, t_cross;
     #endif
 
     master->print_message("Starting time integration\n");
@@ -507,7 +507,7 @@ void Model::print_status()
         if (!std::isfinite(cfl))
         {
             master->print_error("Simulation has non-finite numbers.\n");
-            master->abort();
+            throw 1;
         }
 
     }
