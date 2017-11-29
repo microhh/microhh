@@ -1857,31 +1857,44 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
 
     double tl, ex;
 
-    for (int k=grid->kstart; k<grid->kcells; k++)
+    for (int k=0; k<grid->kcells; k++)
     {
         ex = exner(p[k]);
-        for (int j=grid->jstart; j<grid->jend; j++)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk;
-                const int ij  = i + j*jj;
-                tl  = thl[ijk] * ex;
-                ql[ij]  = qt[ijk]-qsat(p[k],tl);   // not real ql, just estimate
-            }
+        if (k>=grid->kstart)
+        {
+            for (int j=grid->jstart; j<grid->jend; j++)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    tl  = thl[ijk] * ex;
+                    ql[ij]  = qt[ijk]-qsat(p[k],tl);   // not real ql, just estimate
+                }
 
-        for (int j=grid->jstart; j<grid->jend; j++)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk;
-                const int ij  = i + j*jj;
-                if (ql[ij] > 0)
-                    ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex, model->master);
-                else
+            for (int j=grid->jstart; j<grid->jend; j++)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    if (ql[ij] > 0)
+                        ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex, model->master);
+                    else
+                        ql[ij] = 0.;
+                }
+        }
+        else
+        {
+             for (int j=grid->jstart; j<grid->jend; j++)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; i++)
+                {
+                    const int ij  = i + j*jj;
                     ql[ij] = 0.;
-            }
-
+                }
+          
+        }
         for (int j=grid->jstart; j<grid->jend; j++)
             #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
