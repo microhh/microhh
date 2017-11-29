@@ -1037,6 +1037,7 @@ void Thermo_moist::exec()
     const int kk = grid->ijcells;
     const int kcells = grid->kcells;
 
+
     // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state
     double *tmp2 = fields->atmp["tmp2"]->data;
     if (swupdatebasestate)
@@ -1856,7 +1857,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
 
     double tl, ex;
 
-    for (int k=0; k<grid->kcells; k++)
+    for (int k=grid->kstart; k<grid->kcells; k++)
     {
         ex = exner(p[k]);
         for (int j=grid->jstart; j<grid->jend; j++)
