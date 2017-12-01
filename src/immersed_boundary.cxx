@@ -869,7 +869,6 @@ void Immersed_boundary::exec_scalars()
         return;
 
     const int ii = 1;
-    const double fixed_visc = visc_wall;
 
     // For LES, prescribe a fixed viscosity at the IB wall
     if (model->diff->get_switch() == "smag2")
@@ -878,8 +877,12 @@ void Immersed_boundary::exec_scalars()
     // Set the ghost cells for scalars, depending on their BC
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-        set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
-                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, false);
+        if (model->diff->get_switch() == "smag2")
+            set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
+                            grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, visc_wall, false);
+        else
+            set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
+                            grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, false);
         grid->boundary_cyclic(fields->ap[it->first]->data);
     }
 
