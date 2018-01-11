@@ -93,7 +93,7 @@ namespace
     void calc_buoyancy_g(double* __restrict__ b,  double* __restrict__ th, 
                          double* __restrict__ qt, double* __restrict__ thvref,
                          double* __restrict__ p,  double* __restrict__ exn, 
-                         int istart, int jstart,
+                         int istart, int jstart, int kstart,
                          int iend,   int jend,   int kcells,
                          int jj, int kk)
     {
@@ -101,7 +101,12 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
         const int k = blockIdx.z; 
 
-        if (i < iend && j < jend && k < kcells)
+        if (i < iend && j < jend && k < kstart)
+        {
+            const int ijk   = i + j*jj + k*kk;
+            b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
+        }
+        else if (i < iend && j < jend && k < kcells)
         {
             const int ijk   = i + j*jj + k*kk;
             const double ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
@@ -514,7 +519,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
         calc_buoyancy_g<<<gridGPU, blockGPU>>>(
             &fld->data_g[offs], &fields->sp["thl"]->data_g[offs], &fields->sp["qt"]->data_g[offs],
             thvref_g, pref_g, exnref_g,
-            grid->istart,  grid->jstart, 
+            grid->istart,  grid->jstart, grid->kstart, 
             grid->iend, grid->jend, grid->kcells,
             grid->icellsp, grid->ijcellsp);
         cuda_check_error();
