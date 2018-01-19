@@ -169,10 +169,10 @@ void Thermo_dry::forward_device()
 void Thermo_dry::backward_device()
 {
     const int nmemsize = grid->kcells*sizeof(double);
-    cudaMemcpy(pref_g,    pref,    grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(prefh_g,   prefh,   grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(exnref_g,  exnref,  grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(exnrefh_g, exnrefh, grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice);
 }
 
 #ifdef USECUDA

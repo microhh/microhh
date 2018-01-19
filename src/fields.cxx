@@ -32,6 +32,7 @@
 #include "finite_difference.h"
 #include "model.h"
 #include "stats.h"
+#include "column.h"
 #include "cross.h"
 #include "dump.h"
 #include "diff_smag2.h"
@@ -139,8 +140,9 @@ Fields::~Fields()
 void Fields::init()
 {
     // set the convenience pointers
-    stats = model->stats;
-
+    stats  = model->stats;
+    column = model->column;
+    
     int nerror = 0;
 
     // ALLOCATE ALL THE FIELDS
@@ -907,6 +909,29 @@ void Fields::create_stats()
         throw 1;
 }
 
+
+void Fields::create_column()
+{
+    int nerror = 0;
+
+    // add the profiles to the columns
+    if (column->get_switch() == "1")
+    {
+        // add variables to the statistics
+        column->add_prof(u->name, u->longname, u->unit, "z" );
+        column->add_prof(v->name, v->longname, v->unit, "z" );
+        column->add_prof(w->name, w->longname, w->unit, "zh" );
+
+        for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+            column->add_prof(it->first,it->second->longname, it->second->unit, "z");
+
+        column->add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+    }
+
+    if (nerror)
+        throw 1;
+}
+
 void Fields::save(int n)
 {
     const double NoOffset = 0.;
@@ -1071,3 +1096,19 @@ void Fields::exec_dump(int iotime)
     for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
         model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it, iotime);
 }
+
+
+void Fields::exec_column()
+{
+    const double NoOffset = 0.;
+
+    column->calc_column(column->profs["w"].data, w->data, NoOffset);
+    column->calc_column(column->profs["u"].data, u->data, grid->utrans);
+    column->calc_column(column->profs["v"].data, v->data, grid->vtrans);
+    for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    {
+        column->calc_column(column->profs[it->first].data, it->second->data, NoOffset);
+    }
+    column->calc_column(column->profs["p"].data, sd["p"]->data, NoOffset);
+}
+

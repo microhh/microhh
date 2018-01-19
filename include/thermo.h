@@ -51,7 +51,8 @@ class Thermo
         virtual void exec_stats(Mask*) = 0;
         virtual void exec_cross(int) = 0;
         virtual void exec_dump(int) = 0;
-
+        virtual void exec_column() = 0;
+        
         virtual void get_mask(Field3d*, Field3d*, Mask*) = 0;
 
         // Interfacing functions to get buoyancy properties from other classes.

@@ -34,6 +34,7 @@
 #include "diff_smag2.h"
 #include "master.h"
 #include "cross.h"
+#include "column.h"
 #include "dump.h"
 
 #include "thermo_dry.h"
@@ -152,6 +153,7 @@ void Thermo_dry::create(Input *inputin)
     }
 
     init_stat();
+    init_column();
 }
 
 #ifndef USECUDA
@@ -237,6 +239,15 @@ void Thermo_dry::exec_stats(Mask *m)
 
     // calculate the sorted buoyancy profile
     //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+}
+
+void Thermo_dry::exec_column()
+{
+    const double NoOffset = 0.;
+
+    // Buoyancy mean
+    model->column->calc_column(model->column->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset);
+
 }
 
 void Thermo_dry::exec_cross(int iotime)
@@ -515,6 +526,18 @@ void Thermo_dry::init_stat()
         stats->add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
         stats->add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
+    }
+}
+
+void Thermo_dry::init_column()
+{
+    // Add variables to the statistics
+    if (model->column->get_switch() == "1")
+    {
+
+        model->column->add_prof("b", "Buoyancy", "m s-2", "z");
+
+        model->column->add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
     }
 }
 

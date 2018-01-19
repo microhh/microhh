@@ -43,6 +43,7 @@ class Thermo_disabled : public Thermo
         void create(Input*) {}
         void exec() {}
         void exec_stats(Mask*) {}
+        void exec_column() {}        
         void exec_cross(int) {}
         void exec_dump(int) {}
         void get_mask(Field3d*, Field3d*, Mask*) {}

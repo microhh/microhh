@@ -38,8 +38,10 @@
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
+#include "model.h"
 #include "cross.h"
 #include "dump.h"
+#include "column.h"
 #include "budget.h"
 
 #ifdef USECUDA
@@ -62,7 +64,8 @@ Model::Model(Master *masterin, Input *inputin)
     force    = 0;
     buffer   = 0;
 
-    stats  = 0;
+    stats  = 0;    
+    column = 0;
     cross  = 0;
     dump   = 0;
     budget = 0;
@@ -88,6 +91,7 @@ Model::Model(Master *masterin, Input *inputin)
 
         // Create instances of the statistics classes. First create stats as it is required for init of derived stats.
         stats  = new Stats (this, input);
+        column = new Column(this, input);
         cross  = new Cross (this, input);
         dump   = new Dump  (this, input);
 
@@ -133,6 +137,7 @@ void Model::delete_objects()
     delete budget;
     delete dump;
     delete cross;
+    delete column;
     delete stats;
     delete buffer;
     delete force;
@@ -171,6 +176,7 @@ void Model::init()
     thermo  ->init();
 
     stats ->init(timeloop->get_ifactor());
+    column->init(timeloop->get_ifactor());
     cross ->init(timeloop->get_ifactor());
     dump  ->init(timeloop->get_ifactor());
     budget->init();
@@ -184,13 +190,15 @@ void Model::load()
     timeloop->load(timeloop->get_iotime());
 
     // Initialize the statistics file to open the possiblity to add profiles.
-    stats->create(timeloop->get_iotime());
-    cross->create();
-    dump ->create();
+    stats ->create(timeloop->get_iotime());
+    column->create(timeloop->get_iotime());
+    cross ->create();
+    dump  ->create();
 
     fields->load(timeloop->get_iotime());
     fields->create_stats();
-
+    fields->create_column();
+    
     // Initialize data or load data from disk.
     boundary->create(input);
 
@@ -289,7 +297,7 @@ void Model::exec()
         if (timeloop->is_stats_step())
         {
             // Copy fields from device to host
-            if (stats->doStats() || cross->do_cross() || dump->do_dump())
+            if (stats->doStats() || cross->do_cross() || dump->do_dump() || column->doColumn())
             {
                 #ifdef USECUDA
                 if(t_stat.joinable())
@@ -297,10 +305,10 @@ void Model::exec()
                 fields  ->backward_device();
                 boundary->backward_device();
                 thermo  ->backward_device();                
-                t_stat=std::thread(&Model::do_stat,this, stats->doStats(), cross->do_cross(), dump->do_dump(), 
+                t_stat=std::thread(&Model::do_stat,this, stats->doStats(), cross->do_cross(), dump->do_dump(), column->doColumn(),
                                     timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
                 #else
-                do_stat(stats->doStats(), cross->do_cross(), dump->do_dump(),timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                do_stat(stats->doStats(), cross->do_cross(), dump->do_dump(),column->doColumn(),timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
                 #endif             
             }
         }
@@ -379,14 +387,14 @@ void Model::exec()
     #endif
 }
 
-void Model::do_stat(bool doStats, bool doCross, bool doDump, int iteration, double time, unsigned long itime, int iotime)
+void Model::do_stat(bool doStats, bool doCross, bool doDump, bool doColumn, int iteration, double time, unsigned long itime, int iotime)
 {
-    // Always process the default mask (the full field)
-    stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-    calc_stats("default");
     // Do the statistics.
     if(doStats)
     {
+        // Always process the default mask (the full field)
+        stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+        calc_stats("default");
         // Work through the potential masks for the statistics.
         for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
@@ -423,6 +431,12 @@ void Model::do_stat(bool doStats, bool doCross, bool doDump, int iteration, doub
         fields->exec_dump(iotime);
         thermo->exec_dump(iotime);
     }
+    if(doColumn)
+    {
+        fields->exec_column();
+        thermo->exec_column();
+        column->exec(iteration, time, itime);
+    }
 }
 void Model::set_time_step()
 {
@@ -436,6 +450,7 @@ void Model::set_time_step()
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
 

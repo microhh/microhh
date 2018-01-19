@@ -31,6 +31,7 @@ class Input;
 class Model;
 class Grid;
 class Stats;
+class Column;
 struct Mask;
 
 typedef std::map<std::string, Field3d *> FieldMap;
@@ -42,10 +43,11 @@ class Fields
         Fields(Model*, Input*); ///< Constructor of the fields class.
         ~Fields();              ///< Destructor of the fields class.
 
-        void init();         ///< Initialization of the field arrays.
-        void create(Input*); ///< Initialization of the fields (random perturbations, vortices).
-        void create_stats(); ///< Initialization of the fields statistics.
-
+        void init();          ///< Initialization of the field arrays.
+        void create(Input*);  ///< Initialization of the fields (random perturbations, vortices).
+        void create_stats();  ///< Initialization of the fields statistics.
+        void create_column(); ///< Initialization of the column output.
+        
         void exec();
         void get_mask(Field3d*, Field3d*, Mask*);
         void exec_stats(Mask*);
@@ -67,6 +69,7 @@ class Fields
 
         void exec_cross(int);
         void exec_dump(int);
+        void exec_column();
 
         Field3d* u; ///< Field3d instance of x velocity component
         Field3d* v; ///< Field3d instance of y velocity component
@@ -121,6 +124,7 @@ class Fields
         Grid*   grid;
         Master* master;
         Stats*  stats;
+        Column* column;
 
         bool calc_mean_profs;
 

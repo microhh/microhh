@@ -51,6 +51,7 @@ class Thermo_dry : public Thermo
         void exec_stats(Mask*);
         void exec_cross(int);
         void exec_dump(int);
+        void exec_column();
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d*, Field3d*, std::string name, bool cyclic);
@@ -75,7 +76,8 @@ class Thermo_dry : public Thermo
         void init_stat();  ///< Initialize the thermo statistics
         void init_cross(); ///< Initialize the thermo cross-sections
         void init_dump();  ///< Initialize the thermo field dumps
-
+        void init_column();  ///< Initialize the thermo column dumps
+        
         void calc_buoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
         void calc_N2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 

@@ -38,6 +38,7 @@
 #include "master.h"
 #include "cross.h"
 #include "dump.h"
+#include "column.h"
 #include "thermo_moist_functions.h"
 #include "timeloop.h"
 
@@ -1029,6 +1030,7 @@ void Thermo_moist::create(Input* inputin)
     }
 
     init_stat();
+    init_column();
 }
 
 #ifndef USECUDA
@@ -1532,6 +1534,19 @@ void Thermo_moist::exec_stats(Mask *m)
             m->profs["rhoh"].data[k] = tmp2[3*kcells+k];
         }
     }
+}
+
+
+void Thermo_moist::exec_column()
+{
+    const double NoOffset = 0.;
+
+    // Buoyancy mean
+    model->column->calc_column(model->column->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset);
+    // calculate the liquid water 
+    calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+    model->column->calc_column(model->column->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset);
+
 }
 
 void Thermo_moist::exec_cross(int iotime)
@@ -2129,6 +2144,19 @@ void Thermo_moist::init_stat()
                 stats->add_prof("sed_nrt"  , "Sedimentation tendency nr", "m-3 s-1", "z");
             }
         }
+    }
+}
+
+
+void Thermo_moist::init_column()
+{
+    // Add variables to the statistics
+    if (model->column->get_switch() == "1")
+    {
+
+        model->column->add_prof("b", "Buoyancy", "m s-2", "z");
+
+        model->column->add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
     }
 }
 
