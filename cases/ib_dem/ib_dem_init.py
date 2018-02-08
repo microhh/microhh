@@ -117,4 +117,4 @@ if __name__ == "__main__":
     #pl.colorbar()
 
     # Write to input file for MicroHH
-    write_restart_file(zIB[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1, 'dem.0000000')
+    write_restart_file('dem.0000000', zIB[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1)
