@@ -32,6 +32,7 @@
 #include "thermo_buoy.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
+#include "thermo_vapor.h"
 #include "thermo_disabled.h"
 
 Thermo::Thermo(Model* modelin, Input* inputin)
@@ -59,6 +60,8 @@ Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swthermo == "moist")
         return new Thermo_moist(modelin, inputin);
+    else if (swthermo == "vapor")
+        return new Thermo_vapor(modelin, inputin);
     else if (swthermo == "buoy")
         return new Thermo_buoy(modelin, inputin);
     else if (swthermo == "dry")
