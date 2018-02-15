@@ -412,16 +412,15 @@ void Force::exec(double dt)
 
     if (swnudge == "1")
     {
-         for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        for(std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
         {
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
-                &fields->st[it->first]->data_g[offs],  fields->sp[it->first]->datamean_g, 
-                nudgeprofs_g[it->first], nudge_factor_g,
+                &fields->at[*it]->data_g[offs],  fields->ap[*it]->datamean_g, 
+                nudgeprofs_g[*it], nudge_factor_g,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
             cuda_check_error();
-
         }
     } 
     
