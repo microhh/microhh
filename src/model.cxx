@@ -34,6 +34,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "decay.h"
 #include "stats.h"
 #include "model.h"
 
@@ -106,6 +107,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
+        decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
 
         // Parse the statistics masks
@@ -144,6 +146,7 @@ void Model<TF>::init()
     boundary->init(*input);
     pres->init();
     force->init();
+    decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
 }
@@ -188,6 +191,7 @@ void Model<TF>::load()
 
     boundary->create(*input);
     force->create(*input);
+    decay->create(*input);
 
     pres->set_values();
     diff->set_values();
@@ -223,6 +227,7 @@ void Model<TF>::exec()
     // boundary->prepare_device();
     // diff    ->prepare_device();
     // force   ->prepare_device();
+    // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
     // pres    ->prepare_device(); 
     // #endif
@@ -267,6 +272,9 @@ void Model<TF>::exec()
 
         // Calculate the tendency due to damping in the buffer layer.
         // buffer->exec();
+
+        // Apply the scalar decay.
+        decay->exec(timeloop->get_sub_time_step());
 
         // Apply the large scale forcings. Keep this one always right before the pressure.
         force->exec(timeloop->get_sub_time_step());

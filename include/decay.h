@@ -1,0 +1,72 @@
+/*
+ * MicroHH
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
+ *
+ * This file is part of MicroHH
+ *
+ * MicroHH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * MicroHH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef DECAY
+#define DECAY
+
+#include <vector>
+#include <string>
+#include <map>
+
+class Master;
+class Input;
+template<typename> class Grid;
+template<typename> class Fields;
+
+/**
+ * Class that creates a decay term for scalars.
+ */
+
+enum class Decay_type {disabled, enabled, exponential};
+
+template<typename TF>
+class Decay
+{
+    public:
+        Decay(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the decay class.
+        ~Decay();                                       ///< Destructor of the decay class.
+
+        void init(Input&);           ///< Initialize the arrays that contain the profiles.
+        void create(Input&);   ///< Read the profiles of the forces from the input.
+        void exec(double);     ///< Add the tendencies belonging to the decay processes.
+
+
+
+    private:
+        Grid<TF>& grid;
+        Fields<TF>& fields;
+        Master& master;
+
+        // Internal switches for various forcings
+        Decay_type swdecay;
+        std::vector<std::string> decaylist;         ///< List of variables that have a decay.
+        struct Decay_var
+        {
+            double timescale; ///< Decay timescale.
+            Decay_type type; ///< Switch for the decay.
+        };
+
+        typedef std::map<std::string, Decay_var*> DecayMap;
+        DecayMap dmap;
+
+};
+#endif
