@@ -77,10 +77,10 @@ void Decay<TF>::init(Input& inputin)
         std::string type;
         for (auto& it : fields.st)
         {
-            type = inputin.get_item<std::string>("decay", "swdecay", it.first,"0");
-
+            type = inputin.get_item<std::string>("decay", "type", it.first,"0");
             if (type == "0")
-                dmap[it.first].type = Decay_type::disabled;
+            {
+            }
             else if (type == "exponential")
             {
                 dmap[it.first].type = Decay_type::exponential;
