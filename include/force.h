@@ -85,7 +85,7 @@ class Force
         //std::string swls;     ///< Switch for large scale scalar tendencies.
         //std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
 
-        double uflux; ///< Mean velocity used to enforce constant flux.
+        TF uflux; ///< Mean velocity used to enforce constant flux.
         //double fc;    ///< Coriolis parameter.
 
         //double* ug;  ///< Pointer to array u-component geostrophic wind.

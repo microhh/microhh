@@ -32,12 +32,19 @@
 namespace
 {
     template<typename TF>
-    void enforce_exponential_decay(TF* restrict tend, const TF* var, const TF decaytime, const TF dt, const int ncells)
+    void enforce_exponential_decay(TF* restrict tend, const TF* var, const TF decaytime, const TF dt, const int istart, const int iend, const int jstart, const int jend, 
+                            const int kstart, const int kend, const int jj, const int kk)
     {
         const TF rate = 1./(std::max(decaytime, dt));
 
-        for (int n=0; n<ncells; n++)
-            tend[n] -= rate * var[n];
+        for (int k=kstart; k<kend; ++k)
+           for (int j=jstart; j<jend; ++j)
+               #pragma ivdep
+               for (int i=istart; i<iend; ++i)
+               {
+                   const int ijk = i + j*jj + k*kk;
+                   tend[ijk] -= rate * var[ijk];
+               }
     }
 }
 
@@ -65,33 +72,26 @@ Decay<TF>::~Decay()
 template <typename TF>
 void Decay<TF>::init(Input& inputin)
 {
-    int nerror = 0;       
-
     if (swdecay == Decay_type::enabled)
     {
-        std::cout<< "In decay init\n";
         std::string type;
         for (auto& it : fields.st)
         {
-            dmap[it.first] = new Decay_var;
-            type = inputin.get_item<std::string>("decay", "swdecay", it.first);
-            dmap[it.first]->timescale = inputin.get_item<TF>("decay", "timescale", it.first);
+            type = inputin.get_item<std::string>("decay", "swdecay", it.first,"0");
 
-		    if (type == "0")
-		        dmap[it.first]->type = Decay_type::disabled;
+            if (type == "0")
+                dmap[it.first].type = Decay_type::disabled;
             else if (type == "exponential")
-                dmap[it.first]->type = Decay_type::exponential;
-            else
             {
-                throw std::runtime_error("Invalid option for \"decay type\"");
-                nerror++;
+                dmap[it.first].type = Decay_type::exponential;
+                dmap[it.first].timescale = inputin.get_item<TF>("decay", "timescale", it.first);
             }
+            else
+                throw std::runtime_error("Invalid option for \"decay type\"");
         }       
    
     }
 
-    if (nerror)
-        throw 1;
 }
 
 template <typename TF>
@@ -107,11 +107,11 @@ void Decay<TF>::exec(double dt)
 
     if (swdecay == Decay_type::enabled)
     {
-        for (auto& it : fields.st)
+        for (auto& it : dmap)
         {
-            if (dmap[it.first]->type == Decay_type::exponential)
+            if (it.second.type == Decay_type::exponential)
             {
-                enforce_exponential_decay<TF>(it.second->fld.data(), fields.sp.at(it.first)->fld.data(), dmap[it.first]->timescale, dt, gd.ncells);                      
+                enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);                     
             }
         }
 

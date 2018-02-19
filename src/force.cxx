@@ -41,12 +41,18 @@ namespace
     template<typename TF>
     void enforce_fixed_flux(TF* restrict ut,
                             const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
-                            const TF dt, const int ncells)
+                            const TF dt, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
     {
         const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
 
-        for (int n=0; n<ncells; n++)
-            ut[n] += fbody;
+        for (int k=kstart; k<kend; ++k)
+           for (int j=jstart; j<jend; ++j)
+               #pragma ivdep
+               for (int i=istart; i<iend; ++i)
+               {
+                   const int ijk = i + j*jj + k*kk;
+                   ut[ijk] +=fbody;
+               }
     }
 }
 
@@ -169,7 +175,7 @@ void Force<TF>::exec(double dt)
         const TF u_mean  = fields.ap.at("u")->calc_mean();
         const TF ut_mean = fields.at.at("u")->calc_mean();
 
-        enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.ncells);
+        enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
 
     //else if (swlspres == "geo")

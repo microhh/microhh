@@ -65,8 +65,8 @@ class Decay
             Decay_type type; ///< Switch for the decay.
         };
 
-        typedef std::map<std::string, Decay_var*> DecayMap;
-        DecayMap dmap;
+        typedef std::map<std::string, Decay_var> Decay_map;
+        Decay_map dmap;
 
 };
 #endif
