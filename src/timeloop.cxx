@@ -215,7 +215,7 @@ void Timeloop<TF>::set_time_step()
     }
 }
 
-#ifndef USECUDA
+
 namespace
 {
     template<typename TF>
@@ -307,6 +307,7 @@ namespace
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Timeloop<TF>::exec()
 {

@@ -60,8 +60,6 @@ class Field3d
         // Device functions and variables
         void init_device();  ///< Allocate Field3D fields at device 
         void clear_device(); ///< Deallocate Field3D fields at device 
-        void init_cuda();
-        void release_cuda_fields();
 
         TF* fld_g;
         TF* fld_bot_g;

@@ -41,9 +41,6 @@ Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std
 template<typename TF>
 Field3d<TF>::~Field3d()
 {
-    #ifdef USECUDA
-    release_cuda_fields();
-    #endif
 }
 
 template<typename TF>
@@ -93,9 +90,6 @@ int Field3d<TF>::init()
         flux_top[n] = 0.;
     }
     
-    #ifdef USECUDA
-    init_cuda();
-    #endif
     return 0;
 }
 

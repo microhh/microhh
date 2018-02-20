@@ -27,6 +27,7 @@
 #include "constants.h"
 #include "tools.h"
 
+
 namespace
 {
     template<typename TF, int substep> __global__ 
@@ -142,20 +143,20 @@ void Timeloop<TF>::exec()
         for (auto& it : fields.at) 
         {
             if (substep == 0)
-                rk3_g<0><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk3_g<TF,0><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep == 1)
-                rk3_g<1><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk3_g<TF,1><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep == 2)
-                rk3_g<2><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk3_g<TF,2><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
@@ -176,32 +177,32 @@ void Timeloop<TF>::exec()
         for (auto& it : fields.at) 
         {
             if (substep==0)
-                rk4_g<0><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk4_g<TF,0><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==1)
-                rk4_g<1><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk4_g<TF,1><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==2)
-                rk4_g<2><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk4_g<TF,2><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==3)
-                rk4_g<3><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk4_g<TF,3><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==4)
-                rk4_g<4><<<gridGPU, blockGPU>>>(
-                    fields.ap[it.first]->fld_g[offs], it.second->fld_g[offs], dt,
+                rk4_g<TF,4><<<gridGPU, blockGPU>>>(
+                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
                     gd.icellsp, gd.ijcellsp,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
@@ -220,3 +221,6 @@ void Timeloop<TF>::exec()
     cuda_check_error();
 }
 #endif
+
+template class Timeloop<double>;
+template class Timeloop<float>;

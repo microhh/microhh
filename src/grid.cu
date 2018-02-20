@@ -206,3 +206,5 @@ void Grid<TF>::boundary_cyclic2d_g(TF* data)
     cuda_check_error();
 }
 
+template class Grid<double>;
+template class Grid<float>;

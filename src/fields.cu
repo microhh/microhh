@@ -315,3 +315,5 @@ void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
+template class Fields<double>;
+template class Fields<float>;

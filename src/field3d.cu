@@ -28,41 +28,6 @@
 #include "tools.h"
 
 template<typename TF>
-void Field3d<TF>::release_cuda_fields() 
-{
-    cuda_safe_call(cudaFreeHost(fld.data()));
-    cuda_safe_call(cudaFreeHost(fld_bot.data()));
-    cuda_safe_call(cudaFreeHost(fld_top.data()));
-    cuda_safe_call(cudaFreeHost(grad_bot.data()));
-    cuda_safe_call(cudaFreeHost(grad_top.data()));
-    cuda_safe_call(cudaFreeHost(flux_bot.data()));
-    cuda_safe_call(cudaFreeHost(flux_top.data()));
-    cuda_safe_call(cudaFreeHost(fld_mean.data()));
-}
-
-template<typename TF>
-void Field3d<TF>::init_cuda()
-{
-    const Grid_data<TF>& gd = grid.get_grid_data();
-    
-    const int ijksize = gd.ncells *sizeof(TF);
-    const int ijsize  = gd.ijcells*sizeof(TF);
-    const int ksize   = gd.kcells *sizeof(TF);
-
-    // Allocate the 3d field.
-    cuda_safe_call(cudaMallocHost(&(fld.data()), ijksize));
-
-    // Allocate the boundary cells.
-    cuda_safe_call(cudaMallocHost(&(fld_bot.data()), ijsize)); //TH: Should we use the C++ api here, and ensure that it is pinned mem?
-    cuda_safe_call(cudaMallocHost(&(fld_top.data()), ijsize)); 
-    cuda_safe_call(cudaMallocHost(&(grad_bot.data()), ijsize)); 
-    cuda_safe_call(cudaMallocHost(&(grad_top.data()), ijsize)); 
-    cuda_safe_call(cudaMallocHost(&(flux_bot.data()), ijsize)); 
-    cuda_safe_call(cudaMallocHost(&(flux_top.data()), ijsize)); 
-    cuda_safe_call(cudaMallocHost(&(fld_mean.data()), ksize)); 
-}
-
-template<typename TF>
 void Field3d<TF>::init_device()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
@@ -104,7 +69,7 @@ void Field3d<TF>::calc_mean_profile(TF * tmp)
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     reduce_interior(fld.data(), tmp, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, sumType);
     // Reduce jtot*kcells to kcells values
-    reduce_all     (tmp, fld_mean, gd.jtot*gd.kcells, gd.kcells, gd.jtot, sumType, scalefac);
+    reduce_all     (tmp, fld_mean.data(), gd.jtot*gd.kcells, gd.kcells, gd.jtot, sumType, scalefac);
 }
 
 template<typename TF>
@@ -119,9 +84,9 @@ TF Field3d<TF>::calc_mean(TF * tmp)
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
     reduce_interior(fld.data(), tmp, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, sumType);
     // Reduce jtot*ktot to ktot values
-    reduce_all     (tmp, tmp[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, sumType, 1);
+    reduce_all     (tmp, &tmp[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, sumType, 1);
     // Reduce ktot values to a single value
-    reduce_all     (tmp[gd.jtot*gd.ktot], tmp, gd.ktot, 1, gd.ktot, sumType, scalefac);
+    reduce_all     (&tmp[gd.jtot*gd.ktot], tmp, gd.ktot, 1, gd.ktot, sumType, scalefac);
     // Copy back result from GPU
     cuda_safe_call(cudaMemcpy(&sumvalue, &tmp[0], sizeof(TF), cudaMemcpyDeviceToHost));
 
@@ -130,3 +95,5 @@ TF Field3d<TF>::calc_mean(TF * tmp)
 
 #endif
 
+template class Field3d<double>;
+template class Field3d<float>;
