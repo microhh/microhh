@@ -32,7 +32,7 @@
 namespace
 {
     template<typename TF>
-    void enforce_exponential_decay(TF* restrict tend, const TF* var, const TF decaytime, const TF dt, const int istart, const int iend, const int jstart, const int jend, 
+    void enforce_exponential_decay(TF* restrict tend, const TF* var, const TF decaytime, const TF dt, const int istart, const int iend, const int jstart, const int jend,
                             const int kstart, const int kend, const int jj, const int kk)
     {
         const TF rate = 1./(std::max(decaytime, dt));
@@ -88,8 +88,8 @@ void Decay<TF>::init(Input& inputin)
             }
             else
                 throw std::runtime_error("Invalid option for \"decay type\"");
-        }       
-   
+        }
+
     }
 
 }
@@ -111,7 +111,7 @@ void Decay<TF>::exec(double dt)
         {
             if (it.second.type == Decay_type::exponential)
             {
-                enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);                     
+                enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             }
         }
 

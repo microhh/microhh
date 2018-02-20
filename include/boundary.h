@@ -111,7 +111,7 @@ class Boundary
         // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
-        // void set_bc_g(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
+        void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
 
     private:
         virtual void update_bcs();       ///< Update the boundary values.

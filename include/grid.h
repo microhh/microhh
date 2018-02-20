@@ -102,6 +102,19 @@ struct Grid_data
     int ijcellsp;
     int ncellsp;
 
+    int ithread_block; ///< Number of grid cells in the x-direction for GPU thread block.
+    int jthread_block; ///< Number of grid cells in the y-direction for GPU thread block.
+
+    double* z_g;
+    double* zh_g;
+    double* dz_g;
+    double* dzh_g;
+    double* dzi_g;
+    double* dzhi_g;
+    double* dzi4_g;
+    double* dzhi4_g;
+
+
 };
 
 /**
@@ -175,6 +188,12 @@ class Grid
         fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
         fftwf_plan iplanff, iplanbf; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftwf_plan jplanff, jplanbf; ///< FFTW3 plans for forward and backward transforms in y-direction.
+
+        // GPU functions        
+        void prepare_device();                          ///< Load the arrays onto the GPU
+        void clear_device();                            ///< Deallocate the arrays onto the GPU
+        void boundary_cyclic_g(TF*);                    ///< Fills the ghost cells in the periodic directions.
+        void boundary_cyclic2d_g(TF*);                  ///< Fills the ghost cells of one slice in the periodic directions.
 
     private:
         Master& master; ///< Reference to master class.
