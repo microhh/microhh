@@ -19,7 +19,13 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <cstdlib>
+#include <cstdio>
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include "data_block.h"
 #include "fields.h"
 #include "grid.h"
 #include "master.h"
@@ -96,20 +102,21 @@ namespace
 template<typename TF>
 void Fields<TF>::prepare_device()
 {
-    const int nmemsize   = gd.ncellsp*sizeof(TF);
+    auto& gd = grid.get_grid_data();
+    const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
 
     // Prognostic fields
-    for (auto& it : fields.a)
+    for (auto& it : a)
         it.second->init_device();
 
     // Tendencies
-    for (auto& it : fields.at)
-        cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize));
+    for (auto& it : at)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
 
     // Temporary fields
-    atmp["tmp1"]->init_device();
-    atmp["tmp2"]->init_device();
+    atmp.at("tmp1")->init_device();
+    atmp.at("tmp2")->init_device();
 
     // Reference profiles
     cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
@@ -125,15 +132,15 @@ void Fields<TF>::prepare_device()
 template<typename TF>
 void Fields<TF>::clear_device()
 {
-    for (auto& it : fields.a)
+    for (auto& it : a)
         it.second->clear_device();
 
 
-    for (auto& it : fields.at)
-        cuda_safe_call(cudaFree(it.second->data_g));
+    for (auto& it : at)
+        cuda_safe_call(cudaFree(it.second->fld_g));
 
-    atmp["tmp1"]->clear_device();
-    atmp["tmp2"]->clear_device();
+    atmp.at("tmp1")->clear_device();
+    atmp.at("tmp2")->clear_device();
 
     cuda_safe_call(cudaFree(rhoref_g));
     cuda_safe_call(cudaFree(rhorefh_g));
@@ -146,17 +153,17 @@ template<typename TF>
 void Fields<TF>::forward_device()
 {
     auto& gd = grid.get_grid_data();
-    for (auto& it : fields.a)
-        forward_field3d_device(it.second);
+    for (auto& it : a)
+        forward_field3d_device(it.second.get());
 
-    for (auto& it : fields.at)
-        forward_field_device_3d(it.second->data_g, it.second->fld.data(), Offset);
+    for (auto& it : at)
+        forward_field_device_3d(it.second->fld_g, it.second->fld.data(), Offset);
 
-    forward_field3d_device(atmp["tmp1"]);
-    forward_field3d_device(atmp["tmp2"]);
-
-    forward_field_device_1d(rhoref_g,  rhoref , gd.kcells);
-    forward_field_device_1d(rhorefh_g, rhorefh, gd.kcells);
+    forward_field3d_device(atmp.at("tmp1").get());
+    forward_field3d_device(atmp.at("tmp2").get());
+    
+    forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
+    forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
 }
 
 /**
@@ -165,8 +172,8 @@ void Fields<TF>::forward_device()
 template<typename TF>
 void Fields<TF>::backward_device()
 {
-    for (auto& it : fields.a)
-        backward_field3d_device(it.second->fld.data());
+    for (auto& it : a)
+        backward_field3d_device(it.second.get());
 
     //master->printMessage("Synchronized CPU with GPU (backward)\n");
 }
@@ -180,14 +187,14 @@ template<typename TF>
 void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    forward_field_device_3d(fld->data_g,        fld->fld.data(),        Offset);
-    forward_field_device_2d(fld->databot_g,     fld->fld.databot(),     Offset);
-    forward_field_device_2d(fld->datatop_g,     fld->fld.datatop(),     Offset);
-    forward_field_device_2d(fld->datagradbot_g, fld->fld.datagradbot(), Offset);
-    forward_field_device_2d(fld->datagradtop_g, fld->fld.datagradtop(), Offset);
-    forward_field_device_2d(fld->datafluxbot_g, fld->fld.datafluxbot(), Offset);
-    forward_field_device_2d(fld->datafluxtop_g, fld->fld.datafluxtop(), Offset);
-    forward_field_device_1d(fld->datamean_g,    fld->fld.datamean(),    gd.kcells);
+    forward_field_device_3d(fld->fld_g,      fld->fld.data(),      Offset);
+    forward_field_device_2d(fld->fld_bot_g,  fld->fld_bot.data(),  Offset);
+    forward_field_device_2d(fld->fld_top_g,  fld->fld_top.data(),  Offset);
+    forward_field_device_2d(fld->grad_bot_g, fld->grad_bot.data(), Offset);
+    forward_field_device_2d(fld->grad_top_g, fld->grad_top.data(), Offset);
+    forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data(), Offset);
+    forward_field_device_2d(fld->flux_top_g, fld->flux_top.data(), Offset);
+    forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
@@ -199,14 +206,14 @@ template<typename TF>
 void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    backward_field_device_3d(fld->fld.data(),        fld->data_g,        Offset);
-    backward_field_device_2d(fld->fld.databot(),     fld->databot_g,     Offset);
-    backward_field_device_2d(fld->fld.datatop(),     fld->datatop_g,     Offset);
-    backward_field_device_2d(fld->fld.datagradbot(), fld->datagradbot_g, Offset);
-    backward_field_device_2d(fld->fld.datagradtop(), fld->datagradtop_g, Offset);
-    backward_field_device_2d(fld->fld.datafluxbot(), fld->datafluxbot_g, Offset);
-    backward_field_device_2d(fld->fld.datafluxtop(), fld->datafluxtop_g, Offset);
-    backward_field_device_1d(fld->fld.datamean(),    fld->datamean_g,    gd.kcells);
+    backward_field_device_3d(fld->fld.data(),      fld->fld_g,      Offset);
+    backward_field_device_2d(fld->fld_bot.data(),  fld->fld_bot_g,  Offset);
+    backward_field_device_2d(fld->fld_top.data(),  fld->fld_top_g,  Offset);
+    backward_field_device_2d(fld->grad_bot.data(), fld->grad_bot_g, Offset);
+    backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g, Offset);
+    backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g, Offset);
+    backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g, Offset);
+    backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
 }
 
 /**
@@ -309,5 +316,3 @@ void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
-template class Fields<double>;
-template class Fields<float>;

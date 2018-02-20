@@ -95,6 +95,13 @@ struct Grid_data
     std::vector<TF> xh; ///< Grid coordinate of cell faces in x-direction.
     std::vector<TF> yh; ///< Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; ///< Grid coordinate of cell faces in x-direction.
+
+    // Extra variables for aligning global memory on GPU
+    int memoffset;
+    int icellsp;
+    int ijcellsp;
+    int ncellsp;
+
 };
 
 /**

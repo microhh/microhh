@@ -34,8 +34,10 @@ namespace Tools_g
     enum ReduceType {sumType, maxType}; ///< Enumerator holding the different reduction types
     const int reduceMaxThreads = 512;   ///< Maximum number of threads used in reduce algorithms
 
-    void reduce_interior(double *, double *, int, int, int, int, int, int, int, int, int, int, ReduceType);
-    void reduce_all(double *, double *, int, int, int, ReduceType, double);
+    template<typename TF>
+    void reduce_interior(TF *, TF *, int, int, int, int, int, int, int, int, int, int, ReduceType);
+    template<typename TF>
+    void reduce_all(TF *, TF *, int, int, int, ReduceType, double);
 
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)
