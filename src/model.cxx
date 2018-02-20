@@ -132,6 +132,12 @@ template<typename TF>
 Model<TF>::~Model()
 {
     delete_objects();
+    #ifdef USECUDA
+    cudaDeviceReset();
+    if(t_stat.joinable())
+        t_stat.join();
+    #endif
+
 }
 
 // In the init stage all class individual settings are known and the dynamic arrays are allocated.
@@ -217,20 +223,20 @@ void Model<TF>::exec()
     if (sim_mode == Sim_mode::Init)
         return;
 
-    // #ifdef USECUDA
-    // // Load all the necessary data to the GPU.
-    // master  ->print_message("Preparing the GPU\n");
-    // grid    ->prepare_device();
-    // fields  ->prepare_device();
+    #ifdef USECUDA
+    // Load all the necessary data to the GPU.
+    master  ->print_message("Preparing the GPU\n");
+    grid    ->prepare_device();
+    fields  ->prepare_device();
     // buffer  ->prepare_device();
     // thermo  ->prepare_device();
     // boundary->prepare_device();
-    // diff    ->prepare_device();
-    // force   ->prepare_device();
+    diff    ->prepare_device();
+    force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device(); 
-    // #endif
+    pres    ->prepare_device(); 
+    #endif
 
     master.print_message("Starting time integration\n");
 
@@ -287,33 +293,17 @@ void Model<TF>::exec()
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-            // #ifdef USECUDA
-            // // Copy fields from device to host
-            // if (stats->doStats() || cross->do_cross() || dump->do_dump())
-            // {
-            //     fields  ->backward_device();
-            //     boundary->backward_device();
-            // }
-            // #endif
+            #ifdef USECUDA
+            if(t_stat.joinable())
+                t_stat.join();
+            fields  ->backward_device();
+            boundary->backward_device();
+            // thermo  ->backward_device();                
+            t_stat=std::thread(&Model::calculate_statistics,this, timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());//, cross->do_cross(), dump->do_dump(), column->doColumn(),
+            #else
+            calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+            #endif             
 
-            // Do the statistics.
-            if (stats->do_statistics(timeloop->get_itime()))
-                calculate_statistics();
-
-            // // Save the selected cross sections to disk, cross sections are handled on CPU.
-            // if (cross->do_cross())
-            // {
-            //     fields  ->exec_cross();
-            //     thermo  ->exec_cross();
-            //     boundary->exec_cross();
-            // }
-
-            // // Save the 3d dumps to disk
-            // if (dump->do_dump())
-            // {
-            //     fields->exec_dump();
-            //     thermo->exec_dump();
-            // }
         }
 
         // Exit the simulation when the runtime has been hit.
@@ -332,10 +322,14 @@ void Model<TF>::exec()
             // Save the data for restarts.
             if (timeloop->do_save())
             {
-                // #ifdef USECUDA
-                // fields  ->backward_device();
-                // boundary->backward_device();
-                // #endif
+                #ifdef USECUDA
+                if(t_stat.joinable())
+                    t_stat.join();
+
+                fields  ->backward_device();
+                boundary->backward_device();
+                // thermo  ->backward_device();
+                #endif
 
                 // Save data to disk.
                 timeloop->save(timeloop->get_iotime());
@@ -376,11 +370,66 @@ void Model<TF>::exec()
 
     } // End time loop.
 
-    // #ifdef USECUDA
-    // // At the end of the run, copy the data back from the GPU.
-    // fields  ->backward_device();
-    // boundary->backward_device();
-    // #endif
+        #ifdef USECUDA
+        // At the end of the run, copy the data back from the GPU.
+        if(t_stat.joinable())
+            t_stat.join();
+        fields  ->backward_device();
+        boundary->backward_device();
+        //thermo  ->backward_device();
+        #endif
+}
+
+template<typename TF>
+void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
+{
+    // Do the statistics.
+    if(stats->do_statistics(timeloop->get_itime()))
+    {
+        const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+        for (auto& mask_name : mask_list)
+        {
+            // Get the mask from one of the mask providing classes
+            if (mask_name == "default")
+                stats->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"]);
+            else if (fields->has_mask(mask_name))
+                fields->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"], *stats, mask_name);
+            else
+            {
+                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                throw std::runtime_error(error_message);
+            }
+
+            // Calculate statistics
+            fields  ->exec_stats(*stats, mask_name);
+            //thermo  ->exec_stats(&stats->masks[maskname]);
+            //budget  ->exec_stats(&stats->masks[maskname]);
+            //boundary->exec_stats(&stats->masks[maskname]);
+        }
+
+        // Store the stats data.
+        stats->exec(iteration, time, itime);
+    }
+//    // Save the selected cross sections to disk, cross sections are handled on CPU.
+//   if(doCross)
+//    {
+//        fields  ->exec_cross(iotime);
+//        thermo  ->exec_cross(iotime);
+//        boundary->exec_cross(iotime);
+//    }
+//   // Save the 3d dumps to disk
+//    if(doDump)
+//    {
+//        fields->exec_dump(iotime);
+//        thermo->exec_dump(iotime);
+//    }
+//    if(doColumn)
+//    {
+//        fields->exec_column();
+//        thermo->exec_column();
+//        column->exec(iteration, time, itime);
+//    }
 }
 
 template<typename TF>
@@ -422,36 +471,6 @@ void Model<TF>::add_statistics_masks()
             throw std::runtime_error(error_message);
         }
     }
-}
-
-// Calculate the statistics for all classes that have a statistics function.
-template<typename TF>
-void Model<TF>::calculate_statistics()
-{
-    const std::vector<std::string>& mask_list = stats->get_mask_list();
-
-    for (auto& mask_name : mask_list)
-    {
-        // Get the mask from one of the mask providing classes
-        if (mask_name == "default")
-            stats->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"]);
-        else if (fields->has_mask(mask_name))
-            fields->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"], *stats, mask_name);
-        else
-        {
-            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-            throw std::runtime_error(error_message);
-        }
-
-        // Calculate statistics
-        fields  ->exec_stats(*stats, mask_name);
-        //thermo  ->exec_stats(&stats->masks[maskname]);
-        //budget  ->exec_stats(&stats->masks[maskname]);
-        //boundary->exec_stats(&stats->masks[maskname]);
-    }
-
-    // Store the statistics data.
-    stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
 }
 
 // Print the status information to the .out file.

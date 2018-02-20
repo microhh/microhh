@@ -163,9 +163,9 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 template<typename TF>
 Fields<TF>::~Fields()
 {
-// #ifdef USECUDA
-//     clear_device();
-// #endif
+#ifdef USECUDA
+    clear_device();
+#endif
 }
 
 template<typename TF>
@@ -283,18 +283,7 @@ void Fields<TF>::init()
 //        }
 //    }
 //}
-//
-//#ifndef USECUDA
-//void Fields::exec()
-//{
-//    // calculate the means for the prognostic scalars
-//    if (calc_mean_profs)
-//    {
-//        for (Field_map::iterator it=ap.begin(); it!=ap.end(); ++it)
-//            grid.calc_mean(it->second->fld_mean, it->second->data, grid.kcells);
-//    }
-//}
-//#endif
+
 
 template<typename TF>
 void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)

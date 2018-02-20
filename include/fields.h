@@ -96,7 +96,7 @@ class Fields
         /* 
          *Device (GPU) functions and variables
          */
-        /*
+        
         enum Offset_type {Offset, No_offset};
 
         void prepare_device();  ///< Allocation of all fields at device 
@@ -104,16 +104,16 @@ class Fields
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
 
-        void forward_field_device_3d (double*, double*, Offset_type); ///< Copy of a single 3d field from host to device
-        void forward_field_device_2d (double*, double*, Offset_type); ///< Copy of a single 2d field from host to device
-        void forward_field_device_1d (double*, double*, int);         ///< Copy of a single array from host to device
-        void backward_field_device_3d(double*, double*, Offset_type); ///< Copy of a single 3d field from device to host
-        void backward_field_device_2d(double*, double*, Offset_type); ///< Copy of a single 2d field from device to host
-        void backward_field_device_1d(double*, double*, int);         ///< Copy of a single array from device to host
+        void forward_field_device_3d (TF*, TF*, Offset_type); ///< Copy of a single 3d field from host to device
+        void forward_field_device_2d (TF*, TF*, Offset_type); ///< Copy of a single 2d field from host to device
+        void forward_field_device_1d (TF*, TF*, int);         ///< Copy of a single array from host to device
+        void backward_field_device_3d(TF*, TF*, Offset_type); ///< Copy of a single 3d field from device to host
+        void backward_field_device_2d(TF*, TF*, Offset_type); ///< Copy of a single 2d field from device to host
+        void backward_field_device_1d(TF*, TF*, int);         ///< Copy of a single array from device to host
 
-        double* rhoref_g;  ///< Reference density at full levels at device
-        double* rhorefh_g; ///< Reference density at half levels at device
-        */
+        TF* rhoref_g;  ///< Reference density at full levels at device
+        TF* rhorefh_g; ///< Reference density at half levels at device
+        
 
     private:
         Master& master;
@@ -170,7 +170,7 @@ class Fields
         /* 
          *Device (GPU) functions and variables
          */
-        // void forward_field3d_device(Field3d *);  ///< Copy of a complete Field3d instance from host to device
-        // void backward_field3d_device(Field3d *); ///< Copy of a complete Field3d instance from device to host
+        void forward_field3d_device(Field3d<TF> *);  ///< Copy of a complete Field3d instance from host to device
+        void backward_field3d_device(Field3d<TF> *); ///< Copy of a complete Field3d instance from device to host
 };
 #endif

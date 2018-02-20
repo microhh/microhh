@@ -56,20 +56,22 @@ class Field3d
 
         TF visc;
 
-        /*
+        
         // Device functions and variables
         void init_device();  ///< Allocate Field3D fields at device 
         void clear_device(); ///< Deallocate Field3D fields at device 
+        void init_cuda();
+        void release_cuda_fields();
 
-        double* data_g;
-        double* fld_bot_g;
-        double* fld_top_g;
-        double* fld_mean_g;
-        double* grad_bot_g;
-        double* grad_top_g;
-        double* flux_bot_g;
-        double* flux_top_g;
-        */
+        TF* fld_g;
+        TF* fld_bot_g;
+        TF* fld_top_g;
+        TF* fld_mean_g;
+        TF* grad_bot_g;
+        TF* grad_top_g;
+        TF* flux_bot_g;
+        TF* flux_top_g;
+        
 
     private:
         Master& master;

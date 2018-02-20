@@ -38,10 +38,12 @@ Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std
     unit     = unitin;
 }
 
-#ifndef USECUDA
 template<typename TF>
 Field3d<TF>::~Field3d()
 {
+    #ifdef USECUDA
+    release_cuda_fields();
+    #endif
 }
 
 template<typename TF>
@@ -50,7 +52,7 @@ int Field3d<TF>::init()
     const Grid_data<TF>& gd = grid.get_grid_data();
 
     // Calculate the total field memory size
-    const long long field_memory_size = (gd.ncells + 6*gd.ijcells + gd.kcells)*sizeof(double);
+    const long long field_memory_size = (gd.ncells + 6*gd.ijcells + gd.kcells)*sizeof(TF);
 
     // Keep track of the total memory in fields
     static long long total_memory_size = 0;
@@ -90,10 +92,14 @@ int Field3d<TF>::init()
         flux_bot[n] = 0.;
         flux_top[n] = 0.;
     }
-
+    
+    #ifdef USECUDA
+    init_cuda();
+    #endif
     return 0;
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Field3d<TF>::calc_mean_profile()
 {
