@@ -101,7 +101,7 @@ int Field3d<TF>::init()
 
 #ifndef USECUDA
 template<typename TF>
-void Field3d<TF>::calc_mean_profile()
+void Field3d<TF>::calc_mean_profile(TF * tmp)
 {
     const auto& gd = grid.get_grid_data();
 
@@ -128,7 +128,7 @@ void Field3d<TF>::calc_mean_profile()
 // Calculate the volume weighted total mean
 // BvS: for now only at full levels
 template<typename TF>
-TF Field3d<TF>::calc_mean()
+TF Field3d<TF>::calc_mean(TF * tmp)
 {
     const auto& gd = grid.get_grid_data();
 

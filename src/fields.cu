@@ -29,7 +29,6 @@
 #include "fields.h"
 #include "grid.h"
 #include "master.h"
-#include "boundary.h" // TMP BVS
 #include "constants.h"
 #include "tools.h"
 

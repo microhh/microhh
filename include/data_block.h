@@ -1,4 +1,6 @@
 #ifndef DATA_BLOCK
+#include <map>
+#include <vector>
 class Master;
 
 class Data_block

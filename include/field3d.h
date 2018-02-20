@@ -37,8 +37,8 @@ class Field3d
         ~Field3d();
 
         int init();
-        void calc_mean_profile();   ///< Calculate mean profile into fld_mean
-        TF calc_mean();             ///< Calculate volume weighted total mean
+        void calc_mean_profile(TF *);   ///< Calculate mean profile into fld_mean
+        TF calc_mean(TF *);             ///< Calculate volume weighted total mean
 
         // Variables at CPU.
         std::vector<TF> fld;
