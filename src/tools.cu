@@ -198,7 +198,7 @@ namespace Tools_g
     template<typename TF>
     void reduce_all(TF* a, TF* aout, int ncells, int nblocks, int nvaluesperblock, ReduceType mode, TF scalefac)
     {
-        const int nthreads = max(16,min(reduceMaxThreads, nextpow2(nvaluesperblock/2)));
+       const int nthreads = max(16,min(reduceMaxThreads, nextpow2(nvaluesperblock/2)));
 
         dim3 gridGPU (nblocks,  1, 1);
         dim3 blockGPU(nthreads, 1, 1);
@@ -242,6 +242,7 @@ namespace Tools_g
         cuda_check_error();
     }
 }
-
+template void Tools_g::reduce_interior<double>(double *, double *, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
+template void Tools_g::reduce_interior<float>(float *, float *, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
 template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::ReduceType, double);
 template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::ReduceType, float);

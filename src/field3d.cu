@@ -84,9 +84,9 @@ TF Field3d<TF>::calc_mean(TF * tmp)
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
     reduce_interior<TF>(fld.data(), tmp, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, sumType);
     // Reduce jtot*ktot to ktot values
-    reduce_all<TF>     (tmp, &tmp[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, sumType, 1);
+    reduce_all<TF>     (tmp, &tmp[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, sumType, scalefac);
     // Reduce ktot values to a single value
-    reduce_all<TF>     (&tmp[gd.jtot*gd.ktot], tmp, gd.ktot, 1, gd.ktot, sumType, scalefac);
+    reduce_all<TF>     (&tmp[gd.jtot*gd.ktot], tmp, gd.ktot, 1, gd.ktot, sumType, tmp[0]);
     // Copy back result from GPU
     cuda_safe_call(cudaMemcpy(&sumvalue, &tmp[0], sizeof(TF), cudaMemcpyDeviceToHost));
 

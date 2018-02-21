@@ -37,7 +37,7 @@ namespace Tools_g
     template<typename TF>
     void reduce_interior(TF *, TF *, int, int, int, int, int, int, int, int, int, int, ReduceType);
     template<typename TF>
-    void reduce_all(TF *, TF *, int, int, int, ReduceType, double);
+    void reduce_all(TF *, TF *, int, int, int, ReduceType, TF);
 
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)
