@@ -85,7 +85,9 @@ class Fields
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
 
-        Field_map<TF> atmp; ///< Map containing all temporary field3d instances
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::shared_ptr<Field3d<TF>> get_tmp();
+        void release_tmp(std::shared_ptr<Field3d<TF>>&);
 
         std::vector<TF> rhoref;  ///< Reference density at full levels 
         std::vector<TF> rhorefh; ///< Reference density at half levels

@@ -207,8 +207,8 @@ void Fields<TF>::init()
     }
 
     // allocate the tmp fields
-    for (auto& it : atmp)
-        nerror += it.second->init();
+    for (auto& tmp : atmp)
+        nerror += tmp->init();
 
     if (nerror > 0)
         throw 1;
@@ -295,6 +295,23 @@ void Fields<TF>::init()
 //    }
 //}
 //#endif
+
+template<typename TF>
+std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
+{
+    if (atmp.empty())
+        throw std::runtime_error("Out of tmp fields");
+
+    std::shared_ptr<Field3d<TF>> tmp = atmp.back();
+    atmp.pop_back();
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
+{
+    atmp.push_back(std::move(tmp));
+}
 
 template<typename TF>
 void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
@@ -572,13 +589,7 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
 template<typename TF>
 void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::string unit)
 {
-    if (atmp.find(fldname) != atmp.end())
-    {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
-    }
-
-    atmp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
 }
 
 template<typename TF>
