@@ -68,7 +68,9 @@ namespace Tools_g
                         unsigned int iend,   unsigned int jend,
                         unsigned int icells, unsigned int ijcells)
     {
-        extern __shared__ TF as[];
+        // See https://stackoverflow.com/a/27570775/3581217
+        extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
+        TF *as = reinterpret_cast<TF*>(as_tmp);
 
         const unsigned int tid  = threadIdx.x;
         const unsigned int i    = istart + threadIdx.x;
@@ -106,7 +108,9 @@ namespace Tools_g
     template <typename TF, ReduceType function, int blockSize> __global__
     void reduce_all_kernel(const TF* a, TF* aout, unsigned int ncells, unsigned int nvaluesperblock, TF scalefac)
     {
-        extern __shared__ TF as[];
+        // See https://stackoverflow.com/a/27570775/3581217
+        extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
+        TF *as = reinterpret_cast<TF*>(as_tmp);
 
         const unsigned int tid  = threadIdx.x;
         const unsigned int iim  = nvaluesperblock * (blockIdx.x+1);
@@ -242,7 +246,8 @@ namespace Tools_g
         cuda_check_error();
     }
 }
-template void Tools_g::reduce_interior<double>(double *, double *, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
-template void Tools_g::reduce_interior<float>(float *, float *, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
+
+template void Tools_g::reduce_interior<double>(double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
+template void Tools_g::reduce_interior<float>(float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
 template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::ReduceType, double);
 template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::ReduceType, float);
