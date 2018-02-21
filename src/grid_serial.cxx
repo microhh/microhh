@@ -32,7 +32,7 @@ template<typename TF>
 void Grid<TF>::init_mpi()
 {
     mpitypes = true;
-} 
+}
 
 template<typename TF>
 void Grid<TF>::exit_mpi()
@@ -175,13 +175,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
     }
 }
 
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_zx(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -191,13 +191,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_xz(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -207,13 +207,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_xy(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -223,13 +223,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_yx(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -239,13 +239,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_yz(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -255,13 +255,13 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::transpose_zy(double* restrict ar, double* restrict as)
 // {
 //     const int jj = imax;
 //     const int kk = imax*jmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 //         for (int j=0; j<jmax; j++)
 // #pragma ivdep
@@ -271,22 +271,22 @@ void Grid<TF>::boundary_cyclic_2d(TF* restrict data)
 //                 ar[ijk] = as[ijk];
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_max(double *var)
 // {
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_max(int *var)
 // {
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_sum(double *var)
 // {
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_prof(double *prof, int kcellsin)
 // {
@@ -548,7 +548,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
         }
     }
 }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
 // {
@@ -556,9 +556,9 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int kkb = imax;
-// 
+//
 //     const int count = imax*kmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -568,29 +568,29 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + k*kkb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     FILE *pFile;
 //     pFile = fopen(filename, "wbx");
 //     if (pFile == NULL)
 //         return 1;
-// 
+//
 //     fwrite(tmp, sizeof(double), count, pFile);
 //     fclose(pFile);
-// 
+//
 //     return 0;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
 // {
 //     // Extract the data from the 3d field without the ghost cells
 //     const int jj = icells;
 //     const int kk = ijcells;
-// 
+//
 //     const int kkb = jmax;
-// 
+//
 //     int count = jmax*kmax;
-// 
+//
 //     // Strip off the ghost cells
 //     for (int k=0; k<kmax; k++)
 //         #pragma ivdep
@@ -601,18 +601,18 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = j + k*kkb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     FILE *pFile;
 //     pFile = fopen(filename, "wbx");
 //     if (pFile == NULL)
 //         return 1;
-// 
+//
 //     fwrite(tmp, sizeof(double), count, pFile);
 //     fclose(pFile);
-// 
+//
 //     return 0;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 // {
@@ -620,13 +620,13 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int jjb = imax;
-// 
+//
 //     const int count = imax*jmax;
-// 
+//
 //     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
 //     if (kslice == -1)
 //         kslice = -kgc;
-// 
+//
 //     for (int j=0; j<jmax; j++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -636,40 +636,40 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + j*jjb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     FILE *pFile;
 //     pFile = fopen(filename, "wbx");
 //     if (pFile == NULL)
 //         return 1;
-// 
+//
 //     fwrite(tmp, sizeof(double), count, pFile);
 //     fclose(pFile);
-// 
+//
 //     return 0;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 // {
 //     const int count = imax*jmax;
-// 
+//
 //     FILE *pFile;
 //     pFile = fopen(filename, "rb");
 //     if (pFile == NULL)
 //         return 1;
-// 
+//
 //     fread(tmp, sizeof(double), count, pFile);
 //     fclose(pFile);
-// 
+//
 //     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
 //     if (kslice == -1)
 //         kslice = -kgc;
-// 
+//
 //     // put the data back into a field with ghost cells
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int jjb = imax;
-// 
+//
 //     for (int j=0; j<jmax; j++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -678,7 +678,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + j*jjb;
 //             data[ijk] = tmp[ijkb];
 //         }
-// 
+//
 //     return 0;
 // }
 

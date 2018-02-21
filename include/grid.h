@@ -189,7 +189,7 @@ class Grid
         fftwf_plan iplanff, iplanbf; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftwf_plan jplanff, jplanbf; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
-        // GPU functions        
+        // GPU functions
         void prepare_device();                          ///< Load the arrays onto the GPU
         void clear_device();                            ///< Deallocate the arrays onto the GPU
         void boundary_cyclic_g(TF*);                    ///< Fills the ghost cells in the periodic directions.

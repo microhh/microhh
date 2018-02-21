@@ -441,7 +441,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
             //                        atmp["tmp4"]->data, stats.nmaskh);
             //}
             //else
-                stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(), 
+                stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
                                     it.second->visc, sloc, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
         }
         else if (grid.swspatialorder == "4")
@@ -664,7 +664,7 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
 namespace
 {
     template<typename TF>
-    void add_mean_prof_to_field(TF* restrict const data, 
+    void add_mean_prof_to_field(TF* restrict const data,
                                 const TF* restrict const dataprof,
                                 const TF offset,
                                 const int istart, const int iend,
@@ -849,7 +849,7 @@ void Fields<TF>::save(int n)
         {
             master.print_message("FAILED\n");
             ++nerror;
-        }  
+        }
         else
         {
             master.print_message("OK\n");
@@ -900,7 +900,7 @@ void Fields<TF>::load(int n)
         else
         {
             master.print_message("OK\n");
-        }  
+        }
     }
 
     if (nerror)
@@ -999,8 +999,8 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii]) 
-                       + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj]) 
+                tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii])
+                       + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj])
                        + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
             }
 

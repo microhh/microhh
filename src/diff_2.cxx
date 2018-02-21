@@ -43,7 +43,7 @@ namespace
         const int ii = 1;
         const double dxidxi = 1/(dx*dx);
         const double dyidyi = 1/(dy*dy);
-    
+
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -51,15 +51,15 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     at[ijk] += visc * (
-                            + ( (a[ijk+ii] - a[ijk   ]) 
-                              - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
-                            + ( (a[ijk+jj] - a[ijk   ]) 
+                            + ( (a[ijk+ii] - a[ijk   ])
+                              - (a[ijk   ] - a[ijk-ii]) ) * dxidxi
+                            + ( (a[ijk+jj] - a[ijk   ])
                               - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
                             + ( (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
                               - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
                 }
     }
-    
+
     template<typename TF>
     void diff_w(TF* restrict wt, TF* restrict w, TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -68,7 +68,7 @@ namespace
         const int ii = 1;
         const double dxidxi = 1/(dx*dx);
         const double dyidyi = 1/(dy*dy);
-    
+
         for (int k=kstart+1; k<kend; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -76,9 +76,9 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     wt[ijk] += visc * (
-                            + ( (w[ijk+ii] - w[ijk   ]) 
-                              - (w[ijk   ] - w[ijk-ii]) ) * dxidxi 
-                            + ( (w[ijk+jj] - w[ijk   ]) 
+                            + ( (w[ijk+ii] - w[ijk   ])
+                              - (w[ijk   ] - w[ijk-ii]) ) * dxidxi
+                            + ( (w[ijk+jj] - w[ijk   ])
                               - (w[ijk   ] - w[ijk-jj]) ) * dyidyi
                             + ( (w[ijk+kk] - w[ijk   ]) * dzi[k]
                               - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
@@ -137,20 +137,20 @@ void Diff_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
-    diff_c<TF>(fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), fields.visc, 
+    diff_c<TF>(fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), fields.visc,
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
-    
-    diff_c<TF>(fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), fields.visc, 
+
+    diff_c<TF>(fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), fields.visc,
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
-    
-    diff_w<TF>(fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), fields.visc, 
+
+    diff_w<TF>(fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), fields.visc,
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
-    
+
     for (auto& it : fields.st)
-        diff_c<TF>(it.second->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->visc, 
+        diff_c<TF>(it.second->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->visc,
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
 }

@@ -35,16 +35,16 @@
 namespace
 {
     // TODO use interp2 functions instead of manual interpolation
-    template<typename TF> __global__ 
-    void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w, 
+    template<typename TF> __global__
+    void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
                         TF* __restrict__ mom, TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-        const int k = blockIdx.z + kstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
         const int ii = 1;
 
         if (i < iend && j < jend && k < kend)
@@ -54,36 +54,36 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void calc_tke_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w, 
+    template<typename TF> __global__
+    void calc_tke_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
                         TF* __restrict__ tke, TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-        const int k = blockIdx.z + kstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
         const int ii = 1;
 
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2)) 
-                       + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2)) 
+            tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2))
+                       + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2))
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void calc_mass_2nd_g(TF* __restrict__ s, TF* __restrict__ mass, TF* __restrict__ dz,
                          int istart, int jstart, int kstart,
                          int iend,   int jend,   int kend,
                          int jj,     int kk)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-        const int k = blockIdx.z + kstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -96,7 +96,7 @@ namespace
 
 
 /**
- * This function allocates all field3d instances and fields at device 
+ * This function allocates all field3d instances and fields at device
  */
 template<typename TF>
 void Fields<TF>::prepare_device()
@@ -126,7 +126,7 @@ void Fields<TF>::prepare_device()
 }
 
 /**
- * This function deallocates all field3d instances and fields at device 
+ * This function deallocates all field3d instances and fields at device
  */
 template<typename TF>
 void Fields<TF>::clear_device()
@@ -146,7 +146,7 @@ void Fields<TF>::clear_device()
 }
 
 /**
- * This function copies all fields from host to device 
+ * This function copies all fields from host to device
  */
 template<typename TF>
 void Fields<TF>::forward_device()
@@ -160,13 +160,13 @@ void Fields<TF>::forward_device()
 
     forward_field3d_device(atmp.at("tmp1").get());
     forward_field3d_device(atmp.at("tmp2").get());
-    
+
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
 }
 
 /**
- * This function copies all fields required for statistics and output from device to host 
+ * This function copies all fields required for statistics and output from device to host
  */
 template<typename TF>
 void Fields<TF>::backward_device()
@@ -179,8 +179,8 @@ void Fields<TF>::backward_device()
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
 /**
- * This function copies a field3d instance from host to device 
- * @param fld Pointer to field3d instance  
+ * This function copies a field3d instance from host to device
+ * @param fld Pointer to field3d instance
  */
 template<typename TF>
 void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
@@ -198,8 +198,8 @@ void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
 /**
- * This function copies a field3d instance from device to host 
- * @param fld Pointer to field3d instance  
+ * This function copies a field3d instance from device to host
+ * @param fld Pointer to field3d instance
  */
 template<typename TF>
 void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
@@ -216,10 +216,10 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
 }
 
 /**
- * This function copies a single 3d field from host to device 
- * @param field_g Pointer to 3d field at device  
- * @param field Pointer to 3d field at host 
- * @param sw Switch to align the host field to device memory 
+ * This function copies a single 3d field from host to device
+ * @param field_g Pointer to 3d field at device
+ * @param field Pointer to 3d field at host
+ * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
 void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
@@ -235,10 +235,10 @@ void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
 }
 
 /**
- * This function copies a single 2d field from host to device 
- * @param field_g Pointer to 2d field at device  
- * @param field Pointer to 2d field at host 
- * @param sw Switch to align the host field to device memory 
+ * This function copies a single 2d field from host to device
+ * @param field_g Pointer to 2d field at device
+ * @param field Pointer to 2d field at host
+ * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
 void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field, Offset_type sw)
@@ -254,10 +254,10 @@ void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field, Offset_type sw)
 }
 
 /**
- * This function copies an array from host to device 
- * @param field_g Pointer array at device  
- * @param field Pointer to array at host 
- * @param ncells Number of (TF precision) values to copy 
+ * This function copies an array from host to device
+ * @param field_g Pointer array at device
+ * @param field Pointer to array at host
+ * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
 void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
@@ -266,10 +266,10 @@ void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
 }
 
 /**
- * This function copies a single 3d field from device to host 
- * @param field Pointer to 3d field at host 
- * @param field_g Pointer to 3d field at device  
- * @param sw Switch to align the host field to device memory 
+ * This function copies a single 3d field from device to host
+ * @param field Pointer to 3d field at host
+ * @param field_g Pointer to 3d field at device
+ * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
 void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw)
@@ -285,10 +285,10 @@ void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw
 }
 
 /**
- * This function copies a single 2d field from device to host 
- * @param field Pointer to 2d field at host 
- * @param field_g Pointer to 2d field at device  
- * @param sw Switch to align the host field to device memory 
+ * This function copies a single 2d field from device to host
+ * @param field Pointer to 2d field at host
+ * @param field_g Pointer to 2d field at device
+ * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
 void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g, Offset_type sw)
@@ -304,10 +304,10 @@ void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g, Offset_type sw
 }
 
 /**
- * This function copies an array from device to host 
- * @param field Pointer to array at host 
- * @param field_g Pointer array at device  
- * @param ncells Number of (TF precision) values to copy 
+ * This function copies an array from device to host
+ * @param field Pointer to array at host
+ * @param field_g Pointer array at device
+ * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
 void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)

@@ -56,10 +56,10 @@ class Field3d
 
         TF visc;
 
-        
+
         // Device functions and variables
-        void init_device();  ///< Allocate Field3D fields at device 
-        void clear_device(); ///< Deallocate Field3D fields at device 
+        void init_device();  ///< Allocate Field3D fields at device
+        void clear_device(); ///< Deallocate Field3D fields at device
 
         TF* fld_g;
         TF* fld_bot_g;
@@ -69,7 +69,7 @@ class Field3d
         TF* grad_top_g;
         TF* flux_bot_g;
         TF* flux_top_g;
-        
+
 
     private:
         Master& master;

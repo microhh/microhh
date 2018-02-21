@@ -29,7 +29,7 @@ namespace Constants
 {
     const double kappa = 0.4;        ///< von Karman constant
     const double grav  = 9.81;       ///< Gravitational acceleration [m s-2]
-    const double Rd    = 287.04;     ///< Gas constant for dry air [J K-1 kg-1] 
+    const double Rd    = 287.04;     ///< Gas constant for dry air [J K-1 kg-1]
     const double Rv    = 461.5;      ///< Gas constant for water vapor [J K-1 kg-1]
     const double cp    = 1005;       ///< Specific heat of air at constant pressure [J kg-1 K-1]
     const double Lv    = 2.5e6;      ///< Latent heat of condensation or vaporization [J kg-1]
@@ -40,15 +40,15 @@ namespace Constants
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)
-    const double c0 = 0.6105851e+03; 
-    const double c1 = 0.4440316e+02; 
-    const double c2 = 0.1430341e+01; 
-    const double c3 = 0.2641412e-01; 
-    const double c4 = 0.2995057e-03; 
-    const double c5 = 0.2031998e-05; 
-    const double c6 = 0.6936113e-08; 
-    const double c7 = 0.2564861e-11; 
-    const double c8 = -.3704404e-13; 
+    const double c0 = 0.6105851e+03;
+    const double c1 = 0.4440316e+02;
+    const double c2 = 0.1430341e+01;
+    const double c3 = 0.2641412e-01;
+    const double c4 = 0.2995057e-03;
+    const double c5 = 0.2031998e-05;
+    const double c6 = 0.6936113e-08;
+    const double c7 = 0.2564861e-11;
+    const double c8 = -.3704404e-13;
 
     // Coefficients Taylor expansion Arden Buck equation (1981) around T=T0
     const double c00  = +6.1121000000E+02;

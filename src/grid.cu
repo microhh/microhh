@@ -31,7 +31,7 @@ namespace
                              const int icells, const int jcells, const int kcells,
                              const int icellsp,
                              const int istart, const int jstart,
-                             const int iend,   const int jend, 
+                             const int iend,   const int jend,
                              const int igc,    const int jgc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -59,7 +59,7 @@ namespace
                              const int icells, const int jcells, const int kcells,
                              const int icellsp,
                              const int istart, const int jstart,
-                             const int iend,   const int jend, 
+                             const int iend,   const int jend,
                              const int igc,    const int jgc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -100,12 +100,12 @@ namespace
 template<typename TF>
 void Grid<TF>::prepare_device()
 {
-    /* Align the interior of the grid (i.e. excluding ghost cells) with 
+    /* Align the interior of the grid (i.e. excluding ghost cells) with
        the 128 byte memory blocks of the GPU's global memory */
-    gd.memoffset = 16 - gd.igc;           // Padding at start of array 
+    gd.memoffset = 16 - gd.igc;           // Padding at start of array
     int padl     = 16-(int)gd.imax%16;    // Elements left in last 128 byte block
     gd.icellsp   = gd.imax + padl + (padl < 2*gd.igc) * 16;
-    gd.ijcellsp  = gd.icellsp * gd.jcells;  
+    gd.ijcellsp  = gd.icellsp * gd.jcells;
     gd.ncellsp   = gd.ijcellsp * gd.kcells + gd.memoffset;
 
     // Calculate optimal size thread blocks based on grid

@@ -49,19 +49,19 @@ Advec_2<TF>::~Advec_2() {}
 namespace
 {
     template<typename TF>
-    TF calc_cfl(const TF* const restrict u, const TF* const restrict v, const TF* const restrict w, 
+    TF calc_cfl(const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict dzi, const TF dx, const TF dy,
             const TF dt, Master& master,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         const TF dxi = 1./dx;
         const TF dyi = 1./dy;
-    
+
         TF cfl = 0;
-    
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
     #pragma ivdep
@@ -70,11 +70,11 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
                 }
-    
+
         master.max(&cfl, 1);
-    
+
         cfl = cfl*dt;
-    
+
         return cfl;
     }
 
@@ -87,10 +87,10 @@ namespace
             const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         const TF dxi = 1./dx;
         const TF dyi = 1./dy;
-    
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -100,15 +100,15 @@ namespace
                     ut[ijk] +=
                              - ( interp2(u[ijk   ], u[ijk+ii]) * interp2(u[ijk   ], u[ijk+ii])
                                - interp2(u[ijk-ii], u[ijk   ]) * interp2(u[ijk-ii], u[ijk   ]) ) * dxi
-    
+
                              - ( interp2(v[ijk-ii+jj], v[ijk+jj]) * interp2(u[ijk   ], u[ijk+jj])
                                - interp2(v[ijk-ii   ], v[ijk   ]) * interp2(u[ijk-jj], u[ijk   ]) ) * dyi
-    
+
                              - ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk])
                                - rhorefh[k  ] * interp2(w[ijk-ii   ], w[ijk   ]) * interp2(u[ijk-kk], u[ijk   ]) ) / rhoref[k] * dzi[k];
                 }
     }
-    
+
     template<typename TF>
     void advec_v(TF* const restrict vt,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
@@ -118,10 +118,10 @@ namespace
             const int jj, const int kk)
     {
         const int ii = 1;
-        
+
         const double dxi = 1./dx;
         const double dyi = 1./dy;
-    
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -131,15 +131,15 @@ namespace
                     vt[ijk] +=
                              - ( interp2(u[ijk+ii-jj], u[ijk+ii]) * interp2(v[ijk   ], v[ijk+ii])
                                - interp2(u[ijk   -jj], u[ijk   ]) * interp2(v[ijk-ii], v[ijk   ]) ) * dxi
-    
+
                              - ( interp2(v[ijk   ], v[ijk+jj]) * interp2(v[ijk   ], v[ijk+jj])
                                - interp2(v[ijk-jj], v[ijk   ]) * interp2(v[ijk-jj], v[ijk   ]) ) * dyi
-    
+
                              - ( rhorefh[k+1] * interp2(w[ijk-jj+kk], w[ijk+kk]) * interp2(v[ijk   ], v[ijk+kk])
                                - rhorefh[k  ] * interp2(w[ijk-jj   ], w[ijk   ]) * interp2(v[ijk-kk], v[ijk   ]) ) / rhoref[k] * dzi[k];
                 }
     }
-    
+
     template<typename TF>
     void advec_w(TF* const restrict wt,
             const TF* const restrict u, const TF* const restrict v, TF* const restrict w,
@@ -149,10 +149,10 @@ namespace
             const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         const double dxi = 1./dx;
         const double dyi = 1./dy;
-    
+
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -162,15 +162,15 @@ namespace
                     wt[ijk] +=
                              - ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
                                - interp2(u[ijk   -kk], u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) * dxi
-    
+
                              - ( interp2(v[ijk+jj-kk], v[ijk+jj]) * interp2(w[ijk   ], w[ijk+jj])
                                - interp2(v[ijk   -kk], v[ijk   ]) * interp2(w[ijk-jj], w[ijk   ]) ) * dyi
-    
+
                              - ( rhoref[k  ] * interp2(w[ijk   ], w[ijk+kk]) * interp2(w[ijk   ], w[ijk+kk])
                                - rhoref[k-1] * interp2(w[ijk-kk], w[ijk   ]) * interp2(w[ijk-kk], w[ijk   ]) ) / rhorefh[k] * dzhi[k];
                 }
     }
-    
+
     template<typename TF>
     void advec_s(TF* const restrict st, const TF* const restrict s,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
@@ -180,10 +180,10 @@ namespace
             const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         const double dxi = 1./dx;
         const double dyi = 1./dy;
-    
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -193,10 +193,10 @@ namespace
                     st[ijk] +=
                              - ( u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
                                - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
-    
+
                              - ( v[ijk+jj] * interp2(s[ijk   ], s[ijk+jj])
                                - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi
-    
+
                              - ( rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
                                - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
                 }

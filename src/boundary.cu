@@ -102,7 +102,7 @@ namespace
 
     template<typename TF> __global__
     void calc_ghost_cells_bot_4th_g(TF* __restrict__ a, TF* __restrict__ z, const Boundary_type sw,
-                                    TF* __restrict__ abot, TF* __restrict__ agradbot,                                    
+                                    TF* __restrict__ abot, TF* __restrict__ agradbot,
                                     const int icells, const int icellsp,
                                     const int jcells, const int kstart)
     {
@@ -133,7 +133,7 @@ namespace
 
     template<typename TF> __global__
     void calc_ghost_cells_top_4th_g(TF* __restrict__ a, TF* __restrict__ z,const Boundary_type sw,
-                                    TF* __restrict__ atop, TF* __restrict__ agradtop,                                    
+                                    TF* __restrict__ atop, TF* __restrict__ agradtop,
                                     const int icells, const int icellsp,
                                     const int jcells, const int kend)
     {
@@ -263,7 +263,7 @@ void Boundary<TF>::exec()
     grid.boundary_cyclic_g(&fields.mp.at("v")->fld_g[offs]);
     grid.boundary_cyclic_g(&fields.mp.at("w")->fld_g[offs]);
 
-    for (auto& it : fields.sp) 
+    for (auto& it : fields.sp)
         grid.boundary_cyclic_g(&it.second->fld_g[offs]);
 
     // Calculate the boundary values.

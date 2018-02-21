@@ -30,7 +30,7 @@
 
 namespace
 {
-    template<typename TF, int substep> __global__ 
+    template<typename TF, int substep> __global__
     void rk3_g(TF* __restrict__ a, TF* __restrict__ at, double dt,
                const int jj, const int kk,
                const int istart, const int jstart, const int kstart,
@@ -64,13 +64,13 @@ namespace
                     break;
                 case 2:
                     a [ijk] = a[ijk] + cB2*dt*at[ijk];
-                    at[ijk] = 0.; 
+                    at[ijk] = 0.;
                     break;
             }
         }
     }
 
-    template<typename TF, int substep> __global__ 
+    template<typename TF, int substep> __global__
     void rk4_g(TF* __restrict__ a, TF* __restrict__ at, double dt,
                const int jj, const int kk,
                const int istart, const int jstart, const int kstart,
@@ -108,11 +108,11 @@ namespace
                     break;
                 case 2:
                     a [ijk] = a[ijk] + cB2*dt*at[ijk];
-                    at[ijk] = cA3*at[ijk]; 
+                    at[ijk] = cA3*at[ijk];
                     break;
                 case 3:
                     a [ijk] = a[ijk] + cB3*dt*at[ijk];
-                    at[ijk] = cA4*at[ijk]; 
+                    at[ijk] = cA4*at[ijk];
                     break;
                 case 4:
                     a [ijk] = a[ijk] + cB4*dt*at[ijk];
@@ -140,7 +140,7 @@ void Timeloop<TF>::exec()
 
     if (rkorder == 3)
     {
-        for (auto& it : fields.at) 
+        for (auto& it : fields.at)
         {
             if (substep == 0)
                 rk3_g<TF,0><<<gridGPU, blockGPU>>>(
@@ -174,7 +174,7 @@ void Timeloop<TF>::exec()
 
     else if (rkorder == 4)
     {
-        for (auto& it : fields.at) 
+        for (auto& it : fields.at)
         {
             if (substep==0)
                 rk4_g<TF,0><<<gridGPU, blockGPU>>>(

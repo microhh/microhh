@@ -46,7 +46,7 @@ class Diff_disabled : public Diff<TF>
         //void prepare_device() {}
         //#endif
     private:
-        
+
         const Diffusion_type swdiff = Diffusion_type::Disabled;
 };
 #endif

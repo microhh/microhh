@@ -29,7 +29,7 @@
 
 namespace Tools_g
 {
-    template <typename TF, ReduceType function> __device__ 
+    template <typename TF, ReduceType function> __device__
     TF reduction(TF v1, TF v2)
     {
         TF rval;
@@ -38,10 +38,10 @@ namespace Tools_g
         else if (function == maxType)
             rval = fmax(v1,v2);
         return rval;
-    } 
+    }
 
     // Reduce one block of data
-    template <typename TF, ReduceType function, int blockSize> __device__ 
+    template <typename TF, ReduceType function, int blockSize> __device__
     void reduce_block_kernel(volatile TF* as, const unsigned int tid)
     {
         /* Loop is completely unrolled for performance */
@@ -62,10 +62,10 @@ namespace Tools_g
     }
 
     // Reduce field from 3D to 2D, excluding ghost cells and padding
-    template <typename TF, ReduceType function, int blockSize> __global__ 
-    void reduce_interior_kernel(const TF* a, TF* a2d, 
-                        unsigned int istart, unsigned int jstart, unsigned int kstart, 
-                        unsigned int iend,   unsigned int jend,   
+    template <typename TF, ReduceType function, int blockSize> __global__
+    void reduce_interior_kernel(const TF* a, TF* a2d,
+                        unsigned int istart, unsigned int jstart, unsigned int kstart,
+                        unsigned int iend,   unsigned int jend,
                         unsigned int icells, unsigned int ijcells)
     {
         extern __shared__ TF as[];
@@ -73,7 +73,7 @@ namespace Tools_g
         const unsigned int tid  = threadIdx.x;
         const unsigned int i    = istart + threadIdx.x;
         const unsigned int j    = jstart + blockIdx.y;
-        const unsigned int k    = kstart + blockIdx.z; 
+        const unsigned int k    = kstart + blockIdx.z;
         const unsigned int jk   = blockIdx.y+blockIdx.z*(jend-jstart);   // Index in 2D "a2d"
         const unsigned int ijk  = i + j*icells + k*ijcells;              // Index in 3D "a"
         const unsigned int ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
@@ -102,9 +102,9 @@ namespace Tools_g
             a2d[jk] = as[0];
     }
 
-    // Reduce array, not accounting from ghost cells or padding 
-    template <typename TF, ReduceType function, int blockSize> __global__ 
-    void reduce_all_kernel(const TF* a, TF* aout, unsigned int ncells, unsigned int nvaluesperblock, TF scalefac)  
+    // Reduce array, not accounting from ghost cells or padding
+    template <typename TF, ReduceType function, int blockSize> __global__
+    void reduce_all_kernel(const TF* a, TF* aout, unsigned int ncells, unsigned int nvaluesperblock, TF scalefac)
     {
         extern __shared__ TF as[];
 
@@ -145,7 +145,7 @@ namespace Tools_g
 
 
     template<typename TF>
-    void reduce_interior(TF* a, TF* a2d, 
+    void reduce_interior(TF* a, TF* a2d,
                          int itot, int istart, int iend,
                          int jtot, int jstart, int jend,
                          int ktot, int kstart,

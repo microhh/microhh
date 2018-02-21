@@ -105,7 +105,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        
+
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
@@ -235,7 +235,7 @@ void Model<TF>::exec()
     // force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device(); 
+    // pres    ->prepare_device();
     #endif
 
     master.print_message("Starting time integration\n");
@@ -298,11 +298,11 @@ void Model<TF>::exec()
                 t_stat.join();
             fields  ->backward_device();
             boundary->backward_device();
-            // thermo  ->backward_device();                
+            // thermo  ->backward_device();
             t_stat=std::thread(&Model::calculate_statistics,this, timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());//, cross->do_cross(), dump->do_dump(), column->doColumn(),
             #else
             calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
-            #endif             
+            #endif
 
         }
 

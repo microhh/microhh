@@ -67,7 +67,7 @@ class Pres_2 : public Pres<TF>
         TF* work2d_g;
 #endif
 
-        void input(TF* const restrict, 
+        void input(TF* const restrict,
                    const TF* const restrict, const TF* const restrict, const TF* const restrict,
                    TF* const restrict, TF* const restrict, TF* const restrict,
                    const TF* const restrict, const TF* const restrict, const TF* const restrict,

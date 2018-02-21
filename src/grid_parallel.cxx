@@ -136,7 +136,7 @@ void Grid<TF>::init_mpi()
     int subxzstart[2] = {0, master.mpicoordx*gd.imax};
     MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxzslice);
     MPI_Type_commit(&subxzslice);
-    
+
     // save mpitype for a yz-slice for cross section processing
     int totyzsize [2] = {gd.kmax, gd.jtot};
     int subyzsize [2] = {gd.kmax, gd.jmax};
@@ -155,7 +155,7 @@ void Grid<TF>::init_mpi()
     // profl = new double[kcells];
 
     mpitypes = true;
-} 
+}
 
 template<typename TF>
 void Grid<TF>::exit_mpi()
@@ -472,27 +472,27 @@ void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
 //     double varl = *var;
 //     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_MAX, master.commxy);
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_max(int *var)
 // {
 //     int varl = *var;
 //     MPI_Allreduce(&varl, var, 1, MPI_INT, MPI_MAX, master.commxy);
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_sum(double *var)
 // {
 //     double varl = *var;
 //     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::get_prof(double *prof, int kcellsin)
 // {
 //     for (int k=0; k<kcellsin; k++)
 //         profl[k] = prof[k] / master.nprocs;
-// 
+//
 //     MPI_Allreduce(profl, prof, kcellsin, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
 // }
 
@@ -836,19 +836,19 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
     transpose_xz(tmp1, data);
 }
 
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
 // {
 //     // extract the data from the 3d field without the ghost cells
 //     int nerror=0;
-// 
+//
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int kkb = imax;
-// 
+//
 //     int count = imax*kmax;
-// 
+//
 //     for (int k=0; k<kmax; k++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -858,55 +858,55 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + k*kkb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     if (master.mpicoordy == jslice/jmax)
 //     {
 //         MPI_File fh;
 //         if (MPI_File_open(master.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
 //             ++nerror;
-// 
+//
 //         // select noncontiguous part of 3d array to store the selected data
 //         MPI_Offset fileoff = 0; // the offset within the file (header size)
 //         char name[] = "native";
-// 
+//
 //         if (!nerror)
 //             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxzslice, name, MPI_INFO_NULL))
 //                 ++nerror;
-// 
+//
 //         // only write at the procs that contain the slice
 //         if (!nerror)
 //             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //                 ++nerror;
-// 
+//
 //         if (!nerror)
 //             MPI_File_sync(fh);
-// 
+//
 //         if (!nerror)
 //             if (MPI_File_close(&fh))
 //                 ++nerror;
 //     }
-// 
+//
 //     // Gather errors from other processes
 //     master.sum(&nerror,1);
-// 
+//
 //     MPI_Barrier(master.commxy);
-// 
+//
 //     return nerror;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
 // {
 //     // extract the data from the 3d field without the ghost cells
 //     int nerror=0;
-// 
+//
 //     const int jj = icells;
 //     const int kk = ijcells;
-// 
+//
 //     const int kkb = jmax;
-// 
+//
 //     int count = jmax*kmax;
-// 
+//
 //     // Strip off the ghost cells
 //     for (int k=0; k<kmax; k++)
 //         #pragma ivdep
@@ -917,42 +917,42 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = j + k*kkb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     if (master.mpicoordx == islice/imax)
 //     {
 //         MPI_File fh;
 //         if (MPI_File_open(master.commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
 //             ++nerror;
-// 
+//
 //         // select noncontiguous part of 3d array to store the selected data
 //         MPI_Offset fileoff = 0; // the offset within the file (header size)
 //         char name[] = "native";
-// 
+//
 //         if (!nerror)
 //             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subyzslice, name, MPI_INFO_NULL))
 //                 ++nerror;
-// 
+//
 //         // only write at the procs that contain the slice
 //         if (!nerror)
 //             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //                 ++nerror;
-// 
+//
 //         if (!nerror)
 //             MPI_File_sync(fh);
-// 
+//
 //         if (!nerror)
 //             if (MPI_File_close(&fh))
 //                 ++nerror;
 //     }
-// 
+//
 //     // Gather errors from other processes
 //     master.sum(&nerror,1);
-// 
+//
 //     MPI_Barrier(master.commxy);
-// 
+//
 //     return nerror;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 // {
@@ -960,13 +960,13 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int jjb = imax;
-// 
+//
 //     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
 //     if (kslice == -1)
 //         kslice = -kgc;
-// 
+//
 //     int count = imax*jmax;
-// 
+//
 //     for (int j=0; j<jmax; j++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -976,32 +976,32 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + j*jjb;
 //             tmp[ijkb] = data[ijk];
 //         }
-// 
+//
 //     MPI_File fh;
 //     if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
 //         return 1;
-// 
+//
 //     // select noncontiguous part of 3d array to store the selected data
 //     MPI_Offset fileoff = 0; // the offset within the file (header size)
 //     char name[] = "native";
-// 
+//
 //     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
 //         return 1;
-// 
+//
 //     // only write at the procs that contain the slice
 //     if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //         return 1;
-// 
+//
 //     MPI_File_sync(fh);
-// 
+//
 //     if (MPI_File_close(&fh))
 //         return 1;
-// 
+//
 //     MPI_Barrier(master.commxy);
-// 
+//
 //     return 0;
 // }
-// 
+//
 // template<typename TF>
 // int Grid<TF>::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 // {
@@ -1009,33 +1009,33 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //     const int jj  = icells;
 //     const int kk  = icells*jcells;
 //     const int jjb = imax;
-// 
+//
 //     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
 //     if (kslice == -1)
 //         kslice = -kgc;
-// 
+//
 //     int count = imax*jmax;
-// 
+//
 //     MPI_File fh;
 //     if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
 //         return 1;
-// 
+//
 //     // select noncontiguous part of 3d array to store the selected data
 //     MPI_Offset fileoff = 0; // the offset within the file (header size)
 //     char name[] = "native";
-// 
+//
 //     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
 //         return 1;
-// 
+//
 //     // only write at the procs that contain the slice
 //     if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
 //         return 1;
-// 
+//
 //     if (MPI_File_close(&fh))
 //         return 1;
-// 
+//
 //     MPI_Barrier(master.commxy);
-// 
+//
 //     for (int j=0; j<jmax; j++)
 // #pragma ivdep
 //         for (int i=0; i<imax; i++)
@@ -1045,7 +1045,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
 //             const int ijkb = i + j*jjb;
 //             data[ijk] = tmp[ijkb];
 //         }
-// 
+//
 //     return 0;
 // }
 

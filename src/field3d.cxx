@@ -89,7 +89,7 @@ int Field3d<TF>::init()
         flux_bot[n] = 0.;
         flux_top[n] = 0.;
     }
-    
+
     return 0;
 }
 

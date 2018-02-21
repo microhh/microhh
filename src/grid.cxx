@@ -623,10 +623,10 @@ void Grid<TF>::set_minimum_ghost_cells(const int igcin, const int jgcin, const i
     gd.igc = std::max(gd.igc, igcin);
     gd.jgc = std::max(gd.jgc, jgcin);
     gd.kgc = std::max(gd.kgc, kgcin);
-    
+
     // BvS: this doesn't work; imax is undefined if this routine is called from a class constructor
     // Removed it since this check is anyhow always performed from the init() of grid (after defining imax)
-    //check_ghost_cells(); 
+    //check_ghost_cells();
 }
 
 /**
@@ -659,7 +659,7 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
                          + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
             }
 }
- 
+
 // /**
 //  * This function does a fourth order horizontal interpolation in the x-direction
 //  * to the selected location on the grid.
@@ -672,18 +672,18 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
 // void Grid<TF>::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
 // {
 //     using namespace Finite_difference::O4;
-// 
+//
 //     // interpolation function, locx = 1 indicates that the reference is at the half level
 //     const int ii = 1;
 //     const int jj = icells;
 //     const int kk = ijcells;
-// 
+//
 //     // a shift to the left gives minus 1 a shift to the right +1
 //     const int iih1 = 1*(locin[0]-locout[0])*ii;
 //     const int iih2 = 2*(locin[0]-locout[0])*ii;
 //     const int jjh1 = 1*(locin[1]-locout[1])*jj;
 //     const int jjh2 = 2*(locin[1]-locout[1])*jj;
-// 
+//
 //     // \TODO add the vertical component
 //     for (int k=0; k<kcells; ++k)
 //         for (int j=jstart; j<jend; ++j)
@@ -697,13 +697,13 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
 //                          + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
 //             }
 // }
-// 
+//
 // template<typename TF>
 // void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
 // {
 //     const int jj = icells;
 //     const int kk = ijcells;
-// 
+//
 //     for (int k=0; k<krange; ++k)
 //     {
 //         prof[k] = 0.;
@@ -715,11 +715,11 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
 //                 prof[k] += data[ijk];
 //             }
 //     }
-// 
+//
 //     master.sum(prof, krange);
-// 
+//
 //     const double n = itot*jtot;
-// 
+//
 //     for (int k=0; k<krange; ++k)
 //         prof[k] /= n;
 // }

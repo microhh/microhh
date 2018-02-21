@@ -144,7 +144,7 @@ void Force<TF>::create(Input& inputin)
 //            // \TODO make sure to give each element its own time series and remove the clear()
 //            timedeptime.clear();
 //            std::string name = *it + "ls";
-//            if (std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
+//            if (std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end())
 //            {
 //                nerror += inputin->get_time_prof(&timedepdata[name], &timedeptime, name, grid->kmax);
 //
@@ -155,7 +155,7 @@ void Force<TF>::create(Input& inputin)
 //            }
 //        }
 //
-//        // display a warning for the non-supported 
+//        // display a warning for the non-supported
 //        for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
 //            master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
 //    }
@@ -347,7 +347,7 @@ void Force<TF>::exec(double dt)
 //}
 //#endif
 //
-//void Force::calc_flux(double* const restrict ut, const double* const restrict u, 
+//void Force::calc_flux(double* const restrict ut, const double* const restrict u,
 //                      const double* const restrict dz, const double dt)
 //{
 //    const int jj = grid->icells;
@@ -374,7 +374,7 @@ void Force<TF>::exec(double dt)
 //    uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
 //    utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 //
-//    double fbody; 
+//    double fbody;
 //    fbody = (uflux - uavg - ugrid) / dt - utavg;
 //
 //    for (int n=0; n<grid->ncells; n++)

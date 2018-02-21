@@ -208,8 +208,8 @@ void Input::print_itemlist()
             for (auto& is : i.second)
             {
                 std::ostringstream ss;
-                ss << b.first << "," << i.first << "," << is.first 
-                   << "," << is.second.first 
+                ss << b.first << "," << i.first << "," << is.first
+                   << "," << is.second.first
                    << " (" << std::boolalpha << is.second.second << ")" << ";" << std::endl;
                 master.print_message(ss);
             }
@@ -243,8 +243,8 @@ T Input::get_item(const std::string& blockname,
         itemout += "[" + subitemname + "]";
 
     std::ostringstream ss;
-    ss << std::left << std::setw(30) << itemout << "= " 
-       << std::right << std::setw(11) << std::setprecision(5) << item 
+    ss << std::left << std::setw(30) << itemout << "= "
+       << std::right << std::setw(11) << std::setprecision(5) << item
        << std::endl;
 
     master.print_message(ss);
@@ -264,7 +264,7 @@ T Input::get_item(const std::string& blockname,
     try
     {
         std::string value = get_item_string(itemlist, blockname, itemname, subitemname);
-        item = convert_value_to_item<T>(value); 
+        item = convert_value_to_item<T>(value);
     }
     catch (std::runtime_error& e)
     {
@@ -277,8 +277,8 @@ T Input::get_item(const std::string& blockname,
         itemout += "[" + subitemname + "]";
 
     std::ostringstream ss;
-    ss << std::left << std::setw(30) << itemout << "= " 
-       << std::right << std::setw(11) << std::setprecision(5) << item 
+    ss << std::left << std::setw(30) << itemout << "= "
+       << std::right << std::setw(11) << std::setprecision(5) << item
        << "   " << itemqualifier << std::endl;
 
     master.print_message(ss);
@@ -311,8 +311,8 @@ namespace
         }
 
         std::ostringstream ss;
-        ss << std::left << std::setw(30) << itemout << "= " 
-           << std::right << std::setw(11) 
+        ss << std::left << std::setw(30) << itemout << "= "
+           << std::right << std::setw(11)
            << items.str();
         if (default_list)
            ss << "   " << "(default)";

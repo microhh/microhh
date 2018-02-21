@@ -87,19 +87,19 @@ class Fields
 
         Field_map<TF> atmp; ///< Map containing all temporary field3d instances
 
-        std::vector<TF> rhoref;  ///< Reference density at full levels 
+        std::vector<TF> rhoref;  ///< Reference density at full levels
         std::vector<TF> rhorefh; ///< Reference density at half levels
 
         // TODO remove these to and bring them to diffusion model
         TF visc;
 
-        /* 
+        /*
          *Device (GPU) functions and variables
          */
-        
+
         enum Offset_type {Offset, No_offset};
 
-        void prepare_device();  ///< Allocation of all fields at device 
+        void prepare_device();  ///< Allocation of all fields at device
         void forward_device();  ///< Copy of all fields from host to device
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
@@ -113,7 +113,7 @@ class Fields
 
         TF* rhoref_g;  ///< Reference density at full levels at device
         TF* rhorefh_g; ///< Reference density at half levels at device
-        
+
 
     private:
         Master& master;
@@ -130,7 +130,7 @@ class Fields
 
         // Cross sections split per type.
         // std::vector<std::string> crosssimple;
-        // std::vector<std::string> crosslngrad;   
+        // std::vector<std::string> crosslngrad;
         // std::vector<std::string> crossbot;
         // std::vector<std::string> crosstop;
         // std::vector<std::string> crossfluxbot;
@@ -167,7 +167,7 @@ class Fields
         // double* umodel;
         // double* vmodel;
 
-        /* 
+        /*
          *Device (GPU) functions and variables
          */
         void forward_field3d_device(Field3d<TF> *);  ///< Copy of a complete Field3d instance from host to device

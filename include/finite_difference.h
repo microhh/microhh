@@ -93,7 +93,7 @@ namespace Finite_difference
         const double cdg2 =   -54./576.;
         const double cdg3 =     1./576.;
 
-        CUDA_MACRO inline double interp4(const double a, const double b, const double c, const double d) 
+        CUDA_MACRO inline double interp4(const double a, const double b, const double c, const double d)
         {
             return ci0*a + ci1*b + ci2*c + ci3*d;
         }
@@ -115,7 +115,7 @@ namespace Finite_difference
 
         CUDA_MACRO inline double grad4x(const double a, const double b, const double c, const double d)
         {
-            return (-(d-a) + 27.*(c-b)); 
+            return (-(d-a) + 27.*(c-b));
         }
     }
 }
