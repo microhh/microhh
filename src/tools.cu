@@ -29,19 +29,19 @@
 
 namespace Tools_g
 {
-    template <typename TF, ReduceType function> __device__
+    template <typename TF, Reduce_type function> __device__
     TF reduction(TF v1, TF v2)
     {
         TF rval;
-        if (function == sumType)
+        if (function == Sum_type)
             rval = v1+v2;
-        else if (function == maxType)
+        else if (function == Max_type)
             rval = fmax(v1,v2);
         return rval;
     }
 
     // Reduce one block of data
-    template <typename TF, ReduceType function, int blockSize> __device__
+    template <typename TF, Reduce_type function, int blockSize> __device__
     void reduce_block_kernel(volatile TF* as, const unsigned int tid)
     {
         /* Loop is completely unrolled for performance */
@@ -62,7 +62,7 @@ namespace Tools_g
     }
 
     // Reduce field from 3D to 2D, excluding ghost cells and padding
-    template <typename TF, ReduceType function, int blockSize> __global__
+    template <typename TF, Reduce_type function, int blockSize> __global__
     void reduce_interior_kernel(const TF* a, TF* a2d,
                         unsigned int istart, unsigned int jstart, unsigned int kstart,
                         unsigned int iend,   unsigned int jend,
@@ -81,9 +81,9 @@ namespace Tools_g
         const unsigned int ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
 
         TF tmpval;
-        if (function == maxType)
-            tmpval = -DBL_MAX;
-        else if (function == sumType)
+        if (function == Max_type)
+            tmpval = -FLT_MAX;  // This should ideally be a TF_MAX
+        else if (function == Sum_type)
             tmpval = 0;
 
         int ii = ijk;
@@ -105,7 +105,7 @@ namespace Tools_g
     }
 
     // Reduce array, not accounting from ghost cells or padding
-    template <typename TF, ReduceType function, int blockSize> __global__
+    template <typename TF, Reduce_type function, int blockSize> __global__
     void reduce_all_kernel(const TF* a, TF* aout, unsigned int ncells, unsigned int nvaluesperblock, TF scalefac)
     {
         // See https://stackoverflow.com/a/27570775/3581217
@@ -117,9 +117,9 @@ namespace Tools_g
         unsigned int ii         = nvaluesperblock *  blockIdx.x + threadIdx.x;
 
         TF tmpval;
-        if (function == maxType)
-            tmpval = -DBL_MAX;
-        else if (function == sumType)
+        if (function == Max_type)
+            tmpval = -FLT_MAX;  // This should ideally be a TF_MAX
+        else if (function == Sum_type)
             tmpval = 0;
 
         while (ii < iim)
@@ -142,7 +142,7 @@ namespace Tools_g
             aout[blockIdx.x] = as[0];
     }
 
-    int nextpow2(unsigned int x)
+    int next_pow_of_2(unsigned int x)
     {
         return (int)pow(2,ceil(log(x)/log(2)));
     }
@@ -153,101 +153,101 @@ namespace Tools_g
                          int itot, int istart, int iend,
                          int jtot, int jstart, int jend,
                          int ktot, int kstart,
-                         int icells, int ijcells, ReduceType mode)
+                         int icells, int ijcells, Reduce_type mode)
     {
-        const int nthreads = max(16,min(reduceMaxThreads, nextpow2(itot/2)));
+        const int nthreads = max(16,min(reduce_max_threads, next_pow_of_2(itot/2)));
 
         dim3 gridGPU (1, jtot, ktot);
         dim3 blockGPU(nthreads, 1, 1);
 
-        if (mode == maxType)
+        if (mode == Max_type)
         {
             switch (nthreads)
             {
                 case 512:
-                    reduce_interior_kernel<TF, maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 256:
-                    reduce_interior_kernel<TF, maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 128:
-                    reduce_interior_kernel<TF, maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 64:
-                    reduce_interior_kernel<TF, maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 32:
-                    reduce_interior_kernel<TF, maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 16:
-                    reduce_interior_kernel<TF, maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Max_type,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
             }
         }
-        else if (mode == sumType)
+        else if (mode == Sum_type)
         {
             switch (nthreads)
             {
                 case 512:
-                    reduce_interior_kernel<TF, sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 256:
-                    reduce_interior_kernel<TF, sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 128:
-                    reduce_interior_kernel<TF, sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 64:
-                    reduce_interior_kernel<TF, sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 32:
-                    reduce_interior_kernel<TF, sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
                 case 16:
-                    reduce_interior_kernel<TF, sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+                    reduce_interior_kernel<TF, Sum_type,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
             }
         }
         cuda_check_error();
     }
 
     template<typename TF>
-    void reduce_all(TF* a, TF* aout, int ncells, int nblocks, int nvaluesperblock, ReduceType mode, TF scalefac)
+    void reduce_all(TF* a, TF* aout, int ncells, int nblocks, int nvaluesperblock, Reduce_type mode, TF scalefac)
     {
-       const int nthreads = max(16,min(reduceMaxThreads, nextpow2(nvaluesperblock/2)));
+       const int nthreads = max(16,min(reduce_max_threads, next_pow_of_2(nvaluesperblock/2)));
 
         dim3 gridGPU (nblocks,  1, 1);
         dim3 blockGPU(nthreads, 1, 1);
 
-        if (mode == maxType)
+        if (mode == Max_type)
         {
             switch (nthreads)
             {
                 case 512:
-                    reduce_all_kernel<TF, maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 256:
-                    reduce_all_kernel<TF, maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 128:
-                    reduce_all_kernel<TF, maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 64:
-                    reduce_all_kernel<TF, maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 32:
-                    reduce_all_kernel<TF, maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 16:
-                    reduce_all_kernel<TF, maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Max_type,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
             }
         }
-        else if (mode == sumType)
+        else if (mode == Sum_type)
         {
             switch (nthreads)
             {
                 case 512:
-                    reduce_all_kernel<TF, sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type, 512><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 256:
-                    reduce_all_kernel<TF, sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type, 256><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 128:
-                    reduce_all_kernel<TF, sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type, 128><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 64:
-                    reduce_all_kernel<TF, sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type,  64><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 32:
-                    reduce_all_kernel<TF, sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type,  32><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
                 case 16:
-                    reduce_all_kernel<TF, sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+                    reduce_all_kernel<TF, Sum_type,  16><<<gridGPU, blockGPU, nthreads*sizeof(TF)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
             }
         }
         cuda_check_error();
     }
 }
 
-template void Tools_g::reduce_interior<double>(double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
-template void Tools_g::reduce_interior<float>(float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::ReduceType);
-template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::ReduceType, double);
-template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::ReduceType, float);
+template void Tools_g::reduce_interior<double>(double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
+template void Tools_g::reduce_interior<float>(float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
+template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::Reduce_type, double);
+template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::Reduce_type, float);
