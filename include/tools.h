@@ -52,7 +52,7 @@ namespace Tools_g
     // Function to check for errors in CUDA kernels. Call directly after kernel.
     inline void __cuda_check_error(const char *file, const int line)
     {
-#ifdef CUDACHECKS
+        #ifdef CUDACHECKS
         cudaError err = cudaGetLastError();
         if (cudaSuccess != err)
         {
@@ -66,7 +66,7 @@ namespace Tools_g
             printf("cudaCheckError() with sync failed at %s:%i : %s\n", file, line, cudaGetErrorString( err ) );
             throw 1;
         }
-#endif
+        #endif
     }
 }
 

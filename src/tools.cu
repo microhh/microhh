@@ -243,3 +243,5 @@ namespace Tools_g
     }
 }
 
+template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::ReduceType, double);
+template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::ReduceType, float);
