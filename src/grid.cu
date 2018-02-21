@@ -165,11 +165,11 @@ void Grid<TF>::boundary_cyclic_g(TF* data)
     dim3 gridGPUy (gridi_y,  gridj_y,  gd.kcells);
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-    boundary_cyclic_x_g<<<gridGPUx,blockGPUx>>>(
+    boundary_cyclic_x_g<TF><<<gridGPUx,blockGPUx>>>(
         data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
-    boundary_cyclic_y_g<<<gridGPUy,blockGPUy>>>(
+    boundary_cyclic_y_g<TF><<<gridGPUy,blockGPUy>>>(
         data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
@@ -195,11 +195,11 @@ void Grid<TF>::boundary_cyclic2d_g(TF* data)
     dim3 gridGPUy (gridi_y,  gridj_y,  1);
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-    boundary_cyclic_x_g<<<gridGPUx,blockGPUx>>>(
+    boundary_cyclic_x_g<TF><<<gridGPUx,blockGPUx>>>(
         data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
-    boundary_cyclic_y_g<<<gridGPUy,blockGPUy>>>(
+    boundary_cyclic_y_g<TF><<<gridGPUy,blockGPUy>>>(
         data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 

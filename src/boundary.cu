@@ -69,10 +69,10 @@ namespace
 
         if (i < icells && j < jcells)
         {
-            if (sw == Boundary<TF>::Dirichlet_type)
+            if (sw == Boundary_type::Dirichlet_type)
                 a[ijk-kk] = 2.*abot[ij] - a[ijk];
 
-            else if (sw == Boundary<TF>::Neumann_type || sw == Boundary<TF>::Flux_type)
+            else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
         }
     }
@@ -92,10 +92,10 @@ namespace
 
         if (i < icells && j < jcells)
         {
-            if (sw == Boundary<TF>::Dirichlet_type)
+            if (sw == Boundary_type::Dirichlet_type)
                 a[ijk+kk] = 2.*atop[ij] - a[ijk];
 
-            else if (sw == Boundary<TF>::Neumann_type || sw == Boundary<TF>::Flux_type)
+            else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
         }
     }
@@ -117,13 +117,13 @@ namespace
 
         if (i < icells && j < jcells)
         {
-            if (sw == Boundary<TF>::Dirichlet_type)
+            if (sw == Boundary_type::Dirichlet_type)
             {
                 a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
                 a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
             }
 
-            else if (sw == Boundary<TF>::Neumann_type || sw == Boundary<TF>::Flux_type)
+            else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
             {
                 a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
                 a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
@@ -148,13 +148,13 @@ namespace
 
         if( i < icells && j < jcells)
         {
-            if (sw == Boundary<TF>::Dirichlet_type)
+            if (sw == Boundary_type::Dirichlet_type)
             {
                 a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
                 a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
             }
 
-            else if (sw == Boundary<TF>::Neumann_type || sw == Boundary<TF>::Flux_type)
+            else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
             {
                 a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
                 a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
@@ -271,28 +271,28 @@ void Boundary<TF>::exec()
 
     if(grid.swspatialorder == "2")
     {
-        calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("u")->fld_g[offs], gd.dzh_g, mbcbot,
             &fields.mp.at("u")->fld_bot_g[offs], &fields.mp.at("u")->grad_bot_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kstart);
         cuda_check_error();
 
-        calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("u")->fld_g[offs], gd.dzh_g, mbctop,
             &fields.mp.at("u")->fld_top_g[offs], &fields.mp.at("u")->grad_top_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kend);
         cuda_check_error();
 
-        calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("v")->fld_g[offs], gd.dzh_g, mbcbot,
             &fields.mp.at("v")->fld_bot_g[offs], &fields.mp.at("v")->grad_bot_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kstart);
         cuda_check_error();
 
-        calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("v")->fld_g[offs], gd.dzh_g, mbctop,
             &fields.mp.at("v")->fld_top_g[offs], &fields.mp.at("v")->grad_top_g[offs],
             gd.icells, gd.icellsp,
@@ -301,14 +301,14 @@ void Boundary<TF>::exec()
 
         for (auto& it : fields.sp)
         {
-            calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_bot_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &it.second->fld_g[offs], gd.dzh_g, sbc.at(it.first).bcbot,
                 &it.second->fld_bot_g[offs], &it.second->grad_bot_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kstart);
             cuda_check_error();
 
-            calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_top_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &it.second->fld_g[offs], gd.dzh_g, sbc.at(it.first).bctop,
                 &it.second->fld_top_g[offs], &it.second->grad_top_g[offs],
                 gd.icells, gd.icellsp,
@@ -318,28 +318,28 @@ void Boundary<TF>::exec()
     }
     else if(grid.swspatialorder == "4")
     {
-        calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("u")->fld_g[offs], gd.dzh_g, mbcbot,
             &fields.mp.at("u")->fld_bot_g[offs], &fields.mp.at("u")->grad_bot_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kstart);
         cuda_check_error();
 
-        calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("u")->fld_g[offs], gd.dzh_g, mbctop,
             &fields.mp.at("u")->fld_top_g[offs], &fields.mp.at("u")->grad_top_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kend);
         cuda_check_error();
 
-        calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("v")->fld_g[offs], gd.dzh_g, mbcbot,
             &fields.mp.at("v")->fld_bot_g[offs], &fields.mp.at("v")->grad_bot_g[offs],
             gd.icells, gd.icellsp,
             gd.jcells, gd.kstart);
         cuda_check_error();
 
-        calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
             &fields.mp.at("v")->fld_g[offs], gd.dzh_g, mbctop,
             &fields.mp.at("v")->fld_top_g[offs], &fields.mp.at("v")->grad_top_g[offs],
             gd.icells, gd.icellsp,
@@ -348,14 +348,14 @@ void Boundary<TF>::exec()
 
         for (auto& it : fields.sp)
         {
-            calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_bot_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &it.second->fld_g[offs], gd.dzh_g, sbc.at(it.first).bcbot,
                 &it.second->fld_bot_g[offs], &it.second->grad_bot_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kstart);
             cuda_check_error();
 
-            calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_top_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &it.second->fld_g[offs], gd.dzh_g, sbc.at(it.first).bctop,
                 &it.second->fld_top_g[offs], &it.second->grad_top_g[offs],
                 gd.icells, gd.icellsp,
@@ -383,29 +383,29 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 
     if (grid.swspatialorder == "4")
     {
-        if (boundary_w_type == Boundary<TF>::Normal_type)
+        if (boundary_w_type == Boundary_w_type::Normal_type)
         {
-            calc_ghost_cells_botw_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_botw_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &fields.mp.at("w")->fld_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kstart);
             cuda_check_error();
 
-            calc_ghost_cells_topw_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_topw_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &fields.mp.at("w")->fld_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kend);
             cuda_check_error();
         }
-        else if (boundary_w_type == Boundary<TF>::Conservation_type)
+        else if (boundary_w_type == Boundary_w_type::Conservation_type)
         {
-            calc_ghost_cells_botw_cons_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_botw_cons_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &fields.mp.at("w")->fld_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kstart);
             cuda_check_error();
 
-            calc_ghost_cells_topw_cons_4th_g<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_topw_cons_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
                 &fields.mp.at("w")->fld_g[offs],
                 gd.icells, gd.icellsp,
                 gd.jcells, gd.kend);
@@ -430,21 +430,21 @@ void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict afl
 
     const int offs = gd.memoffset;
 
-    if (sw == Boundary<TF>::Dirichlet_type)
+    if (sw == Boundary_type::Dirichlet_type)
     {
-        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    gd.icells, gd.icellsp, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    gd.icells, gd.icellsp, gd.jcells);
         cuda_check_error();
     }
-    else if (sw == Boundary<TF>::Neumann_type)
+    else if (sw == Boundary_type::Neumann_type)
     {
-        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       gd.icells, gd.icellsp, gd.jcells);
-        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, gd.icells, gd.icellsp, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       gd.icells, gd.icellsp, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, gd.icells, gd.icellsp, gd.jcells);
         cuda_check_error();
     }
-    else if (sw == Boundary<TF>::Flux_type)
+    else if (sw == Boundary_type::Flux_type)
     {
-        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       gd.icells, gd.icellsp, gd.jcells);
-        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, gd.icells, gd.icellsp, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       gd.icells, gd.icellsp, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, gd.icells, gd.icellsp, gd.jcells);
         cuda_check_error();
     }
 }

@@ -230,7 +230,7 @@ void Model<TF>::exec()
     fields  ->prepare_device();
     // buffer  ->prepare_device();
     // thermo  ->prepare_device();
-    boundary->prepare_device();
+    // boundary->prepare_device();
     // diff    ->prepare_device();
     // force   ->prepare_device();
     // decay   ->prepare_device();
@@ -297,7 +297,7 @@ void Model<TF>::exec()
             if(t_stat.joinable())
                 t_stat.join();
             fields  ->backward_device();
-            boundary->backward_device();
+            //boundary->backward_device();
             // thermo  ->backward_device();
             t_stat=std::thread(&Model::calculate_statistics,this, timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());//, cross->do_cross(), dump->do_dump(), column->doColumn(),
             #else
@@ -327,7 +327,7 @@ void Model<TF>::exec()
                     t_stat.join();
 
                 fields  ->backward_device();
-                boundary->backward_device();
+                // boundary->backward_device();
                 // thermo  ->backward_device();
                 #endif
 
@@ -375,7 +375,7 @@ void Model<TF>::exec()
         if(t_stat.joinable())
             t_stat.join();
         fields  ->backward_device();
-        boundary->backward_device();
+        // boundary->backward_device();
         //thermo  ->backward_device();
         #endif
 }
