@@ -64,7 +64,7 @@ namespace
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;

@@ -40,7 +40,8 @@ set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB} 
 if(USECUDA)
    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
    set(LIBS ${LIBS} -rdynamic /hpc/sw/cuda/8.0.44/lib64/libcufft.so)
-   set(USER_CUDA_NVCC_FLAGS "-arch=sm_35 -std=c++11")
+   set(USER_CUDA_NVCC_FLAGS "-arch=sm_35")
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
