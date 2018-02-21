@@ -48,8 +48,14 @@ void Pres_disabled<TF>::set_values() {}
 template<typename TF>
 void Pres_disabled<TF>::exec(const double dt) {}
 
-// template<typename TF>
-// void Pres_disabled<TF>::prepare_device() {}
+// BvS: mixing CUDA and CPU code; put in pres_disabled.cu? Might be a bit of overkill?
+#ifdef USECUDA
+template<typename TF>
+void Pres_disabled<TF>::prepare_device() {}
+
+template<typename TF>
+void Pres_disabled<TF>::clear_device() {}
+#endif
 
 template class Pres_disabled<double>;
 template class Pres_disabled<float>;

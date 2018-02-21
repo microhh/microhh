@@ -24,6 +24,7 @@
 #define ADVEC
 
 #include <string>
+#include <memory>
 
 class Master;
 class Input;

@@ -21,7 +21,6 @@
  */
 
 #include "advec_2.h"
-#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "tools.h"
@@ -140,12 +139,12 @@ using namespace Finite_difference::O2;
 template<typename TF>
 unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
 {
-    // Calculate cfl and prevent zero divisons.
-    //double cfl = get_cfl(dt);
-    //cfl = std::max(cflmin, cfl);
-    //const unsigned long idtlim = idt * cflmax / cfl;
-
-    //return idtlim;
+//    // Calculate cfl and prevent zero divisons.
+//    double cfl = get_cfl(dt);
+//    cfl = std::max(cflmin, cfl);
+//    const unsigned long idtlim = idt * cflmax / cfl;
+//
+//    return idtlim;
 
     return 1;
 }
@@ -153,32 +152,32 @@ unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
 template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {
-    //const int blocki = grid->ithread_block;
-    //const int blockj = grid->jthread_block;
-    //const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    //const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-    //dim3 gridGPU (gridi, gridj, grid->kcells);
-    //dim3 blockGPU(blocki, blockj, 1);
-
-    //const double dxi = 1./grid->dx;
-    //const double dyi = 1./grid->dy;
-
-    //const int offs = grid->memoffset;
-
-    //calc_cfl_g<<<gridGPU, blockGPU>>>(
-    //    &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-    //    &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
-    //    grid->icellsp, grid->ijcellsp,
-    //    grid->istart,  grid->jstart, grid->kstart,
-    //    grid->iend,    grid->jend,   grid->kend);
-    //cuda_check_error(); 
-
-    //double cfl = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-    //grid->get_max(&cfl); 
-    //cfl = cfl*dt;
-
-    //return cfl;
+//    const int blocki = grid->ithread_block;
+//    const int blockj = grid->jthread_block;
+//    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+//    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+//
+//    dim3 gridGPU (gridi, gridj, grid->kcells);
+//    dim3 blockGPU(blocki, blockj, 1);
+//
+//    const double dxi = 1./grid->dx;
+//    const double dyi = 1./grid->dy;
+//
+//    const int offs = grid->memoffset;
+//
+//    calc_cfl_g<<<gridGPU, blockGPU>>>(
+//        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+//        &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
+//        grid->icellsp, grid->ijcellsp,
+//        grid->istart,  grid->jstart, grid->kstart,
+//        grid->iend,    grid->jend,   grid->kend);
+//    cuda_check_error(); 
+//
+//    double cfl = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+//    grid->get_max(&cfl); 
+//    cfl = cfl*dt;
+//
+//    return cfl;
 
     return 1;
 }
@@ -186,36 +185,39 @@ double Advec_2<TF>::get_cfl(double dt)
 template<typename TF>
 void Advec_2<TF>::exec()
 {
-    //const int blocki = grid->ithread_block;
-    //const int blockj = grid->jthread_block;
-    //const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    //const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-    //dim3 gridGPU (gridi, gridj, grid->kmax);
-    //dim3 blockGPU(blocki, blockj, 1);
-
-    //const double dxi = 1./grid->dx;
-    //const double dyi = 1./grid->dy;
-
-    //const int offs = grid->memoffset;
-
-    //advec_uvw_g<<<gridGPU, blockGPU>>>(
-    //    &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs], 
-    //    &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs], 
-    //    fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, grid->dzhi_g, dxi, dyi, 
-    //    grid->icellsp, grid->ijcellsp,
-    //    grid->istart,  grid->jstart, grid->kstart,
-    //    grid->iend,    grid->jend,   grid->kend);
-    //cuda_check_error(); 
-
-    //for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    //    advec_s_g<<<gridGPU, blockGPU>>>(
-    //        &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
-    //        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-    //        fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, dxi, dyi,
-    //        grid->icellsp, grid->ijcellsp,
-    //        grid->istart,  grid->jstart, grid->kstart,
-    //        grid->iend,    grid->jend,   grid->kend);
-    //cuda_check_error(); 
+//    const int blocki = grid->ithread_block;
+//    const int blockj = grid->jthread_block;
+//    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+//    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+//
+//    dim3 gridGPU (gridi, gridj, grid->kmax);
+//    dim3 blockGPU(blocki, blockj, 1);
+//
+//    const double dxi = 1./grid->dx;
+//    const double dyi = 1./grid->dy;
+//
+//    const int offs = grid->memoffset;
+//
+//    advec_uvw_g<<<gridGPU, blockGPU>>>(
+//        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs], 
+//        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs], 
+//        fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, grid->dzhi_g, dxi, dyi, 
+//        grid->icellsp, grid->ijcellsp,
+//        grid->istart,  grid->jstart, grid->kstart,
+//        grid->iend,    grid->jend,   grid->kend);
+//    cuda_check_error(); 
+//
+//    for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+//        advec_s_g<<<gridGPU, blockGPU>>>(
+//            &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
+//            &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+//            fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, dxi, dyi,
+//            grid->icellsp, grid->ijcellsp,
+//            grid->istart,  grid->jstart, grid->kstart,
+//            grid->iend,    grid->jend,   grid->kend);
+//    cuda_check_error(); 
 }
 #endif
+
+template class Advec_2<double>;
+template class Advec_2<float>;
