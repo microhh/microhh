@@ -224,18 +224,7 @@ void Model<TF>::exec()
         return;
 
     #ifdef USECUDA
-    // Load all the necessary data to the GPU.
-    master.print_message("Preparing the GPU\n");
-    grid    ->prepare_device();
-    fields  ->prepare_device();
-    // buffer  ->prepare_device();
-    // thermo  ->prepare_device();
-    // boundary->prepare_device();
-    // diff    ->prepare_device();
-    // force   ->prepare_device();
-    // decay   ->prepare_device();
-    // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    prepare_gpu();
     #endif
 
     master.print_message("Starting time integration\n");
@@ -377,7 +366,42 @@ void Model<TF>::exec()
         fields  ->backward_device();
         // boundary->backward_device();
         //thermo  ->backward_device();
+
+        clear_gpu();
         #endif
+}
+
+template<typename TF>
+void Model<TF>::prepare_gpu()
+{
+    // Load all the necessary data to the GPU.
+    master.print_message("Preparing the GPU\n");
+    grid    ->prepare_device();
+    fields  ->prepare_device();
+    // buffer  ->prepare_device();
+    // thermo  ->prepare_device();
+    // boundary->prepare_device();
+    // diff    ->prepare_device();
+    // force   ->prepare_device();
+    // decay   ->prepare_device();
+    // // Prepare pressure last, for memory check
+    // pres    ->prepare_device();
+}
+
+template<typename TF>
+void Model<TF>::clear_gpu()
+{
+    master.print_message("Clearing the GPU\n");
+    grid    ->clear_device();
+    fields  ->clear_device();
+    // buffer  ->prepare_device();
+    // thermo  ->prepare_device();
+    // boundary->prepare_device();
+    // diff    ->prepare_device();
+    // force   ->prepare_device();
+    // decay   ->prepare_device();
+    // // Prepare pressure last, for memory check
+    // pres    ->prepare_device();
 }
 
 template<typename TF>

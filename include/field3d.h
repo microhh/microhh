@@ -56,7 +56,6 @@ class Field3d
 
         TF visc;
 
-
         // Device functions and variables
         void init_device();  ///< Allocate Field3D fields at device
         void clear_device(); ///< Deallocate Field3D fields at device

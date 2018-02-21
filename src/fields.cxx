@@ -163,9 +163,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 template<typename TF>
 Fields<TF>::~Fields()
 {
-#ifdef USECUDA
-    clear_device();
-#endif
 }
 
 template<typename TF>

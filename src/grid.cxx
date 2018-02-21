@@ -125,11 +125,6 @@ template<typename TF>
 Grid<TF>::~Grid()
 {
     fftw_finish();
-
-    #ifdef USECUDA
-    //clear_device();
-    #endif
-
     exit_mpi();
 }
 

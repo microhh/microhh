@@ -87,6 +87,9 @@ class Model
         void calculate_statistics(int, double, unsigned long, int);
         void set_time_step();
 
+        void prepare_gpu();
+        void clear_gpu();
+
         void add_statistics_masks();
 
         #ifdef USECUDA

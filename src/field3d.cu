@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "master.h"
 #include "tools.h"
+#include <iostream>
 
 template<typename TF>
 void Field3d<TF>::init_device()
