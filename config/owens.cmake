@@ -11,7 +11,7 @@ if(USECUDA)
 
   set(USER_CXX_FLAGS "-traceback -restrict -DMPICH_IGNORE_CXX_SEEK -std=c++11 -lpthread")
   set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -xHOST -fno-alias -restrict")
-  set(USER_CXX_FLAGS_DEBUG "-check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
+  set(USER_CXX_FLAGS_DEBUG "-g -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
 
 else()
   add_definitions(-DRESTRICTKEYWORD=restrict)
