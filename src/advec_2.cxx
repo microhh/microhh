@@ -207,11 +207,14 @@ template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {
     auto& gd = grid.get_grid_data();
-    return calc_cfl<TF>(fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
-            dt, master,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    TF cfl = calc_cfl<TF>(fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                          gd.dzi.data(), gd.dx, gd.dy,
+                          dt, master,
+                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                          gd.icells, gd.ijcells);
+
+    // CFL is kept in double precision for time stepping accuracy
+    return static_cast<double>(cfl);
 }
 
 template<typename TF>
