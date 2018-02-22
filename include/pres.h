@@ -58,8 +58,9 @@ class Pres
     private:
         #ifdef USECUDA
         void make_cufft_plan();
-        void fft_forward (double*, double*, double*);
-        void fft_backward(double*, double*, double*);
+        void fft_forward (TF*, TF*, TF*);
+        void fft_backward(TF*, TF*, TF*);
+        void check_cufft_memory();
 
         bool FFTPerSlice;
         cufftHandle iplanf;
@@ -67,9 +68,5 @@ class Pres
         cufftHandle iplanb;
         cufftHandle jplanb;
         #endif
-
-#ifdef USECUDA
-        void check_cufft_memory();
-#endif
 };
 #endif
