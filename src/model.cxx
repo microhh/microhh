@@ -497,6 +497,33 @@ void Model<TF>::add_statistics_masks()
     }
 }
 
+        auto mask_field  = fields->get_tmp();
+        auto mask_fieldh = fields->get_tmp();
+
+        // Get the mask from one of the mask providing classes
+        if (mask_name == "default")
+            stats->get_mask(*mask_field, *mask_fieldh);
+        else if (fields->has_mask(mask_name))
+            fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+        else
+        {
+            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            throw std::runtime_error(error_message);
+        }
+
+        // Calculate statistics
+        fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+        //thermo  ->exec_stats(&stats->masks[maskname]);
+        //budget  ->exec_stats(&stats->masks[maskname]);
+        //boundary->exec_stats(&stats->masks[maskname]);
+        fields->release_tmp(mask_field );
+        fields->release_tmp(mask_fieldh);
+    }
+
+    // Store the statistics data.
+    stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+}
+
 // Print the status information to the .out file.
 template<typename TF>
 void Model<TF>::print_status()

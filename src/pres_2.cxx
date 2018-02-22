@@ -65,9 +65,15 @@ void Pres_2<TF>::exec(const double dt)
           dt);
 
     // solve the system
-    solve(fields.sd.at("p")->fld.data(), fields.atmp.at("tmp1")->fld.data(), fields.atmp.at("tmp2")->fld.data(),
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    solve(fields.sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
           gd.dz.data(), fields.rhoref.data(),
           grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
+
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
 
     // get the pressure tendencies from the pressure field
     output(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),

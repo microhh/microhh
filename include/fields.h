@@ -52,12 +52,12 @@ class Fields
 
         // void exec();
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
-        void exec_stats(Stats<TF>&, std::string);   ///< Calculate the statistics
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&);   ///< Calculate the statistics
 
         void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);
         void init_diagnostic_field(std::string, std::string, std::string);
-        void init_tmp_field       (std::string, std::string, std::string);
+        void init_tmp_field();
 
         void save(int);
         void load(int);
@@ -85,7 +85,9 @@ class Fields
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
 
-        Field_map<TF> atmp; ///< Map containing all temporary field3d instances
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::shared_ptr<Field3d<TF>> get_tmp();
+        void release_tmp(std::shared_ptr<Field3d<TF>>&);
 
         std::vector<TF> rhoref;  ///< Reference density at full levels
         std::vector<TF> rhorefh; ///< Reference density at half levels

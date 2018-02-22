@@ -82,8 +82,8 @@ int Field3d<TF>::init()
 
     for (int n=0; n<gd.ijcells; ++n)
     {
-        fld_bot    [n] = 0.;
-        fld_top    [n] = 0.;
+        fld_bot [n] = 0.;
+        fld_top [n] = 0.;
         grad_bot[n] = 0.;
         grad_top[n] = 0.;
         flux_bot[n] = 0.;
