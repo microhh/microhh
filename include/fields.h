@@ -57,7 +57,7 @@ class Fields
         void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);
         void init_diagnostic_field(std::string, std::string, std::string);
-        void init_tmp_field       (std::string, std::string, std::string);
+        void init_tmp_field();
 
         void save(int);
         void load(int);

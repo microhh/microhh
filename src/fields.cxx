@@ -198,13 +198,8 @@ void Fields<TF>::init()
         nerror += it.second->init();
 
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
-    for (int i=1; i<=n_tmp_fields; ++i)
-    {
-        // BvS: the cast to long long is unfortunately necessary for Intel compilers
-        // which don't seem to have the full c++11 implementation
-        std::string name = "tmp" + std::to_string(static_cast<long long>(i));
-        init_tmp_field(name, "", "");
-    }
+    for (int i=0; i<n_tmp_fields; ++i)
+        init_tmp_field();
 
     // allocate the tmp fields
     for (auto& tmp : atmp)
@@ -299,8 +294,9 @@ void Fields<TF>::init()
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 {
+    // In case of insufficient tmp fields, allocate a new one.
     if (atmp.empty())
-        throw std::runtime_error("Out of tmp fields");
+        init_tmp_field();
 
     std::shared_ptr<Field3d<TF>> tmp = atmp.back();
     atmp.pop_back();
@@ -587,8 +583,14 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
 }
 
 template<typename TF>
-void Fields<TF>::init_tmp_field(std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_tmp_field()
 {
+    static int ntmp = 0;
+    ++ntmp;
+    std::string fldname = "tmp" + std::to_string(ntmp);
+    std::string longname = "";
+    std::string unit = "";
+
     atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
 }
 
