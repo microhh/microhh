@@ -34,6 +34,7 @@ class Data_block;
 template<typename> class Grid;
 template<typename> class Fields;
 
+template<typename> class Field3d_stats;
 template<typename> class Timeloop;
 template<typename> class Boundary;
 template<typename> class Advec;
@@ -66,6 +67,7 @@ class Model
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
 
+        std::shared_ptr<Field3d_stats<TF>> field3d_stats;
         std::shared_ptr<Timeloop<TF>> timeloop;
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Advec<TF>> advec;

@@ -20,57 +20,34 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FIELD3D
-#define FIELD3D
+#ifndef FIELD3D_STATS
+#define FIELD3D_STATS
 
-#include <string>
+#include "field3d.h"
 
 class Master;
 template<typename> class Grid;
+template<typename> class Fields;
+template<typename> class Field3d;
 
 template<typename TF>
-class Field3d
+class Field3d_stats
 {
     public:
         // Functions
-        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string);
-        ~Field3d();
+        Field3d_stats(Master&, Grid<TF>&, Fields<TF>&);
+        ~Field3d_stats();
 
-        int init();
 
-        // Variables at CPU.
-        std::vector<TF> fld;
-        std::vector<TF> fld_bot;
-        std::vector<TF> fld_top;
-        std::vector<TF> fld_mean;
-        std::vector<TF> grad_bot;
-        std::vector<TF> grad_top;
-        std::vector<TF> flux_bot;
-        std::vector<TF> flux_top;
-
-        std::string name;
-        std::string unit;
-        std::string longname;
-
-        TF visc;
-
-        // Device functions and variables
-        void init_device();  ///< Allocate Field3D fields at device
-        void clear_device(); ///< Deallocate Field3D fields at device
-
-        TF* fld_g;
-        TF* fld_bot_g;
-        TF* fld_top_g;
-        TF* fld_mean_g;
-        TF* grad_bot_g;
-        TF* grad_top_g;
-        TF* flux_bot_g;
-        TF* flux_top_g;
+        void calc_mean_profile(Field3d<TF>*);   ///< Calculate mean profile into fld_mean
+        TF calc_mean(Field3d<TF>*);             ///< Calculate volume weighted total mean
+        TF calc_max(Field3d<TF>*);              ///< Calculate maximum value
 
 
     private:
         Master& master;
         Grid<TF>& grid;
+        Fields<TF>& fields;
 };
 #endif
 

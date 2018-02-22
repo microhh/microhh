@@ -28,6 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
+#include "field3d_stats.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
@@ -97,19 +98,19 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid     = std::make_shared<Grid<TF>>(master, *input);
-        fields   = std::make_shared<Fields<TF>>(master, *grid, *input);
-        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        grid          = std::make_shared<Grid<TF>>(master, *input);
+        fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
+        field3d_stats = std::make_shared<Field3d_stats<TF>>(master, *grid, *fields);
+        timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_stats, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
-
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -386,7 +387,7 @@ void Model<TF>::prepare_gpu()
     // thermo  ->prepare_device();
     // boundary->prepare_device();
     // diff    ->prepare_device();
-    // force   ->prepare_device();
+    force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
     // pres    ->prepare_device();
@@ -398,14 +399,14 @@ void Model<TF>::clear_gpu()
     master.print_message("Clearing the GPU\n");
     grid    ->clear_device();
     fields  ->clear_device();
-    // buffer  ->prepare_device();
-    // thermo  ->prepare_device();
-    // boundary->prepare_device();
-    // diff    ->prepare_device();
-    // force   ->prepare_device();
-    // decay   ->prepare_device();
-    // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    // buffer  ->clear_device();
+    // thermo  ->clear_device();
+    // boundary->clear_device();
+    // diff    ->clear_device();
+    force   ->clear_device();
+    // decay   ->clear_device();
+    // // Clear pressure last, for memory check
+    // pres    ->clear_device();
 }
 #endif
 
