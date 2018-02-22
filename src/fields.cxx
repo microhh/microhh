@@ -294,11 +294,18 @@ void Fields<TF>::init()
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 {
+    std::shared_ptr<Field3d<TF>> tmp;
+
     // In case of insufficient tmp fields, allocate a new one.
     if (atmp.empty())
+    {
         init_tmp_field();
+        tmp = atmp.back();
+        tmp->init();
+    }
+    else
+        tmp = atmp.back();
 
-    std::shared_ptr<Field3d<TF>> tmp = atmp.back();
     atmp.pop_back();
     return tmp;
 }
@@ -508,6 +515,9 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     //if (model->diff->get_switch() == "smag2")
     //    stats.calc_mean(m.profs["evisc"].data, sd["evisc"]->data, no_offset, sloc, atmp["tmp3"]->data, stats.nmask);
+
+    release_tmp(tmp1);
+    release_tmp(tmp2);
 }
 
 /*
@@ -594,6 +604,8 @@ void Fields<TF>::init_tmp_field()
     std::string longname = "";
     std::string unit = "";
 
+    std::string message = "Allocating temporary field: " + fldname;
+    master.print_message(message);
     atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
 }
 
@@ -884,6 +896,9 @@ void Fields<TF>::save(int n)
         {
             master.print_message("OK\n");
         }
+
+        release_tmp(tmp1);
+        release_tmp(tmp1);
     }
 
     // --------------- Hack BvS ----------------------

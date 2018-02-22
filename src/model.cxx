@@ -443,6 +443,8 @@ void Model<TF>::calculate_statistics()
         //thermo  ->exec_stats(&stats->masks[maskname]);
         //budget  ->exec_stats(&stats->masks[maskname]);
         //boundary->exec_stats(&stats->masks[maskname]);
+        fields->release_tmp(mask_field );
+        fields->release_tmp(mask_fieldh);
     }
 
     // Store the statistics data.
