@@ -59,13 +59,13 @@ class Pres_2 : public Pres<TF>
         std::vector<TF> c;
         std::vector<TF> work2d;
 
-#ifdef USECUDA
+        #ifdef USECUDA
         TF* bmati_g;
         TF* bmatj_g;
         TF* a_g;
         TF* c_g;
         TF* work2d_g;
-#endif
+        #endif
 
         void input(TF* const restrict,
                    const TF* const restrict, const TF* const restrict, const TF* const restrict,

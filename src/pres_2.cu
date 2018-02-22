@@ -214,35 +214,37 @@
 template<typename TF>
 void Pres_2<TF>::prepare_device()
 {
-//    const int kmemsize = grid->kmax*sizeof(double);
-//    const int imemsize = grid->itot*sizeof(double);
-//    const int jmemsize = grid->jtot*sizeof(double);
-//
-//    const int ijmemsize = grid->imax*grid->jmax*sizeof(double);
-//
-//    cuda_safe_call(cudaMalloc((void**)&bmati_g, imemsize  ));
-//    cuda_safe_call(cudaMalloc((void**)&bmatj_g, jmemsize  ));
-//    cuda_safe_call(cudaMalloc((void**)&a_g, kmemsize      ));
-//    cuda_safe_call(cudaMalloc((void**)&c_g, kmemsize      ));
-//    cuda_safe_call(cudaMalloc((void**)&work2d_g, ijmemsize));
-//
-//    cuda_safe_call(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice   ));
-//    cuda_safe_call(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice   ));
-//    cuda_safe_call(cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice           ));
-//    cuda_safe_call(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
-//    cuda_safe_call(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
-//
-//    make_cufft_plan();
+    auto& gd = grid.get_grid_data();
+
+    const int kmemsize = gd.kmax*sizeof(TF);
+    const int imemsize = gd.itot*sizeof(TF);
+    const int jmemsize = gd.jtot*sizeof(TF);
+
+    const int ijmemsize = gd.imax*gd.jmax*sizeof(TF);
+
+    cuda_safe_call(cudaMalloc((void**)&bmati_g,  imemsize));
+    cuda_safe_call(cudaMalloc((void**)&bmatj_g,  jmemsize));
+    cuda_safe_call(cudaMalloc((void**)&a_g,      kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&c_g,      kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&work2d_g, ijmemsize));
+
+    cuda_safe_call(cudaMemcpy(bmati_g,  bmati.data(),  imemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bmatj_g,  bmatj.data(),  jmemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(a_g,      a.data(),      kmemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(c_g,      c.data(),      kmemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(work2d_g, work2d.data(), ijmemsize, cudaMemcpyHostToDevice));
+
+    //make_cufft_plan();
 }
 
 template<typename TF>
 void Pres_2<TF>::clear_device()
 {
-//    cuda_safe_call(cudaFree(bmati_g ));
-//    cuda_safe_call(cudaFree(bmatj_g ));
-//    cuda_safe_call(cudaFree(a_g     ));
-//    cuda_safe_call(cudaFree(c_g     ));
-//    cuda_safe_call(cudaFree(work2d_g));
+    cuda_safe_call(cudaFree(bmati_g ));
+    cuda_safe_call(cudaFree(bmatj_g ));
+    cuda_safe_call(cudaFree(a_g     ));
+    cuda_safe_call(cudaFree(c_g     ));
+    cuda_safe_call(cudaFree(work2d_g));
 }
 
 template<typename TF>
@@ -354,6 +356,8 @@ TF Pres_2<TF>::check_divergence()
 //    grid->get_max(&divmax);
 //
 //    return divmax;
+
+    return 0;
 }
 #endif
 
