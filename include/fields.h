@@ -86,8 +86,15 @@ class Fields
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
+
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
+
+        #ifdef USECUDA
+        std::shared_ptr<Field3d<TF>> get_tmp_g();
+        void release_tmp_g(std::shared_ptr<Field3d<TF>>&);
+        #endif
 
         std::vector<TF> rhoref;  ///< Reference density at full levels
         std::vector<TF> rhorefh; ///< Reference density at half levels
