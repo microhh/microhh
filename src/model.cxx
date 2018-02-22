@@ -374,6 +374,7 @@ void Model<TF>::exec()
         #endif
 }
 
+#ifdef USECUDA
 template<typename TF>
 void Model<TF>::prepare_gpu()
 {
@@ -406,6 +407,7 @@ void Model<TF>::clear_gpu()
     // // Prepare pressure last, for memory check
     // pres    ->prepare_device();
 }
+#endif
 
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
