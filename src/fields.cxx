@@ -333,7 +333,7 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
+void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh)
 {
     auto& gd = grid.get_grid_data();
 
@@ -350,45 +350,48 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
 
     const TF no_offset = 0.;
 
+    auto tmp1 = get_tmp();
+    auto tmp2 = get_tmp();
+
     // Save the area coverage of the mask
     stats.calc_area(m.profs["area" ].data.data(), sloc, stats.nmask .data());
     stats.calc_area(m.profs["areah"].data.data(), wloc, stats.nmaskh.data());
 
     // Start with the stats on the w location, to make the wmean known for the flux calculations
-    stats.calc_mean(m.profs["w"].data.data(), mp["w"]->fld.data(), no_offset, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+    stats.calc_mean(m.profs["w"].data.data(), mp["w"]->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmaskh.data());
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["w"]->fld.data(), m.profs["w"].data.data(), m.profs["w"+sn].data.data(), n, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+        stats.calc_moment(mp["w"]->fld.data(), m.profs["w"].data.data(), m.profs["w"+sn].data.data(), n, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
 
     // Calculate the stats on the u location
     // Interpolate the mask horizontally onto the u coordinate
-    grid.interpolate_2nd(atmp["tmp1"]->fld.data(), atmp["tmp3"]->fld.data(), sloc, uloc);
-    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, atmp["tmp1"]->fld.data(), stats.nmask.data());
-    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, atmp["tmp1"]->fld.data(), stats.nmask.data());
+    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, uloc);
+    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, tmp1->fld.data(), stats.nmask.data());
+    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, atmp["tmp1"]->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
     }
 
     // Interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(atmp["tmp1"]->fld.data(), atmp["tmp4"]->fld.data(), wloc, uwloc);
+    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
 
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["uw"].data.data(), atmp["tmp2"]->fld.data(), uloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+                            m.profs["uw"].data.data(), tmp2->fld.data(), uloc, tmp1->fld.data(), stats.nmaskh.data());
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
         //                        m.profs["udiff"].data, grid.dzhi,
         //                        u->flux_bot, u->flux_top, 1., uloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
-            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, tmp1->fld.data(), stats.nmaskh.data());
 
     }
     else if (grid.swspatialorder == "4")
@@ -404,30 +407,30 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
 
 
     // Calculate the statistics on the v location
-    grid.interpolate_2nd(atmp["tmp1"]->fld.data(), atmp["tmp3"]->fld.data(), sloc, vloc);
-    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, atmp["tmp1"]->fld.data(), stats.nmask.data());
-    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, atmp["tmp1"]->fld.data(), stats.nmask.data());
+    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, vloc);
+    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, tmp1->fld.data(), stats.nmask.data());
+    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, atmp["tmp1"]->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
     }
 
     // interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(atmp["tmp1"]->fld.data(), atmp["tmp4"]->fld.data(), wloc, vwloc);
+    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["vw"].data.data(), atmp["tmp2"]->fld.data(), vloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+                            m.profs["vw"].data.data(), tmp2->fld.data(), vloc, tmp1->fld.data(), stats.nmaskh.data());
         //if (model->diff->get_switch() == "smag2")
         //    stats.calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
         //                        m.profs["vdiff"].data, grid.dzhi,
         //                        v->flux_bot, v->flux_top, 1., vloc,
         //                        atmp["tmp1"]->data, stats.nmaskh);
         //else
-            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, atmp["tmp1"]->fld.data(), stats.nmaskh.data());
+            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, tmp1->fld.data(), stats.nmaskh.data());
 
     }
     else if (grid.swspatialorder == "4")
@@ -444,19 +447,19 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
     //Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
     for (auto& it : sp)
     {
-        stats.calc_mean(m.profs[it.first].data.data(), it.second->fld.data(), no_offset, atmp["tmp3"]->fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs[it.first].data.data(), it.second->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
         for (int n=2; n<5; ++n)
         {
             std::string sn = std::to_string(n);
-            stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, atmp["tmp3"]->fld.data(), stats.nmask.data());
+            stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
         }
 
         if (grid.swspatialorder == "2")
         {
-            stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+            stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                                m.profs[it.first+"w"].data.data(), atmp["tmp1"]->fld.data(), sloc, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+                                m.profs[it.first+"w"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
             //if (model->diff->get_switch() == "smag2")
             //{
             //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
@@ -466,7 +469,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
             //}
             //else
                 stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(), 
-                                    it.second->visc, sloc, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+                                    it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
         }
         else if (grid.swspatialorder == "4")
         {
@@ -480,14 +483,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name)
     }
 
     // Calculate pressure statistics
-    stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, atmp["tmp3"]->fld.data(), stats.nmask.data());
-    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, atmp["tmp1"]->fld.data(), stats.nmask.data());
+    stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, tmp1->fld.data(), stats.nmask.data());
 
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["pw"].data.data(), atmp["tmp1"]->fld.data(), sloc, atmp["tmp4"]->fld.data(), stats.nmaskh.data());
+                            m.profs["pw"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
     else if (grid.swspatialorder == "4")
     {
@@ -868,7 +871,10 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (grid.save_field3d(f.second->fld.data(), atmp["tmp1"]->fld.data(), atmp["tmp2"]->fld.data(),
+        auto tmp1 = get_tmp();
+        auto tmp2 = get_tmp();
+
+        if (grid.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");
@@ -886,7 +892,11 @@ void Fields<TF>::save(int n)
     char filename[256];
     std::sprintf(filename, "p.%07d", n);
     master.print_message("Saving \"%s\" ... ", filename);
-    if (grid.save_field3d(sd.at("p")->fld.data(), atmp["tmp1"]->fld.data(), atmp["tmp2"]->fld.data(),
+
+    auto tmp1 = get_tmp();
+    auto tmp2 = get_tmp();
+
+    if (grid.save_field3d(sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset))
     {
         master.print_message("FAILED\n");
@@ -915,7 +925,11 @@ void Fields<TF>::load(int n)
         char filename[256];
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
-        if (grid.load_field3d(f.second->fld.data(), atmp["tmp1"]->fld.data(), atmp["tmp2"]->fld.data(),
+
+        auto tmp1 = get_tmp();
+        auto tmp2 = get_tmp();
+
+        if (grid.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");
