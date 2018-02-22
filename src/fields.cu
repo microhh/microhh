@@ -113,10 +113,6 @@ void Fields<TF>::prepare_device()
     for (auto& it : at)
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
 
-    // Temporary fields
-    atmp.at("tmp1")->init_device();
-    atmp.at("tmp2")->init_device();
-
     // Reference profiles
     cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
     cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
@@ -138,9 +134,6 @@ void Fields<TF>::clear_device()
     for (auto& it : at)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
-    atmp.at("tmp1")->clear_device();
-    atmp.at("tmp2")->clear_device();
-
     cuda_safe_call(cudaFree(rhoref_g));
     cuda_safe_call(cudaFree(rhorefh_g));
 }
@@ -157,9 +150,6 @@ void Fields<TF>::forward_device()
 
     for (auto& it : at)
         forward_field_device_3d(it.second->fld_g, it.second->fld.data(), Offset);
-
-    forward_field3d_device(atmp.at("tmp1").get());
-    forward_field3d_device(atmp.at("tmp2").get());
 
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);

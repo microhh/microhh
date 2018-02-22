@@ -163,10 +163,13 @@ double Advec_2<TF>::get_cfl(const double dt)
     const TF dyi = 1./gd.dy;
 
     const int offs = gd.memoffset;
-
+    
+    auto tmp1 = fields.get_tmp_g();
+    auto tmp2 = fields.get_tmp_g();
+    
     calc_cfl_g<<<gridGPU, blockGPU>>>(
         &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
-        &fields.atmp["tmp1"]->fld_g[offs], gd.dzi_g, dxi, dyi,
+        &tmp1->fld_g[offs], gd.dzi_g, dxi, dyi,
         gd.icellsp, gd.ijcellsp,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -174,6 +177,8 @@ double Advec_2<TF>::get_cfl(const double dt)
 
    // double cfl = grid.get_max_g(&fields->atmp["tmp1"]->fld_g[offs], fields->atmp["tmp2"]->fld_g); 
     //gd.get_max(&cfl); 
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
     double cfl = 0;
     cfl = cfl*dt;
 

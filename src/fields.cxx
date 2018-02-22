@@ -313,7 +313,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
     {
         init_tmp_field();
         tmp = atmp.back();
-        // ADD HERE GPU ALLOCATION.
+        tmp->init_device();
     }
     else
         tmp = atmp_g.back();
