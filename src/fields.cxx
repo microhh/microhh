@@ -898,7 +898,7 @@ void Fields<TF>::save(int n)
         }
 
         release_tmp(tmp1);
-        release_tmp(tmp1);
+        release_tmp(tmp2);
     }
 
     // --------------- Hack BvS ----------------------
