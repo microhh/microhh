@@ -102,7 +102,7 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
-    const int nmemsize   = gd.ncells*sizeof(TF);
+    const int nmemsize   = gd.ncellsp*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
 
     // Prognostic fields
