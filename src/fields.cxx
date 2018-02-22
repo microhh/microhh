@@ -632,7 +632,7 @@ void Fields<TF>::init_tmp_field_g()
     std::string longname = "";
     std::string unit = "";
 
-    std::string message = "Allocating temporary field (GPU): " + fldname;
+    std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
     atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
 }
