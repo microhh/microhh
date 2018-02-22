@@ -48,6 +48,7 @@ class Pres
 
         #ifdef USECUDA
         virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
         #endif
 
     protected:
@@ -55,18 +56,21 @@ class Pres
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-    private:
         #ifdef USECUDA
         void make_cufft_plan();
         void fft_forward (TF*, TF*, TF*);
         void fft_backward(TF*, TF*, TF*);
-        void check_cufft_memory();
 
-        bool FFTPerSlice;
+        bool FFT_per_slice;
         cufftHandle iplanf;
         cufftHandle jplanf;
         cufftHandle iplanb;
         cufftHandle jplanb;
+        #endif
+
+    private:
+        #ifdef USECUDA
+        void check_cufft_memory();
         #endif
 };
 #endif

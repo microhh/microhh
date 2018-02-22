@@ -30,41 +30,41 @@
 #include "tools.h"
 #include "master.h"
 
-//namespace
-//{
-//    const int TILE_DIM = 16; // Size of shared memory array used for transpose
-//
-//    inline int check_cufft(cufftResult err)
-//    {
-//        if (err == CUFFT_SUCCESS)
-//            return 0;
-//        else
-//        {
-//            if (err == CUFFT_INVALID_PLAN)
-//                printf("cuFFT plan error: INVALID PLAN\n");
-//            else if (err == CUFFT_ALLOC_FAILED)
-//                printf("cuFFT plan error: ALLOC FAILED\n");
-//            else if (err == CUFFT_INVALID_TYPE)
-//                printf("cuFFT plan error: INVALID TYPE\n");
-//            else if (err == CUFFT_INVALID_VALUE)
-//                printf("cuFFT plan error: INVALID VALUE\n");
-//            else if (err == CUFFT_INTERNAL_ERROR)
-//                printf("cuFFT plan error: INTERNAL ERROR\n");
-//            else if (err == CUFFT_EXEC_FAILED)
-//                printf("cuFFT plan error: EXEC FAILED\n");
-//            else if (err == CUFFT_SETUP_FAILED)
-//                printf("cuFFT plan error: SETUP FAILED\n");
-//            else if (err == CUFFT_INVALID_SIZE)
-//                printf("cuFFT plan error: INVALID SIZE\n");
-//            else if (err == CUFFT_UNALIGNED_DATA)
-//                printf("cuFFT plan error: UNALIGNED DATA\n");
-//            else 
-//                printf("cuFFT plan error: OTHER\n");
-//
-//            return 1; 
-//        }
-//    }
-//
+namespace
+{
+    //const int TILE_DIM = 16; // Size of shared memory array used for transpose
+
+    inline int check_cufft(cufftResult err)
+    {
+        if (err == CUFFT_SUCCESS)
+            return 0;
+        else
+        {
+            if (err == CUFFT_INVALID_PLAN)
+                printf("cuFFT plan error: INVALID PLAN\n");
+            else if (err == CUFFT_ALLOC_FAILED)
+                printf("cuFFT plan error: ALLOC FAILED\n");
+            else if (err == CUFFT_INVALID_TYPE)
+                printf("cuFFT plan error: INVALID TYPE\n");
+            else if (err == CUFFT_INVALID_VALUE)
+                printf("cuFFT plan error: INVALID VALUE\n");
+            else if (err == CUFFT_INTERNAL_ERROR)
+                printf("cuFFT plan error: INTERNAL ERROR\n");
+            else if (err == CUFFT_EXEC_FAILED)
+                printf("cuFFT plan error: EXEC FAILED\n");
+            else if (err == CUFFT_SETUP_FAILED)
+                printf("cuFFT plan error: SETUP FAILED\n");
+            else if (err == CUFFT_INVALID_SIZE)
+                printf("cuFFT plan error: INVALID SIZE\n");
+            else if (err == CUFFT_UNALIGNED_DATA)
+                printf("cuFFT plan error: UNALIGNED DATA\n");
+            else 
+                printf("cuFFT plan error: OTHER\n");
+
+            return 1; 
+        }
+    }
+
 //    __global__ 
 //    void transpose_g(double* fieldOut, const double* fieldIn, const int itot, const int jtot, const int ktot)
 //    {
@@ -162,68 +162,79 @@
 //        if (i < itot && j < jtot && k < ktot)
 //            data[ijk] = data[ijk] * in;
 //    }
-//}
+
+    // Help functions to witch between real/double -> complex and vice versa
+    template<typename TF> cufftType cufft_to_complex();
+    template<> cufftType cufft_to_complex<double>() { return CUFFT_D2Z; }
+    template<> cufftType cufft_to_complex<float>()  { return CUFFT_R2C; }
+    
+    template<typename TF> cufftType cufft_from_complex();
+    template<> cufftType cufft_from_complex<double>() { return CUFFT_Z2D; }
+    template<> cufftType cufft_from_complex<float>()  { return CUFFT_C2R; }
+}
 
 #ifdef USECUDA
 template<typename TF>
 void Pres<TF>::make_cufft_plan()
 {
-//    const int rank      = 1;
-//
-//    // Double input
-//    int i_ni[]    = {grid->itot};
-//    int i_nj[]    = {grid->jtot};
-//    int i_istride = 1;
-//    int i_jstride = grid->itot;
-//    int i_idist   = grid->itot;
-//    int i_jdist   = 1;
-//
-//    // Double-complex output
-//    int o_ni[]    = {grid->itot/2+1};
-//    int o_nj[]    = {grid->jtot/2+1};
-//    int o_istride = 1;
-//    int o_jstride = grid->itot;
-//    int o_idist   = grid->itot/2+1;
-//    int o_jdist   = 1;
-//
-//    // Get memory estimate of batched FFT over entire field.
-//    size_t workSize, totalWorkSize=0;
-//
-//    check_cufft(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot, &workSize));
-//    totalWorkSize += workSize;
-//    check_cufft(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot, &workSize));
-//    totalWorkSize += workSize;
-//    check_cufft(cufftEstimateMany(rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot, &workSize));
-//    totalWorkSize += workSize;
-//    check_cufft(cufftEstimateMany(rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot, &workSize));
-//    totalWorkSize += workSize;
-//
-//    // Get available memory GPU
-//    size_t freeMem, totalMem;
-//    cudaMemGetInfo(&freeMem, &totalMem);
-//
-//    int nerror = 0;
-//    if (freeMem < totalWorkSize) // Put margin here?
-//    {
-//        FFTPerSlice = true;
-//        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
-//        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
-//        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
-//        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
-//        master->print_message("cuFFT strategy: batched per 2D slice\n");
-//    }
-//    else
-//    {
-//        FFTPerSlice = false;
-//        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
-//        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
-//        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
-//        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
-//        master->print_message("cuFFT strategy: batched over entire 3D field\n");
-//    }
-//
-//    if (nerror > 0)
-//        throw 1;
+    const auto& gd = grid.get_grid_data();
+
+    const int rank = 1;
+
+    // Float/double input
+    int i_ni[]    = {gd.itot};
+    int i_nj[]    = {gd.jtot};
+    int i_istride = 1;
+    int i_jstride = gd.itot;
+    int i_idist   = gd.itot;
+    int i_jdist   = 1;
+
+    // Float/double-complex output
+    int o_ni[]    = {gd.itot/2+1};
+    int o_nj[]    = {gd.jtot/2+1};
+    int o_istride = 1;
+    int o_jstride = gd.itot;
+    int o_idist   = gd.itot/2+1;
+    int o_jdist   = 1;
+
+    // Get memory estimate of batched FFT over entire field.
+    size_t work_size, total_work_size=0;
+
+    check_cufft(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot, &work_size));
+    total_work_size += work_size;
+    check_cufft(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot, &work_size));
+    total_work_size += work_size;
+    check_cufft(cufftEstimateMany(rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot, &work_size));
+    total_work_size += work_size;
+    check_cufft(cufftEstimateMany(rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot, &work_size));
+    total_work_size += work_size;
+
+    // Get available memory GPU
+    size_t free_mem, total_mem;
+    cudaMemGetInfo(&free_mem, &total_mem);
+
+    int nerror = 0;
+    if (free_mem < total_work_size) // Put margin here?
+    {
+        FFT_per_slice = true;
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot));
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,     i_nj, i_jstride, i_jdist,     cufft_from_complex<TF>(), gd.itot));
+        master.print_message("cuFFT strategy: batched per 2D slice\n");
+    }
+    else
+    {
+        FFT_per_slice = false;
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot)); 
+        master.print_message("cuFFT strategy: batched over entire 3D field\n");
+    }
+
+    if (nerror > 0)
+        throw 1;
 }
 
 template<typename TF>
@@ -431,3 +442,6 @@ void Pres<TF>::check_cufft_memory()
 //    printf("Free GPU=%lu, required FFTs=%lu\n", freeMem, totalWorkSize);
 }
 #endif
+
+template class Pres<double>;
+template class Pres<float>;

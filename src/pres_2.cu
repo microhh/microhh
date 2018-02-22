@@ -234,7 +234,7 @@ void Pres_2<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(c_g,      c.data(),      kmemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(work2d_g, work2d.data(), ijmemsize, cudaMemcpyHostToDevice));
 
-    //make_cufft_plan();
+    make_cufft_plan();
 }
 
 template<typename TF>

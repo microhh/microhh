@@ -60,6 +60,8 @@ class Pres_2 : public Pres<TF>
         std::vector<TF> work2d;
 
         #ifdef USECUDA
+        using Pres<TF>::make_cufft_plan;
+
         TF* bmati_g;
         TF* bmatj_g;
         TF* a_g;
