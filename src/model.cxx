@@ -389,7 +389,7 @@ void Model<TF>::prepare_gpu()
     // force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    pres    ->prepare_device();
 }
 
 template<typename TF>
@@ -405,7 +405,7 @@ void Model<TF>::clear_gpu()
     // force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    pres    ->prepare_device();
 }
 #endif
 
