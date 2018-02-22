@@ -413,36 +413,40 @@ void Model<TF>::clear_gpu()
 template<typename TF>
 void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
 {
-    const std::vector<std::string>& mask_list = stats->get_mask_list();
-
-    for (auto& mask_name : mask_list)
+    // Do the statistics.
+    if(stats->do_statistics(timeloop->get_itime()))
     {
-        auto mask_field  = fields->get_tmp();
-        auto mask_fieldh = fields->get_tmp();
+        const std::vector<std::string>& mask_list = stats->get_mask_list();
 
-        // Get the mask from one of the mask providing classes
-        if (mask_name == "default")
-            stats->get_mask(*mask_field, *mask_fieldh);
-        else if (fields->has_mask(mask_name))
-            fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
-        else
+        for (auto& mask_name : mask_list)
         {
-            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-            throw std::runtime_error(error_message);
+            auto mask_field  = fields->get_tmp();
+            auto mask_fieldh = fields->get_tmp();
+
+            // Get the mask from one of the mask providing classes
+            if (mask_name == "default")
+                stats->get_mask(*mask_field, *mask_fieldh);
+            else if (fields->has_mask(mask_name))
+                fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            else
+            {
+                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                throw std::runtime_error(error_message);
+            }
+
+            // Calculate statistics
+            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+            //thermo  ->exec_stats(&stats->masks[maskname]);
+            //budget  ->exec_stats(&stats->masks[maskname]);
+            //boundary->exec_stats(&stats->masks[maskname]);
+            //
+            fields->release_tmp(mask_field );
+            fields->release_tmp(mask_fieldh);
         }
 
-        // Calculate statistics
-        fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
-        //thermo  ->exec_stats(&stats->masks[maskname]);
-        //budget  ->exec_stats(&stats->masks[maskname]);
-        //boundary->exec_stats(&stats->masks[maskname]);
-        //
-        fields->release_tmp(mask_field );
-        fields->release_tmp(mask_fieldh);
+        // Store the statistics data.
+        stats->exec(iteration, time, itime);
     }
-
-    // Store the statistics data.
-    stats->exec(iteration, time, itime);
 
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
 //   if(doCross)
