@@ -311,7 +311,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
     // In case of insufficient tmp fields, allocate a new one.
     if (atmp_g.empty())
     {
-        init_tmp_field();
+        init_tmp_field_g();
         tmp = atmp.back();
         tmp->init_device();
     }
