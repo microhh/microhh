@@ -72,6 +72,9 @@ void Pres_2<TF>::exec(const double dt)
           gd.dz.data(), fields.rhoref.data(),
           grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
 
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
+
     // get the pressure tendencies from the pressure field
     output(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(), 
            fields.sd.at("p")->fld.data(), gd.dzhi.data());

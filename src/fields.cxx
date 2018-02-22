@@ -875,6 +875,9 @@ void Fields<TF>::save(int n)
 {
     const TF no_offset = 0.;
 
+    auto tmp1 = get_tmp();
+    auto tmp2 = get_tmp();
+
     int nerror = 0;
     for (auto& f : ap)
     {
@@ -883,9 +886,6 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        auto tmp1 = get_tmp();
-        auto tmp2 = get_tmp();
-
         if (grid.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
@@ -896,9 +896,6 @@ void Fields<TF>::save(int n)
         {
             master.print_message("OK\n");
         }
-
-        release_tmp(tmp1);
-        release_tmp(tmp2);
     }
 
     // --------------- Hack BvS ----------------------
@@ -907,9 +904,6 @@ void Fields<TF>::save(int n)
     char filename[256];
     std::sprintf(filename, "p.%07d", n);
     master.print_message("Saving \"%s\" ... ", filename);
-
-    auto tmp1 = get_tmp();
-    auto tmp2 = get_tmp();
 
     if (grid.save_field3d(sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset))
@@ -923,6 +917,9 @@ void Fields<TF>::save(int n)
     }
     // --------------- end Hack BvS -------------------
 
+    release_tmp(tmp1);
+    release_tmp(tmp2);
+
     if (nerror)
         throw 1;
 }
@@ -932,6 +929,9 @@ void Fields<TF>::load(int n)
 {
     const TF no_offset = 0.;
 
+    auto tmp1 = get_tmp();
+    auto tmp2 = get_tmp();
+
     int nerror = 0;
 
     for (auto& f : ap)
@@ -940,9 +940,6 @@ void Fields<TF>::load(int n)
         char filename[256];
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
-
-        auto tmp1 = get_tmp();
-        auto tmp2 = get_tmp();
 
         if (grid.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
@@ -955,6 +952,9 @@ void Fields<TF>::load(int n)
             master.print_message("OK\n");
         }  
     }
+
+    release_tmp(tmp1);
+    release_tmp(tmp2);
 
     if (nerror)
         throw 1;
