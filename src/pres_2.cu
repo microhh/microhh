@@ -37,34 +37,34 @@
 
 namespace
 {
-//    template<typename TF> __global__ 
-//    void pres_in_g(TF* __restrict__ p,
-//                   TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
-//                   TF* __restrict__ ut,  TF* __restrict__ vt,     TF* __restrict__ wt,
-//                   TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-//                   TF dxi, TF dyi, TF dti,
-//                   const int jj, const int kk,
-//                   const int jjp, const int kkp,
-//                   const int imax, const int jmax, const int kmax,
-//                   const int igc, const int jgc, const int kgc)
-//    {
-//        const int ii = 1;
-//        const int i  = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j  = blockIdx.y*blockDim.y + threadIdx.y;
-//        const int k  = blockIdx.z;
-//
-//        if (i < imax && j < jmax && k < kmax)
-//        {
-//            const int ijkp = i + j*jjp + k*kkp;
-//            const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-//
-//            p[ijkp] = rhoref [k+kgc]   * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
-//                    + rhoref [k+kgc]   * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
-//                  + ( rhorefh[k+kgc+1] * (  wt[ijk+kk] + w[ijk+kk] * dti)
-//                    - rhorefh[k+kgc  ] * (  wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
-//        }
-//    }
-//
+    template<typename TF> __global__ 
+    void pres_in_g(TF* __restrict__ p,
+                   TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
+                   TF* __restrict__ ut,  TF* __restrict__ vt,     TF* __restrict__ wt,
+                   TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                   TF dxi, TF dyi, TF dti,
+                   const int jj, const int kk,
+                   const int jjp, const int kkp,
+                   const int imax, const int jmax, const int kmax,
+                   const int igc, const int jgc, const int kgc)
+    {
+        const int ii = 1;
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k  = blockIdx.z;
+
+        if (i < imax && j < jmax && k < kmax)
+        {
+            const int ijkp = i + j*jjp + k*kkp;
+            const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+
+            p[ijkp] = rhoref [k+kgc]   * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+                    + rhoref [k+kgc]   * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+                  + ( rhorefh[k+kgc+1] * (  wt[ijk+kk] + w[ijk+kk] * dti)
+                    - rhorefh[k+kgc  ] * (  wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
+        }
+    }
+
 //    template<typename TF> __global__ 
 //    void pres_out_g(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt,
 //                    double* __restrict__ p,
@@ -250,41 +250,39 @@ void Pres_2<TF>::clear_device()
 template<typename TF>
 void Pres_2<TF>::exec(double dt)
 {
-//    const int blocki = grid->ithread_block;
-//    const int blockj = grid->jthread_block;
-//    const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-//    const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-//
-//    // 3D grid
-//    dim3 gridGPU (gridi,  gridj,  grid->kmax);
-//    dim3 blockGPU(blocki, blockj, 1);
-//
-//    // 2D grid
-//    dim3 grid2dGPU (gridi,  gridj);
-//    dim3 block2dGPU(blocki, blockj);
-//
-//    const double dxi = 1./grid->dx;
-//    const double dyi = 1./grid->dy;
-//    const double dti = 1./dt;
-//
-//    const int offs = grid->memoffset;
-//
-//    // calculate the cyclic BCs first
-//    grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
-//    grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
-//    grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
-//
-//    pres_in_g<<<gridGPU, blockGPU>>>(
-//        fields->sd["p"]->data_g,
-//        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
-//        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-//        grid->dzi_g, fields->rhoref_g, fields->rhorefh_g, dxi, dyi, dti,
-//        grid->icellsp, grid->ijcellsp, 
-//        grid->imax, grid->imax*grid->jmax,
-//        grid->imax, grid->jmax, grid->kmax,
-//        grid->igc,  grid->jgc,  grid->kgc);
-//    cuda_check_error();
-//
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    const int offs   = gd.memoffset;
+    const double dti = 1./dt;
+
+    // 3D grid
+    dim3 gridGPU (gridi,  gridj,  gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    // 2D grid
+    dim3 grid2dGPU (gridi,  gridj);
+    dim3 block2dGPU(blocki, blockj);
+
+    // calculate the cyclic BCs first
+    grid.boundary_cyclic_g(&fields.mt.at("u")->fld_g[offs]);
+    grid.boundary_cyclic_g(&fields.mt.at("v")->fld_g[offs]);
+    grid.boundary_cyclic_g(&fields.mt.at("w")->fld_g[offs]);
+
+    pres_in_g<<<gridGPU, blockGPU>>>(
+        fields.sd.at("p")->fld_g,
+        &fields.mp.at("u")->fld_g[offs], &fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], 
+        &fields.mt.at("u")->fld_g[offs], &fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs], 
+        gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi, static_cast<TF>(dti),
+        gd.icellsp, gd.ijcellsp, 
+        gd.imax, gd.imax*gd.jmax,
+        gd.imax, gd.jmax, gd.kmax,
+        gd.igc,  gd.jgc,  gd.kgc);
+    cuda_check_error();
+
 //    fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 //
 //    solve_in_g<<<gridGPU, blockGPU>>>(
