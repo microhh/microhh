@@ -170,13 +170,17 @@ void Force<TF>::exec(double dt)
 {
     auto& gd = grid.get_grid_data();
 
+    auto tmp1 = fields.get_tmp();
+
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {
-        const TF u_mean  = fields.ap.at("u")->calc_mean(fields.atmp.at("tmp1")->fld.data());
-        const TF ut_mean = fields.at.at("u")->calc_mean(fields.atmp.at("tmp1")->fld.data());
+        const TF u_mean  = fields.ap.at("u")->calc_mean(tmp1->fld.data());
+        const TF ut_mean = fields.at.at("u")->calc_mean(tmp1->fld.data());
 
         enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
+
+    fields.release_tmp(tmp1);
 
     //else if (swlspres == "geo")
     //{
