@@ -35,8 +35,8 @@
 #include "tools.h"
 #include "constants.h"
 
-//namespace
-//{
+namespace
+{
 //    template<typename TF> __global__ 
 //    void pres_in_g(TF* __restrict__ p,
 //                   TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
@@ -187,28 +187,28 @@
 //            }
 //        }
 //    }
-//
-//    template<typename TF> __global__ 
-//    void calc_divergence_g(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w,
-//                           double* __restrict__ div, double* __restrict__ dzi,
-//                           double* __restrict__ rhoref, double* __restrict__ rhorefh,
-//                           double dxi, double dyi,
-//                           int jj, int kk, int istart, int jstart, int kstart,
-//                           int iend, int jend, int kend)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-//        const int k = blockIdx.z + kstart;
-//        const int ii = 1;
-//
-//        if (i < iend && j < jend && k < kend)
-//        {
-//            const int ijk = i + j*jj + k*kk;
-//            div[ijk] = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
-//                    + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
-//        }
-//    }
-//} // End namespace.
+
+    template<typename TF> __global__ 
+    void calc_divergence_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
+                           TF* __restrict__ div, TF* __restrict__ dzi,
+                           TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                           TF dxi, TF dyi,
+                           int jj, int kk, int istart, int jstart, int kstart,
+                           int iend, int jend, int kend)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+        const int ii = 1;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            div[ijk] = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
+                    + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
+        }
+    }
+} // End namespace.
 
 #ifdef USECUDA
 template<typename TF>
@@ -330,34 +330,36 @@ void Pres_2<TF>::exec(double dt)
 template<typename TF>
 TF Pres_2<TF>::check_divergence()
 {
-//    const int blocki = grid->ithread_block;
-//    const int blockj = grid->jthread_block;
-//    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-//    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-//
-//    dim3 gridGPU (gridi, gridj, grid->kcells);
-//    dim3 blockGPU(blocki, blockj, 1);
-//
-//    const double dxi = 1./grid->dx;
-//    const double dyi = 1./grid->dy;
-//
-//    const int offs = grid->memoffset;
-//
-//    calc_divergence_g<<<gridGPU, blockGPU>>>(
-//        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-//        &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g,
-//        fields->rhoref_g, fields->rhorefh_g, dxi, dyi,
-//        grid->icellsp, grid->ijcellsp,
-//        grid->istart,  grid->jstart, grid->kstart,
-//        grid->iend,    grid->jend,   grid->kend);
-//    cuda_check_error();
-//
-//    double divmax = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
-//    grid->get_max(&divmax);
-//
-//    return divmax;
+    auto& gd = grid.get_grid_data();
 
-    return 0;
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    const int offs = gd.memoffset;
+
+    auto divergence = fields.get_tmp_g();
+
+    calc_divergence_g<<<gridGPU, blockGPU>>>(
+        &fields.mp.at("u")->fld_g[offs], &fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], &divergence->fld_g[offs], 
+        gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
+        gd.icellsp, gd.ijcellsp,
+        gd.istart,  gd.jstart, gd.kstart,
+        gd.iend,    gd.jend,   gd.kend);
+    cuda_check_error();
+
+    auto tmp = fields.get_tmp_g();
+    TF divmax = divergence->calc_max(tmp->fld_g);
+    // TO-DO: add grid.get_max() or similar for future parallel versions
+
+    fields.release_tmp_g(divergence);
+    fields.release_tmp_g(tmp);
+
+    return divmax;
 }
 #endif
 
