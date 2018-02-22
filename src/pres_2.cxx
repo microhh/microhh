@@ -65,7 +65,10 @@ void Pres_2<TF>::exec(const double dt)
           dt);
 
     // solve the system
-    solve(fields.sd.at("p")->fld.data(), fields.atmp.at("tmp1")->fld.data(), fields.atmp.at("tmp2")->fld.data(),
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    solve(fields.sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
           gd.dz.data(), fields.rhoref.data(),
           grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
 
