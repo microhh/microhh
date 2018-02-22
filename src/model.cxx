@@ -288,7 +288,8 @@ void Model<TF>::exec()
             fields  ->backward_device();
             //boundary->backward_device();
             // thermo  ->backward_device();
-            t_stat=std::thread(&Model::calculate_statistics,this, timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());//, cross->do_cross(), dump->do_dump(), column->doColumn(),
+
+            t_stat=std::thread(&Model::calculate_statistics, this, timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());//, cross->do_cross(), dump->do_dump(), column->doColumn(),
             #else
             calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
             #endif
@@ -404,37 +405,40 @@ void Model<TF>::clear_gpu()
     // pres    ->prepare_device();
 }
 
+// Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
-void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
+void Model<TF>::calculate_statistics()
 {
-    // Do the statistics.
-    if(stats->do_statistics(timeloop->get_itime()))
+    const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+    for (auto& mask_name : mask_list)
     {
-        const std::vector<std::string>& mask_list = stats->get_mask_list();
+        auto mask_field  = fields->get_tmp();
+        auto mask_fieldh = fields->get_tmp();
 
-        for (auto& mask_name : mask_list)
+        // Get the mask from one of the mask providing classes
+        if (mask_name == "default")
+            stats->get_mask(*mask_field, *mask_fieldh);
+        else if (fields->has_mask(mask_name))
+            fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+        else
         {
-            // Get the mask from one of the mask providing classes
-            if (mask_name == "default")
-                stats->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"]);
-            else if (fields->has_mask(mask_name))
-                fields->get_mask(*fields->atmp["tmp3"], *fields->atmp["tmp4"], *stats, mask_name);
-            else
-            {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-                throw std::runtime_error(error_message);
-            }
-
-            // Calculate statistics
-            fields  ->exec_stats(*stats, mask_name);
-            //thermo  ->exec_stats(&stats->masks[maskname]);
-            //budget  ->exec_stats(&stats->masks[maskname]);
-            //boundary->exec_stats(&stats->masks[maskname]);
+            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            throw std::runtime_error(error_message);
         }
 
-        // Store the stats data.
-        stats->exec(iteration, time, itime);
+        // Calculate statistics
+        fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+        //thermo  ->exec_stats(&stats->masks[maskname]);
+        //budget  ->exec_stats(&stats->masks[maskname]);
+        //boundary->exec_stats(&stats->masks[maskname]);
+        fields->release_tmp(mask_field );
+        fields->release_tmp(mask_fieldh);
     }
+
+    // Store the statistics data.
+    stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
 //   if(doCross)
 //    {
