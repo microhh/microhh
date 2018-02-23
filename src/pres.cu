@@ -67,32 +67,36 @@ namespace
         }
     }
 
-//    __global__ 
-//    void transpose_g(double* fieldOut, const double* fieldIn, const int itot, const int jtot, const int ktot)
-//    {
-//        __shared__ double tile[TILE_DIM][TILE_DIM+1];
-//
-//        // Index in fieldIn 
-//        int i = blockIdx.x * TILE_DIM + threadIdx.x;
-//        int j = blockIdx.y * TILE_DIM + threadIdx.y;
-//        int k = blockIdx.z;
-//        int ijk = i + j*itot + k*itot*jtot;
-//
-//        // Read to shared memory
-//        if (i < itot && j < jtot)
-//            tile[threadIdx.y][threadIdx.x] = fieldIn[ijk];
-//
-//        __syncthreads();
-//
-//        // Transposed index
-//        i = blockIdx.y * TILE_DIM + threadIdx.x;
-//        j = blockIdx.x * TILE_DIM + threadIdx.y;
-//        ijk = i + j*jtot + k*itot*jtot;
-//
-//        // Write transposed field back from shared to global memory 
-//        if (i < jtot && j < itot) 
-//            fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
-//    }
+    template<typename TF> __global__ 
+    void transpose_g(TF* fieldOut, const TF* fieldIn, const int itot, const int jtot, const int ktot)
+    {
+        __shared__ TF tile[TILE_DIM][TILE_DIM+1];
+
+        // See https://stackoverflow.com/a/27570775/3581217
+        //extern __shared__ __align__(sizeof(TF)) unsigned char tile_tmp[TILE_DIM][TILE_DIM+1];
+        //TF *tile = reinterpret_cast<TF*>(tile_tmp);
+
+        // Index in fieldIn 
+        int i = blockIdx.x * TILE_DIM + threadIdx.x;
+        int j = blockIdx.y * TILE_DIM + threadIdx.y;
+        int k = blockIdx.z;
+        int ijk = i + j*itot + k*itot*jtot;
+
+        // Read to shared memory
+        if (i < itot && j < jtot)
+            tile[threadIdx.y][threadIdx.x] = fieldIn[ijk];
+
+        __syncthreads();
+
+        // Transposed index
+        i = blockIdx.y * TILE_DIM + threadIdx.x;
+        j = blockIdx.x * TILE_DIM + threadIdx.y;
+        ijk = i + j*jtot + k*itot*jtot;
+
+        // Write transposed field back from shared to global memory 
+        if (i < jtot && j < itot) 
+            fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
+    }
 
     template<typename TF, typename cTF> __global__ 
     void complex_TF_x_g(cTF* __restrict__ cdata, TF* __restrict__ ddata,
@@ -124,36 +128,36 @@ namespace
         }
     }
 
-//    __global__ 
-//    void complex_double_y_g(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
-//                            const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-//        const int k = blockIdx.z;
-//
-//        const int ij   = i + j*itot + k*kk;        // index real part in ddata
-//        const int ij2  = i + (jtot-j)*itot + k*kk;    // index complex part in ddata
-//        const int jmax = jtot/2+1;
-//        const int ijc  = i + j*itot + k*kkj;
-//
-//        if(i < itot && j < jmax)
-//        {
-//            if (forward) // complex -> double
-//            {
-//                ddata[ij] = cdata[ijc].x;
-//                if (j > 0 && j < jmax-1)
-//                    ddata[ij2] = cdata[ijc].y;
-//            }
-//            else // double -> complex
-//            {
-//                cdata[ijc].x = ddata[ij];
-//                if (j > 0 && j < jmax-1)
-//                    cdata[ijc].y = ddata[ij2];
-//            }
-//        }
-//    }
-//
+    template<typename TF, typename cTF> __global__ 
+    void complex_TF_y_g(cTF* __restrict__ cdata, TF* __restrict__ ddata, 
+                        const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        const int ij   = i + j*itot + k*kk;        // index real part in ddata
+        const int ij2  = i + (jtot-j)*itot + k*kk;    // index complex part in ddata
+        const int jmax = jtot/2+1;
+        const int ijc  = i + j*itot + k*kkj;
+
+        if(i < itot && j < jmax)
+        {
+            if (forward) // complex -> double
+            {
+                ddata[ij] = cdata[ijc].x;
+                if (j > 0 && j < jmax-1)
+                    ddata[ij2] = cdata[ijc].y;
+            }
+            else // double -> complex
+            {
+                cdata[ijc].x = ddata[ij];
+                if (j > 0 && j < jmax-1)
+                    cdata[ijc].y = ddata[ij2];
+            }
+        }
+    }
+
 //    __global__ void normalize_g(double* const __restrict__ data, const int itot, const int jtot, const int ktot, const double in)
 //    {
 //        const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -285,6 +289,9 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
     const int kki = (gd.itot/2+1)*gd.jtot;
     const int kkj = (gd.jtot/2+1)*gd.itot;
 
+    // Not sure how else to do this in parts of this routine
+    bool TF_is_double = std::is_same<TF, double>::value;
+
     // Forward FFT in the x-direction.
     if (FFT_per_slice) // Batched FFT per horizontal slice
     {
@@ -303,49 +310,54 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
     }
 
     // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-    // Not the nicest solution..........
-    if (std::is_same<TF, double>::value)
+    if (TF_is_double)
         complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
     else
-        complex_TF_x_g<TF, cufftComplex><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
+        complex_TF_x_g<TF, cufftComplex      ><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1,       p, gd.itot, gd.jtot, kk, kki,  true);
     cuda_check_error();
 
-//    // Forward FFT in the y-direction.
-//    if (gd.jtot > 1)
-//    {
-//        if (FFTPerSlice) // Batched FFT per horizontal slice
-//        {
-//            for (int k=0; k<gd.ktot; ++k)
-//            {
-//                const int ijk  = k*kk;
-//                const int ijk2 = 2*k*kkj;
-//                if (check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
-//                    throw 1;
-//            }
-//
-//            cudaThreadSynchronize();
-//            cuda_check_error();
-//
-//            complex_double_y_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kkj, true);
-//            cuda_check_error();
-//        }
-//        else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
-//        {
-//            transpose_g<<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot); 
-//            cuda_check_error();
-//
-//            if (check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
-//                throw 1;
-//            cudaThreadSynchronize();
-//
-//            complex_double_x_g<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
-//            cuda_check_error();
-//
-//            transpose_g<<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
-//            cuda_safe_call(cudaMemcpy(p, tmp1, gd.ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
-//            cuda_check_error();
-//        }
-//    }
+    // Forward FFT in the y-direction.
+    if (gd.jtot > 1)
+    {
+        if (FFT_per_slice) // Batched FFT per horizontal slice
+        {
+            for (int k=0; k<gd.ktot; ++k)
+            {
+                const int ijk  = k*kk;
+                const int ijk2 = 2*k*kkj;
+
+                cufft_forward_wrapper<TF>(jplanf, &p[ijk], &tmp1[ijk2]);
+            }
+
+            cudaThreadSynchronize();
+            cuda_check_error();
+
+            if (TF_is_double)
+                complex_TF_y_g<TF, cufftDoubleComplex><<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kkj,  true);
+            else
+                complex_TF_y_g<TF, cufftComplex      ><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1,       p, gd.itot, gd.jtot, kk, kkj,  true);
+
+            cuda_check_error();
+        }
+        else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
+        {
+            transpose_g<TF><<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot); 
+            cuda_check_error();
+
+            cufft_forward_wrapper<TF>(jplanf, tmp2, tmp1);
+            cudaThreadSynchronize();
+
+            if (TF_is_double)
+                complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
+            else
+                complex_TF_x_g<TF, cufftComplex      ><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1,       p, gd.jtot, gd.itot, kk, kkj,  true);
+            cuda_check_error();
+
+            transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
+            cuda_safe_call(cudaMemcpy(p, tmp1, gd.ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
+            cuda_check_error();
+        }
+    }
 }
 
 template<typename TF>
