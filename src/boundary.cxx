@@ -31,6 +31,8 @@
 #include "timeloop.h"
 #include "finite_difference.h"
 
+#include "boundary_cyclic.h"
+
 // Boundary schemes.
 #include "boundary.h"
 // #include "boundary_surface.h"
@@ -567,6 +569,7 @@ namespace
 template<typename TF>
 void Boundary<TF>::exec()
 {
+    /* CvH TEMPORARY DISABLED FOR TESTING.
     // Cyclic boundary conditions, do this before the bottom BC's
     grid.boundary_cyclic(fields.mp.at("u")->fld.data());
     grid.boundary_cyclic(fields.mp.at("v")->fld.data());
@@ -574,6 +577,17 @@ void Boundary<TF>::exec()
 
     for (auto& it : fields.sp)
         grid.boundary_cyclic(it.second->fld.data());
+    CvH END DISABLED */
+
+    Boundary_cyclic<TF> bc(master, grid);
+
+    bc.init();
+    bc.exec(fields.mp.at("u")->fld.data());
+    bc.exec(fields.mp.at("v")->fld.data());
+    bc.exec(fields.mp.at("w")->fld.data());
+
+    for (auto& it : fields.sp)
+        bc.exec(it.second->fld.data());
 
     // Update the boundary values.
     update_bcs();
