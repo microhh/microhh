@@ -62,6 +62,7 @@ class Pres_2 : public Pres<TF>
         #ifdef USECUDA
         using Pres<TF>::make_cufft_plan;
         using Pres<TF>::fft_forward;
+        using Pres<TF>::fft_backward;
 
         TF* bmati_g;
         TF* bmatj_g;

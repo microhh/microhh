@@ -305,8 +305,8 @@ void Pres_2<TF>::exec(double dt)
         gd.imax, gd.jmax, gd.kmax);
     cuda_check_error();
 
-//    fft_backward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
-//
+    fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+
 //    cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 //
 //    solve_out_g<<<gridGPU, blockGPU>>>(
