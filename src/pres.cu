@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <cufft.h>
 #include <type_traits>
+#include <iostream>
 #include "grid.h"
 #include "fields.h"
 #include "pres.h"
@@ -92,37 +93,37 @@ namespace
 //        if (i < jtot && j < itot) 
 //            fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
 //    }
-//
-//    __global__ 
-//    void complex_double_x_g(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
-//                            const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-//        const int k = blockIdx.z;
-//
-//        const int ij   = i + j*itot + k*kk;         // index real part in ddata
-//        const int ij2  = (itot-i) + j*itot + k*kk;  // index complex part in ddata
-//        const int imax = itot/2+1;
-//        const int ijc  = i + j*imax + k*kki;        // index in cdata
-//
-//        if (j < jtot && i < imax)
-//        {
-//            if (forward) // complex -> double
-//            {
-//                ddata[ij]  = cdata[ijc].x;
-//                if (i > 0 && i < imax-1)
-//                    ddata[ij2] = cdata[ijc].y;
-//            }
-//            else // double -> complex
-//            {
-//                cdata[ijc].x = ddata[ij];
-//                if (i > 0 && i < imax-1)
-//                    cdata[ijc].y = ddata[ij2];
-//            }
-//        }
-//    }
-//
+
+    template<typename TF, typename cTF> __global__ 
+    void complex_TF_x_g(cTF* __restrict__ cdata, TF* __restrict__ ddata,
+                        const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        const int ij   = i + j*itot + k*kk;         // index real part in ddata
+        const int ij2  = (itot-i) + j*itot + k*kk;  // index complex part in ddata
+        const int imax = itot/2+1;
+        const int ijc  = i + j*imax + k*kki;        // index in cdata
+
+        if (j < jtot && i < imax)
+        {
+            if (forward) // complex -> double
+            {
+                ddata[ij]  = cdata[ijc].x;
+                if (i > 0 && i < imax-1)
+                    ddata[ij2] = cdata[ijc].y;
+            }
+            else // double -> complex
+            {
+                cdata[ijc].x = ddata[ij];
+                if (i > 0 && i < imax-1)
+                    cdata[ijc].y = ddata[ij2];
+            }
+        }
+    }
+
 //    __global__ 
 //    void complex_double_y_g(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
 //                            const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
@@ -301,10 +302,14 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
         cudaThreadSynchronize();
     }
 
-//    // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-//    complex_double_x_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
-//    cuda_check_error();
-//
+    // Transform complex to double output. Allows for creating parallel cuda version at a later stage
+    // Not the nicest solution..........
+    if (std::is_same<TF, double>::value)
+        complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
+    else
+        complex_TF_x_g<TF, cufftComplex><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
+    cuda_check_error();
+
 //    // Forward FFT in the y-direction.
 //    if (gd.jtot > 1)
 //    {
