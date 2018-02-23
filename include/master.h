@@ -43,8 +43,6 @@ class Master
         double get_wall_clock_time();
         bool at_wall_clock_limit();
 
-        void wait_all();
-
         // Overload the broadcast function.
         void broadcast(char*, int);
         void broadcast(int*, int);
@@ -83,7 +81,7 @@ class Master
         int mpicoordx;
         int mpicoordy;
 
-#ifdef USEMPI
+        #ifdef USEMPI
         int nnorth;
         int nsouth;
         int neast;
@@ -93,9 +91,9 @@ class Master
         MPI_Comm commx;
         MPI_Comm commy;
 
-        MPI_Request *reqs;
-        int reqsn;
-#endif
+        MPI_Request* get_request_ptr();
+        void wait_all();
+        #endif
 
     private:
         bool initialized;
@@ -104,8 +102,11 @@ class Master
         double wall_clock_start;
         double wall_clock_end;
 
-#ifdef USEMPI
+        #ifdef USEMPI
+        MPI_Request* reqs;
+        int reqsn;
+
         int check_error(int);
-#endif
+        #endif
 };
 #endif

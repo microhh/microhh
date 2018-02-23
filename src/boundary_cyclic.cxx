@@ -120,15 +120,10 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
         const int eastin  = gd.iend;
 
         // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[westin], ncount, eastwestedge, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Isend(&data[westout], ncount, eastwestedge, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[eastin], ncount, eastwestedge, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        // Wait here for the MPI to have correct values in the corners of the cells.
+        MPI_Isend(&data[eastout], ncount, eastwestedge, master.neast, 1, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ westin], ncount, eastwestedge, master.nwest, 1, master.commxy, master.get_request_ptr());
+        MPI_Isend(&data[westout], ncount, eastwestedge, master.nwest, 2, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ eastin], ncount, eastwestedge, master.neast, 2, master.commxy, master.get_request_ptr());
         master.wait_all();
     }
 
@@ -144,14 +139,10 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
             const int northin  = gd.jend  *gd.icells;
 
             // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[southin], ncount, northsouthedge, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Isend(&data[southout], ncount, northsouthedge, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[northin], ncount, northsouthedge, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
+            MPI_Isend(&data[northout], ncount, northsouthedge, master.nnorth, 1, master.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ southin], ncount, northsouthedge, master.nsouth, 1, master.commxy, master.get_request_ptr());
+            MPI_Isend(&data[southout], ncount, northsouthedge, master.nsouth, 2, master.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ northin], ncount, northsouthedge, master.nnorth, 2, master.commxy, master.get_request_ptr());
             master.wait_all();
         }
         // In case of 2D, fill all the ghost cells in the y-direction with the same value.
@@ -173,69 +164,62 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
                     }
         }
     }
+}
 
-    template<typename TF>
-    void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
+template<typename TF>
+void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+
+    // Communicate east-west edges.
+    const int eastout = gd.iend-gd.igc;
+    const int westin  = 0;
+    const int westout = gd.istart;
+    const int eastin  = gd.iend;
+
+    // Communicate north-south edges.
+    const int northout = (gd.jend-gd.jgc)*gd.icells;
+    const int southin  = 0;
+    const int southout = gd.jstart*gd.icells;
+    const int northin  = gd.jend  *gd.icells;
+
+    // First, send and receive the ghost cells in east-west direction.
+    MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, master.get_request_ptr());
+    MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, master.get_request_ptr());
+    master.wait_all();
+
+    // If the run is 3D, apply the BCs.
+    if (gd.jtot > 1)
     {
-        const int ncount = 1;
-    
-        // Communicate east-west edges.
-        const int eastout = gd.iend-gd.igc;
-        const int westin  = 0;
-        const int westout = gd.istart;
-        const int eastin  = gd.iend;
-    
-        // Communicate north-south edges.
-        const int northout = (gd.jend-gd.jgc)*gd.icells;
-        const int southin  = 0;
-        const int southout = gd.jstart*gd.icells;
-        const int northin  = gd.jend  *gd.icells;
-    
-        // First, send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        // Wait here for the mpi to have correct values in the corners of the cells.
+        // Second, send and receive the ghost cells in the north-south direction.
+        MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, master.get_request_ptr());
+        MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, master.get_request_ptr());
         master.wait_all();
-    
-        // If the run is 3D, apply the BCs.
-        if (gd.jtot > 1)
-        {
-            // Second, send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            master.wait_all();
-        }
-        // In case of 2D, fill all the ghost cells with the current value.
-        else
-        {
-            // Local copies for fast performance in loop.
-            const int jj = gd.icells;
-            const int jstart = gd.jstart;
-            const int jend = gd.jend;
-    
-            for (int j=0; j<gd.jgc; ++j)
-                #pragma ivdep
-                for (int i=0; i<gd.icells; ++i)
-                {
-                    const int ijref   = i + jstart*jj;
-                    const int ijnorth = i + j*jj;
-                    const int ijsouth = i + (jend+j)*jj;
-                    data[ijnorth] = data[ijref];
-                    data[ijsouth] = data[ijref];
-                }
-        }
+    }
+    // In case of 2D, fill all the ghost cells with the current value.
+    else
+    {
+        // Local copies for fast performance in loop.
+        const int jj = gd.icells;
+        const int jstart = gd.jstart;
+        const int jend = gd.jend;
+
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ijref   = i + jstart*jj;
+                const int ijnorth = i + j*jj;
+                const int ijsouth = i + (jend+j)*jj;
+                data[ijnorth] = data[ijref];
+                data[ijsouth] = data[ijref];
+            }
     }
 }
 

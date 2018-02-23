@@ -197,14 +197,10 @@ void Grid<TF>::boundary_cyclic(TF* const restrict data, Edge edge)
         const int eastin  = gd.iend;
 
         // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[westin], ncount, eastwestedge, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Isend(&data[westout], ncount, eastwestedge, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[eastin], ncount, eastwestedge, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&data[eastout], ncount, eastwestedge, master.neast, 1, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ westin], ncount, eastwestedge, master.nwest, 1, master.commxy, master.get_request_ptr());
+        MPI_Isend(&data[westout], ncount, eastwestedge, master.nwest, 2, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ eastin], ncount, eastwestedge, master.neast, 2, master.commxy, master.get_request_ptr());
         // Wait here for the MPI to have correct values in the corners of the cells.
         master.wait_all();
     }
@@ -221,14 +217,10 @@ void Grid<TF>::boundary_cyclic(TF* const restrict data, Edge edge)
             const int northin  = gd.jend  *gd.icells;
 
             // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[southin], ncount, northsouthedge, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Isend(&data[southout], ncount, northsouthedge, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
-            MPI_Irecv(&data[northin], ncount, northsouthedge, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
-            master.reqsn++;
+            MPI_Isend(&data[northout], ncount, northsouthedge, master.nnorth, 1, master.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ southin], ncount, northsouthedge, master.nsouth, 1, master.commxy, master.get_request_ptr());
+            MPI_Isend(&data[southout], ncount, northsouthedge, master.nsouth, 2, master.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ northin], ncount, northsouthedge, master.nnorth, 2, master.commxy, master.get_request_ptr());
             master.wait_all();
         }
         // In case of 2D, fill all the ghost cells in the y-direction with the same value.
@@ -270,14 +262,10 @@ void Grid<TF>::boundary_cyclic_2d(TF* const restrict data)
     const int northin  = gd.jend  *gd.icells;
 
     // First, send and receive the ghost cells in east-west direction.
-    MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, &master.reqs[master.reqsn]);
-    master.reqsn++;
-    MPI_Irecv(&data[westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, &master.reqs[master.reqsn]);
-    master.reqsn++;
-    MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, &master.reqs[master.reqsn]);
-    master.reqsn++;
-    MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, &master.reqs[master.reqsn]);
-    master.reqsn++;
+    MPI_Isend(&data[eastout], ncount, eastwestedge2d, master.neast, 1, master.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ westin], ncount, eastwestedge2d, master.nwest, 1, master.commxy, master.get_request_ptr());
+    MPI_Isend(&data[westout], ncount, eastwestedge2d, master.nwest, 2, master.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d, master.neast, 2, master.commxy, master.get_request_ptr());
     // Wait here for the mpi to have correct values in the corners of the cells.
     master.wait_all();
 
@@ -285,14 +273,10 @@ void Grid<TF>::boundary_cyclic_2d(TF* const restrict data)
     if (gd.jtot > 1)
     {
         // Second, send and receive the ghost cells in the north-south direction.
-        MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&data[northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&data[northout], ncount, northsouthedge2d, master.nnorth, 1, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ southin], ncount, northsouthedge2d, master.nsouth, 1, master.commxy, master.get_request_ptr());
+        MPI_Isend(&data[southout], ncount, northsouthedge2d, master.nsouth, 2, master.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ northin], ncount, northsouthedge2d, master.nnorth, 2, master.commxy, master.get_request_ptr());
         master.wait_all();
     }
     // In case of 2D, fill all the ghost cells with the current value.
@@ -304,7 +288,7 @@ void Grid<TF>::boundary_cyclic_2d(TF* const restrict data)
         const int jend = gd.jend;
 
         for (int j=0; j<gd.jgc; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<gd.icells; ++i)
             {
                 const int ijref   = i + jstart*jj;
@@ -332,10 +316,8 @@ void Grid<TF>::transpose_zx(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*jj;
 
         // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -357,10 +339,8 @@ void Grid<TF>::transpose_xz(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*gd.kblock*kk;
 
         // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -382,10 +362,8 @@ void Grid<TF>::transpose_xy(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*kk;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master.commy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master.commy, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -407,10 +385,8 @@ void Grid<TF>::transpose_yx(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*jj;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master.commy, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master.commy, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -432,10 +408,8 @@ void Grid<TF>::transpose_yz(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*gd.kblock*kk;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -457,10 +431,8 @@ void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
         const int ijkr = n*gd.jblock*jj;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master.commx, &master.reqs[master.reqsn]);
-        master.reqsn++;
+        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
     }
 
     master.wait_all();

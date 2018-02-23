@@ -23,6 +23,10 @@
 #ifndef BOUNDARY_CYCLIC
 #define BOUNDARY_CYCLIC
 
+#ifdef USEMPI
+#include <mpi.h>
+#endif
+
 class Master;
 template<typename> class Grid;
 

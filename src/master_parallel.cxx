@@ -182,9 +182,17 @@ int Master::check_error(int n)
     return 0;
 }
 
+MPI_Request* Master::get_request_ptr()
+{
+    // Get a request out of the pointer and increment the counter.
+    MPI_Request* req = &reqs[reqsn];
+    ++reqsn;
+    return req;
+}
+
 void Master::wait_all()
 {
-    // wait for MPI processes and reset the number of pending requests
+    // Wait for MPI processes and reset the number of pending requests.
     MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
     reqsn = 0;
 }
