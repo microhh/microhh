@@ -109,84 +109,84 @@ namespace
 //                p[ijkp-kkp] = p[ijkp];
 //        }
 //    }
-//
-//    template<typename TF> __global__ 
-//    void solve_in_g(double* __restrict__ p,
-//                    double* __restrict__ work3d, double* __restrict__ b,
-//                    double* __restrict__ a, double* __restrict__ c,
-//                    double* __restrict__ dz, double* __restrict__ rhoref,
-//                    double* __restrict__ bmati, double* __restrict__ bmatj,
-//                    const int jj, const int kk,
-//                    const int imax, const int jmax, const int kmax,
-//                    const int kstart)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-//        const int k = blockIdx.z;
-//
-//        if (i < imax && j < jmax && k < kmax)
-//        {
-//            const int ijk = i + j*jj + k*kk;
-//
-//            // CvH this needs to be taken into account in case of an MPI run
-//            // iindex = mpi->mpicoordy * iblock + i;
-//            // jindex = mpi->mpicoordx * jblock + j;
-//            // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-//            //  if(iindex == 0 && jindex == 0)
-//
-//            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
-//            p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
-//
-//            if (k == 0)
-//            {
-//                // substitute BC's
-//                // ijk = i + j*jj;
-//                b[ijk] += a[0];
-//            }
-//            else if (k == kmax-1)
-//            {
-//                // for wave number 0, which contains average, set pressure at top to zero
-//                if (i == 0 && j == 0)
-//                    b[ijk] -= c[k];
-//                // set dp/dz at top to zero
-//                else
-//                    b[ijk] += c[k];
-//            }
-//        }
-//    }
-//
-//    template<typename TF> __global__ 
-//    void tdma_g(double* __restrict__ a, double* __restrict__ b, double* __restrict__ c,
-//                double* __restrict__ p, double* __restrict__ work3d,
-//                const int jj, const int kk,
-//                const int imax, const int jmax, const int kmax)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-//
-//        if (i < imax && j < jmax)
-//        {
-//            const int ij = i + j*jj;
-//
-//            double work2d = b[ij];
-//            p[ij] /= work2d;
-//
-//            for (int k=1; k<kmax; k++)
-//            {
-//                const int ijk = ij + k*kk;
-//                work3d[ijk] = c[k-1] / work2d;
-//                work2d = b[ijk] - a[k]*work3d[ijk];
-//                p[ijk] -= a[k]*p[ijk-kk];
-//                p[ijk] /= work2d;
-//            }
-//
-//            for (int k=kmax-2; k>=0; k--)
-//            {
-//                const int ijk = ij + k*kk;
-//                p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
-//            }
-//        }
-//    }
+
+    template<typename TF> __global__ 
+    void solve_in_g(TF* __restrict__ p,
+                    TF* __restrict__ work3d, TF* __restrict__ b,
+                    TF* __restrict__ a, TF* __restrict__ c,
+                    TF* __restrict__ dz, TF* __restrict__ rhoref,
+                    TF* __restrict__ bmati, TF* __restrict__ bmatj,
+                    const int jj, const int kk,
+                    const int imax, const int jmax, const int kmax,
+                    const int kstart)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        if (i < imax && j < jmax && k < kmax)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // CvH this needs to be taken into account in case of an MPI run
+            // iindex = mpi->mpicoordy * iblock + i;
+            // jindex = mpi->mpicoordx * jblock + j;
+            // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+            //  if(iindex == 0 && jindex == 0)
+
+            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
+            p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
+
+            if (k == 0)
+            {
+                // substitute BC's
+                // ijk = i + j*jj;
+                b[ijk] += a[0];
+            }
+            else if (k == kmax-1)
+            {
+                // for wave number 0, which contains average, set pressure at top to zero
+                if (i == 0 && j == 0)
+                    b[ijk] -= c[k];
+                // set dp/dz at top to zero
+                else
+                    b[ijk] += c[k];
+            }
+        }
+    }
+
+    template<typename TF> __global__ 
+    void tdma_g(TF* __restrict__ a, TF* __restrict__ b, TF* __restrict__ c,
+                TF* __restrict__ p, TF* __restrict__ work3d,
+                const int jj, const int kk,
+                const int imax, const int jmax, const int kmax)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < imax && j < jmax)
+        {
+            const int ij = i + j*jj;
+
+            TF work2d = b[ij];
+            p[ij] /= work2d;
+
+            for (int k=1; k<kmax; k++)
+            {
+                const int ijk = ij + k*kk;
+                work3d[ijk] = c[k-1] / work2d;
+                work2d = b[ijk] - a[k]*work3d[ijk];
+                p[ijk] -= a[k]*p[ijk-kk];
+                p[ijk] /= work2d;
+            }
+
+            for (int k=kmax-2; k>=0; k--)
+            {
+                const int ijk = ij + k*kk;
+                p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+            }
+        }
+    }
 
     template<typename TF> __global__ 
     void calc_divergence_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
@@ -267,12 +267,16 @@ void Pres_2<TF>::exec(double dt)
     dim3 grid2dGPU (gridi,  gridj);
     dim3 block2dGPU(blocki, blockj);
 
+    // Get two free tmp fields on gpu
+    auto tmp1 = fields.get_tmp_g();
+    auto tmp2 = fields.get_tmp_g();
+
     // calculate the cyclic BCs first
     grid.boundary_cyclic_g(&fields.mt.at("u")->fld_g[offs]);
     grid.boundary_cyclic_g(&fields.mt.at("v")->fld_g[offs]);
     grid.boundary_cyclic_g(&fields.mt.at("w")->fld_g[offs]);
 
-    pres_in_g<<<gridGPU, blockGPU>>>(
+    pres_in_g<TF><<<gridGPU, blockGPU>>>(
         fields.sd.at("p")->fld_g,
         &fields.mp.at("u")->fld_g[offs], &fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], 
         &fields.mt.at("u")->fld_g[offs], &fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs], 
@@ -283,30 +287,24 @@ void Pres_2<TF>::exec(double dt)
         gd.igc,  gd.jgc,  gd.kgc);
     cuda_check_error();
 
-    auto tmp1 = fields.get_tmp_g();
-    auto tmp2 = fields.get_tmp_g();
-
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    fields.release_tmp_g(tmp1);
-    fields.release_tmp_g(tmp2);
+    solve_in_g<TF><<<gridGPU, blockGPU>>>(
+        fields.sd.at("p")->fld_g,
+        tmp1->fld_g, tmp2->fld_g,
+        a_g, c_g, gd.dz_g, fields.rhoref_g, bmati_g, bmatj_g,
+        gd.imax, gd.imax*gd.jmax,
+        gd.imax, gd.jmax, gd.kmax,
+        gd.kstart);
+    cuda_check_error();
 
-//    solve_in_g<<<gridGPU, blockGPU>>>(
-//        fields->sd["p"]->data_g,
-//        fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
-//        a_g, c_g, grid->dz_g, fields->rhoref_g, bmati_g, bmatj_g,
-//        grid->imax, grid->imax*grid->jmax,
-//        grid->imax, grid->jmax, grid->kmax,
-//        grid->kstart);
-//    cuda_check_error();
-//
-//    tdma_g<<<grid2dGPU, block2dGPU>>>(
-//        a_g, fields->atmp["tmp2"]->data_g, c_g,
-//        fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g,
-//        grid->imax, grid->imax*grid->jmax,
-//        grid->imax, grid->jmax, grid->kmax);
-//    cuda_check_error();
-//
+    tdma_g<TF><<<grid2dGPU, block2dGPU>>>(
+        a_g, tmp2->fld_g, c_g,
+        fields.sd.at("p")->fld_g, tmp1->fld_g,
+        gd.imax, gd.imax*gd.jmax,
+        gd.imax, gd.jmax, gd.kmax);
+    cuda_check_error();
+
 //    fft_backward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 //
 //    cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
@@ -329,6 +327,9 @@ void Pres_2<TF>::exec(double dt)
 //        grid->istart,  grid->jstart, grid->kstart,
 //        grid->iend,    grid->jend,   grid->kend);
 //    cuda_check_error();
+
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
 }
 
 template<typename TF>
