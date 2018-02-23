@@ -34,11 +34,13 @@ class Boundary_cyclic
         ~Boundary_cyclic();                  // Destructor of the boundary class.
 
         void init();   // Initialize the fields.
-        void create(); // Create the fields.
+        void exec(TF* const restrict, Edge=Edge::Both_edges); ///< Fills the ghost cells in the periodic directions.
 
     private:
         Master& master; // Reference to master class.
         Grid<TF>& grid; // Reference to grid class.
+
+        void init_mpi();   // Initialize the MPI datatypes.
 
         #ifdef USEMPI
         MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.
