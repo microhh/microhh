@@ -83,7 +83,7 @@ double Master::get_wall_clock_time()
     return (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
 }
 
-void  Master::wait_all() {}
+// void Master::wait_all() {}
 
 // All broadcasts return directly, because there is nothing to broadcast.
 void Master::broadcast(char* data, int datasize) {}
