@@ -31,7 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
-template<typename> class Field3d_stats;
+template<typename> class Field3d_operators;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -47,7 +47,7 @@ template<typename TF>
 class Force
 {
     public:
-        Force(Master&, Grid<TF>&, Fields<TF>&, Field3d_stats<TF>&, Input&); ///< Constructor of the force class.
+        Force(Master&, Grid<TF>&, Fields<TF>&, Field3d_operators<TF>&, Input&); ///< Constructor of the force class.
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
@@ -73,7 +73,7 @@ class Force
         Grid<TF>& grid;
         Fields<TF>& fields;
         Master& master;
-        Field3d_stats<TF>& field3d_stats;
+        Field3d_operators<TF>& field3d_operators;
         
         // Internal switches for various forcings
         Large_scale_pressure_type swlspres;

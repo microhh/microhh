@@ -28,7 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
-#include "field3d_stats.h"
+#include "field3d_operators.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
@@ -100,7 +100,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     {
         grid          = std::make_shared<Grid<TF>>(master, *input);
         fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
-        field3d_stats = std::make_shared<Field3d_stats<TF>>(master, *grid, *fields);
+        field3d_operators = std::make_shared<Field3d_operators<TF>>(master, *grid, *fields);
         timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
@@ -108,7 +108,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_stats, *input);
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
         // Parse the statistics masks

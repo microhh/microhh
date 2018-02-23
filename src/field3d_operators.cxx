@@ -28,11 +28,11 @@
 #include "field3d.h"
 #include "fields.h"
 #include "defines.h"
-#include "field3d_stats.h"
+#include "field3d_operators.h"
 
 
 template<typename TF>
-Field3d_stats<TF>::Field3d_stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin) :
+Field3d_operators<TF>::Field3d_operators(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin) :
     master(masterin),
     grid(gridin),
     fields(fieldsin)
@@ -40,13 +40,13 @@ Field3d_stats<TF>::Field3d_stats(Master& masterin, Grid<TF>& gridin, Fields<TF>&
 }
 
 template<typename TF>
-Field3d_stats<TF>::~Field3d_stats()
+Field3d_operators<TF>::~Field3d_operators()
 {
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Field3d_stats<TF>::calc_mean_profile(Field3d<TF>* fld)
+void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
 {
     const auto& gd = grid.get_grid_data();
 
@@ -73,7 +73,7 @@ void Field3d_stats<TF>::calc_mean_profile(Field3d<TF>* fld)
 // Calculate the volume weighted total mean
 // BvS: for now only at full levels
 template<typename TF>
-TF Field3d_stats<TF>::calc_mean(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
 {
     const auto& gd = grid.get_grid_data();
 
@@ -95,5 +95,5 @@ TF Field3d_stats<TF>::calc_mean(Field3d<TF>* fld)
 }
 #endif
 
-template class Field3d_stats<double>;
-template class Field3d_stats<float>;
+template class Field3d_operators<double>;
+template class Field3d_operators<float>;

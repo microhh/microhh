@@ -29,11 +29,11 @@
 #include "fields.h"
 #include "defines.h"
 #include "tools.h"
-#include "field3d_stats.h"
+#include "field3d_operators.h"
 
 #ifdef USECUDA
 template<typename TF>
-void Field3d_stats<TF>::calc_mean_profile(Field3d<TF>* fld)
+void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
 {
     using namespace Tools_g;
 
@@ -48,7 +48,7 @@ void Field3d_stats<TF>::calc_mean_profile(Field3d<TF>* fld)
 }
 
 template<typename TF>
-TF Field3d_stats<TF>::calc_mean(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
 {
     using namespace Tools_g;
 
@@ -70,7 +70,7 @@ TF Field3d_stats<TF>::calc_mean(Field3d<TF>* fld)
 }
 
 template<typename TF>
-TF Field3d_stats<TF>::calc_max(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_max(Field3d<TF>* fld)
 {
     using namespace Tools_g;
 
@@ -93,5 +93,5 @@ TF Field3d_stats<TF>::calc_max(Field3d<TF>* fld)
 }
 #endif
 
-template class Field3d_stats<double>;
-template class Field3d_stats<float>;
+template class Field3d_operators<double>;
+template class Field3d_operators<float>;

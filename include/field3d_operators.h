@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FIELD3D_STATS
-#define FIELD3D_STATS
+#ifndef FIELD3D_OPERATORS
+#define FIELD3D_OPERATORS
 
 #include "field3d.h"
 
@@ -31,12 +31,12 @@ template<typename> class Fields;
 template<typename> class Field3d;
 
 template<typename TF>
-class Field3d_stats
+class Field3d_operators
 {
     public:
         // Functions
-        Field3d_stats(Master&, Grid<TF>&, Fields<TF>&);
-        ~Field3d_stats();
+        Field3d_operators(Master&, Grid<TF>&, Fields<TF>&);
+        ~Field3d_operators();
 
 
         void calc_mean_profile(Field3d<TF>*);   ///< Calculate mean profile into fld_mean
