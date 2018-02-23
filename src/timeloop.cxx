@@ -29,7 +29,6 @@
 #include "timeloop.h"
 #include "defines.h"
 #include "constants.h"
-#include "model.h"
 
 template<typename TF>
 Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,

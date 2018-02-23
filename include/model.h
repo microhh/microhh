@@ -45,7 +45,7 @@ template<typename> class Decay;
 
 template<typename> class Stats;
 
-enum class Sim_mode { Init, Run, Post };
+enum class Sim_mode;
 
 template<typename TF>
 class Model

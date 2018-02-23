@@ -30,7 +30,6 @@
 #include "constants.h"
 #include "tools.h"
 #include "boundary.h"
-#include "model.h"
 #include "timeloop.h"
 
 using namespace Finite_difference::O2;

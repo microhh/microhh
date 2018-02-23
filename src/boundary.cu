@@ -29,7 +29,6 @@
 #include "fields.h"
 #include "boundary.h"
 #include "defines.h"
-#include "model.h"
 #include "timeloop.h"
 #include "finite_difference.h"
 #include "constants.h"

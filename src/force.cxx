@@ -31,7 +31,6 @@
 #include "force.h"
 #include "defines.h"
 #include "finite_difference.h"
-#include "model.h"
 #include "timeloop.h"
 #include "boundary.h"
 

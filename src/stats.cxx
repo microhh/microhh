@@ -36,7 +36,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "model.h"
 //#include "diff_smag2.h"
 #include "timeloop.h"
 

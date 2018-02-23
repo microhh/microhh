@@ -24,5 +24,6 @@
 #define DEFINES
 
 #define restrict RESTRICTKEYWORD
+enum class Sim_mode { Init, Run, Post };
 
 #endif

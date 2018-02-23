@@ -31,7 +31,6 @@
 #include "master.h"
 #include "defines.h"
 #include "constants.h"
-#include "model.h"
 
 // diffusion schemes
 #include "diff.h"
