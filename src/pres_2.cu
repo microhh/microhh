@@ -283,8 +283,14 @@ void Pres_2<TF>::exec(double dt)
         gd.igc,  gd.jgc,  gd.kgc);
     cuda_check_error();
 
-//    fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
-//
+    auto tmp1 = fields.get_tmp_g();
+    auto tmp2 = fields.get_tmp_g();
+
+    fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
+
 //    solve_in_g<<<gridGPU, blockGPU>>>(
 //        fields->sd["p"]->data_g,
 //        fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,

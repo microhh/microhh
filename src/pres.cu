@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <cufft.h>
+#include <type_traits>
 #include "grid.h"
 #include "fields.h"
 #include "pres.h"
@@ -32,7 +33,7 @@
 
 namespace
 {
-    //const int TILE_DIM = 16; // Size of shared memory array used for transpose
+    const int TILE_DIM = 16; // Size of shared memory array used for transpose
 
     inline int check_cufft(cufftResult err)
     {
@@ -171,6 +172,22 @@ namespace
     template<typename TF> cufftType cufft_from_complex();
     template<> cufftType cufft_from_complex<double>() { return CUFFT_Z2D; }
     template<> cufftType cufft_from_complex<float>()  { return CUFFT_C2R; }
+
+    template<typename TF> void cufft_forward_wrapper(cufftHandle, TF*, TF*);
+    
+    template<> 
+    void cufft_forward_wrapper<double>(cufftHandle plan, double* p, double* tmp) 
+    { 
+        if( check_cufft(cufftExecD2Z(plan, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp)) )
+            throw 1;
+    }
+
+    template<> 
+    void cufft_forward_wrapper<float>(cufftHandle plan, float* p, float* tmp) 
+    { 
+        if(  check_cufft(cufftExecR2C(plan, (cufftReal*)p, (cufftComplex*)tmp)) )
+            throw 1;
+    }
 }
 
 #ifdef USECUDA
@@ -240,59 +257,60 @@ void Pres<TF>::make_cufft_plan()
 template<typename TF>
 void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __restrict__ tmp2)
 {
-//    const int blocki = grid->ithread_block;
-//    const int blockj = grid->jthread_block;
-//    int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-//    int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-//
-//    // 3D grid
-//    dim3 gridGPU (gridi,  gridj,  grid->kmax);
-//    dim3 blockGPU(blocki, blockj, 1);
-//
-//    // Square grid for transposes 
-//    const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
-//    const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
-//    dim3 gridGPUTf(gridiT, gridjT, grid->ktot);
-//    dim3 gridGPUTb(gridjT, gridiT, grid->ktot);
-//    dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
-//
-//    // Transposed grid
-//    gridi = grid->jmax/blocki + (grid->jmax%blocki > 0);
-//    gridj = grid->imax/blockj + (grid->imax%blockj > 0);
-//    dim3 gridGPUji (gridi,  gridj,  grid->kmax);
-//
-//    const int kk = grid->itot*grid->jtot;
-//    const int kki = (grid->itot/2+1)*grid->jtot;
-//    const int kkj = (grid->jtot/2+1)*grid->itot;
-//
-//    // Forward FFT in the x-direction.
-//    if (FFTPerSlice) // Batched FFT per horizontal slice
-//    {
-//        for (int k=0; k<grid->ktot; ++k)
-//        {
-//            const int ijk  = k*kk;
-//            const int ijk2 = 2*k*kki;
-//
-//            if (check_cufft(cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
-//                throw 1;
-//        }
-//    }
-//    else // Single batched FFT over entire 3D field
-//    {
-//        check_cufft(cufftExecD2Z(iplanf, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp1));
-//        cudaThreadSynchronize();
-//    }
-//
+    const auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    // 3D grid
+    dim3 gridGPU (gridi,  gridj,  gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    // Square grid for transposes 
+    const int gridiT = gd.imax/TILE_DIM + (gd.imax%TILE_DIM > 0);
+    const int gridjT = gd.jmax/TILE_DIM + (gd.jmax%TILE_DIM > 0);
+    dim3 gridGPUTf(gridiT, gridjT, gd.ktot);
+    dim3 gridGPUTb(gridjT, gridiT, gd.ktot);
+    dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
+
+    // Transposed grid
+    gridi = gd.jmax/blocki + (gd.jmax%blocki > 0);
+    gridj = gd.imax/blockj + (gd.imax%blockj > 0);
+    dim3 gridGPUji (gridi,  gridj,  gd.kmax);
+
+    const int kk  = gd.itot*gd.jtot;
+    const int kki = (gd.itot/2+1)*gd.jtot;
+    const int kkj = (gd.jtot/2+1)*gd.itot;
+
+    // Forward FFT in the x-direction.
+    if (FFT_per_slice) // Batched FFT per horizontal slice
+    {
+        for (int k=0; k<gd.ktot; ++k)
+        {
+            const int ijk  = k*kk;
+            const int ijk2 = 2*k*kki;
+
+            cufft_forward_wrapper<TF>(iplanf, &p[ijk], &tmp1[ijk2]);
+        }
+    }
+    else // Single batched FFT over entire 3D field
+    {
+        cufft_forward_wrapper<TF>(iplanf, p, tmp1);
+        cudaThreadSynchronize();
+    }
+
 //    // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-//    complex_double_x_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  true);
+//    complex_double_x_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kki,  true);
 //    cuda_check_error();
 //
 //    // Forward FFT in the y-direction.
-//    if (grid->jtot > 1)
+//    if (gd.jtot > 1)
 //    {
 //        if (FFTPerSlice) // Batched FFT per horizontal slice
 //        {
-//            for (int k=0; k<grid->ktot; ++k)
+//            for (int k=0; k<gd.ktot; ++k)
 //            {
 //                const int ijk  = k*kk;
 //                const int ijk2 = 2*k*kkj;
@@ -303,23 +321,23 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
 //            cudaThreadSynchronize();
 //            cuda_check_error();
 //
-//            complex_double_y_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
+//            complex_double_y_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.itot, gd.jtot, kk, kkj, true);
 //            cuda_check_error();
 //        }
 //        else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
 //        {
-//            transpose_g<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
+//            transpose_g<<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot); 
 //            cuda_check_error();
 //
 //            if (check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
 //                throw 1;
 //            cudaThreadSynchronize();
 //
-//            complex_double_x_g<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
+//            complex_double_x_g<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
 //            cuda_check_error();
 //
-//            transpose_g<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
-//            cuda_safe_call(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+//            transpose_g<<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
+//            cuda_safe_call(cudaMemcpy(p, tmp1, gd.ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
 //            cuda_check_error();
 //        }
 //    }
