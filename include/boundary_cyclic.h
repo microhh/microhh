@@ -40,7 +40,9 @@ class Boundary_cyclic
         Master& master; // Reference to master class.
         Grid<TF>& grid; // Reference to grid class.
 
-        void init_mpi();   // Initialize the MPI datatypes.
+        void init_mpi();
+        void exit_mpi();
+        bool mpi_types_allocated;
 
         #ifdef USEMPI
         MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.

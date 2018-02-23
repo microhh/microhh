@@ -27,13 +27,15 @@
 template<typename TF>
 Boundary_cyclic<TF>::Boundary_cyclic(Master& masterin, Grid<TF>& gridin) :
     master(masterin),
-    grid(gridin)
+    grid(gridin),
+    mpi_types_allocated(false)
 {
 }
 
 template<typename TF>
 Boundary_cyclic<TF>::~Boundary_cyclic()
 {
+    exit_mpi();
 }
 
 template<typename TF>
@@ -71,6 +73,18 @@ void Boundary_cyclic<TF>::init_mpi()
     datastride = gd.icells*gd.jcells;
     MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge);
     MPI_Type_commit(&northsouthedge);
+
+    mpi_types_allocated = true;
+}
+
+template<typename TF>
+void Boundary_cyclic<TF>::exit_mpi()
+{
+    if (mpi_types_allocated)
+    {
+        MPI_Type_free(&eastwestedge);
+        MPI_Type_free(&northsouthedge);
+    }
 }
 
 template<typename TF>
@@ -148,6 +162,11 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
 
 template<typename TF>
 void Boundary_cyclic<TF>::init_mpi()
+{
+}
+
+template<typename TF>
+void Boundary_cyclic<TF>::exit_mpi()
 {
 }
 
