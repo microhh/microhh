@@ -44,7 +44,8 @@ template<typename TF>
 Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin),
     grid(gridin),
-    fields(fieldsin)
+    fields(fieldsin),
+    boundary_cyclic(master, grid)
 {
     swboundary = "default";
 }
@@ -167,6 +168,9 @@ void Boundary<TF>::init(Input& input)
 
     if (nerror)
         throw std::runtime_error("Cannot use ustar bc for default boundary");
+
+    // Initialize the boundary cyclic.
+    boundary_cyclic.init();
 }
 
 template<typename TF>
@@ -579,15 +583,12 @@ void Boundary<TF>::exec()
         grid.boundary_cyclic(it.second->fld.data());
     CvH END DISABLED */
 
-    Boundary_cyclic<TF> bc(master, grid);
-
-    bc.init();
-    bc.exec(fields.mp.at("u")->fld.data());
-    bc.exec(fields.mp.at("v")->fld.data());
-    bc.exec(fields.mp.at("w")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
 
     for (auto& it : fields.sp)
-        bc.exec(it.second->fld.data());
+        boundary_cyclic.exec(it.second->fld.data());
 
     // Update the boundary values.
     update_bcs();

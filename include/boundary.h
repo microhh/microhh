@@ -23,6 +23,8 @@
 #ifndef BOUNDARY
 #define BOUNDARY
 
+#include "boundary_cyclic.h"
+
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
@@ -70,9 +72,10 @@ class Boundary
         //virtual void backward_device();
 
     protected:
-        Master& master; ///< Pointer to master class.
-        Grid<TF>& grid;   ///< Pointer to grid class.
-        Fields<TF>& fields; ///< Pointer to fields class.
+        Master& master; // Pointer to master class.
+        Grid<TF>& grid;   // Pointer to grid class.
+        Fields<TF>& fields; // Pointer to fields class.
+        Boundary_cyclic<TF> boundary_cyclic; // Pointer to fields class.
 
         std::string swboundary;
 
