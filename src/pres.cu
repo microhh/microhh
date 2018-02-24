@@ -132,7 +132,7 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
         const int k = blockIdx.z;
 
-        const int ij   = i + j*itot + k*kk;        // index real part in ddata
+        const int ij   = i + j*itot + k*kk;           // index real part in ddata
         const int ij2  = i + (jtot-j)*itot + k*kk;    // index complex part in ddata
         const int jmax = jtot/2+1;
         const int ijc  = i + j*itot + k*kkj;
@@ -355,9 +355,9 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
             cudaThreadSynchronize();
 
             if (TF_is_double)
-                complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
+                complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
             else
-                complex_TF_x_g<TF, cufftComplex      ><<<gridGPU,blockGPU>>>((cufftComplex*)tmp1,       p, gd.jtot, gd.itot, kk, kkj,  true);
+                complex_TF_x_g<TF, cufftComplex      ><<<gridGPUji,blockGPU>>>((cufftComplex*)tmp1,       p, gd.jtot, gd.itot, kk, kkj,  true);
             cuda_check_error();
 
             transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 

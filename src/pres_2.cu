@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <fftw3.h>
 #include <cufft.h>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -65,50 +66,50 @@ namespace
         }
     }
 
-//    template<typename TF> __global__ 
-//    void pres_out_g(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt,
-//                    double* __restrict__ p,
-//                    double* __restrict__ dzhi, const double dxi, const double dyi,
-//                    const int jj, const int kk,
-//                    const int istart, const int jstart, const int kstart,
-//                    const int iend, const int jend, const int kend)
-//    {
-//        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
-//        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-//        const int k  = blockIdx.z + kstart;
-//        const int ii = 1;
-//
-//        if (i < iend && j < jend && k < kend)
-//        {
-//            const int ijk = i + j*jj + k*kk;
-//            ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
-//            vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
-//            wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
-//        }
-//    }
-//
-//    template<typename TF> __global__ 
-//    void solve_out_g(double* __restrict__ p, double* __restrict__ work3d,
-//                     const int jj, const int kk,
-//                     const int jjp, const int kkp,
-//                     const int istart, const int jstart, const int kstart,
-//                     const int imax, const int jmax, const int kmax)
-//    {
-//        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-//        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-//        const int k = blockIdx.z;
-//
-//        if (i < imax && j < jmax && k < kmax)
-//        {
-//            const int ijk  = i + j*jj + k*kk;
-//            const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
-//
-//            p[ijkp] = work3d[ijk];
-//
-//            if (k == 0)
-//                p[ijkp-kkp] = p[ijkp];
-//        }
-//    }
+    template<typename TF> __global__ 
+    void pres_out_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
+                    TF* __restrict__ p,
+                    TF* __restrict__ dzhi, const TF dxi, const TF dyi,
+                    const int jj, const int kk,
+                    const int istart, const int jstart, const int kstart,
+                    const int iend, const int jend, const int kend)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+        const int ii = 1;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
+            vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
+            wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
+        }
+    }
+
+    template<typename TF> __global__ 
+    void solve_out_g(TF* __restrict__ p, TF* __restrict__ work3d,
+                     const int jj, const int kk,
+                     const int jjp, const int kkp,
+                     const int istart, const int jstart, const int kstart,
+                     const int imax, const int jmax, const int kmax)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        if (i < imax && j < jmax && k < kmax)
+        {
+            const int ijk  = i + j*jj + k*kk;
+            const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
+
+            p[ijkp] = work3d[ijk];
+
+            if (k == 0)
+                p[ijkp-kkp] = p[ijkp];
+        }
+    }
 
     template<typename TF> __global__ 
     void solve_in_g(TF* __restrict__ p,
@@ -287,6 +288,9 @@ void Pres_2<TF>::exec(double dt)
         gd.igc,  gd.jgc,  gd.kgc);
     cuda_check_error();
 
+    //fields.backward_device();
+    //fields.backward_field_device_3d(fields.sd.at("p")->fld.data(), fields.sd.at("p")->fld_g,  Offset_type::No_offset);
+
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     solve_in_g<TF><<<gridGPU, blockGPU>>>(
@@ -307,26 +311,26 @@ void Pres_2<TF>::exec(double dt)
 
     fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-//    cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-//
-//    solve_out_g<<<gridGPU, blockGPU>>>(
-//        &fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
-//        grid->imax, grid->imax*grid->jmax,
-//        grid->icellsp, grid->ijcellsp,
-//        grid->istart,  grid->jstart, grid->kstart,
-//        grid->imax,    grid->jmax,   grid->kmax);
-//    cuda_check_error();
-//
-//    grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
-//
-//    pres_out_g<<<gridGPU, blockGPU>>>(
-//        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-//        &fields->sd["p"]->data_g[offs],
-//        grid->dzhi_g, 1./grid->dx, 1./grid->dy,
-//        grid->icellsp, grid->ijcellsp,
-//        grid->istart,  grid->jstart, grid->kstart,
-//        grid->iend,    grid->jend,   grid->kend);
-//    cuda_check_error();
+    cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
+
+    solve_out_g<TF><<<gridGPU, blockGPU>>>(
+        &fields.sd.at("p")->fld_g[offs], tmp1->fld_g,
+        gd.imax, gd.imax*gd.jmax,
+        gd.icellsp, gd.ijcellsp,
+        gd.istart,  gd.jstart, gd.kstart,
+        gd.imax,    gd.jmax,   gd.kmax);
+    cuda_check_error();
+
+    grid.boundary_cyclic_g(&fields.sd.at("p")->fld_g[offs]);
+
+    pres_out_g<TF><<<gridGPU, blockGPU>>>(
+        &fields.mt.at("u")->fld_g[offs], &fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs],
+        &fields.sd.at("p")->fld_g[offs],
+        gd.dzhi_g, 1./gd.dx, 1./gd.dy,
+        gd.icellsp, gd.ijcellsp,
+        gd.istart,  gd.jstart, gd.kstart,
+        gd.iend,    gd.jend,   gd.kend);
+    cuda_check_error();
 
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
