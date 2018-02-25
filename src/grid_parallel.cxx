@@ -41,34 +41,6 @@ void Grid<TF>::init_mpi()
     // create the MPI types for the cyclic boundary conditions
     int datacount, datablock, datastride;
 
-    // east west
-    datacount  = gd.jcells*gd.kcells;
-    datablock  = gd.igc;
-    datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge);
-    MPI_Type_commit(&eastwestedge);
-
-    // north south
-    datacount  = gd.kcells;
-    datablock  = gd.icells*gd.jgc;
-    datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge);
-    MPI_Type_commit(&northsouthedge);
-
-    // east west 2d
-    datacount  = gd.jcells;
-    datablock  = gd.igc;
-    datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge2d);
-    MPI_Type_commit(&eastwestedge2d);
-
-    // north south 2d
-    datacount  = 1;
-    datablock  = gd.icells*gd.jgc;
-    datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge2d);
-    MPI_Type_commit(&northsouthedge2d);
-
     // transposez
     datacount = gd.imax*gd.jmax*gd.kblock;
     MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
@@ -162,10 +134,6 @@ void Grid<TF>::exit_mpi()
 {
     if (mpitypes)
     {
-        MPI_Type_free(&eastwestedge);
-        MPI_Type_free(&northsouthedge);
-        MPI_Type_free(&eastwestedge2d);
-        MPI_Type_free(&northsouthedge2d);
         MPI_Type_free(&transposez);
         MPI_Type_free(&transposez2);
         MPI_Type_free(&transposex);

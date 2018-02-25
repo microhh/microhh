@@ -215,11 +215,6 @@ class Grid
 
         #ifdef USEMPI
         // MPI Datatypes
-        MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.
-        MPI_Datatype northsouthedge;   ///< MPI datatype containing the ghostcells at the north-south sides.
-        MPI_Datatype eastwestedge2d;   ///< MPI datatype containing the ghostcells for one slice at the east-west sides.
-        MPI_Datatype northsouthedge2d; ///< MPI datatype containing the ghostcells for one slice at the north-south sides.
-
         MPI_Datatype transposez;  ///< MPI datatype containing base blocks for z-orientation in zx-transpose.
         MPI_Datatype transposez2; ///< MPI datatype containing base blocks for z-orientation in zy-transpose.
         MPI_Datatype transposex;  ///< MPI datatype containing base blocks for x-orientation in zx-transpose.
