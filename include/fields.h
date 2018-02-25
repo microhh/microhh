@@ -26,6 +26,7 @@
 #include <map>
 #include <vector>
 #include "field3d.h"
+#include "boundary_cyclic.h"
 
 class Master;
 class Input;
@@ -132,6 +133,7 @@ class Fields
     private:
         Master& master;
         Grid<TF>& grid;
+        Boundary_cyclic<TF> boundary_cyclic;
         // Stats*  stats;
 
         bool calc_mean_profs;

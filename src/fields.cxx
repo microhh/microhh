@@ -111,7 +111,8 @@ namespace
 template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
-    grid(gridin)
+    grid(gridin),
+    boundary_cyclic(master, grid)
 {
     calc_mean_profs = false;
 
@@ -218,6 +219,9 @@ void Fields<TF>::init()
     // Create help arrays for statistics.
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+
+    // Init the boundary_cyclic.
+    boundary_cyclic.init();
 
     /*
     // Get global cross-list from cross.cxx
@@ -342,9 +346,9 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
                                           stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
                                           gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
 
-    grid.boundary_cyclic(mfield.fld.data());
-    grid.boundary_cyclic(mfieldh.fld.data());
-    grid.boundary_cyclic_2d(mfieldh.fld_bot.data());
+    boundary_cyclic.exec(mfield.fld.data());
+    boundary_cyclic.exec(mfieldh.fld.data());
+    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
 
     master.sum(stats.nmask.data() , gd.kcells);
     master.sum(stats.nmaskh.data(), gd.kcells);
