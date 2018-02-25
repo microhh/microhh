@@ -32,7 +32,8 @@
 
 template<typename TF>
 Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, inputin)
+    Pres<TF>(masterin, gridin, fieldsin, inputin),
+    boundary_cyclic(master, grid)
 {
     #ifdef USECUDA
     a_g = 0;
@@ -103,6 +104,8 @@ void Pres_2<TF>::init()
     c.resize(gd.kmax);
 
     work2d.resize(gd.imax*gd.jmax);
+
+    boundary_cyclic.init();
 }
 
 template<typename TF>
@@ -161,8 +164,8 @@ void Pres_2<TF>::input(TF* const restrict p,
     const int kgc = gd.kgc;
 
     // set the cyclic boundary conditions for the tendencies
-    grid.boundary_cyclic(ut, Edge::East_west_edge  );
-    grid.boundary_cyclic(vt, Edge::North_south_edge);
+    boundary_cyclic.exec(ut, Edge::East_west_edge  );
+    boundary_cyclic.exec(vt, Edge::North_south_edge);
 
     // write pressure as a 3d array without ghost cells
     for (int k=0; k<gd.kmax; ++k)
@@ -343,7 +346,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
         }
 
     // set the cyclic boundary conditions
-    grid.boundary_cyclic(p);
+    boundary_cyclic.exec(p);
 }
 
 template<typename TF>
