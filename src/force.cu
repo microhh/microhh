@@ -355,7 +355,7 @@ void Force<TF>::exec(double dt)
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
 
-        TF uavg  = field3d_operators.calc_mean(tmp.get());
+        TF uavg  = field3d_operators.calc_mean(tmp->fld_g[offs]);
 
         flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
             &tmp->fld_g[offs], &fields.mt.at("u")->fld_g[offs],
@@ -365,7 +365,7 @@ void Force<TF>::exec(double dt)
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
 
-        TF utavg  = field3d_operators.calc_mean(tmp.get());
+        TF utavg  = field3d_operators.calc_mean(&tmp->fld_g[offs]);
         fields.release_tmp_g(tmp);
 
 

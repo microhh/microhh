@@ -37,6 +37,9 @@
 #include "force.h"
 #include "decay.h"
 #include "stats.h"
+#include "column.h"
+#include "cross.h"
+#include "dump.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -191,10 +194,14 @@ void Model<TF>::load()
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(timeloop->get_iotime(), sim_name);
+    column->create(timeloop->get_iotime(), sim_name);
+    cross->create();
+    dump->create();    
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
+    fields->create_column(*column);
 
     boundary->create(*input);
     force->create(*input);
@@ -415,7 +422,7 @@ template<typename TF>
 void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
 {
     // Do the statistics.
-    if(stats->do_statistics(timeloop->get_itime()))
+    if(stats->do_statistics(itime))
     {
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 
@@ -450,24 +457,24 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
-//   if(doCross)
-//    {
-//        fields  ->exec_cross(iotime);
+   if(cross->do_cross(itime))
+    {
+        fields  ->exec_cross(*cross, iotime);
 //        thermo  ->exec_cross(iotime);
 //        boundary->exec_cross(iotime);
-//    }
-//   // Save the 3d dumps to disk
-//    if(doDump)
-//    {
-//        fields->exec_dump(iotime);
+    }
+   // Save the 3d dumps to disk
+    if(dump->do_dump(itime))
+    {
+        fields->exec_dump(*dump, iotime);
 //        thermo->exec_dump(iotime);
-//    }
-//    if(doColumn)
-//    {
-//        fields->exec_column();
+    }
+    if(column->do_column(itime))
+    {
+        fields->exec_column(*column);
 //        thermo->exec_column();
-//        column->exec(iteration, time, itime);
-//    }
+        column->exec(iteration, time, itime);
+    }
 }
 
 template<typename TF>

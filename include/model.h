@@ -44,6 +44,9 @@ template<typename> class Force;
 template<typename> class Decay;
 
 template<typename> class Stats;
+template<typename> class Column;
+template<typename> class Cross;
+template<typename> class Dump;
 
 enum class Sim_mode;
 
@@ -77,7 +80,9 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
 
         std::shared_ptr<Stats<TF>> stats;
-
+        std::shared_ptr<Column<TF>> column;
+        std::shared_ptr<Cross<TF>> cross;
+        std::shared_ptr<Dump<TF>> dump;        
         Sim_mode sim_mode;
         std::string sim_name;
 

@@ -33,7 +33,7 @@
 
 #ifdef USECUDA
 template<typename TF>
-void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
+void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -41,14 +41,14 @@ void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
     const TF scalefac = 1./(gd.itot*gd.jtot);
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(&fld[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, Sum_type);
     // Reduce jtot*kcells to kcells values
     reduce_all<TF>     (&tmp->fld_g[gd.memoffset], fld->fld_mean_g, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
     fields.release_tmp_g(tmp);
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -58,7 +58,7 @@ TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
     
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(&fld[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Sum_type);
     // Reduce jtot*ktot to ktot values
     reduce_all<TF>     (&tmp->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Sum_type, 1.);
     // Reduce ktot values to a single value
@@ -70,7 +70,7 @@ TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_max(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_max(const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -80,7 +80,7 @@ TF Field3d_operators<TF>::calc_max(Field3d<TF>* fld)
 
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Max_type);
+    reduce_interior<TF>(&fld[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Max_type);
     // Reduce jtot*ktot to ktot values
     reduce_all<TF>     (&tmp->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Max_type, scalefac);
     // Reduce ktot values to a single value
