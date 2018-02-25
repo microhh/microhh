@@ -310,6 +310,70 @@ void Boundary_cyclic<TF>::exec(TF* restrict data, Edge edge)
         }
     }
 }
+
+template<typename TF>
+void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int jj = gd.icells;
+
+    // First, east west boundaries.
+    for (int j=0; j<gd.jcells; ++j)
+        #pragma ivdep
+        for (int i=0; i<gd.igc; ++i)
+        {
+            const int ij0 = i                + j*jj;
+            const int ij1 = gd.iend-gd.igc+i + j*jj;
+            data[ij0] = data[ij1];
+        }
+
+    for (int j=0; j<gd.jcells; ++j)
+        #pragma ivdep
+        for (int i=0; i<gd.igc; ++i)
+        {
+            const int ij0 = i+gd.iend   + j*jj;
+            const int ij1 = i+gd.istart + j*jj;
+            data[ij0] = data[ij1];
+        }
+
+    // If the run is 3D, apply the BCs.
+    if (gd.jtot > 1)
+    {
+        // Second, send and receive the ghost cells in the north-south direction.
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ij0 = i + j                 *jj;
+                const int ij1 = i + (gd.jend-gd.jgc+j)*jj;
+                data[ij0] = data[ij1];
+            }
+
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ij0 = i + (j+gd.jend  )*jj;
+                const int ij1 = i + (j+gd.jstart)*jj;
+                data[ij0] = data[ij1];
+            }
+    }
+    // In case of 2D, fill all the ghost cells with the current value.
+    else
+    {
+        for (int j=0; j<gd.jgc; ++j)
+            #pragma ivdep
+            for (int i=0; i<gd.icells; ++i)
+            {
+                const int ijref   = i + gd.jstart*jj;
+                const int ijnorth = i + j*jj;
+                const int ijsouth = i + (gd.jend+j)*jj;
+                data[ijnorth] = data[ijref];
+                data[ijsouth] = data[ijref];
+            }
+    }
+}
 #endif
 
 template class Boundary_cyclic<double>;
