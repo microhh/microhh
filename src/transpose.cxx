@@ -59,6 +59,44 @@ void Transpose<TF>::init_mpi()
 
     int datacount, datablock, datastride;
 
+    // transposez
+    datacount = gd.imax*gd.jmax*gd.kblock;
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
+    MPI_Type_commit(&transposez);
+
+    // transposez iblock/jblock/kblock
+    datacount = gd.iblock*gd.jblock*gd.kblock;
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
+    MPI_Type_commit(&transposez2);
+
+    // transposex imax
+    datacount  = gd.jmax*gd.kblock;
+    datablock  = gd.imax;
+    datastride = gd.itot;
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex);
+    MPI_Type_commit(&transposex);
+
+    // transposex iblock
+    datacount  = gd.jmax*gd.kblock;
+    datablock  = gd.iblock;
+    datastride = gd.itot;
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex2);
+    MPI_Type_commit(&transposex2);
+
+    // transposey
+    datacount  = gd.kblock;
+    datablock  = gd.iblock*gd.jmax;
+    datastride = gd.iblock*gd.jtot;
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey);
+    MPI_Type_commit(&transposey);
+
+    // transposey2
+    datacount  = gd.kblock;
+    datablock  = gd.iblock*gd.jblock;
+    datastride = gd.iblock*gd.jtot;
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey2);
+    MPI_Type_commit(&transposey2);
+
     mpi_types_allocated = true;
 }
 
@@ -67,10 +105,164 @@ void Transpose<TF>::exit_mpi()
 {
     if (mpi_types_allocated)
     {
+        MPI_Type_free(&transposez);
+        MPI_Type_free(&transposez2);
+        MPI_Type_free(&transposex);
+        MPI_Type_free(&transposex2);
+        MPI_Type_free(&transposey);
+        MPI_Type_free(&transposey2);
     }
 }
 
+template<typename TF>
+void Transpose<TF>::exec_zx(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
 
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.imax;
+    const int kk = gd.imax*gd.jmax;
+
+    for (int n=0; n<master.npx; ++n)
+    {
+        // Determine where to fetch the data and where to store it.
+        const int ijks = n*gd.kblock*kk;
+        const int ijkr = n*jj;
+
+        // Send and receive the data.
+        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
+
+template<typename TF>
+void Transpose<TF>::exec_xz(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.imax;
+    const int kk = gd.imax*gd.jmax;
+
+    for (int n=0; n<master.npx; ++n)
+    {
+        // Determine where to fetch the data and where to store it.
+        const int ijks = n*jj;
+        const int ijkr = n*gd.kblock*kk;
+
+        // Send and receive the data.
+        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
+
+template<typename TF>
+void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.iblock;
+    const int kk = gd.iblock*gd.jmax;
+
+    for (int n=0; n<master.npy; ++n)
+    {
+        // determine where to fetch the data and where to store it
+        const int ijks = n*jj;
+        const int ijkr = n*kk;
+
+        // send and receive the data
+        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
+
+template<typename TF>
+void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.iblock;
+    const int kk = gd.iblock*gd.jmax;
+
+    for (int n=0; n<master.npy; ++n)
+    {
+        // determine where to fetch the data and where to store it
+        const int ijks = n*kk;
+        const int ijkr = n*jj;
+
+        // send and receive the data
+        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
+
+template<typename TF>
+void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.iblock;
+    const int kk = gd.iblock*gd.jblock;
+
+    for (int n=0; n<master.npx; ++n)
+    {
+        // determine where to fetch the data and where to store it
+        const int ijks = n*gd.jblock*jj;
+        const int ijkr = n*gd.kblock*kk;
+
+        // send and receive the data
+        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
+
+template<typename TF>
+void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int ncount = 1;
+    const int tag = 1;
+
+    const int jj = gd.iblock;
+    const int kk = gd.iblock*gd.jblock;
+
+    for (int n=0; n<master.npx; ++n)
+    {
+        // determine where to fetch the data and where to store it
+        const int ijks = n*gd.kblock*kk;
+        const int ijkr = n*gd.jblock*jj;
+
+        // send and receive the data
+        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
+    }
+
+    master.wait_all();
+}
 #else
 
 template<typename TF>
