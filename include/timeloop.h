@@ -110,6 +110,6 @@ class Timeloop
         unsigned long idtlim;
         unsigned long iiotimeprec;
 
-        double ifactor;
+        const double ifactor;
 };
 #endif

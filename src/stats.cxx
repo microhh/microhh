@@ -101,6 +101,9 @@ Stats<TF>::~Stats()
 template<typename TF>
 void Stats<TF>::init(double ifactor)
 {
+    if (!swstats)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
@@ -222,6 +225,9 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 template<typename TF>
 void Stats<TF>::exec(int iteration, double time, unsigned long itime)
 {
+    if (!swstats)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // check if time for execution
