@@ -52,9 +52,9 @@ class Decay
 
 
     private:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 
         // Internal switches for various forcings
         Decay_type swdecay;
