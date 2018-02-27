@@ -52,6 +52,7 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::master;
         using Pres<TF>::grid;
         using Pres<TF>::fields;
+        using Pres<TF>::field3d_operators;
 
         std::vector<TF> bmati;
         std::vector<TF> bmatj;
