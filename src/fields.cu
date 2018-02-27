@@ -163,8 +163,6 @@ void Fields<TF>::backward_device()
 {
     for (auto& it : a)
         backward_field3d_device(it.second.get());
-
-    //master->printMessage("Synchronized CPU with GPU (backward)\n");
 }
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */

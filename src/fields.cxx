@@ -311,7 +311,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
     if (atmp_g.empty())
     {
         init_tmp_field_g();
-        tmp = atmp.back();
+        tmp = atmp_g.back();
         tmp->init_device();
     }
     else

@@ -38,6 +38,7 @@ template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
+enum Offset_type {Offset, No_offset};
 
 template<typename TF>
 class Fields
@@ -111,7 +112,6 @@ class Fields
          *Device (GPU) functions and variables
          */
 
-        enum Offset_type {Offset, No_offset};
 
         void prepare_device();  ///< Allocation of all fields at device
         void forward_device();  ///< Copy of all fields from host to device

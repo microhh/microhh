@@ -28,7 +28,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
-#include "field3d_operators.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
@@ -111,6 +110,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
+
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -390,7 +390,7 @@ void Model<TF>::prepare_gpu()
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    pres    ->prepare_device();
 }
 
 template<typename TF>
@@ -406,7 +406,7 @@ void Model<TF>::clear_gpu()
     force   ->clear_device();
     // decay   ->clear_device();
     // // Clear pressure last, for memory check
-    // pres    ->clear_device();
+    pres    ->clear_device();
 }
 #endif
 
