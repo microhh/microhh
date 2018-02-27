@@ -44,7 +44,7 @@ namespace
     void calc_lngrad(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4, int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
         using namespace Finite_difference::O4;
-        
+
         const int ii1 = 1;
         const int ii2 = 2;
         const int ii3 = 3;
@@ -127,7 +127,7 @@ namespace
             }
 
     }
-    
+
     template<typename TF>
     void calc_cross_path(const TF* const restrict data, TF* const restrict tmp, const TF* const restrict rhoref, const TF* const restrict dz, int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
@@ -148,10 +148,10 @@ namespace
             {
                 const int ijk1 = i + j*jj + kstart*kk;
                 const int ijk  = i + j*jj + k*kk;
-                tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];       
+                tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
             }
     }
-    
+
     template<typename TF>
     void calc_cross_height_threshold(const TF* const restrict data, TF* const restrict height, const TF* const restrict z, TF threshold, bool upward, TF fillvalue, int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
@@ -166,7 +166,7 @@ namespace
 
         if(upward) // Find lowest grid level where data > threshold
         {
-            
+
             for (int j=jstart; j<jend; j++)
                 for (int i=istart; i<iend; i++)
                     for (int k=kstart; k<kend; k++)
@@ -259,11 +259,11 @@ void Cross<TF>::init(double ifactor)
 
 template<typename TF>
 void Cross<TF>::create()
-{  
+{
     int nerror = 0;
     int temploc, temploch, hoffset;
     auto& gd = grid.get_grid_data();
-    
+
     // Find nearest full and half grid locations of xz cross-sections.
     for (auto& it: xz)
     {
@@ -309,7 +309,7 @@ void Cross<TF>::create()
             }
         }
     }
-    
+
     // Find nearest full and half grid locations of yz cross-sections.
     for (auto& it: yz)
     {
@@ -343,7 +343,7 @@ void Cross<TF>::create()
             {
                 ixz.push_back(temploc);
                 master.print_message("Added YZ cross at x=%f (i=%i) for [cross][yz]=%f\n", xcross, temploc, it);
-            } 
+            }
 
             if (std::find(ixzh.begin(), ixzh.end(), temploch) != ixzh.end()) // Check for duplicate entries
                 master.print_warning("Removed duplicate entry xh=%f for [cross][yz]=%f\n", xcrossh, it);
@@ -351,7 +351,7 @@ void Cross<TF>::create()
             {
                 ixzh.push_back(temploch);
                 master.print_message("Added YZ cross at xh=%f (i=%i) for [cross][yz]=%f\n", xcrossh, temploch, it);
-            } 
+            }
         }
     }
 
@@ -391,7 +391,7 @@ void Cross<TF>::create()
             {
                 kxy.push_back(temploc);
                 master.print_message("Added XY cross at z=%f (k=%i) for [cross][xy]=%f\n", gd.z[temploc+gd.kgc],temploc,it);
-            } 
+            }
 
             if (std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
                 master.print_warning("Removed duplicate entry zh=%f for [cross][xy]=%f\n", gd.zh[temploc+hoffset+gd.kgc],it);
@@ -399,7 +399,7 @@ void Cross<TF>::create()
             {
                 kxyh.push_back(temploc+hoffset);
                 master.print_message("Added XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", gd.zh[temploc+hoffset+gd.kgc],temploc+hoffset,it);
-            }  
+            }
         }
     }
 
@@ -409,7 +409,7 @@ void Cross<TF>::create()
     {
     for (auto& it: crosslist)
             master.print_warning("field %s in [cross][crosslist] is illegal\n", it.c_str());
-    } 
+    }
 
     if (nerror)
         throw 1;
@@ -418,7 +418,7 @@ void Cross<TF>::create()
 template<typename TF>
 unsigned long Cross<TF>::get_time_limit(unsigned long itime)
 {
-    if (swcross)
+    if (!swcross)
         return Constants::ulhuge;
 
     unsigned long idtlim = isampletime - itime % isampletime;
@@ -456,7 +456,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
     int nerror = 0;
     char filename[256];
     auto& gd = grid.get_grid_data();
-    
+
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
 
@@ -466,7 +466,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: jxzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);    
+            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);
         }
     }
     else
@@ -474,32 +474,32 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: jxz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);    
+            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);
         }
     }
-    
+
     // loop over the index arrays to save all yz cross sections
     if (name == "u")
     {
-        for (auto& it: ixzh)        
+        for (auto& it: ixzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);    
+            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);
         }
     }
     else
     {
-        for (auto& it: ixz)        
+        for (auto& it: ixz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);    
+            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);
         }
     }
 
     if (name == "w")
     {
         // loop over the index arrays to save all xy cross sections
-        for (auto& it: kxyh)        
+        for (auto& it: kxyh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
             nerror += check_save(grid.save_xy_slice(data, tmp, filename, it), filename);
@@ -514,7 +514,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         }
     }
     fields.release_tmp(tmpfld);
-    
+
     return nerror;
 }
 
@@ -524,7 +524,7 @@ int Cross<TF>::cross_plane(TF* restrict data, std::string name, int iotime)
     int nerror = 0;
     char filename[256];
     auto& gd = grid.get_grid_data();
-    
+
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
 
@@ -532,7 +532,7 @@ int Cross<TF>::cross_plane(TF* restrict data, std::string name, int iotime)
     nerror += check_save(grid.save_xy_slice(data, tmp, filename), filename);
     fields.release_tmp(tmpfld);
     return nerror;
-} 
+}
 
 template<typename TF>
 int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
@@ -542,7 +542,7 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 
     int nerror = 0;
     char filename[256];
-    
+
     auto lngradfld = fields.get_tmp();
     auto lngrad = lngradfld->fld.data();
     auto tmpfld = fields.get_tmp();
@@ -555,7 +555,7 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
         nerror += check_save(grid.save_xz_slice(lngrad, tmp, filename, it),filename);
     }
-    
+
     // loop over the index arrays to save all yz cross sections
     for (auto& it: ixz)
     {
@@ -583,7 +583,7 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
     auto& gd = grid.get_grid_data();
-    
+
     calc_cross_path<TF>(data, tmp, fields.rhoref.data(), gd.dz.data(), gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
 
     nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], name, iotime);
@@ -592,15 +592,15 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 }
 
 /**
- * This routine calculates the lowest or highest height where data > threshold, 
+ * This routine calculates the lowest or highest height where data > threshold,
  * and writes a cross-section of the resulting height field
- * @param data Pointer to input data 
- * @param height Pointer to 2D temporary field to store the height 
- * @param tmp1 Pointer to temporary field for writing the cross-section  
- * @param z Pointer to 1D field containing the levels of data 
- * @param threshold Threshold value  
- * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom) 
- * @param name String containing the output name of the cross-section 
+ * @param data Pointer to input data
+ * @param height Pointer to 2D temporary field to store the height
+ * @param tmp1 Pointer to temporary field for writing the cross-section
+ * @param z Pointer to 1D field containing the levels of data
+ * @param threshold Threshold value
+ * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom)
+ * @param name String containing the output name of the cross-section
  */
 template<typename TF>
 int Cross<TF>::cross_height_threshold(TF* restrict data, TF* restrict z, TF threshold, Direction direction, std::string name, int iotime)
@@ -610,7 +610,7 @@ int Cross<TF>::cross_height_threshold(TF* restrict data, TF* restrict z, TF thre
     int nerror = 0;
     auto tmpfld = fields.get_tmp();
     auto height = tmpfld->fld.data();
-    
+
     TF fillvalue = -1e-9; //TODO: SET FILL VALUE
     bool isupward = (direction == Direction::Bottom_to_top);
     calc_cross_height_threshold<TF>(data, height, z, threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);

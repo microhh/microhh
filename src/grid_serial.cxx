@@ -585,7 +585,7 @@ int Grid<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* filename,
 {
     // Extract the data from the 3d field without the ghost cells
     const int jj = gd.icells;
-    const int kk = ijcells;
+    const int kk = gd.ijcells;
 
     const int kkb = gd.jmax;
 
@@ -621,7 +621,7 @@ int Grid<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename,
     const int kk  = gd.icells*gd.jcells;
     const int jjb = gd.imax;
 
-    const int count = imax*gd.jmax;
+    const int count = gd.imax*gd.jmax;
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
     if (kslice == -1)
@@ -629,7 +629,7 @@ int Grid<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename,
 
     for (int j=0; j<gd.jmax; j++)
 #pragma ivdep
-        for (int i=0; i<imax; i++)
+        for (int i=0; i<gd.imax; i++)
         {
             // take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
@@ -648,9 +648,10 @@ int Grid<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename,
     return 0;
 }
 
-int Grid::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+template<typename TF>
+int Grid<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
 {
-    const int count = imax*gd.jmax;
+    const int count = gd.imax*gd.jmax;
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
@@ -667,11 +668,11 @@ int Grid::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int
     // put the data back into a field with ghost cells
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
-    const int jjb = imax;
+    const int jjb = gd.imax;
 
     for (int j=0; j<gd.jmax; j++)
 #pragma ivdep
-        for (int i=0; i<imax; i++)
+        for (int i=0; i<gd.imax; i++)
         {
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
             const int ijkb = i + j*jjb;

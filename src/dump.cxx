@@ -21,6 +21,8 @@
  */
 
 #include <cstdio>
+#include <fstream>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -66,14 +68,14 @@ void Dump<TF>::init(double ifactor)
 
 template<typename TF>
 void Dump<TF>::create()
-{  
+{
     /* All classes (fields, thermo) have removed their dump-variables from
        dumplist by now. If it isnt empty, print warnings for invalid variables */
     if (!dumplist.empty())
     {
         for (auto& it : dumplist)
             master.print_warning("field %s in [dump][dumplist] is illegal\n", it.c_str());
-    } 
+    }
 }
 
 template<typename TF>
@@ -91,11 +93,9 @@ bool Dump<TF>::do_dump(unsigned long itime)
     // check if dump are enabled
     if (!swdump)
         return false;
-
     // check if time for execution
     if (itime % isampletime != 0)
         return false;
-
     // return true such that column are computed
     return true;
 }
@@ -113,24 +113,32 @@ void Dump<TF>::save_dump(TF* data, std::string varname,int iotime)
     char filename[256];
 
     std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
-    master.print_message("Saving \"%s\" ... ", filename);
-
-    auto tmpfld1 = fields.get_tmp();
-    auto tmpfld2 = fields.get_tmp();
-    auto tmp1 = tmpfld1.get();
-    auto tmp2 = tmpfld1.get();
-    
-    if (grid.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, NoOffset))
+    std::ifstream infile(filename);
+    if(infile.good())
     {
-        master.print_message("FAILED\n");
-        throw 1;
-    }  
+        master.print_message("%s already exists\n", filename);
+    }
     else
     {
-        master.print_message("OK\n");
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        auto tmpfld1 = fields.get_tmp();
+        auto tmpfld2 = fields.get_tmp();
+        auto tmp1 = tmpfld1.get();
+        auto tmp2 = tmpfld1.get();
+
+        if (grid.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, NoOffset))
+        {
+            master.print_message("FAILED\n");
+            throw 1;
+        }
+        else
+        {
+            master.print_message("OK\n");
+        }
+        fields.release_tmp(tmpfld1);
+        fields.release_tmp(tmpfld2);
     }
-    fields.release_tmp(tmpfld1);
-    fields.release_tmp(tmpfld2);
 }
 
 

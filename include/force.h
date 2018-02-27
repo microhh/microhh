@@ -74,7 +74,7 @@ class Force
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF>& field3d_operators;
-        
+
         // Internal switches for various forcings
         Large_scale_pressure_type swlspres;
 

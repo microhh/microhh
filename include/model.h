@@ -82,7 +82,7 @@ class Model
         std::shared_ptr<Stats<TF>> stats;
         std::shared_ptr<Column<TF>> column;
         std::shared_ptr<Cross<TF>> cross;
-        std::shared_ptr<Dump<TF>> dump;        
+        std::shared_ptr<Dump<TF>> dump;
         Sim_mode sim_mode;
         std::string sim_name;
 

@@ -43,7 +43,7 @@ void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF*
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     reduce_interior<TF>(&fld[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, Sum_type);
     // Reduce jtot*kcells to kcells values
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset], fld->fld_mean_g, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
+    reduce_all<TF>     (&tmp->fld_g[gd.memoffset], prof, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
     fields.release_tmp_g(tmp);
 }
 
@@ -55,7 +55,7 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
     const Grid_data<TF>& gd = grid.get_grid_data();
     const TF scalefac = 1./(gd.itot*gd.jtot*gd.ktot);
     TF mean_value;
-    
+
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
     reduce_interior<TF>(&fld[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Sum_type);
@@ -88,7 +88,7 @@ TF Field3d_operators<TF>::calc_max(const TF* const restrict fld)
     // Copy back result from GPU
     cuda_safe_call(cudaMemcpy(&max_value, &tmp->fld_g[gd.memoffset], sizeof(TF), cudaMemcpyDeviceToHost));
     fields.release_tmp_g(tmp);
-    
+
     return max_value;
 }
 #endif

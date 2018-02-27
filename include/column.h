@@ -66,7 +66,7 @@ class Column
         void add_prof(std::string, std::string, std::string, std::string);
         void calc_column(std::string, const TF* const,
                        const TF);
-       
+
         std::string name;
         NcFile* data_file;
         NcDim z_dim;

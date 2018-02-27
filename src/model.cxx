@@ -114,6 +114,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
+        column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump     = std::make_shared<Dump<TF>>(master, *grid, *fields, *input);
+        cross    = std::make_shared<Cross<TF>>(master, *grid, *fields, *input);
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -151,7 +154,7 @@ void Model<TF>::init()
     master.init(*input);
 
     grid->init();
-    fields->init();
+    fields->init(*dump, *cross);
 
     boundary->init(*input);
     pres->init();
@@ -159,6 +162,9 @@ void Model<TF>::init()
     decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
+    column->init(timeloop->get_ifactor());
+    cross->init(timeloop->get_ifactor());
+    dump->init(timeloop->get_ifactor());
 }
 
 template<typename TF>
@@ -196,7 +202,7 @@ void Model<TF>::load()
     stats->create(timeloop->get_iotime(), sim_name);
     column->create(timeloop->get_iotime(), sim_name);
     cross->create();
-    dump->create();    
+    dump->create();
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -290,19 +296,22 @@ void Model<TF>::exec()
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-            #ifdef USECUDA
-            if(t_stat.joinable())
-                t_stat.join();
-            fields  ->backward_device();
-            //boundary->backward_device();
-            // thermo  ->backward_device();
+            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+            {
+                #ifdef USECUDA
+                if(t_stat.joinable())
+                    t_stat.join();
+                fields  ->backward_device();
+                //boundary->backward_device();
+                // thermo  ->backward_device();
 
-            t_stat = std::thread(&Model::calculate_statistics, this,
-                    timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                t_stat = std::thread(&Model::calculate_statistics, this,
+                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
 
-            #else
-            calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
-            #endif
+                #else
+                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                #endif
+            }
 
         }
 
@@ -490,8 +499,9 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
-    // timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
-    // timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();

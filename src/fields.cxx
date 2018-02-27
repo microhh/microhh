@@ -166,11 +166,10 @@ Fields<TF>::~Fields()
 }
 
 template<typename TF>
-void Fields<TF>::init()
+void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
 {
 
     int nerror = 0;
-
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
     for (auto& it : mp)
@@ -218,7 +217,11 @@ void Fields<TF>::init()
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
-    
+    // Set up output classes
+    create_dump(dump);
+    create_cross(cross);
+
+
 }
 
 template<typename TF>
@@ -234,7 +237,7 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
         std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
         while (dumpvar != dumplist_global->end())
         {
-            if (sd.count(*dumpvar))
+            if (a.count(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
@@ -252,7 +255,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
 
     if (cross.get_switch())
     {
- 
+
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = cross.get_crosslist();
 

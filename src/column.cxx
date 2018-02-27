@@ -89,7 +89,7 @@ void Column<TF>::create(int iotime, std::string sim_name)
 
     int nerror = 0;
     auto& gd = grid.get_grid_data();
-    
+
     // create a NetCDF file for the statistics
     if (master.mpiid == 0)
     {
@@ -199,23 +199,20 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
 
         t_var   .putVar(time_index, &time     );
         iter_var.putVar(time_index, &iteration);
-
         const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
         std::vector<size_t> time_height_size  = {1, 0};
-
         for (auto& p : profs)
         {
-            time_height_size[1] = profs[p.first].ncvar.getDim(1).getSize();
-            profs[p.first].ncvar.putVar(time_height_index, time_height_size, &profs[p.first].data.data()[gd.kstart]);
+            time_height_size[1] = p.second.ncvar.getDim(1).getSize();
+            p.second.ncvar.putVar(time_height_index, time_height_size, &p.second.data.data()[gd.kstart]);
         }
-
         // Synchronize the NetCDF file
         // BvS: only the last netCDF4-c++ includes the NcFile->sync()
         //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
         //data_file->sync();
         nc_sync(data_file->getId());
     }
-    
+
     ++statistics_counter;
 }
 
@@ -231,19 +228,20 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
         if (zloc == "z")
         {
             dim_vector.push_back(z_dim);
-            profs[name].ncvar = data_file->addVar(name, ncDouble, dim_vector);
+            profs[name].ncvar = data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
         }
         else if (zloc == "zh")
         {
             dim_vector.push_back(zh_dim);
-            profs[name].ncvar = data_file->addVar(name.c_str(), ncDouble, dim_vector);
+            profs[name].ncvar = data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
         }
-        profs[name].ncvar.putAtt("units", unit.c_str());
-        profs[name].ncvar.putAtt("long_name", longname.c_str());
-        profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
-        
+        profs.at(name).ncvar.putAtt("units", unit.c_str());
+        profs.at(name).ncvar.putAtt("long_name", longname.c_str());
+        profs.at(name).ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
         nc_sync(data_file->getId());
     }
+    profs[name].data.resize(gd.kcells);
 
 }
 
@@ -254,13 +252,13 @@ void Column<TF>::calc_column(std::string profname, const TF* const restrict data
     auto& gd = grid.get_grid_data();
     const int jj = gd.icells;
     const int kk = gd.ijcells;
-   
 
     for (int k=1; k<gd.kcells; k++)
     {
         const int ijk  = gd.istart + gd.jstart*jj + k*kk;
-        profs[profname].data.data()[k] = (data[ijk] + offset);
+        profs.at(profname).data.data()[k] = (data[ijk] + offset);
     }
+
 }
 
 template class Column<double>;
