@@ -23,13 +23,15 @@
 #ifndef PRES
 #define PRES
 
-class Master;
-template<typename> class Grid;
-template<typename> class Fields;
-
 #ifdef USECUDA
 #include <cufft.h>
 #endif
+
+#include "field3d_operators.h"
+
+class Master;
+template<typename> class Grid;
+template<typename> class Fields;
 
 template<typename TF>
 class Pres
@@ -55,6 +57,7 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
         #ifdef USECUDA
         void make_cufft_plan();
