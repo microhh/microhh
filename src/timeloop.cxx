@@ -35,10 +35,10 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
-    fields(fieldsin)
+    fields(fieldsin),
+    ifactor(1e9)
 {
     substep = 0;
-    ifactor = 1e9;
 
     // obligatory parameters
     if (sim_mode == Sim_mode::Init)

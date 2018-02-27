@@ -55,8 +55,8 @@ class Diff
         //#endif
 
     protected:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 };
 #endif

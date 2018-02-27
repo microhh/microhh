@@ -70,9 +70,9 @@ class Force
         //double      get_coriolis_parameter() { return fc;       }
 
     private:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
         Field3d_operators<TF>& field3d_operators;
         
         // Internal switches for various forcings
