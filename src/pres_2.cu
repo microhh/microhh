@@ -35,6 +35,7 @@
 #include "model.h"
 #include "tools.h"
 #include "constants.h"
+#include "field3d_operators.h"
 
 namespace
 {
@@ -362,7 +363,7 @@ TF Pres_2<TF>::check_divergence()
     cuda_check_error();
 
     auto tmp = fields.get_tmp_g();
-    TF divmax = divergence->calc_max(tmp->fld_g);
+    TF divmax = field3d_operators.calc_max(&tmp->fld_g[offs]);
     // TO-DO: add grid.get_max() or similar for future parallel versions
 
     fields.release_tmp_g(divergence);
