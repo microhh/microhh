@@ -23,13 +23,15 @@
 #ifndef PRES
 #define PRES
 
-class Master;
-template<typename> class Grid;
-template<typename> class Fields;
-
 #ifdef USECUDA
 #include <cufft.h>
 #endif
+
+#include "field3d_operators.h"
+
+class Master;
+template<typename> class Grid;
+template<typename> class Fields;
 
 template<typename TF>
 class Pres
@@ -48,28 +50,30 @@ class Pres
 
         #ifdef USECUDA
         virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
         #endif
 
     protected:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
-    private:
         #ifdef USECUDA
         void make_cufft_plan();
-        void fft_forward (double*, double*, double*);
-        void fft_backward(double*, double*, double*);
+        void fft_forward (TF*, TF*, TF*);
+        void fft_backward(TF*, TF*, TF*);
 
-        bool FFTPerSlice;
+        bool FFT_per_slice;
         cufftHandle iplanf;
         cufftHandle jplanf;
         cufftHandle iplanb;
         cufftHandle jplanb;
         #endif
 
-#ifdef USECUDA
+    private:
+        #ifdef USECUDA
         void check_cufft_memory();
-#endif
+        #endif
 };
 #endif

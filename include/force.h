@@ -47,7 +47,7 @@ template<typename TF>
 class Force
 {
     public:
-        Force(Master&, Grid<TF>&, Fields<TF>&, Field3d_operators<TF>&, Input&); ///< Constructor of the force class.
+        Force(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the force class.
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
@@ -73,8 +73,8 @@ class Force
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Field3d_operators<TF>& field3d_operators;
-
+        Field3d_operators<TF> field3d_operators;
+        
         // Internal switches for various forcings
         Large_scale_pressure_type swlspres;
 

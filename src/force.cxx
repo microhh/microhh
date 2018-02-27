@@ -57,8 +57,8 @@ namespace
 }
 
 template<typename TF>
-Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Field3d_operators<TF>& field3d_operatorsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(field3d_operatorsin)
+Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
     // Read the switches from the input
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");

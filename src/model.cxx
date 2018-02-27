@@ -111,7 +111,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
         column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
@@ -406,7 +406,7 @@ void Model<TF>::prepare_gpu()
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    pres    ->prepare_device();
 }
 
 template<typename TF>
@@ -422,7 +422,7 @@ void Model<TF>::clear_gpu()
     force   ->clear_device();
     // decay   ->clear_device();
     // // Clear pressure last, for memory check
-    // pres    ->clear_device();
+    pres    ->clear_device();
 }
 #endif
 
