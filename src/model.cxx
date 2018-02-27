@@ -28,6 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
+#include "field3d_operators.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
