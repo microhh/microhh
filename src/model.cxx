@@ -108,7 +108,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
 

@@ -33,9 +33,7 @@
 
 template<typename TF>
 Field3d_operators<TF>::Field3d_operators(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin) :
-    master(masterin),
-    grid(gridin),
-    fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin)
 {
 }
 
