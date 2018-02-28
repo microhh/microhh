@@ -47,9 +47,9 @@ class Dump
 
     private:
     protected:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 
         std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
         bool swdump;           ///< Statistics on/off switch

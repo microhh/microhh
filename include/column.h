@@ -81,9 +81,9 @@ class Column
                        const TF, const int[2]);
 
     protected:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 
         bool swcolumn;           ///< Statistics on/off switch
 
