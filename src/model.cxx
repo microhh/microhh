@@ -28,7 +28,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
-#include "field3d_operators.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
@@ -103,7 +102,6 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     {
         grid          = std::make_shared<Grid<TF>>(master, *input);
         fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
-        field3d_operators = std::make_shared<Field3d_operators<TF>>(master, *grid, *fields);
         timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
@@ -534,28 +532,56 @@ void Model<TF>::print_status()
 {
     double cputime, end;
     static double start;
-
+    static FILE *dnsout = NULL;
     static bool first = true;
+    
     if (first)
     {
         start = master.get_wall_clock_time();
+
+        if (master.mpiid == 0)
+        {
+            std::string outputname = sim_name + ".out";
+            dnsout = std::fopen(outputname.c_str(), "a");
+            std::setvbuf(dnsout, NULL, _IOLBF, 1024);
+            std::fprintf(dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+        }
         first = false;
     }
 
     if (timeloop->do_check())
     {
         const double time = timeloop->get_time();
-        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-        const TF div = pres->check_divergence();
-        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
         const int iter = timeloop->get_iteration();
-
+        const double dt = timeloop->get_dt();
         end     = master.get_wall_clock_time();
         cputime = end - start;
         start   = end;
 
-        master.print_message("CvH: %8d, %11.5E, %10.4f: %16.8E\n", iter, time, cputime, div);
+        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+        const TF div = pres->check_divergence();
+        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+//        TF mom  = fields->check_momentum();
+//        TF tke  = fields->check_tke();
+//        TF mass = fields->check_mass();
+        TF mom = 0.;
+        TF tke = 0.;
+        TF mass = 0;
+        TF cfl  = advec->get_cfl(timeloop->get_dt());
+        TF dn   = diff->get_dn(timeloop->get_dt());
+        
+        if (master.mpiid == 0)
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+
+        
+        if (!std::isfinite(cfl))
+        {
+            master.print_error("Simulation has non-finite numbers.\n");
+            throw 1;
+        }
+
     }
 }
 

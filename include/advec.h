@@ -25,11 +25,13 @@
 
 #include <string>
 #include <memory>
+#include "field3d_operators.h"
 
 class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+
 
 /**
  * Base class for the advection scheme. This class is abstract and only
@@ -56,6 +58,7 @@ class Advec
         Master& master; ///< Pointer to master class.
         Grid<TF>& grid; ///< Pointer to grid class.
         Fields<TF>& fields; ///< Pointer to fields class.
+        Field3d_operators<TF> field3d_operators; ///< Instance of the field3d_operators
 
         double cflmax; ///< Maximum allowed value for the CFL criterion.
         static const double cflmin; ///< Minimum value for CFL used to avoid overflows.

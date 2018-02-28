@@ -45,6 +45,7 @@ class Advec_disabled : public Advec<TF>
         using Advec<TF>::master;
         using Advec<TF>::grid;
         using Advec<TF>::fields;
+        using Advec<TF>::field3d_operators;
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;

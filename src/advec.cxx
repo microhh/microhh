@@ -26,6 +26,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
+#include "field3d_operators.h"
 
 #include "advec.h"
 #include "advec_disabled.h"
@@ -36,7 +37,7 @@
 
 template<typename TF>
 Advec<TF>::Advec(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
 {
     cflmax = input.get_item<TF>("advec", "cflmax", "", 1.);
     swadvec = "0";
