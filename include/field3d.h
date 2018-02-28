@@ -24,6 +24,7 @@
 #define FIELD3D
 
 #include <string>
+#include <vector>
 
 class Master;
 template<typename> class Grid;
