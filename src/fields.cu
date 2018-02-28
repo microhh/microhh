@@ -130,12 +130,15 @@ void Fields<TF>::clear_device()
     for (auto& it : a)
         it.second->clear_device();
 
-
     for (auto& it : at)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
     cuda_safe_call(cudaFree(rhoref_g));
     cuda_safe_call(cudaFree(rhorefh_g));
+
+    // Free the tmp fields
+    for (auto& it : atmp_g)
+        it->clear_device();
 }
 
 /**

@@ -51,10 +51,10 @@ template<typename TF>
 Pres<TF>::~Pres()
 {
     #ifdef USECUDA
-  //  cufftDestroy(iplanf);
-  //  cufftDestroy(jplanf);
-  //  cufftDestroy(iplanb);
-  //  cufftDestroy(jplanb);
+    cufftDestroy(iplanf);
+    cufftDestroy(jplanf);
+    cufftDestroy(iplanb);
+    cufftDestroy(jplanb);
     #endif
 }
 
