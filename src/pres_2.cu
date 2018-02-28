@@ -359,7 +359,7 @@ TF Pres_2<TF>::check_divergence()
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
-    TF divmax = field3d_operators.calc_max(divergence.get()); 
+    TF divmax = field3d_operators.calc_max(divergence->fld_g); 
     // TO-DO: add grid.get_max() or similar for future parallel versions
 
     fields.release_tmp_g(divergence);
