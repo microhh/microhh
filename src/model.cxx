@@ -135,7 +135,7 @@ Model<TF>::~Model()
 {
     delete_objects();
     #ifdef USECUDA
-    cudaDeviceReset();
+    //cudaDeviceReset();
     if(t_stat.joinable())
         t_stat.join();
     #endif
