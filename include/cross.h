@@ -58,9 +58,9 @@ class Cross
 
     private:
     protected:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 
         bool swcross;
         TF sampletime;

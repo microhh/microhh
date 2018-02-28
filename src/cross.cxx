@@ -41,7 +41,8 @@ namespace
 {
 
     template<typename TF>
-    void calc_lngrad(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4, int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_lngrad(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
+            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
         using namespace Finite_difference::O4;
 
@@ -129,7 +130,8 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_path(const TF* const restrict data, TF* const restrict tmp, const TF* const restrict rhoref, const TF* const restrict dz, int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_path(const TF* const restrict data, TF* const restrict tmp, const TF* const restrict rhoref, const TF* const restrict dz,
+            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
     // Path is integrated in first full level, set to zero first
     for (int j=jstart; j<jend; j++)
@@ -153,7 +155,8 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_height_threshold(const TF* const restrict data, TF* const restrict height, const TF* const restrict z, TF threshold, bool upward, TF fillvalue, int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_height_threshold(const TF* const restrict data, TF* const restrict height, const TF* const restrict z, TF threshold, bool upward, TF fillvalue,
+            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
         // Set height to NetCDF fill value
         for (int j=jstart; j<jend; j++)
@@ -201,7 +204,7 @@ namespace
 }
 
 template<typename TF>
-Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
+Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
     swcross = inputin.get_item<bool>("cross", "swcross", "", false);
