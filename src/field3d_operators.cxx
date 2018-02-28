@@ -44,34 +44,34 @@ Field3d_operators<TF>::~Field3d_operators()
 
 #ifndef USECUDA
 template<typename TF>
-void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
+void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
 
     for (int k=0; k<gd.kcells; ++k)
     {
-        fld->fld_mean[k] = 0.;
+        prof[k] = 0.;
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                fld->fld_mean[k] += fld->fld[ijk];
+                prof[k] += fld[ijk];
             }
     }
 
-    master.sum(fld->fld_mean.data(), gd.kcells);
+    master.sum(prof, gd.kcells);
 
     const double n = gd.itot * gd.jtot;
 
     for (int k=0; k<gd.kcells; ++k)
-        fld->fld_mean[k] /= n;
+        prof[k] /= n;
 }
 
 // Calculate the volume weighted total mean
 // BvS: for now only at full levels
 template<typename TF>
-TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
 
@@ -83,7 +83,7 @@ TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                sum += fld->fld[ijk] * gd.dz[k];
+                sum += fld[ijk] * gd.dz[k];
             }
 
     master.sum(&sum, 1);

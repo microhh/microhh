@@ -35,6 +35,7 @@
 #include "model.h"
 #include "tools.h"
 #include "constants.h"
+#include "field3d_operators.h"
 
 namespace
 {

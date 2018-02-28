@@ -47,9 +47,9 @@ namespace
             const int ii = 1;
 
             at[ijk] += visc * (
-                + (  (a[ijk+ii] - a[ijk   ]) 
-                   - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
-                + (  (a[ijk+jj] - a[ijk   ]) 
+                + (  (a[ijk+ii] - a[ijk   ])
+                   - (a[ijk   ] - a[ijk-ii]) ) * dxidxi
+                + (  (a[ijk+jj] - a[ijk   ])
                    - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
                 + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
                    - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k]);

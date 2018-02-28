@@ -36,8 +36,9 @@
 #include "defines.h"
 #include "finite_difference.h"
 #include "stats.h"
-// #include "cross.h"
-// #include "dump.h"
+#include "column.h"
+#include "cross.h"
+#include "dump.h"
 // #include "diff_smag2.h"
 
 namespace
@@ -165,13 +166,10 @@ Fields<TF>::~Fields()
 }
 
 template<typename TF>
-void Fields<TF>::init()
+void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
 {
-    // set the convenience pointers
-    // stats = model->stats;
 
     int nerror = 0;
-
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
     for (auto& it : mp)
@@ -219,61 +217,86 @@ void Fields<TF>::init()
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
-    /*
-    // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
+    // Set up output classes
+    create_dump(dump);
+    create_cross(cross);
 
-    // Check different type of crosses and put them in their respective lists
-    for (Field_map::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-    {
-        check_added_cross(it->first, "",        crosslist_global, &crosssimple);
-        check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
-        check_added_cross(it->first, "bot",     crosslist_global, &crossbot);
-        check_added_cross(it->first, "top",     crosslist_global, &crosstop);
-        check_added_cross(it->first, "fluxbot", crosslist_global, &crossfluxbot);
-        check_added_cross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
-    }
 
-    for (Field_map::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-    {
-        check_added_cross(it->first, "",        crosslist_global, &crosssimple);
-        check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
-    }
-
-    // Get global dump-list from cross.cxx
-    std::vector<std::string> *dumplist_global = model->dump->get_dumplist();
-
-    // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-    std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
-    while (dumpvar != dumplist_global->end())
-    {
-        if (sd.count(*dumpvar))
-        {
-            // Remove variable from global list, put in local list
-            dumplist.push_back(*dumpvar);
-            dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
-        }
-        else
-            ++dumpvar;
-    }
-    */
 }
 
-//void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
-//{
-//    std::vector<std::string>::iterator position;
-//
-//    position = std::find(crosslist->begin(), crosslist->end(), var + type);
-//    if (position != crosslist->end())
-//    {
-//        // don't allow lngrad in 2nd order mode
-//        if (!(type == "lngrad" && grid.swspatialorder == "2"))
-//        {
-//            typelist->push_back(var);
-//            crosslist->erase(position);
-//        }
-//    }
-//}
+template<typename TF>
+void Fields<TF>::create_dump(Dump<TF>& dump)
+{
+    // add the profiles to the columns
+    if (dump.get_switch())
+    {
+        // Get global dump-list from cross.cxx
+        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+
+        // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
+        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+        while (dumpvar != dumplist_global->end())
+        {
+            if (a.count(*dumpvar))
+            {
+                // Remove variable from global list, put in local list
+                dumplist.push_back(*dumpvar);
+                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+            }
+            else
+                ++dumpvar;
+        }
+    }
+}
+
+template<typename TF>
+void Fields<TF>::create_cross(Cross<TF>& cross)
+{
+
+    if (cross.get_switch())
+    {
+
+        // Get global cross-list from cross.cxx
+        std::vector<std::string> *crosslist_global = cross.get_crosslist();
+
+        // Check different type of crosses and put them in their respective lists
+        for (auto& it : ap)
+        {
+            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
+            check_added_cross(it.first, "bot",     crosslist_global, &cross_bot);
+            check_added_cross(it.first, "top",     crosslist_global, &cross_top);
+            check_added_cross(it.first, "fluxbot", crosslist_global, &cross_fluxbot);
+            check_added_cross(it.first, "fluxtop", crosslist_global, &cross_fluxtop);
+        }
+
+        for (auto& it : sd)
+        {
+            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
+        }
+
+
+   }
+
+}
+
+template<typename TF>
+void Fields<TF>::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+{
+    std::vector<std::string>::iterator position;
+
+    position = std::find(crosslist->begin(), crosslist->end(), var + type);
+    if (position != crosslist->end())
+    {
+        // don't allow lngrad in 2nd order mode
+        if (!(type == "lngrad" && grid.swspatialorder == "2"))
+        {
+            typelist->push_back(var);
+            crosslist->erase(position);
+        }
+    }
+}
 
 
 template<typename TF>
@@ -900,6 +923,26 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
+void Fields<TF>::create_column(Column<TF>& column)
+{
+
+    // add the profiles to the columns
+    if (column.get_switch())
+    {
+        // add variables to the statistics
+        column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
+        column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
+        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh" );
+
+        for (auto& it : sp)
+            column.add_prof(it.first,it.second->longname, it.second->unit, "z");
+
+        column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+    }
+
+}
+
+template<typename TF>
 void Fields<TF>::save(int n)
 {
     const TF no_offset = 0.;
@@ -1093,41 +1136,51 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
 
     return tke;
 }
-
-void Fields::exec_cross()
-{
-    int nerror = 0;
-
-    Cross* cross = model->cross;
-
-    for (std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-        nerror += cross->cross_simple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
-
-    for (std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-        nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid.dzi4, a[*it]->name + "lngrad");
-
-    for (std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->flux_bot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
-
-    for (std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->flux_top, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
-
-    for (std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->fld_bot, atmp["tmp1"]->data, a[*it]->name + "bot");
-
-    for (std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-        nerror += cross->cross_plane(a[*it]->fld_top, atmp["tmp1"]->data, a[*it]->name + "top");
-
-    if (nerror)
-        throw 1;
-}
-
-void Fields::exec_dump()
-{
-    for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
-        model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it);
-}
 */
+template<typename TF>
+void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+{
+    for (auto& it : cross_simple)
+        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime);
+
+    for (auto& it : cross_lngrad)
+        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
+
+    for (auto& it : cross_fluxbot)
+        cross.cross_plane(a.at(it)->flux_bot.data(), a.at(it)->name+"fluxbot", iotime);
+
+    for (auto& it : cross_fluxtop)
+        cross.cross_plane(a.at(it)->flux_top.data(), a.at(it)->name+"fluxtop", iotime);
+
+    for (auto& it : cross_bot)
+        cross.cross_plane(a.at(it)->fld_bot.data(), a.at(it)->name+"bot", iotime);
+
+    for (auto& it : cross_top)
+        cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
+}
+
+template<typename TF>
+void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
+{
+    for (auto& it : dumplist)
+        dump.save_dump(a.at(it)->fld.data(), a.at(it)->name, iotime);
+}
+
+
+template<typename TF>
+void Fields<TF>::exec_column(Column<TF>& column)
+{
+    const double NoOffset = 0.;
+
+    column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
+    column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
+    column.calc_column("w",mp["w"]->fld.data(), NoOffset);
+    for (auto& it : sp)
+    {
+        column.calc_column(it.first, it.second->fld.data(), NoOffset);
+    }
+    column.calc_column("p", sd["p"]->fld.data(), NoOffset);
+}
 
 template<typename TF>
 bool Fields<TF>::has_mask(std::string mask_name)

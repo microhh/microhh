@@ -20,34 +20,40 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FIELD3D_OPERATORS
-#define FIELD3D_OPERATORS
-
-#include "field3d.h"
+#ifndef DUMP
+#define DUMP
 
 class Master;
+class Input;
 template<typename> class Grid;
 template<typename> class Fields;
-template<typename> class Field3d;
 
 template<typename TF>
-class Field3d_operators
+class Dump
 {
     public:
-        // Functions
-        Field3d_operators(Master&, Grid<TF>&, Fields<TF>&);
-        ~Field3d_operators();
+        Dump(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Dump();
 
+        void init(double);
+        void create();
 
-        void calc_mean_profile(TF* const, const TF* const);   ///< Calculate mean profile into fld_mean
-        TF calc_mean(const TF* const);             ///< Calculate volume weighted total mean
-        TF calc_max(const TF* const);              ///< Calculate maximum value
+        unsigned long get_time_limit(unsigned long);
+        bool get_switch() { return swdump; }
+        std::vector<std::string>* get_dumplist();
 
+        bool do_dump(unsigned long);
+        void save_dump(TF*, std::string, int);
 
     private:
-        Master& master;
+    protected:
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Master& master;
+
+        std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
+        bool swdump;           ///< Statistics on/off switch
+        double sampletime;
+        unsigned long isampletime;
 };
 #endif
-
