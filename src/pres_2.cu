@@ -288,9 +288,6 @@ void Pres_2<TF>::exec(double dt)
         gd.igc,  gd.jgc,  gd.kgc);
     cuda_check_error();
 
-    //fields.backward_device();
-    //fields.backward_field_device_3d(fields.sd.at("p")->fld.data(), fields.sd.at("p")->fld_g,  Offset_type::No_offset);
-
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     solve_in_g<TF><<<gridGPU, blockGPU>>>(
@@ -361,12 +358,10 @@ TF Pres_2<TF>::check_divergence()
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
-    auto tmp = fields.get_tmp_g();
-    TF divmax = divergence->calc_max(tmp->fld_g);
+    TF divmax = field3d_operators.calc_max(divergence.get()); 
     // TO-DO: add grid.get_max() or similar for future parallel versions
 
     fields.release_tmp_g(divergence);
-    fields.release_tmp_g(tmp);
 
     return divmax;
 }
