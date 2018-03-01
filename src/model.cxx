@@ -23,6 +23,7 @@
 #include <string>
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -534,7 +535,7 @@ void Model<TF>::print_status()
     static double start;
     static FILE *dnsout = NULL;
     static bool first = true;
-    
+
     if (first)
     {
         start = master.get_wall_clock_time();
@@ -570,7 +571,7 @@ void Model<TF>::print_status()
         TF mass = 0;
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
-        
+
         if (master.mpiid == 0)
         {
             std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
@@ -578,7 +579,7 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-        
+
         if (!std::isfinite(cfl))
         {
             master.print_error("Simulation has non-finite numbers.\n");
