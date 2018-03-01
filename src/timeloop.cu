@@ -136,28 +136,26 @@ void Timeloop<TF>::exec()
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const int offs = gd.memoffset;
-
     if (rkorder == 3)
     {
         for (auto& it : fields.at)
         {
             if (substep == 0)
                 rk3_g<TF,0><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep == 1)
                 rk3_g<TF,1><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep == 2)
                 rk3_g<TF,2><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
         }
@@ -178,32 +176,32 @@ void Timeloop<TF>::exec()
         {
             if (substep==0)
                 rk4_g<TF,0><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==1)
                 rk4_g<TF,1><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==2)
                 rk4_g<TF,2><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==3)
                 rk4_g<TF,3><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
             else if (substep==4)
                 rk4_g<TF,4><<<gridGPU, blockGPU>>>(
-                    &fields.ap[it.first]->fld_g[offs], &it.second->fld_g[offs], dt,
-                    gd.icellsp, gd.ijcellsp,
+                    fields.ap[it.first]->fld_g, it.second->fld_g, dt,
+                    gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, gd.kstart,
                     gd.iend,    gd.jend,   gd.kend);
         }

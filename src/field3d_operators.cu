@@ -41,7 +41,7 @@ void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF*
     const TF scalefac = 1./(gd.itot*gd.jtot);
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
     // Reduce jtot*kcells to kcells values
     reduce_all<TF>     (tmp->fld_g, prof, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
     fields.release_tmp_g(tmp);
@@ -58,7 +58,7 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Sum_type);
     // Reduce jtot*ktot to ktot values
     for (int k=0; k<gd.ktot; ++k)
     {
@@ -84,7 +84,7 @@ TF Field3d_operators<TF>::calc_max(const TF* const restrict fld)
 
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Max_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Max_type);
     // Reduce jtot*ktot to ktot values
     reduce_all<TF>     (tmp->fld_g, &tmp->fld_g[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Max_type, scalefac);
     // Reduce ktot values to a single value

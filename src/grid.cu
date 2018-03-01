@@ -29,7 +29,6 @@ namespace
     template<typename TF> __global__
     void boundary_cyclic_x_g(TF* const __restrict__ data,
                              const int icells, const int jcells, const int kcells,
-                             const int icellsp,
                              const int istart, const int jstart,
                              const int iend,   const int jend,
                              const int igc,    const int jgc)
@@ -38,8 +37,8 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
         const int k = blockIdx.z;
 
-        const int jj = icellsp;
-        const int kk = icellsp*jcells;
+        const int jj = icells;
+        const int kk = icells*jcells;
 
         // East-west
         if (k < kcells && j < jcells && i < igc)
@@ -57,7 +56,6 @@ namespace
     template<typename TF> __global__
     void boundary_cyclic_y_g(TF* const __restrict__ data,
                              const int icells, const int jcells, const int kcells,
-                             const int icellsp,
                              const int istart, const int jstart,
                              const int iend,   const int jend,
                              const int igc,    const int jgc)
@@ -66,8 +64,8 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
         const int k = blockIdx.z;
 
-        const int jj = icellsp;
-        const int kk = icellsp*jcells;
+        const int jj = icells;
+        const int kk = icells*jcells;
 
         // North-south
         if (jend-jstart == 1)
@@ -100,14 +98,6 @@ namespace
 template<typename TF>
 void Grid<TF>::prepare_device()
 {
-    /* Align the interior of the grid (i.e. excluding ghost cells) with
-       the 128 byte memory blocks of the GPU's global memory */
-    gd.memoffset = 16 - gd.igc;           // Padding at start of array
-    int padl     = 16-(int)gd.imax%16;    // Elements left in last 128 byte block
-    gd.icellsp   = gd.imax + padl + (padl < 2*gd.igc) * 16;
-    gd.ijcellsp  = gd.icellsp * gd.jcells;
-    gd.ncellsp   = gd.ijcellsp * gd.kcells + gd.memoffset;
-
     // Calculate optimal size thread blocks based on grid
     gd.ithread_block = min(256, 16 * ((gd.itot / 16) + (gd.itot % 16 > 0)));
     gd.jthread_block = 256 / gd.ithread_block;
@@ -166,11 +156,11 @@ void Grid<TF>::boundary_cyclic_g(TF* data)
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
     boundary_cyclic_x_g<TF><<<gridGPUx,blockGPUx>>>(
-        data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
+        data, gd.icells, gd.jcells, gd.kcells,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     boundary_cyclic_y_g<TF><<<gridGPUy,blockGPUy>>>(
-        data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
+        data, gd.icells, gd.jcells, gd.kcells,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     cuda_check_error();
@@ -196,11 +186,11 @@ void Grid<TF>::boundary_cyclic2d_g(TF* data)
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
     boundary_cyclic_x_g<TF><<<gridGPUx,blockGPUx>>>(
-        data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
+        data, gd.icells, gd.jcells, gd.kcells,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     boundary_cyclic_y_g<TF><<<gridGPUy,blockGPUy>>>(
-        data, gd.icells, gd.jcells, gd.kcells, gd.icellsp,
+        data, gd.icells, gd.jcells, gd.kcells,
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     cuda_check_error();

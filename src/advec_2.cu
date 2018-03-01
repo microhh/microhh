@@ -163,19 +163,17 @@ double Advec_2<TF>::get_cfl(const double dt)
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    const int offs = gd.memoffset;
-
     auto tmp1 = fields.get_tmp_g();
     
     calc_cfl_g<<<gridGPU, blockGPU>>>(
-        &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
-        &tmp1->fld_g[offs], gd.dzi_g, dxi, dyi,
-        gd.icellsp, gd.ijcellsp,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+        tmp1->fld_g, gd.dzi_g, dxi, dyi,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
-    TF cfl = field3d_operators.calc_max(&tmp1->fld_g[offs]);
+    TF cfl = field3d_operators.calc_max(tmp1->fld_g);
     fields.release_tmp_g(tmp1);
     
     cfl = cfl*dt;
@@ -198,23 +196,21 @@ void Advec_2<TF>::exec()
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    const int offs = gd.memoffset;
-
     advec_uvw_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("u")->fld_g[offs],&fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs],
-        &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dzhi_g, dxi, dyi,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
     for (auto& it : fields.st)
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
-            &it.second->fld_g[offs], &fields.sp.at(it.first)->fld_g[offs],
-            &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
+            it.second->fld_g, fields.sp.at(it.first)->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();

@@ -258,7 +258,6 @@ void Pres_2<TF>::exec(double dt)
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
     const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    const int offs   = gd.memoffset;
     const double dti = 1./dt;
 
     // 3D grid
@@ -274,16 +273,16 @@ void Pres_2<TF>::exec(double dt)
     auto tmp2 = fields.get_tmp_g();
 
     // calculate the cyclic BCs first
-    grid.boundary_cyclic_g(&fields.mt.at("u")->fld_g[offs]);
-    grid.boundary_cyclic_g(&fields.mt.at("v")->fld_g[offs]);
-    grid.boundary_cyclic_g(&fields.mt.at("w")->fld_g[offs]);
+    grid.boundary_cyclic_g(fields.mt.at("u")->fld_g);
+    grid.boundary_cyclic_g(fields.mt.at("v")->fld_g);
+    grid.boundary_cyclic_g(fields.mt.at("w")->fld_g);
 
     pres_in_g<TF><<<gridGPU, blockGPU>>>(
         fields.sd.at("p")->fld_g,
-        &fields.mp.at("u")->fld_g[offs], &fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], 
-        &fields.mt.at("u")->fld_g[offs], &fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs], 
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, 
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g, 
         gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi, static_cast<TF>(dti),
-        gd.icellsp, gd.ijcellsp, 
+        gd.icells, gd.ijcells, 
         gd.imax, gd.imax*gd.jmax,
         gd.imax, gd.jmax, gd.kmax,
         gd.igc,  gd.jgc,  gd.kgc);
@@ -309,23 +308,23 @@ void Pres_2<TF>::exec(double dt)
 
     fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
+    cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
     solve_out_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.sd.at("p")->fld_g[offs], tmp1->fld_g,
+        fields.sd.at("p")->fld_g, tmp1->fld_g,
         gd.imax, gd.imax*gd.jmax,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.imax,    gd.jmax,   gd.kmax);
     cuda_check_error();
 
-    grid.boundary_cyclic_g(&fields.sd.at("p")->fld_g[offs]);
+    grid.boundary_cyclic_g(fields.sd.at("p")->fld_g);
 
     pres_out_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("u")->fld_g[offs], &fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs],
-        &fields.sd.at("p")->fld_g[offs],
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+        fields.sd.at("p")->fld_g,
         gd.dzhi_g, 1./gd.dx, 1./gd.dy,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
@@ -347,14 +346,12 @@ TF Pres_2<TF>::check_divergence()
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const int offs = gd.memoffset;
-
     auto divergence = fields.get_tmp_g();
 
     calc_divergence_g<<<gridGPU, blockGPU>>>(
-        &fields.mp.at("u")->fld_g[offs], &fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], &divergence->fld_g[offs], 
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, divergence->fld_g, 
         gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();

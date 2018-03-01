@@ -102,7 +102,7 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
-    const int nmemsize   = gd.ncellsp*sizeof(TF);
+    const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
 
     // Prognostic fields
@@ -216,13 +216,13 @@ template<typename TF>
 void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
+    //const int imemsizep  = gd.icells * sizeof(TF);
+    //const int imemsize   = gd.icells  * sizeof(TF);
 
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells*gd.kcells, cudaMemcpyHostToDevice));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field_g, field, gd.ncells*sizeof(TF), cudaMemcpyHostToDevice));
+    //if (sw == Offset)
+    //    cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells*gd.kcells, cudaMemcpyHostToDevice));
+    //else if (sw == No_offset)
+    cuda_safe_call(cudaMemcpy(field_g, field, gd.ncells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -235,13 +235,13 @@ template<typename TF>
 void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field, Offset_type sw)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
+    //const int imemsizep  = gd.icells * sizeof(TF);
+    //const int imemsize   = gd.icells  * sizeof(TF);
 
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells,  cudaMemcpyHostToDevice));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field_g, field, gd.ijcells*sizeof(TF), cudaMemcpyHostToDevice));
+    //if (sw == Offset)
+    //    cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells,  cudaMemcpyHostToDevice));
+    //else if (sw == No_offset)
+    cuda_safe_call(cudaMemcpy(field_g, field, gd.ijcells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -266,13 +266,13 @@ template<typename TF>
 void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
+    //const int imemsizep  = gd.icells * sizeof(TF);
+    //const int imemsize   = gd.icells  * sizeof(TF);
 
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells*gd.kcells, cudaMemcpyDeviceToHost));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field, field_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
+    //if (sw == Offset)
+    //    cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells*gd.kcells, cudaMemcpyDeviceToHost));
+    //else if (sw == No_offset)
+    cuda_safe_call(cudaMemcpy(field, field_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
 /**
@@ -285,13 +285,13 @@ template<typename TF>
 void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g, Offset_type sw)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
+    //const int imemsizep  = gd.icells * sizeof(TF);
+    //const int imemsize   = gd.icells  * sizeof(TF);
 
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field, field_g, gd.ijcells*sizeof(TF), cudaMemcpyDeviceToHost));
+    //if (sw == Offset)
+    //    cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    //else if (sw == No_offset)
+    cuda_safe_call(cudaMemcpy(field, field_g, gd.ijcells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
 /**

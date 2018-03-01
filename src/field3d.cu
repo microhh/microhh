@@ -32,9 +32,9 @@ template<typename TF>
 void Field3d<TF>::init_device()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    const int nmemsize   = gd.ncellsp*sizeof(TF);
-    const int nmemsize1d = gd.kcells *sizeof(TF);
-    const int nmemsize2d = (gd.ijcellsp+gd.memoffset)*sizeof(TF);
+    const int nmemsize   = gd.ncells  * sizeof(TF);
+    const int nmemsize1d = gd.kcells  * sizeof(TF);
+    const int nmemsize2d = gd.ijcells * sizeof(TF);
 
     cuda_safe_call(cudaMalloc(&fld_g,      nmemsize  ));
     cuda_safe_call(cudaMalloc(&fld_bot_g,  nmemsize2d));

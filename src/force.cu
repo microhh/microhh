@@ -341,8 +341,6 @@ void Force<TF>::exec(double dt)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const int offs = gd.memoffset;
-
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {
         auto tmp = fields.get_tmp_g();
@@ -350,17 +348,17 @@ void Force<TF>::exec(double dt)
         flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
             &tmp->fld_g[offs], &fields.mp.at("u")->fld_g[offs],
             gd.dz_g,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
 */
-        TF uavg  = field3d_operators.calc_mean(&fields.mp.at("u")->fld_g[offs]);
-        TF utavg  = field3d_operators.calc_mean(&fields.mt.at("u")->fld_g[offs]);
+        TF uavg  = field3d_operators.calc_mean(fields.mp.at("u")->fld_g);
+        TF utavg = field3d_operators.calc_mean(fields.mt.at("u")->fld_g);
 /*        flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
             &tmp->fld_g[offs], &fields.mt.at("u")->fld_g[offs],
             gd.dz_g,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
@@ -372,9 +370,9 @@ void Force<TF>::exec(double dt)
         const TF fbody = (uflux - uavg - grid.utrans) / dt - utavg;
 
         flux_step_2_g<TF><<<gridGPU, blockGPU>>>(
-            &fields.mt.at("u")->fld_g[offs],
+            fields.mt.at("u")->fld_g,
             fbody,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
@@ -387,7 +385,7 @@ void Force<TF>::exec(double dt)
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                 ug_g, vg_g, fc, grid.utrans, grid.vtrans,
-                gd.icellsp, gd.ijcellsp,
+                gd.icells, gd.ijcells,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend);
             cuda_check_error();
@@ -398,7 +396,7 @@ void Force<TF>::exec(double dt)
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                 ug_g, vg_g, fc, grid.utrans, grid.vtrans,
-                gd.icellsp, gd.ijcellsp,
+                gd.icells, gd.ijcells,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend);
             cuda_check_error();
@@ -414,7 +412,7 @@ void Force<TF>::exec(double dt)
                 &fields->st[*it]->data_g[offs], lsprofs_g[*it],
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
@@ -428,7 +426,7 @@ void Force<TF>::exec(double dt)
                 nudgeprofs_g[*it], nudge_factor_g,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
@@ -441,7 +439,7 @@ void Force<TF>::exec(double dt)
                 &it->second->data_g[offs], fields->sp[it->first]->datamean_g, wls_g, gd.dzhi_g,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
