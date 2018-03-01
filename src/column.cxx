@@ -158,7 +158,7 @@ unsigned long Column<TF>::get_time_limit(unsigned long itime)
     if (!swcolumn)
         return Constants::ulhuge;
     // If sampletime is negative, output column every timestep
-    if (isampletime < 0)
+    if (isampletime == 0)
         return Constants::ulhuge;
 
     unsigned long idtlim = isampletime - itime % isampletime;
@@ -171,9 +171,8 @@ bool Column<TF>::do_column(unsigned long itime)
     // check if column are enabled
     if (!swcolumn)
         return false;
-
     // If sampletime is negative, output column every timestep
-    if (isampletime < 0)
+    if (isampletime == 0)
         return true;
 
     // check if time for execution
