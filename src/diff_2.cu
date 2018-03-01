@@ -105,7 +105,7 @@ void Diff_2<TF>::exec()
     diff_c_g<TF><<<gridGPU, blockGPU>>>(
         &fields.mt.at("u")->fld_g[offs], &fields.mp.at("u")->fld_g[offs],
         gd.dzi_g, gd.dzhi_g,
-        dxidxi, dyidyi, fields->visc,
+        dxidxi, dyidyi, fields.visc,
         gd.icellsp, gd.ijcellsp,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -114,7 +114,7 @@ void Diff_2<TF>::exec()
     diff_c_g<TF><<<gridGPU, blockGPU>>>(
         &fields.mt.at("v")->fld_g[offs], &fields.mp.at("v")->fld_g[offs],
         gd.dzi_g, gd.dzhi_g,
-        dxidxi, dyidyi, fields->visc,
+        dxidxi, dyidyi, fields.visc,
         gd.icellsp, gd.ijcellsp,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -123,21 +123,23 @@ void Diff_2<TF>::exec()
     diff_w_g<TF><<<gridGPU, blockGPU>>>(
         &fields.mt.at("w")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
         gd.dzi_g, gd.dzhi_g,
-        dxidxi, dyidyi, fields->visc,
+        dxidxi, dyidyi, fields.visc,
         gd.icellsp, gd.ijcellsp,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
-
     for (auto &it : fields.st)
         diff_c_g<TF><<<gridGPU, blockGPU>>>(
-            &it.second->fld_g[offs], &fields.sp[it->first]->fld_g[offs],
+            &it.second->fld_g[offs], &fields.sp[it.first]->fld_g[offs],
             gd.dzi_g, gd.dzhi_g,
-            dxidxi, dyidyi, fields.sp[it->first]->visc,
+            dxidxi, dyidyi, fields.sp[it.first]->visc,
             gd.icellsp, gd.ijcellsp,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 }
 #endif
+
+template class Diff_2<double>;
+template class Diff_2<float>;
