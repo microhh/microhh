@@ -361,7 +361,8 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
             cuda_check_error();
 
             transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
-            cuda_safe_call(cudaMemcpy(p, tmp1, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
+
+            cuda_safe_call(cudaMemcpy(p, tmp1, gd.itot*gd.jtot*gd.ktot*sizeof(TF), cudaMemcpyDeviceToDevice));
             cuda_check_error();
         }
     }
@@ -437,7 +438,8 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
             cuda_check_error();
 
             transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
-            cuda_safe_call(cudaMemcpy(p, tmp1, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
+            
+            cuda_safe_call(cudaMemcpy(p, tmp1, gd.itot*gd.jtot*gd.ktot*sizeof(TF), cudaMemcpyDeviceToDevice));
             cuda_check_error();
         }
     }
