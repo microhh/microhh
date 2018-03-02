@@ -26,6 +26,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "fft.h"
 #include "pres_2.h"
 #include "defines.h"
 
@@ -69,8 +70,7 @@ void Pres_2<TF>::exec(const double dt)
     auto tmp2 = fields.get_tmp();
 
     solve(fields.sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-          gd.dz.data(), fields.rhoref.data(),
-          grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
+          gd.dz.data(), fields.rhoref.data());
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -105,6 +105,7 @@ void Pres_2<TF>::init()
     work2d.resize(gd.imax*gd.jmax);
 
     boundary_cyclic.init();
+    fft.init();
 }
 
 template<typename TF>
@@ -251,9 +252,7 @@ namespace
 
 template<typename TF>
 void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* const restrict b,
-                       const TF* const restrict dz, const TF* const restrict rhoref,
-                       TF* const restrict fftini, TF* const restrict fftouti,
-                       TF* const restrict fftinj, TF* const restrict fftoutj)
+                       const TF* const restrict dz, const TF* const restrict rhoref)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -269,7 +268,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
-    grid.fft_exec_forward(p, work3d);
+    fft.exec_forward(p, work3d);
 
     jj = iblock;
     kk = iblock*jblock;
@@ -314,7 +313,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
          gd.iblock, gd.jblock, gd.kmax);
 
-    grid.fft_exec_backward(p, work3d);
+    fft.exec_backward(p, work3d);
 
     jj = imax;
     kk = imax*jmax;

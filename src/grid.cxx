@@ -42,13 +42,6 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     transpose(master, *this)
 {
     mpitypes = false;
-    fftwplan = false;
-
-    // Initialize the pointers to zero.
-    fftini  = nullptr;
-    fftouti = nullptr;
-    fftinj  = nullptr;
-    fftoutj = nullptr;
 
     gd.xsize = input.get_item<TF>("grid", "xsize", "");
     gd.ysize = input.get_item<TF>("grid", "ysize", "");
@@ -84,48 +77,9 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     }
 }
 
-template<>
-void Grid<double>::fftw_finish()
-{
-    if (fftwplan)
-    {
-        fftw_destroy_plan(iplanf);
-        fftw_destroy_plan(iplanb);
-        fftw_destroy_plan(jplanf);
-        fftw_destroy_plan(jplanb);
-    }
-
-    fftw_free(fftini);
-    fftw_free(fftouti);
-    fftw_free(fftinj);
-    fftw_free(fftoutj);
-
-    fftw_cleanup();
-}
-
-template<>
-void Grid<float>::fftw_finish()
-{
-    if (fftwplan)
-    {
-        fftwf_destroy_plan(iplanff);
-        fftwf_destroy_plan(iplanbf);
-        fftwf_destroy_plan(jplanff);
-        fftwf_destroy_plan(jplanbf);
-    }
-
-    fftwf_free(fftini);
-    fftwf_free(fftouti);
-    fftwf_free(fftinj);
-    fftwf_free(fftoutj);
-
-    fftwf_cleanup();
-}
-
 template<typename TF>
 Grid<TF>::~Grid()
 {
-    fftw_finish();
     exit_mpi();
 }
 
@@ -210,30 +164,11 @@ void Grid<TF>::init()
     gd.dzi4 .resize(gd.kmax+2*gd.kgc);
     gd.dzhi4.resize(gd.kmax+2*gd.kgc);
 
-    // allocate the data for the fourier transforms
-    allocate_fftw();
-
     // initialize the communication functions
     init_mpi();
 
     // Initialize the transposes.
     transpose.init();
-}
-
-template<> void Grid<double>::allocate_fftw()
-{
-    fftini  = fftw_alloc_real(gd.itot*gd.jmax);
-    fftouti = fftw_alloc_real(gd.itot*gd.jmax);
-    fftinj  = fftw_alloc_real(gd.jtot*gd.iblock);
-    fftoutj = fftw_alloc_real(gd.jtot*gd.iblock);
-}
-
-template<> void Grid<float>::allocate_fftw()
-{
-    fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
-    fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
-    fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
-    fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
 }
 
 /**
@@ -405,186 +340,12 @@ template<typename TF>
 void Grid<TF>::save()
 {
     save_grid();
-    save_fftw();
 }
 
 template<typename TF>
 void Grid<TF>::load()
 {
     load_grid();
-    load_fftw();
-}
-
-template<>
-void Grid<double>::load_fftw()
-{
-    // LOAD THE FFTW PLAN
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-    master.print_message("Loading \"%s\" ... ", filename);
-
-    int n = fftw_import_wisdom_from_filename(filename);
-    if (n == 0)
-    {
-        master.print_message("FAILED\n");
-        throw 1;
-    }
-    else
-        master.print_message("OK\n");
-
-    // use the FFTW3 many interface in order to reduce function call overhead
-    int rank = 1;
-    int ni[] = {gd.itot};
-    int nj[] = {gd.jtot};
-    int istride = 1;
-    int jstride = gd.iblock;
-    int idist = gd.itot;
-    int jdist = 1;
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
-
-    fftwplan = true;
-
-    fftw_forget_wisdom();
-}
-
-
-template<>
-void Grid<float>::load_fftw()
-{
-    // LOAD THE FFTW PLAN
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-    master.print_message("Loading \"%s\" ... ", filename);
-
-    int n = fftwf_import_wisdom_from_filename(filename);
-    if (n == 0)
-    {
-        master.print_message("FAILED\n");
-        throw 1;
-    }
-    else
-        master.print_message("OK\n");
-
-    // use the FFTW3 many interface in order to reduce function call overhead
-    int rank = 1;
-    int ni[] = {gd.itot};
-    int nj[] = {gd.jtot};
-    int istride = 1;
-    int jstride = gd.iblock;
-    int idist = gd.itot;
-    int jdist = 1;
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
-
-    fftwplan = true;
-
-    fftwf_forget_wisdom();
-}
-
-
-template<>
-void Grid<double>::save_fftw()
-{
-    // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
-    // Use the FFTW3 many interface in order to reduce function call overhead.
-    int rank = 1;
-    int ni[] = {gd.itot};
-    int nj[] = {gd.jtot};
-    int istride = 1;
-    int jstride = gd.iblock;
-    int idist = gd.itot;
-    int jdist = 1;
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
-
-    fftwplan = true;
-
-    if (master.mpiid == 0)
-    {
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-        master.print_message("Saving \"%s\" ... ", filename);
-
-        int n = fftw_export_wisdom_to_filename(filename);
-        if (n == 0)
-        {
-            master.print_message("FAILED\n");
-            throw 1;
-        }
-        else
-            master.print_message("OK\n");
-    }
-}
-
-template<>
-void Grid<float>::save_fftw()
-{
-    // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
-    // Use the FFTW3 many interface in order to reduce function call overhead.
-    int rank = 1;
-    int ni[] = {gd.itot};
-    int nj[] = {gd.jtot};
-    int istride = 1;
-    int jstride = gd.iblock;
-    int idist = gd.itot;
-    int jdist = 1;
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
-    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
-
-    fftwplan = true;
-
-    if (master.mpiid == 0)
-    {
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-        master.print_message("Saving \"%s\" ... ", filename);
-
-        int n = fftwf_export_wisdom_to_filename(filename);
-        if (n == 0)
-        {
-            master.print_message("FAILED\n");
-            throw 1;
-        }
-        else
-            master.print_message("OK\n");
-    }
 }
 
 /**

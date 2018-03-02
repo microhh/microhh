@@ -28,6 +28,7 @@
 #endif
 
 #include "field3d_operators.h"
+#include "fft.h"
 
 class Master;
 template<typename> class Grid;
@@ -57,7 +58,9 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+
         Field3d_operators<TF> field3d_operators;
+        FFT<TF> fft;
 
         #ifdef USECUDA
         void make_cufft_plan();

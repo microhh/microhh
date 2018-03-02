@@ -37,7 +37,8 @@
 template<typename TF>
 Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin),
-    field3d_operators(master, grid, fields)
+    field3d_operators(master, grid, fields),
+    fft(master, grid)
 {
     #ifdef USECUDA
     iplanf = 0;

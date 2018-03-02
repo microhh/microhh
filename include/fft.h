@@ -23,6 +23,7 @@
 #ifndef FFT_H
 #define FFT_H
 
+#include <fftw3.h>
 #include "transpose.h"
 
 class Master;

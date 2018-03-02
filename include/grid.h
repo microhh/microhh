@@ -27,7 +27,6 @@
 #include <mpi.h>
 #endif
 
-#include <fftw3.h>
 #include <string>
 #include <vector>
 #include "defines.h"
@@ -107,8 +106,6 @@ struct Grid_data
     TF* dzhi_g;
     TF* dzi4_g;
     TF* dzhi4_g;
-
-
 };
 
 /**
@@ -143,13 +140,6 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        // void transpose_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
-        // void transpose_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
-        // void transpose_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
-        // void transpose_yx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to x.
-        // void transpose_yz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to z.
-        // void transpose_zy(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to y.
-
         // void get_max (double*);      ///< Gets the maximum of a number over all processes.
         // void get_max (int*);         ///< Gets the maximum of a number over all processes.
         // void get_sum (double*);      ///< Gets the sum of a number over all processes.
@@ -165,21 +155,9 @@ class Grid
         int save_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         int load_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Loads a xy-slice.
 
-        void fft_exec_forward (TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
-        void fft_exec_backward(TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.
-
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); ///< Second order interpolation
         //void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
-
-        // CvH: TO BE PUT IN STRUCT
-        // Fourier tranforms
-        TF *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
-        TF *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
-        fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
-        fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
-        fftwf_plan iplanff, iplanbf; ///< FFTW3 plans for forward and backward transforms in x-direction.
-        fftwf_plan jplanff, jplanbf; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
         // GPU functions
         void prepare_device();                          ///< Load the arrays onto the GPU
@@ -190,18 +168,12 @@ class Grid
         Transpose<TF> transpose;
 
         bool mpitypes;  ///< Boolean to check whether MPI datatypes are created.
-        bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
         void save_grid(); ///< Save the grid properties.
         void load_grid(); ///< Load the grid properties.
-
-        void allocate_fftw();
-        void load_fftw(); ///< Load the FFTW plan for bitwise identical results.
-        void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
-        void fftw_finish();
 
         Grid_data<TF> gd;
 

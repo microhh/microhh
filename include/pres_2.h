@@ -54,6 +54,7 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::grid;
         using Pres<TF>::fields;
         using Pres<TF>::field3d_operators;
+        using Pres<TF>::fft;
         Boundary_cyclic<TF> boundary_cyclic;
 
         std::vector<TF> bmati;
@@ -81,8 +82,7 @@ class Pres_2 : public Pres<TF>
                    const TF);
 
         void solve(TF* const restrict, TF* const restrict, TF*,
-                   const TF* const restrict, const TF* const restrict,
-                   TF* const restrict, TF* const restrict, TF*, TF*);
+                   const TF* const restrict, const TF* const restrict);
 
         void output(TF* const restrict, TF* const restrict, TF* const restrict,
                     const TF* const restrict, const TF* const restrict);
