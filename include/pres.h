@@ -33,15 +33,16 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class FFT;
 
 template<typename TF>
 class Pres
 {
     public:
-        Pres(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Pres(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
         virtual ~Pres();
 
-        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const std::string); ///< Factory function for pres class generation.
+        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&, const std::string);
 
         virtual void init() = 0;
         virtual void set_values() = 0;
@@ -58,9 +59,9 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        FFT<TF>& fft;
 
         Field3d_operators<TF> field3d_operators;
-        FFT<TF> fft;
 
         #ifdef USECUDA
         void make_cufft_plan();

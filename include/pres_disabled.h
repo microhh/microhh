@@ -29,12 +29,13 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class FFT;
 
 template<typename TF>
 class Pres_disabled : public Pres<TF>
 {
     public:
-        Pres_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Pres_disabled(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
         ~Pres_disabled();
 
         void init();

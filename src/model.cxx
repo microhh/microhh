@@ -110,7 +110,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
+        pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
 
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);

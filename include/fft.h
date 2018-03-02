@@ -56,8 +56,5 @@ class FFT
         fftwf_plan jplanff, jplanbf; // FFTW3 plans for forward and backward transforms in y-direction.
 
         bool has_fftw_plan;
-
-        void allocate_fftw();
-        void fftw_finish();
 };
 #endif

@@ -35,10 +35,9 @@
 #include "pres_2.h"
 
 template<typename TF>
-Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin),
-    field3d_operators(master, grid, fields),
-    fft(master, grid)
+Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), fft(fftin),
+    field3d_operators(master, grid, fields)
 {
     #ifdef USECUDA
     iplanf = 0;
@@ -61,14 +60,14 @@ Pres<TF>::~Pres()
 
 template<typename TF>
 std::shared_ptr<Pres<TF>> Pres<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Input& inputin, const std::string swspatialorder)
+        FFT<TF>& fftin, Input& inputin, const std::string swspatialorder)
 {
     std::string swpres = inputin.get_item<std::string>("pres", "swpres", "", swspatialorder);
 
     if (swpres == "0")
-        return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, fftin, inputin);
     else if (swpres == "2")
-        return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, fftin, inputin);
     // else if (swpres == "4")
     //     return new Pres_4(modelin, inputin);
     else

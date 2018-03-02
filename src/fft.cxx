@@ -38,13 +38,8 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
     fftoutj = nullptr;
 }
 
-template<typename TF>
-void FFT<TF>::init()
-{
-    allocate_fftw();
-}
-
-template<> void FFT<double>::allocate_fftw()
+template<>
+void FFT<double>::init()
 {
     auto& gd = grid.get_grid_data();
 
@@ -54,7 +49,8 @@ template<> void FFT<double>::allocate_fftw()
     fftoutj = fftw_alloc_real(gd.jtot*gd.iblock);
 }
 
-template<> void FFT<float>::allocate_fftw()
+template<>
+void FFT<float>::init()
 {
     auto& gd = grid.get_grid_data();
 
@@ -65,7 +61,7 @@ template<> void FFT<float>::allocate_fftw()
 }
 
 template<>
-void FFT<double>::fftw_finish()
+FFT<double>::~FFT()
 {
     if (has_fftw_plan)
     {
@@ -84,7 +80,7 @@ void FFT<double>::fftw_finish()
 }
 
 template<>
-void FFT<float>::fftw_finish()
+FFT<float>::~FFT()
 {
     if (has_fftw_plan)
     {
@@ -100,12 +96,6 @@ void FFT<float>::fftw_finish()
     fftwf_free(fftoutj);
 
     fftwf_cleanup();
-}
-
-template<typename TF>
-FFT<TF>::~FFT()
-{
-    fftw_finish();
 }
 
 template<>

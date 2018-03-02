@@ -35,7 +35,7 @@ template<typename TF>
 class Pres_2 : public Pres<TF>
 {
     public:
-        Pres_2(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Pres_2(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
         ~Pres_2();
 
         void init();

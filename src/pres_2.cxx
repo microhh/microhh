@@ -31,8 +31,8 @@
 #include "defines.h"
 
 template<typename TF>
-Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, inputin),
+Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
     boundary_cyclic(master, grid)
 {
     #ifdef USECUDA
