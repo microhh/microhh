@@ -458,7 +458,6 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
 {
     int nerror = 0;
     char filename[256];
-    auto& gd = grid.get_grid_data();
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
@@ -526,7 +525,6 @@ int Cross<TF>::cross_plane(TF* restrict data, std::string name, int iotime)
 {
     int nerror = 0;
     char filename[256];
-    auto& gd = grid.get_grid_data();
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
