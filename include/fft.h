@@ -39,6 +39,8 @@ class FFT
         void backward(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict);
 
         void init();
+        void load();
+        void save();
 
     private:
         Master& master; // Reference to master class.
@@ -55,8 +57,6 @@ class FFT
         bool fftw_plan;
 
         void allocate_fftw();
-        void load_fftw();
-        void save_fftw();
         void fftw_finish();
 };
 #endif

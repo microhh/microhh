@@ -109,7 +109,7 @@ FFT<TF>::~FFT()
 }
 
 template<>
-void FFT<double>::load_fftw()
+void FFT<double>::load()
 {
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
@@ -154,7 +154,7 @@ void FFT<double>::load_fftw()
 
 
 template<>
-void FFT<float>::load_fftw()
+void FFT<float>::load()
 {
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
@@ -199,7 +199,7 @@ void FFT<float>::load_fftw()
 
 
 template<>
-void FFT<double>::save_fftw()
+void FFT<double>::save()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
@@ -244,7 +244,7 @@ void FFT<double>::save_fftw()
 }
 
 template<>
-void FFT<float>::save_fftw()
+void FFT<float>::save()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
@@ -287,3 +287,6 @@ void FFT<float>::save_fftw()
             master.print_message("OK\n");
     }
 }
+
+template class FFT<double>;
+template class FFT<float>;

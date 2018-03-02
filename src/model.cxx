@@ -30,6 +30,7 @@
 #include "fields.h"
 #include "data_block.h"
 #include "timeloop.h"
+#include "fft.h"
 #include "boundary.h"
 #include "advec.h"
 #include "diff.h"
@@ -101,9 +102,10 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid          = std::make_shared<Grid<TF>>(master, *input);
-        fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
-        timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        grid     = std::make_shared<Grid<TF>>(master, *input);
+        fields   = std::make_shared<Fields<TF>>(master, *grid, *input);
+        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        fft      = std::make_shared<FFT<TF>>(master, *grid);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
@@ -155,6 +157,8 @@ void Model<TF>::init()
     grid->init();
     fields->init(*dump, *cross);
 
+    fft->init();
+
     boundary->init(*input);
     pres->init();
     force->init();
@@ -195,6 +199,7 @@ void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load();
+    fft->load();
     timeloop->load(timeloop->get_iotime());
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
@@ -226,6 +231,7 @@ void Model<TF>::save()
 
     // Save the initialized data to disk for the run mode.
     grid->save();
+    fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
 }
