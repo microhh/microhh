@@ -152,7 +152,7 @@ void Fields<TF>::forward_device()
         forward_field3d_device(it.second.get());
 
     for (auto& it : at)
-        forward_field_device_3d(it.second->fld_g, it.second->fld.data(), Offset);
+        forward_field_device_3d(it.second->fld_g, it.second->fld.data());
 
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
@@ -177,13 +177,13 @@ template<typename TF>
 void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    forward_field_device_3d(fld->fld_g,      fld->fld.data(),      Offset);
-    forward_field_device_2d(fld->fld_bot_g,  fld->fld_bot.data(),  Offset);
-    forward_field_device_2d(fld->fld_top_g,  fld->fld_top.data(),  Offset);
-    forward_field_device_2d(fld->grad_bot_g, fld->grad_bot.data(), Offset);
-    forward_field_device_2d(fld->grad_top_g, fld->grad_top.data(), Offset);
-    forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data(), Offset);
-    forward_field_device_2d(fld->flux_top_g, fld->flux_top.data(), Offset);
+    forward_field_device_3d(fld->fld_g,      fld->fld.data());
+    forward_field_device_2d(fld->fld_bot_g,  fld->fld_bot.data());
+    forward_field_device_2d(fld->fld_top_g,  fld->fld_top.data());
+    forward_field_device_2d(fld->grad_bot_g, fld->grad_bot.data());
+    forward_field_device_2d(fld->grad_top_g, fld->grad_top.data());
+    forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data());
+    forward_field_device_2d(fld->flux_top_g, fld->flux_top.data());
     forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
@@ -196,13 +196,13 @@ template<typename TF>
 void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    backward_field_device_3d(fld->fld.data(),      fld->fld_g,      Offset);
-    backward_field_device_2d(fld->fld_bot.data(),  fld->fld_bot_g,  Offset);
-    backward_field_device_2d(fld->fld_top.data(),  fld->fld_top_g,  Offset);
-    backward_field_device_2d(fld->grad_bot.data(), fld->grad_bot_g, Offset);
-    backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g, Offset);
-    backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g, Offset);
-    backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g, Offset);
+    backward_field_device_3d(fld->fld.data(),      fld->fld_g     );
+    backward_field_device_2d(fld->fld_bot.data(),  fld->fld_bot_g );
+    backward_field_device_2d(fld->fld_top.data(),  fld->fld_top_g );
+    backward_field_device_2d(fld->grad_bot.data(), fld->grad_bot_g);
+    backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g);
+    backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g);
+    backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g);
     backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
 }
 
@@ -213,15 +213,9 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
+void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field)
 {
     auto& gd = grid.get_grid_data();
-    //const int imemsizep  = gd.icells * sizeof(TF);
-    //const int imemsize   = gd.icells  * sizeof(TF);
-
-    //if (sw == Offset)
-    //    cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells*gd.kcells, cudaMemcpyHostToDevice));
-    //else if (sw == No_offset)
     cuda_safe_call(cudaMemcpy(field_g, field, gd.ncells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
@@ -232,15 +226,9 @@ void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field, Offset_type sw)
+void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field)
 {
     auto& gd = grid.get_grid_data();
-    //const int imemsizep  = gd.icells * sizeof(TF);
-    //const int imemsize   = gd.icells  * sizeof(TF);
-
-    //if (sw == Offset)
-    //    cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells,  cudaMemcpyHostToDevice));
-    //else if (sw == No_offset)
     cuda_safe_call(cudaMemcpy(field_g, field, gd.ijcells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
@@ -263,15 +251,9 @@ void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw)
+void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g)
 {
     auto& gd = grid.get_grid_data();
-    //const int imemsizep  = gd.icells * sizeof(TF);
-    //const int imemsize   = gd.icells  * sizeof(TF);
-
-    //if (sw == Offset)
-    //    cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells*gd.kcells, cudaMemcpyDeviceToHost));
-    //else if (sw == No_offset)
     cuda_safe_call(cudaMemcpy(field, field_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
@@ -282,15 +264,9 @@ void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g, Offset_type sw)
+void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g)
 {
     auto& gd = grid.get_grid_data();
-    //const int imemsizep  = gd.icells * sizeof(TF);
-    //const int imemsize   = gd.icells  * sizeof(TF);
-
-    //if (sw == Offset)
-    //    cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    //else if (sw == No_offset)
     cuda_safe_call(cudaMemcpy(field, field_g, gd.ijcells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
