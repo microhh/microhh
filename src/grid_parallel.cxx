@@ -21,7 +21,6 @@
  */
 
 #ifdef USEMPI
-#include <fftw3.h>
 #include <cstdio>
 #include "master.h"
 #include "grid.h"
@@ -38,9 +37,6 @@ namespace
 template<typename TF>
 void Grid<TF>::init_mpi()
 {
-    // create the MPI types for the cyclic boundary conditions
-    int datacount, datablock, datastride;
-
     // file saving and loading, take C-ordering into account
     int totsizei  = gd.itot;
     int subsizei  = gd.imax;
@@ -325,151 +321,6 @@ int Grid<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF*
             }
 
     return 0;
-}
-
-namespace
-{
-    template<typename> void fftw_execute_wrapper(const fftw_plan&, const fftwf_plan&);
-
-    template<>
-    void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
-    {
-        fftw_execute(p);
-    }
-
-    template<>
-    void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
-    {
-        fftwf_execute(pf);
-    }
-}
-
-template<typename TF>
-void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
-                           TF* const restrict fftini, TF* const restrict fftouti,
-                           TF* const restrict fftinj, TF* const restrict fftoutj)
-{
-    // Transpose the pressure field.
-    transpose.exec_zx(tmp1, data);
-
-    int kk = gd.itot*gd.jmax;
-
-    // Process the fourier transforms slice by slice.
-    for (int k=0; k<gd.kblock; ++k)
-    {
-        #pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = tmp1[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(iplanf, iplanff);
-
-        #pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            tmp1[ijk] = fftouti[ij];
-        }
-    }
-
-    // Transpose again.
-    transpose.exec_xy(data, tmp1);
-
-    kk = gd.iblock*gd.jtot;
-
-    // Do the second fourier transform.
-    for (int k=0; k<gd.kblock; ++k)
-    {
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = data[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(jplanf, jplanff);
-
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            // Shift to use p in pressure solver.
-            tmp1[ijk] = fftoutj[ij];
-        }
-    }
-
-    // Transpose back to original orientation.
-    transpose.exec_yz(data, tmp1);
-}
-
-template<typename TF>
-void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
-                            TF* const restrict fftini, TF* const restrict fftouti,
-                            TF* const restrict fftinj, TF* const restrict fftoutj)
-{
-    // Transpose back to y.
-    transpose.exec_zy(tmp1, data);
-
-    int kk = gd.iblock*gd.jtot;
-
-    // Transform the second transform back.
-    for (int k=0; k<gd.kblock; ++k)
-    {
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = tmp1[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(jplanb, jplanbf);
-
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            data[ijk] = fftoutj[ij] / gd.jtot;
-        }
-    }
-
-    // Transpose back to x.
-    transpose.exec_yx(tmp1, data);
-
-    kk = gd.itot*gd.jmax;
-
-    // Transform the first transform back.
-    for (int k=0; k<gd.kblock; ++k)
-    {
-        #pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = tmp1[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(iplanb, iplanbf);
-
-        #pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            // swap array here to avoid unnecessary 3d loop
-            data[ijk] = fftouti[ij] / gd.itot;
-        }
-    }
-
-    // And transpose back...
-    transpose.exec_xz(tmp1, data);
 }
 
 template<typename TF>
