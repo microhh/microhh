@@ -429,12 +429,12 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
 
 #else
 template<typename TF>
-void init_mpi()
+void Field3d_io<TF>::init_mpi()
 {
 }
 
 template<typename TF>
-void exit_mpi()
+void Field3d_io<TF>::exit_mpi()
 {
 }
 

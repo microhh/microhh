@@ -76,6 +76,9 @@ Column<TF>::~Column()
 template<typename TF>
 void Column<TF>::init(double ifactor)
 {
+    if (!swcolumn)
+        return;
+
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
     statistics_counter = 0;
 }
@@ -149,7 +152,6 @@ void Column<TF>::create(int iotime, std::string sim_name)
         //data_file->sync();
         nc_sync(data_file->getId());
     }
-
 }
 
 template<typename TF>
@@ -157,6 +159,7 @@ unsigned long Column<TF>::get_time_limit(unsigned long itime)
 {
     if (!swcolumn)
         return Constants::ulhuge;
+
     // If sampletime is negative, output column every timestep
     if (isampletime == 0)
         return Constants::ulhuge;
