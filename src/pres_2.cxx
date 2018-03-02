@@ -23,7 +23,6 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
-#include <fftw3.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -270,7 +269,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
-    grid.fft_forward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    grid.fft_exec_forward(p, work3d);
 
     jj = iblock;
     kk = iblock*jblock;
@@ -315,7 +314,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
          gd.iblock, gd.jblock, gd.kmax);
 
-    grid.fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    grid.fft_exec_backward(p, work3d);
 
     jj = imax;
     kk = imax*jmax;

@@ -165,8 +165,8 @@ class Grid
         int save_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         int load_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Loads a xy-slice.
 
-        void fft_forward (TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
-        void fft_backward(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.
+        void fft_exec_forward (TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
+        void fft_exec_backward(TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.
 
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); ///< Second order interpolation

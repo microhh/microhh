@@ -301,116 +301,134 @@ namespace
     {
         fftwf_execute(pf);
     }
+
+    template<typename TF>
+    void fft_forward(TF* const restrict data,   TF* const restrict tmp1,
+                     TF* const restrict fftini, TF* const restrict fftouti,
+                     TF* const restrict fftinj, TF* const restrict fftoutj,
+                     fftw_plan& iplanf, fftwf_plan& iplanff,
+                     fftw_plan& jplanf, fftwf_plan& jplanff,
+                     const Grid_data<TF>& gd)
+    {
+        int kk = gd.itot*gd.jmax;
+    
+        // Process the fourier transforms slice by slice.
+        for (int k=0; k<gd.kblock; ++k)
+        {
+            #pragma ivdep
+            for (int n=0; n<gd.itot*gd.jmax; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                fftini[ij] = data[ijk];
+            }
+    
+            fftw_execute_wrapper<TF>(iplanf, iplanff);
+    
+            #pragma ivdep
+            for (int n=0; n<gd.itot*gd.jmax; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                data[ijk] = fftouti[ij];
+            }
+        }
+    
+        kk = gd.iblock*gd.jtot;
+    
+        // do the second fourier transform
+        for (int k=0; k<gd.kblock; ++k)
+        {
+            #pragma ivdep
+            for (int n=0; n<gd.iblock*gd.jtot; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                fftinj[ij] = data[ijk];
+            }
+    
+            fftw_execute_wrapper<TF>(jplanf, jplanff);
+    
+            #pragma ivdep
+            for (int n=0; n<gd.iblock*gd.jtot; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                // shift to use p in pressure solver
+                data[ijk] = fftoutj[ij];
+            }
+        }
+    }
+    
+    template<typename TF>
+    void fft_backward(TF* const restrict data,   TF* const restrict tmp1,
+                      TF* const restrict fftini, TF* const restrict fftouti,
+                      TF* const restrict fftinj, TF* const restrict fftoutj,
+                      fftw_plan& iplanb, fftwf_plan& iplanbf,
+                      fftw_plan& jplanb, fftwf_plan& jplanbf,
+                      const Grid_data<TF>& gd)
+    {
+        int kk = gd.iblock*gd.jtot;
+    
+        // transform the second transform back
+        for (int k=0; k<gd.kblock; ++k)
+        {
+            #pragma ivdep
+            for (int n=0; n<gd.iblock*gd.jtot; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                fftinj[ij] = data[ijk];
+            }
+    
+            fftw_execute_wrapper<TF>(jplanb, jplanbf);
+    
+            #pragma ivdep
+            for (int n=0; n<gd.iblock*gd.jtot; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                data[ijk] = fftoutj[ij] / gd.jtot;
+            }
+        }
+    
+        kk = gd.itot*gd.jmax;
+    
+        // transform the first transform back
+        for (int k=0; k<gd.kblock; k++)
+        {
+            #pragma ivdep
+            for (int n=0; n<gd.itot*gd.jmax; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                fftini[ij] = data[ijk];
+            }
+    
+            fftw_execute_wrapper<TF>(iplanb, iplanbf);
+    
+            #pragma ivdep
+            for (int n=0; n<gd.itot*gd.jmax; ++n)
+            {
+                const int ij = n;
+                const int ijk = n + k*kk;
+                // swap array here to avoid unnecessary 3d loop
+                tmp1[ijk] = fftouti[ij] / gd.itot;
+            }
+        }
+    }
 }
 
 template<typename TF>
-void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
-                           TF* const restrict fftini, TF* const restrict fftouti,
-                           TF* const restrict fftinj, TF* const restrict fftoutj)
+void Grid<TF>::fft_exec_forward(TF* const restrict data, TF* const restrict tmp1)
 {
-    int kk = gd.itot*gd.jmax;
-
-    // Process the fourier transforms slice by slice.
-    for (int k=0; k<gd.kblock; ++k)
-    {
-#pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = data[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(iplanf, iplanff);
-
-#pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            data[ijk] = fftouti[ij];
-        }
-    }
-
-    kk = gd.iblock*gd.jtot;
-
-    // do the second fourier transform
-    for (int k=0; k<gd.kblock; ++k)
-    {
-#pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = data[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(jplanf, jplanff);
-
-#pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            // shift to use p in pressure solver
-            data[ijk] = fftoutj[ij];
-        }
-    }
+    fft_forward(data, tmp1, fftini, fftouti, fftinj, fftoutj, iplanf, iplanff, jplanf, jplanff, gd);
 }
 
 template<typename TF>
-void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
-                            TF* const restrict fftini, TF* const restrict fftouti,
-                            TF* const restrict fftinj, TF* const restrict fftoutj)
+void Grid<TF>::fft_exec_backward(TF* const restrict data, TF* const restrict tmp1)
 {
-    int kk = gd.iblock*gd.jtot;
-
-    // transform the second transform back
-    for (int k=0; k<gd.kblock; ++k)
-    {
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = data[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(jplanb, jplanbf);
-
-        #pragma ivdep
-        for (int n=0; n<gd.iblock*gd.jtot; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            data[ijk] = fftoutj[ij] / gd.jtot;
-        }
-    }
-
-    kk = gd.itot*gd.jmax;
-
-    // transform the first transform back
-    for (int k=0; k<gd.kblock; k++)
-    {
-#pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = data[ijk];
-        }
-
-        fftw_execute_wrapper<TF>(iplanb, iplanbf);
-
-#pragma ivdep
-        for (int n=0; n<gd.itot*gd.jmax; ++n)
-        {
-            const int ij = n;
-            const int ijk = n + k*kk;
-            // swap array here to avoid unnecessary 3d loop
-            tmp1[ijk] = fftouti[ij] / gd.itot;
-        }
-    }
+    fft_backward(data, tmp1, fftini, fftouti, fftinj, fftoutj, iplanb, iplanbf, jplanb, jplanbf, gd);
 }
 
 template<typename TF>
