@@ -41,44 +41,6 @@ void Grid<TF>::init_mpi()
     // create the MPI types for the cyclic boundary conditions
     int datacount, datablock, datastride;
 
-    // transposez
-    datacount = gd.imax*gd.jmax*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
-    MPI_Type_commit(&transposez);
-
-    // transposez iblock/jblock/kblock
-    datacount = gd.iblock*gd.jblock*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
-    MPI_Type_commit(&transposez2);
-
-    // transposex imax
-    datacount  = gd.jmax*gd.kblock;
-    datablock  = gd.imax;
-    datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex);
-    MPI_Type_commit(&transposex);
-
-    // transposex iblock
-    datacount  = gd.jmax*gd.kblock;
-    datablock  = gd.iblock;
-    datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex2);
-    MPI_Type_commit(&transposex2);
-
-    // transposey
-    datacount  = gd.kblock;
-    datablock  = gd.iblock*gd.jmax;
-    datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey);
-    MPI_Type_commit(&transposey);
-
-    // transposey2
-    datacount  = gd.kblock;
-    datablock  = gd.iblock*gd.jblock;
-    datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey2);
-    MPI_Type_commit(&transposey2);
-
     // file saving and loading, take C-ordering into account
     int totsizei  = gd.itot;
     int subsizei  = gd.imax;
@@ -123,9 +85,6 @@ void Grid<TF>::init_mpi()
     MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
     MPI_Type_commit(&subxyslice);
 
-    // allocate the array for the profiles
-    // profl = new double[kcells];
-
     mpitypes = true;
 }
 
@@ -134,159 +93,13 @@ void Grid<TF>::exit_mpi()
 {
     if (mpitypes)
     {
-        MPI_Type_free(&transposez);
-        MPI_Type_free(&transposez2);
-        MPI_Type_free(&transposex);
-        MPI_Type_free(&transposex2);
-        MPI_Type_free(&transposey);
-        MPI_Type_free(&transposey2);
         MPI_Type_free(&subi);
         MPI_Type_free(&subj);
         MPI_Type_free(&subarray);
         MPI_Type_free(&subxzslice);
         MPI_Type_free(&subyzslice);
         MPI_Type_free(&subxyslice);
-
-        // delete[] profl;
     }
-}
-
-template<typename TF>
-void Grid<TF>::transpose_zx(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.imax;
-    const int kk = gd.imax*gd.jmax;
-
-    for (int n=0; n<master.npx; ++n)
-    {
-        // Determine where to fetch the data and where to store it.
-        const int ijks = n*gd.kblock*kk;
-        const int ijkr = n*jj;
-
-        // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
-    }
-
-    master.wait_all();
-}
-
-template<typename TF>
-void Grid<TF>::transpose_xz(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.imax;
-    const int kk = gd.imax*gd.jmax;
-
-    for (int n=0; n<master.npx; ++n)
-    {
-        // Determine where to fetch the data and where to store it.
-        const int ijks = n*jj;
-        const int ijkr = n*gd.kblock*kk;
-
-        // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
-    }
-
-    master.wait_all();
-}
-
-template<typename TF>
-void Grid<TF>::transpose_xy(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.iblock;
-    const int kk = gd.iblock*gd.jmax;
-
-    for (int n=0; n<master.npy; ++n)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*jj;
-        const int ijkr = n*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
-    }
-
-    master.wait_all();
-}
-
-template<typename TF>
-void Grid<TF>::transpose_yx(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.iblock;
-    const int kk = gd.iblock*gd.jmax;
-
-    for (int n=0; n<master.npy; ++n)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*kk;
-        const int ijkr = n*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
-    }
-
-    master.wait_all();
-}
-
-template<typename TF>
-void Grid<TF>::transpose_yz(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.iblock;
-    const int kk = gd.iblock*gd.jblock;
-
-    for (int n=0; n<master.npx; ++n)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*gd.jblock*jj;
-        const int ijkr = n*gd.kblock*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
-    }
-
-    master.wait_all();
-}
-
-template<typename TF>
-void Grid<TF>::transpose_zy(TF* const restrict ar, TF* const restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = gd.iblock;
-    const int kk = gd.iblock*gd.jblock;
-
-    for (int n=0; n<master.npx; ++n)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*gd.kblock*kk;
-        const int ijkr = n*gd.jblock*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
-    }
-
-    master.wait_all();
 }
 
 // template<typename TF>
@@ -446,7 +259,7 @@ int Grid<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tm
                 tmp1[ijkb] = data[ijk] + offset;
             }
 
-    transpose_zx(tmp2, tmp1);
+    transpose.exec_zx(tmp2, tmp1);
 
     MPI_File fh;
     if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -494,7 +307,7 @@ int Grid<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF*
         return 1;
 
     // transpose the data back
-    transpose_xz(tmp2, tmp1);
+    transpose.exec_xz(tmp2, tmp1);
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
@@ -537,7 +350,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
                            TF* const restrict fftinj, TF* const restrict fftoutj)
 {
     // Transpose the pressure field.
-    transpose_zx(tmp1, data);
+    transpose.exec_zx(tmp1, data);
 
     int kk = gd.itot*gd.jmax;
 
@@ -564,7 +377,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
     }
 
     // Transpose again.
-    transpose_xy(data, tmp1);
+    transpose.exec_xy(data, tmp1);
 
     kk = gd.iblock*gd.jtot;
 
@@ -592,7 +405,7 @@ void Grid<TF>::fft_forward(TF* const restrict data,   TF* const restrict tmp1,
     }
 
     // Transpose back to original orientation.
-    transpose_yz(data, tmp1);
+    transpose.exec_yz(data, tmp1);
 }
 
 template<typename TF>
@@ -601,7 +414,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
                             TF* const restrict fftinj, TF* const restrict fftoutj)
 {
     // Transpose back to y.
-    transpose_zy(tmp1, data);
+    transpose.exec_zy(tmp1, data);
 
     int kk = gd.iblock*gd.jtot;
 
@@ -628,7 +441,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
     }
 
     // Transpose back to x.
-    transpose_yx(tmp1, data);
+    transpose.exec_yx(tmp1, data);
 
     kk = gd.itot*gd.jmax;
 
@@ -656,7 +469,7 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
     }
 
     // And transpose back...
-    transpose_xz(tmp1, data);
+    transpose.exec_xz(tmp1, data);
 }
 
 template<typename TF>

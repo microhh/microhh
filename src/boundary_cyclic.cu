@@ -23,7 +23,6 @@
 #include "grid.h"
 #include "tools.h"
 #include "boundary_cyclic.h"
-// #include "math.h"
 
 namespace
 {

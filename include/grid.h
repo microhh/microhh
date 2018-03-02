@@ -31,6 +31,7 @@
 #include <string>
 #include <vector>
 #include "defines.h"
+#include "transpose.h"
 
 class Master;
 class Input;
@@ -142,12 +143,12 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        void transpose_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
-        void transpose_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
-        void transpose_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
-        void transpose_yx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to x.
-        void transpose_yz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to z.
-        void transpose_zy(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to y.
+        // void transpose_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
+        // void transpose_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
+        // void transpose_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
+        // void transpose_yx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to x.
+        // void transpose_yz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to z.
+        // void transpose_zy(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to y.
 
         // void get_max (double*);      ///< Gets the maximum of a number over all processes.
         // void get_max (int*);         ///< Gets the maximum of a number over all processes.
@@ -186,6 +187,7 @@ class Grid
 
     private:
         Master& master; ///< Reference to master class.
+        Transpose<TF> transpose;
 
         bool mpitypes;  ///< Boolean to check whether MPI datatypes are created.
         bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
@@ -205,13 +207,6 @@ class Grid
 
         #ifdef USEMPI
         // MPI Datatypes
-        MPI_Datatype transposez;  ///< MPI datatype containing base blocks for z-orientation in zx-transpose.
-        MPI_Datatype transposez2; ///< MPI datatype containing base blocks for z-orientation in zy-transpose.
-        MPI_Datatype transposex;  ///< MPI datatype containing base blocks for x-orientation in zx-transpose.
-        MPI_Datatype transposex2; ///< MPI datatype containing base blocks for x-orientation in xy-transpose.
-        MPI_Datatype transposey;  ///< MPI datatype containing base blocks for y-orientation in xy-transpose.
-        MPI_Datatype transposey2; ///< MPI datatype containing base blocks for y-orientation in zy-transpose.
-
         MPI_Datatype subi;       ///< MPI datatype containing a subset of the entire x-axis.
         MPI_Datatype subj;       ///< MPI datatype containing a subset of the entire y-axis.
         MPI_Datatype subarray;   ///< MPI datatype containing the dimensions of the total array that is contained in one process.

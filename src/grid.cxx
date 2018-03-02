@@ -38,7 +38,8 @@
  */
 template<typename TF>
 Grid<TF>::Grid(Master& masterin, Input& input) :
-    master(masterin)
+    master(masterin),
+    transpose(master, *this)
 {
     mpitypes = false;
     fftwplan = false;
@@ -214,6 +215,9 @@ void Grid<TF>::init()
 
     // initialize the communication functions
     init_mpi();
+
+    // Initialize the transposes.
+    transpose.init();
 }
 
 template<> void Grid<double>::allocate_fftw()
