@@ -170,7 +170,6 @@ Fields<TF>::~Fields()
 template<typename TF>
 void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
 {
-
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
@@ -219,8 +218,9 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
-    // Init the boundary_cyclic.
+    // Init the toolbox classes.
     boundary_cyclic.init();
+    field3d_io.init();
 
     // Set up output classes
     create_dump(dump);

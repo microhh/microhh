@@ -30,7 +30,6 @@
 #include "defines.h"
 #include "field3d_io.h"
 
-
 template<typename TF>
 Field3d_io<TF>::Field3d_io(Master& masterin, Grid<TF>& gridin) :
     master(masterin), grid(gridin),
@@ -49,10 +48,11 @@ template<typename TF>
 void Field3d_io<TF>::init()
 {
     init_mpi();
+
+    transpose.init();
 }
 
 #ifdef USEMPI
-
 namespace
 {
     template<typename TF> MPI_Datatype mpi_fp_type();
