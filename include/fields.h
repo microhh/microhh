@@ -25,8 +25,8 @@
 #include <memory>
 #include <map>
 #include <vector>
-#include "field3d.h"
 #include "boundary_cyclic.h"
+#include "field3d.h"
 #include "field3d_io.h"
 
 class Master;
@@ -37,6 +37,7 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Field3d_io;
 template<typename> struct Mask;
 
 template<typename TF>
