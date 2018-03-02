@@ -57,8 +57,8 @@ namespace
 }
 
 template<typename TF>
-Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Field3d_operators<TF>& field3d_operatorsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(field3d_operatorsin)
+Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
     // Read the switches from the input
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
@@ -172,8 +172,8 @@ void Force<TF>::exec(double dt)
 
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {
-        const TF u_mean  = field3d_operators.calc_mean(fields.ap.at("u").get());
-        const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u").get());
+        const TF u_mean  = field3d_operators.calc_mean(fields.ap.at("u")->fld.data());
+        const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
 
         enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }

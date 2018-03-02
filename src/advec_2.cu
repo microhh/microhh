@@ -27,17 +27,18 @@
 #include "constants.h"
 #include "tools.h"
 #include "finite_difference.h"
+#include "field3d_operators.h"
 
 using namespace Finite_difference::O2;
 
 namespace
 {
-    template<typename TF>__global__ 
-    void advec_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF * __restrict__ wt, 
+    template<typename TF>__global__
+    void advec_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF * __restrict__ wt,
                      TF* __restrict__ u,  TF* __restrict__ v,  TF * __restrict__ w,
                      TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                     TF* __restrict__ dzi,    TF* __restrict__ dzhi, TF dxi, TF dyi, 
-                     int jj, int kk, 
+                     TF* __restrict__ dzi,    TF* __restrict__ dzhi, TF dxi, TF dyi,
+                     int jj, int kk,
                      int istart, int jstart, int kstart,
                      int iend,   int jend,   int kend)
     {
@@ -49,17 +50,17 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            ut[ijk] += 
+            ut[ijk] +=
                 - (  interp2(u[ijk   ], u[ijk+ii]) * interp2(u[ijk   ], u[ijk+ii])
                    - interp2(u[ijk-ii], u[ijk   ]) * interp2(u[ijk-ii], u[ijk   ]) ) * dxi
 
                 - (  interp2(v[ijk-ii+jj], v[ijk+jj]) * interp2(u[ijk   ], u[ijk+jj])
-                   - interp2(v[ijk-ii   ], v[ijk   ]) * interp2(u[ijk-jj], u[ijk   ]) ) * dyi 
+                   - interp2(v[ijk-ii   ], v[ijk   ]) * interp2(u[ijk-jj], u[ijk   ]) ) * dyi
 
                 - (  rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk])
                    - rhorefh[k  ] * interp2(w[ijk-ii   ], w[ijk   ]) * interp2(u[ijk-kk], u[ijk   ]) ) / rhoref[k] * dzi[k];
 
-            vt[ijk] += 
+            vt[ijk] +=
                 - (  interp2(u[ijk+ii-jj], u[ijk+ii]) * interp2(v[ijk   ], v[ijk+ii])
                    - interp2(u[ijk   -jj], u[ijk   ]) * interp2(v[ijk-ii], v[ijk   ]) ) * dxi
 
@@ -71,7 +72,7 @@ namespace
 
             if (k > kstart)
             {
-                wt[ijk] += 
+                wt[ijk] +=
                     - (  interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
                        - interp2(u[ijk   -kk], u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) * dxi
 
@@ -84,12 +85,12 @@ namespace
         }
     }
 
-    template<typename TF>__global__ 
-    void advec_s_g(TF* __restrict__ st, TF* __restrict__ s, 
+    template<typename TF>__global__
+    void advec_s_g(TF* __restrict__ st, TF* __restrict__ s,
                    TF* __restrict__ u,  TF* __restrict__ v, TF* __restrict__ w,
                    TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                   TF* __restrict__ dzi, TF dxi, TF dyi, 
-                   int jj, int kk, 
+                   TF* __restrict__ dzi, TF dxi, TF dyi,
+                   int jj, int kk,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend)
     {
@@ -101,35 +102,35 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            st[ijk] += 
+            st[ijk] +=
                 - (  u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
                    - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
 
                 - (  v[ijk+jj] * interp2(s[ijk   ], s[ijk+jj])
-                   - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi 
+                   - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi
 
                 - (  rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
                    - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
         }
     }
 
-    template<typename TF>__global__ 
-    void calc_cfl_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w, 
+    template<typename TF>__global__
+    void calc_cfl_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
                     TF* __restrict__ cfl, TF* __restrict__ dzi, TF dxi, TF dyi,
                     int jj, int kk,
                     int istart, int jstart, int kstart,
                     int iend, int jend, int kend)
     {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-        const int k  = blockIdx.z + kstart; 
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
         const int ii = 1;
 
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            cfl[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + 
-                       std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + 
+            cfl[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi +
+                       std::abs(interp2(v[ijk], v[ijk+jj]))*dyi +
                        std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
         }
     }
@@ -162,27 +163,22 @@ double Advec_2<TF>::get_cfl(const double dt)
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    const int offs = gd.memoffset;
-    
     auto tmp1 = fields.get_tmp_g();
-    auto tmp2 = fields.get_tmp_g();
     
     calc_cfl_g<<<gridGPU, blockGPU>>>(
-        &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
-        &tmp1->fld_g[offs], gd.dzi_g, dxi, dyi,
-        gd.icellsp, gd.ijcellsp,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+        tmp1->fld_g, gd.dzi_g, dxi, dyi,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
-   // double cfl = grid.get_max_g(&fields->atmp["tmp1"]->fld_g[offs], fields->atmp["tmp2"]->fld_g); 
-    //gd.get_max(&cfl); 
+    TF cfl = field3d_operators.calc_max(tmp1->fld_g);
     fields.release_tmp_g(tmp1);
-    fields.release_tmp_g(tmp2);
-    double cfl = 0;
+    
     cfl = cfl*dt;
 
-    return cfl;
+    return static_cast<double>(cfl);
 }
 
 template<typename TF>
@@ -200,26 +196,24 @@ void Advec_2<TF>::exec()
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    const int offs = gd.memoffset;
-
     advec_uvw_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("u")->fld_g[offs],&fields.mt.at("v")->fld_g[offs], &fields.mt.at("w")->fld_g[offs], 
-        &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs], 
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dzhi_g, dxi, dyi, 
-        gd.icellsp, gd.ijcellsp,
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dzhi_g, dxi, dyi,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     for (auto& it : fields.st)
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
-            &it.second->fld_g[offs], &fields.sp.at(it.first)->fld_g[offs],
-            &fields.mp.at("u")->fld_g[offs],&fields.mp.at("v")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
+            it.second->fld_g, fields.sp.at(it.first)->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 }
 #endif
 

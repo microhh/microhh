@@ -39,7 +39,7 @@ namespace
     template<typename TF> __global__
     void flux_step_1_g(TF* const __restrict__ aSum, const TF* const __restrict__ a,
                        const TF* const __restrict__ dz,
-                       const int jj, const int kk, 
+                       const int jj, const int kk,
                        const int istart, const int jstart, const int kstart,
                        const int iend,   const int jend,   const int kend)
     {
@@ -57,7 +57,7 @@ namespace
     template<typename TF> __global__
     void flux_step_2_g(TF* const __restrict__ ut,
                        const TF fbody,
-                       const int jj, const int kk, 
+                       const int jj, const int kk,
                        const int istart, const int jstart, const int kstart,
                        const int iend,   const int jend,   const int kend)
     {
@@ -72,12 +72,12 @@ namespace
         }
     }
 /*
-    __global__ 
+    __global__
     void coriolis_2nd_g(double* const __restrict__ ut, double* const __restrict__ vt,
-                        double* const __restrict__ u,  double* const __restrict__ v, 
-                        double* const __restrict__ ug, double* const __restrict__ vg, 
+                        double* const __restrict__ u,  double* const __restrict__ v,
+                        double* const __restrict__ ug, double* const __restrict__ vg,
                         const double fc, const double ugrid, const double vgrid,
-                        const int jj, const int kk, 
+                        const int jj, const int kk,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend)
     {
@@ -94,12 +94,12 @@ namespace
         }
     }
 
-    __global__ 
+    __global__
     void coriolis_4th_g(double* const __restrict__ ut, double* const __restrict__ vt,
-                        double* const __restrict__ u,  double* const __restrict__ v, 
-                        double* const __restrict__ ug, double* const __restrict__ vg, 
+                        double* const __restrict__ u,  double* const __restrict__ v,
+                        double* const __restrict__ ug, double* const __restrict__ vg,
                         const double fc, const double ugrid, const double vgrid,
-                        const int jj, const int kk, 
+                        const int jj, const int kk,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend)
     {
@@ -129,7 +129,7 @@ namespace
         }
     }
 
-    __global__ 
+    __global__
     void advec_wls_2nd_g(double* const __restrict__ st, double* const __restrict__ s,
                          const double* const __restrict__ wls, const double* const __restrict__ dzhi,
                          const int istart, const int jstart, const int kstart,
@@ -151,7 +151,7 @@ namespace
         }
     }
 
-    __global__ 
+    __global__
     void large_scale_source_g(double* const __restrict__ st, double* const __restrict__ sls,
                               const int istart, const int jstart, const int kstart,
                               const int iend,   const int jend,   const int kend,
@@ -168,7 +168,7 @@ namespace
         }
     }
 
-    __global__ 
+    __global__
     void nudging_tendency_g(double* const __restrict__ st, double* const __restrict__ smn,
 			    double* const __restrict__ snudge, double* const __restrict__ nudge_fac,
                             const int istart, const int jstart, const int kstart,
@@ -188,10 +188,10 @@ namespace
         }
     }
 
-    __global__ 
+    __global__
     void update_time_dependent_prof_g(double* const __restrict__ prof, const double* const __restrict__ data,
-                                      const double fac0, const double fac1, 
-                                      const int index0,  const int index1, 
+                                      const double fac0, const double fac1,
+                                      const int index0,  const int index1,
                                       const int kmax,    const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
@@ -203,7 +203,7 @@ namespace
 */
 } // end namespace
 
-template<typename TF> 
+template<typename TF>
 void Force<TF>::prepare_device()
 {
 /*
@@ -280,7 +280,7 @@ void Force<TF>::prepare_device()
 */
 }
 
-template<typename TF> 
+template<typename TF>
 void Force<TF>::clear_device()
 {
 /*    if (swlspres == "geo")
@@ -341,40 +341,38 @@ void Force<TF>::exec(double dt)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const int offs = gd.memoffset;
-
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {
         auto tmp = fields.get_tmp_g();
-
+/*
         flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
             &tmp->fld_g[offs], &fields.mp.at("u")->fld_g[offs],
             gd.dz_g,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
-
-        TF uavg  = field3d_operators.calc_mean(tmp.get());
-
-        flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
+*/
+        TF uavg  = field3d_operators.calc_mean(fields.mp.at("u")->fld_g);
+        TF utavg = field3d_operators.calc_mean(fields.mt.at("u")->fld_g);
+/*        flux_step_1_g<TF><<<gridGPU, blockGPU>>>(
             &tmp->fld_g[offs], &fields.mt.at("u")->fld_g[offs],
             gd.dz_g,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
-
-        TF utavg  = field3d_operators.calc_mean(tmp.get());
+*/
+//        TF utavg  = field3d_operators.calc_mean(&tmp->fld_g[offs]);
         fields.release_tmp_g(tmp);
 
 
         const TF fbody = (uflux - uavg - grid.utrans) / dt - utavg;
 
         flux_step_2_g<TF><<<gridGPU, blockGPU>>>(
-            &fields.mt.at("u")->fld_g[offs],
+            fields.mt.at("u")->fld_g,
             fbody,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
         cuda_check_error();
@@ -386,8 +384,8 @@ void Force<TF>::exec(double dt)
             coriolis_2nd_g<<<gridGPU, blockGPU>>>(
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans, 
-                gd.icellsp, gd.ijcellsp,
+                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                gd.icells, gd.ijcells,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend);
             cuda_check_error();
@@ -397,8 +395,8 @@ void Force<TF>::exec(double dt)
             coriolis_4th_g<<<gridGPU, blockGPU>>>(
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans, 
-                gd.icellsp, gd.ijcellsp,
+                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                gd.icells, gd.ijcells,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend);
             cuda_check_error();
@@ -414,7 +412,7 @@ void Force<TF>::exec(double dt)
                 &fields->st[*it]->data_g[offs], lsprofs_g[*it],
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
@@ -424,15 +422,15 @@ void Force<TF>::exec(double dt)
         for(std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
         {
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
-                &fields->at[*it]->data_g[offs],  fields->ap[*it]->datamean_g, 
+                &fields->at[*it]->data_g[offs],  fields->ap[*it]->datamean_g,
                 nudgeprofs_g[*it], nudge_factor_g,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
-    } 
-    
+    }
+
     if (swwls == "1")
     {
         for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
@@ -441,7 +439,7 @@ void Force<TF>::exec(double dt)
                 &it->second->data_g[offs], fields->sp[it->first]->datamean_g, wls_g, gd.dzhi_g,
                 gd.istart,  gd.jstart, gd.kstart,
                 gd.iend,    gd.jend,   gd.kend,
-                gd.icellsp, gd.ijcellsp);
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }

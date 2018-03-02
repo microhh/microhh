@@ -149,7 +149,7 @@ namespace Tools_g
 
 
     template<typename TF>
-    void reduce_interior(TF* a, TF* a2d,
+    void reduce_interior(const TF* a, TF* a2d,
                          int itot, int istart, int iend,
                          int jtot, int jstart, int jend,
                          int ktot, int kstart,
@@ -200,7 +200,7 @@ namespace Tools_g
     }
 
     template<typename TF>
-    void reduce_all(TF* a, TF* aout, int ncells, int nblocks, int nvaluesperblock, Reduce_type mode, TF scalefac)
+    void reduce_all(const TF* a, TF* aout, int ncells, int nblocks, int nvaluesperblock, Reduce_type mode, TF scalefac)
     {
        const int nthreads = max(16,min(reduce_max_threads, next_pow_of_2(nvaluesperblock/2)));
 
@@ -247,7 +247,7 @@ namespace Tools_g
     }
 }
 
-template void Tools_g::reduce_interior<double>(double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
-template void Tools_g::reduce_interior<float>(float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
-template void Tools_g::reduce_all<double>(double*, double*, int, int, int, Tools_g::Reduce_type, double);
-template void Tools_g::reduce_all<float>(float*, float*, int, int, int, Tools_g::Reduce_type, float);
+template void Tools_g::reduce_interior<double>(const double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
+template void Tools_g::reduce_interior<float>(const float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
+template void Tools_g::reduce_all<double>(const double*, double*, int, int, int, Tools_g::Reduce_type, double);
+template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);

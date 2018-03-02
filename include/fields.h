@@ -32,6 +32,9 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Column;
+template<typename> class Dump;
+template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> struct Mask;
 
@@ -47,13 +50,17 @@ class Fields
         Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
-        void init();                      ///< Initialization of the field arrays.
+        void init(Dump<TF>&,Cross<TF>&);   ///< Initialization of the field arrays.
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
+        void create_column(Column<TF>&);  ///< Initialization of the single column output.
+        void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
+        void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
 
         // void exec();
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&);   ///< Calculate the statistics
+        void exec_column(Column<TF>&);   ///< Output the column
 
         void init_momentum_field  (std::string, std::string, std::string);
         void init_prognostic_field(std::string, std::string, std::string);
@@ -77,8 +84,8 @@ class Fields
         // void set_calc_mean_profs(bool);
         // void set_minimum_tmp_fields(int);
 
-        // void exec_cross();
-        // void exec_dump();
+        void exec_cross(Cross<TF>&, unsigned long);
+        void exec_dump(Dump<TF>&, unsigned long);
 
         Field_map<TF> a;  ///< Map containing all field3d instances
         Field_map<TF> ap; ///< Map containing all prognostic field3d instances
@@ -112,19 +119,18 @@ class Fields
          *Device (GPU) functions and variables
          */
 
-        enum Offset_type {Offset, No_offset};
 
         void prepare_device();  ///< Allocation of all fields at device
         void forward_device();  ///< Copy of all fields from host to device
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
 
-        void forward_field_device_3d (TF*, TF*, Offset_type); ///< Copy of a single 3d field from host to device
-        void forward_field_device_2d (TF*, TF*, Offset_type); ///< Copy of a single 2d field from host to device
-        void forward_field_device_1d (TF*, TF*, int);         ///< Copy of a single array from host to device
-        void backward_field_device_3d(TF*, TF*, Offset_type); ///< Copy of a single 3d field from device to host
-        void backward_field_device_2d(TF*, TF*, Offset_type); ///< Copy of a single 2d field from device to host
-        void backward_field_device_1d(TF*, TF*, int);         ///< Copy of a single array from device to host
+        void forward_field_device_3d (TF*, TF*);       ///< Copy of a single 3d field from host to device
+        void forward_field_device_2d (TF*, TF*);       ///< Copy of a single 2d field from host to device
+        void forward_field_device_1d (TF*, TF*, int);  ///< Copy of a single array from host to device
+        void backward_field_device_3d(TF*, TF*);       ///< Copy of a single 3d field from device to host
+        void backward_field_device_2d(TF*, TF*);       ///< Copy of a single 2d field from device to host
+        void backward_field_device_1d(TF*, TF*, int);  ///< Copy of a single array from device to host
 
         TF* rhoref_g;  ///< Reference density at full levels at device
         TF* rhorefh_g; ///< Reference density at half levels at device
@@ -134,25 +140,24 @@ class Fields
         Master& master;
         Grid<TF>& grid;
         Boundary_cyclic<TF> boundary_cyclic;
-        // Stats*  stats;
 
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
 
         // cross sections
-        // std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
-        // std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.
+        std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
+        std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.
 
         // Cross sections split per type.
-        // std::vector<std::string> crosssimple;
-        // std::vector<std::string> crosslngrad;
-        // std::vector<std::string> crossbot;
-        // std::vector<std::string> crosstop;
-        // std::vector<std::string> crossfluxbot;
-        // std::vector<std::string> crossfluxtop;
+        std::vector<std::string> cross_simple;
+        std::vector<std::string> cross_lngrad;
+        std::vector<std::string> cross_bot;
+        std::vector<std::string> cross_top;
+        std::vector<std::string> cross_fluxbot;
+        std::vector<std::string> cross_fluxtop;
 
-        // void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
+        void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
 
         // // masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide

@@ -33,7 +33,7 @@
 
 #ifdef USECUDA
 template<typename TF>
-void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
+void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -41,36 +41,40 @@ void Field3d_operators<TF>::calc_mean_profile(Field3d<TF>* fld)
     const TF scalefac = 1./(gd.itot*gd.jtot);
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
     // Reduce jtot*kcells to kcells values
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset], fld->fld_mean_g, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
+    reduce_all<TF>     (tmp->fld_g, prof, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
     fields.release_tmp_g(tmp);
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_mean(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 {
     using namespace Tools_g;
 
     const Grid_data<TF>& gd = grid.get_grid_data();
-    const TF scalefac = 1./(gd.itot*gd.jtot*gd.ktot);
+    const TF scalefac = 1./(gd.itot*gd.jtot*gd.zsize);
     TF mean_value;
-    
+
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Sum_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Sum_type);
     // Reduce jtot*ktot to ktot values
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Sum_type, 1.);
+    for (int k=0; k<gd.ktot; ++k)
+    {
+        reduce_all<TF>     (&tmp->fld_g[gd.jtot*k], &tmp->fld_g[gd.jtot*gd.ktot+k], gd.jtot, 1., gd.jtot, Sum_type, gd.dz[k]);
+    }
     // Reduce ktot values to a single value
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], &tmp->fld_g[gd.memoffset], gd.ktot, 1, gd.ktot, Sum_type, scalefac);
+    reduce_all<TF>     (&tmp->fld_g[gd.jtot*gd.ktot], tmp->fld_g, gd.ktot, 1, gd.ktot, Sum_type, scalefac);
     // Copy back result from GPU
-    cuda_safe_call(cudaMemcpy(&mean_value, &tmp->fld_g[gd.memoffset], sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(&mean_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
+    
     fields.release_tmp_g(tmp);
     return mean_value;
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_max(Field3d<TF>* fld)
+TF Field3d_operators<TF>::calc_max(const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -80,15 +84,15 @@ TF Field3d_operators<TF>::calc_max(Field3d<TF>* fld)
 
     auto tmp = fields.get_tmp_g();
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(&fld->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset], gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icellsp, gd.ijcellsp, Max_type);
+    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Max_type);
     // Reduce jtot*ktot to ktot values
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset], &tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Max_type, scalefac);
+    reduce_all<TF>     (tmp->fld_g, &tmp->fld_g[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Max_type, scalefac);
     // Reduce ktot values to a single value
-    reduce_all<TF>     (&tmp->fld_g[gd.memoffset+gd.jtot*gd.ktot], &tmp->fld_g[gd.memoffset], gd.ktot, 1, gd.ktot, Max_type, scalefac);
+    reduce_all<TF>     (&tmp->fld_g[gd.jtot*gd.ktot], tmp->fld_g, gd.ktot, 1, gd.ktot, Max_type, scalefac);
     // Copy back result from GPU
-    cuda_safe_call(cudaMemcpy(&max_value, &tmp->fld_g[gd.memoffset], sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(&max_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
     fields.release_tmp_g(tmp);
-    
+
     return max_value;
 }
 #endif

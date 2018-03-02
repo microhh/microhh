@@ -131,9 +131,9 @@ class Stats
         //void calc_sorted_prof(double*, double*, double*);
 
     private:
+        Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Master& master;
 
         bool swstats;           ///< Statistics on/off switch
 

@@ -131,6 +131,7 @@ void Diff_2<TF>::set_values()
         dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Diff_2<TF>::exec()
 {
@@ -153,6 +154,7 @@ void Diff_2<TF>::exec()
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
 }
+#endif
 
 template class Diff_2<double>;
 template class Diff_2<float>;

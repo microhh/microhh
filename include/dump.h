@@ -20,39 +20,40 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_2
-#define ADVEC_2
-
-#include "advec.h"
+#ifndef DUMP
+#define DUMP
 
 class Master;
-template<typename> class Advec;
+class Input;
 template<typename> class Grid;
 template<typename> class Fields;
-class Input;
 
-/**
- * Derived class for 2nd order advection scheme.
- */
 template<typename TF>
-class Advec_2 : public Advec<TF>
+class Dump
 {
     public:
-        Advec_2(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        virtual ~Advec_2();              ///< Destructor of the advection class.
+        Dump(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Dump();
 
-        virtual void exec(); ///< Execute the advection scheme.
-        virtual unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-        virtual double get_cfl(double); ///< Get the CFL number.
+        void init(double);
+        void create();
+
+        unsigned long get_time_limit(unsigned long);
+        bool get_switch() { return swdump; }
+        std::vector<std::string>* get_dumplist();
+
+        bool do_dump(unsigned long);
+        void save_dump(TF*, std::string, int);
 
     private:
-        using Advec<TF>::master;
-        using Advec<TF>::grid;
-        using Advec<TF>::fields;
-        using Advec<TF>::field3d_operators;
+    protected:
+        Master& master;
+        Grid<TF>& grid;
+        Fields<TF>& fields;
 
-        using Advec<TF>::cflmax;
-        using Advec<TF>::cflmin;
-        using Advec<TF>::swadvec;
+        std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
+        bool swdump;           ///< Statistics on/off switch
+        double sampletime;
+        unsigned long isampletime;
 };
 #endif

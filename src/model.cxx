@@ -23,12 +23,12 @@
 #include <string>
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
 #include "data_block.h"
-#include "field3d_operators.h"
 #include "timeloop.h"
 #include "boundary.h"
 #include "advec.h"
@@ -37,6 +37,9 @@
 #include "force.h"
 #include "decay.h"
 #include "stats.h"
+#include "column.h"
+#include "cross.h"
+#include "dump.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -100,7 +103,6 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     {
         grid          = std::make_shared<Grid<TF>>(master, *input);
         fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
-        field3d_operators = std::make_shared<Field3d_operators<TF>>(master, *grid, *fields);
         timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
@@ -108,9 +110,12 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *field3d_operators, *input);
+        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
         stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
+        column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump     = std::make_shared<Dump<TF>>(master, *grid, *fields, *input);
+        cross    = std::make_shared<Cross<TF>>(master, *grid, *fields, *input);
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -134,7 +139,7 @@ Model<TF>::~Model()
 {
     delete_objects();
     #ifdef USECUDA
-    cudaDeviceReset();
+    //cudaDeviceReset();
     if(t_stat.joinable())
         t_stat.join();
     #endif
@@ -148,7 +153,7 @@ void Model<TF>::init()
     master.init(*input);
 
     grid->init();
-    fields->init();
+    fields->init(*dump, *cross);
 
     boundary->init(*input);
     pres->init();
@@ -156,6 +161,9 @@ void Model<TF>::init()
     decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
+    column->init(timeloop->get_ifactor());
+    cross->init(timeloop->get_ifactor());
+    dump->init(timeloop->get_ifactor());
 }
 
 template<typename TF>
@@ -191,10 +199,14 @@ void Model<TF>::load()
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(timeloop->get_iotime(), sim_name);
+    column->create(timeloop->get_iotime(), sim_name);
+    cross->create();
+    dump->create();
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
+    fields->create_column(*column);
 
     boundary->create(*input);
     force->create(*input);
@@ -283,19 +295,22 @@ void Model<TF>::exec()
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-            #ifdef USECUDA
-            if(t_stat.joinable())
-                t_stat.join();
-            fields  ->backward_device();
-            //boundary->backward_device();
-            // thermo  ->backward_device();
+            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+            {
+                #ifdef USECUDA
+                if(t_stat.joinable())
+                    t_stat.join();
+                fields  ->backward_device();
+                //boundary->backward_device();
+                // thermo  ->backward_device();
 
-            t_stat = std::thread(&Model::calculate_statistics, this,
-                    timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                t_stat = std::thread(&Model::calculate_statistics, this,
+                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
 
-            #else
-            calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
-            #endif
+                #else
+                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                #endif
+            }
 
         }
 
@@ -390,7 +405,7 @@ void Model<TF>::prepare_gpu()
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
-    // pres    ->prepare_device();
+    pres    ->prepare_device();
 }
 
 template<typename TF>
@@ -406,7 +421,7 @@ void Model<TF>::clear_gpu()
     force   ->clear_device();
     // decay   ->clear_device();
     // // Clear pressure last, for memory check
-    // pres    ->clear_device();
+    pres    ->clear_device();
 }
 #endif
 
@@ -415,7 +430,7 @@ template<typename TF>
 void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
 {
     // Do the statistics.
-    if(stats->do_statistics(timeloop->get_itime()))
+    if(stats->do_statistics(itime))
     {
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 
@@ -450,24 +465,24 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
-//   if(doCross)
-//    {
-//        fields  ->exec_cross(iotime);
+   if(cross->do_cross(itime))
+    {
+        fields  ->exec_cross(*cross, iotime);
 //        thermo  ->exec_cross(iotime);
 //        boundary->exec_cross(iotime);
-//    }
-//   // Save the 3d dumps to disk
-//    if(doDump)
-//    {
-//        fields->exec_dump(iotime);
+    }
+   // Save the 3d dumps to disk
+    if(dump->do_dump(itime))
+    {
+        fields->exec_dump(*dump, iotime);
 //        thermo->exec_dump(iotime);
-//    }
-//    if(doColumn)
-//    {
-//        fields->exec_column();
+    }
+    if(column->do_column(itime))
+    {
+        fields->exec_column(*column);
 //        thermo->exec_column();
-//        column->exec(iteration, time, itime);
-//    }
+        column->exec(iteration, time, itime);
+    }
 }
 
 template<typename TF>
@@ -483,8 +498,9 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
-    // timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
-    // timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();
@@ -517,28 +533,59 @@ void Model<TF>::print_status()
 {
     double cputime, end;
     static double start;
-
+    static FILE *dnsout = NULL;
     static bool first = true;
+
     if (first)
     {
         start = master.get_wall_clock_time();
+
+        if (master.mpiid == 0)
+        {
+            std::string outputname = sim_name + ".out";
+            dnsout = std::fopen(outputname.c_str(), "a");
+            std::setvbuf(dnsout, NULL, _IOLBF, 1024);
+            std::fprintf(dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+        }
         first = false;
     }
 
     if (timeloop->do_check())
     {
         const double time = timeloop->get_time();
-        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-        const TF div = pres->check_divergence();
-        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
         const int iter = timeloop->get_iteration();
-
+        const double dt = timeloop->get_dt();
         end     = master.get_wall_clock_time();
         cputime = end - start;
         start   = end;
 
-        master.print_message("CvH: %8d, %11.5E, %10.4f: %16.8E\n", iter, time, cputime, div);
+        boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+        const TF div = pres->check_divergence();
+        boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+//        TF mom  = fields->check_momentum();
+//        TF tke  = fields->check_tke();
+//        TF mass = fields->check_mass();
+        TF mom = 0.;
+        TF tke = 0.;
+        TF mass = 0;
+        TF cfl  = advec->get_cfl(timeloop->get_dt());
+        TF dn   = diff->get_dn(timeloop->get_dt());
+
+        if (master.mpiid == 0)
+        {
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+            std::fflush(dnsout);
+        }
+
+
+        if (!std::isfinite(cfl))
+        {
+            master.print_error("Simulation has non-finite numbers.\n");
+            throw 1;
+        }
+
     }
 }
 

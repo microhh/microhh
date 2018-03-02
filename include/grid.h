@@ -97,12 +97,6 @@ struct Grid_data
     std::vector<TF> yh; ///< Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; ///< Grid coordinate of cell faces in x-direction.
 
-    // Extra variables for aligning global memory on GPU
-    int memoffset;
-    int icellsp;
-    int ijcellsp;
-    int ncellsp;
-
     int ithread_block; ///< Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; ///< Number of grid cells in the y-direction for GPU thread block.
 
@@ -167,10 +161,10 @@ class Grid
         int save_field3d(TF*, TF*, TF*, char*, const TF); ///< Saves a full 3d field.
         int load_field3d(TF*, TF*, TF*, char*, const TF); ///< Loads a full 3d field.
 
-        // int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
-        // int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
-        // int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
-        // int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
+        int save_xz_slice(TF*, TF*, char*, int);           ///< Saves a xz-slice from a 3d field.
+        int save_yz_slice(TF*, TF*, char*, int);           ///< Saves a yz-slice from a 3d field.
+        int save_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
+        int load_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Loads a xy-slice.
 
         void fft_forward (TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Forward fast-fourier transform.
         void fft_backward(TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict, TF* const restrict); ///< Backward fast-fourier transform.

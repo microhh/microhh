@@ -36,7 +36,8 @@
 
 template<typename TF>
 Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin),
+    field3d_operators(master, grid, fields)
 {
     #ifdef USECUDA
     iplanf = 0;
@@ -50,10 +51,10 @@ template<typename TF>
 Pres<TF>::~Pres()
 {
     #ifdef USECUDA
-  //  cufftDestroy(iplanf);
-  //  cufftDestroy(jplanf);
-  //  cufftDestroy(iplanb);
-  //  cufftDestroy(jplanb);
+    cufftDestroy(iplanf);
+    cufftDestroy(jplanf);
+    cufftDestroy(iplanb);
+    cufftDestroy(jplanb);
     #endif
 }
 

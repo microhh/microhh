@@ -34,7 +34,6 @@ class Data_block;
 template<typename> class Grid;
 template<typename> class Fields;
 
-template<typename> class Field3d_operators;
 template<typename> class Timeloop;
 template<typename> class Boundary;
 template<typename> class Advec;
@@ -44,6 +43,9 @@ template<typename> class Force;
 template<typename> class Decay;
 
 template<typename> class Stats;
+template<typename> class Column;
+template<typename> class Cross;
+template<typename> class Dump;
 
 enum class Sim_mode;
 
@@ -67,7 +69,6 @@ class Model
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
 
-        std::shared_ptr<Field3d_operators<TF>> field3d_operators;
         std::shared_ptr<Timeloop<TF>> timeloop;
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Advec<TF>> advec;
@@ -77,7 +78,9 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
 
         std::shared_ptr<Stats<TF>> stats;
-
+        std::shared_ptr<Column<TF>> column;
+        std::shared_ptr<Cross<TF>> cross;
+        std::shared_ptr<Dump<TF>> dump;
         Sim_mode sim_mode;
         std::string sim_name;
 

@@ -35,9 +35,9 @@ namespace Tools_g
     const int reduce_max_threads = 512;    ///< Maximum number of threads used in reduce algorithms
 
     template<typename TF>
-    void reduce_interior(TF *, TF *, int, int, int, int, int, int, int, int, int, int, Reduce_type);
+    void reduce_interior(const TF *, TF *, int, int, int, int, int, int, int, int, int, int, Reduce_type);
     template<typename TF>
-    void reduce_all(TF *, TF *, int, int, int, Reduce_type, TF);
+    void reduce_all(const TF *, TF *, int, int, int, Reduce_type, TF);
 
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)

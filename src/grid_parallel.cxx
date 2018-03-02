@@ -659,218 +659,217 @@ void Grid<TF>::fft_backward(TF* const restrict data,   TF* const restrict tmp1,
     transpose_xz(tmp1, data);
 }
 
-//
-// template<typename TF>
-// int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
-// {
-//     // extract the data from the 3d field without the ghost cells
-//     int nerror=0;
-//
-//     const int jj  = icells;
-//     const int kk  = icells*jcells;
-//     const int kkb = imax;
-//
-//     int count = imax*kmax;
-//
-//     for (int k=0; k<kmax; k++)
-// #pragma ivdep
-//         for (int i=0; i<imax; i++)
-//         {
-//             // take the modulus of jslice and jmax to have the right offset within proc
-//             const int ijk  = i+igc + ((jslice%jmax)+jgc)*jj + (k+kgc)*kk;
-//             const int ijkb = i + k*kkb;
-//             tmp[ijkb] = data[ijk];
-//         }
-//
-//     if (master.mpicoordy == jslice/jmax)
-//     {
-//         MPI_File fh;
-//         if (MPI_File_open(master.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-//             ++nerror;
-//
-//         // select noncontiguous part of 3d array to store the selected data
-//         MPI_Offset fileoff = 0; // the offset within the file (header size)
-//         char name[] = "native";
-//
-//         if (!nerror)
-//             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxzslice, name, MPI_INFO_NULL))
-//                 ++nerror;
-//
-//         // only write at the procs that contain the slice
-//         if (!nerror)
-//             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
-//                 ++nerror;
-//
-//         if (!nerror)
-//             MPI_File_sync(fh);
-//
-//         if (!nerror)
-//             if (MPI_File_close(&fh))
-//                 ++nerror;
-//     }
-//
-//     // Gather errors from other processes
-//     master.sum(&nerror,1);
-//
-//     MPI_Barrier(master.commxy);
-//
-//     return nerror;
-// }
-//
-// template<typename TF>
-// int Grid<TF>::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
-// {
-//     // extract the data from the 3d field without the ghost cells
-//     int nerror=0;
-//
-//     const int jj = icells;
-//     const int kk = ijcells;
-//
-//     const int kkb = jmax;
-//
-//     int count = jmax*kmax;
-//
-//     // Strip off the ghost cells
-//     for (int k=0; k<kmax; k++)
-//         #pragma ivdep
-//         for (int j=0; j<jmax; j++)
-//         {
-//             // take the modulus of jslice and jmax to have the right offset within proc
-//             const int ijk  = (islice%imax)+igc + (j+jgc)*jj + (k+kgc)*kk;
-//             const int ijkb = j + k*kkb;
-//             tmp[ijkb] = data[ijk];
-//         }
-//
-//     if (master.mpicoordx == islice/imax)
-//     {
-//         MPI_File fh;
-//         if (MPI_File_open(master.commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-//             ++nerror;
-//
-//         // select noncontiguous part of 3d array to store the selected data
-//         MPI_Offset fileoff = 0; // the offset within the file (header size)
-//         char name[] = "native";
-//
-//         if (!nerror)
-//             if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subyzslice, name, MPI_INFO_NULL))
-//                 ++nerror;
-//
-//         // only write at the procs that contain the slice
-//         if (!nerror)
-//             if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
-//                 ++nerror;
-//
-//         if (!nerror)
-//             MPI_File_sync(fh);
-//
-//         if (!nerror)
-//             if (MPI_File_close(&fh))
-//                 ++nerror;
-//     }
-//
-//     // Gather errors from other processes
-//     master.sum(&nerror,1);
-//
-//     MPI_Barrier(master.commxy);
-//
-//     return nerror;
-// }
-//
-// template<typename TF>
-// int Grid<TF>::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
-// {
-//     // extract the data from the 3d field without the ghost cells
-//     const int jj  = icells;
-//     const int kk  = icells*jcells;
-//     const int jjb = imax;
-//
-//     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-//     if (kslice == -1)
-//         kslice = -kgc;
-//
-//     int count = imax*jmax;
-//
-//     for (int j=0; j<jmax; j++)
-// #pragma ivdep
-//         for (int i=0; i<imax; i++)
-//         {
-//             // take the modulus of jslice and jmax to have the right offset within proc
-//             const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
-//             const int ijkb = i + j*jjb;
-//             tmp[ijkb] = data[ijk];
-//         }
-//
-//     MPI_File fh;
-//     if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-//         return 1;
-//
-//     // select noncontiguous part of 3d array to store the selected data
-//     MPI_Offset fileoff = 0; // the offset within the file (header size)
-//     char name[] = "native";
-//
-//     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
-//         return 1;
-//
-//     // only write at the procs that contain the slice
-//     if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
-//         return 1;
-//
-//     MPI_File_sync(fh);
-//
-//     if (MPI_File_close(&fh))
-//         return 1;
-//
-//     MPI_Barrier(master.commxy);
-//
-//     return 0;
-// }
-//
-// template<typename TF>
-// int Grid<TF>::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
-// {
-//     // extract the data from the 3d field without the ghost cells
-//     const int jj  = icells;
-//     const int kk  = icells*jcells;
-//     const int jjb = imax;
-//
-//     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-//     if (kslice == -1)
-//         kslice = -kgc;
-//
-//     int count = imax*jmax;
-//
-//     MPI_File fh;
-//     if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-//         return 1;
-//
-//     // select noncontiguous part of 3d array to store the selected data
-//     MPI_Offset fileoff = 0; // the offset within the file (header size)
-//     char name[] = "native";
-//
-//     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
-//         return 1;
-//
-//     // only write at the procs that contain the slice
-//     if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
-//         return 1;
-//
-//     if (MPI_File_close(&fh))
-//         return 1;
-//
-//     MPI_Barrier(master.commxy);
-//
-//     for (int j=0; j<jmax; j++)
-// #pragma ivdep
-//         for (int i=0; i<imax; i++)
-//         {
-//             // take the modulus of jslice and jmax to have the right offset within proc
-//             const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
-//             const int ijkb = i + j*jjb;
-//             data[ijk] = tmp[ijkb];
-//         }
-//
-//     return 0;
-// }
+template<typename TF>
+int Grid<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* filename, int jslice)
+{
+    // extract the data from the 3d field without the ghost cells
+    int nerror=0;
+
+    const int jj  = gd.icells;
+    const int kk  = gd.icells*gd.jcells;
+    const int kkb = gd.imax;
+
+    int count = gd.imax*gd.kmax;
+
+    for (int k=0; k<gd.kmax; k++)
+#pragma ivdep
+        for (int i=0; i<gd.imax; i++)
+        {
+            // take the modulus of jslice and gd.jmax to have the right offset within proc
+            const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + (k+gd.kgc)*kk;
+            const int ijkb = i + k*kkb;
+            tmp[ijkb] = data[ijk];
+        }
+
+    if (master.mpicoordy == jslice/gd.jmax)
+    {
+        MPI_File fh;
+        if (MPI_File_open(master.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+            ++nerror;
+
+        // select noncontiguous part of 3d array to store the selected data
+        MPI_Offset fileoff = 0; // the offset within the file (header size)
+        char name[] = "native";
+
+        if (!nerror)
+            if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxzslice, name, MPI_INFO_NULL))
+                ++nerror;
+
+        // only write at the procs that contain the slice
+        if (!nerror)
+            if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+                ++nerror;
+
+        if (!nerror)
+            MPI_File_sync(fh);
+
+        if (!nerror)
+            if (MPI_File_close(&fh))
+                ++nerror;
+    }
+
+    // Gather errors from other processes
+    master.sum(&nerror,1);
+
+    MPI_Barrier(master.commxy);
+
+    return nerror;
+}
+
+template<typename TF>
+int Grid<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* filename, int islice)
+{
+    // extract the data from the 3d field without the ghost cells
+    int nerror=0;
+
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+
+    const int kkb = gd.jmax;
+
+    int count = gd.jmax*gd.kmax;
+
+    // Strip off the ghost cells
+    for (int k=0; k<gd.kmax; k++)
+        #pragma ivdep
+        for (int j=0; j<gd.jmax; j++)
+        {
+            // take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
+            const int ijkb = j + k*kkb;
+            tmp[ijkb] = data[ijk];
+        }
+
+    if (master.mpicoordx == islice/gd.imax)
+    {
+        MPI_File fh;
+        if (MPI_File_open(master.commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+            ++nerror;
+
+        // select noncontiguous part of 3d array to store the selected data
+        MPI_Offset fileoff = 0; // the offset within the file (header size)
+        char name[] = "native";
+
+        if (!nerror)
+            if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subyzslice, name, MPI_INFO_NULL))
+                ++nerror;
+
+        // only write at the procs that contain the slice
+        if (!nerror)
+            if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+                ++nerror;
+
+        if (!nerror)
+            MPI_File_sync(fh);
+
+        if (!nerror)
+            if (MPI_File_close(&fh))
+                ++nerror;
+    }
+
+    // Gather errors from other processes
+    master.sum(&nerror,1);
+
+    MPI_Barrier(master.commxy);
+
+    return nerror;
+}
+
+template<typename TF>
+int Grid<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+{
+    // extract the data from the 3d field without the ghost cells
+    const int jj  = gd.icells;
+    const int kk  = gd.icells*gd.jcells;
+    const int jjb = gd.imax;
+
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+    if (kslice == -1)
+        kslice = -gd.kgc;
+
+    int count = gd.imax*gd.jmax;
+
+    for (int j=0; j<gd.jmax; j++)
+#pragma ivdep
+        for (int i=0; i<gd.imax; i++)
+        {
+            // take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
+            const int ijkb = i + j*jjb;
+            tmp[ijkb] = data[ijk];
+        }
+
+    MPI_File fh;
+    if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        return 1;
+
+    // select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+
+    if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
+        return 1;
+
+    // only write at the procs that contain the slice
+    if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+        return 1;
+
+    MPI_File_sync(fh);
+
+    if (MPI_File_close(&fh))
+        return 1;
+
+    MPI_Barrier(master.commxy);
+
+    return 0;
+}
+
+template<typename TF>
+int Grid<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+{
+    // extract the data from the 3d field without the ghost cells
+    const int jj  = gd.icells;
+    const int kk  = gd.icells*gd.jcells;
+    const int jjb = gd.imax;
+
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+    if (kslice == -1)
+        kslice = -gd.kgc;
+
+    int count = gd.imax*gd.jmax;
+
+    MPI_File fh;
+    if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+        return 1;
+
+    // select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+
+    if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
+        return 1;
+
+    // only write at the procs that contain the slice
+    if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+        return 1;
+
+    if (MPI_File_close(&fh))
+        return 1;
+
+    MPI_Barrier(master.commxy);
+
+    for (int j=0; j<gd.jmax; j++)
+#pragma ivdep
+        for (int i=0; i<gd.imax; i++)
+        {
+            // take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
+            const int ijkb = i + j*jjb;
+            data[ijk] = tmp[ijkb];
+        }
+
+    return 0;
+}
 
 template class Grid<double>;
 template class Grid<float>;
