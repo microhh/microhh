@@ -30,6 +30,8 @@
 class Master;
 template<typename> class Grid;
 
+enum class Edge {East_west_edge, North_south_edge, Both_edges};
+
 template<typename TF>
 class Boundary_cyclic
 {
@@ -40,6 +42,9 @@ class Boundary_cyclic
         void init();   // Initialize the fields.
         void exec(TF* const restrict, Edge=Edge::Both_edges); // Fills the ghost cells in the periodic directions.
         void exec_2d(TF* const restrict); // Fills the ghost cells of one slice in the periodic direction.
+
+        void exec_g(TF*);   // Fills the ghost cells in the periodic directions.
+        void exec_2d_g(TF*); // Fills the ghost cells of one slice in the periodic directions.
 
     private:
         Master& master; // Reference to master class.

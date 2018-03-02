@@ -22,6 +22,7 @@
 
 #include "grid.h"
 #include "tools.h"
+#include "boundary_cyclic.h"
 // #include "math.h"
 
 namespace
@@ -96,8 +97,10 @@ namespace
 }
 
 template<typename TF>
-void Boundary_cyclic<TF>::boundary_cyclic_g(TF* data)
+void Boundary_cyclic<TF>::exec_g(TF* data)
 {
+    auto& gd = grid.get_grid_data();
+
     const int blocki_x = gd.igc;
     const int blockj_x = 256 / gd.igc + (256%gd.igc > 0);
     const int gridi_x  = 1;
@@ -126,8 +129,10 @@ void Boundary_cyclic<TF>::boundary_cyclic_g(TF* data)
 }
 
 template<typename TF>
-void Boundary_cyclic<TF>::boundary_cyclic2d_g(TF* data)
+void Boundary_cyclic<TF>::exec_2d_g(TF* data)
 {
+    auto& gd = grid.get_grid_data();
+
     const int blocki_x = gd.igc;
     const int blockj_x = 256 / gd.igc + (256%gd.igc > 0);
     const int gridi_x  = 1;
@@ -154,3 +159,6 @@ void Boundary_cyclic<TF>::boundary_cyclic2d_g(TF* data)
 
     cuda_check_error();
 }
+
+template class Boundary_cyclic<double>;
+template class Boundary_cyclic<float>;

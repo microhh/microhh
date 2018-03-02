@@ -273,9 +273,9 @@ void Pres_2<TF>::exec(double dt)
     auto tmp2 = fields.get_tmp_g();
 
     // calculate the cyclic BCs first
-    grid.boundary_cyclic_g(fields.mt.at("u")->fld_g);
-    grid.boundary_cyclic_g(fields.mt.at("v")->fld_g);
-    grid.boundary_cyclic_g(fields.mt.at("w")->fld_g);
+    boundary_cyclic.exec_g(fields.mt.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
     pres_in_g<TF><<<gridGPU, blockGPU>>>(
         fields.sd.at("p")->fld_g,
@@ -318,7 +318,7 @@ void Pres_2<TF>::exec(double dt)
         gd.imax,    gd.jmax,   gd.kmax);
     cuda_check_error();
 
-    grid.boundary_cyclic_g(fields.sd.at("p")->fld_g);
+    boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
     pres_out_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,

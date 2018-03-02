@@ -36,8 +36,6 @@ class Master;
 class Input;
 class Data_block;
 
-enum class Edge {East_west_edge, North_south_edge, Both_edges};
-
 template<typename TF>
 struct Grid_data
 {
@@ -185,8 +183,6 @@ class Grid
         // GPU functions
         void prepare_device();                          ///< Load the arrays onto the GPU
         void clear_device();                            ///< Deallocate the arrays onto the GPU
-        void boundary_cyclic_g(TF*);                    ///< Fills the ghost cells in the periodic directions.
-        void boundary_cyclic2d_g(TF*);                  ///< Fills the ghost cells of one slice in the periodic directions.
 
     private:
         Master& master; ///< Reference to master class.

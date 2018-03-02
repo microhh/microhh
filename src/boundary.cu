@@ -249,12 +249,12 @@ void Boundary<TF>::exec()
 
 
     // Cyclic boundary conditions, do this before the bottom BC's.
-    grid.boundary_cyclic_g(fields.mp.at("u")->fld_g);
-    grid.boundary_cyclic_g(fields.mp.at("v")->fld_g);
-    grid.boundary_cyclic_g(fields.mp.at("w")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
 
     for (auto& it : fields.sp)
-        grid.boundary_cyclic_g(it.second->fld_g);
+        boundary_cyclic.exec_g(it.second->fld_g);
 
     // Calculate the boundary values.
     update_bcs();
