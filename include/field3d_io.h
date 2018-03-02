@@ -20,40 +20,30 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DUMP
-#define DUMP
+#ifndef FIELD3D_IO
+#define FIELD3D_IO
 
 class Master;
-class Input;
 template<typename> class Grid;
-template<typename> class Fields;
 
 template<typename TF>
-class Dump
+class Field3d_io
 {
     public:
-        Dump(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        ~Dump();
+        Field3d_io(Master&, Grid<TF>&);
+        ~Field3d_io();
 
-        void init(double);
-        void create();
+        int save_field3d(TF*, TF*, TF*, char*, const TF); // Saves a full 3d field.
+        int load_field3d(TF*, TF*, TF*, char*, const TF); // Loads a full 3d field.
 
-        unsigned long get_time_limit(unsigned long);
-        bool get_switch() { return swdump; }
-        std::vector<std::string>* get_dumplist();
-
-        bool do_dump(unsigned long);
-        void save_dump(TF*, std::string, int);
+        int save_xz_slice(TF*, TF*, char*, int);           // Saves a xz-slice from a 3d field.
+        int save_yz_slice(TF*, TF*, char*, int);           // Saves a yz-slice from a 3d field.
+        int save_xy_slice(TF*, TF*, char*, int kslice=-1); // Saves a xy-slice from a 3d field.
+        int load_xy_slice(TF*, TF*, char*, int kslice=-1); // Loads a xy-slice.
 
     private:
         Master& master;
         Grid<TF>& grid;
-        Fields<TF>& fields;
-        Field3d_io<TF> field3d_io;
-
-        std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
-        bool swdump;           ///< Statistics on/off switch
-        double sampletime;
-        unsigned long isampletime;
 };
 #endif
+

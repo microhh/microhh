@@ -205,7 +205,8 @@ namespace
 
 template<typename TF>
 Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin),
+    field3d_io(master, grid)
 {
     swcross = inputin.get_item<bool>("cross", "swcross", "", false);
 
@@ -468,7 +469,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: jxzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xz_slice(data, tmp, filename, it), filename);
         }
     }
     else
@@ -476,7 +477,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: jxz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(grid.save_xz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xz_slice(data, tmp, filename, it), filename);
         }
     }
 
@@ -486,7 +487,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: ixzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_yz_slice(data, tmp, filename, it), filename);
         }
     }
     else
@@ -494,7 +495,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: ixz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(grid.save_yz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_yz_slice(data, tmp, filename, it), filename);
         }
     }
 
@@ -504,7 +505,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: kxyh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(grid.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
         }
     }
     else
@@ -512,7 +513,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         for (auto& it: kxy)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(grid.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
         }
     }
     fields.release_tmp(tmpfld);
@@ -530,7 +531,7 @@ int Cross<TF>::cross_plane(TF* restrict data, std::string name, int iotime)
     auto tmp = tmpfld->fld.data();
 
     std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", iotime);
-    nerror += check_save(grid.save_xy_slice(data, tmp, filename), filename);
+    nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename), filename);
     fields.release_tmp(tmpfld);
     return nerror;
 }
@@ -554,21 +555,21 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     for (auto& it: jxz)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-        nerror += check_save(grid.save_xz_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(field3d_io.save_xz_slice(lngrad, tmp, filename, it),filename);
     }
 
     // loop over the index arrays to save all yz cross sections
     for (auto& it: ixz)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-        nerror += check_save(grid.save_yz_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(field3d_io.save_yz_slice(lngrad, tmp, filename, it),filename);
     }
 
     // loop over the index arrays to save all xy cross sections
     for (auto& it: kxy)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-        nerror += check_save(grid.save_xy_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(field3d_io.save_xy_slice(lngrad, tmp, filename, it),filename);
     }
     fields.release_tmp(tmpfld);
     fields.release_tmp(lngradfld);

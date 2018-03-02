@@ -113,7 +113,8 @@ template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
-    boundary_cyclic(master, grid)
+    boundary_cyclic(master, grid),
+    field3d_io(master, grid)
 {
     calc_mean_profs = false;
 
@@ -962,7 +963,7 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (grid.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
+        if (field3d_io.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");
@@ -998,7 +999,7 @@ void Fields<TF>::load(int n)
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
 
-        if (grid.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
+        if (field3d_io.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");

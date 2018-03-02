@@ -57,10 +57,10 @@ class Cross
         int cross_height_threshold(TF*, TF*, TF, Direction, std::string, int);
 
     private:
-    protected:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_io<TF> field3d_io;
 
         bool swcross;
         TF sampletime;

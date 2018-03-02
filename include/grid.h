@@ -140,15 +140,6 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        // IO functions
-        int save_field3d(TF*, TF*, TF*, char*, const TF); ///< Saves a full 3d field.
-        int load_field3d(TF*, TF*, TF*, char*, const TF); ///< Loads a full 3d field.
-
-        int save_xz_slice(TF*, TF*, char*, int);           ///< Saves a xz-slice from a 3d field.
-        int save_yz_slice(TF*, TF*, char*, int);           ///< Saves a yz-slice from a 3d field.
-        int save_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
-        int load_xy_slice(TF*, TF*, char*, int kslice=-1); ///< Loads a xy-slice.
-
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); ///< Second order interpolation
         //void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation

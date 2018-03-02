@@ -493,7 +493,7 @@ int Grid<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename,
     MPI_Barrier(master.commxy);
 
     for (int j=0; j<gd.jmax; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
             // take the modulus of jslice and jmax to have the right offset within proc
