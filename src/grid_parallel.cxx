@@ -98,36 +98,6 @@ void Grid<TF>::exit_mpi()
     }
 }
 
-// template<typename TF>
-// void Grid<TF>::get_max(double *var)
-// {
-//     double varl = *var;
-//     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_MAX, master.commxy);
-// }
-//
-// template<typename TF>
-// void Grid<TF>::get_max(int *var)
-// {
-//     int varl = *var;
-//     MPI_Allreduce(&varl, var, 1, MPI_INT, MPI_MAX, master.commxy);
-// }
-//
-// template<typename TF>
-// void Grid<TF>::get_sum(double *var)
-// {
-//     double varl = *var;
-//     MPI_Allreduce(&varl, var, 1, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
-// }
-//
-// template<typename TF>
-// void Grid<TF>::get_prof(double *prof, int kcellsin)
-// {
-//     for (int k=0; k<kcellsin; k++)
-//         profl[k] = prof[k] / master.nprocs;
-//
-//     MPI_Allreduce(profl, prof, kcellsin, mpi_fp_type<TF>(), MPI_SUM, master.commxy);
-// }
-
 template<typename TF>
 void Grid<TF>::save_grid()
 {

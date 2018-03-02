@@ -140,12 +140,6 @@ class Grid
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
 
-        // void get_max (double*);      ///< Gets the maximum of a number over all processes.
-        // void get_max (int*);         ///< Gets the maximum of a number over all processes.
-        // void get_sum (double*);      ///< Gets the sum of a number over all processes.
-        // void get_prof(double*, int); ///< Averages a vertical profile over all processes.
-        // void calc_mean(double*, const double*, int);
-
         // IO functions
         int save_field3d(TF*, TF*, TF*, char*, const TF); ///< Saves a full 3d field.
         int load_field3d(TF*, TF*, TF*, char*, const TF); ///< Loads a full 3d field.
