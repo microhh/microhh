@@ -29,7 +29,7 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
     master(masterin), grid(gridin),
     transpose(master, grid)
 {
-    fftw_plan = false;
+    has_fftw_plan = false;
 
     // Initialize the pointers to zero.
     fftini  = nullptr;
@@ -67,7 +67,7 @@ template<> void FFT<float>::allocate_fftw()
 template<>
 void FFT<double>::fftw_finish()
 {
-    if (fftw_plan)
+    if (has_fftw_plan)
     {
         fftw_destroy_plan(iplanf);
         fftw_destroy_plan(iplanb);
@@ -86,7 +86,7 @@ void FFT<double>::fftw_finish()
 template<>
 void FFT<float>::fftw_finish()
 {
-    if (fftw_plan)
+    if (has_fftw_plan)
     {
         fftwf_destroy_plan(iplanff);
         fftwf_destroy_plan(iplanbf);
@@ -147,7 +147,7 @@ void FFT<double>::load()
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
             fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
-    fftw_plan = true;
+    has_fftw_plan = true;
 
     fftw_forget_wisdom();
 }
@@ -192,7 +192,7 @@ void FFT<float>::load()
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
             fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
-    fftw_plan = true;
+    has_fftw_plan = true;
 
     fftwf_forget_wisdom();
 }
@@ -223,7 +223,7 @@ void FFT<double>::save()
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
                                 fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
-    fftw_plan = true;
+    has_fftw_plan = true;
 
     if (master.mpiid == 0)
     {
@@ -268,7 +268,7 @@ void FFT<float>::save()
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
                                   fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
-    fftw_plan = true;
+    has_fftw_plan = true;
 
     if (master.mpiid == 0)
     {
