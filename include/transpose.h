@@ -27,6 +27,8 @@
 #include <mpi.h>
 #endif
 
+#include "defines.h"
+
 class Master;
 template<typename> class Grid;
 
