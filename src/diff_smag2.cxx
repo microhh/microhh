@@ -20,9 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 #include "grid.h"
 #include "fields.h"
@@ -501,6 +500,30 @@ namespace
                            - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
             }
     }
+
+    template<typename TF>
+    TF calc_dnmul(TF* restrict evisc, const TF* restrict dzi, const TF dxidxi, const TF dyidyi, const TF tPr,
+                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                  const int jj, const int kk)
+    {
+        const TF one = 1.;
+        const TF tPrfac = std::min(one, tPr);
+        TF dnmul = 0;
+    
+        // get the maximum time step for diffusion
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
+                }
+    
+        // get_max(&dnmul);
+    
+        return dnmul;
+    }
 } // End namespace.
 
 template<typename TF>
@@ -529,12 +552,27 @@ Diffusion_type Diff_smag2<TF>::get_switch()
 template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
+    auto& gd = grid.get_grid_data();
+    double dnmul = calc_dnmul<TF>(fields.sd["evisc"]->fld.data(), gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
+                                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                                  gd.icells, gd.ijcells);
+    master.max(&dnmul, 1);
+
+    // Avoid zero division.
+    dnmul = std::max(Constants::dsmall, dnmul);
+
     return idt * dnmax / (dt * dnmul);
 }
 
 template<typename TF>
 double Diff_smag2<TF>::get_dn(const double dt)
 {
+    auto& gd = grid.get_grid_data();
+    double dnmul = calc_dnmul<TF>(fields.sd["evisc"]->fld.data(), gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
+                                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                                  gd.icells, gd.ijcells);
+    master.max(&dnmul, 1);
+
     return dnmul*dt;
 }
 
