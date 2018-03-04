@@ -241,7 +241,6 @@ template<typename TF>
 void Boundary_cyclic<TF>::exec(TF* restrict data, Edge edge)
 {
     auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
 
     const int jj = gd.icells;
     const int kk = gd.icells*gd.jcells;
@@ -318,7 +317,6 @@ template<typename TF>
 void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
 {
     auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
 
     const int jj = gd.icells;
 
