@@ -138,60 +138,375 @@ namespace
                 }
     }
 
-    template<typename TF>
-    void diff_c(TF* restrict at, TF* restrict a, TF visc,
+    template <typename TF, bool resolved_wall>
+    void calc_evisc_neutral(TF* restrict evisc,
+                            TF* restrict u, TF* restrict v, TF* restrict w,
+                            TF* restrict ufluxbot, TF* restrict vfluxbot,
+                            const TF* restrict z, const TF* restrict dz, const TF z0m, const TF mvisc,
+                            const TF dx, const TF dy, const TF cs,
+                            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                            const int icells, const int jcells, const int ijcells,
+                            Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // Wall damping constant.
+        const int n = 2;
+    
+        if (resolved_wall)
+        {
+            for (int k=kstart; k<kend; ++k)
+            {
+                const double mlen = pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2);
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        evisc[ijk] = mlen * std::sqrt(evisc[ijk]) + mvisc;
+                    }
+            }
+    
+            boundary_cyclic.exec(evisc);
+    
+            // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
+            // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
+            const int kb = kstart;
+            const int kt = kend-1;
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ijkb = i + j*jj + kb*kk;
+                    const int ijkt = i + j*jj + kt*kk;
+                    evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
+                    evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
+                }
+        }
+        else
+        {
+            for (int k=kstart; k<kend; ++k)
+            {
+                // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
+                const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+                const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+                const double fac   = std::pow(mlen, 2);
+    
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
+                    }
+            }
+    
+            boundary_cyclic.exec(evisc);
+        }
+    }
+
+    template <typename TF, bool resolved_wall>
+    void diff_u(TF* restrict ut,
+                const TF* restrict u, const TF* restrict v, const TF* restrict w,
+                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
+                const TF* restrict evisc,
+                const TF* restrict fluxbot, const TF* restrict fluxtop,
+                const TF* restrict rhoref, const TF* restrict rhorefh,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk, const TF dx, const TF dy, const TF* const dzi, const TF* const dzhi)
+                const int jj, const int kk)
     {
         const int ii = 1;
-        const double dxidxi = 1/(dx*dx);
-        const double dyidyi = 1/(dy*dy);
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+    
+        TF eviscn, eviscs, eviscb, evisct;
+    
+        const int k_offset = resolved_wall ? 0 : 1;
+       
+        if (!resolved_wall)
+        {
+            // bottom boundary
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+                    eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+    
+                    ut[ijk] +=
+                             // du/dx + du/dx
+                             + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+                             // du/dy + dv/dx
+                             + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+                             // du/dz + dw/dx
+                             + ( rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+                               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+                }
+    
+            // top boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + (kend-1)*kk;
+                    eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+                    eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                    ut[ijk] +=
+                             // du/dx + du/dx
+                             + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+                             // du/dy + dv/dx
+                             + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+                             // du/dz + dw/dx
+                             + (- rhorefh[kend  ] * fluxtop[ij]
+                                - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
+                }
+        }
+    
+        for (int k=kstart+k_offset; k<kend-k_offset; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    at[ijk] += visc * (
-                            + ( (a[ijk+ii] - a[ijk   ])
-                              - (a[ijk   ] - a[ijk-ii]) ) * dxidxi
-                            + ( (a[ijk+jj] - a[ijk   ])
-                              - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
-                            + ( (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
-                              - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
+                    eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+                    eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                    ut[ijk] +=
+                             // du/dx + du/dx
+                             + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+                             // du/dy + dv/dx
+                             + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+                             // du/dz + dw/dx
+                             + ( rhorefh[k+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+                               - rhorefh[k  ] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[k] * dzi[k];
                 }
     }
 
-    template<typename TF>
-    void diff_w(TF* restrict wt, TF* restrict w, TF visc,
+    template <typename TF, bool resolved_wall>
+    void diff_v(TF* restrict vt,
+                const TF* restrict u, const TF* restrict v, const TF* restrict w,
+                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
+                const TF* restrict evisc,
+                TF* restrict fluxbot, TF* restrict fluxtop,
+                TF* restrict rhoref, TF* restrict rhorefh,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk, const TF dx, const TF dy, const TF* const dzi, const TF* const dzhi)
+                const int jj, const int kk)
+
     {
         const int ii = 1;
-        const double dxidxi = 1/(dx*dx);
-        const double dyidyi = 1/(dy*dy);
-
-        for (int k=kstart+1; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+    
+        TF evisce, eviscw, eviscb, evisct;
+    
+        const int k_offset = resolved_wall ? 0 : 1;
+    
+        if (!resolved_wall)
+        {
+            // bottom boundary
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+                    eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    vt[ijk] +=
+                             // dv/dx + du/dy
+                             + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+                             // dv/dy + dv/dy
+                             + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                             // dv/dz + dw/dy
+                             + ( rhorefh[kstart+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+                               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+                }
+    
+            // top boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + (kend-1)*kk;
+                    evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+                    eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    vt[ijk] +=
+                             // dv/dx + du/dy
+                             + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+                             // dv/dy + dv/dy
+                             + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                             // dv/dz + dw/dy
+                             + (- rhorefh[kend  ] * fluxtop[ij]
+                                - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
+                }
+        }
+    
+        for (int k=kstart+k_offset; k<kend-k_offset; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    wt[ijk] += visc * (
-                            + ( (w[ijk+ii] - w[ijk   ])
-                              - (w[ijk   ] - w[ijk-ii]) ) * dxidxi
-                            + ( (w[ijk+jj] - w[ijk   ])
-                              - (w[ijk   ] - w[ijk-jj]) ) * dyidyi
-                            + ( (w[ijk+kk] - w[ijk   ]) * dzi[k]
-                              - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
+                    evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+                    eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+                    eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+                    vt[ijk] +=
+                             // dv/dx + du/dy
+                             + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+                             // dv/dy + dv/dy
+                             + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                             // dv/dz + dw/dy
+                             + ( rhorefh[k+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+                               - rhorefh[k  ] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
                 }
     }
-}
+   
+    template <typename TF>
+    void diff_w(TF* restrict wt,
+                const TF* restrict u, const TF* restrict v, const TF* restrict w,
+                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
+                const TF* restrict evisc,
+                const TF* restrict rhoref, const TF* restrict rhorefh,
+                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                const int jj, const int kk)
+    {
+        const int ii = 1;
+    
+        TF evisce, eviscw, eviscn, eviscs;
+    
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    evisce = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
+                    eviscw = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-ii] + evisc[ijk   -kk] + evisc[ijk   ]);
+                    eviscn = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]);
+                    eviscs = 0.25*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]);
+                    wt[ijk] +=
+                             // dw/dx + du/dz
+                             + ( evisce*((w[ijk+ii]-w[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-kk])*dzhi[k])
+                               - eviscw*((w[ijk   ]-w[ijk-ii])*dxi + (u[ijk   ]-u[ijk+  -kk])*dzhi[k]) ) * dxi
+                             // dw/dy + dv/dz
+                             + ( eviscn*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
+                               - eviscs*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
+                             // dw/dz + dw/dz
+                             + ( rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+                               - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
+                }
+    }
+    
+    template <typename TF>
+    void diff_c(TF* restrict at, const TF* restrict a,
+                const TF* restrict dzi, const TF* restrict dzhi, const TF dxidxi, const TF dyidyi,
+                const TF* restrict evisc,
+                const TF* restrict fluxbot, const TF* restrict fluxtop, 
+                const TF* restrict rhoref, const TF* restrict rhorefh, const TF tPr,
+                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                const int jj, const int kk)
+    {
+        const int ii = 1;
+    
+        TF evisce, eviscw, eviscn, eviscs, evisct, eviscb;
+    
+        // bottom boundary
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+    
+                at[ijk] +=
+                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                         + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+                           + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+            }
+    
+        for (int k=kstart+1; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                    eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                    eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                    eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                    evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                    eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+    
+                    at[ijk] +=
+                             + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                             + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+                               - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
+                }
+    
+        // top boundary
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + (kend-1)*kk;
+                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+    
+                at[ijk] +=
+                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                         + (-rhorefh[kend  ] * fluxtop[ij]
+                           - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
+            }
+    }
+} // End namespace.
 
 template<typename TF>
 Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin)
+    Diff<TF>(masterin, gridin, fieldsin, inputin),
+    boundary_cyclic(master, grid)
 {
     dnmax = inputin.get_item<double>("diff", "dnmax", "", 0.4  );
     cs    = inputin.get_item<double>("diff", "cs"   , "", 0.23 );
@@ -244,6 +559,41 @@ template<typename TF>
 void Diff_smag2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
+
+    diff_u<TF,true>(fields.mt["u"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+    diff_v<TF,true>(fields.mt["v"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+    diff_w<TF>(fields.mt["w"]->fld.data(),
+               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+               gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+               fields.sd["evisc"]->fld.data(),
+               fields.rhoref.data(), fields.rhorefh.data(),
+               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+               gd.icells, gd.ijcells);
+
+    for (auto it : fields.st)
+        diff_c<TF>(it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                   gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                   fields.sd["evisc"]->fld.data(),
+                   fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                   fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                   gd.icells, gd.ijcells);
 }
 
 template<typename TF>
@@ -282,10 +632,14 @@ void Diff_smag2<TF>::exec_viscosity()
     //                                   grid->z, grid->dz, boundaryptr->z0m, fields->visc);
     //     // Calculate eddy viscosity assuming resolved walls
     //     else
-    ///////        calc_evisc_neutral<true>(fields->sd["evisc"]->data,
-    ///////                                 fields->u->data, fields->v->data, fields->w->data,
-    ///////                                 fields->u->datafluxbot, fields->v->datafluxbot,
-    ///////                                 grid->z, grid->dz, 0, fields->visc); // BvS, for now....
+            calc_evisc_neutral<TF, true>(fields.sd["evisc"]->fld.data(),
+                                         fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                                         fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                                         gd.z.data(), gd.dz.data(), 0, fields.visc,
+                                         gd.dx, gd.dy, this->cs,
+                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                                         gd.icells, gd.jcells, gd.ijcells,
+                                         boundary_cyclic);
     // assume buoyancy calculation is needed
     // else
     // {

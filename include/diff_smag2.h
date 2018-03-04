@@ -24,6 +24,7 @@
 #define DIFF_SMAG2_H
 
 #include "diff.h"
+#include "boundary_cyclic.h"
 
 template<typename TF>
 class Diff_smag2 : public Diff<TF>
@@ -48,6 +49,7 @@ class Diff_smag2 : public Diff<TF>
         using Diff<TF>::master;
         using Diff<TF>::grid;
         using Diff<TF>::fields;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
 
