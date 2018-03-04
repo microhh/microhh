@@ -29,7 +29,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-enum class Diffusion_type {Disabled, Diff_2};
+enum class Diffusion_type {Disabled, Diff_2, Diff_smag2};
 
 template <typename TF>
 class Diff

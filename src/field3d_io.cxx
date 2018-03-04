@@ -450,7 +450,6 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         char* filename, const TF offset)
 {
     auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
 
     FILE *pFile;
     pFile = fopen(filename, "wbx");
