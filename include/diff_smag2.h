@@ -53,5 +53,8 @@ class Diff_smag2 : public Diff<TF>
 
         double dnmax;
         double dnmul;
+
+        double cs;
+        double tPr;
 };
 #endif
