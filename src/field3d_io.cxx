@@ -63,36 +63,37 @@ namespace
 template<typename TF>
 void Field3d_io<TF>::init_mpi()
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // The lines below describe the array in case transposes are not used before saving.
     // int totsize [3] = {kmax, jtot, itot};
     // int subsize [3] = {kmax, jmax, imax};
-    // int substart[3] = {0, master.mpicoordy*jmax, master.mpicoordx*imax};
+    // int substart[3] = {0, md.mpicoordy*jmax, md.mpicoordx*imax};
     int totsize [3] = {gd.kmax  , gd.jtot, gd.itot};
     int subsize [3] = {gd.kblock, gd.jmax, gd.itot};
-    int substart[3] = {master.mpicoordx*gd.kblock, master.mpicoordy*gd.jmax, 0};
+    int substart[3] = {md.mpicoordx*gd.kblock, md.mpicoordy*gd.jmax, 0};
     MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
     MPI_Type_commit(&subarray);
 
     // save mpitype for a xz-slice for cross section processing
     int totxzsize [2] = {gd.kmax, gd.itot};
     int subxzsize [2] = {gd.kmax, gd.imax};
-    int subxzstart[2] = {0, master.mpicoordx*gd.imax};
+    int subxzstart[2] = {0, md.mpicoordx*gd.imax};
     MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxzslice);
     MPI_Type_commit(&subxzslice);
 
     // save mpitype for a yz-slice for cross section processing
     int totyzsize [2] = {gd.kmax, gd.jtot};
     int subyzsize [2] = {gd.kmax, gd.jmax};
-    int subyzstart[2] = {0, master.mpicoordy*gd.jmax};
+    int subyzstart[2] = {0, md.mpicoordy*gd.jmax};
     MPI_Type_create_subarray(2, totyzsize, subyzsize, subyzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subyzslice);
     MPI_Type_commit(&subyzslice);
 
     // save mpitype for a xy-slice for cross section processing
     int totxysize [2] = {gd.jtot, gd.itot};
     int subxysize [2] = {gd.jmax, gd.imax};
-    int subxystart[2] = {master.mpicoordy*gd.jmax, master.mpicoordx*gd.imax};
+    int subxystart[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
     MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
     MPI_Type_commit(&subxyslice);
 
@@ -114,7 +115,8 @@ void Field3d_io<TF>::exit_mpi()
 template<typename TF>
 int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2, char* filename, TF offset)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // save the data in transposed order to have large chunks of contiguous disk space
     // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -140,7 +142,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
     transpose.exec_zx(tmp2, tmp1);
 
     MPI_File fh;
-    if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
         return 1;
 
     // select noncontiguous part of 3d array to store the selected data
@@ -162,14 +164,15 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 template<typename TF>
 int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2, char* filename, TF offset)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // Save the data in transposed order to have large chunks of contiguous disk space.
     // MPI-IO is not stable on Juqueen and supermuc otherwise.
 
     // read the file
     MPI_File fh;
-    if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
         return 1;
 
     // select noncontiguous part of 3d array to store the selected data
@@ -210,7 +213,8 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* filename, int jslice)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
@@ -231,10 +235,10 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
             tmp[ijkb] = data[ijk];
         }
 
-    if (master.mpicoordy == jslice/gd.jmax)
+    if (md.mpicoordy == jslice/gd.jmax)
     {
         MPI_File fh;
-        if (MPI_File_open(master.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        if (MPI_File_open(md.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
             ++nerror;
 
         // select noncontiguous part of 3d array to store the selected data
@@ -261,7 +265,7 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
     // Gather errors from other processes
     master.sum(&nerror,1);
 
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
 
     return nerror;
 }
@@ -269,7 +273,8 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
 template<typename TF>
 int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* filename, int islice)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
@@ -292,10 +297,10 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
             tmp[ijkb] = data[ijk];
         }
 
-    if (master.mpicoordx == islice/gd.imax)
+    if (md.mpicoordx == islice/gd.imax)
     {
         MPI_File fh;
-        if (MPI_File_open(master.commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        if (MPI_File_open(md.commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
             ++nerror;
 
         // select noncontiguous part of 3d array to store the selected data
@@ -322,7 +327,7 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
     // Gather errors from other processes
     master.sum(&nerror,1);
 
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
 
     return nerror;
 }
@@ -330,7 +335,8 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
     const int jj  = gd.icells;
@@ -354,7 +360,7 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
         }
 
     MPI_File fh;
-    if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
         return 1;
 
     // select noncontiguous part of 3d array to store the selected data
@@ -373,7 +379,7 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
     if (MPI_File_close(&fh))
         return 1;
 
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
 
     return 0;
 }
@@ -381,7 +387,8 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
 template<typename TF>
 int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
 {
-    const auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
     const int jj  = gd.icells;
@@ -395,7 +402,7 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
     int count = gd.imax*gd.jmax;
 
     MPI_File fh;
-    if (MPI_File_open(master.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
         return 1;
 
     // select noncontiguous part of 3d array to store the selected data
@@ -412,7 +419,7 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
     if (MPI_File_close(&fh))
         return 1;
 
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
 
     for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
@@ -443,6 +450,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         char* filename, const TF offset)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     FILE *pFile;
     pFile = fopen(filename, "wbx");

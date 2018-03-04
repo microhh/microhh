@@ -90,31 +90,33 @@ Grid<TF>::~Grid()
 template<typename TF>
 void Grid<TF>::init()
 {
+    auto& md = master.get_MPI_data();
+
     // Check whether the grid fits the processor configuration.
-    if (gd.itot % master.npx != 0)
+    if (gd.itot % md.npx != 0)
     {
-        master.print_error("itot = %d is not a multiple of npx = %d\n", gd.itot, master.npx);
+        master.print_error("itot = %d is not a multiple of npx = %d\n", gd.itot, md.npx);
         throw 1;
     }
-    if (gd.itot % master.npy != 0)
+    if (gd.itot % md.npy != 0)
     {
-        master.print_error("itot = %d is not a multiple of npy = %d\n", gd.itot, master.npy);
+        master.print_error("itot = %d is not a multiple of npy = %d\n", gd.itot, md.npy);
         throw 1;
     }
     // Check this one only when npy > 1, since the transpose in that direction only happens then.
-    if (gd.jtot % master.npx != 0)
+    if (gd.jtot % md.npx != 0)
     {
-        master.print_error("jtot = %d is not a multiple of npx = %d\n", gd.jtot, master.npx);
+        master.print_error("jtot = %d is not a multiple of npx = %d\n", gd.jtot, md.npx);
         throw 1;
     }
-    if (gd.jtot % master.npy != 0)
+    if (gd.jtot % md.npy != 0)
     {
-        master.print_error("jtot = %d is not a multiple of npy = %d\n", gd.jtot, master.npy);
+        master.print_error("jtot = %d is not a multiple of npy = %d\n", gd.jtot, md.npy);
         throw 1;
     }
-    if (gd.ktot % master.npx != 0)
+    if (gd.ktot % md.npx != 0)
     {
-        master.print_error("ERROR ktot = %d is not a multiple of npx = %d\n", gd.ktot, master.npx);
+        master.print_error("ERROR ktot = %d is not a multiple of npx = %d\n", gd.ktot, md.npx);
         throw 1;
     }
 
@@ -122,15 +124,15 @@ void Grid<TF>::init()
     gd.ntot = gd.itot*gd.jtot*gd.ktot;
 
     // Calculate the grid dimensions per process.
-    gd.imax = gd.itot / master.npx;
-    gd.jmax = gd.jtot / master.npy;
+    gd.imax = gd.itot / md.npx;
+    gd.jmax = gd.jtot / md.npy;
     gd.kmax = gd.ktot;
     gd.nmax = gd.imax*gd.jmax*gd.kmax;
 
     // Calculate the block sizes for the transposes.
-    gd.iblock = gd.itot / master.npy;
-    gd.jblock = gd.jtot / master.npx;
-    gd.kblock = gd.ktot / master.npx;
+    gd.iblock = gd.itot / md.npy;
+    gd.jblock = gd.jtot / md.npx;
+    gd.kblock = gd.ktot / md.npx;
 
     // Calculate the grid dimensions including ghost cells.
     gd.icells  = (gd.imax+2*gd.igc);
@@ -199,7 +201,7 @@ void Grid<TF>::create(Data_block& profs)
 template<typename TF>
 void Grid<TF>::calculate()
 {
-    int i,j,k;
+    auto& md = master.get_MPI_data();
 
     // calculate the grid spacing
     gd.dx  = gd.xsize / gd.itot;
@@ -208,17 +210,17 @@ void Grid<TF>::calculate()
     gd.dyi = 1./gd.dy;
 
     // calculate the offset per process to get the true x- and y-coordinate
-    double xoff = master.mpicoordx * gd.xsize / master.npx;
-    double yoff = master.mpicoordy * gd.ysize / master.npy;
+    double xoff = md.mpicoordx * gd.xsize / md.npx;
+    double yoff = md.mpicoordy * gd.ysize / md.npy;
 
     // calculate the x and y coordinates
-    for (i=0; i<gd.icells; ++i)
+    for (int i=0; i<gd.icells; ++i)
     {
         gd.x [i] = 0.5*gd.dx + (i-gd.igc)*gd.dx + xoff;
         gd.xh[i] = (i-gd.igc)*gd.dx + xoff;
     }
 
-    for (j=0; j<gd.jcells; ++j)
+    for (int j=0; j<gd.jcells; ++j)
     {
         gd.y [j] = 0.5*gd.dy + (j-gd.jgc)*gd.dy + yoff;
         gd.yh[j] = (j-gd.jgc)*gd.dy + yoff;
@@ -230,14 +232,14 @@ void Grid<TF>::calculate()
         gd.z[gd.kstart-1] = -gd.z[gd.kstart];
         gd.z[gd.kend]     = 2.*gd.zsize - gd.z[gd.kend-1];
 
-        for (k=gd.kstart+1; k<gd.kend; ++k)
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
             gd.zh[k] = 0.5*(gd.z[k-1]+gd.z[k]);
         gd.zh[gd.kstart] = 0.;
         gd.zh[gd.kend]   = gd.zsize;
 
         // calculate the half levels according to the numerical scheme
         // compute the height of the grid cells
-        for (k=1; k<gd.kcells; ++k)
+        for (int k=1; k<gd.kcells; ++k)
         {
             gd.dzh [k] = gd.z[k] - gd.z[k-1];
             gd.dzhi[k] = 1./gd.dzh[k];
@@ -246,7 +248,7 @@ void Grid<TF>::calculate()
         gd.dzhi[gd.kstart-1] = gd.dzhi[gd.kstart+1];
 
         // compute the height of the grid cells
-        for (k=1; k<gd.kcells-1; ++k)
+        for (int k=1; k<gd.kcells-1; ++k)
         {
             gd.dz [k] = gd.zh[k+1] - gd.zh[k];
             gd.dzi[k] = 1./gd.dz[k];
@@ -275,7 +277,7 @@ void Grid<TF>::calculate()
         gd.z[gd.kend+2  ] = Constants::dhuge;
 
         gd.zh[gd.kstart] = 0.;
-        for (k=gd.kstart+1; k<gd.kend; ++k)
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
             gd.zh[k] = ci0*gd.z[k-2] + ci1*gd.z[k-1] + ci2*gd.z[k] + ci3*gd.z[k+1];
         gd.zh[gd.kend] = gd.zsize;
 
@@ -284,7 +286,7 @@ void Grid<TF>::calculate()
 
         // calculate the half levels according to the numerical scheme
         // compute the height of the grid cells
-        for (k=1; k<gd.kcells; ++k)
+        for (int k=1; k<gd.kcells; ++k)
         {
             gd.dzh [k] = gd.z[k] - gd.z[k-1];
             gd.dzhi[k] = 1./gd.dzh[k];
@@ -293,7 +295,7 @@ void Grid<TF>::calculate()
         gd.dzhi[gd.kstart-3] = gd.dzhi[gd.kstart+3];
 
         // compute the height of the grid cells
-        for (k=1; k<gd.kcells-1; ++k)
+        for (int k=1; k<gd.kcells-1; ++k)
         {
             gd.dz [k] = gd.zh[k+1] - gd.zh[k];
             gd.dzi[k] = 1./gd.dz[k];
@@ -304,7 +306,7 @@ void Grid<TF>::calculate()
         gd.dzi[gd.kend+2] = gd.dzi[gd.kend-3];
 
         // calculate the fourth order gradients
-        for (k=gd.kstart; k<gd.kend; ++k)
+        for (int k=gd.kstart; k<gd.kend; ++k)
         {
             gd.dzi4 [k] = 1./(cg0*gd.zh[k-1] + cg1*gd.zh[k  ] + cg2*gd.zh[k+1] + cg3*gd.zh[k+2]);
             gd.dzhi4[k] = 1./(cg0*gd.z [k-2] + cg1*gd.z [k-1] + cg2*gd.z [k  ] + cg3*gd.z [k+1]);

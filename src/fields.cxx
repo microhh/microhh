@@ -716,7 +716,7 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
     if (!seed)
     {
         seed = input.get_item<int>("fields", "rndseed", "", 0);
-        seed += master.mpiid + 2;
+        seed += master.get_mpiid() + 2;
         std::srand(seed);
     }
 

@@ -37,16 +37,18 @@ namespace
 template<typename TF>
 void Grid<TF>::init_mpi()
 {
+    auto& md = master.get_MPI_data();
+
     // file saving and loading, take C-ordering into account
     int totsizei  = gd.itot;
     int subsizei  = gd.imax;
-    int substarti = master.mpicoordx*gd.imax;
+    int substarti = md.mpicoordx*gd.imax;
     MPI_Type_create_subarray(1, &totsizei, &subsizei, &substarti, MPI_ORDER_C, mpi_fp_type<TF>(), &subi);
     MPI_Type_commit(&subi);
 
     int totsizej  = gd.jtot;
     int subsizej  = gd.jmax;
-    int substartj = master.mpicoordy*gd.jmax;
+    int substartj = md.mpicoordy*gd.jmax;
     MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, mpi_fp_type<TF>(), &subj);
     MPI_Type_commit(&subj);
 
@@ -66,12 +68,14 @@ void Grid<TF>::exit_mpi()
 template<typename TF>
 void Grid<TF>::save_grid()
 {
+    auto& md = master.get_MPI_data();
+
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
     master.print_message("Saving \"%s\" ... ", filename);
 
     MPI_File fh;
-    if (MPI_File_open(master.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     {
         master.print_message("FAILED\n");
         throw 1;
@@ -82,33 +86,33 @@ void Grid<TF>::save_grid()
     char name[] = "native";
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subi, name, MPI_INFO_NULL);
-    if (master.mpicoordy == 0)
+    if (md.mpicoordy == 0)
         MPI_File_write(fh, &gd.x[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
     fileoff += gd.itot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subi, name, MPI_INFO_NULL);
-    if (master.mpicoordy == 0)
+    if (md.mpicoordy == 0)
         MPI_File_write(fh, &gd.xh[gd.istart], gd.imax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
     fileoff += gd.itot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
-    if (master.mpicoordx == 0)
+    if (md.mpicoordx == 0)
         MPI_File_write(fh, &gd.y[gd.jstart], gd.jmax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
     fileoff += gd.jtot*sizeof(TF);
 
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subj, name, MPI_INFO_NULL);
-    if (master.mpicoordx == 0)
+    if (md.mpicoordx == 0)
         MPI_File_write(fh, &gd.yh[gd.jstart], gd.jmax, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
-    MPI_Barrier(master.commxy);
+    MPI_Barrier(md.commxy);
 
     MPI_File_sync(fh);
     if (MPI_File_close(&fh))
         throw 1;
 
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         FILE *pFile;
         pFile = fopen(filename, "ab");
@@ -124,15 +128,18 @@ void Grid<TF>::save_grid()
 template<typename TF>
 void Grid<TF>::load_grid()
 {
+    auto& md = master.get_MPI_data();
+
     int nerror = 0;
 
     // LOAD THE GRID
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
-    if (master.mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    if (master.get_mpiid() == 0)
+        std::printf("Loading \"%s\" ... ", filename);
 
     FILE *pFile;
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         pFile = fopen(filename, "rb");
         if (pFile == NULL)

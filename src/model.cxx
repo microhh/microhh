@@ -546,7 +546,7 @@ void Model<TF>::print_status()
     {
         start = master.get_wall_clock_time();
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::string outputname = sim_name + ".out";
             dnsout = std::fopen(outputname.c_str(), "a");
@@ -578,7 +578,7 @@ void Model<TF>::print_status()
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);

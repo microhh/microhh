@@ -118,6 +118,7 @@ template<typename TF>
 void Transpose<TF>::exec_zx(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -125,15 +126,15 @@ void Transpose<TF>::exec_zx(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.imax;
     const int kk = gd.imax*gd.jmax;
 
-    for (int n=0; n<master.npx; ++n)
+    for (int n=0; n<md.npx; ++n)
     {
         // Determine where to fetch the data and where to store it.
         const int ijks = n*gd.kblock*kk;
         const int ijkr = n*jj;
 
         // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposez, n, tag, md.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, md.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -143,6 +144,7 @@ template<typename TF>
 void Transpose<TF>::exec_xz(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -150,15 +152,15 @@ void Transpose<TF>::exec_xz(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.imax;
     const int kk = gd.imax*gd.jmax;
 
-    for (int n=0; n<master.npx; ++n)
+    for (int n=0; n<md.npx; ++n)
     {
         // Determine where to fetch the data and where to store it.
         const int ijks = n*jj;
         const int ijkr = n*gd.kblock*kk;
 
         // Send and receive the data.
-        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master.commx, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposex, n, tag, md.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, md.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -168,6 +170,7 @@ template<typename TF>
 void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -175,15 +178,15 @@ void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jmax;
 
-    for (int n=0; n<master.npy; ++n)
+    for (int n=0; n<md.npy; ++n)
     {
         // determine where to fetch the data and where to store it
         const int ijks = n*jj;
         const int ijkr = n*kk;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, md.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, md.commy, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -193,6 +196,7 @@ template<typename TF>
 void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -200,15 +204,15 @@ void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jmax;
 
-    for (int n=0; n<master.npy; ++n)
+    for (int n=0; n<md.npy; ++n)
     {
         // determine where to fetch the data and where to store it
         const int ijks = n*kk;
         const int ijkr = n*jj;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master.commy, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposey , n, tag, md.commy, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, md.commy, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -218,6 +222,7 @@ template<typename TF>
 void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -225,15 +230,15 @@ void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jblock;
 
-    for (int n=0; n<master.npx; ++n)
+    for (int n=0; n<md.npx; ++n)
     {
         // determine where to fetch the data and where to store it
         const int ijks = n*gd.jblock*jj;
         const int ijkr = n*gd.kblock*kk;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, md.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, md.commx, master.get_request_ptr());
     }
 
     master.wait_all();
@@ -243,6 +248,7 @@ template<typename TF>
 void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int ncount = 1;
     const int tag = 1;
@@ -250,15 +256,15 @@ void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jblock;
 
-    for (int n=0; n<master.npx; ++n)
+    for (int n=0; n<md.npx; ++n)
     {
         // determine where to fetch the data and where to store it
         const int ijks = n*gd.kblock*kk;
         const int ijkr = n*gd.jblock*jj;
 
         // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master.commx, master.get_request_ptr());
+        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, md.commx, master.get_request_ptr());
+        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, md.commx, master.get_request_ptr());
     }
 
     master.wait_all();

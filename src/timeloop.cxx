@@ -369,7 +369,7 @@ void Timeloop<TF>::save(int starttime)
 {
     int nerror = 0;
 
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         char filename[256];
         std::sprintf(filename, "time.%07d", starttime);
@@ -406,7 +406,7 @@ void Timeloop<TF>::load(int starttime)
 {
     int nerror = 0;
 
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         char filename[256];
         std::sprintf(filename, "time.%07d", starttime);

@@ -254,7 +254,8 @@ template<typename TF>
 void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* const restrict b,
                        const TF* const restrict dz, const TF* const restrict rhoref)
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int imax   = gd.imax;
     const int jmax   = gd.jmax;
@@ -281,8 +282,8 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
             for (i=0; i<iblock; i++)
             {
                 // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-                iindex = master.mpicoordy * iblock + i;
-                jindex = master.mpicoordx * jblock + j;
+                iindex = md.mpicoordy * iblock + i;
+                jindex = md.mpicoordx * jblock + j;
 
                 ijk  = i + j*jj + k*kk;
                 b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
@@ -293,8 +294,8 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
         #pragma ivdep
         for (i=0; i<iblock; i++)
         {
-            iindex = master.mpicoordy * iblock + i;
-            jindex = master.mpicoordx * jblock + j;
+            iindex = md.mpicoordy * iblock + i;
+            jindex = md.mpicoordx * jblock + j;
 
             // substitute BC's
             ijk = i + j*jj;

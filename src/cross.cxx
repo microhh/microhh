@@ -271,7 +271,9 @@ void Cross<TF>::create()
 {
     int nerror = 0;
     int temploc, temploch, hoffset;
+
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // Find nearest full and half grid locations of xz cross-sections.
     for (auto& it: xz)
@@ -292,12 +294,12 @@ void Cross<TF>::create()
 
             // Find the corresponding index, make sure to handle MPI properly.
             TF ycross = -1.;
-            if (temploc / gd.jmax == master.mpicoordy)
+            if (temploc / gd.jmax == md.mpicoordy)
                 ycross = gd.y[temploc % gd.jmax + gd.jgc];
             master.max(&ycross, 1);
 
             TF ycrossh = -1.;
-            if (temploch / gd.jmax == master.mpicoordy)
+            if (temploch / gd.jmax == md.mpicoordy)
                 ycrossh = gd.y[temploch % gd.jmax + gd.jgc];
             master.max(&ycrossh, 1);
 
@@ -337,12 +339,12 @@ void Cross<TF>::create()
 
             // Find the corresponding index, make sure to handle MPI properly.
             TF xcross = -1.;
-            if (temploc / gd.imax == master.mpicoordx)
+            if (temploc / gd.imax == md.mpicoordx)
                 xcross = gd.x[temploc % gd.imax + gd.igc];
             master.max(&xcross, 1);
 
             TF xcrossh = -1.;
-            if (temploch / gd.imax == master.mpicoordx)
+            if (temploch / gd.imax == md.mpicoordx)
                 xcrossh = gd.x[temploch % gd.imax + gd.igc];
             master.max(&xcrossh, 1);
 

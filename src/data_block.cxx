@@ -58,7 +58,7 @@ Data_block::Data_block(Master& master, const std::string& file_name) : master(ma
     std::ifstream infile;
 
     int open_error = false;
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         infile.open(file_name);
         if (!infile)

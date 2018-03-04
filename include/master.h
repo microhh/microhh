@@ -31,6 +31,27 @@
 
 class Input;
 
+struct MPI_data
+{
+    int nprocs;
+    int npx;
+    int npy;
+    int mpiid;
+    int mpicoordx;
+    int mpicoordy;
+
+    #ifdef USEMPI
+    int nnorth;
+    int nsouth;
+    int neast;
+    int nwest;
+
+    MPI_Comm commxy;
+    MPI_Comm commx;
+    MPI_Comm commy;
+    #endif
+};
+
 class Master
 {
     public:
@@ -74,23 +95,10 @@ class Master
 
         void print_error  (const char *format, ...);
 
-        int nprocs;
-        int npx;
-        int npy;
-        int mpiid;
-        int mpicoordx;
-        int mpicoordy;
+        int get_mpiid() const { return md.mpiid; }
+        const MPI_data& get_MPI_data() const { return md; }
 
         #ifdef USEMPI
-        int nnorth;
-        int nsouth;
-        int neast;
-        int nwest;
-
-        MPI_Comm commxy;
-        MPI_Comm commx;
-        MPI_Comm commy;
-
         MPI_Request* get_request_ptr();
         void wait_all();
         #endif
@@ -101,6 +109,8 @@ class Master
 
         double wall_clock_start;
         double wall_clock_end;
+
+        MPI_data md;
 
         #ifdef USEMPI
         MPI_Request* reqs;

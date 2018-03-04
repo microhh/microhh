@@ -94,7 +94,7 @@ void Column<TF>::create(int iotime, std::string sim_name)
     auto& gd = grid.get_grid_data();
 
     // create a NetCDF file for the statistics
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         std::stringstream filename;
         filename << sim_name << "." << "column" << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
@@ -116,7 +116,7 @@ void Column<TF>::create(int iotime, std::string sim_name)
         throw 1;
 
     // create dimensions
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         z_dim  = data_file->addDim("z" , gd.kmax);
         zh_dim = data_file->addDim("zh", gd.kmax+1);
@@ -195,7 +195,7 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
     master.print_message("Saving column for time %f\n", time);
 
     // put the data into the NetCDF file
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
 
@@ -223,7 +223,7 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
 {
     auto& gd = grid.get_grid_data();
     // create the NetCDF variable
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         std::vector<NcDim> dim_vector = {t_dim};
 

@@ -129,7 +129,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     {
         Mask<TF>& m = mask.second;
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::stringstream filename;
             filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
@@ -153,7 +153,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             throw 1;
 
         // Create dimensions.
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             m.z_dim  = m.data_file->addDim("z" , gd.kmax);
             m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
@@ -243,7 +243,7 @@ void Stats<TF>::exec(int iteration, double time, unsigned long itime)
         Mask<TF>& m = mask.second;
 
         // Put the data into the NetCDF file
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
 
@@ -303,7 +303,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         Mask<TF>& m = mask.second;
 
         // Create the NetCDF variable
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::vector<NcDim> dim_vector = {m.t_dim};
 

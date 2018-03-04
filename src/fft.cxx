@@ -219,7 +219,7 @@ void FFT<double>::save()
 
     has_fftw_plan = true;
 
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", "fftwplan", 0);
@@ -264,7 +264,7 @@ void FFT<float>::save()
 
     has_fftw_plan = true;
 
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", "fftwplan", 0);
