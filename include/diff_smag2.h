@@ -33,7 +33,7 @@ class Diff_smag2 : public Diff<TF>
         Diff_smag2(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Diff_smag2();
 
-        Diffusion_type get_switch();
+        Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 

@@ -210,7 +210,7 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
-    fields->create_stats(*stats);
+    fields->create_stats(*stats, *diff);
     fields->create_column(*column);
 
     boundary->create(*input);
@@ -457,7 +457,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             }
 
             // Calculate statistics
-            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
             //thermo  ->exec_stats(&stats->masks[maskname]);
             //budget  ->exec_stats(&stats->masks[maskname]);
             //boundary->exec_stats(&stats->masks[maskname]);

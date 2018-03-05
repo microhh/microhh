@@ -98,7 +98,7 @@ Diff_2<TF>::~Diff_2()
 }
 
 template <typename TF>
-Diffusion_type Diff_2<TF>::get_switch()
+Diffusion_type Diff_2<TF>::get_switch() const
 {
     return swdiff;
 }

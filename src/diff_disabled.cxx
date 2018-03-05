@@ -45,7 +45,7 @@ Diff_disabled<TF>::~Diff_disabled()
 }
 
 template <typename TF>
-Diffusion_type Diff_disabled<TF>::get_switch()
+Diffusion_type Diff_disabled<TF>::get_switch() const
 {
     return swdiff;
 }

@@ -39,7 +39,7 @@
 #include "column.h"
 #include "cross.h"
 #include "dump.h"
-// #include "diff_smag2.h"
+#include "diff.h"
 
 namespace
 {
@@ -380,7 +380,8 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh)
+void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
+        const Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -553,8 +554,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     for (auto& it : sp)
         stats.add_fluxes(m.profs[it.first+"flux"].data.data(), m.profs[it.first+"w"].data.data(), m.profs[it.first+"diff"].data.data());
 
-    //if (model->diff->get_switch() == "smag2")
-    //    stats.calc_mean(m.profs["evisc"].data, sd["evisc"]->data, no_offset, sloc, atmp["tmp3"]->data, stats.nmask);
+    if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
     release_tmp(tmp1);
     release_tmp(tmp2);
@@ -862,7 +863,7 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 //}
 
 template <typename TF>
-void Fields<TF>::create_stats(Stats<TF>& stats)
+void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
 {
     // Add the profiles to te statistics
     if (stats.get_switch())
@@ -884,8 +885,8 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
 
 //        // CvH, shouldn't this call be in the diffusion class? BvS: yes ;-)
-//        if (model->diff->get_switch() == "smag2")
-//            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
 
         // Add the second up to fourth moments of the velocity and scalars
         for (int n=2; n<5; ++n)

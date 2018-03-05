@@ -544,7 +544,7 @@ Diff_smag2<TF>::~Diff_smag2()
 }
 
 template <typename TF>
-Diffusion_type Diff_smag2<TF>::get_switch()
+Diffusion_type Diff_smag2<TF>::get_switch() const
 {
     return swdiff;
 }
