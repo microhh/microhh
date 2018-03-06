@@ -302,7 +302,7 @@ void Force::exec(double dt)
     if (swls == "1")
     {
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-            calc_large_scale_source(fields->st[*it]->data, lsprofs[*it]);
+            calc_large_scale_source(fields->at[*it]->data, lsprofs[*it]);
     }
 
     if (swwls == "1")
