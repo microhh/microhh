@@ -47,11 +47,13 @@ Force::Force(Model* modelin, Input* inputin)
     vg  = 0;
     wls = 0;
     nudge_factor = 0;
+    timedepdata_wls = 0;
 
     ug_g  = 0;
     vg_g  = 0;
     wls_g = 0;
     nudge_factor_g = 0;
+    timedepdata_wls_g = 0;
 
     int nerror = 0;
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
@@ -302,7 +304,7 @@ void Force::exec(double dt)
     if (swls == "1")
     {
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-            calc_large_scale_source(fields->st[*it]->data, lsprofs[*it]);
+            calc_large_scale_source(fields->at[*it]->data, lsprofs[*it]);
     }
 
     if (swwls == "1")
@@ -486,7 +488,7 @@ void Force::calc_coriolis_4th(double* const restrict ut, double* const restrict 
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
@@ -499,7 +501,7 @@ void Force::calc_coriolis_4th(double* const restrict ut, double* const restrict 
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
