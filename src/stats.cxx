@@ -331,40 +331,41 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     }
 }
 
-//void Stats::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, double* restrict prof)
-//{
-//    // add the profile to all files
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
-//
-//        // create the NetCDF variable
-//        if (master->mpiid == 0)
-//        {
-//            NcVar var;
-//            if (zloc == "z")
-//                var = m->dataFile->addVar(name.c_str(), ncDouble, m->z_dim);
-//            else if (zloc == "zh")
-//                var = m->dataFile->addVar(name.c_str(), ncDouble, m->zh_dim);
-//            var.putAtt("units", unit.c_str());
-//            var.putAtt("long_name", longname.c_str());
-//            var.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
-//
-//            const std::vector<size_t> index = {0};
-//            if (zloc == "z")
-//            {
-//                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax)};
-//                var.putVar(index, size, &prof[grid->kstart]);
-//            }
-//            else if (zloc == "zh")
-//            {
-//                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax+1)};
-//                var.putVar(index, size, &prof[grid->kstart]);
-//            }
-//        }
-//    }
-//}
+template<typename TF>
+void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, TF* restrict prof)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable
+        if (master.get_mpiid() == 0)
+        {
+           NcVar var;
+           if (zloc == "z")
+               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
+           else if (zloc == "zh")
+               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
+           var.putAtt("units", unit.c_str());
+           var.putAtt("long_name", longname.c_str());
+           var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+           const std::vector<size_t> index = {0};
+           if (zloc == "z")
+           {
+               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
+               var.putVar(index, size, &prof[gd.kstart]);
+           }
+           else if (zloc == "zh")
+           {
+               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
+               var.putVar(index, size, &prof[gd.kstart]);
+           }
+       }
+   }
+}
 //
 //void Stats::add_time_series(std::string name, std::string longname, std::string unit)
 //{

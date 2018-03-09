@@ -41,6 +41,7 @@ template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
 template<typename> class Force;
+template<typename> class Thermo;
 template<typename> class Decay;
 
 template<typename> class Stats;
@@ -79,6 +80,7 @@ class Model
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
         std::shared_ptr<Force<TF>> force;
+        std::shared_ptr<Thermo<TF>> thermo;
         std::shared_ptr<Decay<TF>> decay;
 
         std::shared_ptr<Stats<TF>> stats;

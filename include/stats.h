@@ -100,7 +100,7 @@ class Stats
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string);
 
-        //void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
+        void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         //void add_time_series(std::string, std::string, std::string);
 
         void calc_area(TF*, const int[3], int*);

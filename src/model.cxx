@@ -36,6 +36,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "thermo.h"
 #include "decay.h"
 #include "stats.h"
 #include "column.h"
@@ -111,6 +112,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
+        thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
 
         force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
         decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
@@ -162,6 +164,7 @@ void Model<TF>::init()
     boundary->init(*input);
     pres->init();
     force->init();
+    thermo->init();
     decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
@@ -215,6 +218,7 @@ void Model<TF>::load()
 
     boundary->create(*input);
     force->create(*input);
+    thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     decay->create(*input);
 
     pres->set_values();
@@ -282,7 +286,7 @@ void Model<TF>::exec()
         diff->exec();
 
         // Calculate the thermodynamics and the buoyancy tendency.
-        // thermo->exec();
+        thermo->exec();
 
         // Calculate the tendency due to damping in the buffer layer.
         // buffer->exec();
@@ -308,7 +312,7 @@ void Model<TF>::exec()
                     t_stat.join();
                 fields  ->backward_device();
                 //boundary->backward_device();
-                // thermo  ->backward_device();
+                //thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
                         timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
@@ -458,7 +462,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
             // Calculate statistics
             fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
-            //thermo  ->exec_stats(&stats->masks[maskname]);
+            thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
             //budget  ->exec_stats(&stats->masks[maskname]);
             //boundary->exec_stats(&stats->masks[maskname]);
             //
@@ -474,19 +478,19 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
    if(cross->do_cross(itime))
     {
         fields  ->exec_cross(*cross, iotime);
-//        thermo  ->exec_cross(iotime);
+        thermo  ->exec_cross(*cross, iotime);
 //        boundary->exec_cross(iotime);
     }
    // Save the 3d dumps to disk
     if(dump->do_dump(itime))
     {
         fields->exec_dump(*dump, iotime);
-//        thermo->exec_dump(iotime);
+        thermo->exec_dump(*dump, iotime);
     }
     if(column->do_column(itime))
     {
         fields->exec_column(*column);
-//        thermo->exec_column();
+        thermo->exec_column(*column);
         column->exec(iteration, time, itime);
     }
 }
@@ -502,7 +506,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit();
     timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
