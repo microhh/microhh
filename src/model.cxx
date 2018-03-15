@@ -312,7 +312,7 @@ void Model<TF>::exec()
                     t_stat.join();
                 fields  ->backward_device();
                 //boundary->backward_device();
-                //thermo  ->backward_device();
+                thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
                         timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
@@ -346,7 +346,7 @@ void Model<TF>::exec()
 
                 fields  ->backward_device();
                 // boundary->backward_device();
-                // thermo  ->backward_device();
+                thermo  ->backward_device();
                 #endif
 
                 // Save data to disk.
@@ -394,7 +394,7 @@ void Model<TF>::exec()
             t_stat.join();
         fields  ->backward_device();
         // boundary->backward_device();
-        //thermo  ->backward_device();
+        thermo  ->backward_device();
 
         clear_gpu();
         #endif

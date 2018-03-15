@@ -58,7 +58,7 @@ class Thermo_disabled : public Thermo<TF>
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {}
+        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
         void get_prog_vars(std::vector<std::string>) {};
         void update_time_dependent() {};
         TF get_buoyancy_diffusivity();

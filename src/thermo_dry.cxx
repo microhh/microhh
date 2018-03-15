@@ -226,7 +226,6 @@ Thermo_dry<TF>::~Thermo_dry()
 #endif
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::init()
 {
@@ -239,7 +238,6 @@ void Thermo_dry<TF>::init()
     bs.exnref.resize(gd.kcells);
     bs.exnrefh.resize(gd.kcells);
 }
-#endif
 
 template<typename TF>
 void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
@@ -326,7 +324,8 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
                                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
     else
-        throw 1;
+        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
+        throw std::runtime_error("Illegal thermo field");
 
     if (cyclic)
         boundary_cyclic.exec(fld.fld.data());
@@ -558,7 +557,9 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             fields.release_tmp(b);
         }
         else
-            throw 1;
+            master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
+            throw std::runtime_error("Error in Thermo Dump");
+
     }
 }
 
