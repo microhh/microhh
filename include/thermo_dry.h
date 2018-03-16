@@ -36,7 +36,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 class Data_block;
 
-template<typename> struct Mask;
 
 /**
  * Class for the dry thermodynamics.
@@ -44,7 +43,7 @@ template<typename> struct Mask;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
- template<typename TF>
+template<typename TF>
 class Thermo_dry : public Thermo<TF>
 {
     public:
@@ -88,9 +87,6 @@ class Thermo_dry : public Thermo<TF>
 
         Boundary_cyclic<TF> boundary_cyclic;
 
-        //void calc_buoyancy(TF *, TF *, TF *, const int, const int, const int, const int, const int, const int, const int);     ///< Calculation of the buoyancy.
-        //void calc_N2(TF *, TF *, TF *, TF *, const int, const int, const int, const int, const int, const int, const int); ///< Calculation of the Brunt-Vaissala frequency.
-
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
@@ -99,20 +95,7 @@ class Thermo_dry : public Thermo<TF>
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
-/*
-        void calc_buoyancy_bot(TF *, TF *, TF *, TF *, TF *, TF *,
-                               const int, const int, const int, const int); ///< Calculation of the near-surface and surface buoyancy.
-        void calc_buoyancy_fluxbot(TF *, TF *, TF *,
-                                    const int, const int, const int, const int);  ///< Calculation of the buoyancy flux at the bottom.
-        void calc_buoyancy_tend_2nd(TF *, TF *, TF *,
-            const int, const int, const int, const int, const int, const int, const int, const int); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-        void calc_buoyancy_tend_4th(TF *, TF *, TF *,
-            const int, const int, const int, const int, const int, const int, const int, const int); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
-        void calc_base_state(TF *, TF *, TF *, TF *, TF *, TF *, TF *, TF *, TF,
-            const TF* const, const TF* const, const TF* const, const TF* const, const TF* const,
-            const int, const int, const int); ///< For anelastic setup, calculate base state from initial input profiles
-*/
         struct background_state
         {
             std::string swbasestate;

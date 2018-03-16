@@ -28,7 +28,7 @@
 #include "input.h"
 // thermo schemes
 #include "thermo.h"
-//#include "thermo_buoy.h"
+#include "thermo_buoy.h"
 #include "thermo_dry.h"
 //#include "thermo_moist.h"
 //#include "thermo_vapor.h"
