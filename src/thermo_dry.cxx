@@ -40,7 +40,6 @@
 #include "thermo_dry.h"
 #include "thermo_moist_functions.h"  // For Exner function
 
-
 using Finite_difference::O4::interp4;
 using namespace Constants;
 using namespace Thermo_moist_functions;
@@ -54,7 +53,7 @@ namespace
     {
         for (int k=0; k<kcells; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -69,7 +68,7 @@ namespace
     {
         for (int k=0; k<kcells; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -85,7 +84,7 @@ namespace
                                        const int ijcells)
     {
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ij  = i + j*icells;
@@ -101,7 +100,7 @@ namespace
                                        const int ijcells)
     {
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ij = i + j*icells;
@@ -111,14 +110,14 @@ namespace
 
     template<typename TF>
     void calc_buoyancy_tend_2nd(TF* const restrict wt, const TF* const restrict th, const TF* const restrict threfh,
-                                        const int istart, const int iend, const int jstart, const int jend, const int kstart , const int kend,
-                                        const int icells, const int ijcells)
+                                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                                const int icells, const int ijcells)
     {
         using Finite_difference::O2::interp2;
 
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -128,15 +127,15 @@ namespace
 
     template<typename TF>
     void calc_buoyancy_tend_4th(TF* const restrict wt, const TF* const restrict th, const TF* const restrict threfh,
-                                        const int istart, const int iend, const int jstart, const int jend, const int kstart , const int kend,
-                                        const int icells, const int ijcells)
+                                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                                const int icells, const int ijcells)
     {
         using Finite_difference::O4::interp4;
 
         const int ijcells2 = 2*ijcells;
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -259,7 +258,6 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     {
         bs.thref0 = inputin.get_item<TF>("thermo", "thref0", "");
 
-
         // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx
         for (int k=0; k<gd.kcells; ++k)
         {
@@ -276,7 +274,6 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     create_column(column);
     create_dump(dump);
     create_cross(cross);
-
 }
 
 #ifndef USECUDA
@@ -287,12 +284,12 @@ void Thermo_dry<TF>::exec()
 
     if (grid.swspatialorder== "2")
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
-                                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart , gd.kend,
-                                            gd.icells, gd.ijcells);
+                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                               gd.icells, gd.ijcells);
     else if (grid.swspatialorder == "4")
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
-                                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart , gd.kend,
-                                            gd.icells, gd.ijcells);
+                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                               gd.icells, gd.ijcells);
 }
 #endif
 
@@ -319,10 +316,10 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
 
     if (name == "b")
         calc_buoyancy(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.thref.data(),
-                                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
+                      gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "N2")
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
-                                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else
     {
         master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
@@ -341,7 +338,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
     auto& gd = grid.get_grid_data();
 
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
-                        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 #endif
 
@@ -351,10 +348,11 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(), bs.thref.data(), bs.threfh.data(),
-                        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
+                      bs.thref.data(), bs.threfh.data(),
+                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
-                        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 #endif
 
@@ -368,7 +366,7 @@ template<typename TF>
 TF Thermo_dry<TF>::get_buoyancy_diffusivity()
 {
     // Use the diffusivity from theta
-    return fields.sp["th"]->visc;
+    return fields.sp.at("th")->visc;
 }
 
 template <typename TF>
@@ -402,18 +400,15 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
         stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
-
     }
 }
 
 template<typename TF>
 void Thermo_dry<TF>::create_column(Column<TF>& column)
 {
-
     // add the profiles to the columns
     if (column.get_switch())
         column.add_prof("b", "Buoyancy", "m s-2", "z");
-
 }
 
 template<typename TF>

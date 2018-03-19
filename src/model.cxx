@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -221,6 +221,7 @@ void Model<TF>::load()
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     decay->create(*input);
 
+    boundary->set_values();
     pres->set_values();
     diff->set_values();
 }
