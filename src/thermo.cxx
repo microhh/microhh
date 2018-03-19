@@ -59,13 +59,14 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(Master& masterin, Grid<TF>& grid
         return std::make_shared<Thermo_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "dry")
         return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin);
-/*    if (swthermo == "moist")
+/*  if (swthermo == "moist")
         return new Thermo_moist(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "vapor")
         return new Thermo_vapor(masterin, gridin, fieldsin, inputin);
+*/
     else if (swthermo == "buoy")
-        return new Thermo_buoy(masterin, gridin, fieldsin, inputin);
-*/    else
+        return std::make_shared<Thermo_buoy<TF>>(masterin, gridin, fieldsin, inputin);
+    else
     {
         masterin.print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
         throw std::runtime_error("Illegal options swthermo");

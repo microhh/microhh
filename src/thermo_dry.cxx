@@ -566,7 +566,7 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     // Buoyancy
     auto b = fields.get_tmp();
     calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
+                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
     column.calc_column("b",b->fld.data() , no_offset);
     fields.release_tmp(b);
 }

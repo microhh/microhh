@@ -67,7 +67,7 @@ class Thermo_buoy : public Thermo<TF>
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
-        void exec_column(Column<TF>&);
+        void exec_column(Column<TF>&) {};
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
         void update_time_dependent() {}
 
