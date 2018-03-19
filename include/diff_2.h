@@ -40,7 +40,7 @@ class Diff_2 : public Diff<TF>
         void exec();
 
         // Empty functions, these are allowed to pass.
-        void exec_viscosity() {}
+        void exec_viscosity(Thermo<TF>&) {}
 
         //#ifdef USECUDA
         //void prepare_device() {};

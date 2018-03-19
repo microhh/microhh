@@ -28,6 +28,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Thermo;
 
 enum class Diffusion_type {Disabled, Diff_2, Diff_smag2};
 
@@ -41,7 +42,7 @@ class Diff
         // Pure virtual functions below which have to be implemented by the derived class
         virtual Diffusion_type get_switch() const = 0;
         virtual void set_values() = 0;
-        virtual void exec_viscosity() = 0;
+        virtual void exec_viscosity(Thermo<TF>&) = 0;
         virtual void exec() = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
