@@ -48,8 +48,8 @@ namespace
 {
     template<typename TF>
     void calc_buoyancy(TF* const restrict b, const TF* const restrict th, const TF* const restrict thref,
-                                        const int istart, const int iend, const int jstart, const int jend,
-                                        const int icells, const int ijcells, const int kcells )
+                       const int istart, const int iend, const int jstart, const int jend,
+                       const int icells, const int ijcells, const int kcells )
     {
         for (int k=0; k<kcells; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -63,8 +63,8 @@ namespace
 
     template<typename TF>
     void calc_N2(TF* const restrict N2, const TF* const restrict th, const TF* const restrict dzi, const TF* const restrict thref,
-                                        const int istart, const int iend, const int jstart, const int jend,
-                                        const int icells, const int ijcells, const int kcells )
+                 const int istart, const int iend, const int jstart, const int jend,
+                 const int icells, const int ijcells, const int kcells )
     {
         for (int k=0; k<kcells; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -78,10 +78,10 @@ namespace
 
     template<typename TF>
     void calc_buoyancy_bot(TF* const restrict b , TF* const restrict bbot,
-                                       const TF* const restrict th, const TF* const restrict thbot,
-                                       const TF* const restrict thref, const TF* const restrict threfh,
-                                       const int icells, const int jcells, const int kstart,
-                                       const int ijcells)
+                           const TF* const restrict th, const TF* const restrict thbot,
+                           const TF* const restrict thref, const TF* const restrict threfh,
+                           const int icells, const int jcells, const int kstart,
+                           const int ijcells)
     {
         for (int j=0; j<jcells; ++j)
             #pragma ivdep
@@ -146,12 +146,12 @@ namespace
     // Initialize the base state for the anelastic solver
     template<typename TF>
     void calc_base_state(TF* const restrict rhoref,TF* const restrict rhorefh,
-                                     TF* const restrict pref,   TF* const restrict prefh,
-                                     TF* const restrict exnref, TF* const restrict exnrefh,
-                                     TF* const restrict thref,  TF* const restrict threfh,
-                                     const TF pbot, const TF* const restrict z, const TF* const restrict zh,
-                                     const TF* const restrict dz, const TF* const restrict dzh, const TF* const restrict dzhi,
-                                     const int kstart, const int kend, const int kcells)
+                         TF* const restrict pref,   TF* const restrict prefh,
+                         TF* const restrict exnref, TF* const restrict exnrefh,
+                         TF* const restrict thref,  TF* const restrict threfh,
+                         const TF pbot, const TF* const restrict z, const TF* const restrict zh,
+                         const TF* const restrict dz, const TF* const restrict dzh, const TF* const restrict dzhi,
+                         const int kstart, const int kend, const int kcells)
     {
         // extrapolate the input sounding to get the bottom value
         threfh[kstart] = thref[kstart] - z[kstart]*(thref[kstart+1]-thref[kstart])*dzhi[kstart+1];
@@ -186,7 +186,6 @@ namespace
             rhorefh[k] = prefh[k] / (Rd * threfh[k] * exnrefh[k]);
         }
     }
-
 }
 
 template<typename TF>
@@ -214,15 +213,14 @@ boundary_cyclic(masterin, gridin)
         master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
         throw std::runtime_error("Illegal options swbasestate");
     }
-
 }
 
 template<typename TF>
 Thermo_dry<TF>::~Thermo_dry()
 {
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 template<typename TF>
@@ -439,7 +437,6 @@ void Thermo_dry<TF>::create_dump(Dump<TF>& dump)
 template<typename TF>
 void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 {
-
     if (cross.get_switch())
     {
         // Populate list with allowed cross-section variables
@@ -484,11 +481,11 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
     calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
+                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
     calc_buoyancy_bot(b->fld.data(), b->fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(), bs_stats.thref.data(), bs_stats.threfh.data(),
-                        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
     calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs_stats.threfh.data(),
-                        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 
     // define the location
     const int sloc[] = {0,0,0};
