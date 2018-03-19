@@ -263,7 +263,7 @@ void Model<TF>::exec()
     // fields->exec();
 
     // Get the viscosity to be used in diffusion.
-    diff->exec_viscosity();
+    diff->exec_viscosity(*thermo);
 
     // Set the time step.
     set_time_step();
