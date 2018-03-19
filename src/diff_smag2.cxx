@@ -206,7 +206,7 @@ namespace
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool resolved_wall>
     void calc_evisc(TF* restrict evisc,
                     TF* restrict u, TF* restrict v, TF* restrict w,  TF* restrict N2,
                     TF* restrict ufluxbot, TF* restrict vfluxbot, TF* restrict bfluxbot,
@@ -221,46 +221,70 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        // Variables for the wall damping.
-        TF mlen, mlen0, fac;
-        const TF n = 2.;
-    
-        // Bottom boundary, here strain is fully parametrized using MO.
-        // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
-        mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
-        mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[kstart]+z0m), n))), 1./n);
-        fac   = std::pow(mlen, 2);
-    
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
-                // Add the buoyancy production to the TKE
-                TF RitPrratio = -bfluxbot[ij]/(Constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
-                RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
-                evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(static_cast<TF>(1.)-RitPrratio);
-            }
-    
-        for (int k=kstart+1; k<kend; ++k)
+        if (resolved_wall)
         {
-            // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-            mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-            mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
-            fac   = std::pow(mlen, 2);
+            for (int k=kstart; k<kend; ++k)
+            {
+                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                const TF mlen = cs*std::pow(dx*dy*dz[k], 1./3.);
+                const TF fac = std::pow(mlen, 2);
+    
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        // Add the buoyancy production to the TKE
+                        TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
+                        RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
+                        evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+                    }
+            }
+        }
+        else
+        {
+            // Variables for the wall damping.
+            const TF n = 2.;
+    
+            // Bottom boundary, here strain is fully parametrized using MO.
+            // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
+            const TF mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
+            const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[kstart]+z0m), n))), 1./n);
+            const TF fac = std::pow(mlen, 2);
     
             for (int j=jstart; j<jend; ++j)
+            {
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
-                    TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
+                    TF RitPrratio = -bfluxbot[ij]/(Constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
-                    evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+                    evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(static_cast<TF>(1.)-RitPrratio);
                 }
+            }
+    
+            for (int k=kstart+1; k<kend; ++k)
+            {
+                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+                const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+                const TF fac = std::pow(mlen, 2);
+    
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        // Add the buoyancy production to the TKE
+                        TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
+                        RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
+                        evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+                    }
+            }
         }
     
         boundary_cyclic.exec(evisc);
@@ -731,14 +755,14 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     //                                   grid->z, grid->dz, boundaryptr->z0m, fields->visc);
     //     // Calculate eddy viscosity assuming resolved walls
     //     else
-            calc_evisc_neutral<TF, true>(fields.sd["evisc"]->fld.data(),
-                                         fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                                         fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                                         gd.z.data(), gd.dz.data(), 0, fields.visc,
-                                         gd.dx, gd.dy, this->cs,
-                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                         gd.icells, gd.jcells, gd.ijcells,
-                                         boundary_cyclic);
+            calc_evisc_neutral<TF,true>(fields.sd["evisc"]->fld.data(),
+                                        fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                                        fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                                        gd.z.data(), gd.dz.data(), 0, fields.visc,
+                                        gd.dx, gd.dy, this->cs,
+                                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                                        gd.icells, gd.jcells, gd.ijcells,
+                                        boundary_cyclic);
     }
     // assume buoyancy calculation is needed
     else
@@ -750,18 +774,21 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp);
         thermo.get_thermo_field(*buoy_tmp, "N2", false);
 
-        calc_evisc<TF>(fields.sd["evisc"]->fld.data(),
-                       fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
-                       fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
-                       // boundaryptr->ustar, boundaryptr->obuk,
-                       nullptr, nullptr,
-                       gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                       gd.dx, gd.dy,
-                       //boundaryptr->z0m,
-                       0.035, this->cs, this->tPr,
-                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                       gd.icells, gd.jcells, gd.ijcells,
-                       boundary_cyclic);
+        calc_evisc<TF,true>(fields.sd["evisc"]->fld.data(),
+                            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
+                            fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
+                            // boundaryptr->ustar, boundaryptr->obuk,
+                            nullptr, nullptr,
+                            gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                            gd.dx, gd.dy,
+                            //boundaryptr->z0m,
+                            0.035, this->cs, this->tPr,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.jcells, gd.ijcells,
+                            boundary_cyclic);
+
+        fields.release_tmp(buoy_tmp);
+        fields.release_tmp(tmp);
     }
 }
 #endif
