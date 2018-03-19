@@ -368,7 +368,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -379,7 +379,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -400,7 +400,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -411,7 +411,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -433,7 +433,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -447,7 +447,7 @@ namespace
             using Finite_difference::O4::grad4x;
 
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -470,7 +470,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -484,7 +484,7 @@ namespace
             using Finite_difference::O4::grad4x;
 
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -505,7 +505,7 @@ namespace
         const int kk2 = 2*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kstart*kk1;
@@ -523,7 +523,7 @@ namespace
         const int kk2 = 2*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kend*kk1;
@@ -542,7 +542,7 @@ namespace
         const int kk3 = 3*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kstart*kk1;
@@ -560,7 +560,7 @@ namespace
         const int kk3 = 3*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kend*kk1;

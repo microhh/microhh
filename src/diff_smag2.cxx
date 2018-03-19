@@ -169,7 +169,8 @@ namespace
             }
     
             boundary_cyclic.exec(evisc);
-    
+
+            /*
             // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
             // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
             const int kb = kstart;
@@ -183,6 +184,7 @@ namespace
                     evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
                     evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
                 }
+                */
         }
         else
         {
@@ -198,7 +200,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
+                        evisc[ijk] = fac * std::sqrt(evisc[ijk]) + mvisc;
                     }
             }
     
@@ -213,7 +215,7 @@ namespace
                     TF* restrict ustar, TF* restrict obuk,
                     const TF* restrict z, const TF* restrict dz, const TF* restrict dzi,
                     const TF dx, const TF dy,
-                    const TF z0m, const TF cs, const TF tPr,
+                    const TF z0m, const TF mvisc, const TF cs, const TF tPr,
                     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                     const int icells, const int jcells, const int ijcells,
                     Boundary_cyclic<TF>& boundary_cyclic)
@@ -240,6 +242,22 @@ namespace
                         evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
                     }
             }
+
+            /*
+            // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
+            // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
+            const int kb = kstart;
+            const int kt = kend-1;
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ijkb = i + j*jj + kb*kk;
+                    const int ijkt = i + j*jj + kt*kk;
+                    evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
+                    evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
+                }
+                */
         }
         else
         {
@@ -736,13 +754,13 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     //                         grid->z, grid->dzi, grid->dzhi);
     // Calculate strain rate using resolved boundaries
     // else
-        calc_strain2<TF, true>(fields.sd["evisc"]->fld.data(),
-                               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                               fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                               nullptr, nullptr,
-                               gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                               gd.icells, gd.ijcells);
+        calc_strain2<TF,true>(fields.sd["evisc"]->fld.data(),
+                              fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                              fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                              nullptr, nullptr,
+                              gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                              gd.icells, gd.ijcells);
 
     // start with retrieving the stability information
     if (thermo.get_switch() == "0")
@@ -782,7 +800,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                             gd.z.data(), gd.dz.data(), gd.dzi.data(),
                             gd.dx, gd.dy,
                             //boundaryptr->z0m,
-                            0.035, this->cs, this->tPr,
+                            0.035, fields.visc, this->cs, this->tPr,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                             gd.icells, gd.jcells, gd.ijcells,
                             boundary_cyclic);
