@@ -324,8 +324,10 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
                                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
     else
+    {
         master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw std::runtime_error("Illegal thermo field");
+    }
 
     if (cyclic)
         boundary_cyclic.exec(fld.fld.data());
