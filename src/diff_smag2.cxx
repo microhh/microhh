@@ -211,7 +211,7 @@ namespace
                     TF* restrict u, TF* restrict v, TF* restrict w,  TF* restrict N2,
                     TF* restrict ufluxbot, TF* restrict vfluxbot, TF* restrict bfluxbot,
                     TF* restrict ustar, TF* restrict obuk,
-                    TF* restrict z, TF* restrict dz, TF* restrict dzi,
+                    const TF* restrict z, const TF* restrict dz, const TF* restrict dzi,
                     const TF dx, const TF dy,
                     const TF z0m, const TF cs, const TF tPr,
                     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -240,8 +240,8 @@ namespace
                 // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                 // Add the buoyancy production to the TKE
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
-                RitPrratio = std::min(RitPrratio, 1.-Constants::dsmall);
-                evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+                RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
+                evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(static_cast<TF>(1.)-RitPrratio);
             }
     
         for (int k=kstart+1; k<kend; ++k)
@@ -258,12 +258,12 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     // Add the buoyancy production to the TKE
                     TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
-                    RitPrratio = std::min(RitPrratio, 1.-Constants::dsmall);
+                    RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
                     evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
                 }
         }
     
-        boundary_cyclic(evisc);
+        boundary_cyclic.exec(evisc);
     }
 
     template <typename TF, bool resolved_wall>
@@ -745,18 +745,23 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     {
         // store the buoyancyflux in tmp1
         auto& gd = grid.get_grid_data();
-        auto buoy = fields.get_tmp();
+        auto buoy_tmp = fields.get_tmp();
         auto tmp = fields.get_tmp();
-        thermo.get_buoyancy_fluxbot(*buoy);
-        thermo.get_thermo_field(*buoy, "N2", false);
+        thermo.get_buoyancy_fluxbot(*buoy_tmp);
+        thermo.get_thermo_field(*buoy_tmp, "N2", false);
 
-        calc_evisc(fields.sd["evisc"]->fld.data(),
-                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy->fld.data(),
-                   fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy->flux_bot.data(),
-                   // boundaryptr->ustar, boundaryptr->obuk,
-                   nullptr, nullptr,
-                   gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                   0.035); //boundaryptr->z0m);
+        calc_evisc<TF>(fields.sd["evisc"]->fld.data(),
+                       fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
+                       fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
+                       // boundaryptr->ustar, boundaryptr->obuk,
+                       nullptr, nullptr,
+                       gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                       gd.dx, gd.dy,
+                       //boundaryptr->z0m,
+                       0.035, this->cs, this->tPr,
+                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                       gd.icells, gd.jcells, gd.ijcells,
+                       boundary_cyclic);
     }
 }
 #endif
