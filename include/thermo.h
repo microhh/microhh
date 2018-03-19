@@ -32,6 +32,7 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+
 class Data_block;
 /**
  * Base class for the thermo scheme. This class is abstract and only
@@ -44,7 +45,7 @@ class Thermo
     public:
         Thermo(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Thermo();
-        static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for thermo class generation.
+        static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         std::string get_switch();
 
         // Below are the functions that the derived class has to implement.

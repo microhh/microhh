@@ -29,6 +29,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "monin_obukhov.h"
+#include "thermo.h"
 
 #include "diff_smag2.h"
 
@@ -743,15 +744,19 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     else
     {
         // store the buoyancyflux in tmp1
-        thermo.get_buoyancy_fluxbot(fields->atmp["tmp1"]);
-        thermo.get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2", false);
+        auto& gd = grid.get_grid_data();
+        auto buoy = fields.get_tmp();
+        auto tmp = fields.get_tmp();
+        thermo.get_buoyancy_fluxbot(*buoy);
+        thermo.get_thermo_field(*buoy, "N2", false);
 
-        calc_evisc(fields->sd["evisc"]->data,
-                   fields->u->data, fields->v->data, fields->w->data, fields->atmp["tmp1"]->data,
-                   fields->u->datafluxbot, fields->v->datafluxbot, fields->atmp["tmp1"]->datafluxbot,
-                   boundaryptr->ustar, boundaryptr->obuk,
-                   grid->z, grid->dz, grid->dzi,
-                   boundaryptr->z0m);
+        calc_evisc(fields.sd["evisc"]->fld.data(),
+                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy->fld.data(),
+                   fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy->flux_bot.data(),
+                   // boundaryptr->ustar, boundaryptr->obuk,
+                   nullptr, nullptr,
+                   gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                   0.035); //boundaryptr->z0m);
     }
 }
 #endif

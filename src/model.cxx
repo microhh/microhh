@@ -381,7 +381,7 @@ void Model<TF>::exec()
         // fields->exec();
 
         // Get the viscosity to be used in diffusion.
-        diff->exec_viscosity();
+        diff->exec_viscosity(*thermo);
 
         // Write status information to disk.
         print_status();
