@@ -419,9 +419,9 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 
     for (auto& it : fields.sp)
     {
-        surfs(ustar, obuk, it->second->data,
-              it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-              grid->z[grid->kstart], sbc[it->first]->bcbot);
+        surfs(ustar, obuk, it.second->fld.data(),
+              it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+              gd.z[gd.kstart], sbc[it.first].bcbot);
     }
 }
 #endif
