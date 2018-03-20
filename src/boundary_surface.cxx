@@ -129,7 +129,7 @@ void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
     // process_time_dependent(input);
 
     // add variables to the statistics
-    if (stats.get_switch() == "1")
+    if (stats.get_switch())
     {
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1");
         stats.add_time_series("obuk", "Obukhov length", "m");
@@ -140,10 +140,10 @@ template<typename TF>
 void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
     // 1. Process the boundary conditions now all fields are registered
-    process_bcs(inputin, thermo);
+    process_bcs(inputin);
 
     // 2. Read and check the boundary_surface specific settings
-    process_input(inputin);
+    process_input(inputin, thermo);
 
     // 3. Allocate and initialize the 2D surface fields
     init_surface();
@@ -154,8 +154,8 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     int nerror = 0;
 
-    nerror += inputin.get_item(&z0m, "boundary", "z0m", "");
-    nerror += inputin.get_item(&z0h, "boundary", "z0h", "");
+    z0m = inputin.get_item<TF>("boundary", "z0m", "");
+    z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
@@ -165,20 +165,20 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     }
     // read the ustar value only if fixed fluxes are prescribed
     else if (mbcbot == Boundary_type::Ustar_type)
-        nerror += inputin.get_item(&ustarin, "boundary", "ustar", "");
+        ustarin = inputin.get_item<TF>("boundary", "ustar", "");
 
     // process the scalars
     for (auto& it : sbc)
     {
         // crash in case fixed gradient is prescribed
-        if (it->second->bcbot == Boundary_type::Neumann_type)
+        if (it.second.bcbot == Boundary_type::Neumann_type)
         {
             master.print_error("fixed gradient bc is not supported in surface model\n");
             ++nerror;
         }
 
         // crash in case of fixed momentum flux and dirichlet bc for scalar
-        if (it->second->bcbot == Boundary_type::Dirichlet_type && mbcbot == Boundary_type::Ustar_type)
+        if (it.second.bcbot == Boundary_type::Dirichlet_type && mbcbot == Boundary_type::Ustar_type)
         {
             master.print_error("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
             ++nerror;
@@ -187,17 +187,17 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 
     // check whether the prognostic thermo vars are of the same type
     std::vector<std::string> thermolist;
-    thermo.get_prog_vars(&thermolist);
+    thermo.get_prog_vars(thermolist);
 
-    std::vector<std::string>::const_iterator it = thermolist.begin();
+    auto it = thermolist.begin();
 
     // save the bc of the first thermo field in case thermo is enabled
     if (it != thermolist.end())
-        thermobc = sbc[*it]->bcbot;
+        thermobc = sbc[*it].bcbot;
 
     while (it != thermolist.end())
     {
-        if (sbc[*it]->bcbot != thermobc)
+        if (sbc[*it].bcbot != thermobc)
         {
             ++nerror;
             master.print_error("all thermo variables need to have the same bc type\n");
@@ -238,16 +238,18 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::init_surface()
 {
-    obuk  = new double[grid->ijcells];
-    nobuk = new int[grid->ijcells];
-    ustar = new double[grid->ijcells];
+    auto& gd = grid.get_grid_data();
 
-    const int jj = grid->icells;
+    obuk  = new TF[gd.ijcells];
+    nobuk = new int[gd.ijcells];
+    ustar = new TF[gd.ijcells];
 
-    // initialize the obukhov length on a small number
-    for (int j=0; j<grid->jcells; ++j)
+    const int jj = gd.icells;
+
+    // Initialize the obukhov length on a small number.
+    for (int j=0; j<gd.jcells; ++j)
         #pragma ivdep
-        for (int i=0; i<grid->icells; ++i)
+        for (int i=0; i<gd.icells; ++i)
         {
             const int ij = i + j*jj;
             obuk[ij]  = Constants::dsmall;
@@ -322,6 +324,8 @@ void Boundary_surface<TF>::set_ustar()
 template<typename TF>
 void Boundary_surface<TF>::init_solver()
 {
+    auto& gd = grid.get_grid_data();
+
     zL_sl = new float[nzL];
     f_sl  = new float[nzL];
 
@@ -366,13 +370,13 @@ void Boundary_surface<TF>::init_solver()
     // Calculate the evaluation function.
     if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
     {
-        const double zsl = grid->z[grid->kstart];
+        const double zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
             f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
     }
     else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
     {
-        const double zsl = grid->z[grid->kstart];
+        const double zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
             f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h, zsl/zL_sl[n]);
     }
@@ -382,29 +386,36 @@ void Boundary_surface<TF>::init_solver()
 template<typename TF>
 void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 {
+    auto& gd = grid.get_grid_data();
+
     // Start with retrieving the stability information.
     if (thermo.get_switch() == "0")
     {
+        auto tmp = fields.get_tmp();
         stability_neutral(ustar, obuk,
-                          fields->u->data, fields->v->data,
-                          fields->u->databot, fields->v->databot,
-                          fields->atmp["tmp1"]->data, grid->z);
+                          fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                          fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
+                          tmp->fld.data(), gd.z.data());
+        fields.release_tmp(tmp);
     }
     else
     {
-        // Store the buoyancy in tmp1.
-        thermo.get_buoyancy_surf(fields->atmp["tmp1"]);
-        stability(ustar, obuk, fields->atmp["tmp1"]->datafluxbot,
-                  fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
-                  fields->u->databot, fields->v->databot, fields->atmp["tmp1"]->databot,
-                  fields->atmp["tmp2"]->data, grid->z);
+        auto buoy = fields.get_tmp();
+        auto tmp = fields.get_tmp();
+        thermo.get_buoyancy_surf(*buoy);
+        stability(ustar, obuk, buoy->flux_bot.data(),
+                  fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                  fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                  tmp->fld.data(), gd.z.data());
+        fields.release_tmp(buoy);
+        fields.release_tmp(tmp);
     }
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     surfm(ustar, obuk,
-          fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-          fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-          grid->z[grid->kstart], mbcbot);
+          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
+          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
+          gd.z[gd.kstart], mbcbot);
 
     for (auto& it : fields.sp)
     {
@@ -426,7 +437,7 @@ template<typename TF>
 void Boundary_surface<TF>::stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
                                      TF* restrict u    , TF* restrict v   , TF* restrict b       ,
                                      TF* restrict ubot , TF* restrict vbot, TF* restrict bbot    ,
-                                     TF* restrict dutot, TF* restrict z)
+                                     TF* restrict dutot, const TF* restrict z)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -497,7 +508,7 @@ template<typename TF>
 void Boundary_surface<TF>::stability_neutral(TF* restrict ustar, TF* restrict obuk,
                                              TF* restrict u    , TF* restrict v   ,
                                              TF* restrict ubot , TF* restrict vbot,
-                                             TF* restrict dutot, TF* restrict z)
+                                             TF* restrict dutot, const TF* restrict z)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -739,5 +750,5 @@ TF Boundary_surface<TF>::calc_obuk_noslip_dirichlet(const float* const restrict 
     return zsl/find_zL(zL, f, n, Ri);
 }
 
-template class Boundary<double>;
-template class Boundary<float>;
+template class Boundary_surface<double>;
+template class Boundary_surface<float>;

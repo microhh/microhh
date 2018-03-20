@@ -87,11 +87,11 @@ class Boundary_surface : public Boundary<TF>
         void stability(TF*, TF*, TF*,
                        TF*, TF*, TF*,
                        TF*, TF*, TF*,
-                       TF*, TF*);
+                       TF*, const TF*);
         void stability_neutral(TF*, TF*,
                                TF*, TF*,
                                TF*, TF*,
-                               TF*, TF*);
+                               TF*, const TF*);
         void surfm(TF*, TF*,
                    TF*, TF*, TF*, TF*,
                    TF*, TF*, TF*, TF*,
@@ -113,14 +113,13 @@ class Boundary_surface : public Boundary<TF>
         float* f_sl_g;
         #endif
 
-        int thermobc;
+        Boundary_type thermobc;
 
     protected:
         // cross sections
-        std::vector<std::string> crosslist;        // List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+        // std::vector<std::string> crosslist;        // List with all crosses from ini file
+        // std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
-        Stats<TF>& stats;
         void update_slave_bcs();
 };
 #endif

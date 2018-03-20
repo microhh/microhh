@@ -101,7 +101,7 @@ class Stats
         void add_prof(std::string, std::string, std::string, std::string);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
-        //void add_time_series(std::string, std::string, std::string);
+        void add_time_series(std::string, std::string, std::string);
 
         void calc_area(TF*, const int[3], int*);
         void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
