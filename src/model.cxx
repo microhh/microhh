@@ -161,7 +161,7 @@ void Model<TF>::init()
 
     fft->init();
 
-    boundary->init(*input);
+    boundary->init(*input, *thermo);
     pres->init();
     force->init();
     thermo->init();
@@ -216,7 +216,7 @@ void Model<TF>::load()
     fields->create_stats(*stats, *diff);
     fields->create_column(*column);
 
-    boundary->create(*input);
+    boundary->create(*input, *stats);
     force->create(*input);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     decay->create(*input);

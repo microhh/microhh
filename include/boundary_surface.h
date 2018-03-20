@@ -75,12 +75,14 @@ class Boundary_surface : public Boundary<TF>
         using Boundary<TF>::process_bcs;
 
         using Boundary<TF>::mbcbot;
+        using Boundary<TF>::ubot;
+        using Boundary<TF>::vbot;
 
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
         // surface scheme
-        void update_bcs();
+        void update_bcs(Thermo<TF>&);
 
         void stability(TF*, TF*, TF*,
                        TF*, TF*, TF*,
@@ -93,13 +95,13 @@ class Boundary_surface : public Boundary<TF>
         void surfm(TF*, TF*,
                    TF*, TF*, TF*, TF*,
                    TF*, TF*, TF*, TF*,
-                   TF, int);
+                   TF, Boundary_type);
         void surfs(TF*, TF*, TF*,
                    TF*, TF*, TF*,
-                   TF, int);
+                   TF, Boundary_type);
 
-        TF calc_obuk_noslip_flux     (const float* const, const float* const, int&, double, double, double);
-        TF calc_obuk_noslip_dirichlet(const float* const, const float* const, int&, double, double, double);
+        TF calc_obuk_noslip_flux     (const float* const, const float* const, int&, TF, TF, TF);
+        TF calc_obuk_noslip_dirichlet(const float* const, const float* const, int&, TF, TF, TF);
 
         TF ustarin;
 
