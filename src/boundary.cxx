@@ -152,7 +152,7 @@ void Boundary<TF>::process_bcs(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input& input)
+void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 {
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
@@ -174,7 +174,7 @@ void Boundary<TF>::init(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input& input)
+void Boundary<TF>::create(Input& input, Stats<TF>& stats)
 {
     // process_time_dependent(input);
 }
@@ -283,8 +283,8 @@ namespace
 {
     template<typename TF>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
-            const Boundary_type sw, const TF aval, const TF visc, const TF offset,
-            const int icells, const int jcells)
+                const Boundary_type sw, const TF aval, const TF visc, const TF offset,
+                const int icells, const int jcells)
     {
         const int jj = icells;
 

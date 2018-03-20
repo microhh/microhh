@@ -28,6 +28,7 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Thermo;
 class Input;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
@@ -55,12 +56,12 @@ class Boundary
 {
     public:
         Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
-        virtual ~Boundary();      ///< Destructor of the boundary class.
+        virtual ~Boundary(); ///< Destructor of the boundary class.
 
         static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
-        virtual void init(Input&);   ///< Initialize the fields.
-        virtual void create(Input&); ///< Create the fields.
+        virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        virtual void create(Input&, Stats<TF>&); ///< Create the fields.
 
         // virtual void update_time_dependent(); ///< Update the time dependent parameters.
 

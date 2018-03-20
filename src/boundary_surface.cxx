@@ -80,23 +80,23 @@ Boundary_surface<TF>::~Boundary_surface()
 }
 
 template<typename TF>
-void Boundary_surface<TF>::create(Input& inputin)
+void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
 {
-    // process_time_dependent(inputin);
+    // process_time_dependent(input);
 
     // add variables to the statistics
-    if (stats->get_switch() == "1")
+    if (stats.get_switch() == "1")
     {
-        stats->add_time_series("ustar", "Surface friction velocity", "m s-1");
-        stats->add_time_series("obuk", "Obukhov length", "m");
+        stats.add_time_series("ustar", "Surface friction velocity", "m s-1");
+        stats.add_time_series("obuk", "Obukhov length", "m");
     }
 }
 
 template<typename TF>
-void Boundary_surface<TF>::init(Input& inputin)
+void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
     // 1. Process the boundary conditions now all fields are registered
-    process_bcs(inputin);
+    process_bcs(inputin, thermo);
 
     // 2. Read and check the boundary_surface specific settings
     process_input(inputin);
@@ -106,7 +106,7 @@ void Boundary_surface<TF>::init(Input& inputin)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::process_input(Input& inputin)
+void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     int nerror = 0;
 
@@ -143,7 +143,7 @@ void Boundary_surface<TF>::process_input(Input& inputin)
 
     // check whether the prognostic thermo vars are of the same type
     std::vector<std::string> thermolist;
-    model->thermo->get_prog_vars(&thermolist);
+    thermo.get_prog_vars(&thermolist);
 
     std::vector<std::string>::const_iterator it = thermolist.begin();
 
@@ -164,6 +164,7 @@ void Boundary_surface<TF>::process_input(Input& inputin)
     if (nerror)
         throw 1;
 
+    /*
     // Cross sections
     allowedcrossvars.push_back("ustar");
     allowedcrossvars.push_back("obuk");
@@ -187,16 +188,15 @@ void Boundary_surface<TF>::process_input(Input& inputin)
         else
             ++it2;
     }
+    */
 }
 
 template<typename TF>
 void Boundary_surface<TF>::init_surface()
 {
     obuk  = new double[grid->ijcells];
-    nobuk = new int   [grid->ijcells];
+    nobuk = new int[grid->ijcells];
     ustar = new double[grid->ijcells];
-
-    stats = model->stats;
 
     const int jj = grid->icells;
 
@@ -211,6 +211,7 @@ void Boundary_surface<TF>::init_surface()
         }
 }
 
+/*
 template<typename TF>
 void Boundary_surface<TF>::exec_cross(int iotime)
 {
@@ -234,6 +235,7 @@ void Boundary_surface<TF>::exec_stats(Mask *m)
     stats->calc_mean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
     stats->calc_mean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
 }
+*/
 
 template<typename TF>
 void Boundary_surface<TF>::set_values()
@@ -266,8 +268,8 @@ void Boundary_surface<TF>::set_ustar()
 {
     const int jj = grid->icells;
 
-    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, ubot, fields->visc, grid->utrans);
-    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, vbot, fields->visc, grid->vtrans);
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Boundary_type::Dirichlet_type, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Boundary_type::Dirichlet_type, vbot, fields->visc, grid->vtrans);
 
     for (int j=0; j<grid->jcells; ++j)
             #pragma ivdep

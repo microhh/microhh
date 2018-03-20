@@ -33,8 +33,8 @@ class Boundary_surface : public Boundary<TF>
         Boundary_surface(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
         ~Boundary_surface();
 
-        void init(Input&);
-        void create(Input&);
+        void init(Input&, Thermo<TF>&);
+        void create(Input&, Stats<TF>&);
         void set_values();
 
         void exec_stats(Mask<TF>&); // Execute statistics of surface
@@ -61,10 +61,10 @@ class Boundary_surface : public Boundary<TF>
         #endif
 
     protected:
-        void process_input(Input&); // Process and check the surface input 
-        void init_surface();        // Allocate and initialize the surface arrays
-        void init_solver();         // Prepare the lookup table's for the surface layer solver
-        void set_ustar();           // Set fixed ustar
+        void process_input(Input&, Thermo<TF>&); // Process and check the surface input 
+        void init_surface(); // Allocate and initialize the surface arrays
+        void init_solver(); // Prepare the lookup table's for the surface layer solver
+        void set_ustar(); // Set fixed ustar
 
     private:
         using Boundary<TF>::master;
