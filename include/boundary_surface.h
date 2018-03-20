@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_SURFACE
-#define BOUNDARY_SURFACE
+#ifndef BOUNDARY_SURFACE_H
+#define BOUNDARY_SURFACE_H
 
 #include "boundary.h"
 #include "stats.h"
@@ -30,15 +30,15 @@ template<typename TF>
 class Boundary_surface : public Boundary<TF>
 {
     public:
-        Boundary_surface(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
+        Boundary_surface(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
         void create(Input&, Stats<TF>&);
         void set_values();
 
-        void exec_stats(Mask<TF>&); // Execute statistics of surface
-        void exec_cross(int); // Execute cross sections of surface
+        void exec_stats(Mask<TF>&);
+        void exec_cross(int);
 
         // Make these variables public for out-of-class usage.
         TF* obuk;

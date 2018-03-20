@@ -118,9 +118,9 @@ Boundary_surface<TF>::~Boundary_surface()
     delete[] zL_sl;
     delete[] f_sl;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 template<typename TF>

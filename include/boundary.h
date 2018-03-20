@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY
-#define BOUNDARY
+#ifndef BOUNDARY_H
+#define BOUNDARY_H
 
 #include "boundary_cyclic.h"
 
@@ -84,10 +84,10 @@ class Boundary
         //virtual void backward_device();
 
     protected:
-        Master& master; // Pointer to master class.
-        Grid<TF>& grid;   // Pointer to grid class.
-        Fields<TF>& fields; // Pointer to fields class.
-        Boundary_cyclic<TF> boundary_cyclic; // Pointer to fields class.
+        Master& master;
+        Grid<TF>& grid;
+        Fields<TF>& fields;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         std::string swboundary;
 
@@ -111,7 +111,6 @@ class Boundary
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
         // void process_time_dependent(Input *); ///< Process the time dependent settings from the ini file.
-
         // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
