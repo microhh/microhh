@@ -35,7 +35,7 @@
 
 // Boundary schemes.
 #include "boundary.h"
-// #include "boundary_surface.h"
+#include "boundary_surface.h"
 // #include "boundary_surface_bulk.h"
 // #include "boundary_surface_patch.h"
 // #include "boundary_patch.h"
@@ -110,7 +110,7 @@ void Boundary<TF>::process_bcs(Input& input)
     // read the boundaries per field
     for (auto& it : fields.sp)
     {
-        sbc.emplace(it.first, Field3dBc());
+        sbc.emplace(it.first, Field3dBc<TF>());
         swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
         swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
         sbc.at(it.first).bot = input.get_item<double>("boundary", "sbot", it.first);
@@ -796,8 +796,6 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // if (swboundary == "surface")
-    //     return new Boundary_surface(modelin, inputin);
     // if (swboundary == "surface_bulk")
     //     return new Boundary_surface_bulk(modelin, inputin);
     // else if (swboundary == "surface_patch")
@@ -807,6 +805,8 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     // else if (swboundary == "default")
     if (swboundary == "default")
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
+    else if (swboundary == "surface")
+        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
     else
     {
         master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());

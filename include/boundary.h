@@ -29,10 +29,21 @@ class Master;
 template<typename> class Grid;
 template<typename> class Fields;
 class Input;
-// struct Mask;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+
+/**
+ * Structure containing the boundary options and values per 3d field.
+ */
+template<typename TF>
+struct Field3dBc
+{
+    TF bot; ///< Value of the bottom boundary.
+    TF top; ///< Value of the top boundary.
+    Boundary_type bcbot; ///< Switch for the bottom boundary.
+    Boundary_type bctop; ///< Switch for the top boundary.
+};
 
 /**
  * Base class for the boundary scheme.
@@ -87,18 +98,7 @@ class Boundary
         TF vbot;
         TF vtop;
 
-        /**
-         * Structure containing the boundary options and values per 3d field.
-         */
-        struct Field3dBc
-        {
-            TF bot; ///< Value of the bottom boundary.
-            TF top; ///< Value of the top boundary.
-            Boundary_type bcbot; ///< Switch for the bottom boundary.
-            Boundary_type bctop; ///< Switch for the top boundary.
-        };
-
-        typedef std::map<std::string, Field3dBc> BcMap;
+        typedef std::map<std::string, Field3dBc<TF>> BcMap;
         BcMap sbc;
 
         // Variables to handle time dependency.
