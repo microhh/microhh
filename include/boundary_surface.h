@@ -85,25 +85,6 @@ class Boundary_surface : public Boundary<TF>
         // surface scheme
         void update_bcs(Thermo<TF>&);
 
-        void stability(TF*, TF*, TF*,
-                       TF*, TF*, TF*,
-                       TF*, TF*, TF*,
-                       TF*, const TF*);
-        void stability_neutral(TF*, TF*,
-                               TF*, TF*,
-                               TF*, TF*,
-                               TF*, const TF*);
-        void surfm(TF*, TF*,
-                   TF*, TF*, TF*, TF*,
-                   TF*, TF*, TF*, TF*,
-                   TF, Boundary_type);
-        void surfs(TF*, TF*, TF*,
-                   TF*, TF*, TF*,
-                   TF, Boundary_type);
-
-        TF calc_obuk_noslip_flux     (const float* const, const float* const, int&, TF, TF, TF);
-        TF calc_obuk_noslip_dirichlet(const float* const, const float* const, int&, TF, TF, TF);
-
         TF ustarin;
 
         float* zL_sl;

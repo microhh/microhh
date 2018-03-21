@@ -42,10 +42,41 @@ namespace
     namespace most = Monin_obukhov;
     // Size of the lookup table.
     const int nzL = 10000; // Size of the lookup table for MO iterations.
-}
 
-namespace
-{
+    double find_zL(const float* const restrict zL, const float* const restrict f,
+                   int &n, const float Ri)
+    {
+        // Determine search direction.
+        if ( (f[n]-Ri) > 0 )
+            while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
+        else
+            while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+
+        const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+        return zL0;
+    }
+
+    template<typename TF>
+    TF calc_obuk_noslip_flux(const float* const restrict zL, const float* const restrict f,
+                             int& n,
+                             const TF du, const TF bfluxbot, const TF zsl)
+    {
+        // Calculate the appropriate Richardson number and reduce precision.
+        const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+        return zsl/find_zL(zL, f, n, Ri);
+    }
+    
+    template<typename TF>
+    TF calc_obuk_noslip_dirichlet(const float* const restrict zL, const float* const restrict f,
+                                  int& n,
+                                  const TF du, const TF db, const TF zsl)
+    {
+        // Calculate the appropriate Richardson number and reduce precision.
+        const float Ri = Constants::kappa * db * zsl / std::pow(du, 2);
+        return zsl/find_zL(zL, f, n, Ri);
+    }
+
     template<typename TF>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
                 const Boundary_type sw, const TF aval, const TF visc, const TF offset,
@@ -92,7 +123,7 @@ namespace
                    TF* restrict u, TF* restrict v, TF* restrict b,
                    TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
                    TF* restrict dutot, const TF* restrict z,
-                   const float* zL_sl, const float* f_sl, const int* nobuk,
+                   const float* zL_sl, const float* f_sl, int* nobuk,
                    const TF z0m, const TF z0h,
                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
                    const int icells, const int jcells, const int kk,
@@ -677,12 +708,16 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     // Start with retrieving the stability information.
     if (thermo.get_switch() == "0")
     {
-        auto tmp = fields.get_tmp();
+        auto dutot = fields.get_tmp();
         stability_neutral(ustar, obuk,
                           fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                           fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                          tmp->fld.data(), gd.z.data());
-        fields.release_tmp(tmp);
+                          dutot->fld.data(), gd.z.data(),
+                          z0m,
+                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                          gd.icells, gd.jcells, gd.ijcells,
+                          mbcbot, thermobc, boundary_cyclic);
+        fields.release_tmp(dutot);
     }
     else
     {
@@ -692,7 +727,13 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         stability(ustar, obuk, buoy->flux_bot.data(),
                   fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                   fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                  tmp->fld.data(), gd.z.data());
+                  tmp->fld.data(), gd.z.data(),
+                  zL_sl, f_sl, nobuk,
+                  z0m, z0h,
+                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                  gd.icells, gd.jcells, gd.ijcells,
+                  mbcbot, thermobc, boundary_cyclic);
+
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);
     }
@@ -701,13 +742,19 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     surfm(ustar, obuk,
           fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
           fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-          gd.z[gd.kstart], mbcbot);
+          gd.z[gd.kstart], z0m, mbcbot,
+          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+          gd.icells, gd.jcells, gd.ijcells,
+          boundary_cyclic);
 
     for (auto& it : fields.sp)
     {
         surfs(ustar, obuk, it.second->fld.data(),
               it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-              gd.z[gd.kstart], sbc[it.first].bcbot);
+              gd.z[gd.kstart], z0m, z0h, sbc[it.first].bcbot,
+              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+              gd.icells, gd.jcells, gd.ijcells,
+              boundary_cyclic);
     }
 }
 #endif
@@ -718,43 +765,5 @@ void Boundary_surface<TF>::update_slave_bcs()
     // This function does nothing when the surface model is enabled, because 
     // the fields are computed by the surface model in update_bcs.
 }
-
-namespace
-{
-    double find_zL(const float* const restrict zL, const float* const restrict f,
-                   int &n, const float Ri)
-    {
-        // Determine search direction.
-        if ( (f[n]-Ri) > 0 )
-            while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
-        else
-            while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
-
-        const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-
-        return zL0;
-    }
-}
-
-template<typename TF>
-TF Boundary_surface<TF>::calc_obuk_noslip_flux(const float* const restrict zL, const float* const restrict f,
-                                               int& n,
-                                               const TF du, const TF bfluxbot, const TF zsl)
-{
-    // Calculate the appropriate Richardson number and reduce precision.
-    const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
-    return zsl/find_zL(zL, f, n, Ri);
-}
-
-template<typename TF>
-TF Boundary_surface<TF>::calc_obuk_noslip_dirichlet(const float* const restrict zL, const float* const restrict f,
-                                                    int& n,
-                                                    const TF du, const TF db, const TF zsl)
-{
-    // Calculate the appropriate Richardson number and reduce precision.
-    const float Ri = Constants::kappa * db * zsl / std::pow(du, 2);
-    return zsl/find_zL(zL, f, n, Ri);
-}
-
 template class Boundary_surface<double>;
 template class Boundary_surface<float>;
