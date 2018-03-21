@@ -285,7 +285,7 @@ void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cy
 #endif
 
 template<typename TF>
-void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string> list)
+void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string>& list)
 {
     list.push_back("b");
 }

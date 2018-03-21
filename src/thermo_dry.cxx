@@ -355,7 +355,7 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
 #endif
 
 template<typename TF>
-void Thermo_dry<TF>::get_prog_vars(std::vector<std::string> list)
+void Thermo_dry<TF>::get_prog_vars(std::vector<std::string>& list)
 {
     list.push_back("th");
 }
