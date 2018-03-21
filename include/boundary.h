@@ -83,6 +83,10 @@ class Boundary
         //virtual void forward_device();
         //virtual void backward_device();
 
+        TF* ustar;
+        TF* obuk;
+        int* nobuk;
+
     protected:
         Master& master;
         Grid<TF>& grid;

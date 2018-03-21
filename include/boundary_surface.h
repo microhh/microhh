@@ -40,13 +40,12 @@ class Boundary_surface : public Boundary<TF>
         void exec_stats(Mask<TF>&);
         void exec_cross(int);
 
-        // Make these variables public for out-of-class usage.
-        TF* obuk;
-        int* nobuk;
-        TF* ustar;
-
         TF z0m;
         TF z0h;
+
+        using Boundary<TF>::ustar;
+        using Boundary<TF>::obuk;
+        using Boundary<TF>::nobuk;
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -82,7 +81,6 @@ class Boundary_surface : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-        // surface scheme
         void update_bcs(Thermo<TF>&);
 
         TF ustarin;

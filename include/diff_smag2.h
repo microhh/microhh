@@ -39,7 +39,7 @@ class Diff_smag2 : public Diff<TF>
 
         void set_values();
         void exec();
-        void exec_viscosity(Thermo<TF>&);
+        void exec_viscosity(Boundary<TF>&, Thermo<TF>&);
 
         //#ifdef USECUDA
         //void prepare_device() {};

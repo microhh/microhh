@@ -30,6 +30,7 @@
 #include "constants.h"
 #include "monin_obukhov.h"
 #include "thermo.h"
+#include "boundary.h"
 
 #include "diff_smag2.h"
 
@@ -738,22 +739,22 @@ void Diff_smag2<TF>::exec()
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
-    // Do a cast because the base boundary class does not have the MOST related variables.
-    // Boundary_surface* boundaryptr = static_cast<Boundary_surface*>(model->boundary);
+    // Calculate strain rate using MO for velocity gradients lowest level.
+    if (boundary.get_switch() == "surface")
+        calc_strain2<TF,true>(fields.sd["evisc"]->fld.data(),
+                              fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                              fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                              boundary.ustar, boundary.obuk,
+                              gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                              gd.icells, gd.ijcells);
 
-    // Calculate strain rate using MO for velocity gradients lowest level
-    // if (model->boundary->get_switch() == "surface")
-    //     calc_strain2<false>(fields->sd["evisc"]->data,
-    //                         fields->u->data, fields->v->data, fields->w->data,
-    //                         fields->u->datafluxbot, fields->v->datafluxbot,
-    //                         boundaryptr->ustar, boundaryptr->obuk,
-    //                         grid->z, grid->dzi, grid->dzhi);
-    // Calculate strain rate using resolved boundaries
-    // else
+    // Calculate strain rate using resolved boundaries.
+    else
         calc_strain2<TF,true>(fields.sd["evisc"]->fld.data(),
                               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                               fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
