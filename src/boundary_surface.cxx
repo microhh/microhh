@@ -88,10 +88,12 @@ namespace
     }
 
     template<typename TF>
-    void stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
-                   TF* restrict u    , TF* restrict v   , TF* restrict b       ,
-                   TF* restrict ubot , TF* restrict vbot, TF* restrict bbot    ,
+    void stability(TF* restrict ustar, TF* restrict obuk,TF* restrict bfluxbot,
+                   TF* restrict u, TF* restrict v, TF* restrict b,
+                   TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
                    TF* restrict dutot, const TF* restrict z,
+                   const float* zL_sl, const float* f_sl, const int* nobuk,
+                   const TF z0m, const TF z0h,
                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
                    const int icells, const int jcells, const int kk,
                    Boundary_type mbcbot, Boundary_type thermobc,
@@ -155,6 +157,218 @@ namespace
                     const double db = b[ijk] - bbot[ij];
                     obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                }
+        }
+    }
+
+    template<typename TF>
+    void stability_neutral(
+            TF* restrict ustar, TF* restrict obuk,
+            TF* restrict u, TF* restrict v,
+            TF* restrict ubot , TF* restrict vbot,
+            TF* restrict dutot, const TF* restrict z,
+            const TF z0m,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_type mbcbot, Boundary_type thermobc,
+            Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int ii = 1;
+        const int jj = icells;
+    
+        // calculate total wind
+        double du2;
+        const double minval = 1.e-1;
+    
+        // first, interpolate the wind to the scalar location
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
+                    + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
+                // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+                // otherwise evisc at k = kstart blows up
+                dutot[ij] = std::max(std::pow(du2, 0.5), minval);
+            }
+    
+        boundary_cyclic.exec_2d(dutot);
+    
+        // set the Obukhov length to a very large negative number
+        // case 1: fixed buoyancy flux and fixed ustar
+        if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    obuk[ij] = -Constants::dbig;
+                }
+        }
+        // case 2: fixed buoyancy surface value and free ustar
+        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    obuk [ij] = -Constants::dbig;
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                }
+        }
+        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    obuk [ij] = -Constants::dbig;
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                }
+        }
+    }
+
+    template<typename TF>
+    void surfm(TF* restrict ustar, TF* restrict obuk, 
+               TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot, 
+               TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot, 
+               const TF zsl, const TF z0m, const Boundary_type bcbot,
+               const int istart, const int iend, const int jstart, const int jend, const int kstart,
+               const int icells, const int jcells, const int kk,
+               Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int ii = 1;
+        const int jj = icells;
+    
+        // the surface value is known, calculate the flux and gradient
+        if (bcbot == Boundary_type::Dirichlet_type)
+        {
+            // first calculate the surface value
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+    
+                    // interpolate the whole stability function rather than ustar or obuk
+                    ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                    vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                }
+    
+            boundary_cyclic.exec_2d(ufluxbot);
+            boundary_cyclic.exec_2d(vfluxbot);
+        }
+        // the flux is known, calculate the surface value and gradient
+        else if (bcbot == Boundary_type::Ustar_type)
+        {
+            // first redistribute ustar over the two flux components
+            double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
+            const double minval = 1.e-2;
+    
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    // minimize the wind at 0.01, thus the wind speed squared at 0.0001
+                    vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
+                                + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
+                    uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
+                                + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
+                    u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
+                    v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
+                    ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
+                    ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
+                    ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
+                    vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
+                }
+    
+            boundary_cyclic.exec_2d(ufluxbot);
+            boundary_cyclic.exec_2d(vfluxbot);
+    
+            // CvH: I think that the problem is not closed, since both the fluxes and the surface values
+            // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
+            // should not update the surface values with those that belong to the flux. This procedure needs
+            // to be checked more carefully.
+            /*
+            // calculate the surface values
+            for (int j=grid->jstart; j<grid->jend; ++j)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; ++i)
+                {
+                ij  = i + j*jj;
+                ijk = i + j*jj + kstart*kk;
+                // interpolate the whole stability function rather than ustar or obuk
+                ubot[ij] = 0.;// ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
+                vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
+            }
+    
+            grid->boundary_cyclic_2d(ubot);
+            grid->boundary_cyclic_2d(vbot);
+            */
+        }
+    
+        for (int j=0; j<jcells; ++j)
+            #pragma ivdep
+            for (int i=0; i<icells; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                // use the linearly interpolated grad, rather than the MO grad,
+                // to prevent giving unresolvable gradients to advection schemes
+                // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
+                ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
+                vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
+            }
+    }
+    
+    template<typename TF>
+    void surfs(TF* restrict ustar, TF* restrict obuk, TF* restrict var,
+               TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot, 
+               const TF zsl, const TF z0m, const TF z0h, const Boundary_type bcbot,
+               const int istart, const int iend, const int jstart, const int jend, const int kstart,
+               const int icells, const int jcells, const int kk,
+               Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int jj = icells;
+    
+        // the surface value is known, calculate the flux and gradient
+        if (bcbot == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
+                    // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+                    // use the linearly interpolated grad, rather than the MO grad,
+                    // to prevent giving unresolvable gradients to advection schemes
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+                }
+        }
+        else if (bcbot == Boundary_type::Flux_type)
+        {
+            // the flux is known, calculate the surface value and gradient
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
+                    // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+                    // use the linearly interpolated grad, rather than the MO grad,
+                    // to prevent giving unresolvable gradients to advection schemes
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
                 }
         }
     }
@@ -388,7 +602,7 @@ void Boundary_surface<TF>::set_ustar()
         {
             const int ij = i + j*jj;
             // Limit ustar at 1e-4 to avoid zero divisions.
-            ustar[ij] = std::max(0.0001, ustarin);
+            ustar[ij] = std::max(static_cast<TF>(0.0001), ustarin);
         }
 }
 
@@ -503,215 +717,6 @@ void Boundary_surface<TF>::update_slave_bcs()
 {
     // This function does nothing when the surface model is enabled, because 
     // the fields are computed by the surface model in update_bcs.
-}
-
-template<typename TF>
-void Boundary_surface<TF>::stability_neutral(TF* restrict ustar, TF* restrict obuk,
-                                             TF* restrict u    , TF* restrict v   ,
-                                             TF* restrict ubot , TF* restrict vbot,
-                                             TF* restrict dutot, const TF* restrict z)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const int kstart = grid->kstart;
-
-    // calculate total wind
-    double du2;
-    const double minval = 1.e-1;
-
-    // first, interpolate the wind to the scalar location
-    for (int j=grid->jstart; j<grid->jend; ++j)
-        #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
-                + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
-            // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-            // otherwise evisc at k = kstart blows up
-            dutot[ij] = std::max(std::pow(du2, 0.5), minval);
-        }
-
-    grid->boundary_cyclic_2d(dutot);
-
-    // set the Obukhov length to a very large negative number
-    // case 1: fixed buoyancy flux and fixed ustar
-    if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
-    {
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij = i + j*jj;
-                obuk[ij] = -Constants::dbig;
-            }
-    }
-    // case 2: fixed buoyancy surface value and free ustar
-    else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij = i + j*jj;
-                obuk [ij] = -Constants::dbig;
-                ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-            }
-    }
-    else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij  = i + j*jj;
-                obuk [ij] = -Constants::dbig;
-                ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-            }
-    }
-}
-
-template<typename TF>
-void Boundary_surface<TF>::surfm(TF* restrict ustar, TF* restrict obuk, 
-                                 TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot, 
-                                 TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot, 
-                                 TF zsl, Boundary_type bcbot)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const int kstart = grid->kstart;
-
-    // the surface value is known, calculate the flux and gradient
-    if (bcbot == Boundary_type::Dirichlet_type)
-    {
-        // first calculate the surface value
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                // interpolate the whole stability function rather than ustar or obuk
-                ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-                vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-            }
-
-        grid->boundary_cyclic_2d(ufluxbot);
-        grid->boundary_cyclic_2d(vfluxbot);
-    }
-    // the flux is known, calculate the surface value and gradient
-    else if (bcbot == Boundary_type::Ustar_type)
-    {
-        // first redistribute ustar over the two flux components
-        double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
-        const double minval = 1.e-2;
-
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
-                            + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
-                uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
-                            + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
-                u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
-                v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
-                ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
-                ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
-                ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
-                vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
-            }
-
-        grid->boundary_cyclic_2d(ufluxbot);
-        grid->boundary_cyclic_2d(vfluxbot);
-
-        // CvH: I think that the problem is not closed, since both the fluxes and the surface values
-        // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
-        // should not update the surface values with those that belong to the flux. This procedure needs
-        // to be checked more carefully.
-        /*
-        // calculate the surface values
-        for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-for (int i=grid->istart; i<grid->iend; ++i)
-{
-ij  = i + j*jj;
-ijk = i + j*jj + kstart*kk;
-        // interpolate the whole stability function rather than ustar or obuk
-        ubot[ij] = 0.;// ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
-        vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
-        }
-
-        grid->boundary_cyclic_2d(ubot);
-        grid->boundary_cyclic_2d(vbot);
-        */
-    }
-
-    for (int j=0; j<grid->jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<grid->icells; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            // use the linearly interpolated grad, rather than the MO grad,
-            // to prevent giving unresolvable gradients to advection schemes
-            // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
-            ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
-            vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
-        }
-}
-
-template<typename TF>
-void Boundary_surface<TF>::surfs(TF* restrict ustar, TF* restrict obuk, TF* restrict var,
-                                 TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot, 
-                                 TF zsl, Boundary_type bcbot)
-{
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const int kstart = grid->kstart;
-
-    // the surface value is known, calculate the flux and gradient
-    if (bcbot == Boundary_type::Dirichlet_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
-                // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-                // use the linearly interpolated grad, rather than the MO grad,
-                // to prevent giving unresolvable gradients to advection schemes
-                vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
-            }
-    }
-    else if (bcbot == Boundary_type::Flux_type)
-    {
-        // the flux is known, calculate the surface value and gradient
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
-                // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-                // use the linearly interpolated grad, rather than the MO grad,
-                // to prevent giving unresolvable gradients to advection schemes
-                vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
-            }
-    }
 }
 
 namespace

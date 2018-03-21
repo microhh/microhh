@@ -371,22 +371,22 @@ template<typename TF>
 void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit)
 {
     // add the series to all files
-    for (auto& it : masks)
+    for (auto& mask : masks)
     {
         // shortcut
-        Mask* m = &it->second;
+        Mask<TF>& m = mask.second;
 
         // create the NetCDF variable
-        if (master->mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
-            m->tseries[name].ncvar = m->dataFile->addVar(name.c_str(), ncDouble, m->t_dim);
-            m->tseries[name].ncvar.putAtt("units", unit.c_str());
-            m->tseries[name].ncvar.putAtt("long_name", longname.c_str());
-            m->tseries[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
+            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), ncDouble, m.t_dim);
+            m.tseries[name].ncvar.putAtt("units", unit.c_str());
+            m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
+            m.tseries[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
         }
 
         // Initialize at zero
-        m->tseries[name].data = 0.;
+        m.tseries[name].data = 0.;
     }
 }
 
