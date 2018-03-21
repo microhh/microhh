@@ -904,102 +904,104 @@ void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* re
     }
 }
 
+template<typename TF>
+void Stats<TF>::calc_diff_2nd(
+        TF* restrict data, TF* restrict w, TF* restrict evisc,
+        TF* restrict prof, const TF* restrict dzhi,
+        TF* restrict fluxbot, TF* restrict fluxtop, const TF tPr, const int loc[3],
+        TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int ii = 1;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+    const int kstart = gd.kstart;
+    const int kend = gd.kend;
 
-//void Stats::calc_diff_2nd(double* restrict data, double* restrict w, double* restrict evisc,
-//                          double* restrict prof, double* restrict dzhi,
-//                          double* restrict fluxbot, double* restrict fluxtop, double tPr, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    const int ii = 1;
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//    const int kstart = grid->kstart;
-//    const int kend = grid->kend;
-//
-//    const double dxi = 1./grid->dx;
-//    const double dyi = 1./grid->dy;
-//
-//    // bottom boundary
-//    prof[kstart] = 0.;
-//    for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//        for (int i=grid->istart; i<grid->iend; ++i)
-//        {
-//            const int ij  = i + j*jj;
-//            const int ijk = i + j*jj + kstart*kk;
-//            prof[kstart] += mask[ijk]*fluxbot[ij];
-//        }
-//
-//    // calculate the interior
-//    if (loc[0] == 1)
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk  = i + j*jj + k*kk;
-//                    // evisc * (du/dz + dw/dx)
-//                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
-//                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
-//                }
-//        }
-//    }
-//    else if (loc[1] == 1)
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    // evisc * (dv/dz + dw/dy)
-//                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
-//                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
-//                }
-//        }
-//    }
-//    else
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
-//                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
-//                }
-//        }
-//    }
-//
-//    // top boundary
-//    prof[kend] = 0.;
-//    for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//        for (int i=grid->istart; i<grid->iend; ++i)
-//        {
-//            const int ij  = i + j*jj;
-//            const int ijk = i + j*jj + kend*kk;
-//            prof[kend] += mask[ijk]*fluxtop[ij];
-//        }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
+
+    // bottom boundary
+    prof[kstart] = 0.;
+    for (int j=gd.jstart; j<gd.jend; ++j)
+        #pragma ivdep
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*kk;
+            prof[kstart] += mask[ijk]*fluxbot[ij];
+        }
+
+    // calculate the interior
+    if (loc[0] == 1)
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk  = i + j*jj + k*kk;
+                    // evisc * (du/dz + dw/dx)
+                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                }
+        }
+    }
+    else if (loc[1] == 1)
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    // evisc * (dv/dz + dw/dy)
+                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
+                }
+        }
+    }
+    else
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
+                }
+        }
+    }
+
+    // top boundary
+    prof[kend] = 0.;
+    for (int j=gd.jstart; j<gd.jend; ++j)
+        #pragma ivdep
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kend*kk;
+            prof[kend] += mask[ijk]*fluxtop[ij];
+        }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= (double)(nmask[k]);
+        else
+            prof[k] = NC_FILL_DOUBLE;
+    }
+}
 
 template<typename TF>
 void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff)

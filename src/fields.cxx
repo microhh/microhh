@@ -433,12 +433,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
                             m.profs["uw"].data.data(), tmp2->fld.data(), uloc, tmp1->fld.data(), stats.nmaskh.data());
-        //if (model->diff->get_switch() == "smag2")
-        //    stats.calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
-        //                        m.profs["udiff"].data, grid.dzhi,
-        //                        u->flux_bot, u->flux_top, 1., uloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
-        //else
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        {
+            stats.calc_diff_2nd(mp["u"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                m.profs["udiff"].data.data(), gd.dzhi.data(),
+                                mp["u"]->flux_bot.data(), mp["u"]->flux_top.data(), 1., uloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
+        }
+        else
             stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, tmp1->fld.data(), stats.nmaskh.data());
 
     }
@@ -472,12 +474,15 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
                             m.profs["vw"].data.data(), tmp2->fld.data(), vloc, tmp1->fld.data(), stats.nmaskh.data());
-        //if (model->diff->get_switch() == "smag2")
-        //    stats.calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
-        //                        m.profs["vdiff"].data, grid.dzhi,
-        //                        v->flux_bot, v->flux_top, 1., vloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
-        //else
+
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        {
+            stats.calc_diff_2nd(mp["v"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                m.profs["vdiff"].data.data(), gd.dzhi.data(),
+                                mp["v"]->flux_bot.data(), mp["v"]->flux_top.data(), 1., vloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
+        }
+        else
             stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, tmp1->fld.data(), stats.nmaskh.data());
 
     }
@@ -508,16 +513,19 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
             stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
                                 m.profs[it.first+"w"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-            //if (model->diff->get_switch() == "smag2")
-            //{
-            //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
-            //                        m.profs[it.first+"diff"].data, grid.dzhi,
-            //                        it.second->flux_bot, it.second->flux_top, diffptr->tPr, sloc,
-            //                        atmp["tmp4"]->data, stats.nmaskh);
-            //}
-            //else
+
+            if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            {
+                stats.calc_diff_2nd(it.second->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                    m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
+                                    it.second->flux_bot.data(), it.second->flux_top.data(), diff.tPr, sloc,
+                                    mask_fieldh.fld.data(), stats.nmaskh.data());
+            }
+            else
+            {
                 stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
                                     it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+            }
         }
         else if (grid.swspatialorder == "4")
         {

@@ -55,10 +55,13 @@ class Diff
         //// GPU functions and variables
         //virtual void prepare_device() = 0;
         //#endif
+        //
+        TF tPr;
 
     protected:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+
 };
 #endif

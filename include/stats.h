@@ -113,8 +113,8 @@ class Stats
         void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 
         void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
-        //void calc_diff_2nd(double*, double*, double*, double*, double*,
-        //                   double*, double*, double, const int[3], double*, int*);
+        void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
+                           TF*, TF*, TF, const int[3], TF*, int*);
         //void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
 
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);

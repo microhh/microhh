@@ -51,12 +51,13 @@ class Diff_smag2 : public Diff<TF>
         using Diff<TF>::fields;
         Boundary_cyclic<TF> boundary_cyclic;
 
+        using Diff<TF>::tPr;
+
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
 
         double dnmax;
         double dnmul;
 
         double cs;
-        double tPr;
 };
 #endif
