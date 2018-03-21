@@ -43,8 +43,9 @@ namespace
     // Size of the lookup table.
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
-    double find_zL(const float* const restrict zL, const float* const restrict f,
-                   int &n, const float Ri)
+    template<typename TF>
+    TF find_zL(const float* const restrict zL, const float* const restrict f,
+               int& n, const float Ri)
     {
         // Determine search direction.
         if ( (f[n]-Ri) > 0 )
@@ -58,23 +59,23 @@ namespace
     }
 
     template<typename TF>
-    TF calc_obuk_noslip_flux(const float* const restrict zL, const float* const restrict f,
+    TF calc_obuk_noslip_flux(const float* restrict zL, const float* restrict f,
                              int& n,
                              const TF du, const TF bfluxbot, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
-        return zsl/find_zL(zL, f, n, Ri);
+        return zsl/find_zL<TF>(zL, f, n, Ri);
     }
     
     template<typename TF>
-    TF calc_obuk_noslip_dirichlet(const float* const restrict zL, const float* const restrict f,
+    TF calc_obuk_noslip_dirichlet(const float* restrict zL, const float* restrict f,
                                   int& n,
                                   const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = Constants::kappa * db * zsl / std::pow(du, 2);
-        return zsl/find_zL(zL, f, n, Ri);
+        return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
     template<typename TF>
@@ -119,7 +120,7 @@ namespace
     }
 
     template<typename TF>
-    void stability(TF* restrict ustar, TF* restrict obuk,TF* restrict bfluxbot,
+    void stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
                    TF* restrict u, TF* restrict v, TF* restrict b,
                    TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
                    TF* restrict dutot, const TF* restrict z,
@@ -134,9 +135,9 @@ namespace
         const int jj = icells;
     
         // Calculate total wind.
-        double du2;
-        //double utot, ubottot, du2;
-        const double minval = 1.e-1;
+        TF du2;
+        const TF minval = 1.e-1;
+
         // First, interpolate the wind to the scalar location.
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -148,7 +149,7 @@ namespace
                     + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
                 // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, 0.5), minval);
+                dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
             }
     
         boundary_cyclic.exec_2d(dutot);
@@ -185,7 +186,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    const double db = b[ijk] - bbot[ij];
+                    const TF db = b[ijk] - bbot[ij];
                     obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
