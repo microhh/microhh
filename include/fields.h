@@ -101,9 +101,6 @@ class Fields
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
 
-        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
-        std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
-
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
 
@@ -148,6 +145,9 @@ class Fields
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
+
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 
         // cross sections
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.

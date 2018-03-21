@@ -398,9 +398,6 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     const TF no_offset = 0.;
 
-    auto tmp1 = get_tmp();
-    auto tmp2 = get_tmp();
-
     // Save the area coverage of the mask
     stats.calc_area(m.profs["area" ].data.data(), sloc, stats.nmask .data());
     stats.calc_area(m.profs["areah"].data.data(), wloc, stats.nmaskh.data());
@@ -414,34 +411,42 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     }
 
     // Calculate the stats on the u location
-    // Interpolate the mask horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, uloc);
-    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, tmp1->fld.data(), stats.nmask.data());
-    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
+    // Interpolate the mask horizontally onto the u coordinate.
+    auto mask_on_u = get_tmp();
+    grid.interpolate_2nd(mask_on_u->fld.data(), mask_field.fld.data(), sloc, uloc);
+
+    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, mask_on_u->fld.data(), stats.nmask.data());
+    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, mask_on_u->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, mask_on_u->fld.data(), stats.nmask.data());
     }
+    release_tmp(mask_on_u);
 
     // Interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
+    auto maskh_on_u = get_tmp();
+    auto tmp = get_tmp();
+    grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
 
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["uw"].data.data(), tmp2->fld.data(), uloc, tmp1->fld.data(), stats.nmaskh.data());
+                            m.profs["uw"].data.data(), tmp->fld.data(), uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
+
         if (diff.get_switch() == Diffusion_type::Diff_smag2)
         {
             stats.calc_diff_2nd(mp["u"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
                                 m.profs["udiff"].data.data(), gd.dzhi.data(),
                                 mp["u"]->flux_bot.data(), mp["u"]->flux_top.data(), 1., uloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
+                                maskh_on_u->fld.data(), stats.nmaskh.data());
         }
         else
-            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, tmp1->fld.data(), stats.nmaskh.data());
+        {
+            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
+        }
 
     }
     else if (grid.swspatialorder == "4")
@@ -454,36 +459,44 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         //stats.calc_diff_4th(u->data, m.profs["udiff"].data, grid.dzhi4, visc, uloc,
         //                    atmp["tmp1"]->data, stats.nmaskh);
     }
-
+    release_tmp(maskh_on_u);
 
     // Calculate the statistics on the v location
-    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, vloc);
-    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, tmp1->fld.data(), stats.nmask.data());
-    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
+    auto mask_on_v = get_tmp();
+
+    grid.interpolate_2nd(mask_on_v->fld.data(), mask_field.fld.data(), sloc, vloc);
+    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, mask_on_v->fld.data(), stats.nmask.data());
+    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, mask_on_v->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, mask_on_v->fld.data(), stats.nmask.data());
     }
+    release_tmp(mask_on_v);
+
 
     // interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
+    auto maskh_on_v = get_tmp();
+    grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
+
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["vw"].data.data(), tmp2->fld.data(), vloc, tmp1->fld.data(), stats.nmaskh.data());
+                            m.profs["vw"].data.data(), tmp->fld.data(), vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
 
         if (diff.get_switch() == Diffusion_type::Diff_smag2)
         {
             stats.calc_diff_2nd(mp["v"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
                                 m.profs["vdiff"].data.data(), gd.dzhi.data(),
                                 mp["v"]->flux_bot.data(), mp["v"]->flux_top.data(), 1., vloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
+                                maskh_on_v->fld.data(), stats.nmaskh.data());
         }
         else
-            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, tmp1->fld.data(), stats.nmaskh.data());
+        {
+            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
+        }
 
     }
     else if (grid.swspatialorder == "4")
@@ -495,6 +508,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         //stats.calc_diff_4th(v->data, m.profs["vdiff"].data, grid.dzhi4, visc, vloc,
         //                    atmp["tmp1"]->data, stats.nmaskh);
     }
+    release_tmp(maskh_on_v);
 
     // calculate stats for the prognostic scalars
     //Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
@@ -512,7 +526,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         {
             stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                                m.profs[it.first+"w"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+                                m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
 
             if (diff.get_switch() == Diffusion_type::Diff_smag2)
             {
@@ -540,13 +554,13 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     // Calculate pressure statistics
     stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, tmp1->fld.data(), stats.nmask.data());
+    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
 
     if (grid.swspatialorder == "2")
     {
         stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["pw"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+                            m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
     else if (grid.swspatialorder == "4")
     {
@@ -564,9 +578,6 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     if (diff.get_switch() == Diffusion_type::Diff_smag2)
         stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
-    release_tmp(tmp1);
-    release_tmp(tmp2);
 }
 
 /*
