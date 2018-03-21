@@ -551,8 +551,10 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             fields.release_tmp(b);
         }
         else
+        {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
             throw std::runtime_error("Error in Thermo Dump");
+        }
 
     }
 }

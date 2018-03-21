@@ -114,12 +114,12 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
         thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
-        decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
-        stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
+        force    = std::make_shared<Force <TF>>(master, *grid, *fields, *input);
+        decay    = std::make_shared<Decay <TF>>(master, *grid, *fields, *input);
+        stats    = std::make_shared<Stats <TF>>(master, *grid, *fields, *input);
         column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump     = std::make_shared<Dump<TF>>(master, *grid, *fields, *input);
-        cross    = std::make_shared<Cross<TF>>(master, *grid, *fields, *input);
+        dump     = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross    = std::make_shared<Cross <TF>>(master, *grid, *fields, *input);
         // Parse the statistics masks
         add_statistics_masks();
     }
