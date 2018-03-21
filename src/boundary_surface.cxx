@@ -604,8 +604,18 @@ void Boundary_surface<TF>::exec_stats(Mask *m)
 template<typename TF>
 void Boundary_surface<TF>::set_values()
 {
+    auto& gd = grid.get_grid_data();
+
     // Call the base class function.
     Boundary<TF>::set_values();
+
+    // Override the boundary settings in order to enforce dirichlet BC for surface model.
+    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
+           Boundary_type::Dirichlet_type, ubot, fields.visc, grid.utrans,
+           gd.icells, gd.jcells);
+    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
+           Boundary_type::Dirichlet_type, vbot, fields.visc, grid.vtrans,
+           gd.icells, gd.jcells);
 
     // in case the momentum has a fixed ustar, set the value to that of the input
     if (mbcbot == Boundary_type::Ustar_type)

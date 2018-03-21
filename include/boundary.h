@@ -67,7 +67,7 @@ class Boundary
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
-        virtual void exec(); ///< Update the boundary conditions.
+        virtual void exec(Thermo<TF>&); ///< Update the boundary conditions.
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
         // virtual void exec_stats(Mask*); ///< Execute statistics of surface
@@ -123,7 +123,7 @@ class Boundary
         void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
 
     private:
-        virtual void update_bcs();       ///< Update the boundary values.
-        virtual void update_slave_bcs(); ///< Update the slave boundary values.
+        virtual void update_bcs(Thermo<TF>&); // Update the boundary values.
+        virtual void update_slave_bcs(); // Update the slave boundary values.
 };
 #endif

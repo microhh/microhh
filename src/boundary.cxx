@@ -571,18 +571,8 @@ namespace
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary<TF>::exec()
+void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
-    /* CvH TEMPORARY DISABLED FOR TESTING.
-    // Cyclic boundary conditions, do this before the bottom BC's
-    grid.boundary_cyclic(fields.mp.at("u")->fld.data());
-    grid.boundary_cyclic(fields.mp.at("v")->fld.data());
-    grid.boundary_cyclic(fields.mp.at("w")->fld.data());
-
-    for (auto& it : fields.sp)
-        grid.boundary_cyclic(it.second->fld.data());
-    CvH END DISABLED */
-
     boundary_cyclic.exec(fields.mp.at("u")->fld.data());
     boundary_cyclic.exec(fields.mp.at("v")->fld.data());
     boundary_cyclic.exec(fields.mp.at("w")->fld.data());
@@ -591,7 +581,7 @@ void Boundary<TF>::exec()
         boundary_cyclic.exec(it.second->fld.data());
 
     // Update the boundary values.
-    update_bcs();
+    update_bcs(thermo);
 
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -786,7 +776,7 @@ void Boundary<TF>::update_slave_bcs()
 }
 
 template<typename TF>
-void Boundary<TF>::update_bcs()
+void Boundary<TF>::update_bcs(Thermo<TF>& thermo)
 {
 }
 

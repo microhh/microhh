@@ -258,7 +258,7 @@ void Model<TF>::exec()
     // force   ->update_time_dependent();
 
     // Set the boundary conditions.
-    boundary->exec();
+    boundary->exec(*thermo);
 
     // Calculate the field means, in case needed.
     // fields->exec();
@@ -376,7 +376,7 @@ void Model<TF>::exec()
         // force   ->update_time_dependent();
 
         // Set the boundary conditions.
-        boundary->exec();
+        boundary->exec(*thermo);
 
         // Calculate the field means, in case needed.
         // fields->exec();
