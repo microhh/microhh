@@ -70,6 +70,7 @@ class Boundary_surface : public Boundary<TF>
         using Boundary<TF>::master;
         using Boundary<TF>::grid;
         using Boundary<TF>::fields;
+        using Boundary<TF>::boundary_cyclic;
         using Boundary<TF>::swboundary;
 
         using Boundary<TF>::process_bcs;

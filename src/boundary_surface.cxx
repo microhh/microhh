@@ -86,6 +86,78 @@ namespace
                 }
         }
     }
+
+    template<typename TF>
+    void stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
+                   TF* restrict u    , TF* restrict v   , TF* restrict b       ,
+                   TF* restrict ubot , TF* restrict vbot, TF* restrict bbot    ,
+                   TF* restrict dutot, const TF* restrict z,
+                   const int istart, const int iend, const int jstart, const int jend, const int kstart,
+                   const int icells, const int jcells, const int kk,
+                   Boundary_type mbcbot, Boundary_type thermobc,
+                   Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int ii = 1;
+        const int jj = icells;
+    
+        // Calculate total wind.
+        double du2;
+        //double utot, ubottot, du2;
+        const double minval = 1.e-1;
+        // First, interpolate the wind to the scalar location.
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
+                    + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
+                // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+                // otherwise evisc at k = kstart blows up
+                dutot[ij] = std::max(std::pow(du2, 0.5), minval);
+            }
+    
+        boundary_cyclic.exec_2d(dutot);
+    
+        // calculate Obukhov length
+        // case 1: fixed buoyancy flux and fixed ustar
+        if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    obuk[ij] = -std::pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
+                }
+        }
+        // case 2: fixed buoyancy surface value and free ustar
+        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    obuk [ij] = calc_obuk_noslip_flux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                }
+        }
+        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    const double db = b[ijk] - bbot[ij];
+                    obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                }
+        }
+    }
 }
 
 template<typename TF>
@@ -431,77 +503,6 @@ void Boundary_surface<TF>::update_slave_bcs()
 {
     // This function does nothing when the surface model is enabled, because 
     // the fields are computed by the surface model in update_bcs.
-}
-
-template<typename TF>
-void Boundary_surface<TF>::stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
-                                     TF* restrict u    , TF* restrict v   , TF* restrict b       ,
-                                     TF* restrict ubot , TF* restrict vbot, TF* restrict bbot    ,
-                                     TF* restrict dutot, const TF* restrict z)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    const int kstart = grid->kstart;
-
-    // calculate total wind
-    double du2;
-    //double utot, ubottot, du2;
-    const double minval = 1.e-1;
-    // first, interpolate the wind to the scalar location
-    for (int j=grid->jstart; j<grid->jend; ++j)
-        #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
-                + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
-            // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-            // otherwise evisc at k = kstart blows up
-            dutot[ij] = std::max(std::pow(du2, 0.5), minval);
-        }
-
-    grid->boundary_cyclic_2d(dutot);
-
-    // calculate Obukhov length
-    // case 1: fixed buoyancy flux and fixed ustar
-    if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij = i + j*jj;
-                obuk[ij] = -std::pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
-            }
-    }
-    // case 2: fixed buoyancy surface value and free ustar
-    else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij = i + j*jj;
-                obuk [ij] = calc_obuk_noslip_flux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
-                ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-            }
-    }
-    else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-            #pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                const double db = b[ijk] - bbot[ij];
-                obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
-                ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-            }
-    }
 }
 
 template<typename TF>
