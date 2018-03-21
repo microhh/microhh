@@ -40,12 +40,11 @@ class Boundary_surface : public Boundary<TF>
         void exec_stats(Mask<TF>&);
         void exec_cross(int);
 
-        TF z0m;
-        TF z0h;
-
         using Boundary<TF>::ustar;
         using Boundary<TF>::obuk;
         using Boundary<TF>::nobuk;
+        using Boundary<TF>::z0m;
+        using Boundary<TF>::z0h;
 
         #ifdef USECUDA
         // GPU functions and variables

@@ -745,13 +745,13 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
     // Calculate strain rate using MO for velocity gradients lowest level.
     if (boundary.get_switch() == "surface")
-        calc_strain2<TF,true>(fields.sd["evisc"]->fld.data(),
-                              fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                              fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                              boundary.ustar, boundary.obuk,
-                              gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                              gd.icells, gd.ijcells);
+        calc_strain2<TF,false>(fields.sd["evisc"]->fld.data(),
+                               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                               fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                               boundary.ustar, boundary.obuk,
+                               gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                               gd.icells, gd.ijcells);
 
     // Calculate strain rate using resolved boundaries.
     else
@@ -763,17 +763,22 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                               gd.icells, gd.ijcells);
 
-    // start with retrieving the stability information
+    // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
     {
-    //     // Calculate eddy viscosity using MO at lowest model level
-    //     if (model->boundary->get_switch() == "surface")
-    //         calc_evisc_neutral<false>(fields->sd["evisc"]->data,
-    //                                   fields->u->data, fields->v->data, fields->w->data,
-    //                                   fields->u->datafluxbot, fields->v->datafluxbot,
-    //                                   grid->z, grid->dz, boundaryptr->z0m, fields->visc);
-    //     // Calculate eddy viscosity assuming resolved walls
-    //     else
+         // Calculate eddy viscosity using MO at lowest model level
+         if (boundary.get_switch() == "surface")
+            calc_evisc_neutral<TF,false>(fields.sd["evisc"]->fld.data(),
+                                         fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                                         fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                                         gd.z.data(), gd.dz.data(), 0, fields.visc,
+                                         gd.dx, gd.dy, this->cs,
+                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                                         gd.icells, gd.jcells, gd.ijcells,
+                                         boundary_cyclic);
+
+         // Calculate eddy viscosity assuming resolved walls
+         else
             calc_evisc_neutral<TF,true>(fields.sd["evisc"]->fld.data(),
                                         fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                                         fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
@@ -796,12 +801,10 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         calc_evisc<TF,true>(fields.sd["evisc"]->fld.data(),
                             fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
                             fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
-                            // boundaryptr->ustar, boundaryptr->obuk,
-                            nullptr, nullptr,
+                            boundary.ustar, boundary.obuk,
                             gd.z.data(), gd.dz.data(), gd.dzi.data(),
                             gd.dx, gd.dy,
-                            //boundaryptr->z0m,
-                            0.035, fields.visc, this->cs, this->tPr,
+                            boundary.z0m, fields.visc, this->cs, this->tPr,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                             gd.icells, gd.jcells, gd.ijcells,
                             boundary_cyclic);

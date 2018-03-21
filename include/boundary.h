@@ -83,6 +83,8 @@ class Boundary
         //virtual void forward_device();
         //virtual void backward_device();
 
+        TF z0m;
+        TF z0h;
         TF* ustar;
         TF* obuk;
         int* nobuk;
