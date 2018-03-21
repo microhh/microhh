@@ -578,6 +578,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     if (diff.get_switch() == Diffusion_type::Diff_smag2)
         stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+
+    release_tmp(tmp);
 }
 
 /*
@@ -1176,16 +1178,16 @@ void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
-    const double NoOffset = 0.;
+    const double no_offset = 0.;
 
     column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
     column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), NoOffset);
+    column.calc_column("w",mp["w"]->fld.data(), no_offset);
     for (auto& it : sp)
     {
-        column.calc_column(it.first, it.second->fld.data(), NoOffset);
+        column.calc_column(it.first, it.second->fld.data(), no_offset);
     }
-    column.calc_column("p", sd["p"]->fld.data(), NoOffset);
+    column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }
 
 template<typename TF>
