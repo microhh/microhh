@@ -493,7 +493,7 @@ void Stats<TF>::calc_mean_2d(TF& mean, const TF* const restrict data,
         mean /= static_cast<TF>(nmask);
     }
     else
-        mean = NC_FILL_DOUBLE;
+        mean = netcdf_fp_fillvalue<TF>();
 }
 
 //
