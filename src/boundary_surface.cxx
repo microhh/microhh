@@ -462,14 +462,17 @@ void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
 template<typename TF>
 void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
-    // 1. Process the boundary conditions now all fields are registered
+    // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
 
-    // 2. Read and check the boundary_surface specific settings
+    // 2. Read and check the boundary_surface specific settings.
     process_input(inputin, thermo);
 
-    // 3. Allocate and initialize the 2D surface fields
+    // 3. Allocate and initialize the 2D surface fields.
     init_surface();
+
+    // 4. Initialize the boundary cyclic.
+    boundary_cyclic.init();
 }
 
 template<typename TF>
