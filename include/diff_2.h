@@ -37,6 +37,7 @@ class Diff_2 : public Diff<TF>
         double get_dn(double);
 
         void set_values();
+        void init() {};
         void exec();
 
         // Empty functions, these are allowed to pass.

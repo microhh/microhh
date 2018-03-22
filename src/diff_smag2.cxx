@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #include "grid.h"
 #include "fields.h"
@@ -307,7 +308,7 @@ namespace
                     }
             }
         }
-    
+   
         boundary_cyclic.exec(evisc);
     }
 
@@ -644,12 +645,18 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
 }
 
-template <typename TF>
+template<typename TF>
 Diff_smag2<TF>::~Diff_smag2()
 {
 }
 
-template <typename TF>
+template<typename TF>
+void Diff_smag2<TF>::init()
+{
+    boundary_cyclic.init();
+}
+
+template<typename TF>
 Diffusion_type Diff_smag2<TF>::get_switch() const
 {
     return swdiff;

@@ -39,6 +39,7 @@ class Diff_disabled : public Diff<TF>
         // Empty functions which simply pass for disabled diffusion
         void set_values() {}
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+        void init() {}
         void exec() {}
 
         //#ifdef USECUDA

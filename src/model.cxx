@@ -162,6 +162,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    diff->init();
     pres->init();
     force->init();
     thermo->init();

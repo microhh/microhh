@@ -44,6 +44,7 @@ class Diff
         virtual Diffusion_type get_switch() const = 0;
         virtual void set_values() = 0;
         virtual void exec_viscosity(Boundary<TF>&, Thermo<TF>&) = 0;
+        virtual void init() = 0;
         virtual void exec() = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
