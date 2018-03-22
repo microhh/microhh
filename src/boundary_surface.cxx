@@ -292,8 +292,8 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
     
                     // interpolate the whole stability function rather than ustar or obuk
-                    ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-                    vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                    ufluxbot[ij] = -(u[ijk]-ubot[ij])*static_cast<TF>(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                    vfluxbot[ij] = -(v[ijk]-vbot[ij])*static_cast<TF>(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
                 }
     
             boundary_cyclic.exec_2d(ufluxbot);
