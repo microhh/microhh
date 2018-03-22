@@ -677,12 +677,12 @@ template<typename TF>
 void Boundary<TF>::exec_cross()
 {
 }
+*/
 
 template<typename TF>
-void Boundary<TF>::exec_stats(Mask* m)
+void Boundary<TF>::exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&)
 {
 }
-*/
 
 // Computational kernel for boundary calculation.
 namespace

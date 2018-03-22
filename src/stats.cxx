@@ -471,28 +471,31 @@ void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data
     }
 }
 
-//void Stats::calc_mean2d(double* const restrict mean, const double* const restrict data,
-//                        const double offset,
-//                        const double* const restrict mask, const int * const restrict nmask)
-//{
-//    const int jj = grid->icells;
-//
-//    if (*nmask > nthres)
-//    {
-//        *mean = 0.;
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ij = i + j*jj;
-//                *mean += mask[ij]*(data[ij] + offset);
-//            }
-//        master->sum(mean,1);
-//        *mean /= (double)*nmask;
-//    }
-//    else
-//        *mean = NC_FILL_DOUBLE;
-//}
+template<typename TF>
+void Stats<TF>::calc_mean_2d(TF& mean, const TF* const restrict data,
+                             const TF offset,
+                             const TF* const restrict mask, const int nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int jj = gd.icells;
+
+    if (nmask > nthres)
+    {
+        mean = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij = i + j*jj;
+                mean += mask[ij]*(data[ij] + offset);
+            }
+        master.sum(&mean,1);
+        mean /= static_cast<TF>(nmask);
+    }
+    else
+        mean = NC_FILL_DOUBLE;
+}
+
 //
 //void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double* restrict prof)
 //{

@@ -106,9 +106,9 @@ class Stats
         void calc_area(TF*, const int[3], int*);
         void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
 
-        //void calc_mean2d(double* const, const double* const,
-        //                 const double,
-        //                 const double* const, const int* const);
+        void calc_mean_2d(TF&, const TF* const,
+                          const TF,
+                          const TF* const, const int);
 
         void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 

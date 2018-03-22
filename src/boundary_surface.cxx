@@ -600,14 +600,17 @@ void Boundary_surface<TF>::exec_cross(int iotime)
     if (nerror)
         throw 1;
 }
+*/
 
 template<typename TF>
-void Boundary_surface<TF>::exec_stats(Mask *m)
+void Boundary_surface<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh)
 {
-    stats->calc_mean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
-    stats->calc_mean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
+    Mask<TF>& m = stats.masks[mask_name];
+
+    const TF no_offset = 0.;
+    stats.calc_mean_2d(m.tseries["obuk" ].data, obuk , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_mean_2d(m.tseries["ustar"].data, ustar, no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
 }
-*/
 
 template<typename TF>
 void Boundary_surface<TF>::set_values()

@@ -37,7 +37,7 @@ class Boundary_surface : public Boundary<TF>
         void create(Input&, Stats<TF>&);
         void set_values();
 
-        void exec_stats(Mask<TF>&);
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&);
         void exec_cross(int);
 
         using Boundary<TF>::ustar;
