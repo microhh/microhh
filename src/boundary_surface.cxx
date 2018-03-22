@@ -276,6 +276,9 @@ namespace
     {
         const int ii = 1;
         const int jj = icells;
+
+        const TF fp_0p5  = 0.5;
+        const TF fp_0p25 = 0.25;
     
         // the surface value is known, calculate the flux and gradient
         if (bcbot == Boundary_type::Dirichlet_type)
@@ -308,17 +311,22 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                    const TF vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
-                                                           + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
-                    const TF uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
-                                                           + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
-                    const TF u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
-                    const TF v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
-                    const TF ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
-                    const TF ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
-                    ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
-                    vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
+
+                    // CvH: now, this is ugly...
+                    const TF one  = static_cast<TF>(1);
+                    const TF two  = static_cast<TF>(2);
+                    const TF four = static_cast<TF>(4);
+
+                    const TF vonu2 = std::max(minval, static_cast<TF>(0.25)*( std::pow(v[ijk-ii]-vbot[ij-ii], two) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], two)
+                                                                            + std::pow(v[ijk   ]-vbot[ij   ], two) + std::pow(v[ijk   +jj]-vbot[ij   +jj], two)) );
+                    const TF uonv2 = std::max(minval, static_cast<TF>(0.25)*( std::pow(u[ijk-jj]-ubot[ij-jj], two) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], two)
+                                                                            + std::pow(u[ijk   ]-ubot[ij   ], two) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], two)) );
+                    const TF u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], two) );
+                    const TF v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], two) );
+                    const TF ustaronu4 = static_cast<TF>(0.5)*(std::pow(ustar[ij-ii], four) + std::pow(ustar[ij], four));
+                    const TF ustaronv4 = static_cast<TF>(0.5)*(std::pow(ustar[ij-jj], four) + std::pow(ustar[ij], four));
+                    ufluxbot[ij] = -copysign(one, u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (one + vonu2 / u2), static_cast<TF>(0.5));
+                    vfluxbot[ij] = -copysign(one, v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (one + uonv2 / v2), static_cast<TF>(0.5));
                 }
     
             boundary_cyclic.exec_2d(ufluxbot);
