@@ -506,15 +506,15 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
         stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(b->fld.data(), m.profs["b"].data.data(), fields.mp["w"]->fld.data(), m.profs["w"].data.data(),
                             m.profs["bw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-        //if (model->diff->get_switch() == "smag2")
-        //{
-        //    stats.calc_diff_2nd(b->data, w->data, sd["evisc"]->data,
-        //                        m.profs["bdiff"].data, grid.dzhi,
-        //                        b->flux_bot, b->flux_top, diffptr->tPr, sloc,
-        //                        atmp["tmp4"]->data, stats.nmaskh);
-        //}
-        //else
-        stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        {
+            stats.calc_diff_2nd(b->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                                m.profs["bdiff"].data.data(), gd.dzhi.data(),
+                                b->flux_bot.data(), b->flux_top.data(), diff.tPr, sloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
+        }
+        else
+            stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
                                 get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
         fields.release_tmp(tmp);
     }
