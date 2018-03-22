@@ -379,10 +379,10 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         // create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), ncDouble, m.t_dim);
+            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), m.t_dim);
             m.tseries[name].ncvar.putAtt("units", unit.c_str());
             m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
-            m.tseries[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
+            m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
         }
 
         // Initialize at zero
