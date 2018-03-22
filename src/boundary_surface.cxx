@@ -53,7 +53,7 @@ namespace
         else
             while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
 
-        const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+        const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
         return zL0;
     }
@@ -209,8 +209,8 @@ namespace
         const int jj = icells;
     
         // calculate total wind
-        double du2;
-        const double minval = 1.e-1;
+        TF du2;
+        const TF minval = 1.e-1;
     
         // first, interpolate the wind to the scalar location
         for (int j=jstart; j<jend; ++j)
@@ -223,7 +223,7 @@ namespace
                     + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
                 // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, 0.5), minval);
+                dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
             }
     
         boundary_cyclic.exec_2d(dutot);
@@ -300,8 +300,7 @@ namespace
         else if (bcbot == Boundary_type::Ustar_type)
         {
             // first redistribute ustar over the two flux components
-            double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
-            const double minval = 1.e-2;
+            const TF minval = 1.e-2;
     
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -310,14 +309,14 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
                     // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                    vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
-                                + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
-                    uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
-                                + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
-                    u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
-                    v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
-                    ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
-                    ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
+                    const TF vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
+                                                           + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
+                    const TF uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
+                                                           + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
+                    const TF u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
+                    const TF v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
+                    const TF ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
+                    const TF ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
                     ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
                     vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
                 }
@@ -657,26 +656,26 @@ void Boundary_surface<TF>::init_solver()
     zL_sl = new float[nzL];
     f_sl  = new float[nzL];
 
-    double* zL_tmp = new double[nzL];
+    TF* zL_tmp = new TF[nzL];
 
     // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
     // and stretch up to -1e4 in the negative limit.
     // Alter next three values in case the range need to be changed.
-    const double zL_min = -1.e4;
-    const double zLrange_min = -5.;
-    const double zLrange_max = 10.;
+    const TF zL_min = -1.e4;
+    const TF zLrange_min = -5.;
+    const TF zLrange_max = 10.;
 
-    double dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
+    TF dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
     zL_tmp[0] = -zLrange_max;
     for (int n=1; n<9*nzL/10; ++n)
         zL_tmp[n] = zL_tmp[n-1] + dzL;
 
     // Stretch the remainder of the z/L values far down for free convection.
-    const double zLend = -(zL_min - zLrange_min);
+    const TF zLend = -(zL_min - zLrange_min);
 
     // Find stretching that ends up at the correct value using geometric progression.
-    double r  = 1.01;
-    double r0 = Constants::dhuge;
+    TF r  = 1.01;
+    TF r0 = Constants::dhuge;
     while (std::abs( (r-r0)/r0 ) > 1.e-10)
     {
         r0 = r;
@@ -698,13 +697,13 @@ void Boundary_surface<TF>::init_solver()
     // Calculate the evaluation function.
     if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
     {
-        const double zsl = gd.z[gd.kstart];
+        const TF zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
             f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
     }
     else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
     {
-        const double zsl = gd.z[gd.kstart];
+        const TF zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
             f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h, zsl/zL_sl[n]);
     }

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -225,8 +225,6 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     // Set up output classes
     create_dump(dump);
     create_cross(cross);
-
-
 }
 
 template<typename TF>
@@ -280,10 +278,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "",        crosslist_global, &cross_simple);
             check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
         }
-
-
    }
-
 }
 
 template<typename TF>
@@ -447,7 +442,6 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         {
             stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
         }
-
     }
     else if (grid.swspatialorder == "4")
     {
@@ -966,7 +960,6 @@ void Fields<TF>::create_column(Column<TF>& column)
 
         column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
     }
-
 }
 
 template<typename TF>
@@ -1173,7 +1166,6 @@ void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     for (auto& it : dumplist)
         dump.save_dump(a.at(it)->fld.data(), a.at(it)->name, iotime);
 }
-
 
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)

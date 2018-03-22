@@ -1085,6 +1085,5 @@ void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict di
 //        *cover = NC_FILL_DOUBLE;
 //}
 
-
 template class Stats<double>;
 template class Stats<float>;
