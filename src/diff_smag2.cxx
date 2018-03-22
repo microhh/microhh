@@ -311,7 +311,7 @@ namespace
         boundary_cyclic.exec(evisc);
     }
 
-    template <typename TF, bool resolved_wall>
+    template <typename TF, Surface_model surface_model>
     void diff_u(TF* restrict ut,
                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
@@ -325,9 +325,9 @@ namespace
     
         TF eviscn, eviscs, eviscb, evisct;
     
-        const int k_offset = resolved_wall ? 0 : 1;
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
        
-        if (!resolved_wall)
+        if (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
             for (int j=jstart; j<jend; ++j)
@@ -400,7 +400,7 @@ namespace
                 }
     }
 
-    template <typename TF, bool resolved_wall>
+    template <typename TF, Surface_model surface_model>
     void diff_v(TF* restrict vt,
                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
@@ -415,9 +415,9 @@ namespace
     
         TF evisce, eviscw, eviscb, evisct;
     
-        const int k_offset = resolved_wall ? 0 : 1;
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
     
-        if (!resolved_wall)
+        if (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
             for (int j=jstart; j<jend; ++j)
@@ -704,23 +704,25 @@ void Diff_smag2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
-    diff_u<TF,true>(fields.mt["u"]->fld.data(),
-                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                    gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                    fields.sd["evisc"]->fld.data(),
-                    fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
-                    fields.rhoref.data(), fields.rhorefh.data(),
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+    diff_u<TF, Surface_model::Enabled>(
+            fields.mt["u"]->fld.data(),
+            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+            fields.sd["evisc"]->fld.data(),
+            fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+            fields.rhoref.data(), fields.rhorefh.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
-    diff_v<TF,true>(fields.mt["v"]->fld.data(),
-                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                    gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                    fields.sd["evisc"]->fld.data(),
-                    fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
-                    fields.rhoref.data(), fields.rhorefh.data(),
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+    diff_v<TF, Surface_model::Enabled>(
+            fields.mt["v"]->fld.data(),
+            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+            fields.sd["evisc"]->fld.data(),
+            fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+            fields.rhoref.data(), fields.rhorefh.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     diff_w<TF>(fields.mt["w"]->fld.data(),
                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
