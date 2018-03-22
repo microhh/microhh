@@ -40,6 +40,7 @@ namespace
 {
     // Make a shortcut in the file scope.
     namespace most = Monin_obukhov;
+
     // Size of the lookup table.
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
@@ -219,8 +220,8 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
-                    + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
+                du2 = std::pow(static_cast<TF>(0.5)*(u[ijk] + u[ijk+ii]) - static_cast<TF>(0.5)*(ubot[ij] + ubot[ij+ii]), static_cast<TF>(2.))
+                    + std::pow(static_cast<TF>(0.5)*(v[ijk] + v[ijk+jj]) - static_cast<TF>(0.5)*(vbot[ij] + vbot[ij+jj]), static_cast<TF>(2.));
                 // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
@@ -277,9 +278,6 @@ namespace
         const int ii = 1;
         const int jj = icells;
 
-        const TF fp_0p5  = 0.5;
-        const TF fp_0p25 = 0.25;
-    
         // the surface value is known, calculate the flux and gradient
         if (bcbot == Boundary_type::Dirichlet_type)
         {

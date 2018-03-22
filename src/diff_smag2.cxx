@@ -38,7 +38,9 @@ namespace
 {
     namespace most = Monin_obukhov;
 
-    template <typename TF, bool resolved_wall> 
+    enum class Surface_model {Enabled, Disabled};
+
+    template <typename TF, Surface_model surface_model>
     void calc_strain2(TF* restrict strain2,
                       TF* restrict u, TF* restrict v, TF* restrict w,
                       TF* restrict ufluxbot, TF* restrict vfluxbot,
@@ -49,10 +51,10 @@ namespace
                       const int jj, const int kk)
     {
         const int ii = 1;
-        const int k_offset = resolved_wall ? 0 : 1;
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
     
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
-        if (!resolved_wall)
+        if (surface_model == Surface_model::Enabled)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -139,7 +141,7 @@ namespace
                 }
     }
 
-    template <typename TF, bool resolved_wall>
+    template <typename TF, Surface_model surface_model>
     void calc_evisc_neutral(TF* restrict evisc,
                             TF* restrict u, TF* restrict v, TF* restrict w,
                             TF* restrict ufluxbot, TF* restrict vfluxbot,
@@ -155,7 +157,7 @@ namespace
         // Wall damping constant.
         const int n = 2;
     
-        if (resolved_wall)
+        if (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
             {
@@ -209,7 +211,7 @@ namespace
         }
     }
 
-    template<typename TF, bool resolved_wall>
+    template<typename TF, Surface_model surface_model>
     void calc_evisc(TF* restrict evisc,
                     TF* restrict u, TF* restrict v, TF* restrict w,  TF* restrict N2,
                     TF* restrict ufluxbot, TF* restrict vfluxbot, TF* restrict bfluxbot,
@@ -224,7 +226,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        if (resolved_wall)
+        if (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
             {
@@ -745,48 +747,52 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
     // Calculate strain rate using MO for velocity gradients lowest level.
     if (boundary.get_switch() == "surface")
-        calc_strain2<TF,false>(fields.sd["evisc"]->fld.data(),
-                               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                               fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                               boundary.ustar, boundary.obuk,
-                               gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                               gd.icells, gd.ijcells);
+        calc_strain2<TF, Surface_model::Enabled>(
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                boundary.ustar, boundary.obuk,
+                gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
     // Calculate strain rate using resolved boundaries.
     else
-        calc_strain2<TF,true>(fields.sd["evisc"]->fld.data(),
-                              fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                              fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                              nullptr, nullptr,
-                              gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                              gd.icells, gd.ijcells);
+        calc_strain2<TF, Surface_model::Disabled>(
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                nullptr, nullptr,
+                gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
     // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
     {
          // Calculate eddy viscosity using MO at lowest model level
         if (boundary.get_switch() == "surface")
-            calc_evisc_neutral<TF,false>(fields.sd["evisc"]->fld.data(),
-                                         fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                                         fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                                         gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
-                                         gd.dx, gd.dy, this->cs,
-                                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                         gd.icells, gd.jcells, gd.ijcells,
-                                         boundary_cyclic);
+            calc_evisc_neutral<TF, Surface_model::Enabled>(
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                    fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                    gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
+                    gd.dx, gd.dy, this->cs,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
 
          // Calculate eddy viscosity assuming resolved walls
         else
-            calc_evisc_neutral<TF,true>(fields.sd["evisc"]->fld.data(),
-                                        fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                                        fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                                        gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
-                                        gd.dx, gd.dy, this->cs,
-                                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                        gd.icells, gd.jcells, gd.ijcells,
-                                        boundary_cyclic);
+            calc_evisc_neutral<TF, Surface_model::Disabled>(
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                    fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
+                    gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
+                    gd.dx, gd.dy, this->cs,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
     }
     // assume buoyancy calculation is needed
     else
@@ -799,27 +805,29 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         thermo.get_thermo_field(*buoy_tmp, "N2", false);
 
         if (boundary.get_switch() == "surface")
-            calc_evisc<TF,false>(fields.sd["evisc"]->fld.data(),
-                                 fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
-                                 fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
-                                 boundary.ustar, boundary.obuk,
-                                 gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                                 gd.dx, gd.dy,
-                                 boundary.z0m, fields.visc, this->cs, this->tPr,
-                                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                 gd.icells, gd.jcells, gd.ijcells,
-                                 boundary_cyclic);
+            calc_evisc<TF, Surface_model::Enabled>(
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
+                    fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
+                    boundary.ustar, boundary.obuk,
+                    gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                    gd.dx, gd.dy,
+                    boundary.z0m, fields.visc, this->cs, this->tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
         else
-            calc_evisc<TF,true>(fields.sd["evisc"]->fld.data(),
-                                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
-                                fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
-                                boundary.ustar, boundary.obuk,
-                                gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                                gd.dx, gd.dy,
-                                boundary.z0m, fields.visc, this->cs, this->tPr,
-                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                gd.icells, gd.jcells, gd.ijcells,
-                                boundary_cyclic);
+            calc_evisc<TF, Surface_model::Disabled>(
+                    fields.sd["evisc"]->fld.data(),
+                    fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
+                    fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(), buoy_tmp->flux_bot.data(),
+                    boundary.ustar, boundary.obuk,
+                    gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                    gd.dx, gd.dy,
+                    boundary.z0m, fields.visc, this->cs, this->tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
 
         fields.release_tmp(buoy_tmp);
         fields.release_tmp(tmp);
