@@ -823,9 +823,6 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
         fields.release_tmp(buoy_tmp);
         fields.release_tmp(tmp);
-
-        fields.release_tmp(buoy_tmp);
-        fields.release_tmp(tmp);
     }
 }
 #endif
