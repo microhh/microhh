@@ -145,8 +145,8 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
-                    + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
+                du2 = std::pow(static_cast<TF>(0.5)*(u[ijk] + u[ijk+ii]) - static_cast<TF>(0.5)*(ubot[ij] + ubot[ij+ii]), static_cast<TF>(2))
+                    + std::pow(static_cast<TF>(0.5)*(v[ijk] + v[ijk+jj]) - static_cast<TF>(0.5)*(vbot[ij] + vbot[ij+jj]), static_cast<TF>(2));
                 // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
@@ -684,7 +684,7 @@ void Boundary_surface<TF>::init_solver()
     // Find stretching that ends up at the correct value using geometric progression.
     TF r  = 1.01;
     TF r0 = Constants::dhuge;
-    while (std::abs( (r-r0)/r0 ) > 1.e-10)
+    while (std::abs( (r-r0)/r0 ) > static_cast<TF>(1.e-10))
     {
         r0 = r;
         r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL/10.) ) );
@@ -741,6 +741,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     {
         auto buoy = fields.get_tmp();
         auto tmp = fields.get_tmp();
+
         thermo.get_buoyancy_surf(*buoy);
         stability(ustar, obuk, buoy->flux_bot.data(),
                   fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
@@ -783,5 +784,6 @@ void Boundary_surface<TF>::update_slave_bcs()
     // This function does nothing when the surface model is enabled, because 
     // the fields are computed by the surface model in update_bcs.
 }
+
 template class Boundary_surface<double>;
 template class Boundary_surface<float>;
