@@ -113,8 +113,8 @@ void Boundary<TF>::process_bcs(Input& input)
         sbc.emplace(it.first, Field3dBc<TF>());
         swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
         swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
-        sbc.at(it.first).bot = input.get_item<double>("boundary", "sbot", it.first);
-        sbc.at(it.first).top = input.get_item<double>("boundary", "stop", it.first);
+        sbc.at(it.first).bot = input.get_item<TF>("boundary", "sbot", it.first);
+        sbc.at(it.first).top = input.get_item<TF>("boundary", "stop", it.first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
@@ -342,7 +342,7 @@ void Boundary<TF>::set_values()
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     for (auto& it : fields.sp)
     {
