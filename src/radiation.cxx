@@ -23,7 +23,9 @@
 #include <vector>
 #include <string>
 #include <iostream>
+
 #include "radiation.h"
+#include "input.h"
 #include "data_block.h"
 
 namespace
@@ -48,10 +50,20 @@ template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
+    // Read the switches from the input
+    std::string swradiation_in = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
+
+    if (swradiation_in == "0")
+        swradiation = Radiation_type::Disabled;
+    else if (swradiation_in == "1")
+        swradiation = Radiation_type::Enabled;
+    else
+        throw std::runtime_error("Invalid option for \"swradiation\"");
+
     double cp = 1004.;
     c_rrtmg_lw_init(&cp);
     ncol = 1;
-    nlay = 200;
+    nlay = 60;
     nbndlw = 16;
 }
 
@@ -105,7 +117,7 @@ void Radiation<TF>::init()
 template<typename TF>
 void Radiation<TF>::create()
 {
-    std::string block_name = "microhh_input.prof";
+    std::string block_name = "radiation.prof";
     Data_block data_block(master, block_name);
     data_block.get_vector(play, "pavel", nlay, 0, 0);
     data_block.get_vector(plev, "pz", nlay+1, 0, 0);

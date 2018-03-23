@@ -25,6 +25,8 @@
 
 #include <vector>
 
+enum class Radiation_type {Enabled, Disabled};
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -44,6 +46,8 @@ class Radiation
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+
+        Radiation_type swradiation;
 
         int ncol;
         int nlay;
