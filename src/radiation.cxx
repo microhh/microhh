@@ -25,11 +25,14 @@
 #include <iostream>
 
 #include "radiation.h"
+#include "fields.h"
+#include "thermo.h"
 #include "input.h"
 #include "data_block.h"
 
 namespace
 {
+    // Wrapper functions to the RRTMG long wave kernels.
     extern "C"
     {
         void c_rrtmg_lw_init(double *cpdair);
@@ -48,7 +51,7 @@ namespace
 
 template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
 {
     // Read the switches from the input
     std::string swradiation_in = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
@@ -119,6 +122,7 @@ void Radiation<TF>::create()
 {
     std::string block_name = "radiation.prof";
     Data_block data_block(master, block_name);
+
     data_block.get_vector(play, "pavel", nlay, 0, 0);
     data_block.get_vector(plev, "pz", nlay+1, 0, 0);
     data_block.get_vector(tlay, "tavel", nlay, 0, 0);
@@ -139,8 +143,15 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
     iceflglw = 0;
     liqflglw = 0;
 
-    std::fill(emis.begin(), emis.end(), 1.); 
-    // End
+    std::fill(emis.begin(), emis.end(), 1.);
+
+    // Step 1. Get the mean absolute atmospheric temperature.
+    auto T = fields.get_tmp();
+    thermo.get_thermo_field(*T, "T", false);
+    field3d_operators.calc_mean_profile(T->fld_mean.data(), T->fld.data());
+
+    thermo.get_thermo_field(*T, "T_h", false);
+    // Step 2.
 
     // Get absolute atmospheric and surface temperature.
     tsfc[0] = 300.;
@@ -155,6 +166,8 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
             tauaer.data()  ,
             uflx.data()    ,dflx.data()    ,hr.data()      ,uflxc.data()   ,dflxc.data(),  hrc.data(),
             duflx_dt.data(),duflxc_dt.data());
+
+    fields.release_tmp(T);
 
     std::cout << "Heating rate" << std::endl;
     for (int i=0; i<nlay; ++i)

@@ -37,7 +37,6 @@ class Field3d_operators
         Field3d_operators(Master&, Grid<TF>&, Fields<TF>&);
         ~Field3d_operators();
 
-
         void calc_mean_profile(TF* const, const TF* const);   ///< Calculate mean profile into fld_mean
         TF calc_mean(const TF* const);             ///< Calculate volume weighted total mean
         TF calc_max(const TF* const);              ///< Calculate maximum value

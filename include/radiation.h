@@ -24,6 +24,7 @@
 #define RADIATION_H
 
 #include <vector>
+#include "field3d_operators.h"
 
 enum class Radiation_type {Enabled, Disabled};
 
@@ -47,6 +48,7 @@ class Radiation
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
         Radiation_type swradiation;
 

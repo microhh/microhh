@@ -31,6 +31,7 @@
 
 class Master;
 class Input;
+class Data_block;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -84,8 +85,7 @@ class Fields
 
         bool has_mask(std::string);
 
-        // void set_calc_mean_profs(bool);
-        // void set_minimum_tmp_fields(int);
+        /// void set_calc_mean_profs(bool);
 
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);

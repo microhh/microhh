@@ -103,12 +103,12 @@ class Thermo_dry : public Thermo<TF>
             TF pbot;   ///< Surface pressure.
             TF thref0; ///< Reference potential temperature in case of Boussinesq
 
-            std::vector<TF>  thref;
-            std::vector<TF>  threfh;
-            std::vector<TF>  pref;
-            std::vector<TF>  prefh;
-            std::vector<TF>  exnref;
-            std::vector<TF>  exnrefh;
+            std::vector<TF> thref;
+            std::vector<TF> threfh;
+            std::vector<TF> pref;
+            std::vector<TF> prefh;
+            std::vector<TF> exnref;
+            std::vector<TF> exnrefh;
 
             // GPU functions and variables
             TF*  thref_g;
@@ -118,6 +118,7 @@ class Thermo_dry : public Thermo<TF>
             TF*  exnref_g;
             TF*  exnrefh_g;
         };
+
         background_state bs;
         background_state bs_stats;
 };
