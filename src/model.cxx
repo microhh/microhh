@@ -296,7 +296,7 @@ void Model<TF>::exec()
         thermo->exec();
 
         // Calculate the radiation fluxes and the related heating rate.
-        radiation->exec();
+        radiation->exec(*thermo);
 
         // Calculate the tendency due to damping in the buffer layer.
         // buffer->exec();

@@ -31,6 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Thermo;
 
 template<typename TF>
 class Radiation
@@ -40,7 +41,7 @@ class Radiation
         ~Radiation();
         void init();
         void create();
-        void exec();
+        void exec(Thermo<TF>&);
 
     private:
         Master& master;

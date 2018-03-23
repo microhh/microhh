@@ -129,12 +129,10 @@ void Radiation<TF>::create()
     data_block.get_vector(n2ovmr, "wkl4", nlay, 0, 0);
     data_block.get_vector(ch4vmr, "wkl6", nlay, 0, 0);
     data_block.get_vector(o2vmr, "wkl7", nlay, 0, 0);
-
-    tsfc[0] = 300;
 }
 
 template<typename TF>
-void Radiation<TF>::exec()
+void Radiation<TF>::exec(Thermo<TF>& thermo)
 {
     // For now...
     inflglw = 0;
@@ -143,6 +141,9 @@ void Radiation<TF>::exec()
 
     std::fill(emis.begin(), emis.end(), 1.); 
     // End
+
+    // Get absolute atmospheric and surface temperature.
+    tsfc[0] = 300.;
 
     c_rrtmg_lw(
             &ncol    ,&nlay    ,&icld    ,&idrv    ,
