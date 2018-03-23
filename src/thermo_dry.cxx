@@ -408,7 +408,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phh",   "Half level hydrostatic pressure", "Pa",     "zh", bs_stats.prefh.data());
         }
 
-        stats.add_prof("T", "Absolute temperature", "K", "z");
+        if (bs.swbasestate == "anelastic")
+            stats.add_prof("T", "Absolute temperature", "K", "z");
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
         for (int n=2; n<5; ++n)
@@ -560,10 +561,13 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
     //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
-    auto T = fields.get_tmp();
-    get_thermo_field(*T, "T", false);
-    stats.calc_mean(m.profs["T"].data.data(), T->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    fields.release_tmp(T);
+    if (bs.swbasestate == "anelastic")
+    {
+        auto T = fields.get_tmp();
+        get_thermo_field(*T, "T", false);
+        stats.calc_mean(m.profs["T"].data.data(), T->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        fields.release_tmp(T);
+    }
 }
 
 template<typename TF>
