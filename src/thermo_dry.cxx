@@ -267,9 +267,6 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
         // Read the reference profile, and start writing it at index kstart as thref is kcells long.
         data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
 
-        for (auto d : bs.thref)
-            std::cout << d << std::endl;
-
         calc_base_state(
                 fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
                 bs.exnref.data(), bs.exnrefh.data(), bs.thref.data(), bs.threfh.data(), bs.pbot,
