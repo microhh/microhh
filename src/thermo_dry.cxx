@@ -160,12 +160,12 @@ namespace
         threfh[kend] = thref[kend-1] + (zh[kend]-z[kend-1])*(thref[kend-1]-thref[kend-2])*dzhi[kend-1];
 
         // set the ghost cells for the reference potential temperature
-        thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
-        thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
+        thref[kstart-1] = static_cast<TF>(2.)*threfh[kstart] - thref[kstart];
+        thref[kend]     = static_cast<TF>(2.)*threfh[kend]   - thref[kend-1];
 
         // interpolate the input sounding to half levels
         for (int k=kstart+1; k<kend; ++k)
-            threfh[k] = 0.5*(thref[k-1] + thref[k]);
+            threfh[k] = static_cast<TF>(0.5)*(thref[k-1] + thref[k]);
 
         // Calculate pressure
         prefh[kstart] = pbot;
@@ -175,7 +175,7 @@ namespace
             prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd * thref[k-1] * exner(pref[k-1])));
             pref [k] = pref [k-1] * std::exp(-grav * dzh[k ] / (Rd * threfh[k ] * exner(prefh[k ])));
         }
-        pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
+        pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
 
         // Calculate density and exner
         for (int k=0; k<kcells; ++k)
@@ -246,17 +246,23 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     if (bs.swbasestate == "anelastic")
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
-        data_block.get_vector(bs.thref, "th", gd.kmax, 0, 0);
 
-        calc_base_state(fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
-                    bs.exnref.data(), bs.exnrefh.data(), bs.thref.data(), bs.threfh.data(), bs.pbot,
-                    gd.z.data(), gd.zh.data(), gd.dz.data(), gd.dzh.data(), gd.dzhi.data(), gd.kstart, gd.kend, gd.kcells);
+        // Read the reference profile, and start writing it at index kstart as thref is kcells long.
+        data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
+
+        for (auto d : bs.thref)
+            std::cout << d << std::endl;
+
+        calc_base_state(
+                fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(), bs.thref.data(), bs.threfh.data(), bs.pbot,
+                gd.z.data(), gd.zh.data(), gd.dz.data(), gd.dzh.data(), gd.dzhi.data(), gd.kstart, gd.kend, gd.kcells);
     }
     else
     {
         bs.thref0 = inputin.get_item<TF>("thermo", "thref0", "");
 
-        // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx
+        // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx.
         for (int k=0; k<gd.kcells; ++k)
         {
             bs.thref[k]  = bs.thref0;
