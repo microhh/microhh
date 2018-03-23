@@ -77,6 +77,22 @@ namespace
     }
 
     template<typename TF>
+    void calc_T(TF* const restrict T, const TF* const restrict th,
+                const TF* const restrict exnref, const TF* const restrict thref,
+                const int istart, const int iend, const int jstart, const int jend,
+                const int jj, const int kk, const int kcells)
+    {
+        for (int k=0; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj+ k*kk;
+                    T[ijk] = exnref[k]*thref[k] + (th[ijk]-thref[k]);
+                }
+    }
+
+    template<typename TF>
     void calc_buoyancy_bot(TF* const restrict b , TF* const restrict bbot,
                            const TF* const restrict th, const TF* const restrict thbot,
                            const TF* const restrict thref, const TF* const restrict threfh,
@@ -145,7 +161,7 @@ namespace
 
     // Initialize the base state for the anelastic solver
     template<typename TF>
-    void calc_base_state(TF* const restrict rhoref,TF* const restrict rhorefh,
+    void calc_base_state(TF* const restrict rhoref, TF* const restrict rhorefh,
                          TF* const restrict pref,   TF* const restrict prefh,
                          TF* const restrict exnref, TF* const restrict exnrefh,
                          TF* const restrict thref,  TF* const restrict threfh,
@@ -243,6 +259,7 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     /* Setup base state:
        For anelastic setup, calculate reference density and temperature from input sounding
        For boussinesq, reference density and temperature are fixed */
+
     if (bs.swbasestate == "anelastic")
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
@@ -324,6 +341,9 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
     else if (name == "N2")
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+    else if (name == "T")
+        calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnref.data(), bs.thref.data(),
+               gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else
     {
         master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
@@ -391,6 +411,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phh",   "Half level hydrostatic pressure", "Pa",     "zh", bs_stats.prefh.data());
         }
 
+        stats.add_prof("T", "Absolute temperature", "K", "z");
+
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
         for (int n=2; n<5; ++n)
         {
@@ -403,7 +425,7 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
         stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-        stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
+        // stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
     }
 }
 
@@ -540,6 +562,11 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
     // calculate the sorted buoyancy profile
     //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
+
+    auto T = fields.get_tmp();
+    get_thermo_field(*T, "T", false);
+    stats.calc_mean(m.profs["T"].data.data(), T->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    fields.release_tmp(T);
 }
 
 template<typename TF>
