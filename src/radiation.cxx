@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include "radiation.h"
+#include "grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "input.h"
@@ -138,6 +139,8 @@ void Radiation<TF>::create()
 template<typename TF>
 void Radiation<TF>::exec(Thermo<TF>& thermo)
 {
+    auto& gd = grid.get_grid_data();
+
     // For now...
     inflglw = 0;
     iceflglw = 0;
@@ -148,9 +151,12 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
     // Step 1. Get the mean absolute atmospheric temperature.
     auto T = fields.get_tmp();
     thermo.get_thermo_field(*T, "T", false);
+
+    // Calculate radiative cooling only for single column.
     field3d_operators.calc_mean_profile(T->fld_mean.data(), T->fld.data());
 
     thermo.get_thermo_field(*T, "T_h", false);
+
     // Step 2.
 
     // Get absolute atmospheric and surface temperature.

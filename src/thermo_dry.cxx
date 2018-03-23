@@ -93,6 +93,24 @@ namespace
     }
 
     template<typename TF>
+    void calc_T_h(TF* const restrict T, const TF* const restrict th,
+                  const TF* const restrict exnrefh, const TF* const restrict threfh,
+                  const int istart, const int iend, const int jstart, const int jend,
+                  const int jj, const int kk, const int kcells)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=0; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj+ k*kk;
+                    T[ijk] = exnrefh[k]*threfh[k] + (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
+                }
+    }
+
+    template<typename TF>
     void calc_buoyancy_bot(TF* const restrict b , TF* const restrict bbot,
                            const TF* const restrict th, const TF* const restrict thbot,
                            const TF* const restrict thref, const TF* const restrict threfh,
@@ -341,6 +359,9 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
     else if (name == "T")
         calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnref.data(), bs.thref.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+    else if (name == "T_h")
+        calc_T_h(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else
     {
         master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
