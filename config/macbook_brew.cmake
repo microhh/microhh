@@ -2,9 +2,11 @@
 if(USEMPI) 
   set(ENV{CC}  mpicc ) # C compiler for parallel build
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
+  set(ENV{FC}  mpif90) # Fortran compiler for parallel build
 else()
-  set(ENV{CC}  clang  ) # C compiler for serial build
-  set(ENV{CXX} clang++) # C++ compiler for serial build
+  set(ENV{CC}  clang   ) # C compiler for serial build
+  set(ENV{CXX} clang++ ) # C++ compiler for serial build
+  set(ENV{FC}  gfortran) # Fortran compiler for serial build
 endif()
 
 set(GNU_SED "gsed")
@@ -12,6 +14,9 @@ set(GNU_SED "gsed")
 set(USER_CXX_FLAGS "-std=c++11")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
+set(USER_FC_FLAGS_RELEASE "-DNDEBUG -Ofast -march=native")
+set(USER_FC_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/local/include")
 set(FFTW_LIB           "/usr/local/lib/libfftw3.dylib")
