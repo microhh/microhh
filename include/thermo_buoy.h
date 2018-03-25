@@ -57,6 +57,7 @@ class Thermo_buoy : public Thermo<TF>
         bool check_field_exists(std::string name);
         void get_buoyancy_surf(Field3d<TF>&);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
         void get_buoyancy_fluxbot(Field3d<TF>&);           ///< Compute the bottom buoyancy flux for usage in another routine.
+        void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         void get_thermo_field(Field3d<TF>&, std::string, bool); ///< Compute the buoyancy for usage in another routine.
         TF get_buoyancy_diffusivity();
@@ -71,14 +72,14 @@ class Thermo_buoy : public Thermo<TF>
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
         void update_time_dependent() {}
 
-#ifdef USECUDA
+        #ifdef USECUDA
         void prepare_device() {};
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
-#endif
+        #endif
 
-private:
+    private:
         using Thermo<TF>::swthermo;
         using Thermo<TF>::master;
         using Thermo<TF>::grid;

@@ -76,6 +76,8 @@ class Thermo_disabled : public Thermo<TF>
         void get_thermo_field(Field3d<TF>&, std::string, bool) { throw 1; }
         void get_buoyancy_surf(Field3d<TF>&) { throw 1; }
         void get_buoyancy_fluxbot(Field3d<TF>&) { throw 1; }
+        void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
+
     private:
         using Thermo<TF>::swthermo;
 };

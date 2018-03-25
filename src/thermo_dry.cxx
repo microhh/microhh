@@ -111,6 +111,24 @@ namespace
     }
 
     template<typename TF>
+    void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
+                    const TF* const restrict exnrefh, const TF* const restrict threfh,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
+                    const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+            }
+    }
+
+    template<typename TF>
     void calc_buoyancy_bot(TF* const restrict b , TF* const restrict bbot,
                            const TF* const restrict th, const TF* const restrict thbot,
                            const TF* const restrict thref, const TF* const restrict threfh,
@@ -382,9 +400,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
-#endif
 
-#ifndef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
 {
@@ -395,6 +411,15 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
                       gd.icells, gd.jcells, gd.kstart, gd.ijcells);
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+}
+
+template<typename TF>
+void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 }
 #endif
 
