@@ -60,6 +60,8 @@ class Thermo_buoy : public Thermo<TF>
         void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         void get_thermo_field(Field3d<TF>&, std::string, bool); ///< Compute the buoyancy for usage in another routine.
+        const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
+        const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         TF get_buoyancy_diffusivity();
 
         // Empty functions that are allowed to pass.

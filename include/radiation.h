@@ -41,7 +41,7 @@ class Radiation
         Radiation(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Radiation();
         void init();
-        void create();
+        void create(Thermo<TF>&);
         void exec(Thermo<TF>&);
 
     private:

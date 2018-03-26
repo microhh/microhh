@@ -62,19 +62,22 @@ class Thermo_dry : public Thermo<TF>
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d<TF>&, std::string, bool);
-        void get_buoyancy_surf(Field3d<TF>&);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-        void get_buoyancy_fluxbot(Field3d<TF>&);           ///< Compute the bottom buoyancy flux for usage in another routine.
+        void get_buoyancy_surf(Field3d<TF>&);
+        void get_buoyancy_fluxbot(Field3d<TF>&);
         void get_T_bot(Field3d<TF>&);
+        const std::vector<TF>& get_p_vector() const;
+        const std::vector<TF>& get_ph_vector() const;
+
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         TF get_buoyancy_diffusivity();
 
-#ifdef USECUDA
+        #ifdef USECUDA
         // GPU functions and variables
         void prepare_device();
         void clear_device();
         void forward_device();
         void backward_device();
-#endif
+        #endif
 
         // Empty functions that are allowed to pass.
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};

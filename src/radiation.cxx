@@ -23,8 +23,10 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 #include "radiation.h"
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
@@ -119,16 +121,62 @@ void Radiation<TF>::init()
 }
 
 template<typename TF>
-void Radiation<TF>::create()
+void Radiation<TF>::create(Thermo<TF>& thermo)
 {
     std::string block_name = "radiation.prof";
     Data_block data_block(master, block_name);
 
+    std::vector<TF> p_rad(nlay);
+    data_block.get_vector(p_rad, "pavel", nlay, 0, 0);
+    std::vector<TF> ph_rad(nlay+1);
+    data_block.get_vector(ph_rad, "pz", nlay+1, 0, 0);
+
+    // Convert the data to 
+    for (auto& d : p_rad)
+        d *= 100.;
+
+    for (auto& d : ph_rad)
+        d *= 100.;
+
+    // Get copies of pressure profiles.
+    std::vector<TF> p = thermo.get_p_vector();
+    std::vector<TF> ph = thermo.get_ph_vector();
+
+    auto& gd = grid.get_grid_data();
+
+    // Remove the ghost cells from the vector.
+    p.erase(p.begin() + gd.kend, p.end());
+    ph.erase(ph.begin() + gd.kend+1, ph.end());
+    p.erase(p.begin(), p.begin() + gd.kstart);
+    ph.erase(ph.begin(), ph.begin() + gd.kstart);
+
+    // Remove all elements from radiation profile vector that are in the domain.
+    auto it = p_rad.begin();
+    int counter = 0;
+    while (*it > ph.back())
+    {
+        ++counter;
+        ++it;
+    }
+
+    // Delete all items until first index, remove one level extra for ph
+    p_rad.erase(p_rad.begin(), p_rad.begin()+counter);
+    ph_rad.erase(ph_rad.begin(), ph_rad.begin()+counter+1);
+    p_rad.insert(p_rad.begin(), p.begin(), p.end());
+    ph_rad.insert(ph_rad.begin(), ph.begin(), ph.end());
+
+    // CvH if the first pressure level above the domain top is too close to the half level, it could be moved...
+
+    // Temporary...
     data_block.get_vector(play, "pavel", nlay, 0, 0);
     data_block.get_vector(plev, "pz", nlay+1, 0, 0);
     data_block.get_vector(tlay, "tavel", nlay, 0, 0);
     data_block.get_vector(tlev, "tz", nlay+1, 0, 0);
+
+    // The specific humidity comes from climatology for now.
     data_block.get_vector(h2ovmr, "wkl1", nlay, 0, 0);
+
+    // These profiles come from climatology
     data_block.get_vector(co2vmr, "wkl2", nlay, 0, 0);
     data_block.get_vector(o3vmr, "wkl3", nlay, 0, 0);
     data_block.get_vector(n2ovmr, "wkl4", nlay, 0, 0);

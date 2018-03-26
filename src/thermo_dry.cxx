@@ -421,6 +421,18 @@ void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot)
     calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 }
+
+template<typename TF>
+const std::vector<TF>& Thermo_dry<TF>::get_p_vector() const
+{
+    return bs.pref;
+}
+
+template<typename TF>
+const std::vector<TF>& Thermo_dry<TF>::get_ph_vector() const
+{
+    return bs.prefh;
+}
 #endif
 
 template<typename TF>
@@ -450,8 +462,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
         if (bs_stats.swbasestate == "anelastic")
         {
-            stats.add_fixed_prof("ph",    "Full level hydrostatic pressure", "Pa",     "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phh",   "Half level hydrostatic pressure", "Pa",     "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
+            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
         }
 
         if (bs.swbasestate == "anelastic")

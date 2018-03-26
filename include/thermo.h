@@ -68,6 +68,8 @@ class Thermo
         virtual void get_buoyancy_fluxbot(Field3d<TF>&) = 0;
         virtual void get_T_bot(Field3d<TF>&) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
+        virtual const std::vector<TF>& get_p_vector() const = 0;
+        virtual const std::vector<TF>& get_ph_vector() const = 0;
 
         virtual TF get_buoyancy_diffusivity() = 0;
 
