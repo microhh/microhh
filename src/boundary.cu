@@ -236,7 +236,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary<TF>::exec()
+void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -257,7 +257,7 @@ void Boundary<TF>::exec()
         boundary_cyclic.exec_g(it.second->fld_g);
 
     // Calculate the boundary values.
-    update_bcs();
+    update_bcs(thermo);
 
     if(grid.swspatialorder == "2")
     {

@@ -84,7 +84,7 @@ class Fields
 
         bool has_mask(std::string);
 
-        // void set_calc_mean_profs(bool);
+        void set_calc_mean_profs(bool);
         // void set_minimum_tmp_fields(int);
 
         void exec_cross(Cross<TF>&, unsigned long);
