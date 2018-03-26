@@ -81,6 +81,9 @@ Radiation<TF>::~Radiation()
 template<typename TF>
 void Radiation<TF>::init()
 {
+    if (swradiation == Radiation_type::Disabled)
+        return;
+
     play.resize(ncol*nlay);     // (ncol, nlay)
     plev.resize(ncol*(nlay+1)); // (ncol, nlay+1)
     tlay.resize(ncol*nlay);     // (ncol, nlay)
@@ -123,6 +126,9 @@ void Radiation<TF>::init()
 template<typename TF>
 void Radiation<TF>::create(Thermo<TF>& thermo)
 {
+    if (swradiation == Radiation_type::Disabled)
+        return;
+
     std::string block_name = "radiation.prof";
     Data_block data_block(master, block_name);
 
@@ -187,6 +193,9 @@ void Radiation<TF>::create(Thermo<TF>& thermo)
 template<typename TF>
 void Radiation<TF>::exec(Thermo<TF>& thermo)
 {
+    if (swradiation == Radiation_type::Disabled)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // For now...
