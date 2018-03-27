@@ -85,9 +85,9 @@ class Boundary
 
         TF z0m;
         TF z0h;
-        TF* ustar;
-        TF* obuk;
-        int* nobuk;
+        std::vector<TF> ustar;
+        std::vector<TF> obuk;
+        std::vector<int> nobuk;
 
     protected:
         Master& master;

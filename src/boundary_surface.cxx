@@ -417,12 +417,6 @@ Boundary_surface<TF>::Boundary_surface(Master& masterin, Grid<TF>& gridin, Field
 {
     swboundary = "surface";
 
-    ustar = nullptr;
-    obuk  = nullptr;
-    nobuk = nullptr;
-    zL_sl = nullptr;
-    f_sl  = nullptr;
-
     #ifdef USECUDA
     ustar_g = 0;
     obuk_g  = 0;
@@ -435,12 +429,6 @@ Boundary_surface<TF>::Boundary_surface(Master& masterin, Grid<TF>& gridin, Field
 template<typename TF>
 Boundary_surface<TF>::~Boundary_surface()
 {
-    delete[] ustar;
-    delete[] obuk;
-    delete[] nobuk;
-    delete[] zL_sl;
-    delete[] f_sl;
-
     #ifdef USECUDA
     clear_device();
     #endif
@@ -566,9 +554,9 @@ void Boundary_surface<TF>::init_surface()
 {
     auto& gd = grid.get_grid_data();
 
-    obuk  = new TF[gd.ijcells];
-    nobuk = new int[gd.ijcells];
-    ustar = new TF[gd.ijcells];
+    obuk.resize(gd.ijcells);
+    nobuk.resize(gd.ijcells);
+    ustar.resize(gd.ijcells);
 
     const int jj = gd.icells;
 
@@ -608,8 +596,8 @@ void Boundary_surface<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, F
     Mask<TF>& m = stats.masks[mask_name];
 
     const TF no_offset = 0.;
-    stats.calc_mean_2d(m.tseries["obuk" ].data, obuk , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-    stats.calc_mean_2d(m.tseries["ustar"].data, ustar, no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_mean_2d(m.tseries["obuk" ].data, obuk.data() , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_mean_2d(m.tseries["ustar"].data, ustar.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
 }
 
 template<typename TF>
@@ -665,10 +653,10 @@ void Boundary_surface<TF>::init_solver()
 {
     auto& gd = grid.get_grid_data();
 
-    zL_sl = new float[nzL];
-    f_sl  = new float[nzL];
+    zL_sl.resize(nzL);
+    f_sl.resize(nzL);
 
-    TF* zL_tmp = new TF[nzL];
+    std::vector<TF> zL_tmp(nzL);
 
     // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
     // and stretch up to -1e4 in the negative limit.
@@ -704,8 +692,6 @@ void Boundary_surface<TF>::init_solver()
     for (int n=0; n<nzL; ++n)
         zL_sl[n] = -zL_tmp[nzL-n-1];
 
-    delete[] zL_tmp;
-
     // Calculate the evaluation function.
     if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
     {
@@ -731,7 +717,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         auto dutot = fields.get_tmp();
-        stability_neutral(ustar, obuk,
+        stability_neutral(ustar.data(), obuk.data(),
                           fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                           fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
                           dutot->fld.data(), gd.z.data(),
@@ -747,11 +733,11 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         auto tmp = fields.get_tmp();
 
         thermo.get_buoyancy_surf(*buoy);
-        stability(ustar, obuk, buoy->flux_bot.data(),
+        stability(ustar.data(), obuk.data(), buoy->flux_bot.data(),
                   fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                   fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                   tmp->fld.data(), gd.z.data(),
-                  zL_sl, f_sl, nobuk,
+                  zL_sl.data(), f_sl.data(), nobuk.data(),
                   z0m, z0h,
                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                   gd.icells, gd.jcells, gd.ijcells,
@@ -762,7 +748,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     }
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-    surfm(ustar, obuk,
+    surfm(ustar.data(), obuk.data(),
           fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
           fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
           gd.z[gd.kstart], z0m, mbcbot,
@@ -772,7 +758,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 
     for (auto& it : fields.sp)
     {
-        surfs(ustar, obuk, it.second->fld.data(),
+        surfs(ustar.data(), obuk.data(), it.second->fld.data(),
               it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
               gd.z[gd.kstart], z0m, z0h, sbc[it.first].bcbot,
               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
