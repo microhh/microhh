@@ -84,8 +84,8 @@ class Boundary_surface : public Boundary<TF>
 
         TF ustarin;
 
-        float* zL_sl;
-        float* f_sl;
+        std::vector<float> zL_sl;
+        std::vector<float> f_sl;
 
         #ifdef USECUDA
         float* zL_sl_g;
