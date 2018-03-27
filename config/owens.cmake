@@ -15,7 +15,7 @@ if(USECUDA)
 
 else()
   add_definitions(-DRESTRICTKEYWORD=restrict)
-  
+
   set(USER_C_FLAGS "")
   set(USER_C_FLAGS_RELEASE "-O3 -mtune=native -march=native")
   set(USER_C_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
@@ -26,9 +26,15 @@ else()
 
 endif()
 
+set(USER_FC_FLAGS "-debug -traceback -r8 -ftz -extend_source ")
+set(USER_FC_FLAGS_RELEASE " -O3 -no-prec-div  -xHost")
+set(USER_FC_FLAGS_DEBUG "-fpe0 -O0 -g -check all -check nopointers -check noarg_temp_created ")
+
 if(USEMPI)
   set(ENV{CC}  mpicc) # C compiler for serial build
   set(ENV{CXX} mpicc) # C++ compiler for serial build
+  set(ENV{FC}  mpif90) # Fortran compiler for serial build
+
   set(FFTW_INCLUDE_DIR   "/usr/local/fftw3/intel/16.0/mvapich2/2.2/3.3.5/include")
   set(FFTW_LIB           "libfftw3.a")
   set(FFTWF_LIB          "libfftw3f.a")
@@ -41,6 +47,7 @@ if(USEMPI)
 else()
   set(ENV{CC} icc) # compiler for serial build
   set(ENV{CXX} icc) # compiler for parallel build
+  set(ENV{FC}  ifort)
   set(FFTW_INCLUDE_DIR   "/usr/local/fftw3/intel/16.0/mvapich2/2.2/3.3.5/include")
   set(FFTW_LIB           "libfftw3.a")
   set(FFTWF_LIB          "libfftw3f.a")
@@ -54,5 +61,3 @@ endif()
 
 set(LIBS ${CUDALIBS} ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR} ${NETCDF_INCLUDE_CXX_DIR})
-
-

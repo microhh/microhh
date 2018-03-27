@@ -49,7 +49,6 @@ class Thermo
         std::string get_switch();
 
         // Below are the functions that the derived class has to implement.
-
         virtual void init() = 0;
         virtual void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
@@ -67,7 +66,10 @@ class Thermo
         virtual void get_thermo_field(Field3d<TF>&, std::string, bool) = 0;
         virtual void get_buoyancy_surf(Field3d<TF>&) = 0;
         virtual void get_buoyancy_fluxbot(Field3d<TF>&) = 0;
+        virtual void get_T_bot(Field3d<TF>&) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
+        virtual const std::vector<TF>& get_p_vector() const = 0;
+        virtual const std::vector<TF>& get_ph_vector() const = 0;
 
         virtual TF get_buoyancy_diffusivity() = 0;
 
@@ -83,9 +85,9 @@ class Thermo
         #endif
 
     protected:
-        Master& master; ///< Pointer to master class.
-        Grid<TF>& grid; ///< Pointer to grid class.
-        Fields<TF>& fields; ///< Pointer to fields class.
+        Master& master;
+        Grid<TF>& grid;
+        Fields<TF>& fields;
 
         std::string swthermo;
 };

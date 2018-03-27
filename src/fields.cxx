@@ -114,7 +114,8 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
     boundary_cyclic(master, grid),
-    field3d_io(master, grid)
+    field3d_io(master, grid),
+    field3d_ops(master, grid,*this)
 {
     calc_mean_profs = false;
 
@@ -226,6 +227,21 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     create_dump(dump);
     create_cross(cross);
 }
+
+
+#ifndef USECUDA
+template<typename TF>
+void Fields<TF>::exec()
+{
+    // calculate the means for the prognostic scalars
+    if (calc_mean_profs)
+    {
+        for (auto& it : ap)
+            field3d_ops.calc_mean_profile(it.second->fld_mean.data(),it.second->fld.data());
+    }
+}
+#endif
+
 
 template<typename TF>
 void Fields<TF>::create_dump(Dump<TF>& dump)

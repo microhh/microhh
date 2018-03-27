@@ -28,9 +28,11 @@
 #include "boundary_cyclic.h"
 #include "field3d.h"
 #include "field3d_io.h"
+#include "field3d_operators.h"
 
 class Master;
 class Input;
+class Data_block;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -39,6 +41,7 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Field3d_io;
+template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
@@ -60,7 +63,7 @@ class Fields
         void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
 
-        // void exec();
+        void exec();
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
@@ -85,7 +88,6 @@ class Fields
         bool has_mask(std::string);
 
         void set_calc_mean_profs(bool);
-        // void set_minimum_tmp_fields(int);
 
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
@@ -141,6 +143,7 @@ class Fields
         Grid<TF>& grid;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;
+        Field3d_operators<TF> field3d_ops;
 
         bool calc_mean_profs;
 

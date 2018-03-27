@@ -37,6 +37,7 @@
 #include "pres.h"
 #include "force.h"
 #include "thermo.h"
+#include "radiation.h"
 #include "decay.h"
 #include "stats.h"
 #include "column.h"
@@ -114,12 +115,14 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
         thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
 
-        force    = std::make_shared<Force <TF>>(master, *grid, *fields, *input);
-        decay    = std::make_shared<Decay <TF>>(master, *grid, *fields, *input);
-        stats    = std::make_shared<Stats <TF>>(master, *grid, *fields, *input);
-        column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump     = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross    = std::make_shared<Cross <TF>>(master, *grid, *fields, *input);
+        radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
+        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *input);
+        column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
+        dump      = std::make_shared<Dump     <TF>>(master, *grid, *fields, *input);
+        cross     = std::make_shared<Cross    <TF>>(master, *grid, *fields, *input);
+
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -166,6 +169,7 @@ void Model<TF>::init()
     pres->init();
     force->init();
     thermo->init();
+    radiation->init();
     decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
@@ -220,6 +224,7 @@ void Model<TF>::load()
     boundary->create(*input, *stats);
     force->create(*input);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
+    radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
 
     boundary->set_values();
@@ -262,7 +267,7 @@ void Model<TF>::exec()
     boundary->exec(*thermo);
 
     // Calculate the field means, in case needed.
-    // fields->exec();
+    fields->exec();
 
     // Get the viscosity to be used in diffusion.
     diff->exec_viscosity(*boundary, *thermo);
@@ -289,6 +294,9 @@ void Model<TF>::exec()
 
         // Calculate the thermodynamics and the buoyancy tendency.
         thermo->exec();
+
+        // Calculate the radiation fluxes and the related heating rate.
+        radiation->exec(*thermo);
 
         // Calculate the tendency due to damping in the buffer layer.
         // buffer->exec();

@@ -65,17 +65,21 @@ class Thermo_disabled : public Thermo<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
-#ifdef USECUDA
+        #ifdef USECUDA
         void prepare_device() {};
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
-#endif
+        #endif
 
         // Empty functions that shall throw.
         void get_thermo_field(Field3d<TF>&, std::string, bool) { throw 1; }
         void get_buoyancy_surf(Field3d<TF>&) { throw 1; }
         void get_buoyancy_fluxbot(Field3d<TF>&) { throw 1; }
+        void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
+        const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
+        const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
+
     private:
         using Thermo<TF>::swthermo;
 };
