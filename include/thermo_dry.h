@@ -48,11 +48,11 @@ class Thermo_dry : public Thermo<TF>
 {
     public:
         Thermo_dry(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_dry();      ///< Destructor of the dry thermodynamics class.
+        virtual ~Thermo_dry(); ///< Destructor of the dry thermodynamics class.
 
         void init();
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec();                ///< Add the tendencies belonging to the buoyancy.
+        void exec(); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);
@@ -62,18 +62,18 @@ class Thermo_dry : public Thermo<TF>
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d<TF>&, std::string, bool);
-        void get_buoyancy_surf(Field3d<TF>&);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-        void get_buoyancy_fluxbot(Field3d<TF>&);           ///< Compute the bottom buoyancy flux for usage in another routine.
+        void get_buoyancy_surf(Field3d<TF>&); ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+        void get_buoyancy_fluxbot(Field3d<TF>&); ///< Compute the bottom buoyancy flux for usage in another routine.
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         TF get_buoyancy_diffusivity();
 
-#ifdef USECUDA
+        #ifdef USECUDA
         // GPU functions and variables
         void prepare_device();
         void clear_device();
         void forward_device();
         void backward_device();
-#endif
+        #endif
 
         // Empty functions that are allowed to pass.
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
@@ -91,10 +91,11 @@ class Thermo_dry : public Thermo<TF>
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
-        void create_stats(Stats<TF>&);    ///< Initialization of the statistics.
-        void create_column(Column<TF>&);  ///< Initialization of the single column output.
-        void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
-        void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
+
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
+        void create_column(Column<TF>&); ///< Initialization of the single column output.
+        void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
+        void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
 
         struct background_state
         {

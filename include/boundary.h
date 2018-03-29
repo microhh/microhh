@@ -79,9 +79,9 @@ class Boundary
         std::string get_switch();
 
         // GPU functions and variables
-        //virtual void prepare_device();
-        //virtual void forward_device();
-        //virtual void backward_device();
+        virtual void prepare_device();
+        virtual void forward_device();
+        virtual void backward_device();
 
         TF z0m;
         TF z0h;

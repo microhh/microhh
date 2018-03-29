@@ -580,7 +580,7 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
         {
             auto b = fields.get_tmp();
             calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                                                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
+                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
             dump.save_dump(b->fld.data(), "b", iotime);
             fields.release_tmp(b);
         }
@@ -589,7 +589,6 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
             throw std::runtime_error("Error in Thermo Dump");
         }
-
     }
 }
 

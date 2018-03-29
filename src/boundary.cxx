@@ -827,6 +827,7 @@ void Boundary<TF>::get_surface_mask(Field3d* field)
         field->fld_bot[i] = 1;
 }
 
+*/
 template<typename TF>
 void Boundary<TF>::prepare_device()
 {
@@ -841,7 +842,6 @@ template<typename TF>
 void Boundary<TF>::backward_device()
 {
 }
-*/
 
 template class Boundary<double>;
 template class Boundary<float>;
