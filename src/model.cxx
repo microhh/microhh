@@ -313,7 +313,7 @@ void Model<TF>::exec()
                 if(t_stat.joinable())
                     t_stat.join();
                 fields  ->backward_device();
-                //boundary->backward_device();
+                boundary->backward_device();
                 thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
