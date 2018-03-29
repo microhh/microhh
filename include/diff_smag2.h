@@ -25,6 +25,7 @@
 
 #include "diff.h"
 #include "boundary_cyclic.h"
+#include "field3d_operators.h"
 
 template<typename TF>
 class Diff_smag2 : public Diff<TF>
@@ -42,15 +43,17 @@ class Diff_smag2 : public Diff<TF>
         void exec();
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&);
 
-        //#ifdef USECUDA
-        //void prepare_device() {};
-        //#endif
+        #ifdef USECUDA
+        void prepare_device();
+        void clear_device();
+        #endif
 
     private:
         using Diff<TF>::master;
         using Diff<TF>::grid;
         using Diff<TF>::fields;
         Boundary_cyclic<TF> boundary_cyclic;
+        Field3d_operators<TF> field3d_operators;
 
         using Diff<TF>::tPr;
 
