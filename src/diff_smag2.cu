@@ -392,7 +392,7 @@ void Diff_smag2<TF>::prepare_device()
     for (int k=0; k<gd.kcells; ++k) 
     {
         mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundaryptr->z0m), n))), 1./n), 2);
+        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
@@ -451,22 +451,25 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     else
     {
         // store the buoyancyflux in datafluxbot of tmp1
-        thermo.get_buoyancy_fluxbot(fields.atmp["tmp1"]);
-        // store the Brunt-vaisala frequency in data of tmp1 
-        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "N2", false);
+        auto tmp1 = fields.get_tmp_g();
+        thermo.get_buoyancy_fluxbot(*tmp1);
+        // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
+        thermo.get_thermo_field(*tmp1, "N2", false);
 
         // Calculate eddy viscosity
         TF tPri = 1./tPr;
         evisc_g<<<gridGPU, blockGPU>>>(
-            fields.sd["evisc"]->fld_g, &fields.atmp["tmp1"]->fld_g, 
-            fields.atmp["tmp1"]->flux_bot_g, boundaryptr->ustar_g, &boundaryptr->obuk_g,
-            mlen_g, tPri, boundaryptr->z0m, gd.z[gd.kstart],
-            gd.istart,  gd.jstart, gd.kstart, 
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells,  gd.ijcells);  
+            fields.sd["evisc"]->fld_g, tmp1->fld_g, 
+            tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
+            mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
+            gd.istart, gd.jstart, gd.kstart, 
+            gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);  
         cuda_check_error();
 
-        gd.boundary_cyclic_g(fields.sd["evisc"]->fld_g);
+        fields.release_tmp_g(tmp1);
+
+        boundary_cyclic.exec_g(fields.sd["evisc"]->fld_g);
     }
 }
 #endif
@@ -497,13 +500,14 @@ void Diff_smag2<TF>::exec()
             fields.mp["v"]->flux_bot_g, fields.mp["v"]->flux_top_g,
             gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
             fields.rhoref_g, fields.rhorefh_g,
-            gd.istart,  gd.jstart, gd.kstart, 
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells,  gd.ijcells);  
+            gd.istart, gd.jstart, gd.kstart, 
+            gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);  
     cuda_check_error();
 
     for (auto it : fields.st)
-        diff_c_g<<<gridGPU, blockGPU>>>(it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd["evisc"]->fld_g, 
+        diff_c_g<<<gridGPU, blockGPU>>>(
+                it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd["evisc"]->fld_g, 
                 fields.sp[it.first]->flux_bot_g, fields.sp[it.first]->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                 fields.rhoref_g, fields.rhorefh_g, tPri,
@@ -530,24 +534,27 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 
     const TF dxidxi = 1./(gd.dx * gd.dx);
     const TF dyidyi = 1./(gd.dy * gd.dy);
-    const TF tPrfac = std::min(1., tPr);
+    const TF tPrfac = std::min(static_cast<TF>(1.), tPr);
 
     auto tmp1 = fields.get_tmp_g();
     auto tmp2 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
-        tmp1->fld_g, fields.sd["evisc"]->fld_g,
-        gd.dzi_g, tPrfac, dxidxi, dyidyi,  
-        gd.istart,  gd.jstart, gd.kstart, 
-        gd.iend,    gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);  
+            tmp1->fld_g, fields.sd["evisc"]->fld_g,
+            gd.dzi_g, tPrfac, dxidxi, dyidyi,  
+            gd.istart, gd.jstart, gd.kstart, 
+            gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);  
     cuda_check_error();
 
     // Get maximum from tmp1 field
     double dnmul = field3d_operators.get_max_g(tmp1->fld_g, tmp2->fld_g); 
     dnmul = std::max(Constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
+
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
 
     return idtlim;
 }
@@ -569,7 +576,7 @@ double Diff_smag2<TF>::get_dn(double dt)
 
     const TF dxidxi = 1./(gd.dx * gd.dx);
     const TF dyidyi = 1./(gd.dy * gd.dy);
-    const TF tPrfac = std::min(1., tPr);
+    const TF tPrfac = std::min(static_cast<TF>(1.), tPr);
 
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();

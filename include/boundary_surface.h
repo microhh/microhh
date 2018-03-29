@@ -52,10 +52,6 @@ class Boundary_surface : public Boundary<TF>
         void clear_device();
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS 
-
-        TF* obuk_g;
-        TF* ustar_g;
-        int* nobuk_g;
         #endif
 
     protected:

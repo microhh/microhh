@@ -637,9 +637,9 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         {
             auto b = fields.get_tmp();
             calc_buoyancy_bot(b->fld.data(), b->fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(), bs_stats.thref.data(), bs_stats.threfh.data(),
-                                gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                              gd.icells, gd.jcells, gd.kstart, gd.ijcells);
             calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs_stats.threfh.data(),
-                                gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+                                  gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 
             if (it == "bbot")
                 cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
@@ -649,7 +649,6 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         }
     }
 }
-
 
 template class Thermo_dry<double>;
 template class Thermo_dry<float>;

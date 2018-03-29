@@ -162,7 +162,7 @@ namespace
         {
             for (int k=kstart; k<kend; ++k)
             {
-                const double mlen = pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2);
+                const TF mlen = pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2);
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
@@ -195,9 +195,9 @@ namespace
             for (int k=kstart; k<kend; ++k)
             {
                 // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
-                const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-                const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
-                const double fac   = std::pow(mlen, 2);
+                const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+                const TF mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+                const TF fac   = std::pow(mlen, 2);
     
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -638,9 +638,9 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     Diff<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(master, grid)
 {
-    dnmax = inputin.get_item<double>("diff", "dnmax", "", 0.4  );
-    cs    = inputin.get_item<double>("diff", "cs"   , "", 0.23 );
-    tPr   = inputin.get_item<double>("diff", "tPr"  , "", 1./3.);
+    dnmax = inputin.get_item<TF>("diff", "dnmax", "", 0.4  );
+    cs    = inputin.get_item<TF>("diff", "cs"   , "", 0.23 );
+    tPr   = inputin.get_item<TF>("diff", "tPr"  , "", 1./3.);
 
     fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
 }

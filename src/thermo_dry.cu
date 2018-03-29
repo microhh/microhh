@@ -248,8 +248,8 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g, Constants::grav, gd.dzi_g,
-            gd.istart,  gd.jstart, gd.kstart,
-            gd.iend,    gd.jend,   gd.kend,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
     }

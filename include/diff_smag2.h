@@ -59,6 +59,8 @@ class Diff_smag2 : public Diff<TF>
 
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
 
+        TF* mlen_g;
+
         double dnmax;
         double dnmul;
 

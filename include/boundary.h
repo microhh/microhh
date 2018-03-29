@@ -89,6 +89,10 @@ class Boundary
         std::vector<TF> obuk;
         std::vector<int> nobuk;
 
+        TF* obuk_g;
+        TF* ustar_g;
+        int* nobuk_g;
+
     protected:
         Master& master;
         Grid<TF>& grid;
