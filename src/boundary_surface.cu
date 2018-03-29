@@ -383,7 +383,11 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             z0m, z0h, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc); 
         cuda_check_error();
+
+        fields.release_tmp(buoy);
     }
+
+    fields.release_tmp(dutot);
 
     // Calculate surface momentum fluxes, excluding ghost cells
     surfm_flux_g<<<gridGPU, blockGPU>>>(
