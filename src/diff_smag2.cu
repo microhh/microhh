@@ -593,7 +593,7 @@ double Diff_smag2<TF>::get_dn(double dt)
     // CvH This is odd, because there might be need for calc_max in CPU version.
     double dnmul = field3d_operators.calc_max(dnmul_tmp->fld_g);
 
-    fields.release_tmp(dnmul_tmp);
+    fields.release_tmp_g(dnmul_tmp);
 
     return dnmul*dt;
 }

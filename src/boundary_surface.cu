@@ -278,9 +278,9 @@ void Boundary_surface<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
     cuda_safe_call(cudaMalloc(&f_sl_g,  nzL*sizeof(float)));
 
-    cuda_safe_call(cudaMemcpy2D(&obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(&ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(&nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), nzL*sizeof(float), cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  nzL*sizeof(float), cudaMemcpyHostToDevice));
@@ -384,10 +384,10 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc); 
         cuda_check_error();
 
-        fields.release_tmp(buoy);
+        fields.release_tmp_g(buoy);
     }
 
-    fields.release_tmp(dutot);
+    fields.release_tmp_g(dutot);
 
     // Calculate surface momentum fluxes, excluding ghost cells
     surfm_flux_g<<<gridGPU, blockGPU>>>(
