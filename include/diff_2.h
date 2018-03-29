@@ -43,9 +43,9 @@ class Diff_2 : public Diff<TF>
         // Empty functions, these are allowed to pass.
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
 
-        //#ifdef USECUDA
-        //void prepare_device() {};
-        //#endif
+        #ifdef USECUDA
+        void prepare_device() {};
+        #endif
 
     private:
         using Diff<TF>::master;

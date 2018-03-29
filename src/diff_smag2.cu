@@ -391,8 +391,10 @@ void Diff_smag2<TF>::prepare_device()
     TF *mlen = new TF[gd.kcells];
     for (int k=0; k<gd.kcells; ++k) 
     {
+        const TF z0m = 0.1; // CvH REMOVE THIS ASAP.
         mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
+        // mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
+        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+z0m), n))), 1./n), 2);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
@@ -537,7 +539,6 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     const TF tPrfac = std::min(static_cast<TF>(1.), tPr);
 
     auto tmp1 = fields.get_tmp_g();
-    auto tmp2 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
@@ -549,12 +550,11 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     cuda_check_error();
 
     // Get maximum from tmp1 field
-    double dnmul = field3d_operators.get_max_g(tmp1->fld_g, tmp2->fld_g); 
+    double dnmul = field3d_operators.calc_max(tmp1->fld_g);
     dnmul = std::max(Constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
     fields.release_tmp_g(tmp1);
-    fields.release_tmp_g(tmp2);
 
     return idtlim;
 }
@@ -590,8 +590,10 @@ double Diff_smag2<TF>::get_dn(double dt)
     cuda_check_error();
 
     // Get maximum from tmp1 field
-    auto tmp = fields.get_tmp_g();
-    double dnmul = field3d_operators.get_max_g(dnmul_tmp->fld_g, tmp->fld_g); 
+    // CvH This is odd, because there might be need for calc_max in CPU version.
+    double dnmul = field3d_operators.calc_max(dnmul_tmp->fld_g);
+
+    fields.release_tmp(dnmul_tmp);
 
     return dnmul*dt;
 }

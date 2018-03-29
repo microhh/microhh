@@ -46,6 +46,10 @@ class Boundary_surface : public Boundary<TF>
         using Boundary<TF>::z0m;
         using Boundary<TF>::z0h;
 
+        using Boundary<TF>::ustar_g;
+        using Boundary<TF>::obuk_g;
+        using Boundary<TF>::nobuk_g;
+
         #ifdef USECUDA
         // GPU functions and variables
         void prepare_device();

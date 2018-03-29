@@ -42,10 +42,10 @@ class Diff_disabled : public Diff<TF>
         void init() {}
         void exec() {}
 
-        //#ifdef USECUDA
-        //// GPU functions and variables
-        //void prepare_device() {}
-        //#endif
+        #ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device() {}
+        #endif
     private:
 
         const Diffusion_type swdiff = Diffusion_type::Disabled;

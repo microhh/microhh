@@ -636,7 +636,8 @@ namespace
 template<typename TF>
 Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Diff<TF>(masterin, gridin, fieldsin, inputin),
-    boundary_cyclic(master, grid)
+    boundary_cyclic(master, grid),
+    field3d_operators(master, grid, fields)
 {
     dnmax = inputin.get_item<TF>("diff", "dnmax", "", 0.4  );
     cs    = inputin.get_item<TF>("diff", "cs"   , "", 0.23 );
