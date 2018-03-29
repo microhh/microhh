@@ -411,9 +411,9 @@ void Model<TF>::prepare_gpu()
     grid    ->prepare_device();
     fields  ->prepare_device();
     // buffer  ->prepare_device();
-    // thermo  ->prepare_device();
-    // boundary->prepare_device();
-    // diff    ->prepare_device();
+    thermo  ->prepare_device();
+    boundary->prepare_device();
+    diff    ->prepare_device();
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
@@ -427,7 +427,7 @@ void Model<TF>::clear_gpu()
     grid    ->clear_device();
     fields  ->clear_device();
     // buffer  ->clear_device();
-    // thermo  ->clear_device();
+    thermo  ->clear_device();
     // boundary->clear_device();
     // diff    ->clear_device();
     force   ->clear_device();

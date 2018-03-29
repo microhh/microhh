@@ -204,8 +204,8 @@ void Thermo_dry<TF>::exec()
     {
         calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("th")->fld_g, bs.threfh_g, Constants::grav,
-            gd.istart,  gd.jstart, gd.kstart+1,
-            gd.iend,    gd.jend,   gd.kend,
+            gd.istart, gd.jstart, gd.kstart+1,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
 
         cuda_check_error();
