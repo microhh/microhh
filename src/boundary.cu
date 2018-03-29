@@ -236,9 +236,10 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary<TF>::exec()
+void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
@@ -246,7 +247,6 @@ void Boundary<TF>::exec()
 
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
-
 
     // Cyclic boundary conditions, do this before the bottom BC's.
     boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
@@ -257,7 +257,7 @@ void Boundary<TF>::exec()
         boundary_cyclic.exec_g(it.second->fld_g);
 
     // Calculate the boundary values.
-    update_bcs();
+    update_bcs(thermo);
 
     if(grid.swspatialorder == "2")
     {
