@@ -29,6 +29,7 @@
 
 class Master;
 class Input;
+template<typename> class Timeloop;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
@@ -42,6 +43,9 @@ template<typename> class Field3d_operators;
  */
 
 enum class Large_scale_pressure_type {disabled, fixed_flux, geo_wind};
+enum class Large_scale_tendency_type {disabled, enabled};
+enum class Large_scale_subsidence_type {disabled, enabled};
+enum class Nudging_type {disabled, enabled};
 
 template<typename TF>
 class Force
@@ -51,78 +55,77 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&);   ///< Read the profiles of the forces from the input.
+        void create(Input&, Data_block&);   ///< Read the profiles of the forces from the input.
         void exec(double);     ///< Add the tendencies belonging to the large-scale processes.
 
-        //void update_time_dependent(); ///< Update the time dependent parameters.
+        void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
-        //std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
-        //std::map<std::string, double*> lsprofs; ///< Map of profiles with forcings stored by its name.
+        std::vector<std::string> lslist;        ///< List of variables that have large-scale forcings.
+        std::map<std::string, std::vector<TF>> lsprofs; ///< Map of profiles with forcings stored by its name.
+
+        std::vector<std::string> nudgelist;        ///< List of variables that are nudged to a provided profile
+        std::map<std::string, std::vector<TF>> nudgeprofs; ///< Map of nudge profiles stored by its name.
 
         // GPU functions and variables
         void prepare_device();
         void clear_device();
 
-        //std::map<std::string, double*> lsprofs_g; ///< Map of profiles with forcings stored by its name.
+        std::map<std::string, TF*> lsprofs_g;    ///< Map of profiles with forcings stored by its name.
+        std::map<std::string, TF*> nudgeprofs_g; ///< Map of nudging profiles stored by its name.
 
-        //// Accessor functions
+        // Accessor functions
         //std::string get_switch_lspres()      { return swlspres; }
-        //double      get_coriolis_parameter() { return fc;       }
+        //TF      get_coriolis_parameter() { return fc;       }
+
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
-        
+
         // Internal switches for various forcings
         Large_scale_pressure_type swlspres;
-
-        //Master* master; ///< Pointer to master class.
-        //Model*  model;  ///< Pointer to model class.
-        //Grid*   grid;   ///< Pointer to grid class.
-        //Fields* fields; ///< Pointer to fields class.
-
-        //std::string swlspres; ///< Switch for the large scale pressure force.
-        //std::string swls;     ///< Switch for large scale scalar tendencies.
-        //std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
+        Large_scale_tendency_type swls;
+        Large_scale_subsidence_type swwls;
+        Nudging_type swnudge;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
-        //double fc;    ///< Coriolis parameter.
+        TF fc;    ///< Coriolis parameter.
 
-        //double* ug;  ///< Pointer to array u-component geostrophic wind.
-        //double* vg;  ///< Pointer to array v-component geostrophic wind.
-        //double* wls; ///< Pointer to array large-scale vertical velocity.
+        std::vector<TF> ug;  ///< Pointer to array u-component geostrophic wind.
+        std::vector<TF> vg;  ///< Pointer to array v-component geostrophic wind.
+        std::vector<TF> wls; ///< Pointer to array large-scale vertical velocity.
 
-        //// time dependent variables
-        //std::string swtimedep;
-        //std::vector<double> timedeptime;
-        //std::vector<std::string> timedeplist;
-        //std::map<std::string, double*> timedepdata;
+        std::vector<TF> nudge_factor;  ///< Height varying nudging factor (1/s)
 
-        //void update_time_dependent_profs(double, double, int, int); ///< Set the time dependent profiles.
+        struct tdep{
+            bool sw;
+            std::vector<std::string> vars;
+            std::map<std::string, std::vector<double>> time;
+            std::map<std::string, std::vector<TF>> data;
+            std::map<std::string, TF*> data_g;
+        };
+        tdep tdep_ls;
+        tdep tdep_geo;
+        tdep tdep_wls;
+        tdep tdep_nudge;
 
-        //void calc_flux(double* const, const double* const,
-        //               const double* const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
+        void create_timedep(tdep, std::string);
 
-        //void calc_coriolis_2nd(double* const, double* const,
-        //                       const double* const, const double* const,
-        //                       const double* const, const double* const); ///< Calculates Coriolis force with 2nd-order accuracy.
+        void update_time_dependent_profs(Timeloop<TF>&, std::map<std::string, std::vector<TF>>, tdep);
 
-        //void calc_coriolis_4th(double* const, double* const,
-        //                       const double* const, const double* const,
-        //                       const double* const, const double* const); ///< Calculates Coriolis force with 4th-order accuracy.
+        void update_time_dependent_prof(Timeloop<TF>&, std::vector<TF>, tdep, const std::string&);
 
-        //void calc_large_scale_source(double* const, const double* const); ///< Applies the large scale scalar tendency.
+        // GPU functions and variables
+        TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
+        TF* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
+        TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+        TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
-        //void advec_wls_2nd(double* const, const double* const,
-        //                   const double* const, const double* const); ///< Calculates the large-scale vertical transport.
-
-        //// GPU functions and variables
-        //double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
-        //double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
-        //double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
-        //std::map<std::string, double*> timedepdata_g;
-
+        #ifdef USECUDA
+        void update_time_dependent_profs_g(Timeloop<TF>&, std::map<std::string, TF*>, tdep);
+        void update_time_dependent_prof_g(Timeloop<TF>&, TF*, tdep, const std::string&);
+        #endif
 };
 #endif

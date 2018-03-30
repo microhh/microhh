@@ -222,7 +222,7 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *stats);
-    force->create(*input);
+    force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
@@ -261,7 +261,7 @@ void Model<TF>::exec()
 
     // Update the time dependent parameters.
     // boundary->update_time_dependent();
-    // force   ->update_time_dependent();
+     force   ->update_time_dependent(*timeloop);
 
     // Set the boundary conditions.
     boundary->exec(*thermo);
@@ -382,7 +382,7 @@ void Model<TF>::exec()
 
         // Update the time dependent parameters.
         // boundary->update_time_dependent();
-        // force   ->update_time_dependent();
+        force   ->update_time_dependent(*timeloop);
 
         // Set the boundary conditions.
         boundary->exec(*thermo);
