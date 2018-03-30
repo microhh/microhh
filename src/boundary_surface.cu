@@ -43,10 +43,10 @@ namespace
                        int &n, const TF Ri, const TF zsl)
     {
         // Determine search direction.
-        if ((f[n]-Ri) > 0)
-            while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
+        if ((f[n]-Ri) > 0.f)
+            while ( (f[n-1]-Ri) > 0.f && n > 0) { --n; }
         else
-            while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+            while ( (f[n]-Ri) < 0.f && n < (nzL-1) ) { ++n; }
 
         const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
@@ -88,9 +88,9 @@ namespace
             const int ijk = i + j*jj + kstart*kk;
             const TF minval = 1.e-1;
 
-            const TF du2 = pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
-                             + pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
-            dutot[ij] = fmax(pow(du2, 0.5), minval);
+            const TF du2 = pow(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]), 2)
+                         + pow(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]), 2);
+            dutot[ij] = fmax(pow(du2, TF(0.5)), minval);
         }
     }
 
@@ -187,27 +187,27 @@ namespace
             if (bcbot == Boundary_type::Dirichlet_type)
             {
                 // interpolate the whole stability function rather than ustar or obuk
-                ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-                vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
             }
             else if (bcbot == Boundary_type::Ustar_type)
             {
                 const TF minval = 1.e-2;
 
                 // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                const TF vonu2 = fmax(minval, 0.25*( pow(v[ijk-ii]-vbot[ij-ii], 2) + pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
+                const TF vonu2 = fmax(minval, TF(0.25)*( pow(v[ijk-ii]-vbot[ij-ii], 2) + pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
                                                        + pow(v[ijk   ]-vbot[ij   ], 2) + pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
-                const TF uonv2 = fmax(minval, 0.25*( pow(u[ijk-jj]-ubot[ij-jj], 2) + pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
+                const TF uonv2 = fmax(minval, TF(0.25)*( pow(u[ijk-jj]-ubot[ij-jj], 2) + pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
                                                        + pow(u[ijk   ]-ubot[ij   ], 2) + pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
 
                 const TF u2 = fmax(minval, pow(u[ijk]-ubot[ij], 2));
                 const TF v2 = fmax(minval, pow(v[ijk]-vbot[ij], 2));
 
-                const TF ustaronu4 = 0.5*(pow(ustar[ij-ii], 4) + pow(ustar[ij], 4));
-                const TF ustaronv4 = 0.5*(pow(ustar[ij-jj], 4) + pow(ustar[ij], 4));
+                const TF ustaronu4 = TF(0.5)*(pow(ustar[ij-ii], 4) + pow(ustar[ij], 4));
+                const TF ustaronv4 = TF(0.5)*(pow(ustar[ij-jj], 4) + pow(ustar[ij], 4));
 
-                ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
-                vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
+                ufluxbot[ij] = -copysign(TF(1.), u[ijk]-ubot[ij]) * pow(ustaronu4 / (TF(1.) + vonu2 / u2), TF(0.5));
+                vfluxbot[ij] = -copysign(TF(1.), v[ijk]-vbot[ij]) * pow(ustaronv4 / (TF(1.) + uonv2 / v2), TF(0.5));
             }
         }
     }
