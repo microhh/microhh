@@ -74,23 +74,6 @@ namespace
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
-
-    template<typename TF> __global__
-    void calc_mass_2nd_g(TF* __restrict__ s, TF* __restrict__ mass, TF* __restrict__ dz,
-                         int istart, int jstart, int kstart,
-                         int iend,   int jend,   int kend,
-                         int jj,     int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            mass[ijk] = s[ijk]*dz[k];
-        }
-    }
 }
 
 #ifdef USECUDA
@@ -177,20 +160,7 @@ TF Fields<TF>::check_mass()
     // CvH for now, do the mass check on the first scalar... Do we want to change this?
     auto it = sp.begin();
     if (sp.begin() != sp.end())
-    {
-        auto tmp1 = get_tmp_g();
-
-        calc_mass_2nd_g<<<gridGPU, blockGPU>>>(
-            it->second->fld_g, tmp1->fld_g, gd.dz_g,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
-
-        mass = field3d_operators.calc_mean(tmp1->fld_g);
-
-        release_tmp_g(tmp1);
-    }
+        mass = field3d_operators.calc_mean(it->second->fld_g);
     else
         mass = 0; 
 
