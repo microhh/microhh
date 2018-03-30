@@ -12,9 +12,11 @@ class Data_block
                                              const size_t,
                                              const size_t,
                                              const size_t);
+         std::vector<std::string> get_headers();
     private:
         Master& master;
         std::map<std::string, std::vector<std::string>> data_series;
+        std::vector<std::string> header_items;
+
 };
 #endif
-

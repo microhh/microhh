@@ -166,7 +166,19 @@ TF Fields<TF>::check_mass()
 
     return mass;
 }
+
+template<typename TF>
+void Fields<TF>::exec()
+{
+    // calculate the means for the prognostic scalars
+    if (calc_mean_profs)
+    {
+        for (auto& it : ap)
+            field3d_ops.calc_mean_profile(it.second->fld_mean_g,it.second->fld_g);
+    }
+}
 #endif
+
 
 /**
  * This function allocates all field3d instances and fields at device

@@ -313,6 +313,21 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     create_cross(cross);
 }
 
+
+#ifndef USECUDA
+template<typename TF>
+void Fields<TF>::exec()
+{
+    // calculate the means for the prognostic scalars
+    if (calc_mean_profs)
+    {
+        for (auto& it : ap)
+            field3d_operators.calc_mean_profile(it.second->fld_mean.data(),it.second->fld.data());
+    }
+}
+#endif
+
+
 template<typename TF>
 void Fields<TF>::create_dump(Dump<TF>& dump)
 {
@@ -662,12 +677,12 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     release_tmp(tmp);
 }
 
-/*
-void Fields::set_calc_mean_profs(bool sw)
+template<typename TF>
+void Fields<TF>::set_calc_mean_profs(bool sw)
 {
     calc_mean_profs = sw;
 }
-
+/*
 void Fields::set_minimum_tmp_fields(int n)
 {
     n_tmp_fields = std::max(n_tmp_fields, n);

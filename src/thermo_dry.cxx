@@ -93,6 +93,42 @@ namespace
     }
 
     template<typename TF>
+    void calc_T_h(TF* const restrict T, const TF* const restrict th,
+                  const TF* const restrict exnrefh, const TF* const restrict threfh,
+                  const int istart, const int iend, const int jstart, const int jend,
+                  const int jj, const int kk, const int kcells)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=0; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj+ k*kk;
+                    T[ijk] = exnrefh[k]*threfh[k] + (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
+                }
+    }
+
+    template<typename TF>
+    void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
+                    const TF* const restrict exnrefh, const TF* const restrict threfh,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
+                    const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+            }
+    }
+
+    template<typename TF>
     void calc_buoyancy_bot(TF* const restrict b , TF* const restrict bbot,
                            const TF* const restrict th, const TF* const restrict thbot,
                            const TF* const restrict thref, const TF* const restrict threfh,
@@ -341,6 +377,9 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
     else if (name == "T")
         calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnref.data(), bs.thref.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+    else if (name == "T_h")
+        calc_T_h(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else
     {
         master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
@@ -361,9 +400,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
-#endif
 
-#ifndef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
 {
@@ -374,6 +411,27 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
                       gd.icells, gd.jcells, gd.kstart, gd.ijcells);
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+}
+
+template<typename TF>
+void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+}
+
+template<typename TF>
+const std::vector<TF>& Thermo_dry<TF>::get_p_vector() const
+{
+    return bs.pref;
+}
+
+template<typename TF>
+const std::vector<TF>& Thermo_dry<TF>::get_ph_vector() const
+{
+    return bs.prefh;
 }
 #endif
 
@@ -404,8 +462,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
         if (bs_stats.swbasestate == "anelastic")
         {
-            stats.add_fixed_prof("ph",    "Full level hydrostatic pressure", "Pa",     "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phh",   "Half level hydrostatic pressure", "Pa",     "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
+            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
         }
 
         if (bs.swbasestate == "anelastic")
