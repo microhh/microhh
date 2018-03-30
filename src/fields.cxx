@@ -106,8 +106,93 @@ namespace
                 maskbot[ij] = maskh[ijk];
             }
     }
-}
 
+    template<typename TF>
+    TF calc_momentum_2nd(
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        using Finite_difference::O2::interp2;
+
+        const int ii = 1;
+
+        TF momentum = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
+                }
+
+        master.sum(&momentum, 1);
+        momentum /= itot_jtot_zsize;
+
+        return momentum;
+    }
+
+    template<typename TF>
+    TF calc_tke_2nd(
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        using Finite_difference::O2::interp2;
+
+        const int ii = 1;
+
+        TF tke = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii])
+                           + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj])
+                           + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
+                }
+
+        master.sum(&tke, 1);
+        tke /= itot_jtot_zsize;
+        tke *= 0.5;
+
+        return tke;
+    }
+
+    template<typename TF>
+    TF calc_mass(
+            const TF* restrict s,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        TF mass = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    mass += s[ijk]*dz[k];
+                }
+
+        master.sum(&mass, 1);
+        mass /= itot_jtot_zsize;
+
+        return mass;
+    }
+}
 
 template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
@@ -1033,111 +1118,49 @@ void Fields<TF>::load(int n)
         throw 1;
 }
 
-/*
 #ifndef USECUDA
-double Fields::check_momentum()
+template<typename TF>
+TF Fields<TF>::check_momentum()
 {
-    return calc_momentum_2nd(u->data, v->data, w->data, grid.dz);
+    auto& gd = grid.get_grid_data();
+    return calc_momentum_2nd(
+            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
 }
-#endif
 
-#ifndef USECUDA
-double Fields::check_tke()
+template<typename TF>
+TF Fields<TF>::check_tke()
 {
-    return calc_tke_2nd(u->data, v->data, w->data, grid.dz);
+    auto& gd = grid.get_grid_data();
+    return calc_tke_2nd(
+            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
 }
-#endif
 
-#ifndef USECUDA
-double Fields::check_mass()
+template<typename TF>
+TF Fields<TF>::check_mass()
 {
-    // CvH for now, do the mass check on the first scalar... Do we want to change this?
-    Field_map::const_iterator itProg=sp.begin();
+    auto& gd = grid.get_grid_data();
+
+    auto it = sp.begin();
     if (sp.begin() != sp.end())
-        return calc_mass(itProg->second->data, grid.dz);
+        return calc_mass(
+                it->second->fld.data(),
+                gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                master);
     else
         return 0.;
 }
 #endif
 
-double Fields::calc_mass(double* restrict s, double* restrict dz)
-{
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double mass = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                mass += s[ijk]*dz[k];
-            }
-
-    grid.get_sum(&mass);
-
-    mass /= (grid.itot*grid.jtot*grid.zsize);
-
-    return mass;
-}
-
-double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
-{
-    using Finite_difference::O2::interp2;
-
-    const int ii = 1;
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double momentum = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
-            }
-
-    grid.get_sum(&momentum);
-
-    momentum /= (grid.itot*grid.jtot*grid.zsize);
-
-    return momentum;
-}
-
-double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
-{
-    using Finite_difference::O2::interp2;
-
-    const int ii = 1;
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double tke = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii])
-                       + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj])
-                       + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
-            }
-
-    grid.get_sum(&tke);
-
-    tke /= (grid.itot*grid.jtot*grid.zsize);
-    tke *= 0.5;
-
-    return tke;
-}
-*/
 template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {

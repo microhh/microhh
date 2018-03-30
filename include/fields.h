@@ -78,9 +78,9 @@ class Fields
         void save(int);
         void load(int);
 
-        double check_momentum();
-        double check_tke();
-        double check_mass();
+        TF check_momentum();
+        TF check_tke();
+        TF check_mass();
 
         bool has_mask(std::string);
 
@@ -175,11 +175,6 @@ class Fields
         TF vortexamp;
         int vortexnpair;
         std::string vortexaxis;
-
-        // Kernels for the check functions.
-        // double calc_momentum_2nd(double*, double*, double*, double*);
-        // double calc_tke_2nd     (double*, double*, double*, double*);
-        // double calc_mass        (double*, double*);
 
         void add_mean_profs(Data_block&);
         // int add_mean_prof(Input*, std::string, double*, double);
