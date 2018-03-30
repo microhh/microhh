@@ -376,12 +376,13 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 
         // Calculate ustar and Obukhov length, including ghost cells
         stability_g<<<gridGPU2, blockGPU2>>>(
-            ustar_g, obuk_g, 
-            dutot->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
-            buoy->fld_g, 
-            zL_sl_g, f_sl_g, nobuk_g,
+            ustar_g, obuk_g,
+            buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
+            dutot->fld_g, zL_sl_g, f_sl_g,
+            nobuk_g,
             z0m, z0h, gd.z[gd.kstart],
-            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc); 
+            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells,
+            mbcbot, thermobc); 
         cuda_check_error();
 
         fields.release_tmp_g(buoy);
