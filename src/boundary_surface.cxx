@@ -48,11 +48,11 @@ namespace
     TF find_zL(const float* const restrict zL, const float* const restrict f,
                int& n, const float Ri)
     {
-        // Determine search direction.
-        if ( (f[n]-Ri) > 0 )
-            while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
+        // Determine search direction. All checks are at float accuracy.
+        if ( (f[n]-Ri) > 0.f )
+            while ( (f[n-1]-Ri) > 0.f && n > 0.f) { --n; }
         else
-            while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+            while ( (f[n]-Ri) < 0.f && n < (nzL-1) ) { ++n; }
 
         const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
@@ -164,7 +164,7 @@ namespace
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij = i + j*jj;
-                    obuk[ij] = -std::pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
+                    obuk[ij] = -std::pow(ustar[ij], static_cast<TF>(3)) / (Constants::kappa*bfluxbot[ij]);
                 }
         }
         // case 2: fixed buoyancy surface value and free ustar
@@ -676,7 +676,7 @@ void Boundary_surface<TF>::init_solver()
     // Find stretching that ends up at the correct value using geometric progression.
     TF r  = 1.01;
     TF r0 = Constants::dhuge;
-    while (std::abs( (r-r0)/r0 ) > static_cast<TF>(1.e-10))
+    while (std::abs( (r-r0)/r0 ) > 1.e-10)
     {
         r0 = r;
         r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL/10.) ) );
