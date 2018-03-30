@@ -575,12 +575,9 @@ void Model<TF>::print_status()
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
         const TF div = pres->check_divergence();
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-//        TF mom  = fields->check_momentum();
-//        TF tke  = fields->check_tke();
-//        TF mass = fields->check_mass();
-        TF mom = 0.;
-        TF tke = 0.;
-        TF mass = 0;
+        TF mom  = fields->check_momentum();
+        TF tke  = fields->check_tke();
+        TF mass = fields->check_mass();
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 
