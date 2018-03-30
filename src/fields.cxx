@@ -199,7 +199,8 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
     boundary_cyclic(master, grid),
-    field3d_io(master, grid)
+    field3d_io(master, grid),
+    field3d_operators(master, grid, *this)
 {
     calc_mean_profs = false;
 

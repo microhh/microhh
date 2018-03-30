@@ -108,7 +108,6 @@ TF Fields<TF>::check_momentum()
     dim3 blockGPU(blocki, blockj, 1);
 
     auto tmp1 = get_tmp_g();
-    auto tmp2 = get_tmp_g();
 
     calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
         mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
@@ -118,13 +117,9 @@ TF Fields<TF>::check_momentum()
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    TF mom = gd.get_sum_g(tmp1->fld_g, tmp2->fld_g);
-    master.sum(&mom, 1);
+    TF mom = field3d_operators.calc_mean(tmp1->fld_g);
 
-    release_tmp(tmp1);
-    release_tmp(tmp2);
-
-    mom /= (gd.itot*gd.jtot*gd.zsize);
+    release_tmp_g(tmp1);
 
     return mom;
 }
@@ -145,7 +140,6 @@ TF Fields<TF>::check_tke()
     dim3 blockGPU(blocki, blockj, 1);
 
     auto tmp1 = get_tmp_g();
-    auto tmp2 = get_tmp_g();
 
     calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
         mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
@@ -155,14 +149,10 @@ TF Fields<TF>::check_tke()
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    TF tke = gd.get_sum_g(tmp1->fld_g, tmp2->fld_g); 
-
-    master.sum(&tke, 1);
-    tke /= (gd.itot*gd.jtot*gd.zsize);
+    TF tke = field3d_operators.calc_mean(tmp1->fld_g);
     tke *= 0.5;
 
-    release_tmp(tmp1);
-    release_tmp(tmp2);
+    release_tmp_g(tmp1);
 
     return tke;
 }
@@ -189,7 +179,7 @@ TF Fields<TF>::check_mass()
     if (sp.begin() != sp.end())
     {
         auto tmp1 = get_tmp_g();
-        auto tmp2 = get_tmp_g();
+
         calc_mass_2nd_g<<<gridGPU, blockGPU>>>(
             it->second->fld_g, tmp1->fld_g, gd.dz_g,
             gd.istart, gd.jstart, gd.kstart,
@@ -197,12 +187,9 @@ TF Fields<TF>::check_mass()
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        mass = gd.get_sum_g(tmp1->fld_g, tmp2->fld_g); 
-        master.sum(&mass, 1);
-        mass /= (gd.itot*gd.jtot*gd.zsize);
+        mass = field3d_operators.calc_mean(tmp1->fld_g);
 
-        release_tmp(tmp1);
-        release_tmp(tmp2);
+        release_tmp_g(tmp1);
     }
     else
         mass = 0; 
