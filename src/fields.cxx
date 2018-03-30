@@ -1131,7 +1131,9 @@ TF Fields<TF>::check_momentum()
             gd.icells, gd.ijcells,
             master);
 }
+#endif
 
+#ifndef USECUDA
 template<typename TF>
 TF Fields<TF>::check_tke()
 {
@@ -1143,7 +1145,9 @@ TF Fields<TF>::check_tke()
             gd.icells, gd.ijcells,
             master);
 }
+#endif
 
+#ifndef USECUDA
 template<typename TF>
 TF Fields<TF>::check_mass()
 {
