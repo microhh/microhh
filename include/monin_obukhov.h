@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -34,77 +34,89 @@ namespace Monin_obukhov
     //
     // GRADIENT FUNCTIONS
     //
-    CUDA_MACRO inline double phim_unstable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phim_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
+        return std::pow(TF(1.) + TF(3.6)*std::pow(std::abs(zeta), TF(2./3.)), TF(-1./2.));
     }
 
-    CUDA_MACRO inline double phim_stable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phim_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return 1. + 4.8*zeta;
+        return TF(1.) + TF(4.8)*zeta;
     }
 
-    CUDA_MACRO inline double phim(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phim(const TF zeta)
     {
-        return (zeta <= 0.) ? phim_unstable(zeta) : phim_stable(zeta);
+        return (zeta <= TF(0.)) ? phim_unstable(zeta) : phim_stable(zeta);
     }
 
-    CUDA_MACRO inline double phih_unstable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phih_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
+        return std::pow(TF(1.) + TF(7.9)*std::pow(std::abs(zeta), TF(2./3.)), TF(-1./2.));
     }
 
-    CUDA_MACRO inline double phih_stable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phih_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return 1. + 7.8*zeta;
+        return TF(1.) + TF(7.8)*zeta;
     }
 
-    CUDA_MACRO inline double phih(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF phih(const TF zeta)
     {
-        return (zeta <= 0.) ? phih_unstable(zeta) : phih_stable(zeta);
+        return (zeta <= TF(0.)) ? phih_unstable(zeta) : phih_stable(zeta);
     }
 
     //
     // INTEGRATED FUNCTIONS
     //
-    CUDA_MACRO inline double psim_unstable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF psim_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return 3.*std::log( ( 1. + 1./phim_unstable(zeta) ) / 2.);
+        return TF(3.)*std::log( ( TF(1.) + TF(1.)/phim_unstable(zeta) ) / TF(2.));
     }
 
-    CUDA_MACRO inline double psim_stable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF psim_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return -4.8*zeta;
+        return TF(-4.8)*zeta;
     }
 
-    CUDA_MACRO inline double psih_unstable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF psih_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return 3. * std::log( ( 1. + 1. / phih_unstable(zeta) ) / 2.);
+        return TF(3.) * std::log( ( TF(1.) + TF(1.) / phih_unstable(zeta) ) / TF(2.));
     }
 
-    CUDA_MACRO inline double psih_stable(const double zeta)
+    template<typename TF>
+    CUDA_MACRO inline TF psih_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return -7.8*zeta;
+        return TF(-7.8)*zeta;
     }
 
-    CUDA_MACRO inline double fm(const double zsl, const double z0m, const double L)
+    template<typename TF>
+    CUDA_MACRO inline TF fm(const TF zsl, const TF z0m, const TF L)
     {
-        return (L <= 0.)
+        return (L <= TF(0.))
             ? Constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
             : Constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
     }
 
-    CUDA_MACRO inline double fh(const double zsl, const double z0h, const double L)
+    template<typename TF>
+    CUDA_MACRO inline TF fh(const TF zsl, const TF z0h, const TF L)
     {
-        return (L <= 0.)
+        return (L <= TF(0.))
             ? Constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
             : Constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
     }
