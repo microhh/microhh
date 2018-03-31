@@ -174,7 +174,7 @@ void Fields<TF>::exec()
     if (calc_mean_profs)
     {
         for (auto& it : ap)
-            field3d_ops.calc_mean_profile(it.second->fld_mean_g,it.second->fld_g);
+            field3d_operators.calc_mean_profile(it.second->fld_mean_g,it.second->fld_g);
     }
 }
 #endif
