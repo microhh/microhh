@@ -56,11 +56,12 @@ namespace
                }
     }
     template<typename TF>
-    void calc_coriolis_2nd(TF* const restrict ut, TF* const restrict vt,
-                      const TF* const restrict u , const TF* const restrict v ,
-                      const TF* const restrict ug, const TF* const restrict vg, TF const fc,
-                      const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
-                      const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+    void calc_coriolis_2nd(
+            TF* const restrict ut, TF* const restrict vt,
+            const TF* const restrict u , const TF* const restrict v ,
+            const TF* const restrict ug, const TF* const restrict vg, TF const fc,
+            const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
+            const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
     {
         const int ii = 1;
         const int jj = icells;
@@ -72,7 +73,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
+                    ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
                 }
 
         for (int k=kstart; k<kend; ++k)
@@ -81,7 +82,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
+                    vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
                 }
     }
 
@@ -128,9 +129,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_large_scale_source(TF* const restrict st, const TF* const restrict sls,
-                                        const int istart, const int iend, const int icells, const int jstart, const int jend,
-                                        const int ijcells, const int kstart, const int kend)
+    void calc_large_scale_source(
+            TF* const restrict st, const TF* const restrict sls,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int ijcells, const int kstart, const int kend)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -145,10 +147,11 @@ namespace
     }
 
     template<typename TF>
-    void calc_nudging_tendency(TF* const restrict fldtend, const TF* const restrict fldmean,
-                                      const TF* const restrict ref, const TF* const restrict factor,
-                                      const int istart, const int iend, const int icells, const int jstart, const int jend,
-                                      const int ijcells, const int kstart, const int kend)
+    void calc_nudging_tendency(
+            TF* const restrict fldtend, const TF* const restrict fldmean,
+            const TF* const restrict ref, const TF* const restrict factor,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int ijcells, const int kstart, const int kend)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -211,6 +214,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge", "", "0");
 
     // Set the internal switches and read other required input
+
+    // Large-scale pressure forcing.
     if (swlspres_in == "0")
         swlspres = Large_scale_pressure_type::disabled;
     else if (swlspres_in == "uflux")
@@ -226,6 +231,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     }
     else
         throw std::runtime_error("Invalid option for \"swlspres\"");
+
+    // Large-scale tendencies due to advection and other processes.
     if (swls_in == "0")
         swls = Large_scale_tendency_type::disabled;
     else if (swls_in == "1")
@@ -239,6 +246,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         throw std::runtime_error("Invalid option for \"swls\"");
     }
+
+    // Large-scale subsidence.
     if (swwls_in == "0")
         swwls = Large_scale_subsidence_type::disabled;
     else if (swwls_in == "1")
@@ -251,6 +260,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         throw std::runtime_error("Invalid option for \"swwls\"");
     }
+
+    // Nudging.
     if (swnudge_in == "0")
         swnudge = Nudging_type::disabled;
     else if (swnudge_in == "1")
@@ -359,9 +370,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 
         if (tdep_wls.sw)
             create_timedep(tdep_wls,"wls");
-
     }
-
 }
 
 template <typename TF>
@@ -469,9 +478,9 @@ void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std
     // Loop over all profiles which might be time dependent
     for (auto& it : timedep.data)
     {
-        // Get/calculate the interpolation indexes/factors
-        int index0, index1;
-        TF fac0, fac1;
+        // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
+        int index0 = 0, index1 = 0;
+        TF fac0 = 0., fac1 = 0.;
 
         timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
 
@@ -479,7 +488,6 @@ void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std
         for (int k=0; k<gd.kmax; ++k    )
             profiles[it.first][k+kgc] = fac0 * it.second[index0*kk+k] + fac1 * it.second[index1*kk+k];
     }
-
 }
 
 template <typename TF>
@@ -490,8 +498,8 @@ void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<T
     const int kgc = gd.kgc;
 
     // Get/calculate the interpolation indexes/factors
-    int index0, index1;
-    TF fac0, fac1;
+    int index0 = 0, index1 = 0;
+    TF fac0 = 0., fac1 = 0.;
     timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[name]);
 
     // Calculate the new vertical profile
