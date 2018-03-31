@@ -35,6 +35,7 @@
 
 namespace
 {
+    /*
     // Wrapper functions to the RRTMG long wave kernels.
     extern "C"
     {
@@ -50,6 +51,7 @@ namespace
                 double *uflx    ,double *dflx    ,double *hr      ,double *uflxc   ,double *dflxc,  double *hrc,
                 double *duflx_dt,double *duflxc_dt );
     }
+    */
 }
 
 template<typename TF>
@@ -67,7 +69,7 @@ Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
         throw std::runtime_error("Invalid option for \"swradiation\"");
 
     double cp = 1004.;
-    c_rrtmg_lw_init(&cp);
+    // c_rrtmg_lw_init(&cp);
     ncol = 1;
     nlay = 60;
     nbndlw = 16;
@@ -219,6 +221,7 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
     // Get absolute atmospheric and surface temperature.
     tsfc[0] = 300.;
 
+    /*
     c_rrtmg_lw(
             &ncol    ,&nlay    ,&icld    ,&idrv    ,
             play.data()    ,plev.data()    ,tlay.data()    ,tlev.data()    ,tsfc.data()    ,
@@ -229,6 +232,7 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
             tauaer.data()  ,
             uflx.data()    ,dflx.data()    ,hr.data()      ,uflxc.data()   ,dflxc.data(),  hrc.data(),
             duflx_dt.data(),duflxc_dt.data());
+            */
 
     fields.release_tmp(T);
 

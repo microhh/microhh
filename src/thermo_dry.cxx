@@ -412,6 +412,7 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
+#endif
 
 template<typename TF>
 void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot)
@@ -433,7 +434,6 @@ const std::vector<TF>& Thermo_dry<TF>::get_ph_vector() const
 {
     return bs.prefh;
 }
-#endif
 
 template<typename TF>
 void Thermo_dry<TF>::get_prog_vars(std::vector<std::string>& list)
