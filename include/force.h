@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FORCE
-#define FORCE
+#ifndef FORCE_H
+#define FORCE_H
 
 #include <vector>
 #include <string>
@@ -106,6 +106,7 @@ class Force
             std::map<std::string, std::vector<TF>> data;
             std::map<std::string, TF*> data_g;
         };
+
         tdep tdep_ls;
         tdep tdep_geo;
         tdep tdep_wls;

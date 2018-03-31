@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -476,7 +476,6 @@ void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<s
 
 }
 #endif
-
 
 #ifdef USECUDA
 template <typename TF>

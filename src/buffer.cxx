@@ -35,8 +35,12 @@
 namespace
 {
     template<typename TF>
-    void calc_buffer(TF* const restrict at, const TF* const restrict a,
-                        const TF* const restrict abuf, const TF* const restrict z, const TF zstart, const TF zsize, const TF beta, const TF sigma, const int istart, const int iend, const int icells, const int jstart, const int jend, const int ijcells, const int bufferkstart, const int kend)
+    void calc_buffer(
+            TF* const restrict at, const TF* const restrict a,
+            const TF* const restrict abuf, const TF* const restrict z,
+            const TF zstart, const TF zsize, const TF beta, const TF sigma,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int ijcells, const int bufferkstart, const int kend)
     {
         const TF zsizebuf = zsize - zstart;
 
@@ -46,7 +50,7 @@ namespace
         {
             sigmaz = sigma*std::pow((z[k]-zstart)/zsizebuf, beta);
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -60,7 +64,6 @@ template<typename TF>
 Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-
     swbuffer = inputin.get_item<bool>("buffer", "swbuffer", "", false);
 
     if (swbuffer)
@@ -70,7 +73,6 @@ Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
         sigma    = inputin.get_item<TF>("buffer", "sigma", "",2.);
         beta     = inputin.get_item<TF>("buffer", "beta", "",2.);
     }
-
 
     if (swbuffer && swupdate)
         fields.set_calc_mean_profs(true);
@@ -107,7 +109,6 @@ void Buffer<TF>::init()
 template<typename TF>
 void Buffer<TF>::create(Input& inputin, Data_block& profs)
 {
-
     if (swbuffer)
     {
         const Grid_data<TF>& gd = grid.get_grid_data();
@@ -147,7 +148,6 @@ void Buffer<TF>::create(Input& inputin, Data_block& profs)
                 bufferprofs["u"][k] -= grid.utrans;
                 bufferprofs["v"][k] -= grid.vtrans;
             }
-
 
             for (auto& it : fields.sp)
                 profs.get_vector(bufferprofs[it.first], it.first, gd.kmax, 0, gd.kstart);
