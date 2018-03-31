@@ -29,7 +29,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "model.h"
 #include "master.h"
 
 using Finite_difference::O2::interp2;

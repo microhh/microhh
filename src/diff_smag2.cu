@@ -31,7 +31,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "thermo.h"
-#include "model.h"
 #include "tools.h"
 #include "monin_obukhov.h"
 

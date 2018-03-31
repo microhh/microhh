@@ -31,7 +31,6 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "model.h"
 //#include "thermo.h"
 #include "timeloop.h"
 #include <netcdf>
