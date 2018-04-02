@@ -398,16 +398,16 @@ void Model<TF>::exec()
 
     } // End time loop.
 
-        #ifdef USECUDA
-        // At the end of the run, copy the data back from the GPU.
-        if(t_stat.joinable())
-            t_stat.join();
-        fields  ->backward_device();
-        // boundary->backward_device();
-        thermo  ->backward_device();
+    #ifdef USECUDA
+    // At the end of the run, copy the data back from the GPU.
+    if(t_stat.joinable())
+        t_stat.join();
+    fields  ->backward_device();
+    // boundary->backward_device();
+    thermo  ->backward_device();
 
-        clear_gpu();
-        #endif
+    clear_gpu();
+    #endif
 }
 
 #ifdef USECUDA
@@ -596,13 +596,11 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-
         if (!std::isfinite(cfl))
         {
-            master.print_error("Simulation has non-finite numbers.\n");
-            throw 1;
+            std::string error_message = "Simulation has non-finite numbers";
+            throw std::runtime_error(error_message);
         }
-
     }
 }
 
