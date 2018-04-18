@@ -48,6 +48,7 @@ Column::Column(Model* modelin, Input* inputin)
     master = model->master;
 
     // set the pointers to zero
+    dataFile = 0;
 
     int nerror = 0;
     nerror += inputin->get_item(&swcolumn, "column", "swcolumn", "", "0");
@@ -67,6 +68,9 @@ Column::Column(Model* modelin, Input* inputin)
 
 Column::~Column()
 {
+    if (swcolumn == "0")
+        return;
+
     delete dataFile;
     for (Column_map::const_iterator it=profs.begin(); it!=profs.end(); ++it)
         delete[] it->second.data;
