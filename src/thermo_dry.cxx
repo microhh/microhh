@@ -72,7 +72,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    N2[ijk] = grav/thref[k]*0.5*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
+                    N2[ijk] = grav/thref[k]*static_cast<TF>(0.5)*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
                 }
     }
 
@@ -270,9 +270,6 @@ boundary_cyclic(masterin, gridin)
 template<typename TF>
 Thermo_dry<TF>::~Thermo_dry()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template<typename TF>

@@ -45,7 +45,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += grav/threfh[k] * (0.5*(th[ijk-kk]+th[ijk]) - threfh[k]);
+            wt[ijk] += grav/threfh[k] * (static_cast<TF>(0.5)*(th[ijk-kk]+th[ijk]) - threfh[k]);
         }
     }
 
@@ -118,7 +118,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = Constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = Constants::grav/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 } // end namespace
@@ -146,7 +146,7 @@ void Thermo_dry<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(bs.thref_g,   bs.thref.data(),   nmemsize, cudaMemcpyHostToDevice));
+
 }
 
 template<typename TF>

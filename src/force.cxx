@@ -280,9 +280,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 template <typename TF>
 Force<TF>::~Force()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template <typename TF>
