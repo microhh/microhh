@@ -453,7 +453,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
 #ifdef USECUDA
 template<typename TF>
-void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<std::string, TF*> profiles, Time_dep timedep)
+void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<std::string, TF*> profiles, Time_dep& timedep)
 {
     auto& gd = grid.get_grid_data();
     const int blockk = 128;
@@ -478,7 +478,7 @@ void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<s
 
 #ifdef USECUDA
 template <typename TF>
-void Force<TF>::update_time_dependent_prof_g(Timeloop<TF>& timeloop, TF* prof, Time_dep timedep, const std::string& name)
+void Force<TF>::update_time_dependent_prof_g(Timeloop<TF>& timeloop, TF* prof, Time_dep& timedep, const std::string& name)
 {
     auto& gd = grid.get_grid_data();
     const int blockk = 128;

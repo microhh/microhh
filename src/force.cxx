@@ -374,7 +374,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 }
 
 template <typename TF>
-void Force<TF>::create_timedep(Force<TF>::Time_dep timedep, std::string suffix)
+void Force<TF>::create_timedep(Force<TF>::Time_dep& timedep, std::string suffix)
 {
     auto& gd = grid.get_grid_data();
     std::vector<TF> tmp;
@@ -468,7 +468,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 #endif
 
 template <typename TF>
-void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, Time_dep timedep)
+void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, Time_dep& timedep)
 {
     auto& gd = grid.get_grid_data();
     const int kk = gd.kmax;
@@ -490,7 +490,7 @@ void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std
 }
 
 template <typename TF>
-void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, Time_dep timedep, const std::string& name)
+void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, Time_dep& timedep, const std::string& name)
 {
     auto& gd = grid.get_grid_data();
     const int kk = gd.kmax;

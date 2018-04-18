@@ -102,6 +102,11 @@ class Force
         struct Time_dep
         {
             Time_dep() : sw(false) {}; // Initialize the switches to zero.
+            Time_dep(const Time_dep&) = delete; // Delete the copy assignment to prevent mistakes.
+            Time_dep& operator=(const Time_dep&) = delete; // Delete the copy assignment to prevent mistakes.
+            Time_dep(Time_dep&&) = delete; // Delete the move assignment to prevent mistakes.
+            Time_dep& operator=(Time_dep&&) = delete; // Delete the move assignment to prevent mistakes.
+            
             bool sw;
             std::vector<std::string> vars;
             std::map<std::string, std::vector<double>> time;
@@ -114,11 +119,9 @@ class Force
         Time_dep tdep_wls;
         Time_dep tdep_nudge;
 
-        void create_timedep(Time_dep, std::string);
-
-        void update_time_dependent_profs(Timeloop<TF>&, std::map<std::string, std::vector<TF>>, Time_dep);
-
-        void update_time_dependent_prof(Timeloop<TF>&, std::vector<TF>, Time_dep, const std::string&);
+        void create_timedep(Time_dep&, std::string);
+        void update_time_dependent_profs(Timeloop<TF>&, std::map<std::string, std::vector<TF>>, Time_dep&);
+        void update_time_dependent_prof(Timeloop<TF>&, std::vector<TF>, Time_dep&, const std::string&);
 
         // GPU functions and variables
         TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
@@ -127,8 +130,8 @@ class Force
         TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
         #ifdef USECUDA
-        void update_time_dependent_profs_g(Timeloop<TF>&, std::map<std::string, TF*>, Time_dep);
-        void update_time_dependent_prof_g(Timeloop<TF>&, TF*, Time_dep, const std::string&);
+        void update_time_dependent_profs_g(Timeloop<TF>&, std::map<std::string, TF*>, Time_dep&);
+        void update_time_dependent_prof_g(Timeloop<TF>&, TF*, Time_dep&, const std::string&);
         #endif
 };
 #endif
