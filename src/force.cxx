@@ -374,17 +374,16 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 }
 
 template <typename TF>
-void Force<TF>::create_timedep(Force<TF>::tdep timedep, std::string suffix)
+void Force<TF>::create_timedep(Force<TF>::Time_dep timedep, std::string suffix)
 {
     auto& gd = grid.get_grid_data();
     std::vector<TF> tmp;
     for (auto& var : timedep.vars)
     {
         Data_block data_block(master, var+suffix);
-        std::vector<std::string>  headers = data_block.get_headers();
+        std::vector<std::string> headers = data_block.get_headers();
         // Sort the times
-        std::sort (headers.begin()+1, headers.end());
-
+        std::sort(headers.begin()+1, headers.end());
 
         for (auto& it : headers)
         {
@@ -409,7 +408,7 @@ void Force<TF>::exec(double dt)
         enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
 
-    else if (swlspres== Large_scale_pressure_type::geo_wind)
+    else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
         if (grid.swspatialorder == "2")
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
@@ -469,7 +468,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 #endif
 
 template <typename TF>
-void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, tdep timedep)
+void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, Time_dep timedep)
 {
     auto& gd = grid.get_grid_data();
     const int kk = gd.kmax;
@@ -491,7 +490,7 @@ void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std
 }
 
 template <typename TF>
-void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, tdep timedep, const std::string& name)
+void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, Time_dep timedep, const std::string& name)
 {
     auto& gd = grid.get_grid_data();
     const int kk = gd.kmax;

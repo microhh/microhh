@@ -171,7 +171,7 @@ namespace
 
     template<typename TF> __global__
     void nudging_tendency_g(TF* const __restrict__ st, TF* const __restrict__ smn,
-			    TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
+			                TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int jj,     const int kk)
@@ -191,9 +191,9 @@ namespace
 
     template<typename TF> __global__
     void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
-                                      const double fac0, const double fac1,
-                                      const int index0,  const int index1,
-                                      const int kmax,    const int kgc)
+                                    const double fac0, const double fac1,
+                                    const int index0,  const int index1,
+                                    const int kmax,    const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -443,17 +443,17 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         update_time_dependent_profs_g(timeloop, nudgeprofs_g, tdep_nudge);
     if (tdep_geo.sw)
     {
-        update_time_dependent_prof_g(timeloop, ug_g, tdep_geo,"u");
-        update_time_dependent_prof_g(timeloop, vg_g, tdep_geo,"v");
+        update_time_dependent_prof_g(timeloop, ug_g, tdep_geo, "u");
+        update_time_dependent_prof_g(timeloop, vg_g, tdep_geo, "v");
     }
     if (tdep_wls.sw)
-        update_time_dependent_prof_g(timeloop, wls_g, tdep_wls,"w");
+        update_time_dependent_prof_g(timeloop, wls_g, tdep_wls, "w");
 }
 #endif
 
 #ifdef USECUDA
 template<typename TF>
-void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<std::string, TF*> profiles, tdep timedep)
+void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<std::string, TF*> profiles, Time_dep timedep)
 {
     auto& gd = grid.get_grid_data();
     const int blockk = 128;
@@ -473,13 +473,12 @@ void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<s
             profiles[it.first], it.second, fac0, fac1, index0, index1, gd.kmax, gd.kgc);
         cuda_check_error();
     }
-
 }
 #endif
 
 #ifdef USECUDA
 template <typename TF>
-void Force<TF>::update_time_dependent_prof_g(Timeloop<TF>& timeloop, TF* prof, tdep timedep, const std::string& name)
+void Force<TF>::update_time_dependent_prof_g(Timeloop<TF>& timeloop, TF* prof, Time_dep timedep, const std::string& name)
 {
     auto& gd = grid.get_grid_data();
     const int blockk = 128;
