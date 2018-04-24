@@ -228,7 +228,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
-        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", "0");
+        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
         tdep_geo.vars = {"ug", "vg"};
     }
     else
@@ -255,7 +255,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swwls_in == "1")
     {
         swwls = Large_scale_subsidence_type::enabled;
-        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls",   "", "0");
+        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls", "", "0");
         fields.set_calc_mean_profs(true);
     }
     else
