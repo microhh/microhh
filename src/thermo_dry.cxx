@@ -195,6 +195,24 @@ namespace
                 }
     }
 
+    template<typename TF>
+    void calc_baroclinic(TF* const restrict tht, const TF* const restrict v,
+                         const TF dthetady_ls,
+                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                         const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tht[ijk] -= dthetady_ls * v[ijk];
+                }
+    }
+
     // Initialize the base state for the anelastic solver
     template<typename TF>
     void calc_base_state(TF* const restrict rhoref, TF* const restrict rhorefh,
@@ -250,6 +268,10 @@ boundary_cyclic(masterin, gridin)
     fields.init_prognostic_field("th", "Potential Temperature", "K");
 
     fields.sp.at("th")->visc = inputin.get_item<TF>("fields", "svisc", "th");
+
+    swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
+    if (swbaroclinic)
+        dthetady_ls = inputin.get_item<TF>("thermo", "dthetady_ls", "");
 
     // Get base state option (boussinesq or anelastic)
     bs.swbasestate = inputin.get_item<std::string>("thermo", "swbasestate", "", "");
@@ -336,7 +358,7 @@ void Thermo_dry<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder== "2")
+    if (grid.swspatialorder == "2")
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
@@ -344,6 +366,12 @@ void Thermo_dry<TF>::exec()
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
+
+    if (swbaroclinic)
+        calc_baroclinic(fields.st.at("th")->fld.data(), fields.sp.at("th")->fld.data(),
+                        dthetady_ls,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
 }
 #endif
 
