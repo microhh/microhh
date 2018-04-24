@@ -26,7 +26,7 @@ print("dthetady_ls = {0}".format(-dudz*fc))
 
 # write the data to a file
 proffile = open('eady.prof','w')
-proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s}\n'.format('z','th','u', 'ug'))
+proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s}\n'.format('z','th','u','ug'))
 for k in range(kmax):
     proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E}\n'.format(z[k], th[k], u[k], ug[k]))
 proffile.close()

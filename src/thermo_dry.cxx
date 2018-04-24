@@ -209,7 +209,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    tht[ijk] -= dthetady_ls * v[ijk];
+                    tht[ijk] -= dthetady_ls * interp2(v[ijk], v[ijk+jj]);
                 }
     }
 
@@ -368,7 +368,7 @@ void Thermo_dry<TF>::exec()
                                gd.icells, gd.ijcells);
 
     if (swbaroclinic)
-        calc_baroclinic(fields.st.at("th")->fld.data(), fields.sp.at("th")->fld.data(),
+        calc_baroclinic(fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
                         dthetady_ls,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);

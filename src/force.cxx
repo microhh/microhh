@@ -217,7 +217,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Large-scale pressure forcing.
     if (swlspres_in == "0")
+    {
         swlspres = Large_scale_pressure_type::disabled;
+    }
     else if (swlspres_in == "uflux")
     {
         swlspres = Large_scale_pressure_type::fixed_flux;
@@ -226,7 +228,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
-        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo",   "", "0");
+        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", "0");
         tdep_geo.vars = {"ug", "vg"};
     }
     else
@@ -238,7 +240,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swls_in == "1")
     {
         swls = Large_scale_tendency_type::enabled;
-        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls",   "", "0");
+        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls", "", "0");
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
         tdep_ls.vars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
     }
@@ -267,7 +269,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge",   "", "0");
+        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge", "", "0");
         tdep_nudge.vars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
         fields.set_calc_mean_profs(true);
     }
@@ -321,7 +323,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
         if (tdep_geo.sw)
-            create_timedep(tdep_geo,"g");
+            create_timedep(tdep_geo, "g");
     }
 
     if (swls == Large_scale_tendency_type::enabled)
