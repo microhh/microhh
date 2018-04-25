@@ -231,7 +231,7 @@ namespace
         {
             for (int k=kstart; k<kend; ++k)
             {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                // calculate smagorinsky constant times filter width squared, do not use wall damping with resolved walls.
                 const TF mlen = cs*std::pow(dx*dy*dz[k], 1./3.);
                 const TF fac = std::pow(mlen, 2);
     
@@ -247,7 +247,6 @@ namespace
                     }
             }
 
-            /*
             // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
             // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
             const int kb = kstart;
@@ -258,10 +257,9 @@ namespace
                 {
                     const int ijkb = i + j*jj + kb*kk;
                     const int ijkt = i + j*jj + kt*kk;
-                    evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
-                    evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
+                    evisc[ijkb-kk] = evisc[ijkb];
+                    evisc[ijkt+kk] = evisc[ijkt];
                 }
-                */
         }
         else
         {

@@ -63,10 +63,10 @@ namespace
 
     template<typename TF>
     void calc_N2(TF* const restrict N2, const TF* const restrict th, const TF* const restrict dzi, const TF* const restrict thref,
-                 const int istart, const int iend, const int jstart, const int jend,
-                 const int icells, const int ijcells, const int kcells )
+                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                 const int icells, const int ijcells, const int kcells)
     {
-        for (int k=0; k<kcells; ++k)
+        for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -401,7 +401,7 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "N2")
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "T")
         calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnref.data(), bs.thref.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
