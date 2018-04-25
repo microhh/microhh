@@ -290,7 +290,7 @@ void Model<TF>::exec()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Calculate the diffusion tendency.
-        diff->exec();
+        diff->exec(*boundary);
 
         // Calculate the thermodynamics and the buoyancy tendency.
         thermo->exec();

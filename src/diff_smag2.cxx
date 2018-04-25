@@ -524,7 +524,7 @@ namespace
                 }
     }
     
-    template <typename TF>
+    template <typename TF, Surface_model surface_model>
     void diff_c(TF* restrict at, const TF* restrict a,
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxidxi, const TF dyidyi,
                 const TF* restrict evisc,
@@ -536,31 +536,59 @@ namespace
         const int ii = 1;
     
         TF evisce, eviscw, eviscn, eviscs, evisct, eviscb;
+
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
     
-        // bottom boundary
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+        if (surface_model == Surface_model::Enabled)
+        {
+            // bottom boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                    eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                    eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                    eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                    evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                    eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
     
-                at[ijk] +=
-                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
-                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
-                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                         + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-                           + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
-            }
+                    at[ijk] +=
+                             + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                             + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+                               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+                }
     
-        for (int k=kstart+1; k<kend-1; ++k)
+            // top boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + (kend-1)*kk;
+                    evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                    eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                    eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                    eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                    evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                    eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+    
+                    at[ijk] +=
+                             + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                             + (-rhorefh[kend  ] * fluxtop[ij]
+                               - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
+                }
+        }
+
+        for (int k=kstart+k_offset; k<kend-k_offset; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -581,29 +609,6 @@ namespace
                              + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                                - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
                 }
-    
-        // top boundary
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + (kend-1)*kk;
-                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
-    
-                at[ijk] +=
-                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
-                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
-                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                         + (-rhorefh[kend  ] * fluxtop[ij]
-                           - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
-            }
     }
 
     template<typename TF>
@@ -706,46 +711,90 @@ void Diff_smag2<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec()
+void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
-    diff_u<TF, Surface_model::Enabled>(
-            fields.mt["u"]->fld.data(),
-            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-            fields.sd["evisc"]->fld.data(),
-            fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
-            fields.rhoref.data(), fields.rhorefh.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    if (boundary.get_switch() == "surface")
+    {
+        diff_u<TF, Surface_model::Enabled>(
+                fields.mt["u"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
-    diff_v<TF, Surface_model::Enabled>(
-            fields.mt["v"]->fld.data(),
-            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-            fields.sd["evisc"]->fld.data(),
-            fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
-            fields.rhoref.data(), fields.rhorefh.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+        diff_v<TF, Surface_model::Enabled>(
+                fields.mt["v"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
-    diff_w<TF>(fields.mt["w"]->fld.data(),
-               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-               gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-               fields.sd["evisc"]->fld.data(),
-               fields.rhoref.data(), fields.rhorefh.data(),
-               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-               gd.icells, gd.ijcells);
-
-    for (auto it : fields.st)
-        diff_c<TF>(it.second->fld.data(), fields.sp[it.first]->fld.data(),
-                   gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+        diff_w<TF>(fields.mt["w"]->fld.data(),
+                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
                    fields.sd["evisc"]->fld.data(),
-                   fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
-                   fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                   fields.rhoref.data(), fields.rhorefh.data(),
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                    gd.icells, gd.ijcells);
+
+        for (auto it : fields.st)
+            diff_c<TF, Surface_model::Enabled>(
+                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                    fields.sd["evisc"]->fld.data(),
+                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
+    else
+    {
+        diff_u<TF, Surface_model::Disabled>(
+                fields.mt["u"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        diff_v<TF, Surface_model::Disabled>(
+                fields.mt["v"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        diff_w<TF>(fields.mt["w"]->fld.data(),
+                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                   fields.sd["evisc"]->fld.data(),
+                   fields.rhoref.data(), fields.rhorefh.data(),
+                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                   gd.icells, gd.ijcells);
+
+        for (auto it : fields.st)
+            diff_c<TF, Surface_model::Disabled>(
+                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                    fields.sd["evisc"]->fld.data(),
+                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
 }
 
 template<typename TF>

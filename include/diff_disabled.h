@@ -40,7 +40,7 @@ class Diff_disabled : public Diff<TF>
         void set_values() {}
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
         void init() {}
-        void exec() {}
+        void exec(Boundary<TF>&) {}
 
         #ifdef USECUDA
         // GPU functions and variables
