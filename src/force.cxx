@@ -228,6 +228,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
+        fc = inputin.get_item<TF>("force", "fc", "");
         tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
         tdep_geo.vars = {"ug", "vg"};
     }
