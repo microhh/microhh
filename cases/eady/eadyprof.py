@@ -15,7 +15,7 @@ dthetadz = 0.003
 # set the height
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
 
-fc = 1.e-2
+fc = 1.e-3
 dudz = 1e-2
 
 # linearly stratified profile
