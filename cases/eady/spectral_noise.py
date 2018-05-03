@@ -49,6 +49,7 @@ th_file.close()
 th_ini += th.flatten()
 th_ini.tofile("th.0000000")
 
+"""
 # Create some test plots.
 plt.figure()
 plt.subplot(221)
@@ -64,3 +65,4 @@ plt.subplot(224)
 plt.hist(th.flatten(), 30, density=True)
 plt.tight_layout()
 plt.show()
+"""
