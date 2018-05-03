@@ -25,7 +25,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
-#include "advec_2.h"
+#include "advec_2i3.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -49,23 +49,45 @@ Advec_2i3<TF>::~Advec_2i3() {}
 namespace
 {
     template<typename TF>
-    TF calc_cfl(const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+    inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d) 
+    {
+        const TF c0 = 7./12.;
+        const TF c1 = 1./12.;
+        return c0*(b + c) - c1*(a + d);
+    }
+
+    template<typename TF>
+    inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d) 
+    {
+        const TF c0 = 3./12.;
+        const TF c1 = 1./12.;
+        return c0*(c - b) - c1*(d - a);
+    }
+
+    template<typename TF>
+    TF calc_cfl(
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict dzi, const TF dx, const TF dy,
             const TF dt, Master& master,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
         const TF dxi = 1./dx;
         const TF dyi = 1./dy;
 
-        double cfl = 0;
+        TF cfl = 0;
     
         int k = kstart;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 cfl = std::max(cfl, std::abs(interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi 
@@ -73,10 +95,10 @@ namespace
                                   + std::abs(interp2(w[ijk    ], w[ijk+kk1]))*dzi[k]);
             }
     
-        for (k=grid->kstart+1; k<grid->kend-1; ++k)
-            for (int j=grid->jstart; j<grid->jend; ++j)
+        for (k=kstart+1; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     cfl = std::max(cfl, std::abs(interp4_ws(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi 
@@ -85,9 +107,9 @@ namespace
                 }
     
         k = kend-1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk  = i + j*jj1 + k*kk1;
                 cfl = std::max(cfl, std::abs(interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi 
@@ -95,7 +117,7 @@ namespace
                                   + std::abs(interp2(w[ijk    ], w[ijk+kk1]))*dzi[k]);
             }
     
-        grid->get_max(&cfl);
+        master.max(&cfl, 1);
     
         cfl = cfl*dt;
     
@@ -111,16 +133,21 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
         const TF dxi = 1./dx;
         const TF dyi = 1./dy;
 
         int k = kstart; 
     
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] += 
@@ -143,9 +170,9 @@ namespace
             }
     
         k = kstart+1; 
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] += 
@@ -170,10 +197,10 @@ namespace
                          + ( rhorefh[k+1] * std::abs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
     
-        for (k=grid->kstart+2; k<grid->kend-2; ++k)
-            for (int j=grid->jstart; j<grid->jend; ++j)
+        for (k=kstart+2; k<kend-2; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     ut[ijk] += 
@@ -200,9 +227,9 @@ namespace
                 }
     
         k = kend-2; 
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] += 
@@ -228,9 +255,9 @@ namespace
             }
     
         k = kend-1; 
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] += 
@@ -262,15 +289,20 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
-        const double dxi = 1./dx;
-        const double dyi = 1./dy;
+        const TF dxi = 1./dx;
+        const TF dyi = 1./dy;
 
         int k = kstart;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 vt[ijk] += 
@@ -293,9 +325,9 @@ namespace
             }
     
         k = kstart+1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 vt[ijk] += 
@@ -320,10 +352,10 @@ namespace
                          + ( rhorefh[k+1] * std::abs(interp2(w[ijk-jj1+kk1], w[ijk+kk1])) * interp3_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
     
-        for (k=grid->kstart+2; k<grid->kend-2; ++k)
-            for (int j=grid->jstart; j<grid->jend; ++j)
+        for (k=kstart+2; k<kend-2; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     vt[ijk] += 
@@ -350,9 +382,9 @@ namespace
                 }
     
         k = kend-2;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 vt[ijk] += 
@@ -378,9 +410,9 @@ namespace
             }
     
         k = kend-1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 vt[ijk] +=
@@ -412,15 +444,20 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
-        const double dxi = 1./dx;
-        const double dyi = 1./dy;
+        const TF dxi = 1./dx;
+        const TF dyi = 1./dy;
 
         int k = kstart+1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 wt[ijk] += 
@@ -445,10 +482,10 @@ namespace
                          + ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) ) / rhorefh[k] * dzhi[k];
             }
     
-        for (k=grid->kstart+2; k<grid->kend-1; ++k)
-            for (int j=grid->jstart; j<grid->jend; ++j)
+        for (k=kstart+2; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     wt[ijk] +=
@@ -475,9 +512,9 @@ namespace
                 }
     
         k = kend-1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 wt[ijk] += 
@@ -512,16 +549,21 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
-        const double dxi = 1./dx;
-        const double dyi = 1./dy;
+        const TF dxi = 1./dx;
+        const TF dyi = 1./dy;
 
         // assume that w at the boundary equals zero...
         int k = kstart;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 st[ijk] += 
@@ -541,9 +583,9 @@ namespace
             }
     
         k = kstart+1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 st[ijk] += 
@@ -565,10 +607,10 @@ namespace
                          + ( rhorefh[k+1] * std::abs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
     
-        for (k=grid->kstart+2; k<grid->kend-2; ++k)
-            for (int j=grid->jstart; j<grid->jend; ++j)
+        for (k=kstart+2; k<kend-2; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     st[ijk] += 
@@ -592,9 +634,9 @@ namespace
                 }
     
         k = kend-2;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 st[ijk] += 
@@ -616,9 +658,9 @@ namespace
     
         // assume that w at the boundary equals zero...
         k = kend-1;
-        for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 st[ijk] += 
