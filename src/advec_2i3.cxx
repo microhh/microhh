@@ -40,6 +40,11 @@ Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
     swadvec = "2i3";
+
+    const int igc = 2;
+    const int jgc = 2;
+    const int kgc = 2;
+    grid.set_minimum_ghost_cells(igc, jgc, kgc);
 }
 
 template<typename TF>
