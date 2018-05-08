@@ -86,6 +86,7 @@ class Thermo_buoy : public Thermo<TF>
         using Thermo<TF>::master;
         using Thermo<TF>::grid;
         using Thermo<TF>::fields;
+
         struct background_state
         {
             TF alpha;  ///< Slope angle in radians.
@@ -93,7 +94,11 @@ class Thermo_buoy : public Thermo<TF>
             bool has_slope; ///< Boolean switch for slope flows
             bool has_N2;    ///< Boolean switch for imposed stratification
         };
+
         background_state bs;
         background_state bs_stats;
+
+        bool swbaroclinic;
+        TF dbdy_ls;
 };
 #endif
