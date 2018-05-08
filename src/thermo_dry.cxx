@@ -555,8 +555,8 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
         allowedcrossvars.push_back("b");
         allowedcrossvars.push_back("bbot");
         allowedcrossvars.push_back("bfluxbot");
-        if (grid.swspatialorder == "4")
-            allowedcrossvars.push_back("blngrad");
+        allowedcrossvars.push_back("blngrad");
+        allowedcrossvars.push_back("thlngrad");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = cross.get_crosslist();
@@ -717,6 +717,10 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                                                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
             fields.release_tmp(b);
+        }
+        else if (it == "thlngrad")
+        {
+            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
         }
         else if (it == "bbot" or it == "bfluxbot")
         {

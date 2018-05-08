@@ -10,8 +10,8 @@ ktot = 64
 b_std = 1e-7
 
 # Set properties of gaussian filter in wave number space
-K_mean = 2.
-K_std = 1.
+K_mean = 4.
+K_std = 2.
 
 # DO NOT EDIT BELOW.
 phase = 2.*np.pi*np.random.rand(ktot, jtot, itot//2+1)

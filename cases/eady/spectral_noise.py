@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set grid cells.
-itot = 128
-jtot = 128
+itot = 256
+jtot = 256
 ktot = 64
 
 # Set standard deviation random noise
-th_std = 1e-2
+th_std = 1e-1
 
 # Set properties of gaussian filter in wave number space
-K_mean = 2.
-K_std = 1.
+K_mean = 4.
+K_std = 2.
 
 # DO NOT EDIT BELOW.
 phase = 2.*np.pi*np.random.rand(ktot, jtot, itot//2+1)

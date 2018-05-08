@@ -38,9 +38,8 @@
 
 namespace
 {
-
     template<typename TF>
-    void calc_lngrad(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
+    void calc_lngrad_4th(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
             int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
         using namespace Finite_difference::O4;
@@ -58,7 +57,7 @@ namespace
         // calculate the log of the gradient
         // bottom
         for (int j=jstart; j<jend; j++)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
@@ -126,6 +125,36 @@ namespace
                               + cg3*(ti0*a[ijk-kk1] + ti1*a[ijk    ] + ti2*a[ijk+kk1] + ti3*a[ijk+kk2]) ) * dzi4[kend-1], 2.) );
             }
 
+    }
+
+    template<typename TF>
+    void calc_lngrad_2nd(
+            const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi,
+            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    {
+        using namespace Finite_difference::O2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // calculate the log of the gradient
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    lngrad[ijk] = std::log( Constants::dtiny
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+ii])
+                                        - interp2(a[ijk-ii], a[ijk   ]) ) * dxi, TF(2))
+
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+jj])
+                                        - interp2(a[ijk-jj], a[ijk   ]) ) * dyi, TF(2))
+
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+kk])
+                                        - interp2(a[ijk-kk], a[ijk   ]) ) * dzi[k], TF(2)) );
+                }
     }
 
     template<typename TF>
@@ -555,8 +584,16 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     auto lngrad = lngradfld->fld.data();
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
-    calc_lngrad<TF>(a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(), gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
- //   calc_lngrad1<TF>(a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data());//, gd.dzi4.data());
+
+    if (grid.swspatialorder == "2")
+        calc_lngrad_2nd<TF>(
+                a, lngrad, gd.dxi, gd.dyi, gd.dzi.data(),
+                gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    else if (grid.swspatialorder == "4")
+        calc_lngrad_4th<TF>(
+                a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(),
+                gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+
     // loop over the index arrays to save all xz cross sections
     for (auto& it: jxz)
     {
