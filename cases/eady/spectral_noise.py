@@ -10,7 +10,7 @@ ktot = 64
 th_std = 1e-1
 
 # Set properties of gaussian filter in wave number space
-K_mean = 4.
+K_mean = 10.
 K_std = 2.
 
 # DO NOT EDIT BELOW.
