@@ -10,7 +10,7 @@ with open('eady.ini') as f:
 
 dz = zsize / kmax
 
-dthetadz = 0.004
+dthetadz = 0.003
 
 # set the height
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)

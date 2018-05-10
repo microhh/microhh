@@ -1,4 +1,4 @@
-dthetadz = 0.004
+dthetadz = 0.003
 N = (10./300.*dthetadz)**.5
 H = 1e3
 f = 1e-3
