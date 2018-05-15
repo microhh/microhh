@@ -168,7 +168,10 @@ std::vector<std::string> Data_block::get_headers()
     return header_items;
 }
 
-
+int Data_block::get_vector_length(const std::string& name)
+{
+    return data_series.at(name).size();
+}
 template void Data_block::get_vector(std::vector<std::string>&, const std::string&, const size_t, const size_t, const size_t);
 template void Data_block::get_vector(std::vector<double>&, const std::string&, const size_t, const size_t, const size_t);
 template void Data_block::get_vector(std::vector<float>&, const std::string&, const size_t, const size_t, const size_t);

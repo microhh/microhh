@@ -324,7 +324,7 @@ void Thermo_buoy<TF>::exec()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic)
+void Thermo_buoy<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool cyclic)
 {
     auto& gd = grid.get_grid_data();
 

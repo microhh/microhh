@@ -20,10 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DRY
-#define THERMO_DRY
-
-#include "thermo.h"
+#ifndef THERMO_MOIST
+#define THERMO_MOIST
 
 class Master;
 class Input;
@@ -44,18 +42,19 @@ class Data_block;
  * equivalent and no complex buoyancy function is required.
  */
 
-enum class Basestate_type {anelastic, boussinesq};
+ enum class Micro_type {disabled, 2mom_warm};
+ enum class Basestate_type {anelastic, boussinesq};
 
 template<typename TF>
-class Thermo_dry : public Thermo<TF>
+class Thermo_moist : public Thermo<TF>
 {
     public:
-        Thermo_dry(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_dry(); ///< Destructor of the dry thermodynamics class.
+        Thermo_moist(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the moist thermodynamics class.
+        virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(); ///< Add the tendencies belonging to the buoyancy.
+        void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);
@@ -67,12 +66,14 @@ class Thermo_dry : public Thermo<TF>
         struct background_state
         {
             Basestate_type swbasestate;
-
+            bool swupdatebasestate;
             TF pbot;   ///< Surface pressure.
-            TF thref0; ///< Reference potential temperature in case of Boussinesq
+            TF thvref0; ///< Reference potential temperature in case of Boussinesq
 
-            std::vector<TF> thref;
-            std::vector<TF> threfh;
+            std::vector<TF> thl0;
+            std::vector<TF> qt0;
+            std::vector<TF> thvref;
+            std::vector<TF> thvrefh;
             std::vector<TF> pref;
             std::vector<TF> prefh;
             std::vector<TF> exnref;
@@ -86,12 +87,13 @@ class Thermo_dry : public Thermo<TF>
             TF*  exnref_g;
             TF*  exnrefh_g;
         };
+
         background_state bs;
         background_state bs_stats;
         void get_thermo_field(Field3d<TF>&, std::string, bool, background_state);
         void get_buoyancy_surf(Field3d<TF>&, background_state);
         void get_buoyancy_fluxbot(Field3d<TF>&, background_state);
-        void get_T_bot(Field3d<TF>&, background_state);
+        void get_T_bot(Field3d<TF>&);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
 
@@ -123,7 +125,8 @@ class Thermo_dry : public Thermo<TF>
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+        bool swcross_b;
+        bool swcross_ql;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
@@ -131,6 +134,21 @@ class Thermo_dry : public Thermo<TF>
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
 
+
+        bool swtimedep_pbot;
+        std::vector<double> timedeptime;
+        std::vector<TF> timedeppbot;
+
+        // masks
+//        void calc_mask_ql    (TF*, TF*, TF*, int *, int *, int *, TF*);//
+//        void calc_mask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double*);
+
+        // Microphysics
+
+        Micro_type swmicro; ///< Microphysics scheme
+        bool swmicrobudget; ///< Calculate budget statistics
+        TF cflmax_micro; ///< Maximum allowed CFL for sedimentation.
+        void exec_microphysics(const double);
 
 };
 #endif

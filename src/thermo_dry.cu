@@ -220,7 +220,7 @@ void Thermo_dry<TF>::exec()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic)
+void Thermo_dry<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool cyclic)
 {
     auto& gd = grid.get_grid_data();
 
@@ -266,7 +266,7 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
+void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
 {
     auto& gd = grid.get_grid_data();
 
@@ -288,7 +288,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
+void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 {
     auto& gd = grid.get_grid_data();
 

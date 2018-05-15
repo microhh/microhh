@@ -139,7 +139,7 @@ void Radiation<TF>::create(Thermo<TF>& thermo)
     std::vector<TF> ph_rad(nlay+1);
     data_block.get_vector(ph_rad, "pz", nlay+1, 0, 0);
 
-    // Convert the data to 
+    // Convert the data to
     for (auto& d : p_rad)
         d *= 100.;
 
@@ -209,12 +209,12 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
 
     // Step 1. Get the mean absolute atmospheric temperature.
     auto T = fields.get_tmp();
-    thermo.get_thermo_field(*T, "T", false);
+    thermo.get_thermo_field(*T, "T", false, thermo.bs);
 
     // Calculate radiative cooling only for single column.
     field3d_operators.calc_mean_profile(T->fld_mean.data(), T->fld.data());
 
-    thermo.get_thermo_field(*T, "T_h", false);
+    thermo.get_thermo_field(*T, "T_h", false, thermo.bs);
 
     // Step 2.
 

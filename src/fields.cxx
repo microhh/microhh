@@ -334,7 +334,7 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
     // add the profiles to the columns
     if (dump.get_switch())
     {
-        // Get global dump-list from cross.cxx
+        // Get global dump-list from dump.cxx
         std::vector<std::string> *dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
@@ -372,6 +372,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "top",     crosslist_global, &cross_top);
             check_added_cross(it.first, "fluxbot", crosslist_global, &cross_fluxbot);
             check_added_cross(it.first, "fluxtop", crosslist_global, &cross_fluxtop);
+            check_added_cross(it.first, "path",    crosslist_global, &cross_path);
         }
 
         for (auto& it : sd)
@@ -1201,6 +1202,9 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : cross_top)
         cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
+
+    for (auto& it : cross_path)
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
 }
 
 template<typename TF>

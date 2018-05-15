@@ -251,16 +251,15 @@ boundary_cyclic(masterin, gridin)
 
     fields.sp.at("th")->visc = inputin.get_item<TF>("fields", "svisc", "th");
 
-    // Get base state option (boussinesq or anelastic)
-    bs.swbasestate = inputin.get_item<std::string>("thermo", "swbasestate", "", "");
+    std::string swbasestate_in = inputin.get_item<std::string>("thermo", "swbasestate", "", "");
+    if (swbasestate_in == "boussinesq")
+        bs.swbasestate = Basestate_type::boussinesq;
+    else if (swbasestate_in == "anelastic")
+        bs.swbasestate = Basestate_type::anelastic;
+    else
+        throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-    if (!(bs.swbasestate == "boussinesq" || bs.swbasestate == "anelastic"))
-    {
-        masterin.print_error("\"%s\" is an illegal value for swbasestate\n", bs.swbasestate.c_str());
-        throw std::runtime_error("Illegal options swbasestate");
-    }
-
-    if (grid.swspatialorder == "4" && bs.swbasestate == "anelastic")
+    if (grid.swspatialorder == "4" && bs.swbasestate == Basestate_type::anelastic)
     {
         master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
         throw std::runtime_error("Illegal options swbasestate");
@@ -293,7 +292,7 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
        For anelastic setup, calculate reference density and temperature from input sounding
        For boussinesq, reference density and temperature are fixed */
 
-    if (bs.swbasestate == "anelastic")
+    if (bs.swbasestate == Basestate_type::anelastic)
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
 
@@ -353,70 +352,65 @@ unsigned long Thermo_dry<TF>::get_time_limit(unsigned long idt, const double dt)
 template<typename TF>
 bool Thermo_dry<TF>::check_field_exists(std::string name)
 {
-    if (name == "b")
+    if (name == "b" || name == "T")
         return true;
     else
         return false;
 }
 
-#ifndef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic)
+void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, background_state base = bs)
 {
     auto& gd = grid.get_grid_data();
 
     if (name == "b")
-        calc_buoyancy(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.thref.data(),
+        calc_buoyancy(fld.fld.data(), fields.sp.at("th")->fld.data(), base.thref.data(),
                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "N2")
-        calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), bs.thref.data(),
+        calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), base.thref.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "T")
-        calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnref.data(), bs.thref.data(),
+        calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), base.exnref.data(), base.thref.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "T_h")
-        calc_T_h(fld.fld.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+        calc_T_h(fld.fld.data(), fields.sp.at("th")->fld.data(), base.exnrefh.data(), base.threfh.data(),
                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw std::runtime_error("Illegal thermo field");
     }
 
     if (cyclic)
         boundary_cyclic.exec(fld.fld.data());
 }
-#endif
 
-#ifndef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
+void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, background_state base = bs)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b)
+void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, Basestate_type base = bs)
 {
     auto& gd = grid.get_grid_data();
 
     calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
-                      bs.thref.data(), bs.threfh.data(),
+                      base.thref.data(), base.threfh.data(),
                       gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs.threfh.data(),
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
-#endif
 
 template<typename TF>
-void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot)
+void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, background_state base = bs)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), bs.exnrefh.data(), bs.threfh.data(),
+    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), base.exnrefh.data(), base.threfh.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 }
 
@@ -457,14 +451,12 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields.rhorefh.data());
         stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", bs_stats.thref.data());
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
-        if (bs_stats.swbasestate == "anelastic")
+        if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
             stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
             stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
-        }
-
-        if (bs.swbasestate == "anelastic")
             stats.add_prof("T", "Absolute temperature", "K", "z");
+        }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
         for (int n=2; n<5; ++n)
@@ -561,12 +553,10 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
-    calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
-    calc_buoyancy_bot(b->fld.data(), b->fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(), bs_stats.thref.data(), bs_stats.threfh.data(),
-                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-    calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs_stats.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    get_thermo_field(b, "b",true, bs_stats);
+    get_buoyancy_bot(b, bs_stats);
+    get_buoyancy_fluxbot(b, bs_stats);
+
 
     // define the location
     const int sloc[] = {0,0,0};
@@ -599,16 +589,6 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
                                 get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
         fields.release_tmp(tmp);
     }
-    else if (grid.swspatialorder == "4")
-    {
-        //stats.calc_grad_4th(b->data, m.profs["bgrad"].data, grid.dzhi4, sloc,
-        //                    atmp["tmp4"]->data, stats.nmaskh);
-        //stats.calc_flux_4th(b->data, w->data, m.profs["bw"].data, atmp["tmp1"]->data, sloc,
-        //                    atmp["tmp4"]->data, stats.nmaskh);
-        //stats.calc_diff_4th(b->data, m.profs["bdiff"].data, grid.dzhi4, b->visc, sloc,
-        //                    atmp["tmp4"]->data, stats.nmaskh);
-    }
-
     // calculate the total fluxes
     stats.add_fluxes(m.profs["bflux"].data.data(), m.profs["bw"].data.data(), m.profs["bdiff"].data.data());
 
@@ -616,10 +596,11 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
     //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
-    if (bs.swbasestate == "anelastic")
+
+    if (bs_stats.swbasestate == Basestate_type::anelastic)
     {
         auto T = fields.get_tmp();
-        get_thermo_field(*T, "T", false);
+        get_thermo_field(*T, "T", false, bs_stats);
         stats.calc_mean(m.profs["T"].data.data(), T->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
         fields.release_tmp(T);
     }
@@ -628,80 +609,67 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
 template<typename TF>
 void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
+    auto output = fields.get_tmp();
+
     for (auto& it : dumplist)
     {
         if (it == "b")
-        {
-            auto b = fields.get_tmp();
-            calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
-            dump.save_dump(b->fld.data(), "b", iotime);
-            fields.release_tmp(b);
-        }
+            get_thermo_field(output, "b",false, bs_stats);
+        else if (it == "T")
+            get_thermo_field(output, "T",false, bs_stats);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
             throw std::runtime_error("Error in Thermo Dump");
         }
+        dump.save_dump(output->fld.data(), it, iotime);
     }
+    fields.release_tmp(output);
 }
 
 template<typename TF>
 void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {
-    auto& gd = grid.get_grid_data();
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp();
 
-    // Buoyancy
-    auto b = fields.get_tmp();
-    calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
-    column.calc_column("b",b->fld.data() , no_offset);
-    fields.release_tmp(b);
+    for (auto& it : dumplist)
+    {
+        if (it == "b")
+            get_thermo_field(output, "b",false, bs_stats);
+        else if (it == "T")
+            get_thermo_field(output, "T",false, bs_stats);
+        else
+        {
+            master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
+            throw std::runtime_error("Error in Thermo Dump");
+        }
+        column.calc_column(it, output->fld.data(), no_offset);
+    }
+    fields.release_tmp(output);
 }
 
 template<typename TF>
 void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
-    // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
+    if(swcross_b)
+    {
+        auto b = fields.get_tmp();
+        get_thermo_field(b, "b",false, bs_stats);
+        get_buoyancy_fluxbot(b, bs_stats);
+    }
     for (auto& it : crosslist)
     {
-        /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled,
-           statistics etc. is done on the host, while getThermoField() is executed on the GPU */
-
         if (it == "b")
-        {
-            auto b = fields.get_tmp();
-            calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                                                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
             cross.cross_simple(b->fld.data(), "b", iotime);
-            fields.release_tmp(b);
-        }
         else if (it == "blngrad")
-        {
-            auto b = fields.get_tmp();
-            calc_buoyancy(b->fld.data(), fields.sp.at("th")->fld.data(), bs_stats.thref.data(),
-                                                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells );
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
-            fields.release_tmp(b);
-        }
-        else if (it == "bbot" or it == "bfluxbot")
-        {
-            auto b = fields.get_tmp();
-            calc_buoyancy_bot(b->fld.data(), b->fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(), bs_stats.thref.data(), bs_stats.threfh.data(),
-                              gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-            calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("th")->flux_bot.data(), bs_stats.threfh.data(),
-                                  gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-
-            if (it == "bbot")
-                cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
-            else if (it == "bfluxbot")
-                cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);
-            fields.release_tmp(b);
-        }
+        else if (it == "bbot")
+            cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
+        else if (it == "bfluxbot")
+            cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);
     }
+    if(swcross_b) fields.release_tmp(b);
 }
 
 template class Thermo_dry<double>;

@@ -13,6 +13,7 @@ class Data_block
                                              const size_t,
                                              const size_t);
          std::vector<std::string> get_headers();
+         int get_vector_length(const std::string&);
     private:
         Master& master;
         std::map<std::string, std::vector<std::string>> data_series;

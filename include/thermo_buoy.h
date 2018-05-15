@@ -55,14 +55,6 @@ class Thermo_buoy : public Thermo<TF>
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
-        void get_buoyancy_surf(Field3d<TF>&);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-        void get_buoyancy_fluxbot(Field3d<TF>&);           ///< Compute the bottom buoyancy flux for usage in another routine.
-        void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
-        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        void get_thermo_field(Field3d<TF>&, std::string, bool); ///< Compute the buoyancy for usage in another routine.
-        const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
-        const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
-        TF get_buoyancy_diffusivity();
 
         // Empty functions that are allowed to pass.
         void init() {}
@@ -79,13 +71,11 @@ class Thermo_buoy : public Thermo<TF>
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
-        #endif
+        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_buoyancy_surf_g(Field3d<TF>&) {};
+        void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
 
-    private:
-        using Thermo<TF>::swthermo;
-        using Thermo<TF>::master;
-        using Thermo<TF>::grid;
-        using Thermo<TF>::fields;
+        #endif
         struct background_state
         {
             TF alpha;  ///< Slope angle in radians.
@@ -95,5 +85,19 @@ class Thermo_buoy : public Thermo<TF>
         };
         background_state bs;
         background_state bs_stats;
+        void get_buoyancy_surf(Field3d<TF>&, background_state);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+        void get_buoyancy_fluxbot(Field3d<TF>&, background_state);           ///< Compute the bottom buoyancy flux for usage in another routine.
+        void get_T_bot(Field3d<TF>&, background_state) { throw std::runtime_error("Function get_T_bot not implemented"); }
+        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
+        void get_thermo_field(Field3d<TF>&, std::string, bool, background_state); ///< Compute the buoyancy for usage in another routine.
+        const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
+        const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
+        TF get_buoyancy_diffusivity();
+
+    private:
+        using Thermo<TF>::swthermo;
+        using Thermo<TF>::master;
+        using Thermo<TF>::grid;
+        using Thermo<TF>::fields;
 };
 #endif

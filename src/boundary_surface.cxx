@@ -68,7 +68,7 @@ namespace
         const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
-    
+
     template<typename TF>
     TF calc_obuk_noslip_dirichlet(const float* restrict zL, const float* restrict f,
                                   int& n,
@@ -134,7 +134,7 @@ namespace
     {
         const int ii = 1;
         const int jj = icells;
-    
+
         // Calculate total wind.
         TF du2;
         const TF minval = 1.e-1;
@@ -152,9 +152,9 @@ namespace
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
             }
-    
+
         boundary_cyclic.exec_2d(dutot);
-    
+
         // calculate Obukhov length
         // case 1: fixed buoyancy flux and fixed ustar
         if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
@@ -208,11 +208,11 @@ namespace
     {
         const int ii = 1;
         const int jj = icells;
-    
+
         // calculate total wind
         TF du2;
         const TF minval = 1.e-1;
-    
+
         // first, interpolate the wind to the scalar location
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -226,9 +226,9 @@ namespace
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, static_cast<TF>(0.5)), minval);
             }
-    
+
         boundary_cyclic.exec_2d(dutot);
-    
+
         // set the Obukhov length to a very large negative number
         // case 1: fixed buoyancy flux and fixed ustar
         if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
@@ -267,9 +267,9 @@ namespace
     }
 
     template<typename TF>
-    void surfm(TF* restrict ustar, TF* restrict obuk, 
-               TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot, 
-               TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot, 
+    void surfm(TF* restrict ustar, TF* restrict obuk,
+               TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot,
+               TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot,
                const TF zsl, const TF z0m, const Boundary_type bcbot,
                const int istart, const int iend, const int jstart, const int jend, const int kstart,
                const int icells, const int jcells, const int kk,
@@ -288,12 +288,12 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-    
+
                     // interpolate the whole stability function rather than ustar or obuk
                     ufluxbot[ij] = -(u[ijk]-ubot[ij])*static_cast<TF>(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
                     vfluxbot[ij] = -(v[ijk]-vbot[ij])*static_cast<TF>(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
                 }
-    
+
             boundary_cyclic.exec_2d(ufluxbot);
             boundary_cyclic.exec_2d(vfluxbot);
         }
@@ -302,7 +302,7 @@ namespace
         {
             // first redistribute ustar over the two flux components
             const TF minval = 1.e-2;
-    
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -326,10 +326,10 @@ namespace
                     ufluxbot[ij] = -copysign(one, u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (one + vonu2 / u2), static_cast<TF>(0.5));
                     vfluxbot[ij] = -copysign(one, v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (one + uonv2 / v2), static_cast<TF>(0.5));
                 }
-    
+
             boundary_cyclic.exec_2d(ufluxbot);
             boundary_cyclic.exec_2d(vfluxbot);
-    
+
             // CvH: I think that the problem is not closed, since both the fluxes and the surface values
             // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
             // should not update the surface values with those that belong to the flux. This procedure needs
@@ -346,12 +346,12 @@ namespace
                 ubot[ij] = 0.;// ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
                 vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
             }
-    
+
             grid->boundary_cyclic_2d(ubot);
             grid->boundary_cyclic_2d(vbot);
             */
         }
-    
+
         for (int j=0; j<jcells; ++j)
             #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -365,17 +365,17 @@ namespace
                 vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
             }
     }
-    
+
     template<typename TF>
     void surfs(TF* restrict ustar, TF* restrict obuk, TF* restrict var,
-               TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot, 
+               TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot,
                const TF zsl, const TF z0m, const TF z0h, const Boundary_type bcbot,
                const int istart, const int iend, const int jstart, const int jend, const int kstart,
                const int icells, const int jcells, const int kk,
                Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
-    
+
         // the surface value is known, calculate the flux and gradient
         if (bcbot == Boundary_type::Dirichlet_type)
         {
@@ -531,7 +531,7 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     nerror += inputin.get_list(&crosslist, "boundary", "crosslist" , "");
 
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
+    std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
 
     // Check input list of cross variables (crosslist)
     std::vector<std::string>::iterator it2=crosslist_global->begin();
@@ -583,7 +583,7 @@ void Boundary_surface<TF>::exec_cross(int iotime)
             nerror += model->cross->cross_plane(ustar, fields->atmp["tmp1"]->data, "ustar",iotime);
         else if (*it == "obuk")
             nerror += model->cross->cross_plane(obuk,  fields->atmp["tmp1"]->data, "obuk",iotime);
-    }  
+    }
 
     if (nerror)
         throw 1;
@@ -732,7 +732,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         auto buoy = fields.get_tmp();
         auto tmp = fields.get_tmp();
 
-        thermo.get_buoyancy_surf(*buoy);
+        thermo.get_buoyancy_surf(*buoy, thermo.bs);
         stability(ustar.data(), obuk.data(), buoy->flux_bot.data(),
                   fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                   fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
@@ -771,7 +771,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::update_slave_bcs()
 {
-    // This function does nothing when the surface model is enabled, because 
+    // This function does nothing when the surface model is enabled, because
     // the fields are computed by the surface model in update_bcs.
 }
 

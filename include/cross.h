@@ -54,7 +54,7 @@ class Cross
         int cross_lngrad(TF*, std::string, int);
         int cross_plane (TF*, std::string, int);
         int cross_path  (TF*, std::string, int);
-        int cross_height_threshold(TF*, TF*, TF, Direction, std::string, int);
+        int cross_height_threshold(TF*, TF, Direction, std::string, int);
 
     private:
         Master& master;
@@ -88,4 +88,3 @@ class Cross
         int check_save(int, char *);
 };
 #endif
-
