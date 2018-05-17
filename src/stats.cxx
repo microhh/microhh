@@ -83,6 +83,10 @@ Stats::~Stats()
 
 void Stats::init(double ifactor)
 {
+    // do not create file if stats is disabled
+    if (swstats == "0")
+        return;
+
     // convenience pointers for short notation in class
     grid   = model->grid;
     fields = model->fields;
