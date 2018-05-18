@@ -81,6 +81,9 @@ class Thermo
         virtual void clear_device() = 0;
         virtual void forward_device() = 0;
         virtual void backward_device() = 0;
+        virtual void get_thermo_field_g(Field3d<TF>&, std::string, bool) = 0;
+        virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
+        virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
 
         #endif
 

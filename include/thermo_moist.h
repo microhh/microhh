@@ -129,12 +129,14 @@ class Thermo_moist : public Thermo<TF>
             std::vector<TF> exnrefh;
 
             // GPU functions and variables
-            TF*  thref_g;
-            TF*  threfh_g;
-            TF*  pref_g;
-            TF*  prefh_g;
-            TF*  exnref_g;
-            TF*  exnrefh_g;
+            TF* thl0_g;
+            TF* qt0_g;
+            TF* thvref_g;
+            TF* thvrefh_g;
+            TF* pref_g;
+            TF* prefh_g;
+            TF* exnref_g;
+            TF* exnrefh_g;
         };
 
         background_state bs;

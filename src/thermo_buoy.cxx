@@ -272,7 +272,6 @@ unsigned long Thermo_buoy<TF>::get_time_limit(unsigned long idt, const double dt
     return Constants::ulhuge;
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
 {
@@ -281,7 +280,6 @@ void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cy
 
     // Note: calc_buoyancy already handles the lateral ghost cells
 }
-#endif
 
 template<typename TF>
 void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string>& list)

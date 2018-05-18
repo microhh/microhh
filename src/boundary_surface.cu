@@ -38,7 +38,7 @@ namespace
     namespace most = Monin_obukhov;
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
-    template<typename TF> __device__ 
+    template<typename TF> __device__
     TF find_Obuk_g(const float* const __restrict__ zL, const float* const __restrict__ f,
                        int &n, const TF Ri, const TF zsl)
     {
@@ -54,7 +54,7 @@ namespace
     }
 
 
-    template<typename TF> __device__ 
+    template<typename TF> __device__
     TF calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
@@ -62,7 +62,7 @@ namespace
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
-    template<typename TF> __device__ 
+    template<typename TF> __device__
     TF calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
@@ -71,15 +71,15 @@ namespace
     }
 
     /* Calculate absolute wind speed */
-    template<typename TF> __global__ 
-    void du_tot_g(TF* __restrict__ dutot, 
+    template<typename TF> __global__
+    void du_tot_g(TF* __restrict__ dutot,
                   TF* __restrict__ u,    TF* __restrict__ v,
-                  TF* __restrict__ ubot, TF* __restrict__ vbot, 
+                  TF* __restrict__ ubot, TF* __restrict__ vbot,
                   int istart, int jstart, int kstart,
                   int iend,   int jend, int jj, int kk)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
 
         if (i < iend && j < jend)
         {
@@ -94,17 +94,17 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void stability_g(TF* __restrict__ ustar, TF* __restrict__ obuk,
                      TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
-                     TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g, 
+                     TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
                      int* __restrict__ nobuk_g,
                      TF z0m, TF z0h, TF zsl,
-                     int icells, int jcells, int kstart, int jj, int kk, 
+                     int icells, int jcells, int kstart, int jj, int kk,
                      Boundary_type mbcbot, Boundary_type thermobc)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
         if (i < icells && j < jcells)
         {
@@ -132,14 +132,14 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void stability_neutral_g(TF* __restrict__ ustar, TF* __restrict__ obuk,
                              TF* __restrict__ dutot, TF z0m, TF z0h, TF zsl,
                              int icells, int jcells, int kstart, int jj, int kk,
                              Boundary_type mbcbot, Boundary_type thermobc)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
         if (i < icells && j < jcells)
         {
@@ -165,18 +165,18 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void surfm_flux_g(TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
                       TF* __restrict__ u,        TF* __restrict__ v,
-                      TF* __restrict__ ubot,     TF* __restrict__ vbot, 
-                      TF* __restrict__ ustar,    TF* __restrict__ obuk, 
+                      TF* __restrict__ ubot,     TF* __restrict__ vbot,
+                      TF* __restrict__ ustar,    TF* __restrict__ obuk,
                       TF zsl, TF z0m,
                       int istart, int jstart, int kstart,
                       int iend,   int jend, int jj, int kk,
                       Boundary_type bcbot)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
 
         if (i < iend && j < jend)
         {
@@ -212,14 +212,14 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void surfm_grad_g(TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
-                      TF* __restrict__ u,        TF* __restrict__ v, 
-                      TF* __restrict__ ubot,     TF* __restrict__ vbot, TF zsl, 
+                      TF* __restrict__ u,        TF* __restrict__ v,
+                      TF* __restrict__ ubot,     TF* __restrict__ vbot, TF zsl,
                       int icells, int jcells, int kstart, int jj, int kk)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
         if (i < icells && j < jcells)
         {
@@ -231,16 +231,16 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void surfs_g(TF* __restrict__ varfluxbot, TF* __restrict__ vargradbot, 
-                 TF* __restrict__ varbot,     TF* __restrict__ var, 
+    template<typename TF> __global__
+    void surfs_g(TF* __restrict__ varfluxbot, TF* __restrict__ vargradbot,
+                 TF* __restrict__ varbot,     TF* __restrict__ var,
                  TF* __restrict__ ustar,      TF* __restrict__ obuk, TF zsl, TF z0h,
                  int icells, int jcells, int kstart,
                  int jj, int kk,
                  Boundary_type bcbot)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
         if (i < icells && j < jcells)
         {
@@ -356,7 +356,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         gd.iend, gd.jend, gd.icells, gd.ijcells);
     cuda_check_error();
 
-    // 2D cyclic boundaries on dutot  
+    // 2D cyclic boundaries on dutot
     boundary_cyclic.exec_2d_g(dutot->fld_g);
 
     // start with retrieving the stability information
@@ -364,15 +364,15 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     {
         // Calculate ustar and Obukhov length, including ghost cells
         stability_neutral_g<<<gridGPU2, blockGPU2>>>(
-            ustar_g, obuk_g, 
+            ustar_g, obuk_g,
             dutot->fld_g, z0m, z0h, gd.z[gd.kstart],
-            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc); 
+            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc);
         cuda_check_error();
     }
     else
     {
         auto buoy = fields.get_tmp_g();
-        thermo.get_buoyancy_surf(*buoy);
+        thermo.get_buoyancy_surf_g(*buoy);
 
         // Calculate ustar and Obukhov length, including ghost cells
         stability_g<<<gridGPU2, blockGPU2>>>(
@@ -382,7 +382,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             nobuk_g,
             z0m, z0h, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells,
-            mbcbot, thermobc); 
+            mbcbot, thermobc);
         cuda_check_error();
 
         fields.release_tmp_g(buoy);
@@ -393,14 +393,14 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     // Calculate surface momentum fluxes, excluding ghost cells
     surfm_flux_g<<<gridGPU, blockGPU>>>(
         fields.mp["u"]->flux_bot_g, fields.mp["v"]->flux_bot_g,
-        fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,     
-        fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g, 
+        fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
+        fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
         ustar_g, obuk_g, gd.z[gd.kstart], z0m,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.icells, gd.ijcells, mbcbot);
     cuda_check_error();
 
-    // 2D cyclic boundaries on the surface fluxes  
+    // 2D cyclic boundaries on the surface fluxes
     boundary_cyclic.exec_2d_g(fields.mp["u"]->flux_bot_g);
     boundary_cyclic.exec_2d_g(fields.mp["v"]->flux_bot_g);
 
@@ -409,7 +409,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         fields.mp["u"]->grad_bot_g, fields.mp["v"]->grad_bot_g,
         fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
         fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
-        gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);  
+        gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Calculate scalar fluxes, gradients and/or values, including ghost cells
@@ -417,7 +417,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         surfs_g<<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g, it.second->grad_bot_g,
             it.second->fld_bot_g,  it.second->fld_g,
-            ustar_g, obuk_g, gd.z[gd.kstart], z0h,            
+            ustar_g, obuk_g, gd.z[gd.kstart], z0h,
             gd.icells,  gd.jcells, gd.kstart,
             gd.icells, gd.ijcells, sbc[it.first].bcbot);
     cuda_check_error();

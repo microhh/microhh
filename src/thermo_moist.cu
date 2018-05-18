@@ -282,9 +282,9 @@ namespace
     void calc_hydrostatic_pressure(TF* __restrict__ pref,     TF* __restrict__ prefh,
                                    TF* __restrict__ ex,       TF* __restrict__ exh,
                                    TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
-                                   TF* __restrict__ z,        TF* __restrict__ dz,
-                                   TF* __restrict__ dzh,
-                                   TF pbot, int kstart, int kend)
+                                   const TF* const __restrict__ z,        const TF* const __restrict__ dz,
+                                   const TF* const __restrict__ dzh,
+                                   const TF pbot, int kstart, int kend)
     {
         TF ssurf, qtsurf, ql, si, qti, qli, thvh, thv;
         TF rdcp = Rd/cp;
@@ -358,6 +358,7 @@ namespace
 template<typename TF>
 void Thermo_moist<TF>::prepare_device()
 {
+    auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
 
     // Allocate fields for Boussinesq and anelastic solver
@@ -391,6 +392,7 @@ template<typename TF>
 void Thermo_moist<TF>::forward_device()
 {
     // Copy fields to device
+    auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
     cuda_safe_call(cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice));
@@ -400,6 +402,7 @@ void Thermo_moist<TF>::forward_device()
 template<typename TF>
 void Thermo_moist<TF>::backward_device()
 {
+    auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
     cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice);
@@ -409,7 +412,7 @@ void Thermo_moist<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_moist<TF>::exec()
+void Thermo_moist<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -423,26 +426,26 @@ void Thermo_moist<TF>::exec()
 
 
     // Re-calculate hydrostatic pressure and exner
-    if (swupdatebasestate)
+    if (bs.swupdatebasestate)
     {
         if(grid.swspatialorder == "2")
         {
           calc_hydrostatic_pressure<TF,2><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at(thlvar)->fldmean_g, fields.sp.at("qt")->fldmean_g,
+                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
                                                               gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         }
         else if(grid.swspatialorder == "4")
         {
           calc_hydrostatic_pressure<TF,4><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at(thlvar)->fldmean_g, fields.sp.at("qt")->fldmean_g,
+                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
                                                               gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         }
         cuda_check_error();
 
         /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at(thlvar)->fldmean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fldmean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
         int kcells = gd.kcells;
         TF *tmp2 = fields->atmp["tmp2"]->data;
@@ -470,7 +473,7 @@ void Thermo_moist<TF>::exec()
         master.print_error("4th order thermo_dry not (yet) implemented\n");
         throw std::runtime_error("Illegal options 4th order thermo");
     }
-}}
+}
 #endif
 
 #ifdef USECUDA
@@ -491,22 +494,22 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     dim3 blockGPU2(blocki, blockj, 1);
 
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    if (swupdatebasestate && (name == "b" || name == "ql"))
+    if (bs.swupdatebasestate && (name == "b" || name == "ql"))
     {
         if(grid.swspatialorder == "2")
-          calc_hydrostatic_pressure<2><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at(thlvar)->fldmean_g, fields.sp.at("qt")->fldmean_g,
-                                                              gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        calc_hydrostatic_pressure<TF,2><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+                                                            fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+                                                            gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         else if(grid.swspatialorder == "4")
-          calc_hydrostatic_pressure<4><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at(thlvar)->fldmean_g, fields.sp.at("qt")->fldmean_g,
+          calc_hydrostatic_pressure<TF,4><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
                                                               gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         cuda_check_error();
 
         /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at(thlvar)->fldmean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fldmean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
         int kcells = gd.kcells;
         TF *tmp2 = fields->atmp["tmp2"]->data;
@@ -574,7 +577,7 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
-        bfield->flux_bot_g,
+        bfield.flux_bot_g,
         fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
         fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
@@ -598,7 +601,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
-        bfield->fld_g, bfield->fld_bot_g,
+        bfield.fld_g, bfield.fld_bot_g,
         fields.sp.at("thl")->fld_g, fields.sp.at("thl")->fld_bot_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("qt")->fld_bot_g,
         bs.thvref_g, bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
@@ -606,7 +609,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
     cuda_check_error();
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
-        bfield->flux_bot_g,
+        bfield.flux_bot_g,
         fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
         fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,

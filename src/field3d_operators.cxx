@@ -42,7 +42,6 @@ Field3d_operators<TF>::~Field3d_operators()
 {
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
@@ -91,7 +90,6 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 
     return mean;
 }
-#endif
 
 template class Field3d_operators<double>;
 template class Field3d_operators<float>;
