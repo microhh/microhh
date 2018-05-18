@@ -44,7 +44,6 @@ class Data_block;
  * equivalent and no complex buoyancy function is required.
  */
 
-enum class Basestate_type {anelastic, boussinesq};
 
 template<typename TF>
 class Thermo_dry : public Thermo<TF>
@@ -58,40 +57,16 @@ class Thermo_dry : public Thermo<TF>
         void exec(); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        struct background_state
-        {
-            Basestate_type swbasestate;
-
-            TF pbot;   ///< Surface pressure.
-            TF thref0; ///< Reference potential temperature in case of Boussinesq
-
-            std::vector<TF> thref;
-            std::vector<TF> threfh;
-            std::vector<TF> pref;
-            std::vector<TF> prefh;
-            std::vector<TF> exnref;
-            std::vector<TF> exnrefh;
-
-            // GPU functions and variables
-            TF*  thref_g;
-            TF*  threfh_g;
-            TF*  pref_g;
-            TF*  prefh_g;
-            TF*  exnref_g;
-            TF*  exnrefh_g;
-        };
-        background_state bs;
-        background_state bs_stats;
-        void get_thermo_field(Field3d<TF>&, std::string, bool, background_state);
-        void get_buoyancy_surf(Field3d<TF>&, background_state);
-        void get_buoyancy_fluxbot(Field3d<TF>&, background_state);
-        void get_T_bot(Field3d<TF>&, background_state);
+        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_buoyancy_surf(Field3d<TF>&, bool);
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool);
+        void get_T_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
 
@@ -124,6 +99,7 @@ class Thermo_dry : public Thermo<TF>
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+        bool swcross_b;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
@@ -131,6 +107,31 @@ class Thermo_dry : public Thermo<TF>
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
 
+        enum class Basestate_type {anelastic, boussinesq};
+        struct background_state
+        {
+            Basestate_type swbasestate;
+
+            TF pbot;   ///< Surface pressure.
+            TF thref0; ///< Reference potential temperature in case of Boussinesq
+
+            std::vector<TF> thref;
+            std::vector<TF> threfh;
+            std::vector<TF> pref;
+            std::vector<TF> prefh;
+            std::vector<TF> exnref;
+            std::vector<TF> exnrefh;
+
+            // GPU functions and variables
+            TF*  thref_g;
+            TF*  threfh_g;
+            TF*  pref_g;
+            TF*  prefh_g;
+            TF*  exnref_g;
+            TF*  exnrefh_g;
+        };
+        background_state bs;
+        background_state bs_stats;
 
 };
 #endif

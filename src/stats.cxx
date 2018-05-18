@@ -148,6 +148,64 @@ namespace
                 }
         }
     }
+    template<typename TF>
+    void calc_mask_thres_pert(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
+                     const TF* const restrict fld,const TF* const restrict fld_mean,const TF* const restrict fldh,const TF* const restrict fldh_mean, const TF* const restrict fldbot, const TF threshold, const bool mode,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int icells, const int ijcells)
+    {
+        if (mode)
+        {
+            for (int k=kstart; k<kend; k++)
+            {
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        mask[ijk] *= (fld[ijk]-fld_mean[k]) > threshold;
+                        maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) > threshold;
+                    }
+            }
+
+            // Set the mask for surface projected quantities
+            // In this case: velocity at surface, so zero
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    maskbot[ijk] *= (fldbot[ijk]-fld_mean[kstart]) > threshold;
+                }
+        }
+        else
+        {
+            for (int k=kstart; k<kend; k++)
+            {
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        mask[ijk] *= (fld[ijk]-fld_mean[k]) <= threshold;
+                        maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) <= threshold;
+                    }
+            }
+
+            // Set the mask for surface projected quantities
+            // In this case: velocity at surface, so zero
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    maskbot[ijk] *= (fldbot[ijk]-fld_mean[kstart]) <= threshold;
+                }
+        }
+    }
 
     // Sets all the mask values to one (non-masked field)
     template<typename TF>
@@ -524,6 +582,17 @@ void Stats<TF>::set_mask_thres(Field3d<TF>& mask_full, Field3d<TF>& mask_half, F
     auto& gd = grid.get_grid_data();
     calc_mask_thres<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
                   fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold, mode==Mask_type::Plus,
+                  gd.istart, gd.jstart, gd.kstart,
+                  gd.iend,   gd.jend,   gd.kend,
+                  gd.icells, gd.ijcells);
+}
+
+template<typename TF>
+void Stats<TF>::set_mask_thres_pert(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Mask_type mode)
+{
+    auto& gd = grid.get_grid_data();
+    calc_mask_thres_pert<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
+                  fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold, mode==Mask_type::Plus,
                   gd.istart, gd.jstart, gd.kstart,
                   gd.iend,   gd.jend,   gd.kend,
                   gd.icells, gd.ijcells);

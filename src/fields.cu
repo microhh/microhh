@@ -93,14 +93,14 @@ TF Fields<TF>::check_momentum()
     auto tmp1 = get_tmp_g();
 
     calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
+        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    TF mom = field3d_operators.calc_mean(tmp1->fld_g);
+    TF mom = field3d_operators.calc_mean_g(tmp1->fld_g);
 
     release_tmp_g(tmp1);
 
@@ -125,14 +125,14 @@ TF Fields<TF>::check_tke()
     auto tmp1 = get_tmp_g();
 
     calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
+        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    TF tke = field3d_operators.calc_mean(tmp1->fld_g);
+    TF tke = field3d_operators.calc_mean_g(tmp1->fld_g);
     tke *= 0.5;
 
     release_tmp_g(tmp1);
@@ -160,9 +160,9 @@ TF Fields<TF>::check_mass()
     // CvH for now, do the mass check on the first scalar... Do we want to change this?
     auto it = sp.begin();
     if (sp.begin() != sp.end())
-        mass = field3d_operators.calc_mean(it->second->fld_g);
+        mass = field3d_operators.calc_mean_g(it->second->fld_g);
     else
-        mass = 0; 
+        mass = 0;
 
     return mass;
 }
@@ -174,7 +174,7 @@ void Fields<TF>::exec()
     if (calc_mean_profs)
     {
         for (auto& it : ap)
-            field3d_operators.calc_mean_profile(it.second->fld_mean_g,it.second->fld_g);
+            field3d_operators.calc_mean_profile_g(it.second->fld_mean_g,it.second->fld_g);
     }
 }
 #endif

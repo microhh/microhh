@@ -811,8 +811,8 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         auto& gd = grid.get_grid_data();
         auto buoy_tmp = fields.get_tmp();
         auto tmp = fields.get_tmp();
-        thermo.get_buoyancy_fluxbot(*buoy_tmp, thermo.bs);
-        thermo.get_thermo_field(*buoy_tmp, "N2", false, thermo.bs);
+        thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
+        thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
         if (boundary.get_switch() == "surface")
             calc_evisc<TF, Surface_model::Enabled>(

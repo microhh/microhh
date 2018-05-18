@@ -408,18 +408,56 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
 
     const int iih = (locin[0]-locout[0])*ii;
     const int jjh = (locin[1]-locout[1])*jj;
+    const int kkh = (locin[1]-locout[1])*kk;
 
     // interpolate the field
     // \TODO add the vertical component
-    for (int k=0; k<gd.kcells; ++k)
+    int kstart = 0;
+    int kend = gd.kcells;
+
+    if(kkh==-1)
+        kstart = 1;
+    if(kkh==1)
+        kend = gd.kcells - 1;
+
+    for (int k=kstart; k<kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
-                         + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
+                out[ijk] = 0.25*(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                         + 0.25*(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ])
+                         + 0.25*(0.5*in[ijk        +kkh] + 0.5*in[ijk+iih    +kkh])
+                         + 0.25*(0.5*in[ijk    +jjh+kkh] + 0.5*in[ijk+iih+jjh+kkh]);
             }
+    if(kkh==-1) //ASSUMING ZERO AT BOTTOM BC
+    {
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + 1*kk;
+                out[ijk] = 0.25*(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                         + 0.25*(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ]);
+            }
+
+    }
+    if(kkh==1) //ASSUMING CONSTANT GRADIENT AT TOP BC
+    {
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + 1*kk;
+                out[ijk] = 1. *(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                         + 1. *(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ])
+                         - 0.5*(0.5*in[ijk        -kkh] + 0.5*in[ijk+iih    -kkh])
+                         - 0.5*(0.5*in[ijk    +jjh-kkh] + 0.5*in[ijk+iih+jjh-kkh]);
+            }
+
+    }
+
 }
 
 // /**

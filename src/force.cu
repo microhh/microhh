@@ -350,8 +350,8 @@ void Force<TF>::exec(double dt)
     {
         auto tmp = fields.get_tmp_g();
 
-        TF uavg  = field3d_operators.calc_mean(fields.mp.at("u")->fld_g);
-        TF utavg = field3d_operators.calc_mean(fields.mt.at("u")->fld_g);
+        TF uavg  = field3d_operators.calc_mean_g(fields.mp.at("u")->fld_g);
+        TF utavg = field3d_operators.calc_mean_g(fields.mt.at("u")->fld_g);
 
         fields.release_tmp_g(tmp);
 

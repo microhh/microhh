@@ -164,7 +164,7 @@ double Advec_2<TF>::get_cfl(const double dt)
     const TF dyi = 1./gd.dy;
 
     auto tmp1 = fields.get_tmp_g();
-    
+
     calc_cfl_g<<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         tmp1->fld_g, gd.dzi_g, dxi, dyi,
@@ -173,9 +173,9 @@ double Advec_2<TF>::get_cfl(const double dt)
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
-    TF cfl = field3d_operators.calc_max(tmp1->fld_g);
+    TF cfl = field3d_operators.calc_max_g(tmp1->fld_g);
     fields.release_tmp_g(tmp1);
-    
+
     cfl = cfl*dt;
 
     return static_cast<double>(cfl);

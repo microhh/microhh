@@ -549,7 +549,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     cuda_check_error();
 
     // Get maximum from tmp1 field
-    double dnmul = field3d_operators.calc_max(tmp1->fld_g);
+    double dnmul = field3d_operators.calc_max_g(tmp1->fld_g);
     dnmul = std::max(Constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
@@ -590,7 +590,7 @@ double Diff_smag2<TF>::get_dn(double dt)
 
     // Get maximum from tmp1 field
     // CvH This is odd, because there might be need for calc_max in CPU version.
-    double dnmul = field3d_operators.calc_max(dnmul_tmp->fld_g);
+    double dnmul = field3d_operators.calc_max_g(dnmul_tmp->fld_g);
 
     fields.release_tmp_g(dnmul_tmp);
 

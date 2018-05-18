@@ -29,7 +29,6 @@ template<typename> class Grid;
 template<typename> class Fields;
 
 
-enum class Direction {Top_to_bottom, Bottom_to_top};
 
 template<typename TF>
 class Cross
@@ -49,6 +48,8 @@ class Cross
 
 
         bool do_cross(unsigned long);
+
+        enum Direction {Top_to_bottom, Bottom_to_top};
 
         int cross_simple(TF*, std::string, int);
         int cross_lngrad(TF*, std::string, int);

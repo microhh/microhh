@@ -33,6 +33,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
+#include "data_block.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -41,6 +42,8 @@
 #include "column.h"
 #include "thermo_moist_functions.h"
 #include "timeloop.h"
+#include "field3d_operators.h"
+
 
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
@@ -49,85 +52,51 @@ using namespace Thermo_moist_functions;
 
 namespace
 {
+
+    // Settings for now here for convenience....
     template<typename TF>
-    void Thermo_moist<TF>::calc_mask_thres(TF* restrict mask, TF* restrict maskh, TF* restrict maskbot,
-                                    int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot,
-                                    TF* restrict ql, TF restrict threshold,
-                                    const int istart, const int jstart, const int kstart,
-                                    const int iend,   const int jend,   const int kend,
-                                    const int jj, const int kk)
-    {
-
-
-        for (int k=gd.kstart; k<gd.kend; k++)
-        {
-            nmask[k] = 0;
-            for (int j=gd.jstart; j<gd.jend; j++)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ntmp = ql[ijk] > threshold;
-                    nmask[k] += ntmp;
-                    mask[ijk] = (TF)ntmp;
-                }
-        }
-
-        for (int k=gd.kstart; k<gd.kend+1; k++)
-        {
-            nmaskh[k] = 0;
-            for (int j=gd.jstart; j<gd.jend; j++)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ntmp = (ql[ijk-kk] + ql[ijk]) > threshold;
-
-                    nmaskh[k] += ntmp;
-                    maskh[ijk] = (TF)ntmp;
-                }
-        }
-
-        // Set the mask for surface projected quantities
-        // In this case: ql at surface
-        for (int j=gd.jstart; j<gd.jend; j++)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; i++)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                maskbot[ij] = maskh[ijk];
-            }
-
-        gd.boundary_cyclic(mask);
-        gd.boundary_cyclic(maskh);
-        gd.boundary_cyclic_2d(maskbot);
-
-        master->sum(nmask , gd.kcells);
-        master->sum(nmaskh, gd.kcells);
-        *nmaskbot = nmaskh[gd.kstart];
-
-        // BvS: should no longer be necessary now that the ql ghost cells are set to zero
-        //nmaskh[kstart] = 0;
-        //nmaskh[kend  ] = 0;
-    }
+    const TF pi      = std::acos(-1.);
+    template<typename TF>
+    const TF Nc0     = 70e6;     // Fixed cloud droplet number
+    template<typename TF>
+    const TF K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
+    template<typename TF>
+    const TF D_v     = 3.e-5;    // Diffusivity of water vapor [m2/s]
+    template<typename TF>
+    const TF rho_w   = 1.e3;     // Density water
+    template<typename TF>
+    const TF rho_0   = 1.225;    // SB06, p48
+    template<typename TF>
+    const TF pirhow  = pi<TF> * rho_w<TF> / 6.;
+    template<typename TF>
+    const TF mc_min  = 4.2e-15;  // Min mean mass of cloud droplet
+    template<typename TF>
+    const TF mc_max  = 2.6e-10;  // Max mean mass of cloud droplet
+    template<typename TF>
+    const TF mr_min  = mc_max<TF>;   // Min mean mass of precipitation drop
+    template<typename TF>
+    const TF mr_max  = 3e-6;     // Max mean mass of precipitation drop // as in UCLA-LES
+    template<typename TF>
+    const TF ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed
+    template<typename TF>
+    const TF qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed
 
     template<typename TF>
-    Struct_sat_adjust
+    struct Struct_sat_adjust
     {
         TF ql;
-        TF T;
+        TF t;
         TF qs;
-    }
+    };
 
     template<typename TF>
-    inline Struct_sat_adjust sat_adjust<(const TF thl, const TF qt, const TF p, const TF exn)
+    inline Struct_sat_adjust<TF> sat_adjust(const TF thl, const TF qt, const TF p, const TF exn)
     {
         int niter = 0;
         int nitermax = 30;
         TF ql, tl, tnr_old = 1.e9, tnr, qs=0;
         tl = thl * exn;
-        Struct_sat_adjust ans;
+        Struct_sat_adjust<TF> ans;
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
         ans.ql = 0;
@@ -147,11 +116,10 @@ namespace
 
         if (niter == nitermax)
         {
-            master.print_error("Saturation adjustment not converged. Input: thl=%f K, qt=%f kg/kg, p=%f Pa\n", thl, qt, p);
             throw std::runtime_error("Non-converging saturation adjustment.");
         }
 
-        ql = std::max(0.,qt - qs);
+        ql = std::max(TF(0.),qt - qs);
 
         ans.ql = ql;
         ans.t = tnr;
@@ -164,7 +132,7 @@ namespace
                                        TF* restrict rho,     TF* restrict rhoh,
                                        TF* restrict thv,     TF* restrict thvh,
                                        TF* restrict ex,      TF* restrict exh,
-                                       TF* restrict thlmean, TF* restrict qtmean,
+                                       TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
                                    const int kstart, const int kend, const TF* restrict z, const TF* restrict dz, const TF* const dzh)
    {
 
@@ -181,7 +149,7 @@ namespace
        rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
        // Calculate the first full level pressure
-       pref[kstart]  = prefh[kstart] * std::exp(-grav * z / (Rd * exh[kstart] * thvh[kstart]));
+       pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd * exh[kstart] * thvh[kstart]));
 
        for (int k=kstart+1; k<kend+1; ++k)
        {
@@ -207,11 +175,11 @@ namespace
            pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd * exh[k] * thvh[k]));
        }
 
-       pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
+       pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
    }
 
    template<typename TF>
-   calc_top_and_bot(TF* restrict thl0, TF* restrict qt0, const TF* const z, const TF* const zh, const TF* const dzhi, const int kstart, const int kend)
+   void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0, const TF* const z, const TF* const zh, const TF* const dzhi, const int kstart, const int kend)
    {
        // Calculate surface and model top values thl and qt
        TF thl0s, qt0s, thl0t, qt0t;
@@ -221,14 +189,14 @@ namespace
        qt0t  = qt0[kend-1]  + (zh[kend]-z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*dzhi[kend-1];
 
        // Set the ghost cells for the reference temperature and moisture
-       thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
-       thl0[kend]      = 2.*thl0t - thl0[kend-1];
-       qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
-       qt0[kend]       = 2.*qt0t  - qt0[kend-1];
+       thl0[kstart-1]  = TF(2.)*thl0s - thl0[kstart];
+       thl0[kend]      = TF(2.)*thl0t - thl0[kend-1];
+       qt0[kstart-1]   = TF(2.)*qt0s  - qt0[kstart];
+       qt0[kend]       = TF(2.)*qt0t  - qt0[kend-1];
     }
 
    template<typename TF>
-   calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
+   void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
                                              TF* restrict ph, TF* restrict thlh, TF* restrict qth,
                                              TF* restrict ql, TF* restrict thvrefh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
    {
@@ -246,22 +214,13 @@ namespace
                    const int ij  = i + j*jj;
                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                   tl       = thlh[ij] * exnh;
-                   // Calculate first estimate of ql using Tl
-                   // if ql(Tl)>0, saturation adjustment routine needed
-                   ql[ij]  = qth[ij]-qsat(ph[k],tl);
                }
            for (int j=jstart; j<jend; j++)
                #pragma ivdep
                for (int i=istart; i<iend; i++)
                {
                    const int ij  = i + j*jj;
-                   if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
-                   {
-                       ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                   }
-                   else
-                       ql[ij] = 0.;
+                   ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
                }
            for (int j=jstart; j<jend; j++)
                #pragma ivdep
@@ -276,7 +235,7 @@ namespace
 
 
    template<typename TF>
-   calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
+   void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
                                     TF* restrict p, TF* restrict ql, TF* restrict thvref, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kcells, const int jj, const int kk)
    {
 
@@ -293,20 +252,7 @@ namespace
                    {
                        const int ijk = i + j*jj + k*kk;
                        const int ij  = i + j*jj;
-                       tl  = thl[ijk] * ex;
-                       ql[ij]  = qt[ijk]-qsat(p[k],tl);   // not real ql, just estimate
-                   }
-
-               for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ijk = i + j*jj + k*kk;
-                       const int ij  = i + j*jj;
-                       if (ql[ij] > 0)
-                           ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
-                       else
-                           ql[ij] = 0.;
+                       ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
                    }
            }
            else
@@ -315,8 +261,8 @@ namespace
                    #pragma ivdep
                    for (int i=istart; i<iend; i++)
                    {
-                       const int ij  = i + j*jj;
-                       ql[ij] = 0.;
+                       const int ijk  = i + j*jj+k*kk;
+                       ql[ijk] = 0.;
                    }
 
            }
@@ -329,89 +275,65 @@ namespace
                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
                }
        }
-
-       boundary_cyclic(b);
    }
 
-   // Calculate the maximum in-cloud virtual temperature perturbation (thv - <thv>) with height
-   void Thermo_moist::calc_maximum_thv_perturbation_cloud(TF* restrict thv_pert, TF* restrict thv, TF* restrict thl,
-                                                          TF* restrict qt, TF* restrict ql, TF* restrict p, TF* restrict thvmean, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
-   {
-       TF ex;
+  template<typename TF>
+  void calc_buoyancy_h(TF* restrict bh, TF* restrict thl,  TF* restrict qt,
+                                            TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth,
+                                            TF* restrict ql, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+        TF tl, exnh;
 
-       // Set field to zero
-       for (int j=jstart; j<jend; j++)
-           #pragma ivdep
-           for (int i=istart; i<iend; i++)
-           {
-               const int ij = i + j*jj;
-               thv_pert[ij] = NC_FILL_DOUBLE; // BvS not so nice..
-           }
+        for (int k=kstart; k<kend; k++)
+        {
+            exnh = exner(ph[k]);
+            if (k>=kstart)
+            {
 
-       // Calculate virtual temperature
-       for (int k=kstart; k<kend; k++)
-       {
-           ex = exner(p[k]);
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ql[ijk]);
-               }
-       }
-
-       // Calculate domain averaged virtual temperature
-       calc_mean(thvmean, thv, kcells);
-
-       // Calculate maximum in-cloud virtual temperature perturbation per column
-       for (int k=kstart; k<kend; k++)
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ij  = i + j*jj;
-                   const int ijk = i + j*jj + k*kk;
-
-                   if(ql[ijk] > 0)
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ij  = i + j*jj;
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                    }
+                    for (int j=jstart; j<jend; j++)
+                        #pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ij  = i + j*jj;
+                            ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                        }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; j++)
+                   #pragma ivdep
+                   for (int i=istart; i<iend; i++)
                    {
-                       if(thv_pert[ij] == NC_FILL_DOUBLE)
-                           thv_pert[ij] = thv[ijk] - thvmean[k];
-                       else
-                           thv_pert[ij] = std::max(thv_pert[ij], thv[ijk] - thvmean[k]);
+                       const int ij  = i + j*jj;
+                       ql[ij] = 0.;
                    }
-               }
+
+            }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    bh[ijk] = buoyancy(exnh, thlh[ijk], qth[ijk], ql[ij], thvrefh[k]);
+                }
+        }
    }
 
    template<typename TF>
-   calc_liquid_water(TF* restrict ql, TF* restrict thl, TF* restrict qt, TF* restrict p, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+   void calc_liquid_water(TF* restrict ql, TF* restrict thl, TF* restrict qt, TF* restrict p, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
    {
        TF ex;
-
-
-       // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks
-       for (int k=0; k<kstart; k++)
-       {
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   ql[ijk] = 0.;
-               }
-       }
-
-       for (int k=kend; k<kcells; k++)
-       {
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   ql[ijk] = 0.;
-               }
-       }
-
        // Calculate the ql field
        for (int k=kstart; k<kend; k++)
        {
@@ -426,13 +348,48 @@ namespace
        }
    }
 
+  template<typename TF>
+  void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
+                                            TF* restrict ph, TF* restrict thlh, TF* restrict qth, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    {
+          using Finite_difference::O2::interp2;
+          TF tl, exnh;
+
+          for (int k=kstart+1; k<kend; k++)
+          {
+              exnh = exner(ph[k]);
+              for (int j=jstart; j<jend; j++)
+                  #pragma ivdep
+                  for (int i=istart; i<iend; i++)
+                  {
+                      const int ijk = i + j*jj + k*kk;
+                      const int ij  = i + j*jj;
+                      thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                      qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                  }
+              for (int j=jstart; j<jend; j++)
+                  #pragma ivdep
+                  for (int i=istart; i<iend; i++)
+                  {
+                      const int ij  = i + j*jj;
+                      const int ijk  = i + j*jj+k*kk;
+                      qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                   }
+          }
+          for (int j=jstart; j<jend; j++)
+              #pragma ivdep
+              for (int i=istart; i<iend; i++)
+              {
+                  const int ijk  = i + j*jj+kstart*kk;
+                  qlh[ijk] = 0.;
+               }
+
+   }
+
    template<typename TF>
-   calc_N2(TF* restrict N2, TF* restrict thl, TF* restrict dzi,
+   void calc_N2(TF* restrict N2, const TF* const restrict thl, const TF* const restrict dzi,
                               TF* restrict thvref, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
    {
-       const int jj = icells;
-       const int kk = ijcells;
-
        for (int k=kstart; k<kend; ++k)
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
@@ -455,7 +412,7 @@ namespace
                for (int i=istart; i<iend; ++i)
                {
                    const int ijk = i + j*jj+ k*kk;
-                   T[ijk] = sat_adjust(thl[ijk],qt[ijk],pref[k],exnref[k]).T;
+                   T[ijk] = sat_adjust(thl[ijk],qt[ijk],pref[k],exnref[k]).t;
                 }
    }
 
@@ -478,17 +435,14 @@ namespace
                        const int ij  = i + j*jj;
                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                       tl       = thlh[ij] * exnh;
-                       // Calculate first estimate of ql using Tl
-                       // if ql(Tl)>0, saturation adjustment routine needed
-                       ql[ij]  = qth[ij]-qsat(ph[k],tl);
                    }
                for (int j=jstart; j<jend; j++)
                    #pragma ivdep
                    for (int i=istart; i<iend; i++)
                    {
                        const int ij  = i + j*jj;
-                       Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).T;
+                       const int ijk  = i + j*jj+k*kk;
+                       Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
                     }
            }
     }
@@ -512,7 +466,7 @@ namespace
    }
 
    template<typename TF>
-   calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
+   void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
                                         TF* restrict thl,    TF* restrict thlbot,
                                         TF* restrict qt,     TF* restrict qtbot,
                                         TF* restrict thvref, TF* restrict thvrefh, const int icells, const int jcells, const int ijcells, const int kstart)
@@ -522,31 +476,29 @@ namespace
            #pragma ivdep
            for (int i=0; i<icells; i++)
            {
-               const int ij  = i + j*jj;
-               const int ijk = i + j*jj + kstart*kk;
+               const int ij  = i + j*icells;
+               const int ijk = i + j*icells + kstart*ijcells;
                bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
                b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
            }
    }
 
    template<typename TF>
-   calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thlbot, TF* restrict thlfluxbot, TF* restrict qtbot, TF* restrict qtfluxbot, TF* restrict thvrefh, const int icells, const int jcells, const int kstart)
+   void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thlbot, TF* restrict thlfluxbot, TF* restrict qtbot, TF* restrict qtfluxbot, TF* restrict thvrefh, const int icells, const int jcells, const int kstart)
    {
-       const int jj = icells;
-       const int kstart = kstart;
 
        // assume no liquid water at the lowest model level
        for (int j=0; j<jcells; j++)
            #pragma ivdep
            for (int i=0; i<icells; i++)
            {
-               const int ij = i + j*jj;
+               const int ij = i + j*icells;
                bfluxbot[ij] = buoyancy_flux_no_ql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
            }
    }
 
    template<typename TF>
-   calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
+   void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
                                              TF* restrict ph, TF* restrict thlh, TF* restrict qth,
                                              TF* restrict ql, TF* restrict thvrefh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
    {
@@ -593,21 +545,6 @@ namespace
        }
    }
 
-    // Settings for now here for convenience....
-    const TF pi      = std::acos(-1.);
-    const TF Nc0     = 70e6;     // Fixed cloud droplet number
-    const TF K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
-    const TF D_v     = 3.e-5;    // Diffusivity of water vapor [m2/s]
-    const TF rho_w   = 1.e3;     // Density water
-    const TF rho_0   = 1.225;    // SB06, p48
-    const TF pirhow  = pi * rho_w / 6.;
-    const TF mc_min  = 4.2e-15;  // Min mean mass of cloud droplet
-    const TF mc_max  = 2.6e-10;  // Max mean mass of cloud droplet
-    const TF mr_min  = mc_max;   // Min mean mass of precipitation drop
-    const TF mr_max  = 3e-6;     // Max mean mass of precipitation drop // as in UCLA-LES
-    const TF ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed
-    const TF qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed
-
     // Rational tanh approximation
     template<typename TF>
     inline TF tanh2(const TF x)
@@ -621,8 +558,8 @@ namespace
     inline TF calc_rain_mass(const TF qr, const TF nr, const TF rho)
     {
         //TF mr = rho * qr / (nr + dsmall);
-        TF mr = rho * qr / std::max(nr, 1.);
-        mr        = std::min(std::max(mr, mr_min), mr_max);
+        TF mr = rho * qr / std::max(nr, TF(1.));
+        mr        = std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
         return mr;
     }
 
@@ -630,7 +567,7 @@ namespace
     template<typename TF>
     inline TF calc_rain_diameter(const TF mr)
     {
-        return pow(mr/pirhow, 1./3.);
+        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
     }
 
     // Shape parameter mu_r
@@ -639,20 +576,20 @@ namespace
     {
         //return 1./3.; // SB06
         //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return 10. * (1. + tanh2(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (TF(1.) + tanh2(TF(1200.) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
     }
 
     // Slope parameter lambda_r
     template<typename TF>
     inline TF calc_lambda_r(const TF mur, const TF dr)
     {
-        return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
+        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
     }
 
     template<typename TF>
     inline TF minmod(const TF a, const TF b)
     {
-        return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
+        return copysign(TF(1.), a) * std::max(TF(0.), std::min(std::abs(a), TF(copysign(TF(1.), a))*b));
     }
 
     template<typename TF>
@@ -689,7 +626,7 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
                     rain_diameter[ik] = calc_rain_diameter(rain_mass[ik]);
@@ -727,18 +664,18 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     const TF mr  = rain_mass[ik];
                     const TF dr  = rain_diameter[ik];
 
                     const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
-                    const TF Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                    const TF Glv = pow(Rv * T / (esat(T) * D_v<TF>) + (Lv / (K_t<TF> * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
 
                     const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
                     const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
-                    const TF ev_tend = 2. * pi * dr * Glv * S * F * nr[ijk] / rho[k];
+                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
 
                     qrt[ijk]  += ev_tend;
                     nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
@@ -770,7 +707,7 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     // Calculate mean rain drop mass and diameter
                     const TF mr      = rain_mass[ik];
@@ -778,7 +715,7 @@ namespace mp2d
                     const TF lambdar = lambda_r[ik];
 
                     // Selfcollection
-                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambdar * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr / lambdar * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * pow(rho_0<TF> / rho[k], TF(0.5));
                     nrt[ijk] += sc_tend;
 
                     // Breakup
@@ -789,8 +726,8 @@ namespace mp2d
                         if(dr <= D_eq)
                             phi_br = k_br1 * dDr;
                         else
-                            phi_br = 2. * exp(k_br2 * dDr) - 1.;
-                        const TF br_tend = -(phi_br + 1.) * sc_tend;
+                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+                        const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
                         nrt[ijk] += br_tend;
                     }
                 }
@@ -800,13 +737,14 @@ namespace mp2d
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
     void sedimentation_ss08(TF* const restrict qrt, TF* const restrict nrt,
-                            TF* const restrict tmpxz1, TF* const restrict tmpxz2,
-                            TF* const restrict tmpxz3, TF* const restrict tmpxz4,
-                            TF* const restrict tmpxz5, TF* const restrict tmpxz6,
+                            TF* const restrict w_qr,TF* const restrict w_nr,
+                            TF* const restrict c_qr,TF* const restrict c_nr,
+                            TF* const restrict slope_qr,TF* const restrict slope_nr,
+                            TF* const restrict flux_qr,TF* const restrict flux_nr,
                             const TF* const restrict mu_r, const TF* const restrict lambda_r,
                             const TF* const restrict qr, const TF* const restrict nr,
                             const TF* const restrict rho, const TF* const restrict dzi,
-                            const TF* const restrict dz, const TF dt,
+                            const TF* const restrict dz, const double dt,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int icells, const int kcells, const int ijcells, const int j)
@@ -823,23 +761,21 @@ namespace mp2d
         const int kk2d = icells;
 
         // 1. Calculate sedimentation velocity at cell center
-        TF* restrict w_qr = tmpxz1;
-        TF* restrict w_nr = tmpxz2;
 
         for (int k=kstart; k<kend; k++)
         {
-            const TF rho_n = pow(1.2 / rho[k], 0.5);
+            const TF rho_n = pow(TF(1.2) / rho[k], TF(0.5));
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     // SS08:
-                    w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
-                    w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+1))));
+                    w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
+                    w_nr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(1.))))));
                 }
                 else
                 {
@@ -861,21 +797,17 @@ namespace mp2d
         }
 
          // 2. Calculate CFL number using interpolated sedimentation velocity
-        TF* restrict c_qr = tmpxz3;
-        TF* restrict c_nr = tmpxz4;
 
         for (int k=kstart; k<kend; k++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
                 const int ik  = i + k*icells;
-                c_qr[ik] = 0.25 * (w_qr[ik-kk2d] + 2.*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt;
-                c_nr[ik] = 0.25 * (w_nr[ik-kk2d] + 2.*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt;
+                c_qr[ik] = TF(0.25) * (w_qr[ik-kk2d] + TF(2.)*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt;
+                c_nr[ik] = TF(0.25) * (w_nr[ik-kk2d] + TF(2.)*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt;
             }
 
         // 3. Calculate slopes
-        TF* restrict slope_qr = tmpxz1;
-        TF* restrict slope_nr = tmpxz2;
 
         for (int k=kstart; k<kend; k++)
             #pragma ivdep
@@ -889,9 +821,6 @@ namespace mp2d
             }
 
         // Calculate flux
-        TF* restrict flux_qr = tmpxz5;
-        TF* restrict flux_nr = tmpxz6;
-
         // Set the fluxes at the top of the domain (kend) to zero
         for (int i=istart; i<iend; i++)
         {
@@ -914,42 +843,42 @@ namespace mp2d
                 kk    = k;  // current grid level
                 ftot  = 0;  // cumulative 'flux' (kg m-2)
                 dzz   = 0;  // distance from zh[k]
-                cc    = std::min(1., c_qr[ik]);
+                cc    = std::min(TF(1.), c_qr[ik]);
                 while (cc > 0 && kk < kend)
                 {
                     const int ikk  = i + kk*icells;
                     const int ijkk = i + j*icells + kk*ijcells;
 
-                    ftot  += rho[kk] * (qr[ijkk] + 0.5 * slope_qr[ikk] * (1.-cc)) * cc * dz[kk];
+                    ftot  += rho[kk] * (qr[ijkk] + TF(0.5) * slope_qr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
 
                     dzz   += dz[kk];
                     kk    += 1;
-                    cc     = std::min(1., c_qr[ikk] - dzz*dzi[kk]);
+                    cc     = std::min(TF(1.), c_qr[ikk] - dzz*dzi[kk]);
                 }
 
                 // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
-                ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt);
+                ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * TF(dt));
                 flux_qr[ik] = -ftot / dt;
 
                 // number density
                 kk    = k;  // current grid level
                 ftot  = 0;  // cumulative 'flux'
                 dzz   = 0;  // distance from zh[k]
-                cc    = std::min(1., c_nr[ik]);
+                cc    = std::min(TF(1.), c_nr[ik]);
                 while (cc > 0 && kk < kend)
                 {
                     const int ikk  = i + kk*icells;
                     const int ijkk = i + j*icells + kk*ijcells;
 
-                    ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
+                    ftot += rho[kk] * (nr[ijkk] + TF(0.5) * slope_nr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
 
                     dzz   += dz[kk];
                     kk    += 1;
-                    cc     = std::min(1., c_nr[ikk] - dzz*dzi[k]);
+                    cc     = std::min(TF(1.), c_nr[ikk] - dzz*dzi[k]);
                 }
 
                 // Given flux at top, limit bottom flux such that the number density stays >= 0.
-                ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt);
+                ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * TF(dt));
                 flux_nr[ik] = -ftot / dt;
             }
 
@@ -982,7 +911,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    field[ijk] = std::max(0., field[ijk]);
+                    field[ijk] = std::max(TF(0.), field[ijk]);
                 }
     }
 
@@ -1007,7 +936,7 @@ namespace mp
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
         const TF k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
         const TF nu_c   = 1;             // SB06, Table 1., same as UCLA-LES
-        const TF kccxs  = k_cc / (20. * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2);
+        const TF kccxs  = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2);
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -1015,14 +944,14 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min)
+                    if(ql[ijk] > ql_min<TF>)
                     {
-                        const TF xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
-                        const TF tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
-                        const TF phi_au  = 600. * pow(tau, 0.68) * pow(1. - pow(tau, 0.68), 3); // UCLA-LES
+                        const TF xc      = rho[k] * ql[ijk] / Nc0<TF>; // Mean mass of cloud drops [kg]
+                        const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
+                        const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3); // UCLA-LES
                         //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
                         const TF au_tend = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
-                                               (1. + phi_au / pow(1-tau, 2)); // SB06, eq 4
+                                               (TF(1.) + phi_au / pow(TF(1.)-tau, 2)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
@@ -1051,19 +980,19 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(qr[ijk] > qr_min)
+                    if(qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
                         const TF mr  = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
                         const TF dr  = calc_rain_diameter(mr);
 
                         const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
-                        const TF Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                        const TF Glv = pow(Rv * T / (esat(T) * D_v<TF>) + (Lv / (K_t<TF> * T)) * (Lv / (Rv * T) - TF(1.)), -1); // Cond/evap rate (kg m-1 s-1)?
 
-                        const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                        const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - TF(1.); // Saturation
                         const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
-                        const TF ev_tend = 2. * pi * dr * Glv * S * F * nr[ijk] / rho[k];
+                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
 
                         qrt[ijk]  += ev_tend;
                         nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
@@ -1090,11 +1019,11 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min && qr[ijk] > qr_min)
+                    if(ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
                     {
-                        const TF tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
-                        const TF phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
-                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0 / rho[k], 0.5); // SB06, Eq 7
+                        const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const TF phi_ac  = pow(tau / (tau + TF(5e-5)), 4); // SB06, Eq 8
+                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0<TF> / rho[k], TF(0.5)); // SB06, Eq 7
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  -= ac_tend;
@@ -1123,7 +1052,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(qr[ijk] > qr_min)
+                    if(qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
                         const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -1132,7 +1061,7 @@ namespace mp
                         const TF lambdar = calc_lambda_r(mur, dr);
 
                         // Selfcollection
-                        const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambdar * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+                        const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr / lambdar * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * pow(rho_0<TF> / rho[k], 0.5);
                         nrt[ijk] += sc_tend;
 
                         // Breakup
@@ -1143,8 +1072,8 @@ namespace mp
                             if(dr <= D_eq)
                                 phi_br = k_br1 * dDr;
                             else
-                                phi_br = 2. * exp(k_br2 * dDr) - 1.;
-                            const TF br_tend = -(phi_br + 1.) * sc_tend;
+                                phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+                            const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
                             nrt[ijk] += br_tend;
                         }
                     }
@@ -1160,7 +1089,7 @@ namespace mp
                             TF* const restrict flux_qr, TF* const restrict flux_nr,
                             const TF* const restrict qr, const TF* const restrict nr,
                             const TF* const restrict rho, const TF* const restrict dzi,
-                            const TF* const restrict dz, const TF dt,
+                            const TF* const restrict dz, const double dt,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int icells, const int kcells, const int ijcells)
@@ -1178,14 +1107,14 @@ namespace mp
             // 1. Calculate sedimentation velocity at cell center
             for (int k=kstart; k<kend; k++)
             {
-                const TF rho_n = pow(1.2 / rho[k], 0.5);
+                const TF rho_n = pow(TF(1.2) / rho[k], TF(0.5));
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*icells + k*ijcells;
                     const int ik  = i + k*icells;
 
-                    if(qr[ijk] > qr_min)
+                    if(qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
                         const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -1194,8 +1123,8 @@ namespace mp
                         const TF lambdar = calc_lambda_r(mur, dr);
 
                         // SS08:
-                        w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
-                        w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
+                        w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mur+TF(4.))))));
+                        w_nr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mur+TF(1.))))));
                     }
                     else
                     {
@@ -1217,16 +1146,14 @@ namespace mp
             }
 
              // 2. Calculate CFL number using interpolated sedimentation velocity
-            TF* restrict c_qr = &tmp1[2*ikcells];
-            TF* restrict c_nr = &tmp2[0*ikcells];
 
             for (int k=kstart; k<kend; k++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ik  = i + k*icells;
-                    c_qr[ik] = 0.25 * (w_qr[ik-icells] + 2.*w_qr[ik] + w_qr[ik+icells]) * dzi[k] * dt;
-                    c_nr[ik] = 0.25 * (w_nr[ik-icells] + 2.*w_nr[ik] + w_nr[ik+icells]) * dzi[k] * dt;
+                    c_qr[ik] = TF(0.25) * (w_qr[ik-icells] + TF(2.)*w_qr[ik] + w_qr[ik+icells]) * dzi[k] * dt;
+                    c_nr[ik] = TF(0.25) * (w_nr[ik-icells] + TF(2.)*w_nr[ik] + w_nr[ik+icells]) * dzi[k] * dt;
                 }
 
             // 3. Calculate slopes with slope limiter to prevent forming new maxima/minima using slopes
@@ -1275,43 +1202,43 @@ namespace mp
                     kk    = k;  // current grid level
                     ftot  = 0;  // cumulative 'flux' (kg m-2)
                     dzz   = 0;  // distance from zh[k]
-                    cc    = std::min(1., c_qr[ik]);
+                    cc    = std::min(TF(1.), c_qr[ik]);
                     while (cc > 0 && kk < kend)
                     {
                         const int ikk  = i + kk*icells;
                         const int ijkk = i + j*icells + kk*ijcells;
 
-                        ftot += rho[kk] * (qr[ijkk] + 0.5 * slope_qr[ikk] * (1.-cc)) * cc * dz[kk];
+                        ftot += rho[kk] * (qr[ijkk] + TF(0.5) * slope_qr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
 
                         dzz   += dz[kk];
                         kk    += 1;
-                        cc     = std::min(1., c_qr[ikk] - dzz*dzi[kk]);
+                        cc     = std::min(TF(1.), c_qr[ikk] - dzz*dzi[kk]);
                     }
 
                     // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
-                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt - dsmall);
+                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * TF(dt) - TF(dsmall));
                     flux_qr[ik] = -ftot / dt;
 
                     // number density
                     kk    = k;  // current grid level
                     ftot  = 0;  // cumulative 'flux'
                     dzz   = 0;  // distance from zh[k]
-                    cc    = std::min(1., c_nr[ik]);
+                    cc    = std::min(TF(1.), c_nr[ik]);
                     while (cc > 0 && kk < kend)
                     {
                         const int ikk  = i + kk*icells;
                         const int ijkk = i + j*icells + kk*ijcells;
 
-                        ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
+                        ftot += rho[kk] * (nr[ijkk] + TF(0.5) * slope_nr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
 
                         dzz   += dz[kk];
                         kk    += 1;
-                        cc     = std::min(1., c_nr[ikk] - dzz*dzi[kk]);
+                        cc     = std::min(TF(1.), c_nr[ikk] - dzz*dzi[kk]);
                     }
 
                     // Given flux at top, limit bottom flux such that the number density stays >= 0.
-                    ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt - dsmall);
-                    flux_nr[ik] = -ftot / dt;
+                    ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * TF(dt) - TF(dsmall));
+                    flux_nr[ik] = -ftot / TF(dt);
                 }
 
             // Calculate tendency
@@ -1352,7 +1279,7 @@ namespace mp
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if(qr[ijk] > qr_min)
+                    if(qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
                         const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -1360,7 +1287,7 @@ namespace mp
                         const TF mur     = calc_mu_r(dr);
                         const TF lambdar = calc_lambda_r(mur, dr);
 
-                        w_qr[ijk] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                        w_qr[ijk] = std::min(w_max, std::max(TF(0.1), a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mur+TF(4.))))));
                     }
                     else
                     {
@@ -1377,7 +1304,7 @@ namespace mp
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    const TF cfl_qr = 0.25 * (w_qr[ijk-ijcells] + 2.*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * dt;
+                    const TF cfl_qr = TF(0.25) * (w_qr[ijk-ijcells] + TF(2.)*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * TF(dt);
                     cfl_max = std::max(cfl_max, cfl_qr);
                 }
 
@@ -1390,7 +1317,8 @@ namespace mp
 template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
 Thermo<TF>(masterin, gridin, fieldsin, inputin),
-boundary_cyclic(masterin, gridin)
+boundary_cyclic(masterin, gridin),
+field3d_operators(master, grid, fieldsin)
 {
     swthermo = "moist";
 
@@ -1398,11 +1326,11 @@ boundary_cyclic(masterin, gridin)
     std::string swmicro_in = inputin.get_item<std::string>("thermo", "swmicro", "", "0");
     if(swmicro_in == "0")
     {
-        swmicro = Micro_type:disabled;
+        swmicro = Micro_type::disabled;
     }
     else if(swmicro_in == "2mom_warm")
     {
-        swmicro = Micro_type::2mom_warm;
+        swmicro = Micro_type::two_mom_warm;
 
         #ifdef USECUDA
         throw std::runtime_error("swmicro = \"2mom_warm\" not (yet) implemented in CUDA\n");
@@ -1455,7 +1383,7 @@ boundary_cyclic(masterin, gridin)
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
-    swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
+    bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
 
     // Time variable surface pressure
     swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
@@ -1489,23 +1417,21 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
-    if (swupdatebasestate)
+    if (bs.swupdatebasestate)
         fields.set_calc_mean_profs(true);
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    if (inputin->get_prof(&bs.thl0[gd.kstart], "thl", gd.kmax))
-        throw 1;
-    if (inputin->get_prof(&bs.qt0[gd.kstart], "qt", gd.kmax))
-        throw 1;
+    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, 0);
+    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, 0);
 
-    calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z, gd.zh, gd.dzhi, gd.kstart, gd.kend)
+    calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), gd.kstart.data(), gd.kend.data(), gd.z.data(), gd.dz.data(), gd.dzh.data());
+    calc_base_state(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
-    if (swbasestate == Basestate_type::boussinesq)
+    if (bs.swbasestate == Basestate_type::boussinesq)
     {
         bs.thvref0 = inputin.get_item<TF>("thermo", "thvref0", "");
 
@@ -1519,13 +1445,13 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-    if (swtimedep_pbot == 1)
+/*    if (swtimedep_pbot == 1)
     {
         const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
         if (nerror > 0)
             throw 1;
     }
-
+*/
     // Init the toolbox classes.
     boundary_cyclic.init();
 
@@ -1544,19 +1470,19 @@ void Thermo_moist<TF>::exec(const double dt)
 
     // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state
     auto tmp = fields.get_tmp();
-    if (swupdatebasestate)
+    if (bs.swupdatebasestate)
         calc_base_state(bs.pref.data(), bs.prefh.data(),
                         &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
-                        bs.exnref.data(), bs.exnrefh.data(), fields->sp.at("thl")->fld_mean, fields->sp.at("qt")->fld_mean, gd.kstart.data(), gd.kend.data(), gd.z.data(), gd.dz.data(), gd.dzh.data());
+                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(), bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // extend later for gravity vector not normal to surface
     calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
                            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], bs.thvrefh, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                           &tmp->fld[2*gd.ijcells], bs.thvrefh.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
    fields.release_tmp(tmp);
     // 2-moment warm microphysics
-    if(swmicro == Micro_type::2mom_warm)
+    if(swmicro == Micro_type::two_mom_warm)
         exec_microphysics(dt);
 }
 #endif
@@ -1566,7 +1492,7 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
 {
     auto& gd = grid.get_grid_data();
 
-    if(swmicro == Micro_type::2mom_warm)
+    if(swmicro == Micro_type::two_mom_warm)
     {
         auto w_qr = fields.get_tmp();
         TF cfl = mp::calc_max_sedimentation_cfl(w_qr->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
@@ -1575,7 +1501,7 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
                                                     gd.iend,   gd.jend,   gd.kend,
                                                     gd.icells, gd.ijcells);
         fields.release_tmp(w_qr);
-        master.max(&cfl, 1)
+        master.max(&cfl, 1);
         return idt * cflmax_micro / cfl;
     }
     else
@@ -1599,40 +1525,57 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
 
     auto ql = fields.get_tmp();
     // Calculate the cloud liquid water concent using the saturation adjustment method
-    calc_liquid_water(ql.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.pref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-
-    const double dt = model->timeloop->get_dt();
+    calc_liquid_water(ql->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.pref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
     // xz tmp slices for quantities which are used by multiple microphysics routines
     const int ikslice = gd.icells * gd.kcells;
 
-    int n_tmp_slice;
+    int tot_tmp_slice;
+    int n_tmp_fld;
+    int n_slice_in_tmp;
     if (per_slice)
-        n_tmp_slice = 12;
+        tot_tmp_slice = 12;
     else
-        n_tmp_slice = 8;
-    Field3d<TF> atmp[n_tmp_slice];
-    for (int n=0; n_tmp_slice; ++n)
+        tot_tmp_slice = 8;
+    int tot_tmp_fld = std::ceil(tot_tmp_slice/gd.jcells);
+    std::shared_ptr<Field3d<TF>> atmp[tot_tmp_fld];
+    for (int n=0; tot_tmp_fld; ++n)
         atmp[n] = fields.get_tmp();
 
     int n2d = 0;
 
     n2d++;
-    TF* w_qr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* w_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* w_nr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* w_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* c_qr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* c_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* c_nr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* c_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* slope_qr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* slope_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* slope_nr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* slope_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* flux_qr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* flux_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
     n2d++;
-    TF* flux_nr = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+    n_tmp_fld = std::floor(n2d/gd.jcells);
+    n_slice_in_tmp = n2d%gd.jcells * ikslice;
+    TF* flux_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets
     mp::autoconversion(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
@@ -1650,10 +1593,22 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
 
     if(per_slice)
     {
-        TF* rain_mass = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
-        TF* rain_diam = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
-        TF* mu_r      = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
-        TF* lambda_r  = &(atmp[floor(n2d/jcells)]->fld[(n2d%jcells * ikslice]);
+        n2d++;
+        n_tmp_fld = std::floor(n2d/gd.jcells);
+        n_slice_in_tmp = n2d%gd.jcells * ikslice;
+        TF* rain_mass = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+        n2d++;
+        n_tmp_fld = std::floor(n2d/gd.jcells);
+        n_slice_in_tmp = n2d%gd.jcells * ikslice;
+        TF* rain_diam = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+        n2d++;
+        n_tmp_fld = std::floor(n2d/gd.jcells);
+        n_slice_in_tmp = n2d%gd.jcells * ikslice;
+        TF* lambda_r  = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+        n2d++;
+        n_tmp_fld = std::floor(n2d/gd.jcells);
+        n_slice_in_tmp = n2d%gd.jcells * ikslice;
+        TF* mu_r      = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
 
         for (int j=gd.jstart; j<gd.jend; ++j)
         {
@@ -1678,7 +1633,7 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
 
             // Sedimentation; sub-grid sedimentation of rain
             mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),
-                                     tmpxz1, tmpxz2, tmpxz3, tmpxz4, tmpxz5, tmpxz6, mu_r, lambda_r,
+                                     w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
                                      fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
                                      fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
                                      gd.istart, gd.jstart, gd.kstart,
@@ -1703,7 +1658,7 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
                                    gd.icells, gd.ijcells);
 
         // Sedimentation; sub-grid sedimentation of rain
-        mp::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_
+        mp::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr,
                                fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
                                fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
                                gd.istart, gd.jstart, gd.kstart,
@@ -1711,7 +1666,7 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
                                gd.icells, gd.kcells, gd.ijcells);
     }
 
-    for (n=0;n<n_tmp_slice;++n)
+    for (int n=0;n<tot_tmp_fld;++n)
         fields.release_tmp(atmp[n]);
     fields.release_tmp(ql);
 }
@@ -1720,15 +1675,18 @@ template<typename TF>
 void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
 {
     auto& gd = grid.get_grid_data();
+    #ifndef USECUDA
+        bs_stats = bs;
+    #endif
 
     if (mask_name == "ql")
     {
         ql = fields.get_tmp();
         qlh = fields.get_tmp();
-        get_thermo_field(ql,"ql", true, bs_stats);
-        get_thermo_field(qlh,"ql_h", true, bs_stats);
+        get_thermo_field(*ql,"ql", true, true);
+        get_thermo_field(*qlh,"ql_h", true, true);
         stats.set_mask_true<TF>(mfield, mfieldh);
-        stats.set_mask_thres<TF>(mfield, mfieldh, ql,qlh,0.,stats.Mask_type::Plus);
+        stats.set_mask_thres<TF>(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
@@ -1737,9 +1695,9 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
     {
         TF threshold = 1e-8;
         qrh = fields.get_tmp();
-        grid.interpolate_2nd(qrh, qr, {0,0,0},{0,0,1});
+        grid.interpolate_2nd(*qrh, *qr, {0,0,0},{0,0,1});
         stats.set_mask_true<TF>(mfield, mfieldh);
-        stats.set_mask_thres<TF>(mfield, mfieldh, qr,qrh,threshold,stats.Mask_type::Plus);
+        stats.set_mask_thres<TF>(mfield, mfieldh, *qr,*qrh,threshold,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(qrh);
     }
@@ -1749,17 +1707,19 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 
         ql = fields.get_tmp();
         qlh = fields.get_tmp();
-        get_thermo_field(ql,"ql", true, bs_stats);
-        get_thermo_field(qlh,"ql_h", true, bs_stats);
-        stats.set_mask_thres<TF>(mfield, mfieldh, ql,qlh,0.,stats.Mask_type::Plus);
+        get_thermo_field(*ql,"ql", true, true);
+        get_thermo_field(*qlh,"ql_h", true, true);
+        stats.set_mask_thres<TF>(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
 
         b = fields.get_tmp();
         bh = fields.get_tmp();
-        get_thermo_field(b,"b", true, bs_stats);
-        get_thermo_field(bh,"b_h", true, bs_stats);
-        stats.set_mask_thres<TF>(mfield, mfieldh, b,bh,0.,stats.Mask_type::Plus);
+        get_thermo_field(*b,"b", true, true);
+        get_thermo_field(*bh,"b_h", true, true);
+        field3d_operators.calc_mean_profile(b->fld_mean,b->fld);
+        field3d_operators.calc_mean_profile(b_h->fld_mean,b_h->fld);
+        stats.set_mask_thres_pert<TF>(mfield, mfieldh, *b,*bh,0.,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(b);
         fields.release_tmp(bh);
@@ -1781,9 +1741,9 @@ bool Thermo_moist<TF>::check_field_exists(const std::string name)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Thermo_moist<TF>::update_time_dependent()
 {
-    if (swtimedep_pbot == 0)
+/*    if (swtimedep_pbot == 0)
         return;
 
     // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
@@ -1793,55 +1753,62 @@ void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
 
     bs.pbot = fac0 * timedeppbot[index0] + fac1 * timedeppbot[index1];
-}
+*/}
 
 template<typename TF>
-void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, background_state base = bs)
+void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
 
     // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
     // Pass dummy as rhoref,bs.thvref to prevent overwriting base state
-    if (swupdatebasestate)
+    if (bs.swupdatebasestate)
     {
         auto tmp = fields.get_tmp();
-        calc_base_state(base.pref, base.prefh, &tmp->fld[0*kcells], &tmp->fld[1*kcells], &tmp->fld[2*kcells], &tmp->fld[3*kcells], base.exnref.data(), base.exnrefh.data(),
-                fields.sp.at("thl")->fld.data_mean(), fields.sp.at("qt")->fld_mean.data(), gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(), base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
         fields.release_tmp(tmp);
     }
     if (name == "b")
     {
         auto tmp = fields.get_tmp();
-        calc_buoyancy(fld->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+        calc_buoyancy(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     if (name == "b_h")
     {
         auto tmp = fields.get_tmp();
-        calc_buoyancy(fld->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+        calc_buoyancy_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(), &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     else if (name == "ql")
     {
-        calc_liquid_water(fld->fld.data(), fields->sp.at("thl").fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_liquid_water(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "ql_h")
     {
-        calc_liquid_water(fld->fld.data(), fields->sp.at("thl").fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        auto tmp = fields.get_tmp();
+        calc_liquid_water_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        fields.release_tmp(tmp);
     }
-else if (name == "N2")
+    else if (name == "N2")
     {
-        calc_N2(fld->fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi, base.thvref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+        calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
     }
     else if (name == "T")
     {
-        calc_T(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), base.exnref.data(),        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+        calc_T(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), base.exnref.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     }
     else if (name == "T_h")
     {
         auto tmp = fields.get_tmp();
-        calc_T_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh,&tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-        &tmp->fld[2*gd.ijcells], base.thvrefh, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_T_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(),&tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
+        &tmp->fld[2*gd.ijcells], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     else
@@ -1854,32 +1821,51 @@ else if (name == "N2")
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, background_state base = bs)
-{
-    calc_buoyancy_bot(b->fld.data(), b->fld_bot.data(),
-                      fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
-                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
-                      base.thvref, base.thvrefh, gd.icells, gd.jcells, gd.ijcells, gd.kstart);
-    calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh, gd.icells, gd.jcells, gd.kstart);
-}
-
-template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, background_state base = bs)
-{
-    calc_buoyancy_fluxbot(b->flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh, gd.icells, gd.jcells, gd.kstart);
-}
-
-template<typename TF>
-void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, background_state base = bs)
+void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
 
-    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("thl")->fld.data(), base.exnrefh.data(), base.threfh.data(),
+    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(),
+                      fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
+                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
+                      base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+{
+    auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
+{
+    auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
+    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("thl")->fld.data(), base.exnrefh.data(), base.thl0.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_prog_vars(std::vector<std::string> *list)
+void Thermo_moist<TF>::get_prog_vars(std::vector<std::string>& list)
 {
     list.push_back("thl");
     list.push_back("qt");
@@ -1893,19 +1879,19 @@ TF Thermo_moist<TF>::get_buoyancy_diffusivity()
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create_stat()
+void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 {
     // Add variables to the statistics
     if (stats.get_switch())
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields->rhoref );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields->rhorefh);
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref );
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",bs.thvrefh);
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",bs.thvrefh.data());
 
-        if (swupdatebasestate)
+        if (bs_stats.swupdatebasestate)
         {
             stats.add_prof("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
             stats.add_prof("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
@@ -1914,8 +1900,8 @@ void Thermo_moist<TF>::create_stat()
         }
         else
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref );
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
+            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
+            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
@@ -1939,7 +1925,7 @@ void Thermo_moist<TF>::create_stat()
         stats.add_time_series("ccover", "Projected cloud cover", "-");
 
         // BvS:micro
-        if(swmicro == Micro_type::2mom_warm)
+        if(swmicro == Micro_type::two_mom_warm)
         {
             stats.add_time_series("rwp", "Rain water path", "kg m-2");
 
@@ -1988,16 +1974,15 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string> allowed_crossvars_b; ///< List with allowed cross variables
         std::vector<std::string> allowed_crossvars_ql; ///< List with allowed cross variables
 
-        allowedcrossvars_b.push_back("b");
-        allowedcrossvars_b.push_back("bbot");
-        allowedcrossvars_b.push_back("bfluxbot");
+        allowed_crossvars_b.push_back("b");
+        allowed_crossvars_b.push_back("bbot");
+        allowed_crossvars_b.push_back("bfluxbot");
         if (grid.swspatialorder == "4")
-            allowedcrossvars_b.push_back("blngrad");
-        allowedcrossvars_ql.push_back("ql");
-        allowedcrossvars_ql.push_back("qlpath");
-        allowedcrossvars_ql.push_back("qlbase");
-        allowedcrossvars_ql.push_back("qltop");
-        allowedcrossvars_ql.push_back("maxthvcloud");  // yikes
+            allowed_crossvars_b.push_back("blngrad");
+        allowed_crossvars_ql.push_back("ql");
+        allowed_crossvars_ql.push_back("qlpath");
+        allowed_crossvars_ql.push_back("qlbase");
+        allowed_crossvars_ql.push_back("qltop");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = cross.get_crosslist();
@@ -2006,14 +1991,14 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string>::iterator it=crosslist_global->begin();
         while (it != crosslist_global->end())
         {
-            if (std::count(allowedcrossvars_b.begin(),allowedcrossvars_b.end(),*it))
+            if (std::count(allowed_crossvars_b.begin(),allowed_crossvars_b.end(),*it))
             {
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
                 crosslist_global->erase(it); // erase() returns iterator of next element..
                 swcross_b = true;
             }
-            else if (std::count(allowedcrossvars_ql.begin(),allowedcrossvars_ql.end(),*it))
+            else if (std::count(allowed_crossvars_ql.begin(),allowed_crossvars_ql.end(),*it))
             {
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
@@ -2056,7 +2041,7 @@ void Thermo_moist<TF>::create_dump(Dump<TF>& dump)
 
 template<typename TF>
 void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff)
+        const Diff<TF>& diff, const double dt)
 {
     auto& gd = grid.get_grid_data();
     #ifndef USECUDA
@@ -2069,9 +2054,9 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
-    get_thermo_field(b, "b",true, bs_stats);
-    get_buoyancy_bot(b, bs_stats);
-    get_buoyancy_fluxbot(b, bs_stats);
+    get_thermo_field(*b, "b",true, true);
+    get_buoyancy_surf(*b, true);
+    get_buoyancy_fluxbot(*b, true);
 
 
     // define the location
@@ -2109,29 +2094,29 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     stats.add_fluxes(m.profs["bflux"].data.data(), m.profs["bw"].data.data(), m.profs["bdiff"].data.data());
 
     // calculate the sorted buoyancy profile
-    //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+    //stats->calc_sorted_prof(fields.sd["tmp1"]->data, fields.sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
 
     // calculate the liquid water stats
-    ql = fields.get_tmp();
-    get_thermo_field(ql,"ql", true, bs_stats);
+    auto ql = fields.get_tmp();
+    get_thermo_field(*ql,"ql", true, true);
     stats.calc_mean(m.profs["ql"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_count(m.profs["ccover"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_cover(m.profs["cfrac"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_path(m.profs["lwp"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    //stats.calc_count(m.profs["ccover"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    //stats.calc_cover(m.profs["cfrac"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    //stats.calc_path(m.profs["lwp"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
     // BvS:micro
-    if(swmicro == "2mom_warm")
+    if(swmicro == Micro_type::two_mom_warm)
     {
-        stats.calc_path(m.profs["rwp"].data.data(), fields.sp.at("qr")->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        //stats.calc_path(m.profs["rwp"].data.data(), fields.sp.at("qr")->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
         if(swmicrobudget)
         {
-            qrt  = fields.get_tmp();
-            nrt  = fields.get_tmp();
-            qtt  = fields.get_tmp();
-            thlt = fields.get_tmp();
+            auto qrt  = fields.get_tmp();
+            auto nrt  = fields.get_tmp();
+            auto qtt  = fields.get_tmp();
+            auto thlt = fields.get_tmp();
 
             // Autoconversion
             mp::zero(qrt->fld.data(), gd.ncells);
@@ -2140,15 +2125,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
             mp::zero(thlt->fld.data(), gd.ncells);
 
             mp::autoconversion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
-                               fields->sp.at("qr")->fld.data(), ql->fld.data(), fields->rhoref, bs_stats.exnref,
+                               fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), bs_stats.exnref.data(),
                                gd.istart, gd.jstart, gd.kstart,
                                gd.iend,   gd.jend,   gd.kend,
                                gd.icells, gd.ijcells);
 
-            stats.calc_mean(m.profs["auto_qrt" ].data.data() qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["auto_nrt" ].data.data() nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["auto_qtt" ].data.data() qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["auto_thlt"].data.data() thlt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
 
             // Evaporation
             mp::zero(qrt->fld.data(), gd.ncells);
@@ -2157,16 +2142,16 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
             mp::zero(thlt->fld.data(), gd.ncells);
 
             mp::evaporation(qrt->fld.data(), nrt->fld.data(),  qtt->fld.data(), thlt->fld.data(),
-                            fields->sp.at("qr")->fld.data(), fields->sp.at("nr")->fld.data(),  ql->fld.data(),
-                            fields->sp.at("qt")->fld.data(), fields->sp.at("thl")->fld.data(), fields->rhoref, bs_stats.exnref, bs_stats.pref,
+                            fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),  ql->fld.data(),
+                            fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(), fields.rhoref.data(), bs_stats.exnref.data(), bs_stats.pref.data(),
                             gd.istart, gd.jstart, gd.kstart,
                             gd.iend,   gd.jend,   gd.kend,
                             gd.icells, gd.ijcells);
 
-            stats.calc_mean(m.profs["evap_qrt" ].data.data() qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["evap_nrt" ].data.data() nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["evap_qtt" ].data.data() qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["evap_thlt"].data.data() thlt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["evap_qrt" ].data.data(), qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["evap_nrt" ].data.data(), nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["evap_qtt" ].data.data(), qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["evap_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
 
             // Accretion
             mp::zero(qrt->fld.data(), gd.ncells);
@@ -2174,24 +2159,24 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
             mp::zero(qtt->fld.data(), gd.ncells);
 
             mp::accretion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(),
-                          fields->sp.at("qr")->fld.data(), ql->fld.data(), fields->rhoref, bs_stats.exnref,
+                          fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), bs_stats.exnref.data(),
                           gd.istart, gd.jstart, gd.kstart,
                           gd.iend,   gd.jend,   gd.kend,
                           gd.icells, gd.ijcells);
 
-            stats.calc_mean(m.profs["accr_qrt" ].data.data() qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["accr_qtt" ].data.data() nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["accr_thlt"].data.data() qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["accr_qtt" ].data.data(), nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["accr_thlt"].data.data(), qtt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
 
             // Selfcollection and breakup
             mp::zero(qrt->fld.data(), gd.ncells);
 
-            mp::selfcollection_breakup(qrt->fld.data(), fields->sp.at("qr")->fld.data(), fields->sp.at("nr")->fld.data(), fields->rhoref,
+            mp::selfcollection_breakup(qrt->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
                                        gd.istart, gd.jstart, gd.kstart,
                                        gd.iend,   gd.jend,   gd.kend,
                                        gd.icells, gd.ijcells);
 
-            stats.calc_mean(m.profs["scbr_nrt" ].data.data() qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["scbr_nrt" ].data.data(), qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
 
             // Sedimentation
             mp::zero(qrt->fld.data(), gd.ncells);
@@ -2201,8 +2186,8 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
 
             // 1. Get number of substeps based on sedimentation with CFL=1
             //const TF dt = model->timeloop->get_sub_time_step();
-            //int nsubstep = mp::get_sedimentation_steps(fields->sp.at("qr")->fld.data(), fields->sp.at("nr")->fld.data(),
-            //                                           fields->rhoref, gd.dzi, dt,
+            //int nsubstep = mp::get_sedimentation_steps(fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+            //                                           fields.rhoref, gd.dzi, dt,
             //                                           gd.istart, gd.jstart, gd.kstart,
             //                                           gd.iend,   gd.jend,   gd.kend,
             //                                           gd.icells, gd.ijcells);
@@ -2216,55 +2201,105 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
             //// Sedimentation in nsubstep steps:
             //mp::sedimentation_sub(qrt->fld.data(), nrt->fld.data(),
             //                      qtt->fld.data(), thlt->fld.data(),
-            //                      fields->sp.at("qr")->fld.data(), fields->sp.at("nr")->fld.data(),
-            //                      fields->rhoref, gd.dzi, gd.dzhi, dt,
+            //                      fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+            //                      fields.rhoref, gd.dzi, gd.dzhi, dt,
             //                      gd.istart, gd.jstart, gd.kstart,
             //                      gd.iend,   gd.jend,   gd.kend,
             //                      gd.icells, gd.kcells, gd.ijcells,
             //                      nsubstep);
+            const int ikslice = gd.icells * gd.kcells;
 
-            const double dt = model->timeloop->get_sub_time_step();
-            mp::sedimentation_ss08(qrt->fld.data(), nrt->fld.data(),
-                                   qtt->fld.data(), thlt->fld.data(),
-                                   fields->sp.at("qr")->fld.data(), fields->sp.at("nr")->fld.data(),
-                                   fields->rhoref, gd.dzi, gd.dz, dt,
-                                   gd.istart, gd.jstart, gd.kstart,
-                                   gd.iend,   gd.jend,   gd.kend,
-                                   gd.icells, gd.kcells, gd.ijcells);
+            int tot_tmp_slice;
+            int n_tmp_fld;
+            int n_slice_in_tmp;
+            tot_tmp_slice = 8;
+            int tot_tmp_fld = std::ceil(tot_tmp_slice/gd.jcells);
+            std::shared_ptr<Field3d<TF>> atmp[tot_tmp_fld];
+            for (int n=0; tot_tmp_fld; ++n)
+                atmp[n] = fields.get_tmp();
 
-            stats.calc_mean(m.profs["sed_qrt"].data.data() qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
-            stats.calc_mean(m.profs["sed_nrt"].data.data() nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            int n2d = 0;
+
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* w_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* w_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* c_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* c_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* slope_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* slope_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* flux_qr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+            n2d++;
+            n_tmp_fld = std::floor(n2d/gd.jcells);
+            n_slice_in_tmp = n2d%gd.jcells * ikslice;
+            TF* flux_nr = &(atmp[n_tmp_fld]->fld[n_slice_in_tmp]);
+
+            // Sedimentation; sub-grid sedimentation of rain
+            mp::sedimentation_ss08(qrt->fld.data(), nrt->fld.data(), w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr,
+                                  fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+                                  fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
+                                  gd.istart, gd.jstart, gd.kstart,
+                                  gd.iend,   gd.jend,   gd.kend,
+                                  gd.icells, gd.kcells, gd.ijcells);
+
+            for (int n=0;n<tot_tmp_fld;++n)
+                fields.release_tmp(atmp[n]);
+
+            stats.calc_mean(m.profs["sed_qrt"].data.data(), qrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
+            stats.calc_mean(m.profs["sed_nrt"].data.data(), nrt->fld.data(), no_offset, mask_field.fld.data(),  stats.nmask.data());
         }
     }
 
     fields.release_tmp(ql);
 
     // Calculate base state in tmp array
-    if (swupdatebasestate)
+    if (bs_stats.swupdatebasestate)
     {
             m.profs["ph"  ].data = bs_stats.pref;
             m.profs["phh" ].data = bs_stats.prefh;
             m.profs["rho" ].data = fields.rhoref;
             m.profs["rhoh"].data = fields.rhorefh;
-        }
     }
 }
 
 
 template<typename TF>
-void Thermo_dry<TF>::exec_column(Column<TF>& column)
+void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {
+    auto& gd = grid.get_grid_data();
+    #ifndef USECUDA
+        bs_stats = bs;
+    #endif
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
     for (auto& it : dumplist)
     {
         if (it == "b")
-            get_thermo_field(output, "b",false, bs_stats);
+            get_thermo_field(*output, "b",false, true);
         else if (it == "ql")
-            get_thermo_field(output, "ql",false, bs_stats);
+            get_thermo_field(*output, "ql",false, true);
         else if (it == "T")
-            get_thermo_field(output, "T",false, bs_stats);
+            get_thermo_field(*output, "T",false, true);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
@@ -2279,12 +2314,16 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+    #ifndef USECUDA
+        bs_stats = bs;
+    #endif
     auto output = fields.get_tmp();
 
     if(swcross_b)
     {
-        get_thermo_field(b, "b",false, bs_stats);
-        get_buoyancy_fluxbot(b, bs_stats);
+        get_thermo_field(*output, "b",false, true);
+        get_buoyancy_fluxbot(*output, true);
     }
     for (auto& it : crosslist)
     {
@@ -2300,7 +2339,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     if(swcross_ql)
     {
-        get_thermo_field(output, "ql",false, bs_stats);
+        get_thermo_field(*output, "ql",false, true);
     }
     for (auto& it : crosslist)
     {
@@ -2312,13 +2351,6 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_height_threshold(output->fld.data(), 0., cross.Direction::Bottom_to_top, "ql", iotime);
         if (it == "qltop")
             cross.cross_height_threshold(output->fld.data(), 0., cross.Direction::Top_to_bottom, "ql", iotime);
-        else if (it == "maxthvcloud")
-            auto maxthv = feilds.get_tmp();
-            calc_maximum_thv_perturbation_cloud(maxthv->fld_bot.data(), maxthv->fld.data(),
-                                                fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), output->fld.data(), bs_stats.pref, maxthv->fld_mean.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
-
-            cross.cross_plane(maxthv->flux_bot.data(), "maxthvcloud", iotime);
-            fields.release_tmp(maxthv);
     }
 
     fields.release_tmp(output);
@@ -2327,16 +2359,19 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 {
+    #ifndef USECUDA
+        bs_stats = bs;
+    #endif
     auto output = fields.get_tmp();
 
     for (auto& it : dumplist)
     {
         if (it == "b")
-            get_thermo_field(output, "b",false, bs_stats);
+            get_thermo_field(*output, "b",false, true);
         else if (it == "ql")
-            get_thermo_field(output, "ql",false, bs_stats);
+            get_thermo_field(*output, "ql",false, true);
         else if (it == "T")
-            get_thermo_field(output, "T",false, bs_stats);
+            get_thermo_field(*output, "T",false, true);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());

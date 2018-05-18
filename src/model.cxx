@@ -325,10 +325,10 @@ void Model<TF>::exec()
                 thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
-                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime(), timeloop->get_dt());
 
                 #else
-                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime(), timeloop->get_dt());
                 #endif
             }
 
@@ -447,7 +447,7 @@ void Model<TF>::clear_gpu()
 
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
-void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
+void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime, double dt)
 {
     // Do the statistics.
     if(stats->do_statistics(itime))
@@ -472,7 +472,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
             // Calculate statistics
             fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
-            thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
+            thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff, dt);
             //budget  ->exec_stats(&stats->masks[maskname]);
             boundary->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
 

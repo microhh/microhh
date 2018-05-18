@@ -732,7 +732,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         auto buoy = fields.get_tmp();
         auto tmp = fields.get_tmp();
 
-        thermo.get_buoyancy_surf(*buoy, thermo.bs);
+        thermo.get_buoyancy_surf(*buoy, false);
         stability(ustar.data(), obuk.data(), buoy->flux_bot.data(),
                   fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                   fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),

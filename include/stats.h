@@ -91,6 +91,7 @@ class Stats
         void get_nmask(Field3d<TF>&, Field3d<TF>&);
         void set_mask_true(Field3d<TF>&, Field3d<TF>&);
         void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Mask_type);
+        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Mask_type);
 
         void exec(int, double, unsigned long);
 

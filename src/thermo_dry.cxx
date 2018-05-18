@@ -359,9 +359,15 @@ bool Thermo_dry<TF>::check_field_exists(std::string name)
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, background_state base = bs)
+void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
 
     if (name == "b")
         calc_buoyancy(fld.fld.data(), fields.sp.at("th")->fld.data(), base.thref.data(),
@@ -385,18 +391,30 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, background_state base = bs)
+void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
 
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, Basestate_type base = bs)
+void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
 
     calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
                       base.thref.data(), base.threfh.data(),
@@ -406,9 +424,15 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, Basestate_type base = bs)
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, background_state base = bs)
+void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+    background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
 
     calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), base.exnrefh.data(), base.threfh.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
@@ -512,6 +536,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 {
     if (cross.get_switch())
     {
+        swcross_b = false;
         // Populate list with allowed cross-section variables
         allowedcrossvars.push_back("b");
         allowedcrossvars.push_back("bbot");
@@ -531,6 +556,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
                 crosslist_global->erase(it); // erase() returns iterator of next element..
+                swcross_b = true;
             }
             else
                 ++it;
@@ -540,7 +566,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 
 template<typename TF>
 void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff)
+        const Diff<TF>& diff, const double dt)
 {
     auto& gd = grid.get_grid_data();
     #ifndef USECUDA
@@ -553,9 +579,9 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
-    get_thermo_field(b, "b",true, bs_stats);
-    get_buoyancy_bot(b, bs_stats);
-    get_buoyancy_fluxbot(b, bs_stats);
+    get_thermo_field(*b, "b",true, true);
+    get_buoyancy_surf(*b, true);
+    get_buoyancy_fluxbot(*b, true);
 
 
     // define the location
@@ -600,7 +626,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
     if (bs_stats.swbasestate == Basestate_type::anelastic)
     {
         auto T = fields.get_tmp();
-        get_thermo_field(*T, "T", false, bs_stats);
+        get_thermo_field(*T, "T", false, true);
         stats.calc_mean(m.profs["T"].data.data(), T->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
         fields.release_tmp(T);
     }
@@ -614,9 +640,9 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     for (auto& it : dumplist)
     {
         if (it == "b")
-            get_thermo_field(output, "b",false, bs_stats);
+            get_thermo_field(*output, "b",false, true);
         else if (it == "T")
-            get_thermo_field(output, "T",false, bs_stats);
+            get_thermo_field(*output, "T",false, true);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
@@ -636,9 +662,9 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     for (auto& it : dumplist)
     {
         if (it == "b")
-            get_thermo_field(output, "b",false, bs_stats);
+            get_thermo_field(*output, "b",false, true);
         else if (it == "T")
-            get_thermo_field(output, "T",false, bs_stats);
+            get_thermo_field(*output, "T",false, true);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
@@ -652,11 +678,11 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto b = fields.get_tmp();
     if(swcross_b)
     {
-        auto b = fields.get_tmp();
-        get_thermo_field(b, "b",false, bs_stats);
-        get_buoyancy_fluxbot(b, bs_stats);
+        get_thermo_field(*b, "b",false, true);
+        get_buoyancy_fluxbot(*b, true);
     }
     for (auto& it : crosslist)
     {
@@ -669,7 +695,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         else if (it == "bfluxbot")
             cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);
     }
-    if(swcross_b) fields.release_tmp(b);
+    fields.release_tmp(b);
 }
 
 template class Thermo_dry<double>;

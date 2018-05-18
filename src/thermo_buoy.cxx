@@ -274,7 +274,7 @@ unsigned long Thermo_buoy<TF>::get_time_limit(unsigned long idt, const double dt
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic)
+void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy(b.fld.data(), fields.sp.at("b")->fld.data(), gd.ncells);
@@ -290,14 +290,14 @@ void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string>& list)
 }
 
 template<typename TF>
-void Thermo_buoy<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
+void Thermo_buoy<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("b")->flux_bot.data(), gd.icells, gd.jcells);
 }
 
 template<typename TF>
-void Thermo_buoy<TF>::get_buoyancy_surf(Field3d<TF>& b)
+void Thermo_buoy<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy_bot(b.fld.data()         , b.fld_bot.data(),

@@ -54,7 +54,7 @@ class Thermo_disabled : public Thermo<TF>
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec() {};
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&) {};
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};
@@ -77,13 +77,10 @@ class Thermo_disabled : public Thermo<TF>
         #endif
 
         // Empty functions that shall throw.
-        struct background_state{};
-        background_state bs;
-        background_state bs_stats;
-        void get_thermo_field(Field3d<TF>&, std::string, bool, background_state) { throw std::runtime_error("Function get_thermo_field not implemented");  }
-        void get_buoyancy_surf(Field3d<TF>&, background_state) { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
-        void get_buoyancy_fluxbot(Field3d<TF>&, background_state) { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented");  }
-        void get_T_bot(Field3d<TF>&, background_state) { throw std::runtime_error("Function get_T_bot not implemented"); }
+        void get_thermo_field(Field3d<TF>&, std::string, bool, bool) { throw 1; }
+        void get_buoyancy_surf(Field3d<TF>&, bool) { throw 1; }
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool) { throw 1; }
+        void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
 

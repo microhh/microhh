@@ -23,6 +23,8 @@
 #ifndef THERMO_MOIST
 #define THERMO_MOIST
 
+#include "thermo.h"
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -42,8 +44,7 @@ class Data_block;
  * equivalent and no complex buoyancy function is required.
  */
 
- enum class Micro_type {disabled, 2mom_warm};
- enum class Basestate_type {anelastic, boussinesq};
+ enum class Micro_type {disabled, two_mom_warm};
 
 template<typename TF>
 class Thermo_moist : public Thermo<TF>
@@ -57,12 +58,60 @@ class Thermo_moist : public Thermo<TF>
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
+        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_buoyancy_surf(Field3d<TF>&, bool);
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool);
+        void get_T_bot(Field3d<TF>&, bool);
+        const std::vector<TF>& get_p_vector() const;
+        const std::vector<TF>& get_ph_vector() const;
+
+        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
+        TF get_buoyancy_diffusivity();
+
+        #ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
+        void forward_device();
+        void backward_device();
+        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_buoyancy_surf_g(Field3d<TF>&);
+        void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        #endif
+
+        // Empty functions that are allowed to pass.
+        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
+        void update_time_dependent();
+
+    private:
+        using Thermo<TF>::swthermo;
+        using Thermo<TF>::master;
+        using Thermo<TF>::grid;
+        using Thermo<TF>::fields;
+
+        Boundary_cyclic<TF> boundary_cyclic;
+        Field3d_operators<TF> field3d_operators;
+
+
+        // cross sections
+        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+        bool swcross_b;
+        bool swcross_ql;
+        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
+        void create_column(Column<TF>&); ///< Initialization of the single column output.
+        void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
+        void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
+
+        enum class Basestate_type {anelastic, boussinesq};
+
         struct background_state
         {
             Basestate_type swbasestate;
@@ -90,50 +139,6 @@ class Thermo_moist : public Thermo<TF>
 
         background_state bs;
         background_state bs_stats;
-        void get_thermo_field(Field3d<TF>&, std::string, bool, background_state);
-        void get_buoyancy_surf(Field3d<TF>&, background_state);
-        void get_buoyancy_fluxbot(Field3d<TF>&, background_state);
-        void get_T_bot(Field3d<TF>&);
-        const std::vector<TF>& get_p_vector() const;
-        const std::vector<TF>& get_ph_vector() const;
-
-        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
-
-        #ifdef USECUDA
-        // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();
-        void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
-        void get_buoyancy_surf_g(Field3d<TF>&);
-        void get_buoyancy_fluxbot_g(Field3d<TF>&);
-        #endif
-
-        // Empty functions that are allowed to pass.
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
-        void update_time_dependent() {};
-
-    private:
-        using Thermo<TF>::swthermo;
-        using Thermo<TF>::master;
-        using Thermo<TF>::grid;
-        using Thermo<TF>::fields;
-
-        Boundary_cyclic<TF> boundary_cyclic;
-
-        // cross sections
-        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-        bool swcross_b;
-        bool swcross_ql;
-        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
-
-        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
-        void create_column(Column<TF>&); ///< Initialization of the single column output.
-        void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
-        void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
-
 
         bool swtimedep_pbot;
         std::vector<double> timedeptime;

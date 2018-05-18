@@ -100,7 +100,7 @@ class Model
 
         void delete_objects();
         void print_status();
-        void calculate_statistics(int, double, unsigned long, int);
+        void calculate_statistics(int, double, unsigned long, int, double);
         void set_time_step();
 
         void prepare_gpu();

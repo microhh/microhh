@@ -47,13 +47,14 @@ class Thermo
         virtual ~Thermo();
         static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         std::string get_switch();
+
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
         virtual void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec() = 0;
-        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&) = 0;   ///< Calculate the statistics
+        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) = 0;   ///< Calculate the statistics
         virtual void exec_column(Column<TF>&) = 0;   ///< Output the column
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
@@ -62,6 +63,15 @@ class Thermo
 
         // Interfacing functions to get buoyancy properties from other classes.
         virtual bool check_field_exists(std::string name) = 0;
+        virtual void get_thermo_field(Field3d<TF>&, std::string, bool, bool) = 0;
+        virtual void get_buoyancy_surf(Field3d<TF>&, bool) = 0;
+        virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
+        virtual void get_T_bot(Field3d<TF>&, bool) = 0;
+        virtual void get_prog_vars(std::vector<std::string>&) = 0;
+        virtual const std::vector<TF>& get_p_vector() const = 0;
+        virtual const std::vector<TF>& get_ph_vector() const = 0;
+
+        virtual TF get_buoyancy_diffusivity() = 0;
 
         virtual void update_time_dependent() = 0;
 
@@ -73,18 +83,6 @@ class Thermo
         virtual void backward_device() = 0;
 
         #endif
-        virtual struct background_state{};
-        background_state bs;
-        background_state bs_stats;
-        virtual void get_thermo_field(Field3d<TF>&, std::string, bool, background_state) = 0;
-        virtual void get_buoyancy_surf(Field3d<TF>&, background_state) = 0;
-        virtual void get_buoyancy_fluxbot(Field3d<TF>&, background_state) = 0;
-        virtual void get_T_bot(Field3d<TF>&, background_state) = 0;
-        virtual void get_prog_vars(std::vector<std::string>&) = 0;
-        virtual const std::vector<TF>& get_p_vector() const = 0;
-        virtual const std::vector<TF>& get_ph_vector() const = 0;
-
-        virtual TF get_buoyancy_diffusivity() = 0;
 
     protected:
         Master& master;
