@@ -1877,7 +1877,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
     for (int k=0; k<grid->kcells; k++)
     {
         ex = exner(p[k]);
-        if (k>=grid->kstart)
+        if (k >= grid->kstart && k < grid->kend)
         {
             for (int j=grid->jstart; j<grid->jend; j++)
                 #pragma ivdep
