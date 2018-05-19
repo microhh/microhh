@@ -873,6 +873,8 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
         fields->init_prognostic_field("nr", "Number density rain", "m-3");
+        nerror += inputin->get_item(&fields->sp["qr"]->visc, "fields", "svisc", "qr");
+        nerror += inputin->get_item(&fields->sp["nr"]->visc, "fields", "svisc", "nr");
     }    
 
     // Initialize the prognostic fields
