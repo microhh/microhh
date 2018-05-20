@@ -293,7 +293,7 @@ void Model<TF>::exec()
         diff->exec();
 
         // Calculate the thermodynamics and the buoyancy tendency.
-        thermo->exec();
+        thermo->exec(timeloop->get_sub_time_step());
 
         // Calculate the radiation fluxes and the related heating rate.
         radiation->exec(*thermo);
@@ -464,6 +464,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 stats->get_mask(*mask_field, *mask_fieldh);
             else if (fields->has_mask(mask_name))
                 fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            else if (thermo->has_mask(mask_name))
+                thermo->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";

@@ -328,7 +328,7 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::exec()
+void Thermo_dry<TF>::exec( const double dt)
 {
     auto& gd = grid.get_grid_data();
 

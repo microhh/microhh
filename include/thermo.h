@@ -53,13 +53,14 @@ class Thermo
         virtual void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
-        virtual void exec() = 0;
+        virtual void exec(const double) = 0;
         virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) = 0;   ///< Calculate the statistics
         virtual void exec_column(Column<TF>&) = 0;   ///< Output the column
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 
         virtual void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) = 0;
+        virtual bool has_mask(std::string) = 0;
 
         // Interfacing functions to get buoyancy properties from other classes.
         virtual bool check_field_exists(std::string name) = 0;

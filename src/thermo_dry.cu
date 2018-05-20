@@ -188,7 +188,7 @@ void Thermo_dry<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::exec()
+void Thermo_dry<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
 

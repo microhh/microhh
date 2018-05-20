@@ -85,7 +85,7 @@ class Stats
         bool get_switch() { return swstats; }
         bool do_statistics(unsigned long);
 
-        enum class Mask_type {Plus, Min};
+        enum Mask_type {Plus, Min};
 
         void get_mask(Field3d<TF>&, Field3d<TF>&);
         void get_nmask(Field3d<TF>&, Field3d<TF>&);

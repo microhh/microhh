@@ -234,7 +234,7 @@ Thermo_buoy<TF>::~Thermo_buoy()
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::exec()
+void Thermo_buoy<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
     if (grid.swspatialorder == "2")

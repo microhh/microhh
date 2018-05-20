@@ -51,7 +51,7 @@ class Thermo_buoy : public Thermo<TF>
         Thermo_buoy(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
         virtual ~Thermo_buoy();        ///< Destructor of the dry thermodynamics class.
 
-        void exec(); ///< Add the tendencies belonging to the buoyancy.
+        void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
@@ -72,6 +72,8 @@ class Thermo_buoy : public Thermo<TF>
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_column(Column<TF>&) {};
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        bool has_mask(std::string) {return false;};
+
         void update_time_dependent() {}
 
         #ifdef USECUDA

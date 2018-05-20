@@ -1672,7 +1672,7 @@ void Thermo_moist<TF>::exec_microphysics(const double dt)
 }
 
 template<typename TF>
-void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
+void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
 {
     auto& gd = grid.get_grid_data();
     #ifndef USECUDA
@@ -1681,12 +1681,12 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 
     if (mask_name == "ql")
     {
-        ql = fields.get_tmp();
-        qlh = fields.get_tmp();
+        auto ql = fields.get_tmp();
+        auto qlh = fields.get_tmp();
         get_thermo_field(*ql,"ql", true, true);
         get_thermo_field(*qlh,"ql_h", true, true);
-        stats.set_mask_true<TF>(mfield, mfieldh);
-        stats.set_mask_thres<TF>(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
+        stats.set_mask_true(mfield, mfieldh);
+        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
@@ -1694,32 +1694,35 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
     else if (mask_name == "qr")
     {
         TF threshold = 1e-8;
-        qrh = fields.get_tmp();
-        grid.interpolate_2nd(*qrh, *qr, {0,0,0},{0,0,1});
-        stats.set_mask_true<TF>(mfield, mfieldh);
-        stats.set_mask_thres<TF>(mfield, mfieldh, *qr,*qrh,threshold,stats.Mask_type::Plus);
+        const int wloc[] = {0,0,1};
+        const int sloc[] = {0,0,0};
+
+        auto qrh = fields.get_tmp();
+        grid.interpolate_2nd(qrh->fld.data(),  fields.sp.at("qr")->fld.data(), sloc, wloc);
+        stats.set_mask_true(mfield, mfieldh);
+        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"),*qrh,threshold,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(qrh);
     }
     else if (mask_name == "qlcore")
     {
-        stats.set_mask_true<TF>(mfield, mfieldh);
+        stats.set_mask_true(mfield, mfieldh);
 
-        ql = fields.get_tmp();
-        qlh = fields.get_tmp();
+        auto ql = fields.get_tmp();
+        auto qlh = fields.get_tmp();
         get_thermo_field(*ql,"ql", true, true);
         get_thermo_field(*qlh,"ql_h", true, true);
-        stats.set_mask_thres<TF>(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
+        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
 
-        b = fields.get_tmp();
-        bh = fields.get_tmp();
+        auto b = fields.get_tmp();
+        auto bh = fields.get_tmp();
         get_thermo_field(*b,"b", true, true);
         get_thermo_field(*bh,"b_h", true, true);
-        field3d_operators.calc_mean_profile(b->fld_mean,b->fld);
-        field3d_operators.calc_mean_profile(b_h->fld_mean,b_h->fld);
-        stats.set_mask_thres_pert<TF>(mfield, mfieldh, *b,*bh,0.,stats.Mask_type::Plus);
+        field3d_operators.calc_mean_profile(b->fld_mean.data(),b->fld.data());
+        field3d_operators.calc_mean_profile(bh->fld_mean.data(),bh->fld.data());
+        stats.set_mask_thres_pert(mfield, mfieldh, *b,*bh,0.,stats.Mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(b);
         fields.release_tmp(bh);
@@ -1730,6 +1733,15 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 
 }
 
+
+template<typename TF>
+bool Thermo<TF>::has_mask(std::string mask_name)
+{
+    if (std::find(available_masks.begin(), available_masks.end(), mask_name) != available_masks.end())
+        return true;
+    else
+        return false;
+}
 
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)

@@ -87,6 +87,8 @@ class Thermo_moist : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
+        bool has_mask(std::string);
+
         void update_time_dependent();
 
     private:
