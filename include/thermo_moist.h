@@ -111,6 +111,7 @@ class Thermo_moist : public Thermo<TF>
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
+        std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
 
         enum class Basestate_type {anelastic, boussinesq};
 

@@ -1387,6 +1387,7 @@ field3d_operators(master, grid, fieldsin)
 
     // Time variable surface pressure
     swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
+    available_masks.insert(available_masks.end(), {"ql", "qlcore", "qr"});
 
 }
 
@@ -1735,7 +1736,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
 
 
 template<typename TF>
-bool Thermo<TF>::has_mask(std::string mask_name)
+bool Thermo_moist<TF>::has_mask(std::string mask_name)
 {
     if (std::find(available_masks.begin(), available_masks.end(), mask_name) != available_masks.end())
         return true;
