@@ -78,6 +78,10 @@ Column::~Column()
 
 void Column::init(double ifactor)
 {
+    // do not create file if column is disabled
+    if (swcolumn == "0")
+        return;
+
     // convenience pointers for short notation in class
     grid   = model->grid;
     fields = model->fields;

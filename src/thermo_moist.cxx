@@ -136,7 +136,7 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > qr_min)
+                if (qr[ijk] > qr_min)
                 {
                     rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k]); 
                     rain_diameter[ik] = calc_rain_diameter(rain_mass[ik]);
@@ -173,7 +173,7 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min)
+                if (qr[ijk] > qr_min)
                 {
                     const double mr  = rain_mass[ik];
                     const double dr  = rain_diameter[ik];
@@ -215,7 +215,7 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min)
+                if (qr[ijk] > qr_min)
                 {
                     // Calculate mean rain drop mass and diameter
                     const double mr      = rain_mass[ik];
@@ -228,10 +228,10 @@ namespace mp2d
 
                     // Breakup
                     const double dDr = dr - D_eq;
-                    if(dr > 0.35e-3)
+                    if (dr > 0.35e-3)
                     {
                         double phi_br;
-                        if(dr <= D_eq)
+                        if (dr <= D_eq)
                             phi_br = k_br1 * dDr;
                         else
                             phi_br = 2. * exp(k_br2 * dDr) - 1.; 
@@ -279,7 +279,7 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
               
-                if(qr[ijk] > qr_min)
+                if (qr[ijk] > qr_min)
                 {
                     // SS08:
                     w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
@@ -456,7 +456,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min)
+                    if (ql[ijk] > ql_min)
                     {
                         const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
                         const double tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
@@ -491,7 +491,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(qr[ijk] > qr_min)
+                    if (qr[ijk] > qr_min)
                     {
                         // Calculate mean rain drop mass and diameter
                         const double mr  = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -529,7 +529,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min && qr[ijk] > qr_min)
+                    if (ql[ijk] > ql_min && qr[ijk] > qr_min)
                     {
                         const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
                         const double phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
@@ -561,7 +561,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(qr[ijk] > qr_min)
+                    if (qr[ijk] > qr_min)
                     {
                         // Calculate mean rain drop mass and diameter
                         const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -575,10 +575,10 @@ namespace mp
 
                         // Breakup
                         const double dDr = dr - D_eq;
-                        if(dr > 0.35e-3)
+                        if (dr > 0.35e-3)
                         {
                             double phi_br;
-                            if(dr <= D_eq)
+                            if (dr <= D_eq)
                                 phi_br = k_br1 * dDr;
                             else
                                 phi_br = 2. * exp(k_br2 * dDr) - 1.; 
@@ -622,7 +622,7 @@ namespace mp
                     const int ijk = i + j*icells + k*ijcells;
                     const int ik  = i + k*icells;
                   
-                    if(qr[ijk] > qr_min)
+                    if (qr[ijk] > qr_min)
                     {
                         // Calculate mean rain drop mass and diameter
                         const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -793,7 +793,7 @@ namespace mp
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if(qr[ijk] > qr_min)
+                    if (qr[ijk] > qr_min)
                     {
                         // Calculate mean rain drop mass and diameter
                         const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -808,6 +808,25 @@ namespace mp
                         w_qr[ijk] = 0.;
                     }
                 }
+
+        // Mirror the values of w_qr over the ghost cells.
+        // Bottom boundary.
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + kstart*ijcells;
+                w_qr[ijk-ijcells] = w_qr[ijk];
+            }
+
+        // Top boundary.
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + (kend-1)*ijcells;
+                w_qr[ijk+ijcells] = w_qr[ijk];
+            }
 
         // Calculate maximum CFL based on interpolated velocity
         double cfl_max = 1e-5;
@@ -856,7 +875,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     // BvS:micro Get microphysics switch, and init rain and number density
     nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
-    if(swmicro == "2mom_warm")
+    if (swmicro == "2mom_warm")
     {
         #ifdef USECUDA
         master->print_error("swmicro = \"2mom_warm\" not (yet) implemented in CUDA\n");
@@ -873,6 +892,8 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
         fields->init_prognostic_field("nr", "Number density rain", "m-3");
+        nerror += inputin->get_item(&fields->sp["qr"]->visc, "fields", "svisc", "qr");
+        nerror += inputin->get_item(&fields->sp["nr"]->visc, "fields", "svisc", "nr");
     }    
 
     // Initialize the prognostic fields
@@ -1063,14 +1084,14 @@ void Thermo_moist::exec()
     //}
 
     // 2-moment warm microphysics 
-    if(swmicro == "2mom_warm")
+    if (swmicro == "2mom_warm")
         exec_microphysics();
 }
 #endif
 
 unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
 {
-    if(swmicro == "2mom_warm")
+    if (swmicro == "2mom_warm")
     {
         double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
                                                     fields->rhoref, grid->dzi, dt,
@@ -1130,7 +1151,7 @@ void Thermo_moist::exec_microphysics()
                   grid->iend,   grid->jend,   grid->kend, 
                   grid->icells, grid->ijcells);
 
-    if(per_slice)
+    if (per_slice)
     {
         for (int j=grid->jstart; j<grid->jend; ++j)
         {
@@ -1407,11 +1428,11 @@ void Thermo_moist::exec_stats(Mask *m)
     stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
     // BvS:micro 
-    if(swmicro == "2mom_warm")
+    if (swmicro == "2mom_warm")
     {
         stats->calc_path (fields->sp["qr"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["rwp"].data);
 
-        if(swmicrobudget == "1")
+        if (swmicrobudget == "1")
         {
             // Autoconversion
             mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
@@ -1726,7 +1747,7 @@ namespace
         tl = thl * exn;
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        if(qt-qsat(p, tl) <= 0)
+        if (qt-qsat(p, tl) <= 0)
             return 0.;
 
         tnr = tl;
@@ -1875,7 +1896,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
     for (int k=0; k<grid->kcells; k++)
     {
         ex = exner(p[k]);
-        if (k>=grid->kstart)
+        if (k >= grid->kstart && k < grid->kend)
         {
             for (int j=grid->jstart; j<grid->jend; j++)
                 #pragma ivdep
@@ -1965,9 +1986,9 @@ void Thermo_moist::calc_maximum_thv_perturbation_cloud(double* restrict thv_pert
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(ql[ijk] > 0)
+                if (ql[ijk] > 0)
                 {
-                    if(thv_pert[ij] == NC_FILL_DOUBLE)
+                    if (thv_pert[ij] == NC_FILL_DOUBLE)
                         thv_pert[ij] = thv[ijk] - thvmean[k];
                     else
                         thv_pert[ij] = std::max(thv_pert[ij], thv[ijk] - thvmean[k]);
@@ -2118,11 +2139,11 @@ void Thermo_moist::init_stat()
         stats->add_time_series("ccover", "Projected cloud cover", "-");
 
         // BvS:micro 
-        if(swmicro == "2mom_warm")
+        if (swmicro == "2mom_warm")
         {
             stats->add_time_series("rwp", "Rain water path", "kg m-2");
 
-            if(swmicrobudget == "1")
+            if (swmicrobudget == "1")
             {
                 stats->add_prof("auto_qrt" , "Autoconversion tendency qr", "kg kg-1 s-1", "z");
                 stats->add_prof("auto_nrt" , "Autoconversion tendency nr", "m-3 s-1", "z");
@@ -2176,7 +2197,7 @@ void Thermo_moist::init_cross()
         allowedcrossvars.push_back("maxthvcloud");  // yikes
 
         // BvS:micro 
-        if(swmicro == "2mom_warm")
+        if (swmicro == "2mom_warm")
             allowedcrossvars.push_back("qrpath");
 
         // Get global cross-list from cross.cxx
