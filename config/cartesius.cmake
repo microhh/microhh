@@ -1,37 +1,59 @@
-# Cartesius SurfSARA
-# Tested with (nov. 2017):
-#
-# module purge
-# module load cmake
-# module load compilerwrappers
-# module load c/intel/17.0.4
-# module load mpi/impi/5.1.4
-# module load hdf5/serial/intel/1.8.10-patch1
-# module load netcdf/serial/intel/4.3.3.1
+# Cartesius CPU build with Intel 18.
+# Tested with:
+#module purge
+#module load compilerwrappers
+#module load mpi/impi/5.0.3.048
+#module load bull
+#module load surfsara
+#module load gcc/4.9.3
+#module load c/intel/18.0.2
+#module load fortran/intel/18.0.2
+#module load hdf5/serial/intel/1.8.10-patch1
+#module load netcdf-cxx/serial/intel/4.3.0
+#module load netcdf-fortran/serial/intel/4.4.2 
+#module load netcdf/serial/intel/4.3.3.1 
+#module load szip/gnu/2.1
+#module load fftw3/intel/3.3.3
+#module load cmake
 
 if(USEMPI)
-  set(ENV{CC}  mpiicc)  # compiler for parallel build
-  set(ENV{CXX} mpiicpc) # compiler for parallel build
-elseif()
-  set(ENV{CC}  icc ) # C compiler for serial build
-  set(ENV{CXX} icpc) # compiler for serial build
+  set(ENV{CC}  mpiicc ) # C compiler for parallel build
+  set(ENV{CXX} mpiicpc) # C++ compiler for parallel build
+else()
+  set(ENV{CC}  icc ) # C compiler for parallel build
+  set(ENV{CXX} icpc) # C++ compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK -std=c++11")
-set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -xHOST -fno-alias -restrict")
-set(USER_CXX_FLAGS_DEBUG "-traceback -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
+if(USECUDA)
+  set(ENV{CC}  gcc) # C compiler for serial build
+  set(ENV{CXX} g++) # C++ compiler for serial build
+endif()
 
-set(FFTW_INCLUDE_DIR       "/hpc/sw/fftw3avx-3.3.3-intel-impi/include")
-set(FFTW_LIB               "/hpc/sw/fftw3avx-3.3.3-intel-impi/lib/libfftw3.a")
-set(NETCDF_INCLUDE_DIR     "/hpc/sw/netcdf-4.3.3.1-intel-seq/include")
-set(NETCDF_INCLUDE_CXX_DIR "/hpc/sw/netcdf-cxx4-4.3.0-intel-seq/include")
-set(NETCDF_LIB_C           "/hpc/sw/netcdf-4.3.3.1-intel-seq/lib/libnetcdf.a")
-set(NETCDF_LIB_CPP         "/hpc/sw/netcdf-cxx4-4.3.0-intel-seq/lib/libnetcdf_c++4.a")
-set(HDF5_LIB_1             "/hpc/sw/hdf5-1.8.10-patch1-intel-seq/lib/libhdf5.a")
-set(HDF5_LIB_2             "/hpc/sw/hdf5-1.8.10-patch1-intel-seq/lib/libhdf5_hl.a")
-set(SZIP_LIB               "/hpc/sw/szip-2.1-intel/lib/libsz.a")
+set(USER_CXX_FLAGS " -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
-set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
-set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR} ${NETCDF_INCLUDE_CXX_DIR})
+#set(FFTW_INCLUDE_DIR "/home/bstratum/tools/fftw3_linked/include")
+#set(FFTW_LIB         "/home/bstratum/tools/fftw3_linked/lib/libfftw3.a")
+#set(HDF5_LIB_1 "/home/bstratum/tools/hdf5-1.8.17-gcc480/lib/libhdf5.a")
+#set(HDF5_LIB_2 "/home/bstratum/tools/hdf5-1.8.17-gcc480/lib/libhdf5_hl.a")
 
-add_definitions(-DRESTRICTKEYWORD=restrict)
+set(FFTW_LIB       "fftw3")
+set(FFTWF_LIB      "fftw3f")
+set(NETCDF_LIB_C   "netcdf")
+set(NETCDF_LIB_CPP "netcdf_c++4")
+set(IRC_LIB        "irc")
+set(HDF5_LIB       "hdf5")
+set(SZIP_LIB       "sz")
+
+set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB} ${SZIP_LIB} ${IRC_LIB} m z curl)
+#set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR} ${NETCDF_INCLUDE_CXX_DIR})
+
+if(USECUDA)
+   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+   set(LIBS ${LIBS} -rdynamic /hpc/sw/cuda/8.0.44/lib64/libcufft.so)
+   set(USER_CUDA_NVCC_FLAGS "-arch=sm_35")
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+endif()
+
+add_definitions(-DRESTRICTKEYWORD=__restrict__)
