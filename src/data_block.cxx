@@ -58,7 +58,7 @@ Data_block::Data_block(Master& master, const std::string& file_name) : master(ma
     std::ifstream infile;
 
     int open_error = false;
-    if (master.mpiid == 0)
+    if (master.get_mpiid() == 0)
     {
         infile.open(file_name);
         if (!infile)
@@ -73,7 +73,6 @@ Data_block::Data_block(Master& master, const std::string& file_name) : master(ma
     // First, read the header.
     int number_of_vectors;
     int line_number = 0;
-    std::vector<std::string> header_items;
 
     while (get_line_from_input(infile, line, master))
     {
@@ -164,9 +163,13 @@ void Data_block::get_vector(std::vector<T>& destination,
         }
     }
 }
+std::vector<std::string> Data_block::get_headers()
+{
+    return header_items;
+}
+
 
 template void Data_block::get_vector(std::vector<std::string>&, const std::string&, const size_t, const size_t, const size_t);
 template void Data_block::get_vector(std::vector<double>&, const std::string&, const size_t, const size_t, const size_t);
 template void Data_block::get_vector(std::vector<float>&, const std::string&, const size_t, const size_t, const size_t);
 template void Data_block::get_vector(std::vector<int>&, const std::string&, const size_t, const size_t, const size_t);
-

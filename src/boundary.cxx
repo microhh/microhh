@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,9 +31,11 @@
 #include "timeloop.h"
 #include "finite_difference.h"
 
+#include "boundary_cyclic.h"
+
 // Boundary schemes.
 #include "boundary.h"
-// #include "boundary_surface.h"
+#include "boundary_surface.h"
 // #include "boundary_surface_bulk.h"
 // #include "boundary_surface_patch.h"
 // #include "boundary_patch.h"
@@ -42,7 +44,8 @@ template<typename TF>
 Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin),
     grid(gridin),
-    fields(fieldsin)
+    fields(fieldsin),
+    boundary_cyclic(master, grid)
 {
     swboundary = "default";
 }
@@ -107,11 +110,11 @@ void Boundary<TF>::process_bcs(Input& input)
     // read the boundaries per field
     for (auto& it : fields.sp)
     {
-        sbc.emplace(it.first, Field3dBc());
+        sbc.emplace(it.first, Field3dBc<TF>());
         swbot = input.get_item<std::string>("boundary", "sbcbot", it.first);
         swtop = input.get_item<std::string>("boundary", "sbctop", it.first);
-        sbc.at(it.first).bot = input.get_item<double>("boundary", "sbot", it.first);
-        sbc.at(it.first).top = input.get_item<double>("boundary", "stop", it.first);
+        sbc.at(it.first).bot = input.get_item<TF>("boundary", "sbot", it.first);
+        sbc.at(it.first).top = input.get_item<TF>("boundary", "stop", it.first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
@@ -149,7 +152,7 @@ void Boundary<TF>::process_bcs(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input& input)
+void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 {
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
@@ -165,10 +168,13 @@ void Boundary<TF>::init(Input& input)
 
     if (nerror)
         throw std::runtime_error("Cannot use ustar bc for default boundary");
+
+    // Initialize the boundary cyclic.
+    boundary_cyclic.init();
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input& input)
+void Boundary<TF>::create(Input& input, Stats<TF>& stats)
 {
     // process_time_dependent(input);
 }
@@ -277,8 +283,8 @@ namespace
 {
     template<typename TF>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
-            const Boundary_type sw, const TF aval, const TF visc, const TF offset,
-            const int icells, const int jcells)
+                const Boundary_type sw, const TF aval, const TF visc, const TF offset,
+                const int icells, const int jcells)
     {
         const int jj = icells;
 
@@ -336,7 +342,7 @@ void Boundary<TF>::set_values()
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     for (auto& it : fields.sp)
     {
@@ -362,7 +368,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -373,7 +379,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -394,7 +400,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -405,7 +411,7 @@ namespace
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -427,7 +433,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -441,7 +447,7 @@ namespace
             using Finite_difference::O4::grad4x;
 
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -464,7 +470,7 @@ namespace
         if (boundary_type == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -478,7 +484,7 @@ namespace
             using Finite_difference::O4::grad4x;
 
             for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij  = i + j*jj;
@@ -499,7 +505,7 @@ namespace
         const int kk2 = 2*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kstart*kk1;
@@ -517,7 +523,7 @@ namespace
         const int kk2 = 2*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kend*kk1;
@@ -536,7 +542,7 @@ namespace
         const int kk3 = 3*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kstart*kk1;
@@ -554,7 +560,7 @@ namespace
         const int kk3 = 3*ijcells;
 
         for (int j=0; j<jcells; ++j)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kend*kk1;
@@ -565,18 +571,17 @@ namespace
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary<TF>::exec()
+void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
-    // Cyclic boundary conditions, do this before the bottom BC's
-    grid.boundary_cyclic(fields.mp.at("u")->fld.data());
-    grid.boundary_cyclic(fields.mp.at("v")->fld.data());
-    grid.boundary_cyclic(fields.mp.at("w")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
 
     for (auto& it : fields.sp)
-        grid.boundary_cyclic(it.second->fld.data());
+        boundary_cyclic.exec(it.second->fld.data());
 
     // Update the boundary values.
-    update_bcs();
+    update_bcs(thermo);
 
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -672,12 +677,12 @@ template<typename TF>
 void Boundary<TF>::exec_cross()
 {
 }
+*/
 
 template<typename TF>
-void Boundary<TF>::exec_stats(Mask* m)
+void Boundary<TF>::exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&)
 {
 }
-*/
 
 // Computational kernel for boundary calculation.
 namespace
@@ -771,7 +776,7 @@ void Boundary<TF>::update_slave_bcs()
 }
 
 template<typename TF>
-void Boundary<TF>::update_bcs()
+void Boundary<TF>::update_bcs(Thermo<TF>& thermo)
 {
 }
 
@@ -781,8 +786,6 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // if (swboundary == "surface")
-    //     return new Boundary_surface(modelin, inputin);
     // if (swboundary == "surface_bulk")
     //     return new Boundary_surface_bulk(modelin, inputin);
     // else if (swboundary == "surface_patch")
@@ -792,6 +795,8 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     // else if (swboundary == "default")
     if (swboundary == "default")
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
+    else if (swboundary == "surface")
+        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
     else
     {
         master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
@@ -822,6 +827,7 @@ void Boundary<TF>::get_surface_mask(Field3d* field)
         field->fld_bot[i] = 1;
 }
 
+*/
 template<typename TF>
 void Boundary<TF>::prepare_device()
 {
@@ -836,7 +842,6 @@ template<typename TF>
 void Boundary<TF>::backward_device()
 {
 }
-*/
 
 template class Boundary<double>;
 template class Boundary<float>;

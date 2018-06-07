@@ -112,9 +112,9 @@ namespace Tools_g
         extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
         TF *as = reinterpret_cast<TF*>(as_tmp);
 
-        const unsigned int tid  = threadIdx.x;
-        const unsigned int iim  = nvaluesperblock * (blockIdx.x+1);
-        unsigned int ii         = nvaluesperblock *  blockIdx.x + threadIdx.x;
+        const unsigned int tid = threadIdx.x;
+        const unsigned int iim = nvaluesperblock * (blockIdx.x+1);
+        unsigned int ii        = nvaluesperblock *  blockIdx.x + threadIdx.x;
 
         TF tmpval;
         if (function == Max_type)

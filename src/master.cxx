@@ -28,7 +28,7 @@
 
 void Master::print_message(const char *format, ...)
 {
-    if (mpiid == 0)
+    if (md.mpiid == 0)
     {
         va_list args;
         va_start(args, format);
@@ -39,13 +39,13 @@ void Master::print_message(const char *format, ...)
 
 void Master::print_message(const std::ostringstream& ss)
 {
-    if (mpiid == 0)
+    if (md.mpiid == 0)
         std::cout << ss.str();
 }
 
 void Master::print_message(const std::string& s)
 {
-    if (mpiid == 0)
+    if (md.mpiid == 0)
         std::cout << s << std::endl;
 }
 
@@ -56,7 +56,7 @@ void Master::print_warning(const char *format, ...)
 
     const char *warningformat = warningstr.c_str();
 
-    if (mpiid == 0)
+    if (md.mpiid == 0)
     {
         va_list args;
         va_start(args, format);
@@ -67,13 +67,13 @@ void Master::print_warning(const char *format, ...)
 
 void Master::print_warning(const std::ostringstream& ss)
 {
-    if (mpiid == 0)
+    if (md.mpiid == 0)
         std::cout << "WARNING: " << ss.str();
 }
 
 void Master::print_warning(const std::string& s)
 {
-    if (mpiid == 0)
+    if (md.mpiid == 0)
         std::cout << "WARNING: " << s << std::endl;
 }
 
@@ -84,7 +84,7 @@ void Master::print_error(const char *format, ...)
 
     const char *errorformat = errorstr.c_str();
 
-    if (mpiid == 0)
+    if (md.mpiid == 0)
     {
         va_list args;
         va_start(args, format);

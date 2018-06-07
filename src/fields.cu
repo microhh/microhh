@@ -74,25 +74,110 @@ namespace
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
-
-    template<typename TF> __global__
-    void calc_mass_2nd_g(TF* __restrict__ s, TF* __restrict__ mass, TF* __restrict__ dz,
-                         int istart, int jstart, int kstart,
-                         int iend,   int jend,   int kend,
-                         int jj,     int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            mass[ijk] = s[ijk]*dz[k];
-        }
-    }
 }
 
+#ifdef USECUDA
+template<typename TF>
+TF Fields<TF>::check_momentum()
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    auto tmp1 = get_tmp_g();
+
+    calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
+        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
+        tmp1->fld_g, gd.dz_g,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    TF mom = field3d_operators.calc_mean(tmp1->fld_g);
+
+    release_tmp_g(tmp1);
+
+    return mom;
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+TF Fields<TF>::check_tke()
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    auto tmp1 = get_tmp_g();
+
+    calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
+        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g, 
+        tmp1->fld_g, gd.dz_g,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    TF tke = field3d_operators.calc_mean(tmp1->fld_g);
+    tke *= 0.5;
+
+    release_tmp_g(tmp1);
+
+    return tke;
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+TF Fields<TF>::check_mass()
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    TF mass;
+
+    // CvH for now, do the mass check on the first scalar... Do we want to change this?
+    auto it = sp.begin();
+    if (sp.begin() != sp.end())
+        mass = field3d_operators.calc_mean(it->second->fld_g);
+    else
+        mass = 0; 
+
+    return mass;
+}
+
+template<typename TF>
+void Fields<TF>::exec()
+{
+    // calculate the means for the prognostic scalars
+    if (calc_mean_profs)
+    {
+        for (auto& it : ap)
+            field3d_operators.calc_mean_profile(it.second->fld_mean_g,it.second->fld_g);
+    }
+}
+#endif
 
 
 /**
@@ -102,7 +187,7 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
-    const int nmemsize   = gd.ncellsp*sizeof(TF);
+    const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
 
     // Prognostic fields
@@ -152,7 +237,7 @@ void Fields<TF>::forward_device()
         forward_field3d_device(it.second.get());
 
     for (auto& it : at)
-        forward_field_device_3d(it.second->fld_g, it.second->fld.data(), Offset);
+        forward_field_device_3d(it.second->fld_g, it.second->fld.data());
 
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
@@ -177,13 +262,13 @@ template<typename TF>
 void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    forward_field_device_3d(fld->fld_g,      fld->fld.data(),      Offset);
-    forward_field_device_2d(fld->fld_bot_g,  fld->fld_bot.data(),  Offset);
-    forward_field_device_2d(fld->fld_top_g,  fld->fld_top.data(),  Offset);
-    forward_field_device_2d(fld->grad_bot_g, fld->grad_bot.data(), Offset);
-    forward_field_device_2d(fld->grad_top_g, fld->grad_top.data(), Offset);
-    forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data(), Offset);
-    forward_field_device_2d(fld->flux_top_g, fld->flux_top.data(), Offset);
+    forward_field_device_3d(fld->fld_g,      fld->fld.data());
+    forward_field_device_2d(fld->fld_bot_g,  fld->fld_bot.data());
+    forward_field_device_2d(fld->fld_top_g,  fld->fld_top.data());
+    forward_field_device_2d(fld->grad_bot_g, fld->grad_bot.data());
+    forward_field_device_2d(fld->grad_top_g, fld->grad_top.data());
+    forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data());
+    forward_field_device_2d(fld->flux_top_g, fld->flux_top.data());
     forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
@@ -196,13 +281,13 @@ template<typename TF>
 void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
 {
     auto& gd = grid.get_grid_data();
-    backward_field_device_3d(fld->fld.data(),      fld->fld_g,      Offset);
-    backward_field_device_2d(fld->fld_bot.data(),  fld->fld_bot_g,  Offset);
-    backward_field_device_2d(fld->fld_top.data(),  fld->fld_top_g,  Offset);
-    backward_field_device_2d(fld->grad_bot.data(), fld->grad_bot_g, Offset);
-    backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g, Offset);
-    backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g, Offset);
-    backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g, Offset);
+    backward_field_device_3d(fld->fld.data(),      fld->fld_g     );
+    backward_field_device_2d(fld->fld_bot.data(),  fld->fld_bot_g );
+    backward_field_device_2d(fld->fld_top.data(),  fld->fld_top_g );
+    backward_field_device_2d(fld->grad_bot.data(), fld->grad_bot_g);
+    backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g);
+    backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g);
+    backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g);
     backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
 }
 
@@ -213,16 +298,10 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
+void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
-
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells*gd.kcells, cudaMemcpyHostToDevice));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field_g, field, gd.ncells*sizeof(TF), cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(field_g, field, gd.ncells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -232,16 +311,10 @@ void Fields<TF>::forward_field_device_3d(TF* field_g, TF* field, Offset_type sw)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field, Offset_type sw)
+void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
-
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(&field_g[gd.memoffset], imemsizep,  field, imemsize, imemsize, gd.jcells,  cudaMemcpyHostToDevice));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field_g, field, gd.ijcells*sizeof(TF), cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(field_g, field, gd.ijcells*sizeof(TF), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -263,16 +336,10 @@ void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw)
+void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
-
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells*gd.kcells, cudaMemcpyDeviceToHost));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field, field_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(field, field_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
 /**
@@ -282,16 +349,10 @@ void Fields<TF>::backward_field_device_3d(TF* field, TF* field_g, Offset_type sw
  * @param sw Switch to align the host field to device memory
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g, Offset_type sw)
+void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g)
 {
     auto& gd = grid.get_grid_data();
-    const int imemsizep  = gd.icellsp * sizeof(TF);
-    const int imemsize   = gd.icells  * sizeof(TF);
-
-    if (sw == Offset)
-        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[gd.memoffset], imemsizep, imemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    else if (sw == No_offset)
-        cuda_safe_call(cudaMemcpy(field, field_g, gd.ijcells*sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(field, field_g, gd.ijcells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
 
 /**

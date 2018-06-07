@@ -30,21 +30,22 @@ class Diff_disabled : public Diff<TF>
 {
     public:
         Diff_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        virtual ~Diff_disabled();                                ///< Destructor of the diffusion class
+        ~Diff_disabled();                                ///< Destructor of the diffusion class
 
-        virtual Diffusion_type get_switch();
-        virtual unsigned long get_time_limit(unsigned long, double);
-        virtual double get_dn(double);
+        Diffusion_type get_switch() const;
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
         // Empty functions which simply pass for disabled diffusion
-        virtual void set_values() {}
-        virtual void exec_viscosity() {}
-        virtual void exec() {}
+        void set_values() {}
+        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+        void init() {}
+        void exec() {}
 
-        //#ifdef USECUDA
-        //// GPU functions and variables
-        //void prepare_device() {}
-        //#endif
+        #ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device() {}
+        #endif
     private:
 
         const Diffusion_type swdiff = Diffusion_type::Disabled;

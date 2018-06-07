@@ -100,21 +100,21 @@ class Stats
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string);
 
-        //void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
-        //void add_time_series(std::string, std::string, std::string);
+        void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
+        void add_time_series(std::string, std::string, std::string);
 
         void calc_area(TF*, const int[3], int*);
         void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
 
-        //void calc_mean2d(double* const, const double* const,
-        //                 const double,
-        //                 const double* const, const int* const);
+        void calc_mean_2d(TF&, const TF* const,
+                          const TF,
+                          const TF* const, const int);
 
         void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 
         void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
-        //void calc_diff_2nd(double*, double*, double*, double*, double*,
-        //                   double*, double*, double, const int[3], double*, int*);
+        void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
+                           TF*, TF*, TF, const int[3], TF*, int*);
         //void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
 
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);

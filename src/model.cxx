@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,11 +30,14 @@
 #include "fields.h"
 #include "data_block.h"
 #include "timeloop.h"
+#include "fft.h"
 #include "boundary.h"
 #include "advec.h"
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "thermo.h"
+#include "radiation.h"
 #include "decay.h"
 #include "stats.h"
 #include "column.h"
@@ -101,21 +104,25 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid          = std::make_shared<Grid<TF>>(master, *input);
-        fields        = std::make_shared<Fields<TF>>(master, *grid, *input);
-        timeloop      = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        grid     = std::make_shared<Grid<TF>>(master, *input);
+        fields   = std::make_shared<Fields<TF>>(master, *grid, *input);
+        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        fft      = std::make_shared<FFT<TF>>(master, *grid);
 
         boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
         advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        pres     = Pres<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
+        pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
+        thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
 
-        force    = std::make_shared<Force<TF>>(master, *grid, *fields, *input);
-        decay    = std::make_shared<Decay<TF>>(master, *grid, *fields, *input);
-        stats    = std::make_shared<Stats<TF>>(master, *grid, *fields, *input);
-        column   = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump     = std::make_shared<Dump<TF>>(master, *grid, *fields, *input);
-        cross    = std::make_shared<Cross<TF>>(master, *grid, *fields, *input);
+        radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
+        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *input);
+        column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
+        dump      = std::make_shared<Dump     <TF>>(master, *grid, *fields, *input);
+        cross     = std::make_shared<Cross    <TF>>(master, *grid, *fields, *input);
+
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -155,9 +162,14 @@ void Model<TF>::init()
     grid->init();
     fields->init(*dump, *cross);
 
-    boundary->init(*input);
+    fft->init();
+
+    boundary->init(*input, *thermo);
+    diff->init();
     pres->init();
     force->init();
+    thermo->init();
+    radiation->init();
     decay->init(*input);
 
     stats->init(timeloop->get_ifactor());
@@ -195,6 +207,7 @@ void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load();
+    fft->load();
     timeloop->load(timeloop->get_iotime());
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
@@ -205,13 +218,16 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
-    fields->create_stats(*stats);
+    fields->create_stats(*stats, *diff);
     fields->create_column(*column);
 
-    boundary->create(*input);
-    force->create(*input);
+    boundary->create(*input, *stats);
+    force->create(*input, *profs);
+    thermo->create(*input, *profs, *stats, *column, *cross, *dump);
+    radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
 
+    boundary->set_values();
     pres->set_values();
     diff->set_values();
 }
@@ -226,6 +242,7 @@ void Model<TF>::save()
 
     // Save the initialized data to disk for the run mode.
     grid->save();
+    fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
 }
@@ -244,16 +261,16 @@ void Model<TF>::exec()
 
     // Update the time dependent parameters.
     // boundary->update_time_dependent();
-    // force   ->update_time_dependent();
+     force   ->update_time_dependent(*timeloop);
 
     // Set the boundary conditions.
-    boundary->exec();
+    boundary->exec(*thermo);
 
     // Calculate the field means, in case needed.
-    // fields->exec();
+    fields->exec();
 
     // Get the viscosity to be used in diffusion.
-    diff->exec_viscosity();
+    diff->exec_viscosity(*boundary, *thermo);
 
     // Set the time step.
     set_time_step();
@@ -276,7 +293,10 @@ void Model<TF>::exec()
         diff->exec();
 
         // Calculate the thermodynamics and the buoyancy tendency.
-        // thermo->exec();
+        thermo->exec();
+
+        // Calculate the radiation fluxes and the related heating rate.
+        radiation->exec(*thermo);
 
         // Calculate the tendency due to damping in the buffer layer.
         // buffer->exec();
@@ -301,8 +321,8 @@ void Model<TF>::exec()
                 if(t_stat.joinable())
                     t_stat.join();
                 fields  ->backward_device();
-                //boundary->backward_device();
-                // thermo  ->backward_device();
+                boundary->backward_device();
+                thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
                         timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
@@ -336,7 +356,7 @@ void Model<TF>::exec()
 
                 fields  ->backward_device();
                 // boundary->backward_device();
-                // thermo  ->backward_device();
+                thermo  ->backward_device();
                 #endif
 
                 // Save data to disk.
@@ -362,32 +382,32 @@ void Model<TF>::exec()
 
         // Update the time dependent parameters.
         // boundary->update_time_dependent();
-        // force   ->update_time_dependent();
+        force   ->update_time_dependent(*timeloop);
 
         // Set the boundary conditions.
-        boundary->exec();
+        boundary->exec(*thermo);
 
         // Calculate the field means, in case needed.
         // fields->exec();
 
         // Get the viscosity to be used in diffusion.
-        diff->exec_viscosity();
+        diff->exec_viscosity(*boundary, *thermo);
 
         // Write status information to disk.
         print_status();
 
     } // End time loop.
 
-        #ifdef USECUDA
-        // At the end of the run, copy the data back from the GPU.
-        if(t_stat.joinable())
-            t_stat.join();
-        fields  ->backward_device();
-        // boundary->backward_device();
-        //thermo  ->backward_device();
+    #ifdef USECUDA
+    // At the end of the run, copy the data back from the GPU.
+    if(t_stat.joinable())
+        t_stat.join();
+    fields  ->backward_device();
+    // boundary->backward_device();
+    thermo  ->backward_device();
 
-        clear_gpu();
-        #endif
+    clear_gpu();
+    #endif
 }
 
 #ifdef USECUDA
@@ -399,9 +419,9 @@ void Model<TF>::prepare_gpu()
     grid    ->prepare_device();
     fields  ->prepare_device();
     // buffer  ->prepare_device();
-    // thermo  ->prepare_device();
-    // boundary->prepare_device();
-    // diff    ->prepare_device();
+    thermo  ->prepare_device();
+    boundary->prepare_device();
+    diff    ->prepare_device();
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
@@ -415,7 +435,7 @@ void Model<TF>::clear_gpu()
     grid    ->clear_device();
     fields  ->clear_device();
     // buffer  ->clear_device();
-    // thermo  ->clear_device();
+    thermo  ->clear_device();
     // boundary->clear_device();
     // diff    ->clear_device();
     force   ->clear_device();
@@ -451,11 +471,11 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             }
 
             // Calculate statistics
-            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
-            //thermo  ->exec_stats(&stats->masks[maskname]);
+            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
+            thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
             //budget  ->exec_stats(&stats->masks[maskname]);
-            //boundary->exec_stats(&stats->masks[maskname]);
-            //
+            boundary->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+
             fields->release_tmp(mask_field );
             fields->release_tmp(mask_fieldh);
         }
@@ -468,19 +488,19 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
    if(cross->do_cross(itime))
     {
         fields  ->exec_cross(*cross, iotime);
-//        thermo  ->exec_cross(iotime);
+        thermo  ->exec_cross(*cross, iotime);
 //        boundary->exec_cross(iotime);
     }
    // Save the 3d dumps to disk
     if(dump->do_dump(itime))
     {
         fields->exec_dump(*dump, iotime);
-//        thermo->exec_dump(iotime);
+        thermo->exec_dump(*dump, iotime);
     }
     if(column->do_column(itime))
     {
         fields->exec_column(*column);
-//        thermo->exec_column();
+        thermo->exec_column(*column);
         column->exec(iteration, time, itime);
     }
 }
@@ -496,7 +516,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit();
     timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    // timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
@@ -540,7 +560,7 @@ void Model<TF>::print_status()
     {
         start = master.get_wall_clock_time();
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::string outputname = sim_name + ".out";
             dnsout = std::fopen(outputname.c_str(), "a");
@@ -563,29 +583,24 @@ void Model<TF>::print_status()
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
         const TF div = pres->check_divergence();
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-//        TF mom  = fields->check_momentum();
-//        TF tke  = fields->check_tke();
-//        TF mass = fields->check_mass();
-        TF mom = 0.;
-        TF tke = 0.;
-        TF mass = 0;
+        TF mom  = fields->check_momentum();
+        TF tke  = fields->check_tke();
+        TF mass = fields->check_mass();
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
             std::fflush(dnsout);
         }
 
-
         if (!std::isfinite(cfl))
         {
-            master.print_error("Simulation has non-finite numbers.\n");
-            throw 1;
+            std::string error_message = "Simulation has non-finite numbers";
+            throw std::runtime_error(error_message);
         }
-
     }
 }
 

@@ -25,23 +25,29 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include "boundary_cyclic.h"
 #include "field3d.h"
+#include "field3d_io.h"
+#include "field3d_operators.h"
 
 class Master;
 class Input;
+class Data_block;
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Diff;
 template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Field3d_io;
+template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
-enum Offset_type {Offset, No_offset};
 
 template<typename TF>
 class Fields
@@ -52,14 +58,14 @@ class Fields
 
         void init(Dump<TF>&,Cross<TF>&);   ///< Initialization of the field arrays.
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
-        void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
+        void create_stats(Stats<TF>&, const Diff<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
 
-        // void exec();
+        void exec();
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&);   ///< Calculate the statistics
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
         void init_momentum_field  (std::string, std::string, std::string);
@@ -75,14 +81,13 @@ class Fields
         void save(int);
         void load(int);
 
-        double check_momentum();
-        double check_tke();
-        double check_mass();
+        TF check_momentum();
+        TF check_tke();
+        TF check_mass();
 
         bool has_mask(std::string);
 
-        // void set_calc_mean_profs(bool);
-        // void set_minimum_tmp_fields(int);
+        void set_calc_mean_profs(bool);
 
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
@@ -97,9 +102,6 @@ class Fields
         Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
-
-        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
-        std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
@@ -125,12 +127,12 @@ class Fields
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
 
-        void forward_field_device_3d (TF*, TF*, Offset_type); ///< Copy of a single 3d field from host to device
-        void forward_field_device_2d (TF*, TF*, Offset_type); ///< Copy of a single 2d field from host to device
-        void forward_field_device_1d (TF*, TF*, int);         ///< Copy of a single array from host to device
-        void backward_field_device_3d(TF*, TF*, Offset_type); ///< Copy of a single 3d field from device to host
-        void backward_field_device_2d(TF*, TF*, Offset_type); ///< Copy of a single 2d field from device to host
-        void backward_field_device_1d(TF*, TF*, int);         ///< Copy of a single array from device to host
+        void forward_field_device_3d (TF*, TF*);       ///< Copy of a single 3d field from host to device
+        void forward_field_device_2d (TF*, TF*);       ///< Copy of a single 2d field from host to device
+        void forward_field_device_1d (TF*, TF*, int);  ///< Copy of a single array from host to device
+        void backward_field_device_3d(TF*, TF*);       ///< Copy of a single 3d field from device to host
+        void backward_field_device_2d(TF*, TF*);       ///< Copy of a single 2d field from device to host
+        void backward_field_device_1d(TF*, TF*, int);  ///< Copy of a single array from device to host
 
         TF* rhoref_g;  ///< Reference density at full levels at device
         TF* rhorefh_g; ///< Reference density at half levels at device
@@ -139,10 +141,16 @@ class Fields
     private:
         Master& master;
         Grid<TF>& grid;
+        Boundary_cyclic<TF> boundary_cyclic;
+        Field3d_io<TF> field3d_io;
+        Field3d_operators<TF> field3d_operators;
 
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
+
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 
         // cross sections
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
@@ -170,11 +178,6 @@ class Fields
         TF vortexamp;
         int vortexnpair;
         std::string vortexaxis;
-
-        // Kernels for the check functions.
-        // double calc_momentum_2nd(double*, double*, double*, double*);
-        // double calc_tke_2nd     (double*, double*, double*, double*);
-        // double calc_mass        (double*, double*);
 
         void add_mean_profs(Data_block&);
         // int add_mean_prof(Input*, std::string, double*, double);

@@ -37,7 +37,8 @@
 
 template<typename TF>
 Advec<TF>::Advec(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields),
+    cflmin(1.E-5)
 {
     cflmax = input.get_item<TF>("advec", "cflmax", "", 1.);
     swadvec = "0";
@@ -69,9 +70,6 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(Master& masterin, Grid<TF>& gridin
         throw std::runtime_error("Illegal options swadvec");
     }
 }
-
-template<typename TF>
-const double Advec<TF>::cflmin = 1.E-5;
 
 template<typename TF>
 std::string Advec<TF>::get_switch()

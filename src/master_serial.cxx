@@ -34,7 +34,7 @@ Master::Master()
 
 Master::~Master()
 {
-    print_message("Finished run on %d processes\n", nprocs);
+    print_message("Finished run on %d processes\n", md.nprocs);
 }
 
 void Master::start()
@@ -42,36 +42,36 @@ void Master::start()
     initialized = true;
 
     // Set the rank of the only process to 0.
-    mpiid = 0;
+    md.mpiid = 0;
     // Set the number of processes to 1.
-    nprocs = 1;
+    md.nprocs = 1;
 
     // Set the wall clock time at start.
     wall_clock_start = get_wall_clock_time();
 
-    print_message("Starting run on %d processes\n", nprocs);
+    print_message("Starting run on %d processes\n", md.nprocs);
 
 }
 
 void Master::init(Input& input)
 {
-    npx = input.get_item<int>("master", "npx", "", 1);
-    npy = input.get_item<int>("master", "npy", "", 1);
+    md.npx = input.get_item<int>("master", "npx", "", 1);
+    md.npy = input.get_item<int>("master", "npy", "", 1);
 
     // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
     double wall_clock_limit = input.get_item<double>("master", "wallclocklimit", "", 1E8);
 
     wall_clock_end = wall_clock_start + 3600.*wall_clock_limit;
 
-    if (nprocs != npx*npy)
+    if (md.nprocs != md.npx*md.npy)
     {
-        print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
+        print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", md.npx, md.npy);
         throw 1;
     }
 
     // set the coordinates to 0
-    mpicoordx = 0;
-    mpicoordy = 0;
+    md.mpicoordx = 0;
+    md.mpicoordy = 0;
 
     allocated = true;
 }
@@ -83,7 +83,7 @@ double Master::get_wall_clock_time()
     return (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
 }
 
-void  Master::wait_all() {}
+// void Master::wait_all() {}
 
 // All broadcasts return directly, because there is nothing to broadcast.
 void Master::broadcast(char* data, int datasize) {}

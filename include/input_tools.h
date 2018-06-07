@@ -14,7 +14,7 @@ namespace Input_tools
             throw std::runtime_error("Illegal string");
 
         // Return string if all characters are alphanumeric.
-        if (find_if(s.begin(), s.end(), [](const char c) { return !std::isalnum(c); }) == s.end())
+        if (find_if(s.begin(), s.end(), [](const char c) { return !(std::isalnum(c) || c == '[' || c == ']'); }) == s.end())
             return;
         else
             throw std::runtime_error("Illegal string: " + s);
@@ -39,7 +39,7 @@ namespace Input_tools
     inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
     {
         int has_line = false;
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             if (std::getline(infile, line))
                 has_line = true;
@@ -51,7 +51,7 @@ namespace Input_tools
             // Broadcasting a std::string. This is ugly!
             int line_size = line.size();
             master.broadcast(&line_size, 1);
-            if (master.mpiid != 0)
+            if (master.get_mpiid() != 0)
                 line.resize(line_size);
             master.broadcast(const_cast<char*>(line.data()), line_size);
         }

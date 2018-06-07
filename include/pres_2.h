@@ -25,6 +25,7 @@
 
 #include "pres.h"
 #include "defines.h"
+#include "boundary_cyclic.h"
 
 class Master;
 template<typename> class Grid;
@@ -34,7 +35,7 @@ template<typename TF>
 class Pres_2 : public Pres<TF>
 {
     public:
-        Pres_2(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Pres_2(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
         ~Pres_2();
 
         void init();
@@ -53,6 +54,8 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::grid;
         using Pres<TF>::fields;
         using Pres<TF>::field3d_operators;
+        using Pres<TF>::fft;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         std::vector<TF> bmati;
         std::vector<TF> bmatj;
@@ -79,8 +82,7 @@ class Pres_2 : public Pres<TF>
                    const TF);
 
         void solve(TF* const restrict, TF* const restrict, TF*,
-                   const TF* const restrict, const TF* const restrict,
-                   TF* const restrict, TF* const restrict, TF*, TF*);
+                   const TF* const restrict, const TF* const restrict);
 
         void output(TF* const restrict, TF* const restrict, TF* const restrict,
                     const TF* const restrict, const TF* const restrict);

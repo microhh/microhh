@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,6 +33,7 @@
 #include "finite_difference.h"
 #include "timeloop.h"
 #include "boundary.h"
+#include "data_block.h"
 
 using namespace Finite_difference::O2;
 
@@ -54,6 +55,152 @@ namespace
                    ut[ijk] +=fbody;
                }
     }
+    template<typename TF>
+    void calc_coriolis_2nd(
+            TF* const restrict ut, TF* const restrict vt,
+            const TF* const restrict u , const TF* const restrict v ,
+            const TF* const restrict ug, const TF* const restrict vg, TF const fc,
+            const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
+            const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
+                }
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
+                }
+    }
+
+    template<typename TF>
+    void calc_coriolis_4th(TF* const restrict ut, TF* const restrict vt,
+                                  const TF* const restrict u , const TF* const restrict v ,
+                                  const TF* const restrict ug, const TF* const restrict vg, TF const fc,
+                                  const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
+                                  const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+    {
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int kk1 = 1*ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1])
+                                      + ci1*(ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ])
+                                      + ci2*(ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1])
+                                      + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) )
+                                    + vgrid - vg[k] );
+                }
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii1-jj2] + ci1*u[ijk-jj2] + ci2*u[ijk+ii1-jj2] + ci3*u[ijk+ii2-jj2])
+                                      + ci1*(ci0*u[ijk-ii1-jj1] + ci1*u[ijk-jj1] + ci2*u[ijk+ii1-jj1] + ci3*u[ijk+ii2-jj1])
+                                      + ci2*(ci0*u[ijk-ii1    ] + ci1*u[ijk    ] + ci2*u[ijk+ii1    ] + ci3*u[ijk+ii2    ])
+                                      + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) )
+                                    + ugrid - ug[k]);
+                }
+    }
+
+    template<typename TF>
+    void calc_large_scale_source(
+            TF* const restrict st, const TF* const restrict sls,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int ijcells, const int kstart, const int kend)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] += sls[k];
+                }
+    }
+
+    template<typename TF>
+    void calc_nudging_tendency(
+            TF* const restrict fldtend, const TF* const restrict fldmean,
+            const TF* const restrict ref, const TF* const restrict factor,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int ijcells, const int kstart, const int kend)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF tend = -factor[k] * (fldmean[k] - ref[k]);
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    fldtend[ijk] += tend;
+                }
+        }
+    }
+
+    template<typename TF>
+    void advec_wls_2nd(TF* const restrict st, const TF* const restrict s,
+                              const TF* const restrict wls, const TF* const dzhi,
+                              const int istart, const int iend, const int icells, const int jstart, const int jend,
+                              const int ijcells, const int kstart, const int kend)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // use an upwind differentiation
+        for (int k=kstart; k<kend; ++k)
+        {
+            if (wls[k] > 0.)
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
+                    }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
+                    }
+            }
+        }
+    }
+
 }
 
 template<typename TF>
@@ -62,8 +209,13 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 {
     // Read the switches from the input
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
+    std::string swls_in     = inputin.get_item<std::string>("force", "swls", "", "0");
+    std::string swwls_in    = inputin.get_item<std::string>("force", "swwls", "", "0");
+    std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge", "", "0");
 
     // Set the internal switches and read other required input
+
+    // Large-scale pressure forcing.
     if (swlspres_in == "0")
         swlspres = Large_scale_pressure_type::disabled;
     else if (swlspres_in == "uflux")
@@ -74,97 +226,175 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
+        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo",   "", "0");
+        tdep_geo.vars = {"ug", "vg"};
     }
     else
         throw std::runtime_error("Invalid option for \"swlspres\"");
+
+    // Large-scale tendencies due to advection and other processes.
+    if (swls_in == "0")
+        swls = Large_scale_tendency_type::disabled;
+    else if (swls_in == "1")
+    {
+        swls = Large_scale_tendency_type::enabled;
+        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls",   "", "0");
+        lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
+        tdep_ls.vars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
+    }
+    else
+    {
+        throw std::runtime_error("Invalid option for \"swls\"");
+    }
+
+    // Large-scale subsidence.
+    if (swwls_in == "0")
+        swwls = Large_scale_subsidence_type::disabled;
+    else if (swwls_in == "1")
+    {
+        swwls = Large_scale_subsidence_type::enabled;
+        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls",   "", "0");
+        fields.set_calc_mean_profs(true);
+    }
+    else
+    {
+        throw std::runtime_error("Invalid option for \"swwls\"");
+    }
+
+    // Nudging.
+    if (swnudge_in == "0")
+        swnudge = Nudging_type::disabled;
+    else if (swnudge_in == "1")
+    {
+        swnudge = Nudging_type::enabled;
+        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge",   "", "0");
+        tdep_nudge.vars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
+        fields.set_calc_mean_profs(true);
+    }
+    else
+    {
+        throw std::runtime_error("Invalid option for \"swnduge\"");
+    }
 }
 
 template <typename TF>
 Force<TF>::~Force()
 {
+    #ifdef USECUDA
+    clear_device();
+    #endif
 }
 
 template <typename TF>
 void Force<TF>::init()
 {
-//    if (swlspres == "geo")
-//    {
-//        ug = new double[grid->kcells];
-//        vg = new double[grid->kcells];
-//    }
-//
-//    if (swls == "1")
-//    {
-//        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-//            lsprofs[*it] = new double[grid->kcells];
-//    }
-//
-//    if (swwls == "1")
-//        wls = new double[grid->kcells];
+    auto& gd = grid.get_grid_data();
+
+    if (swlspres == Large_scale_pressure_type::geo_wind)
+    {
+        ug.resize(gd.kcells);
+        vg.resize(gd.kcells);
+    }
+
+    if (swls == Large_scale_tendency_type::enabled)
+    {
+        for (auto& it : lsprofs)
+            it.second.resize(gd.kcells);
+    }
+    if (swwls == Large_scale_subsidence_type::enabled)
+        wls.resize(gd.kcells);
+
+    if (swnudge == Nudging_type::enabled)
+    {
+        for (auto& it : nudgeprofs)
+            it.second.resize(gd.kcells);
+    }
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin)
+void Force<TF>::create(Input& inputin, Data_block& profs)
 {
-//    int nerror = 0;
-//
-//    if (swlspres == "geo")
-//    {
-//        nerror += inputin->get_prof(&ug[grid->kstart], "ug", grid->kmax);
-//        nerror += inputin->get_prof(&vg[grid->kstart], "vg", grid->kmax);
-//    }
-//
-//    if (swls == "1")
-//    {
-//        // check whether the fields in the list exist in the prognostic fields
-//        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-//            if (!fields->ap.count(*it))
-//            {
-//                master->print_error("field %s in [force][lslist] is illegal\n", it->c_str());
-//                ++nerror;
-//            }
-//
-//        // read the large scale sources, which are the variable names with a "ls" suffix
-//        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-//            nerror += inputin->get_prof(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
-//    }
-//
-//    if (swwls == "1")
-//        nerror += inputin->get_prof(&wls[grid->kstart], "wls", grid->kmax);
-//
-//    // process the profiles for the time dependent data
-//    if (swtimedep == "1")
-//    {
-//        // create temporary list to check which entries are used
-//        std::vector<std::string> tmplist = timedeplist;
-//
-//        // process time dependent bcs for the large scale forcings
-//        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-//        {
-//            // \TODO make sure to give each element its own time series and remove the clear()
-//            timedeptime.clear();
-//            std::string name = *it + "ls";
-//            if (std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end())
-//            {
-//                nerror += inputin->get_time_prof(&timedepdata[name], &timedeptime, name, grid->kmax);
-//
-//                // remove the item from the tmplist
-//                std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), *it);
-//                if (ittmp != tmplist.end())
-//                    tmplist.erase(ittmp);
-//            }
-//        }
-//
-//        // display a warning for the non-supported
-//        for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-//            master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
-//    }
-//
-//    if (nerror)
-//        throw 1;
+    auto& gd = grid.get_grid_data();
+    if (swlspres == Large_scale_pressure_type::geo_wind)
+    {
+        profs.get_vector(ug, "ug", gd.kmax, 0, gd.kstart);
+        profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
+
+        if (tdep_geo.sw)
+            create_timedep(tdep_geo,"g");
+    }
+
+    if (swls == Large_scale_tendency_type::enabled)
+    {
+        // check whether the fields in the list exist in the prognostic fields
+        for (auto & it : lslist)
+            if (!fields.ap.count(it))
+            {
+                throw std::runtime_error("field  %s in [force][lslist] is illegal\n");
+            }
+
+        // read the large scale sources, which are the variable names with a "ls" suffix
+        for (auto & it : lslist)
+            profs.get_vector(lsprofs[it],it+"ls", gd.kmax, 0, gd.kstart);
+
+        // Process the time dependent data
+        if (tdep_ls.sw)
+            create_timedep(tdep_geo,"ls");
+    }
+
+    if (swnudge == Nudging_type::enabled)
+    {
+        // Get profile with nudging factor as function of height
+        profs.get_vector(nudge_factor,"nudgefac", gd.kmax, 0, gd.kstart);
+
+        // check whether the fields in the list exist in the prognostic fields
+        for (auto & it : nudgelist)
+            if (!fields.ap.count(it))
+            {
+                throw std::runtime_error("field %s in [force][nudgelist] is illegal\n");
+            }
+
+        // read the large scale sources, which are the variable names with a "nudge" suffix
+        for (auto & it : nudgelist)
+            profs.get_vector(nudgeprofs[it],it+"nudge", gd.kmax, 0, gd.kstart);
+
+        // Process the time dependent data
+        if (tdep_nudge.sw)
+            create_timedep(tdep_nudge,"nudge");
+    }
+
+    // Get the large scale vertical velocity from the input
+    if (swwls == Large_scale_subsidence_type::enabled)
+    {
+        profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
+
+        if (tdep_wls.sw)
+            create_timedep(tdep_wls,"wls");
+    }
 }
 
-//#ifndef USECUDA
+template <typename TF>
+void Force<TF>::create_timedep(Force<TF>::Time_dep& timedep, std::string suffix)
+{
+    auto& gd = grid.get_grid_data();
+    std::vector<TF> tmp;
+    for (auto& var : timedep.vars)
+    {
+        Data_block data_block(master, var+suffix);
+        std::vector<std::string> headers = data_block.get_headers();
+        // Sort the times
+        std::sort(headers.begin()+1, headers.end());
+
+        for (auto& it : headers)
+        {
+            timedep.time[var].push_back(std::stod(it));
+            data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
+            timedep.data[var].insert(timedep.data[var].end(),tmp.begin(),tmp.end());
+        }
+    }
+}
+
+#ifndef USECUDA
 template <typename TF>
 void Force<TF>::exec(double dt)
 {
@@ -178,325 +408,103 @@ void Force<TF>::exec(double dt)
         enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
 
-    //else if (swlspres == "geo")
-    //{
-    //    if (grid->swspatialorder == "2")
-    //        calc_coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
-    //    else if (grid->swspatialorder == "4")
-    //        calc_coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
-    //}
+    else if (swlspres == Large_scale_pressure_type::geo_wind)
+    {
+        if (grid.swspatialorder == "2")
+            calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
+            grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
+            gd.ijcells, gd.kstart, gd.kend);
+        else if (grid.swspatialorder == "4")
+            calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
+            grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
+            gd.ijcells, gd.kstart, gd.kend);
+    }
 
-    //if (swls == "1")
-    //{
-    //    for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-    //        calc_large_scale_source(fields->st[*it]->data, lsprofs[*it]);
-    //}
+    if (swls == Large_scale_tendency_type::enabled)
+    {
+        for (auto& it : lslist)
+            calc_large_scale_source<TF>(fields.st.at(it)->fld.data(), lsprofs.at(it).data(),
+            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
+            gd.ijcells, gd.kstart, gd.kend);
+    }
 
-    //if (swwls == "1")
-    //{
-    //    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    //        advec_wls_2nd(it->second->data, fields->sp[it->first]->fld_mean, wls, grid->dzhi);
-    //}
+    if (swwls == Large_scale_subsidence_type::enabled)
+    {
+        for (auto& it : fields.st)
+            advec_wls_2nd<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(), wls.data(), gd.dzhi.data(),
+            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
+            gd.ijcells, gd.kstart, gd.kend);
+    }
+
+    if (swnudge == Nudging_type::enabled)
+    {
+        for (auto& it : nudgelist)
+            calc_nudging_tendency<TF>(fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
+            nudgeprofs.at(it).data(), nudge_factor.data(),
+            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
+            gd.ijcells, gd.kstart, gd.kend);
+    }
 }
-//#endif
+#endif
 
-//Force::Force(Model* modelin, Input* inputin)
-//{
+#ifndef USECUDA
+template <typename TF>
+void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    if (tdep_ls.sw)
+        update_time_dependent_profs(timeloop, lsprofs, tdep_ls);
+    if (tdep_nudge.sw)
+        update_time_dependent_profs(timeloop, nudgeprofs, tdep_nudge);
+    if (tdep_geo.sw)
+    {
+        update_time_dependent_prof(timeloop, ug, tdep_geo,"u");
+        update_time_dependent_prof(timeloop, vg, tdep_geo,"v");
+    }
+    if (tdep_wls.sw)
+        update_time_dependent_prof(timeloop, wls, tdep_wls,"w");
+}
+#endif
 
+template <typename TF>
+void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, Time_dep& timedep)
+{
+    auto& gd = grid.get_grid_data();
+    const int kk = gd.kmax;
+    const int kgc = gd.kgc;
 
-    //model  = modelin;
-    //grid   = model->grid;
-    //fields = model->fields;
-    //master = model->master;
+    // Loop over all profiles which might be time dependent
+    for (auto& it : timedep.data)
+    {
+        // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
+        int index0 = 0, index1 = 0;
+        TF fac0 = 0., fac1 = 0.;
 
-    //ug  = 0;
-    //vg  = 0;
-    //wls = 0;
+        timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
 
-    //ug_g  = 0;
-    //vg_g  = 0;
-    //wls_g = 0;
+        // Calculate the new vertical profile
+        for (int k=0; k<gd.kmax; ++k    )
+            profiles[it.first][k+kgc] = fac0 * it.second[index0*kk+k] + fac1 * it.second[index1*kk+k];
+    }
+}
 
-    //int nerror = 0;
-    //nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
-    //nerror += inputin->get_item(&swls    , "force", "swls"    , "", "0");
-    //nerror += inputin->get_item(&swwls   , "force", "swwls"   , "", "0");
+template <typename TF>
+void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, Time_dep& timedep, const std::string& name)
+{
+    auto& gd = grid.get_grid_data();
+    const int kk = gd.kmax;
+    const int kgc = gd.kgc;
 
-    //if (swlspres != "0")
-    //{
-    //    if (swlspres == "uflux")
-    //        nerror += inputin->get_item(&uflux, "force", "uflux", "");
-    //    else if (swlspres == "geo")
-    //        nerror += inputin->get_item(&fc, "force", "fc", "");
-    //    else
-    //    {
-    //        ++nerror;
-    //        master->print_error("\"%s\" is an illegal option for swlspres\n", swlspres.c_str());
-    //    }
-    //}
+    // Get/calculate the interpolation indexes/factors
+    int index0 = 0, index1 = 0;
+    TF fac0 = 0., fac1 = 0.;
+    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[name]);
 
-    //if (swls == "1")
-    //    nerror += inputin->get_list(&lslist, "force", "lslist", "");
-    //else if (swls != "0")
-    //{
-    //    ++nerror;
-    //    master->print_error("\"%s\" is an illegal option for swls\n", swls.c_str());
-    //}
-
-    //if (swwls == "1")
-    //    fields->set_calc_mean_profs(true);
-    //else if (swwls != "0")
-    //{
-    //    ++nerror;
-    //    master->print_error("\"%s\" is an illegal option for swwls\n", swwls.c_str());
-    //}
-
-    //// get the list of time varying variables
-    //nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
-    //nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
-
-    //if (nerror)
-    //    throw 1;
-//}
-
-//Force::~Force()
-//{
-//    delete[] ug;
-//    delete[] vg;
-//    delete[] wls;
-//
-//    if (swls == "1")
-//    {
-//        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-//            delete[] lsprofs[*it];
-//    }
-//
-//    // clean up time dependent data
-//    for (std::map<std::string, double*>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-//        delete[] it->second;
-//
-//#ifdef USECUDA
-//    clear_device();
-//#endif
-//}
-//
-//
-//
-//void Force::update_time_dependent()
-//{
-//    if (swtimedep == "0")
-//        return;
-//
-//    // first find the index for the time entries
-//    unsigned int index0 = 0;
-//    unsigned int index1 = 0;
-//    for (std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
-//    {
-//        if (model->timeloop->get_time() < *it)
-//            break;
-//        else
-//            ++index1;
-//    }
-//
-//    // second, calculate the weighting factor
-//    double fac0, fac1;
-//
-//    // correct for out of range situations where the simulation is longer than the time range in input
-//    if (index1 == 0)
-//    {
-//        fac0 = 0.;
-//        fac1 = 1.;
-//        index0 = 0;
-//    }
-//    else if (index1 == timedeptime.size())
-//    {
-//        fac0 = 1.;
-//        fac1 = 0.;
-//        index0 = index1-1;
-//        index1 = index0;
-//    }
-//    else
-//    {
-//        index0 = index1-1;
-//        double timestep;
-//        timestep = timedeptime[index1] - timedeptime[index0];
-//        fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
-//        fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
-//    }
-//
-//    update_time_dependent_profs(fac0, fac1, index0, index1);
-//}
-//
-//#ifndef USECUDA
-//void Force::update_time_dependent_profs(const double fac0, const double fac1, const int index0, const int index1)
-//{
-//    // process time dependent bcs for the large scale forcings
-//    const int kk = grid->kmax;
-//    const int kgc = grid->kgc;
-//
-//    for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
-//    {
-//        std::string name = *it1 + "ls";
-//        std::map<std::string, double*>::const_iterator it2 = timedepdata.find(name);
-//
-//        // update the profile
-//        if (it2 != timedepdata.end())
-//            for (int k=0; k<grid->kmax; ++k)
-//                lsprofs[*it1][k+kgc] = fac0*it2->second[index0*kk+k] + fac1*it2->second[index1*kk+k];
-//    }
-//}
-//#endif
-//
-//void Force::calc_flux(double* const restrict ut, const double* const restrict u,
-//                      const double* const restrict dz, const double dt)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    const double ugrid = grid->utrans;
-//
-//    double uavg  = 0.;
-//    double utavg = 0.;
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                uavg  += u [ijk]*dz[k];
-//                utavg += ut[ijk]*dz[k];
-//            }
-//
-//    grid->get_sum(&uavg);
-//    grid->get_sum(&utavg);
-//
-//    uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
-//    utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
-//
-//    double fbody;
-//    fbody = (uflux - uavg - ugrid) / dt - utavg;
-//
-//    for (int n=0; n<grid->ncells; n++)
-//        ut[n] += fbody;
-//}
-//
-//void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict vt,
-//                              const double* const restrict u , const double* const restrict v ,
-//                              const double* const restrict ug, const double* const restrict vg)
-//{
-//    const int ii = 1;
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    const double ugrid = grid->utrans;
-//    const double vgrid = grid->vtrans;
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
-//            }
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
-//            }
-//}
-//
-//void Force::calc_coriolis_4th(double* const restrict ut, double* const restrict vt,
-//                              const double* const restrict u , const double* const restrict v ,
-//                              const double* const restrict ug, const double* const restrict vg)
-//{
-//    using namespace Finite_difference::O4;
-//
-//    const int ii1 = 1;
-//    const int ii2 = 2;
-//    const int jj1 = 1*grid->icells;
-//    const int jj2 = 2*grid->icells;
-//    const int kk1 = 1*grid->ijcells;
-//
-//    const double ugrid = grid->utrans;
-//    const double vgrid = grid->vtrans;
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj1 + k*kk1;
-//                ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1])
-//                                  + ci1*(ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ])
-//                                  + ci2*(ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1])
-//                                  + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) )
-//                                + vgrid - vg[k] );
-//            }
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj1 + k*kk1;
-//                vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii1-jj2] + ci1*u[ijk-jj2] + ci2*u[ijk+ii1-jj2] + ci3*u[ijk+ii2-jj2])
-//                                  + ci1*(ci0*u[ijk-ii1-jj1] + ci1*u[ijk-jj1] + ci2*u[ijk+ii1-jj1] + ci3*u[ijk+ii2-jj1])
-//                                  + ci2*(ci0*u[ijk-ii1    ] + ci1*u[ijk    ] + ci2*u[ijk+ii1    ] + ci3*u[ijk+ii2    ])
-//                                  + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) )
-//                                + ugrid - ug[k]);
-//            }
-//}
-//
-//void Force::calc_large_scale_source(double* const restrict st, const double* const restrict sls)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                st[ijk] += sls[k];
-//            }
-//}
-//
-//void Force::advec_wls_2nd(double* const restrict st, const double* const restrict s,
-//                          const double* const restrict wls, const double* const dzhi)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    // use an upwind differentiation
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//    {
-//        if (wls[k] > 0.)
-//        {
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
-//                }
-//        }
-//        else
-//        {
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
-//                }
-//        }
-//    }
-//}
-
+    // Calculate the new vertical profile
+    for (int k=0; k<gd.kmax; ++k)
+        prof[k+kgc] = fac0 * timedep.data[name][index0*kk+k] + fac1 * timedep.data[name][index1*kk+k];
+}
 
 template class Force<double>;
 template class Force<float>;

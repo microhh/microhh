@@ -26,8 +26,8 @@
 #include "pres_disabled.h"
 
 template<typename TF>
-Pres_disabled<TF>::Pres_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, inputin) {}
+Pres_disabled<TF>::Pres_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin) {}
 
 template<typename TF>
 Pres_disabled<TF>::~Pres_disabled() {}

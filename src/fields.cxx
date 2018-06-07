@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -39,7 +39,7 @@
 #include "column.h"
 #include "cross.h"
 #include "dump.h"
-// #include "diff_smag2.h"
+#include "diff.h"
 
 namespace
 {
@@ -106,13 +106,101 @@ namespace
                 maskbot[ij] = maskh[ijk];
             }
     }
-}
 
+    template<typename TF>
+    TF calc_momentum_2nd(
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        using Finite_difference::O2::interp2;
+
+        const int ii = 1;
+
+        TF momentum = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
+                }
+
+        master.sum(&momentum, 1);
+        momentum /= itot_jtot_zsize;
+
+        return momentum;
+    }
+
+    template<typename TF>
+    TF calc_tke_2nd(
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        using Finite_difference::O2::interp2;
+
+        const int ii = 1;
+
+        TF tke = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii])
+                           + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj])
+                           + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
+                }
+
+        master.sum(&tke, 1);
+        tke /= itot_jtot_zsize;
+        tke *= 0.5;
+
+        return tke;
+    }
+
+    template<typename TF>
+    TF calc_mass(
+            const TF* restrict s,
+            const TF* restrict dz, const TF itot_jtot_zsize,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk,
+            Master& master)
+    {
+        TF mass = 0;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    mass += s[ijk]*dz[k];
+                }
+
+        master.sum(&mass, 1);
+        mass /= itot_jtot_zsize;
+
+        return mass;
+    }
+}
 
 template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
-    grid(gridin)
+    grid(gridin),
+    boundary_cyclic(master, grid),
+    field3d_io(master, grid),
+    field3d_operators(master, grid, *this)
 {
     calc_mean_profs = false;
 
@@ -168,7 +256,6 @@ Fields<TF>::~Fields()
 template<typename TF>
 void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
 {
-
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
@@ -217,12 +304,29 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
+    // Init the toolbox classes.
+    boundary_cyclic.init();
+    field3d_io.init();
+
     // Set up output classes
     create_dump(dump);
     create_cross(cross);
-
-
 }
+
+
+#ifndef USECUDA
+template<typename TF>
+void Fields<TF>::exec()
+{
+    // calculate the means for the prognostic scalars
+    if (calc_mean_profs)
+    {
+        for (auto& it : ap)
+            field3d_operators.calc_mean_profile(it.second->fld_mean.data(),it.second->fld.data());
+    }
+}
+#endif
+
 
 template<typename TF>
 void Fields<TF>::create_dump(Dump<TF>& dump)
@@ -275,10 +379,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "",        crosslist_global, &cross_simple);
             check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
         }
-
-
    }
-
 }
 
 template<typename TF>
@@ -365,9 +466,9 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
                                           stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
                                           gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
 
-    grid.boundary_cyclic(mfield.fld.data());
-    grid.boundary_cyclic(mfieldh.fld.data());
-    grid.boundary_cyclic_2d(mfieldh.fld_bot.data());
+    boundary_cyclic.exec(mfield.fld.data());
+    boundary_cyclic.exec(mfieldh.fld.data());
+    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
 
     master.sum(stats.nmask.data() , gd.kcells);
     master.sum(stats.nmaskh.data(), gd.kcells);
@@ -375,7 +476,8 @@ void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& 
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh)
+void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
+        const Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -392,9 +494,6 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     const TF no_offset = 0.;
 
-    auto tmp1 = get_tmp();
-    auto tmp2 = get_tmp();
-
     // Save the area coverage of the mask
     stats.calc_area(m.profs["area" ].data.data(), sloc, stats.nmask .data());
     stats.calc_area(m.profs["areah"].data.data(), wloc, stats.nmaskh.data());
@@ -408,33 +507,42 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     }
 
     // Calculate the stats on the u location
-    // Interpolate the mask horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, uloc);
-    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, tmp1->fld.data(), stats.nmask.data());
-    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
+    // Interpolate the mask horizontally onto the u coordinate.
+    auto mask_on_u = get_tmp();
+    grid.interpolate_2nd(mask_on_u->fld.data(), mask_field.fld.data(), sloc, uloc);
+
+    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, mask_on_u->fld.data(), stats.nmask.data());
+    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, mask_on_u->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, mask_on_u->fld.data(), stats.nmask.data());
     }
+    release_tmp(mask_on_u);
 
     // Interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
+    auto maskh_on_u = get_tmp();
+    auto tmp = get_tmp();
+    grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
 
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["uw"].data.data(), tmp2->fld.data(), uloc, tmp1->fld.data(), stats.nmaskh.data());
-        //if (model->diff->get_switch() == "smag2")
-        //    stats.calc_diff_2nd(u->data, w->data, sd["evisc"]->data,
-        //                        m.profs["udiff"].data, grid.dzhi,
-        //                        u->flux_bot, u->flux_top, 1., uloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
-        //else
-            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, tmp1->fld.data(), stats.nmaskh.data());
+                            m.profs["uw"].data.data(), tmp->fld.data(), uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
 
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        {
+            stats.calc_diff_2nd(mp["u"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                m.profs["udiff"].data.data(), gd.dzhi.data(),
+                                mp["u"]->flux_bot.data(), mp["u"]->flux_top.data(), 1., uloc,
+                                maskh_on_u->fld.data(), stats.nmaskh.data());
+        }
+        else
+        {
+            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
+        }
     }
     else if (grid.swspatialorder == "4")
     {
@@ -446,33 +554,44 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         //stats.calc_diff_4th(u->data, m.profs["udiff"].data, grid.dzhi4, visc, uloc,
         //                    atmp["tmp1"]->data, stats.nmaskh);
     }
-
+    release_tmp(maskh_on_u);
 
     // Calculate the statistics on the v location
-    grid.interpolate_2nd(tmp1->fld.data(), mask_field.fld.data(), sloc, vloc);
-    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, tmp1->fld.data(), stats.nmask.data());
-    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, tmp1->fld.data(), stats.nmask.data());
+    auto mask_on_v = get_tmp();
+
+    grid.interpolate_2nd(mask_on_v->fld.data(), mask_field.fld.data(), sloc, vloc);
+    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, mask_on_v->fld.data(), stats.nmask.data());
+    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, mask_on_v->fld.data(), stats.nmask.data());
 
     for (int n=2; n<5; ++n)
     {
         std::string sn = std::to_string(n);
-        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, tmp1->fld.data(), stats.nmask.data());
+        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, mask_on_v->fld.data(), stats.nmask.data());
     }
+    release_tmp(mask_on_v);
+
 
     // interpolate the mask on half level horizontally onto the u coordinate
-    grid.interpolate_2nd(tmp1->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
+    auto maskh_on_v = get_tmp();
+    grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
+
     if (grid.swspatialorder == "2")
     {
-        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), tmp1->fld.data(), stats.nmaskh.data());
+        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["vw"].data.data(), tmp2->fld.data(), vloc, tmp1->fld.data(), stats.nmaskh.data());
-        //if (model->diff->get_switch() == "smag2")
-        //    stats.calc_diff_2nd(v->data, w->data, sd["evisc"]->data,
-        //                        m.profs["vdiff"].data, grid.dzhi,
-        //                        v->flux_bot, v->flux_top, 1., vloc,
-        //                        atmp["tmp1"]->data, stats.nmaskh);
-        //else
-            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, tmp1->fld.data(), stats.nmaskh.data());
+                            m.profs["vw"].data.data(), tmp->fld.data(), vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
+
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        {
+            stats.calc_diff_2nd(mp["v"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                m.profs["vdiff"].data.data(), gd.dzhi.data(),
+                                mp["v"]->flux_bot.data(), mp["v"]->flux_top.data(), 1., vloc,
+                                maskh_on_v->fld.data(), stats.nmaskh.data());
+        }
+        else
+        {
+            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
+        }
 
     }
     else if (grid.swspatialorder == "4")
@@ -484,6 +603,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         //stats.calc_diff_4th(v->data, m.profs["vdiff"].data, grid.dzhi4, visc, vloc,
         //                    atmp["tmp1"]->data, stats.nmaskh);
     }
+    release_tmp(maskh_on_v);
 
     // calculate stats for the prognostic scalars
     //Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
@@ -501,17 +621,20 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         {
             stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                                m.profs[it.first+"w"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-            //if (model->diff->get_switch() == "smag2")
-            //{
-            //    stats.calc_diff_2nd(it.second->data, w->data, sd["evisc"]->data,
-            //                        m.profs[it.first+"diff"].data, grid.dzhi,
-            //                        it.second->flux_bot, it.second->flux_top, diffptr->tPr, sloc,
-            //                        atmp["tmp4"]->data, stats.nmaskh);
-            //}
-            //else
+                                m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+
+            if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            {
+                stats.calc_diff_2nd(it.second->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
+                                    m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
+                                    it.second->flux_bot.data(), it.second->flux_top.data(), diff.tPr, sloc,
+                                    mask_fieldh.fld.data(), stats.nmaskh.data());
+            }
+            else
+            {
                 stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
                                     it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+            }
         }
         else if (grid.swspatialorder == "4")
         {
@@ -526,13 +649,13 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
 
     // Calculate pressure statistics
     stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, tmp1->fld.data(), stats.nmask.data());
+    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
 
     if (grid.swspatialorder == "2")
     {
         stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["pw"].data.data(), tmp1->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+                            m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
     else if (grid.swspatialorder == "4")
     {
@@ -548,19 +671,18 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     for (auto& it : sp)
         stats.add_fluxes(m.profs[it.first+"flux"].data.data(), m.profs[it.first+"w"].data.data(), m.profs[it.first+"diff"].data.data());
 
-    //if (model->diff->get_switch() == "smag2")
-    //    stats.calc_mean(m.profs["evisc"].data, sd["evisc"]->data, no_offset, sloc, atmp["tmp3"]->data, stats.nmask);
+    if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
-    release_tmp(tmp1);
-    release_tmp(tmp2);
+    release_tmp(tmp);
 }
 
-/*
-void Fields::set_calc_mean_profs(bool sw)
+template<typename TF>
+void Fields<TF>::set_calc_mean_profs(bool sw)
 {
     calc_mean_profs = sw;
 }
-
+/*
 void Fields::set_minimum_tmp_fields(int n)
 {
     n_tmp_fields = std::max(n_tmp_fields, n);
@@ -711,7 +833,7 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
     if (!seed)
     {
         seed = input.get_item<int>("fields", "rndseed", "", 0);
-        seed += master.mpiid + 2;
+        seed += master.get_mpiid() + 2;
         std::srand(seed);
     }
 
@@ -857,7 +979,7 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 //}
 
 template <typename TF>
-void Fields<TF>::create_stats(Stats<TF>& stats)
+void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
 {
     // Add the profiles to te statistics
     if (stats.get_switch())
@@ -879,8 +1001,8 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
 
 //        // CvH, shouldn't this call be in the diffusion class? BvS: yes ;-)
-//        if (model->diff->get_switch() == "smag2")
-//            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
+        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
 
         // Add the second up to fourth moments of the velocity and scalars
         for (int n=2; n<5; ++n)
@@ -939,7 +1061,6 @@ void Fields<TF>::create_column(Column<TF>& column)
 
         column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
     }
-
 }
 
 template<typename TF>
@@ -958,7 +1079,7 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (grid.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
+        if (field3d_io.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");
@@ -994,7 +1115,7 @@ void Fields<TF>::load(int n)
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
 
-        if (grid.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
+        if (field3d_io.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
                     filename, no_offset))
         {
             master.print_message("FAILED\n");
@@ -1013,111 +1134,53 @@ void Fields<TF>::load(int n)
         throw 1;
 }
 
-/*
 #ifndef USECUDA
-double Fields::check_momentum()
+template<typename TF>
+TF Fields<TF>::check_momentum()
 {
-    return calc_momentum_2nd(u->data, v->data, w->data, grid.dz);
+    auto& gd = grid.get_grid_data();
+    return calc_momentum_2nd(
+            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::check_tke()
+template<typename TF>
+TF Fields<TF>::check_tke()
 {
-    return calc_tke_2nd(u->data, v->data, w->data, grid.dz);
+    auto& gd = grid.get_grid_data();
+    return calc_tke_2nd(
+            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::check_mass()
+template<typename TF>
+TF Fields<TF>::check_mass()
 {
-    // CvH for now, do the mass check on the first scalar... Do we want to change this?
-    Field_map::const_iterator itProg=sp.begin();
+    auto& gd = grid.get_grid_data();
+
+    auto it = sp.begin();
     if (sp.begin() != sp.end())
-        return calc_mass(itProg->second->data, grid.dz);
+        return calc_mass(
+                it->second->fld.data(),
+                gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                master);
     else
         return 0.;
 }
 #endif
 
-double Fields::calc_mass(double* restrict s, double* restrict dz)
-{
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double mass = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                mass += s[ijk]*dz[k];
-            }
-
-    grid.get_sum(&mass);
-
-    mass /= (grid.itot*grid.jtot*grid.zsize);
-
-    return mass;
-}
-
-double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
-{
-    using Finite_difference::O2::interp2;
-
-    const int ii = 1;
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double momentum = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
-            }
-
-    grid.get_sum(&momentum);
-
-    momentum /= (grid.itot*grid.jtot*grid.zsize);
-
-    return momentum;
-}
-
-double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
-{
-    using Finite_difference::O2::interp2;
-
-    const int ii = 1;
-    const int jj = grid.icells;
-    const int kk = grid.ijcells;
-
-    double tke = 0;
-
-    for (int k=grid.kstart; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-#pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii])
-                       + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj])
-                       + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
-            }
-
-    grid.get_sum(&tke);
-
-    tke /= (grid.itot*grid.jtot*grid.zsize);
-    tke *= 0.5;
-
-    return tke;
-}
-*/
 template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
@@ -1147,20 +1210,19 @@ void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
         dump.save_dump(a.at(it)->fld.data(), a.at(it)->name, iotime);
 }
 
-
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
-    const double NoOffset = 0.;
+    const double no_offset = 0.;
 
     column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
     column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), NoOffset);
+    column.calc_column("w",mp["w"]->fld.data(), no_offset);
     for (auto& it : sp)
     {
-        column.calc_column(it.first, it.second->fld.data(), NoOffset);
+        column.calc_column(it.first, it.second->fld.data(), no_offset);
     }
-    column.calc_column("p", sd["p"]->fld.data(), NoOffset);
+    column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }
 
 template<typename TF>

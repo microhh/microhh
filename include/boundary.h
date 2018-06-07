@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,17 +20,31 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY
-#define BOUNDARY
+#ifndef BOUNDARY_H
+#define BOUNDARY_H
+
+#include "boundary_cyclic.h"
 
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Thermo;
 class Input;
-// struct Mask;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+
+/**
+ * Structure containing the boundary options and values per 3d field.
+ */
+template<typename TF>
+struct Field3dBc
+{
+    TF bot; ///< Value of the bottom boundary.
+    TF top; ///< Value of the top boundary.
+    Boundary_type bcbot; ///< Switch for the bottom boundary.
+    Boundary_type bctop; ///< Switch for the top boundary.
+};
 
 /**
  * Base class for the boundary scheme.
@@ -42,21 +56,21 @@ class Boundary
 {
     public:
         Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
-        virtual ~Boundary();      ///< Destructor of the boundary class.
+        virtual ~Boundary(); ///< Destructor of the boundary class.
 
         static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
-        virtual void init(Input&);   ///< Initialize the fields.
-        virtual void create(Input&); ///< Create the fields.
+        virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        virtual void create(Input&, Stats<TF>&); ///< Create the fields.
 
         // virtual void update_time_dependent(); ///< Update the time dependent parameters.
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
-        virtual void exec(); ///< Update the boundary conditions.
+        virtual void exec(Thermo<TF>&); ///< Update the boundary conditions.
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
-        // virtual void exec_stats(Mask*); ///< Execute statistics of surface
+        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&); ///< Execute statistics of surface
         // virtual void exec_cross();       ///< Execute cross sections of surface
 
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
@@ -65,14 +79,25 @@ class Boundary
         std::string get_switch();
 
         // GPU functions and variables
-        //virtual void prepare_device();
-        //virtual void forward_device();
-        //virtual void backward_device();
+        virtual void prepare_device();
+        virtual void forward_device();
+        virtual void backward_device();
+
+        TF z0m;
+        TF z0h;
+        std::vector<TF> ustar;
+        std::vector<TF> obuk;
+        std::vector<int> nobuk;
+
+        TF* obuk_g;
+        TF* ustar_g;
+        int* nobuk_g;
 
     protected:
-        Master& master; ///< Pointer to master class.
-        Grid<TF>& grid;   ///< Pointer to grid class.
-        Fields<TF>& fields; ///< Pointer to fields class.
+        Master& master;
+        Grid<TF>& grid;
+        Fields<TF>& fields;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         std::string swboundary;
 
@@ -84,18 +109,7 @@ class Boundary
         TF vbot;
         TF vtop;
 
-        /**
-         * Structure containing the boundary options and values per 3d field.
-         */
-        struct Field3dBc
-        {
-            TF bot; ///< Value of the bottom boundary.
-            TF top; ///< Value of the top boundary.
-            Boundary_type bcbot; ///< Switch for the bottom boundary.
-            Boundary_type bctop; ///< Switch for the top boundary.
-        };
-
-        typedef std::map<std::string, Field3dBc> BcMap;
+        typedef std::map<std::string, Field3dBc<TF>> BcMap;
         BcMap sbc;
 
         // Variables to handle time dependency.
@@ -107,14 +121,13 @@ class Boundary
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
         // void process_time_dependent(Input *); ///< Process the time dependent settings from the ini file.
-
         // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
         void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
 
     private:
-        virtual void update_bcs();       ///< Update the boundary values.
-        virtual void update_slave_bcs(); ///< Update the slave boundary values.
+        virtual void update_bcs(Thermo<TF>&); // Update the boundary values.
+        virtual void update_slave_bcs(); // Update the slave boundary values.
 };
 #endif

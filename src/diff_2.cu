@@ -100,41 +100,40 @@ void Diff_2<TF>::exec()
     const TF dxidxi = 1./(gd.dx*gd.dx);
     const TF dyidyi = 1./(gd.dy*gd.dy);
 
-    const int offs = gd.memoffset;
 
     diff_c_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("u")->fld_g[offs], &fields.mp.at("u")->fld_g[offs],
+        fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
         gd.dzi_g, gd.dzhi_g,
         dxidxi, dyidyi, fields.visc,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
     diff_c_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("v")->fld_g[offs], &fields.mp.at("v")->fld_g[offs],
+        fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
         gd.dzi_g, gd.dzhi_g,
         dxidxi, dyidyi, fields.visc,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
     diff_w_g<TF><<<gridGPU, blockGPU>>>(
-        &fields.mt.at("w")->fld_g[offs], &fields.mp.at("w")->fld_g[offs],
+        fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
         gd.dzi_g, gd.dzhi_g,
         dxidxi, dyidyi, fields.visc,
-        gd.icellsp, gd.ijcellsp,
+        gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
 
     for (auto &it : fields.st)
         diff_c_g<TF><<<gridGPU, blockGPU>>>(
-            &it.second->fld_g[offs], &fields.sp[it.first]->fld_g[offs],
+            it.second->fld_g, fields.sp[it.first]->fld_g,
             gd.dzi_g, gd.dzhi_g,
             dxidxi, dyidyi, fields.sp[it.first]->visc,
-            gd.icellsp, gd.ijcellsp,
+            gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();

@@ -58,7 +58,7 @@ else()
 endif()
 
 # Start the project only after the system specific settings are loaded.
-project(microhhc)
+project(microhhc C CXX Fortran)
 
 # Display status messages for MPI set precompiler flags.
 if(USEMPI)
@@ -93,6 +93,14 @@ if(NOT HASCACHE)
     "Flags used by the CXX-compiler during debug builds." FORCE)
   set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} CACHE STRING
     "Flags used by the CXX-compiler during release builds." FORCE)
+  set(CMAKE_Fortran_FLAGS ${USER_FC_FLAGS} CACHE STRING
+    "Flags used by the Fortran-compiler during all build types." FORCE)
+  set(CMAKE_Fortran_FLAGS_DEBUG ${USER_FC_FLAGS_DEBUG} CACHE STRING
+    "Flags used by the Fortran-compiler during debug builds." FORCE)
+  set(CMAKE_Fortran_FLAGS_RELEASE ${USER_FC_FLAGS_RELEASE} CACHE STRING
+    "Flags used by the Fortran-compiler during release builds." FORCE)
+
+
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC." FORCE)
@@ -121,4 +129,5 @@ if(USECUDA)
 endif()
 
 add_subdirectory(src)
+#add_subdirectory(src_rrtmg)
 add_subdirectory(main)

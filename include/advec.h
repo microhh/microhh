@@ -61,7 +61,7 @@ class Advec
         Field3d_operators<TF> field3d_operators; ///< Instance of the field3d_operators
 
         double cflmax; ///< Maximum allowed value for the CFL criterion.
-        static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
+        const double cflmin; ///< Minimum value for CFL used to avoid overflows.
 
         std::string swadvec;
 };

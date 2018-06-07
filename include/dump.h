@@ -46,10 +46,10 @@ class Dump
         void save_dump(TF*, std::string, int);
 
     private:
-    protected:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_io<TF> field3d_io;
 
         std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
         bool swdump;           ///< Statistics on/off switch

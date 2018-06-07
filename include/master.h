@@ -31,6 +31,27 @@
 
 class Input;
 
+struct MPI_data
+{
+    int nprocs;
+    int npx;
+    int npy;
+    int mpiid;
+    int mpicoordx;
+    int mpicoordy;
+
+    #ifdef USEMPI
+    int nnorth;
+    int nsouth;
+    int neast;
+    int nwest;
+
+    MPI_Comm commxy;
+    MPI_Comm commx;
+    MPI_Comm commy;
+    #endif
+};
+
 class Master
 {
     public:
@@ -42,8 +63,6 @@ class Master
 
         double get_wall_clock_time();
         bool at_wall_clock_limit();
-
-        void wait_all();
 
         // Overload the broadcast function.
         void broadcast(char*, int);
@@ -76,26 +95,13 @@ class Master
 
         void print_error  (const char *format, ...);
 
-        int nprocs;
-        int npx;
-        int npy;
-        int mpiid;
-        int mpicoordx;
-        int mpicoordy;
+        int get_mpiid() const { return md.mpiid; }
+        const MPI_data& get_MPI_data() const { return md; }
 
-#ifdef USEMPI
-        int nnorth;
-        int nsouth;
-        int neast;
-        int nwest;
-
-        MPI_Comm commxy;
-        MPI_Comm commx;
-        MPI_Comm commy;
-
-        MPI_Request *reqs;
-        int reqsn;
-#endif
+        #ifdef USEMPI
+        MPI_Request* get_request_ptr();
+        void wait_all();
+        #endif
 
     private:
         bool initialized;
@@ -104,8 +110,13 @@ class Master
         double wall_clock_start;
         double wall_clock_end;
 
-#ifdef USEMPI
+        MPI_data md;
+
+        #ifdef USEMPI
+        MPI_Request* reqs;
+        int reqsn;
+
         int check_error(int);
-#endif
+        #endif
 };
 #endif

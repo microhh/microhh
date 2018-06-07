@@ -129,7 +129,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     {
         Mask<TF>& m = mask.second;
 
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::stringstream filename;
             filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
@@ -153,7 +153,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             throw 1;
 
         // Create dimensions.
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             m.z_dim  = m.data_file->addDim("z" , gd.kmax);
             m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
@@ -243,7 +243,7 @@ void Stats<TF>::exec(int iteration, double time, unsigned long itime)
         Mask<TF>& m = mask.second;
 
         // Put the data into the NetCDF file
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
 
@@ -303,7 +303,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         Mask<TF>& m = mask.second;
 
         // Create the NetCDF variable
-        if (master.mpiid == 0)
+        if (master.get_mpiid() == 0)
         {
             std::vector<NcDim> dim_vector = {m.t_dim};
 
@@ -331,62 +331,64 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     }
 }
 
-//void Stats::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, double* restrict prof)
-//{
-//    // add the profile to all files
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
+template<typename TF>
+void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, TF* restrict prof)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable
+        if (master.get_mpiid() == 0)
+        {
+           NcVar var;
+           if (zloc == "z")
+               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
+           else if (zloc == "zh")
+               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
+           var.putAtt("units", unit.c_str());
+           var.putAtt("long_name", longname.c_str());
+           var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+           const std::vector<size_t> index = {0};
+           if (zloc == "z")
+           {
+               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
+               var.putVar(index, size, &prof[gd.kstart]);
+           }
+           else if (zloc == "zh")
+           {
+               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
+               var.putVar(index, size, &prof[gd.kstart]);
+           }
+       }
+   }
+}
 //
-//        // create the NetCDF variable
-//        if (master->mpiid == 0)
-//        {
-//            NcVar var;
-//            if (zloc == "z")
-//                var = m->dataFile->addVar(name.c_str(), ncDouble, m->z_dim);
-//            else if (zloc == "zh")
-//                var = m->dataFile->addVar(name.c_str(), ncDouble, m->zh_dim);
-//            var.putAtt("units", unit.c_str());
-//            var.putAtt("long_name", longname.c_str());
-//            var.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
-//
-//            const std::vector<size_t> index = {0};
-//            if (zloc == "z")
-//            {
-//                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax)};
-//                var.putVar(index, size, &prof[grid->kstart]);
-//            }
-//            else if (zloc == "zh")
-//            {
-//                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax+1)};
-//                var.putVar(index, size, &prof[grid->kstart]);
-//            }
-//        }
-//    }
-//}
-//
-//void Stats::add_time_series(std::string name, std::string longname, std::string unit)
-//{
-//    // add the series to all files
-//    for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
-//    {
-//        // shortcut
-//        Mask* m = &it->second;
-//
-//        // create the NetCDF variable
-//        if (master->mpiid == 0)
-//        {
-//            m->tseries[name].ncvar = m->dataFile->addVar(name.c_str(), ncDouble, m->t_dim);
-//            m->tseries[name].ncvar.putAtt("units", unit.c_str());
-//            m->tseries[name].ncvar.putAtt("long_name", longname.c_str());
-//            m->tseries[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
-//        }
-//
-//        // Initialize at zero
-//        m->tseries[name].data = 0.;
-//    }
-//}
+template<typename TF>
+void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit)
+{
+    // add the series to all files
+    for (auto& mask : masks)
+    {
+        // shortcut
+        Mask<TF>& m = mask.second;
+
+        // create the NetCDF variable
+        if (master.get_mpiid() == 0)
+        {
+            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), m.t_dim);
+            m.tseries[name].ncvar.putAtt("units", unit.c_str());
+            m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
+            m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        }
+
+        // Initialize at zero
+        m.tseries[name].data = 0.;
+    }
+}
 
 template<typename TF>
 void Stats<TF>::get_mask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
@@ -469,28 +471,31 @@ void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data
     }
 }
 
-//void Stats::calc_mean2d(double* const restrict mean, const double* const restrict data,
-//                        const double offset,
-//                        const double* const restrict mask, const int * const restrict nmask)
-//{
-//    const int jj = grid->icells;
-//
-//    if (*nmask > nthres)
-//    {
-//        *mean = 0.;
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ij = i + j*jj;
-//                *mean += mask[ij]*(data[ij] + offset);
-//            }
-//        master->sum(mean,1);
-//        *mean /= (double)*nmask;
-//    }
-//    else
-//        *mean = NC_FILL_DOUBLE;
-//}
+template<typename TF>
+void Stats<TF>::calc_mean_2d(TF& mean, const TF* const restrict data,
+                             const TF offset,
+                             const TF* const restrict mask, const int nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int jj = gd.icells;
+
+    if (nmask > nthres)
+    {
+        mean = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij = i + j*jj;
+                mean += mask[ij]*(data[ij] + offset);
+            }
+        master.sum(&mean,1);
+        mean /= static_cast<TF>(nmask);
+    }
+    else
+        mean = netcdf_fp_fillvalue<TF>();
+}
+
 //
 //void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double* restrict prof)
 //{
@@ -902,102 +907,104 @@ void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* re
     }
 }
 
+template<typename TF>
+void Stats<TF>::calc_diff_2nd(
+        TF* restrict data, TF* restrict w, TF* restrict evisc,
+        TF* restrict prof, const TF* restrict dzhi,
+        TF* restrict fluxbot, TF* restrict fluxtop, const TF tPr, const int loc[3],
+        TF* restrict mask, int* restrict nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int ii = 1;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+    const int kstart = gd.kstart;
+    const int kend = gd.kend;
 
-//void Stats::calc_diff_2nd(double* restrict data, double* restrict w, double* restrict evisc,
-//                          double* restrict prof, double* restrict dzhi,
-//                          double* restrict fluxbot, double* restrict fluxtop, double tPr, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    const int ii = 1;
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//    const int kstart = grid->kstart;
-//    const int kend = grid->kend;
-//
-//    const double dxi = 1./grid->dx;
-//    const double dyi = 1./grid->dy;
-//
-//    // bottom boundary
-//    prof[kstart] = 0.;
-//    for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//        for (int i=grid->istart; i<grid->iend; ++i)
-//        {
-//            const int ij  = i + j*jj;
-//            const int ijk = i + j*jj + kstart*kk;
-//            prof[kstart] += mask[ijk]*fluxbot[ij];
-//        }
-//
-//    // calculate the interior
-//    if (loc[0] == 1)
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk  = i + j*jj + k*kk;
-//                    // evisc * (du/dz + dw/dx)
-//                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
-//                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
-//                }
-//        }
-//    }
-//    else if (loc[1] == 1)
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    // evisc * (dv/dz + dw/dy)
-//                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
-//                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
-//                }
-//        }
-//    }
-//    else
-//    {
-//        for (int k=grid->kstart+1; k<grid->kend; ++k)
-//        {
-//            prof[k] = 0.;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
-//                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
-//                }
-//        }
-//    }
-//
-//    // top boundary
-//    prof[kend] = 0.;
-//    for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//        for (int i=grid->istart; i<grid->iend; ++i)
-//        {
-//            const int ij  = i + j*jj;
-//            const int ijk = i + j*jj + kend*kk;
-//            prof[kend] += mask[ijk]*fluxtop[ij];
-//        }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
+
+    // bottom boundary
+    prof[kstart] = 0.;
+    for (int j=gd.jstart; j<gd.jend; ++j)
+        #pragma ivdep
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*kk;
+            prof[kstart] += mask[ijk]*fluxbot[ij];
+        }
+
+    // calculate the interior
+    if (loc[0] == 1)
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk  = i + j*jj + k*kk;
+                    // evisc * (du/dz + dw/dx)
+                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                }
+        }
+    }
+    else if (loc[1] == 1)
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    // evisc * (dv/dz + dw/dy)
+                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
+                }
+        }
+    }
+    else
+    {
+        for (int k=gd.kstart+1; k<gd.kend; ++k)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
+                }
+        }
+    }
+
+    // top boundary
+    prof[kend] = 0.;
+    for (int j=gd.jstart; j<gd.jend; ++j)
+        #pragma ivdep
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kend*kk;
+            prof[kend] += mask[ijk]*fluxtop[ij];
+        }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= (double)(nmask[k]);
+        else
+            prof[k] = NC_FILL_DOUBLE;
+    }
+}
 
 template<typename TF>
 void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff)
@@ -1080,7 +1087,6 @@ void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict di
 //    else
 //        *cover = NC_FILL_DOUBLE;
 //}
-
 
 template class Stats<double>;
 template class Stats<float>;

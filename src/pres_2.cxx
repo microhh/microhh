@@ -23,16 +23,17 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
-#include <fftw3.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "fft.h"
 #include "pres_2.h"
 #include "defines.h"
 
 template<typename TF>
-Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, inputin)
+Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
+    boundary_cyclic(master, grid)
 {
     #ifdef USECUDA
     a_g = 0;
@@ -69,8 +70,7 @@ void Pres_2<TF>::exec(const double dt)
     auto tmp2 = fields.get_tmp();
 
     solve(fields.sd.at("p")->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-          gd.dz.data(), fields.rhoref.data(),
-          grid.fftini, grid.fftouti, grid.fftinj, grid.fftoutj);
+          gd.dz.data(), fields.rhoref.data());
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -103,6 +103,9 @@ void Pres_2<TF>::init()
     c.resize(gd.kmax);
 
     work2d.resize(gd.imax*gd.jmax);
+
+    boundary_cyclic.init();
+    fft.init();
 }
 
 template<typename TF>
@@ -161,8 +164,8 @@ void Pres_2<TF>::input(TF* const restrict p,
     const int kgc = gd.kgc;
 
     // set the cyclic boundary conditions for the tendencies
-    grid.boundary_cyclic(ut, Edge::East_west_edge  );
-    grid.boundary_cyclic(vt, Edge::North_south_edge);
+    boundary_cyclic.exec(ut, Edge::East_west_edge  );
+    boundary_cyclic.exec(vt, Edge::North_south_edge);
 
     // write pressure as a 3d array without ghost cells
     for (int k=0; k<gd.kmax; ++k)
@@ -249,11 +252,10 @@ namespace
 
 template<typename TF>
 void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* const restrict b,
-                       const TF* const restrict dz, const TF* const restrict rhoref,
-                       TF* const restrict fftini, TF* const restrict fftouti,
-                       TF* const restrict fftinj, TF* const restrict fftoutj)
+                       const TF* const restrict dz, const TF* const restrict rhoref)
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     const int imax   = gd.imax;
     const int jmax   = gd.jmax;
@@ -267,7 +269,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
-    grid.fft_forward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    fft.exec_forward(p, work3d);
 
     jj = iblock;
     kk = iblock*jblock;
@@ -280,8 +282,8 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
             for (i=0; i<iblock; i++)
             {
                 // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-                iindex = master.mpicoordy * iblock + i;
-                jindex = master.mpicoordx * jblock + j;
+                iindex = md.mpicoordy * iblock + i;
+                jindex = md.mpicoordx * jblock + j;
 
                 ijk  = i + j*jj + k*kk;
                 b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
@@ -292,8 +294,8 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
         #pragma ivdep
         for (i=0; i<iblock; i++)
         {
-            iindex = master.mpicoordy * iblock + i;
-            jindex = master.mpicoordx * jblock + j;
+            iindex = md.mpicoordy * iblock + i;
+            jindex = md.mpicoordx * jblock + j;
 
             // substitute BC's
             ijk = i + j*jj;
@@ -312,7 +314,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
          gd.iblock, gd.jblock, gd.kmax);
 
-    grid.fft_backward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+    fft.exec_backward(p, work3d);
 
     jj = imax;
     kk = imax*jmax;
@@ -343,7 +345,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
         }
 
     // set the cyclic boundary conditions
-    grid.boundary_cyclic(p);
+    boundary_cyclic.exec(p);
 }
 
 template<typename TF>

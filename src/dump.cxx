@@ -34,7 +34,8 @@
 
 template<typename TF>
 Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin),
+    field3d_io(master, grid)
 {
     swdump = inputin.get_item<bool>("dump", "swdump", "", false);
 
@@ -63,7 +64,12 @@ Dump<TF>::~Dump()
 template<typename TF>
 void Dump<TF>::init(double ifactor)
 {
+    if (!swdump)
+        return;
+
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
+
+    field3d_io.init();
 }
 
 template<typename TF>
@@ -107,9 +113,9 @@ std::vector<std::string>* Dump<TF>::get_dumplist()
 }
 
 template<typename TF>
-void Dump<TF>::save_dump(TF* data, std::string varname,int iotime)
+void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
 {
-    const double NoOffset = 0.;
+    const double no_offset = 0.;
     char filename[256];
 
     std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
@@ -127,7 +133,7 @@ void Dump<TF>::save_dump(TF* data, std::string varname,int iotime)
         auto tmp1 = tmpfld1.get();
         auto tmp2 = tmpfld1.get();
 
-        if (grid.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, NoOffset))
+        if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
         {
             master.print_message("FAILED\n");
             throw 1;

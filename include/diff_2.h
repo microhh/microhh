@@ -30,21 +30,22 @@ class Diff_2 : public Diff<TF>
 {
     public:
         Diff_2(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        virtual ~Diff_2();                                ///< Destructor of the diffusion class
+        ~Diff_2();                                ///< Destructor of the diffusion class
 
-        virtual Diffusion_type get_switch();
-        virtual unsigned long get_time_limit(unsigned long, double);
-        virtual double get_dn(double);
+        Diffusion_type get_switch() const;
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-        virtual void set_values();
-        virtual void exec();
+        void set_values();
+        void init() {};
+        void exec();
 
         // Empty functions, these are allowed to pass.
-        void exec_viscosity() {}
+        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
 
-        //#ifdef USECUDA
-        //void prepare_device() {};
-        //#endif
+        #ifdef USECUDA
+        void prepare_device() {};
+        #endif
 
     private:
         using Diff<TF>::master;

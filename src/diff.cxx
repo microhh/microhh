@@ -37,7 +37,7 @@
 #include "diff_disabled.h"
 #include "diff_2.h"
 //#include "diff_4.h"
-//#include "diff_smag2.h"
+#include "diff_smag2.h"
 
 template<typename TF>
 Diff<TF>::Diff(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -60,6 +60,8 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(Master& masterin, Grid<TF>& gridin, 
         return std::make_shared<Diff_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swdiff == "2")
         return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swdiff == "smag2")
+        return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         masterin.print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
