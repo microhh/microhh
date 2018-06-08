@@ -1687,7 +1687,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
         get_thermo_field(*ql,"ql", true, true);
         get_thermo_field(*qlh,"ql_h", true, true);
         stats.set_mask_true(mfield, mfieldh);
-        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
+        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,Stats_mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
@@ -1701,7 +1701,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
         auto qrh = fields.get_tmp();
         grid.interpolate_2nd(qrh->fld.data(),  fields.sp.at("qr")->fld.data(), sloc, wloc);
         stats.set_mask_true(mfield, mfieldh);
-        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"),*qrh,threshold,stats.Mask_type::Plus);
+        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"),*qrh,threshold,Stats_mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(qrh);
     }
@@ -1713,7 +1713,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
         auto qlh = fields.get_tmp();
         get_thermo_field(*ql,"ql", true, true);
         get_thermo_field(*qlh,"ql_h", true, true);
-        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,stats.Mask_type::Plus);
+        stats.set_mask_thres(mfield, mfieldh, *ql,*qlh,0.,Stats_mask_type::Plus);
         fields.release_tmp(ql);
         fields.release_tmp(qlh);
 
@@ -1723,7 +1723,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
         get_thermo_field(*bh,"b_h", true, true);
         field3d_operators.calc_mean_profile(b->fld_mean.data(),b->fld.data());
         field3d_operators.calc_mean_profile(bh->fld_mean.data(),bh->fld.data());
-        stats.set_mask_thres_pert(mfield, mfieldh, *b,*bh,0.,stats.Mask_type::Plus);
+        stats.set_mask_thres_pert(mfield, mfieldh, *b,*bh,0.,Stats_mask_type::Plus);
         stats.get_nmask(mfield, mfieldh);
         fields.release_tmp(b);
         fields.release_tmp(bh);
@@ -2361,9 +2361,9 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         if (it == "qlpath")
             cross.cross_path(output->fld.data(), "ql", iotime);
         if (it == "qlbase")
-            cross.cross_height_threshold(output->fld.data(), 0., cross.Direction::Bottom_to_top, "ql", iotime);
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "ql", iotime);
         if (it == "qltop")
-            cross.cross_height_threshold(output->fld.data(), 0., cross.Direction::Top_to_bottom, "ql", iotime);
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "ql", iotime);
     }
 
     fields.release_tmp(output);

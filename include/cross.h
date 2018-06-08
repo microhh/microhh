@@ -28,7 +28,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-
+enum class Cross_direction {Top_to_bottom, Bottom_to_top};
 
 template<typename TF>
 class Cross
@@ -49,13 +49,12 @@ class Cross
 
         bool do_cross(unsigned long);
 
-        enum Direction {Top_to_bottom, Bottom_to_top};
 
         int cross_simple(TF*, std::string, int);
         int cross_lngrad(TF*, std::string, int);
         int cross_plane (TF*, std::string, int);
         int cross_path  (TF*, std::string, int);
-        int cross_height_threshold(TF*, TF, Direction, std::string, int);
+        int cross_height_threshold(TF*, TF, Cross_direction, std::string, int);
 
     private:
         Master& master;

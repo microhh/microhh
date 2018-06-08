@@ -71,6 +71,8 @@ struct Mask
 template<typename TF>
 using Mask_map = std::map<std::string, Mask<TF>>;
 
+enum class Stats_mask_type {Plus, Min};
+
 template<typename TF>
 class Stats
 {
@@ -85,13 +87,11 @@ class Stats
         bool get_switch() { return swstats; }
         bool do_statistics(unsigned long);
 
-        enum Mask_type {Plus, Min};
-
         void get_mask(Field3d<TF>&, Field3d<TF>&);
         void get_nmask(Field3d<TF>&, Field3d<TF>&);
         void set_mask_true(Field3d<TF>&, Field3d<TF>&);
-        void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Mask_type);
-        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Mask_type);
+        void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
+        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
 
         void exec(int, double, unsigned long);
 

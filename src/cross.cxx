@@ -607,11 +607,11 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
  * @param tmp1 Pointer to temporary field for writing the cross-section
  * @param z Pointer to 1D field containing the levels of data
  * @param threshold Threshold value
- * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom)
+ * @param Cross_direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom)
  * @param name String containing the output name of the cross-section
  */
 template<typename TF>
-int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Direction direction, std::string name, int iotime)
+int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Cross_direction direction, std::string name, int iotime)
 {
 
     auto& gd = grid.get_grid_data();
@@ -620,7 +620,7 @@ int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Direction
     auto height = tmpfld->fld.data();
 
     TF fillvalue = -1e-9; //TODO: SET FILL VALUE
-    bool isupward = (direction == Direction::Bottom_to_top);
+    bool isupward = (direction == Cross_direction::Bottom_to_top);
     calc_cross_height_threshold<TF>(data, height, gd.z.data(), threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
 
     nerror += cross_plane(height, name, iotime);

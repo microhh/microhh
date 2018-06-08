@@ -577,22 +577,22 @@ void Stats<TF>::set_mask_true(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_thres(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Mask_type mode)
+void Stats<TF>::set_mask_thres(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
     calc_mask_thres<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-                  fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold, mode==Mask_type::Plus,
+                  fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold, mode==Stats_mask_type::Plus,
                   gd.istart, gd.jstart, gd.kstart,
                   gd.iend,   gd.jend,   gd.kend,
                   gd.icells, gd.ijcells);
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_thres_pert(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Mask_type mode)
+void Stats<TF>::set_mask_thres_pert(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
     calc_mask_thres_pert<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-                  fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold, mode==Mask_type::Plus,
+                  fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold, mode==Stats_mask_type::Plus,
                   gd.istart, gd.jstart, gd.kstart,
                   gd.iend,   gd.jend,   gd.kend,
                   gd.icells, gd.ijcells);
