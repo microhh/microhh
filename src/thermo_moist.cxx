@@ -711,7 +711,7 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
 {
     auto& gd = grid.get_grid_data();
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
 
     if (mask_name == "ql")
@@ -802,6 +802,7 @@ template<typename TF>
 void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
@@ -951,6 +952,8 @@ TF Thermo_moist<TF>::get_buoyancy_diffusivity()
 template<typename TF>
 void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 {
+    bs_stats = bs;
+
     // Add variables to the statistics
     if (stats.get_switch())
     {
@@ -1139,7 +1142,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     //stats->calc_sorted_prof(fields.sd["tmp1"]->data, fields.sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
-
     // calculate the liquid water stats
     auto ql = fields.get_tmp();
     get_thermo_field(*ql, "ql", true, true);
@@ -1147,7 +1149,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     //stats.calc_count(m.profs["ccover"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
     //stats.calc_cover(m.profs["cfrac"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
     //stats.calc_path(m.profs["lwp"].data.data(), ql->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
     fields.release_tmp(ql);
 
     // Calculate base state in tmp array
