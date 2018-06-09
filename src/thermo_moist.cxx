@@ -991,8 +991,10 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
 {
     // add the profiles to the columns
     if (column.get_switch())
+    {
         column.add_prof("b", "Buoyancy", "m s-2", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    }
 }
 
 template<typename TF>
