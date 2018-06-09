@@ -433,7 +433,6 @@ void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
     else
         base = bs;
 
-
     calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("th")->fld.data(), base.exnrefh.data(), base.threfh.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 }

@@ -208,7 +208,6 @@ namespace
        }
    }
 
-
    template<typename TF>
    void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
                       TF* restrict p, TF* restrict ql, TF* restrict thvref,
@@ -576,9 +575,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
 
     // Test if the diffusivities of theta and qt are equal, else throw error
     if (fields.sp.at("thl")->visc != fields.sp.at("qt")->visc)
-    {
         throw std::runtime_error("The diffusivities of temperature and moisture must be equal\n");
-    }
 
     bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
 
@@ -881,7 +878,9 @@ void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
                       fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
                       base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(),
+                          fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+                          gd.icells, gd.jcells, gd.kstart);
 }
 
 template<typename TF>
@@ -894,7 +893,9 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
     else
         base = bs;
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(), fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(),
+                          fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+                          gd.icells, gd.jcells, gd.kstart);
 }
 
 template<typename TF>
@@ -909,6 +910,18 @@ void Thermo_moist<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
 
     calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("thl")->fld.data(), base.exnrefh.data(), base.thl0.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+}
+
+template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_p_vector() const
+{
+    return bs.pref;
+}
+
+template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_ph_vector() const
+{
+    return bs.prefh;
 }
 
 template<typename TF>
