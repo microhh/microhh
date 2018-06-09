@@ -565,6 +565,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
     if (cross.get_switch())
     {
         swcross_b = false;
+
         // Populate list with allowed cross-section variables
         allowedcrossvars.push_back("b");
         allowedcrossvars.push_back("bbot");
@@ -579,11 +580,13 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string>::iterator it=crosslist_global->begin();
         while (it != crosslist_global->end())
         {
-            if (std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+            if (std::count(allowedcrossvars.begin(), allowedcrossvars.end(), *it))
             {
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
                 crosslist_global->erase(it); // erase() returns iterator of next element..
+
+                // CvH: This is not required if only thlngrad is used.
                 swcross_b = true;
             }
             else
@@ -707,11 +710,13 @@ template<typename TF>
 void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto b = fields.get_tmp();
-    if(swcross_b)
+
+    if (swcross_b)
     {
-        get_thermo_field(*b, "b",false, true);
+        get_thermo_field(*b, "b", false, true);
         get_buoyancy_fluxbot(*b, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "b")
@@ -719,13 +724,11 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         else if (it == "blngrad")
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
-        }
-        else if (it == "thlngrad")
-        {
-            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
             cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
         else if (it == "bfluxbot")
             cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);
+        else if (it == "thlngrad")
+            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
     }
     fields.release_tmp(b);
 }
