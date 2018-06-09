@@ -217,7 +217,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Large-scale pressure forcing.
     if (swlspres_in == "0")
+    {
         swlspres = Large_scale_pressure_type::disabled;
+    }
     else if (swlspres_in == "uflux")
     {
         swlspres = Large_scale_pressure_type::fixed_flux;
@@ -226,6 +228,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
+        fc = inputin.get_item<TF>("force", "fc", "");
         tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
         tdep_geo.vars = {"ug", "vg"};
     }
@@ -322,7 +325,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
         if (tdep_geo.sw)
-            create_timedep(tdep_geo,"g");
+            create_timedep(tdep_geo, "g");
     }
 
     if (swls == Large_scale_tendency_type::enabled)

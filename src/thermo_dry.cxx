@@ -63,10 +63,10 @@ namespace
 
     template<typename TF>
     void calc_N2(TF* const restrict N2, const TF* const restrict th, const TF* const restrict dzi, const TF* const restrict thref,
-                 const int istart, const int iend, const int jstart, const int jend,
-                 const int icells, const int ijcells, const int kcells )
+                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                 const int icells, const int ijcells, const int kcells)
     {
-        for (int k=0; k<kcells; ++k)
+        for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -195,6 +195,24 @@ namespace
                 }
     }
 
+    template<typename TF>
+    void calc_baroclinic(TF* const restrict tht, const TF* const restrict v,
+                         const TF dthetady_ls,
+                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                         const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tht[ijk] -= dthetady_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
     // Initialize the base state for the anelastic solver
     template<typename TF>
     void calc_base_state(TF* const restrict rhoref, TF* const restrict rhorefh,
@@ -264,6 +282,11 @@ boundary_cyclic(masterin, gridin)
         master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
         throw std::runtime_error("Illegal options swbasestate");
     }
+
+    swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
+    if (swbaroclinic)
+        dthetady_ls = inputin.get_item<TF>("thermo", "dthetady_ls", "");
+
 }
 
 template<typename TF>
@@ -332,7 +355,7 @@ void Thermo_dry<TF>::exec( const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder== "2")
+    if (grid.swspatialorder == "2")
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
@@ -340,6 +363,12 @@ void Thermo_dry<TF>::exec( const double dt)
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
+
+    if (swbaroclinic)
+        calc_baroclinic(fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
+                        dthetady_ls,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
 }
 #endif
 
@@ -374,7 +403,7 @@ void Thermo_dry<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool c
                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "N2")
         calc_N2(fld.fld.data(), fields.sp.at("th")->fld.data(), gd.dzi.data(), base.thref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells, gd.kcells);
     else if (name == "T")
         calc_T(fld.fld.data(), fields.sp.at("th")->fld.data(), base.exnref.data(), base.thref.data(),
                gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
@@ -540,8 +569,8 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
         allowedcrossvars.push_back("b");
         allowedcrossvars.push_back("bbot");
         allowedcrossvars.push_back("bfluxbot");
-        if (grid.swspatialorder == "4")
-            allowedcrossvars.push_back("blngrad");
+        allowedcrossvars.push_back("blngrad");
+        allowedcrossvars.push_back("thlngrad");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = cross.get_crosslist();
@@ -690,6 +719,10 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         else if (it == "blngrad")
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
+        }
+        else if (it == "thlngrad")
+        {
+            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
             cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
         else if (it == "bfluxbot")
             cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);

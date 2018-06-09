@@ -205,6 +205,26 @@ namespace
                                     + cosalpha *  interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
                 }
     }
+
+    template<typename TF>
+    void calc_baroclinic(TF* const restrict bt, const TF* const restrict v,
+                         const TF dbdy_ls,
+                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                         const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
+
 }
 
 template<typename TF>
@@ -225,6 +245,9 @@ Thermo<TF>(masterin, gridin, fieldsin, inputin)
     if (bs.has_slope || bs.has_N2)
         master.print_message("Slope-enabled thermodynamics is activated\n");
 
+    swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
+    if (swbaroclinic)
+        dbdy_ls = inputin.get_item<TF>("thermo", "dbdy_ls", "");
 }
 
 template<typename TF>
@@ -249,6 +272,12 @@ void Thermo_buoy<TF>::exec(const double dt)
         {
 	        calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
+
+        if (swbaroclinic)
+            calc_baroclinic(fields.st.at("b")->fld.data(), fields.mp.at("v")->fld.data(),
+                            dbdy_ls,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
     }
     else if (grid.swspatialorder == "4")
     {

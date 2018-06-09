@@ -84,7 +84,9 @@ void Boundary<TF>::process_bcs(Input& input)
     // set the bottom bc
     if (swbot == "noslip")
         mbcbot = Boundary_type::Dirichlet_type;
-    else if (swbot == "freeslip")
+    else if (swbot == "freeslip" )
+        mbcbot = Boundary_type::Neumann_type;
+    else if (swbot == "neumann" )
         mbcbot = Boundary_type::Neumann_type;
     else if (swbot == "ustar")
         mbcbot = Boundary_type::Ustar_type;
@@ -98,6 +100,8 @@ void Boundary<TF>::process_bcs(Input& input)
     if (swtop == "noslip")
         mbctop = Boundary_type::Dirichlet_type;
     else if (swtop == "freeslip")
+        mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "neumann")
         mbctop = Boundary_type::Neumann_type;
     else if (swtop == "ustar")
         mbctop = Boundary_type::Ustar_type;

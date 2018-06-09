@@ -135,5 +135,7 @@ class Thermo_dry : public Thermo<TF>
         background_state bs;
         background_state bs_stats;
 
+        bool swbaroclinic;
+        TF dthetady_ls;
 };
 #endif

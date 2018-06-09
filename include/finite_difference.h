@@ -93,27 +93,32 @@ namespace Finite_difference
         const double cdg2 =   -54./576.;
         const double cdg3 =     1./576.;
 
-        CUDA_MACRO inline double interp4(const double a, const double b, const double c, const double d)
+        template<typename TF>
+        CUDA_MACRO inline TF interp4(const TF a, const TF b, const TF c, const TF d)
         {
             return ci0*a + ci1*b + ci2*c + ci3*d;
         }
 
-        CUDA_MACRO inline double interp4bot(const double a, const double b, const double c, const double d)
+        template<typename TF>
+        CUDA_MACRO inline TF interp4bot(const TF a, const TF b, const TF c, const TF d)
         {
             return bi0*a + bi1*b - bi2*c + bi3*d;
         }
 
-        CUDA_MACRO inline double interp4top(const double a, const double b, const double c, const double d)
+        template<typename TF>
+        CUDA_MACRO inline TF interp4top(const TF a, const TF b, const TF c, const TF d)
         {
             return ti0*a + ti1*b + ti2*c + ti3*d;
         }
 
-        CUDA_MACRO inline double grad4(const double a, const double b, const double c, const double d, const double dxi)
+        template<typename TF>
+        CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d, const TF dxi)
         {
             return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
         }
 
-        CUDA_MACRO inline double grad4x(const double a, const double b, const double c, const double d)
+        template<typename TF>
+        CUDA_MACRO inline TF grad4x(const TF a, const TF b, const TF c, const TF d)
         {
             return (-(d-a) + 27.*(c-b));
         }
