@@ -100,7 +100,6 @@ class Thermo_moist : public Thermo<TF>
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_operators<TF> field3d_operators;
 
-
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         bool swcross_b;
@@ -152,13 +151,5 @@ class Thermo_moist : public Thermo<TF>
         // masks
 //        void calc_mask_ql    (TF*, TF*, TF*, int *, int *, int *, TF*);//
 //        void calc_mask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double*);
-
-        // Microphysics
-
-        Micro_type swmicro; ///< Microphysics scheme
-        bool swmicrobudget; ///< Calculate budget statistics
-        TF cflmax_micro; ///< Maximum allowed CFL for sedimentation.
-        void exec_microphysics(const double);
-
 };
 #endif
