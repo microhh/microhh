@@ -230,7 +230,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         tdep_geo.vars = {"ug", "vg"};
     }
     else
+    {
         throw std::runtime_error("Invalid option for \"swlspres\"");
+    }
 
     // Large-scale tendencies due to advection and other processes.
     if (swls_in == "0")
@@ -238,8 +240,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swls_in == "1")
     {
         swls = Large_scale_tendency_type::enabled;
-        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls", "", false);
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
+
+        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls", "", false);
         tdep_ls.vars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
     }
     else
@@ -267,6 +270,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
+        // BvS: shouldn't there be a `nudgelist = get_list()` somewhere here?
         tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge", "", false);
         tdep_nudge.vars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
         fields.set_calc_mean_profs(true);
@@ -295,8 +299,8 @@ void Force<TF>::init()
 
     if (swls == Large_scale_tendency_type::enabled)
     {
-        for (auto& it : lsprofs)
-            it.second.resize(gd.kcells);
+        for (auto& it : lslist)
+            lsprofs[it] = std::vector<TF>(gd.kcells);
     }
     if (swwls == Large_scale_subsidence_type::enabled)
         wls.resize(gd.kcells);
