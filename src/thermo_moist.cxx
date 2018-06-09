@@ -44,7 +44,6 @@
 #include "timeloop.h"
 #include "field3d_operators.h"
 
-
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
 using namespace Constants;
@@ -104,47 +103,47 @@ namespace
                           TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
                           const int kstart, const int kend,
                           const TF* restrict z, const TF* restrict dz, const TF* const dzh)
-   {
-       const TF thlsurf = interp2(thlmean[kstart-1], thlmean[kstart]);
-       const TF qtsurf  = interp2(qtmean[kstart-1],  qtmean[kstart]);
+    {
+        const TF thlsurf = interp2(thlmean[kstart-1], thlmean[kstart]);
+        const TF qtsurf  = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
-       TF ql;
+        TF ql;
 
-       // Calculate the values at the surface (half level == kstart)
-       prefh[kstart] = pbot;
-       exh[kstart]   = exner(prefh[kstart]);
-       ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
-       thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
-       rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
+        // Calculate the values at the surface (half level == kstart)
+        prefh[kstart] = pbot;
+        exh[kstart]   = exner(prefh[kstart]);
+        ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
+        thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
+        rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
-       // Calculate the first full level pressure
-       pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd * exh[kstart] * thvh[kstart]));
+        // Calculate the first full level pressure
+        pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd * exh[kstart] * thvh[kstart]));
 
-       for (int k=kstart+1; k<kend+1; ++k)
-       {
-           // 1. Calculate remaining values (thv and rho) at full-level[k-1]
-           ex[k-1]  = exner(pref[k-1]);
-           ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]).ql;
-           thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
-           rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
+        for (int k=kstart+1; k<kend+1; ++k)
+        {
+            // 1. Calculate remaining values (thv and rho) at full-level[k-1]
+            ex[k-1]  = exner(pref[k-1]);
+            ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]).ql;
+            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
+            rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
 
-           // 2. Calculate pressure at half-level[k]
-           prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd * ex[k-1] * thv[k-1]));
-           exh[k]   = exner(prefh[k]);
+            // 2. Calculate pressure at half-level[k]
+            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd * ex[k-1] * thv[k-1]));
+            exh[k]   = exner(prefh[k]);
 
-           // 3. Use interpolated conserved quantities to calculate half-level[k] values
-           const TF thli = interp2(thlmean[k-1], thlmean[k]);
-           const TF qti  = interp2(qtmean [k-1], qtmean [k]);
-           const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
+            // 3. Use interpolated conserved quantities to calculate half-level[k] values
+            const TF thli = interp2(thlmean[k-1], thlmean[k]);
+            const TF qti  = interp2(qtmean [k-1], qtmean [k]);
+            const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
 
-           thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
-           rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
+            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
+            rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
 
-           // 4. Calculate pressure at full-level[k]
-           pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd * exh[k] * thvh[k]));
-       }
+            // 4. Calculate pressure at full-level[k]
+            pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd * exh[k] * thvh[k]));
+        }
 
-       pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
+        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
    }
 
    template<typename TF>
@@ -627,6 +626,8 @@ void Thermo_moist<TF>::init()
 template<typename TF>
 void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+
+
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
@@ -635,8 +636,8 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, 0);
-    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, 0);
+    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
+    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
 
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
@@ -814,8 +815,8 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     if (bs.swupdatebasestate)
     {
         auto tmp = fields.get_tmp();
-        calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], 
-                        &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), 
+        calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
+                        &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(),
                         fields.sp.at("qt")->fld_mean.data(), base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
         fields.release_tmp(tmp);
     }
@@ -830,8 +831,8 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     else if (name == "b_h")
     {
         auto tmp = fields.get_tmp();
-        calc_buoyancy_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(), 
-                        &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells], 
+        calc_buoyancy_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(),
+                        &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells],
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
@@ -866,7 +867,7 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     }
     else
     {
-        std::string error_message = "Can not get thermo field: \"" + name + "\"";  
+        std::string error_message = "Can not get thermo field: \"" + name + "\"";
         throw std::runtime_error(error_message);
     }
 
