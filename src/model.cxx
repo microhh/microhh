@@ -541,6 +541,8 @@ void Model<TF>::add_statistics_masks()
             stats->add_mask(mask_name);
         else if (fields->has_mask(mask_name))
             stats->add_mask(mask_name);
+        else if (thermo->has_mask(mask_name))
+            stats->add_mask(mask_name);
         else
         {
             std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
