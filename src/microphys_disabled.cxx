@@ -33,7 +33,7 @@ template<typename TF>
 Microphys_disabled<TF>::Microphys_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : 
     Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swmicro = "0";
+    swmicrophys = Microphys_type::Disabled;
 }
 
 template<typename TF>

@@ -34,6 +34,8 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 
+enum class Microphys_type {Disabled, Warm_2mom};
+
 /**
  * Base class for the microphysics scheme. This class is abstract and only
  * derived classes can be instantiated. Derived classes are
@@ -46,7 +48,7 @@ class Microphys
         Microphys(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys();
         static std::shared_ptr<Microphys> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        std::string get_switch();
+        Microphys_type get_switch();
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
@@ -75,6 +77,6 @@ class Microphys
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        std::string swmicro;
+        Microphys_type swmicrophys;
 };
 #endif

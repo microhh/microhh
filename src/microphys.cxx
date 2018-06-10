@@ -42,9 +42,9 @@ Microphys<TF>::~Microphys()
 }
 
 template<typename TF>
-std::string Microphys<TF>::get_switch()
+Microphys_type Microphys<TF>::get_switch()
 {
-    return swmicro;
+    return swmicrophys;
 }
 
 template<typename TF>

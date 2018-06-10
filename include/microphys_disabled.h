@@ -63,6 +63,6 @@ class Microphys_disabled : public Microphys<TF>
         #endif
 
     private:
-        using Microphys<TF>::swmicro;
+        using Microphys<TF>::swmicrophys;
 };
 #endif
