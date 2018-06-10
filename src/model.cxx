@@ -38,6 +38,7 @@
 #include "force.h"
 #include "thermo.h"
 #include "radiation.h"
+#include "micro.h"
 #include "decay.h"
 #include "stats.h"
 #include "column.h"
@@ -114,6 +115,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
         pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
         thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
+        micro    = Micro<TF>   ::factory(master, *grid, *fields, *input);
 
         radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
         force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
@@ -169,6 +171,7 @@ void Model<TF>::init()
     pres->init();
     force->init();
     thermo->init();
+    micro->init();
     radiation->init();
     decay->init(*input);
 
@@ -224,6 +227,7 @@ void Model<TF>::load()
     boundary->create(*input, *stats);
     force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
+    micro->create(*input, *profs, *stats, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
 
@@ -294,6 +298,9 @@ void Model<TF>::exec()
 
         // Calculate the thermodynamics and the buoyancy tendency.
         thermo->exec(timeloop->get_sub_time_step());
+
+        // Calculate the microphysics.
+        micro->exec();
 
         // Calculate the radiation fluxes and the related heating rate.
         radiation->exec(*thermo);
@@ -475,6 +482,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             // Calculate statistics
             fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
             thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff, dt);
+            micro   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, dt);
             //budget  ->exec_stats(&stats->masks[maskname]);
             boundary->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
 
@@ -491,6 +499,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     {
         fields  ->exec_cross(*cross, iotime);
         thermo  ->exec_cross(*cross, iotime);
+        micro   ->exec_cross(*cross, iotime);
 //        boundary->exec_cross(iotime);
     }
    // Save the 3d dumps to disk
@@ -498,7 +507,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     {
         fields->exec_dump(*dump, iotime);
         thermo->exec_dump(*dump, iotime);
+        micro ->exec_dump(*dump, iotime);
     }
+
     if(column->do_column(itime))
     {
         fields->exec_column(*column);
