@@ -1,3 +1,10 @@
+dist: xenial
+
+branches:
+  only:
+    - master
+    - travis
+
 language: cpp
 
 compiler:
