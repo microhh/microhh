@@ -26,34 +26,34 @@
 #include "input.h"
 
 // Microphysics schemes
-#include "micro.h"
-#include "micro_disabled.h"
+#include "microphys.h"
+#include "microphys_disabled.h"
 
 
 template<typename TF>
-Micro<TF>::Micro(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
+Microphys<TF>::Microphys(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
 }
 
 template<typename TF>
-Micro<TF>::~Micro()
+Microphys<TF>::~Microphys()
 {
 }
 
 template<typename TF>
-std::string Micro<TF>::get_switch()
+std::string Microphys<TF>::get_switch()
 {
     return swmicro;
 }
 
 template<typename TF>
-std::shared_ptr<Micro<TF>> Micro<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
+std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
     std::string swmicro = inputin.get_item<std::string>("micro", "swmicro", "", "0");
 
     if (swmicro == "0")
-        return std::make_shared<Micro_disabled<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Microphys_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     //else if (swthermo == "2mom_warm")
     //    return std::make_shared<Micro_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
     else
@@ -63,5 +63,5 @@ std::shared_ptr<Micro<TF>> Micro<TF>::factory(Master& masterin, Grid<TF>& gridin
     }
 }
 
-template class Micro<double>;
-template class Micro<float>;
+template class Microphys<double>;
+template class Microphys<float>;

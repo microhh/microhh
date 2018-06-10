@@ -20,11 +20,11 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MICRO_DISABLED
-#define MICRO_DISABLED
+#ifndef MICROPHYS_DISABLED
+#define MICROPHYS_DISABLED
 
-#include "micro.h"
-#include "micro_disabled.h"
+#include "microphys.h"
+#include "microphys_disabled.h"
 
 class Master;
 class Input;
@@ -35,15 +35,14 @@ template<typename> class Stats;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
-template<typename> class Micro;
-
+template<typename> class Microphys;
 
 template<typename TF>
-class Micro_disabled : public Micro<TF>
+class Microphys_disabled : public Microphys<TF>
 {
     public:
-        Micro_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Micro_disabled();
+        Microphys_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        virtual ~Microphys_disabled();
 
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
@@ -64,6 +63,6 @@ class Micro_disabled : public Micro<TF>
         #endif
 
     private:
-        using Micro<TF>::swmicro;
+        using Microphys<TF>::swmicro;
 };
 #endif

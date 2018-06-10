@@ -26,25 +26,26 @@
 #include "fields.h"
 
 #include "constants.h"
-#include "micro.h"
-#include "micro_disabled.h"
+#include "microphys.h"
+#include "microphys_disabled.h"
 
 template<typename TF>
-Micro_disabled<TF>::Micro_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : Micro<TF>(masterin, gridin, fieldsin, inputin)
+Microphys_disabled<TF>::Microphys_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : 
+    Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
     swmicro = "0";
 }
 
 template<typename TF>
-Micro_disabled<TF>::~Micro_disabled()
+Microphys_disabled<TF>::~Microphys_disabled()
 {
 }
 
 template<typename TF>
-unsigned long Micro_disabled<TF>::get_time_limit(unsigned long idt, const double dt)
+unsigned long Microphys_disabled<TF>::get_time_limit(unsigned long idt, const double dt)
 {
     return Constants::ulhuge;
 }
 
-template class Micro_disabled<double>;
-template class Micro_disabled<float>;
+template class Microphys_disabled<double>;
+template class Microphys_disabled<float>;

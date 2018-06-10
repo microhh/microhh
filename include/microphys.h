@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MICRO
-#define MICRO
+#ifndef MICROPHYS
+#define MICROPHYS
 
 class Master;
 class Input;
@@ -40,12 +40,12 @@ template<typename> class Field3d;
  * implemented that handle different microphysiscs schemes.
  */
 template<typename TF>
-class Micro
+class Microphys
 {
     public:
-        Micro(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Micro();
-        static std::shared_ptr<Micro> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Microphys(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        virtual ~Microphys();
+        static std::shared_ptr<Microphys> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         std::string get_switch();
 
         // Below are the functions that the derived class has to implement.
