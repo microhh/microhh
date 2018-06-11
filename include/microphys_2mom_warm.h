@@ -23,6 +23,8 @@
 #ifndef MICROPHYS_2MOM_WARM
 #define MICROPHYS_2MOM_WARM
 
+#include <cmath>
+
 #include "microphys.h"
 
 class Master;
@@ -36,6 +38,25 @@ template<typename> class Cross;
 template<typename> class Thermo;
 template<typename> class Field3d;
 template<typename> class Microphys;
+
+// Constants specific or tuned for this microphysics scheme
+template <typename TF>
+struct Micro_2mom_warm_constants
+{
+    const TF pi      = std::acos(-1.);  // 3.1415..
+    const TF Nc0     = 70e6;            // Fixed cloud droplet number
+    const TF K_t     = 2.5e-2;          // Conductivity of heat [J/(sKm)]
+    const TF D_v     = 3.e-5;           // Diffusivity of water vapor [m2/s]
+    const TF rho_w   = 1.e3;            // Density water
+    const TF rho_0   = 1.225;           // SB06, p48
+    const TF pirhow  = pi*rho_w/6.;
+    const TF mc_min  = 4.2e-15;         // Min mean mass of cloud droplet
+    const TF mc_max  = 2.6e-10;         // Max mean mass of cloud droplet
+    const TF mr_min  = mc_max;      // Min mean mass of precipitation drop
+    const TF mr_max  = 3e-6;            // Max mean mass of precipitation drop // as in UCLA-LES
+    const TF ql_min  = 1.e-6;           // Min cloud liquid water for which calculations are performed
+    const TF qr_min  = 1.e-15;          // Min rain liquid water for which calculations are performed
+};
 
 template<typename TF>
 class Microphys_2mom_warm : public Microphys<TF>
@@ -72,5 +93,7 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         bool swmicrobudget;     // Output full microphysics budget terms
         TF cflmax;              // Max CFL number in microphysics sedimentation
+
+        Micro_2mom_warm_constants<TF> micro_constants;
 };
 #endif
