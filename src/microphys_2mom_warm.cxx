@@ -629,16 +629,6 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
                                  gd.iend,   gd.jend,   gd.kend,
                                  gd.icells, gd.kcells, gd.ijcells, j,
                                  micro_constants);
-
-        // Sedimentation; sub-grid sedimentation of rain
-        mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),
-                                 w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
-                                 fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
-                                 fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
-                                 gd.istart, gd.jstart, gd.kstart,
-                                 gd.iend,   gd.jend,   gd.kend,
-                                 gd.icells, gd.kcells, gd.ijcells, j,
-                                 micro_constants);
     }
 
     // Release all local tmp fields in use
