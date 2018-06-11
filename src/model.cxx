@@ -473,6 +473,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
             else if (thermo->has_mask(mask_name))
                 thermo->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            else if (microphys->has_mask(mask_name))
+                microphys->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -527,13 +529,14 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(column->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(advec    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();
@@ -553,6 +556,8 @@ void Model<TF>::add_statistics_masks()
         else if (fields->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (thermo->has_mask(mask_name))
+            stats->add_mask(mask_name);
+        else if (microphys->has_mask(mask_name))
             stats->add_mask(mask_name);
         else
         {

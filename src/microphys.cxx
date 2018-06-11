@@ -28,7 +28,7 @@
 // Microphysics schemes
 #include "microphys.h"
 #include "microphys_disabled.h"
-
+#include "microphys_2mom_warm.h"
 
 template<typename TF>
 Microphys<TF>::Microphys(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -54,8 +54,8 @@ std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>
 
     if (swmicro == "0")
         return std::make_shared<Microphys_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-    //else if (swthermo == "2mom_warm")
-    //    return std::make_shared<Micro_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swmicro == "2mom_warm")
+        return std::make_shared<Microphys_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         masterin.print_error("\"%s\" is an illegal value for \"swmicro\"\n", swmicro.c_str());
