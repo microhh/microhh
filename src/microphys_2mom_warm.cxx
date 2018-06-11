@@ -107,6 +107,24 @@ namespace
     {
         return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
     }
+
+    template<typename TF>
+    inline TF minmod(const TF a, const TF b)
+    {
+        return copysign(TF(1.), a) * std::max(TF(0.), std::min(std::abs(a), TF(copysign(TF(1.), a))*b));
+    }
+
+    template<typename TF>
+    inline TF min3(const TF a, const TF b, const TF c)
+    {
+        return std::min(a, std::min(b, c));
+    }
+
+    template<typename TF>
+    inline TF max3(const TF a, const TF b, const TF c)
+    {
+        return std::max(a, std::max(b, c));
+    }
 }
 
 // Microphysics calculated over entire 3D field
@@ -266,6 +284,217 @@ namespace mp2d
             }
     }
 
+    // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    template<typename TF>
+    void selfcollection_breakup(TF* const restrict nrt, const TF* const restrict qr, const TF* const restrict nr, const TF* const restrict rho,
+                                const TF* const restrict rain_mass, const TF* const restrict rain_diameter,
+                                const TF* const restrict lambda_r,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend,   const int jend,   const int kend,
+                                const int jj, const int kk, const int j,
+                                Micro_2mom_warm_constants<TF> constants)
+    {
+        const TF k_rr     = 7.12;   // SB06, p49
+        const TF kappa_rr = 60.7;   // SB06, p49
+        const TF D_eq     = 0.9e-3; // SB06, list of symbols
+        const TF k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                if(qr[ijk] > constants.qr_min)
+                {
+                    // Calculate mean rain drop mass and diameter
+                    const TF dr      = rain_diameter[ik];
+                    const TF lambdar = lambda_r[ik];
+
+                    // Selfcollection
+                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr /
+                                       lambdar * pow(constants.pirhow, TF(1.)/TF(3.)), -9) * pow(constants.rho_0 / rho[k], TF(0.5));
+                    nrt[ijk] += sc_tend;
+
+                    // Breakup
+                    const TF dDr = dr - D_eq;
+                    if(dr > 0.35e-3)
+                    {
+                        TF phi_br;
+                        if(dr <= D_eq)
+                            phi_br = k_br1 * dDr;
+                        else
+                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+
+                        const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
+                        nrt[ijk] += br_tend;
+                    }
+                }
+            }
+    }
+
+    // Sedimentation from Stevens and Seifert (2008)
+    template<typename TF>
+    void sedimentation_ss08(TF* const restrict qrt, TF* const restrict nrt,
+                            TF* const restrict w_qr, TF* const restrict w_nr,
+                            TF* const restrict c_qr, TF* const restrict c_nr,
+                            TF* const restrict slope_qr, TF* const restrict slope_nr,
+                            TF* const restrict flux_qr, TF* const restrict flux_nr,
+                            const TF* const restrict mu_r, const TF* const restrict lambda_r,
+                            const TF* const restrict qr, const TF* const restrict nr,
+                            const TF* const restrict rho, const TF* const restrict dzi,
+                            const TF* const restrict dz, const double dt,
+                            const int istart, const int jstart, const int kstart,
+                            const int iend,   const int jend,   const int kend,
+                            const int icells, const int kcells, const int ijcells, const int j,
+                            Micro_2mom_warm_constants<TF> constants)
+    {
+        const TF w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const TF a_R = 9.65;   // SB06, p51
+        const TF c_R = 600;    // SB06, p51
+        const TF Dv  = 25.0e-6;
+        const TF b_R = a_R * exp(c_R*Dv); // UCLA-LES
+
+        const int kk3d = ijcells;
+        const int kk2d = icells;
+
+        // 1. Calculate sedimentation velocity at cell center
+
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF rho_n = pow(TF(1.2) / rho[k], TF(0.5));
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                if(qr[ijk] > constants.qr_min)
+                {
+                    // SS08:
+                    w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
+                    w_nr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(1.))))));
+                }
+                else
+                {
+                    w_qr[ik] = 0.;
+                    w_nr[ik] = 0.;
+                }
+            }
+        }
+
+        // 1.1 Set one ghost cell to zero
+        for (int i=istart; i<iend; i++)
+        {
+            const int ik1  = i + (kstart-1)*icells;
+            const int ik2  = i + (kend    )*icells;
+            w_qr[ik1] = w_qr[ik1+kk2d];
+            w_nr[ik1] = w_nr[ik1+kk2d];
+            w_qr[ik2] = 0;
+            w_nr[ik2] = 0;
+        }
+
+         // 2. Calculate CFL number using interpolated sedimentation velocity
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*icells;
+                c_qr[ik] = TF(0.25) * (w_qr[ik-kk2d] + TF(2.)*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt;
+                c_nr[ik] = TF(0.25) * (w_nr[ik-kk2d] + TF(2.)*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt;
+            }
+
+        // 3. Calculate slopes
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                slope_qr[ik] = minmod(qr[ijk]-qr[ijk-kk3d], qr[ijk+kk3d]-qr[ijk]);
+                slope_nr[ik] = minmod(nr[ijk]-nr[ijk-kk3d], nr[ijk+kk3d]-nr[ijk]);
+            }
+
+        // Calculate flux
+        // Set the fluxes at the top of the domain (kend) to zero
+        for (int i=istart; i<iend; i++)
+        {
+            const int ik  = i + kend*icells;
+            flux_qr[ik] = 0;
+            flux_nr[ik] = 0;
+        }
+
+        for (int k=kend-1; k>kstart-1; k--)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                int kk;
+                TF ftot, dzz, cc;
+
+                // q_rain
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux' (kg m-2)
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(TF(1.), c_qr[ik]);
+                while (cc > 0 && kk < kend)
+                {
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot  += rho[kk] * (qr[ijkk] + TF(0.5) * slope_qr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
+
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(TF(1.), c_qr[ikk] - dzz*dzi[kk]);
+                }
+
+                // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * TF(dt));
+                flux_qr[ik] = -ftot / dt;
+
+                // number density
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux'
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(TF(1.), c_nr[ik]);
+                while (cc > 0 && kk < kend)
+                {
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot += rho[kk] * (nr[ijkk] + TF(0.5) * slope_nr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
+
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(TF(1.), c_nr[ikk] - dzz*dzi[k]);
+                }
+
+                // Given flux at top, limit bottom flux such that the number density stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * TF(dt));
+                flux_nr[ik] = -ftot / dt;
+            }
+
+        // Calculate tendency
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                qrt[ijk] += -(flux_qr[ik+kk2d] - flux_qr[ik]) / rho[k] * dzi[k];
+                nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
+            }
+    }
+
 }
 
 
@@ -294,7 +523,7 @@ Microphys_2mom_warm<TF>::~Microphys_2mom_warm()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo)
+void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -327,17 +556,17 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo)
     // Get pointers to slices in tmp fields:
     int slice_counter = 0;
 
-    //TF* w_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    //TF* w_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* w_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* w_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    //TF* c_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    //TF* c_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* c_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* c_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    //TF* slope_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    //TF* slope_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* slope_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* slope_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    //TF* flux_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    //TF* flux_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* flux_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    TF* flux_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
     TF* rain_mass = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
     TF* rain_diam = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
@@ -383,6 +612,33 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo)
                           gd.icells, gd.ijcells, j,
                           micro_constants);
 
+        // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        mp2d::selfcollection_breakup(fields.st.at("nr")->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                     rain_mass, rain_diam, lambda_r,
+                                     gd.istart, gd.jstart, gd.kstart,
+                                     gd.iend,   gd.jend,   gd.kend,
+                                     gd.icells, gd.ijcells, j,
+                                     micro_constants);
+
+        // Sedimentation; sub-grid sedimentation of rain
+        mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),
+                                 w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
+                                 fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+                                 fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
+                                 gd.istart, gd.jstart, gd.kstart,
+                                 gd.iend,   gd.jend,   gd.kend,
+                                 gd.icells, gd.kcells, gd.ijcells, j,
+                                 micro_constants);
+
+        // Sedimentation; sub-grid sedimentation of rain
+        mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),
+                                 w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
+                                 fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+                                 fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
+                                 gd.istart, gd.jstart, gd.kstart,
+                                 gd.iend,   gd.jend,   gd.kend,
+                                 gd.icells, gd.kcells, gd.ijcells, j,
+                                 micro_constants);
     }
 
     // Release all local tmp fields in use

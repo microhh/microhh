@@ -300,7 +300,7 @@ void Model<TF>::exec()
         thermo->exec(timeloop->get_sub_time_step());
 
         // Calculate the microphysics.
-        microphys->exec(*thermo);
+        microphys->exec(*thermo, timeloop->get_sub_time_step());
 
         // Calculate the radiation fluxes and the related heating rate.
         radiation->exec(*thermo);
