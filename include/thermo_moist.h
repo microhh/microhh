@@ -70,6 +70,7 @@ class Thermo_moist : public Thermo<TF>
         void get_T_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
+        const std::vector<TF>& get_exner_vector() const;
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         TF get_buoyancy_diffusivity();

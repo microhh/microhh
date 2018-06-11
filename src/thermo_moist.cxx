@@ -937,6 +937,12 @@ const std::vector<TF>& Thermo_moist<TF>::get_ph_vector() const
 }
 
 template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_exner_vector() const
+{
+    return bs.exnref;
+}
+
+template<typename TF>
 void Thermo_moist<TF>::get_prog_vars(std::vector<std::string>& list)
 {
     list.push_back("thl");

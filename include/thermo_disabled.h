@@ -84,6 +84,7 @@ class Thermo_disabled : public Thermo<TF>
         void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
+        const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
 
     private:
         using Thermo<TF>::swthermo;
