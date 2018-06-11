@@ -33,6 +33,7 @@ template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Dump;
 template<typename> class Cross;
+template<typename> class Thermo;
 template<typename> class Field3d;
 template<typename> class Microphys;
 
@@ -43,9 +44,9 @@ class Microphys_2mom_warm : public Microphys<TF>
         Microphys_2mom_warm(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys_2mom_warm();
 
-        void init();
-        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec();
+        void init() {};
+        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void exec(Thermo<TF>&);
 
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const double);
         virtual void exec_dump(Dump<TF>&, unsigned long);
@@ -65,5 +66,11 @@ class Microphys_2mom_warm : public Microphys<TF>
 
     private:
         using Microphys<TF>::swmicrophys;
+        using Microphys<TF>::master;
+        using Microphys<TF>::grid;
+        using Microphys<TF>::fields;
+
+        bool swmicrobudget;     // Output full microphysics budget terms
+        TF cflmax;              // Max CFL number in microphysics sedimentation
 };
 #endif
