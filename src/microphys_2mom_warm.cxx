@@ -28,12 +28,14 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+#include "thermo_moist_functions.h"
 
 #include "constants.h"
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
 
 using namespace Constants;
+using namespace Thermo_moist_functions;
 
 namespace
 {
@@ -64,6 +66,46 @@ namespace
         slice_counter++;
 
         return &(tmp_fields[tmp_index]->fld[slice_start]);
+    }
+
+    // Rational tanh approximation
+    template<typename TF>
+    inline TF tanh2(const TF x)
+    {
+        return x * (TF(27) + x * x) / (TF(27) + TF(9) * x * x);
+    }
+
+    // Given rain water content (qr), number density (nr) and density (rho)
+    // calculate mean mass of rain drop
+    template<typename TF>
+    inline TF calc_rain_mass(const TF qr, const TF nr, const TF rho, const TF mr_min, const TF mr_max)
+    {
+        //TF mr = rho * qr / (nr + dsmall);
+        TF mr = rho * qr / std::max(nr, TF(1.));
+        return std::min(std::max(mr, mr_min), mr_max);
+    }
+
+    // Given mean mass rain drop, calculate mean diameter
+    template<typename TF>
+    inline TF calc_rain_diameter(const TF mr, const TF pirhow)
+    {
+        return pow(mr/pirhow, TF(1.)/TF(3.));
+    }
+
+    // Shape parameter mu_r
+    template<typename TF>
+    inline TF calc_mu_r(const TF dr)
+    {
+        //return 1./3.; // SB06
+        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (TF(1.) + tanh2(TF(1200.) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+    }
+
+    // Slope parameter lambda_r
+    template<typename TF>
+    inline TF calc_lambda_r(const TF mur, const TF dr)
+    {
+        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
     }
 }
 
@@ -108,11 +150,121 @@ namespace mp3d
                     }
                 }
     }
+
+    // Accreation: growth of raindrops collecting cloud droplets
+    template<typename TF>
+    void accretion(TF* const restrict qrt, TF* const restrict qtt, TF* const restrict thlt,
+                   const TF* const restrict qr,  const TF* const restrict ql,
+                   const TF* const restrict rho, const TF* const restrict exner,
+                   const int istart, const int jstart, const int kstart,
+                   const int iend,   const int jend,   const int kend,
+                   const int jj, const int kk,
+                   Micro_2mom_warm_constants<TF> constants)
+    {
+        const TF k_cr  = 5.25; // SB06, p49
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(ql[ijk] > constants.ql_min && qr[ijk] > constants.qr_min)
+                    {
+                        const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const TF phi_ac  = pow(tau / (tau + TF(5e-5)), 4); // SB06, Eq 8
+                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(constants.rho_0 / rho[k], TF(0.5)); // SB06, Eq 7
+
+                        qrt[ijk]  += ac_tend;
+                        qtt[ijk]  -= ac_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * ac_tend;
+                    }
+                }
+    }
 }
 
 // Microphysics calculated over 2D (xz) slices
 namespace mp2d
 {
+    // Calculate microphysics properties which are used in multiple routines
+    template<typename TF>
+    void prepare_microphysics_slice(TF* const restrict rain_mass, TF* const restrict rain_diameter,
+                                    TF* const restrict mu_r, TF* const restrict lambda_r,
+                                    const TF* const restrict qr, const TF* const restrict nr,
+                                    const TF* const restrict rho,
+                                    const int istart, const int iend,
+                                    const int kstart, const int kend,
+                                    const int icells, const int ijcells, const int j,
+                                    Micro_2mom_warm_constants<TF> constants)
+    {
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                if(qr[ijk] > constants.qr_min)
+                {
+                    rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k], constants.mr_min, constants.mr_max);
+                    rain_diameter[ik] = calc_rain_diameter(rain_mass[ik], constants.pirhow);
+                    mu_r[ik]          = calc_mu_r(rain_diameter[ik]);
+                    lambda_r[ik]      = calc_lambda_r(mu_r[ik], rain_diameter[ik]);
+                }
+                else
+                {
+                    rain_mass[ik]     = 0;
+                    rain_diameter[ik] = 0;
+                    mu_r[ik]          = 0;
+                    lambda_r[ik]      = 0;
+                }
+            }
+    }
+
+    // Evaporation: evaporation of rain drops in unsaturated environment
+    template<typename TF>
+    void evaporation(TF* const restrict qrt, TF* const restrict nrt,
+                     TF* const restrict qtt, TF* const restrict thlt,
+                     const TF* const restrict qr, const TF* const restrict nr,
+                     const TF* const restrict ql, const TF* const restrict qt, const TF* const restrict thl,
+                     const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
+                     const TF* const restrict rain_mass, const TF* const restrict rain_diameter,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int jj, const int kk, const int j,
+                     Micro_2mom_warm_constants<TF> constants)
+    {
+        const TF lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                if(qr[ijk] > constants.qr_min)
+                {
+                    const TF mr  = rain_mass[ik];
+                    const TF dr  = rain_diameter[ik];
+
+                    const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
+                    const TF Glv = pow(Rv * T / (esat(T) * constants.D_v) +
+                                       (Lv / (constants.K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+
+                    const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                    const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+
+                    const TF ev_tend = TF(2.) * constants.pi * dr * Glv * S * F * nr[ijk] / rho[k];
+
+                    qrt[ijk]  += ev_tend;
+                    nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
+                    qtt[ijk]  -= ev_tend;
+                    thlt[ijk] += Lv / (cp * exner[k]) * ev_tend;
+                }
+            }
+    }
 
 }
 
@@ -175,17 +327,17 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo)
     // Get pointers to slices in tmp fields:
     int slice_counter = 0;
 
-    TF* w_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    TF* w_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* w_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* w_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    TF* c_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    TF* c_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* c_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* c_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    TF* slope_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    TF* slope_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* slope_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* slope_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
-    TF* flux_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
-    TF* flux_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* flux_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+    //TF* flux_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
 
     TF* rain_mass = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
     TF* rain_diam = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
@@ -205,14 +357,39 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo)
                          gd.icells, gd.ijcells,
                          micro_constants);
 
+    // Accretion; growth of raindrops collecting cloud droplets
+    mp3d::accretion(fields.st.at("qr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+                    fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
+                    gd.istart, gd.jstart, gd.kstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells,
+                    micro_constants);
+
+    // Rest of the microphysics is handled per XZ slice
+    for (int j=gd.jstart; j<gd.jend; ++j)
+    {
+        // Prepare the XZ slices which are used in all routines
+        mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r,
+                                         fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                         gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j, micro_constants);
+
+        // Evaporation; evaporation of rain drops in unsaturated environment
+        mp2d::evaporation(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),  fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+                          fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),  ql->fld.data(),
+                          fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(), fields.rhoref.data(), exner.data(), p.data(),
+                          rain_mass, rain_diam,
+                          gd.istart, gd.jstart, gd.kstart,
+                          gd.iend,   gd.jend,   gd.kend,
+                          gd.icells, gd.ijcells, j,
+                          micro_constants);
+
+    }
 
     // Release all local tmp fields in use
     for (auto& it: tmp_fields)
         fields.release_tmp(it);
 
     fields.release_tmp(ql);
-
-    throw 1;
 }
 
 template<typename TF>
