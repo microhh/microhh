@@ -1237,11 +1237,11 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         if (it == "ql")
             cross.cross_simple(output->fld.data(), "ql", iotime);
         if (it == "qlpath")
-            cross.cross_path(output->fld.data(), "ql", iotime);
+            cross.cross_path(output->fld.data(), "qlpath", iotime);
         if (it == "qlbase")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "ql", iotime);
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlbase", iotime);
         if (it == "qltop")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "ql", iotime);
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qltop", iotime);
     }
 
     fields.release_tmp(output);
