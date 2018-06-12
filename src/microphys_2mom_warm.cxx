@@ -242,6 +242,25 @@ namespace mp3d
                     }
                 }
 
+        // Mirror the values of w_qr over the ghost cells.
+        // Bottom boundary.
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + kstart*ijcells;
+                w_qr[ijk-ijcells] = w_qr[ijk];
+            }
+
+        // Top boundary.
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + (kend-1)*ijcells;
+                w_qr[ijk+ijcells] = w_qr[ijk];
+            }
+
         // Calculate maximum CFL based on interpolated velocity
         TF cfl_max = 1e-5;
         for (int k=kstart; k<kend; k++)

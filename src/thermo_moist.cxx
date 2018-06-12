@@ -212,13 +212,13 @@ namespace
                       TF* restrict p, TF* restrict ql, TF* restrict thvref,
                       const int istart, const int iend,
                       const int jstart, const int jend,
-                      const int kstart, const int kcells,
-                      const int jj, const int kk)
+                      const int kstart, const int kend,
+                      const int kcells, const int jj, const int kk)
    {
        for (int k=0; k<kcells; k++)
        {
            const TF ex = exner(p[k]);
-           if (k>=kstart)
+           if (k >= kstart && k < kend)
            {
                for (int j=jstart; j<jend; j++)
                    #pragma ivdep
@@ -825,7 +825,7 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     {
         auto tmp = fields.get_tmp();
         calc_buoyancy(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(),
-                      gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+                      gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.kcells, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     else if (name == "b_h")
