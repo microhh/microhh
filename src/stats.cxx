@@ -41,6 +41,7 @@
 
 using namespace netCDF;
 using namespace netCDF::exceptions;
+using namespace Constants;
 
 namespace
 {
@@ -692,6 +693,31 @@ void Stats<TF>::calc_mean_2d(TF& mean, const TF* const restrict data,
     }
     else
         mean = netcdf_fp_fillvalue<TF>();
+}
+
+template<typename TF>
+void Stats<TF>::calc_max_2d(TF& max, const TF* const restrict data,
+                            const TF offset, const TF* const restrict mask, const int nmask)
+{
+    auto& gd = grid.get_grid_data();
+    const int jj = gd.icells;
+
+    if (nmask > nthres)
+    {
+        max = -dbig;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij = i + j*jj;
+
+                if (mask[ij] == 1)
+                    max = std::max(max, (data[ij] + offset));
+            }
+        master.max(&max, 1);
+    }
+    else
+        max = netcdf_fp_fillvalue<TF>();
 }
 
 //

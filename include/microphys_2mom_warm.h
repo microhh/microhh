@@ -70,7 +70,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         void exec(Thermo<TF>&, const double);
 
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const double);
-        virtual void exec_dump(Dump<TF>&, unsigned long);
+        virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long);
 
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
@@ -93,6 +93,8 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         bool swmicrobudget;     // Output full microphysics budget terms
         TF cflmax;              // Max CFL number in microphysics sedimentation
+
+        std::vector<std::string> crosslist;  // Cross-sections handled by this class
 
         Micro_2mom_warm_constants<TF> micro_constants;
 

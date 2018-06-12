@@ -28,6 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
+#include "cross.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -475,8 +476,7 @@ namespace mp2d
             w_nr[ik2] = 0;
         }
 
-         // 2. Calculate CFL number using interpolated sedimentation velocity
-
+        // 2. Calculate CFL number using interpolated sedimentation velocity
         for (int k=kstart; k<kend; k++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -487,7 +487,6 @@ namespace mp2d
             }
 
         // 3. Calculate slopes
-
         for (int k=kstart; k<kend; k++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -574,19 +573,17 @@ namespace mp2d
             }
 
         // Store surface sedimentation flux
-        // Multiple with surface density to get a flux in kg m-2 s-1,
-        // with rho_water = 1000 kg/m3 this equals the rain rate in mm s-1
+        // Sedimentation flux is already multiplied with density (see flux div. calculation), so
+        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals the rain rate in mm s-1
         for (int i=istart; i<iend; i++)
         {
             const int ij  = i + j*icells;
             const int ik  = i + kstart*icells;
 
-            rr_bot[ij] = -rhoh[kstart] * flux_qr[ik];
+            rr_bot[ij] = -flux_qr[ik];
         }
     }
-
 }
-
 
 template<typename TF>
 Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -623,11 +620,35 @@ void Microphys_2mom_warm<TF>::init()
 template<typename TF>
 void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
+    // BvS: for now I have left the init of statistics and cross-sections here
+    // If this gets out of hand, move initialisation to separate function like in e.g. thermo_moist
+
     // Add variables to the statistics
     if (stats.get_switch())
     {
         stats.add_time_series("rr_mean", "Mean surface rain rate", "kg m-2 s-1");
         stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
+    }
+
+
+    // Create cross sections
+    std::vector<std::string> allowed_crossvars = {"rr_bot"};
+
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *crosslist_global = cross.get_crosslist();
+
+    // Remove allowed cross-sections from global cross-section list
+    std::vector<std::string>::iterator it=crosslist_global->begin();
+    while (it != crosslist_global->end())
+    {
+        if (std::count(allowed_crossvars.begin(), allowed_crossvars.end(), *it))
+        {
+            // Remove variable from global list, put in local list
+            crosslist.push_back(*it);
+            crosslist_global->erase(it); // erase() returns iterator of next element..
+        }
+        else
+            ++it;
     }
 }
 
@@ -754,17 +775,18 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
      Mask<TF>& m = stats.masks[mask_name];
 
      const TF no_offset = 0.;
-     stats.calc_mean_2d(m.tseries["rr_mean" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-}
-
-template<typename TF>
-void Microphys_2mom_warm<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
-{
+     stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+     stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
 }
 
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    for (auto& it : crosslist)
+    {
+        if (it == "rr_bot")
+            cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+    }
 }
 
 template<typename TF>

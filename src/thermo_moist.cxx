@@ -1024,6 +1024,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
     {
         swcross_b = false;
         swcross_ql = false;
+
         std::vector<std::string> allowed_crossvars_b; ///< List with allowed cross variables
         std::vector<std::string> allowed_crossvars_ql; ///< List with allowed cross variables
 
@@ -1032,6 +1033,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         allowed_crossvars_b.push_back("bfluxbot");
         if (grid.swspatialorder == "4")
             allowed_crossvars_b.push_back("blngrad");
+
         allowed_crossvars_ql.push_back("ql");
         allowed_crossvars_ql.push_back("qlpath");
         allowed_crossvars_ql.push_back("qlbase");

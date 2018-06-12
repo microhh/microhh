@@ -219,7 +219,6 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(timeloop->get_iotime(), sim_name);
     column->create(timeloop->get_iotime(), sim_name);
-    cross->create();
     dump->create();
 
     // Load the fields, and create the field statistics
@@ -234,6 +233,8 @@ void Model<TF>::load()
     microphys->create(*input, *profs, *stats, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
+
+    cross->create();    // Cross needs to be called at the end!
 
     boundary->set_values();
     pres->set_values();
