@@ -199,6 +199,64 @@ namespace mp3d
                     }
                 }
     }
+
+
+    // Calculate maximum sedimentation velocity
+    template<typename TF>
+    TF calc_max_sedimentation_cfl(TF* const restrict w_qr,
+                                  const TF* const restrict qr, const TF* const restrict nr,
+                                  const TF* const restrict rho, const TF* const restrict dzi,
+                                  const double dt,
+                                  const int istart, const int jstart, const int kstart,
+                                  const int iend,   const int jend,   const int kend,
+                                  const int icells, const int ijcells,
+                                  Micro_2mom_warm_constants<TF> constants)
+    {
+        const TF w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const TF a_R = 9.65;   // SB06, p51
+        const TF c_R = 600;    // SB06, p51
+        const TF Dv  = 25.0e-6;
+        const TF b_R = a_R * exp(c_R*Dv); // UCLA-LES
+
+        // Calculate sedimentation velocity at cell centre
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if(qr[ijk] > constants.qr_min)
+                    {
+                        // Calculate mean rain drop mass and diameter
+                        const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k], constants.mr_min, constants.mr_max);
+                        const TF dr      = calc_rain_diameter(mr, constants.pirhow);
+                        const TF mur     = calc_mu_r(dr);
+                        const TF lambdar = calc_lambda_r(mur, dr);
+
+                        w_qr[ijk] = std::min(w_max, std::max(TF(0.1), a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mur+TF(4.))))));
+                    }
+                    else
+                    {
+                        w_qr[ijk] = 0.;
+                    }
+                }
+
+        // Calculate maximum CFL based on interpolated velocity
+        TF cfl_max = 1e-5;
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    const TF cfl_qr = TF(0.25) * (w_qr[ijk-ijcells] + TF(2.)*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * TF(dt);
+                    cfl_max = std::max(cfl_max, cfl_qr);
+                }
+
+        return cfl_max;
+    }
 }
 
 // Microphysics calculated over 2D (xz) slices
@@ -657,7 +715,22 @@ void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const double dt)
 {
-    return Constants::ulhuge;
+    auto& gd = grid.get_grid_data();
+
+    // Calculate the maximum sedimentation CFL number
+    auto w_qr = fields.get_tmp();
+    TF cfl = mp3d::calc_max_sedimentation_cfl(w_qr->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+                                              fields.rhoref.data(), gd.dzi.data(), dt,
+                                              gd.istart, gd.jstart, gd.kstart,
+                                              gd.iend,   gd.jend,   gd.kend,
+                                              gd.icells, gd.ijcells,
+                                              micro_constants);
+    fields.release_tmp(w_qr);
+
+    // Get maximum CFL across all MPI tasks
+    master.max(&cfl, 1);
+
+    return idt * cflmax / cfl;
 }
 
 template<typename TF>
