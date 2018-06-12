@@ -192,7 +192,7 @@ void Buffer<TF>::exec()
                         gd.zh.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstarth, gd.kend);
 
             for (auto& it : fields.sp)
-                calc_buffer(fields.st.at(it.first)->fld.data(), bufferprofs.at(it.first).data(), fields.sp.at(it.first)->fld_mean.data(),
+                calc_buffer(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), bufferprofs.at(it.first).data(),
                             gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
         }
     }
