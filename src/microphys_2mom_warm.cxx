@@ -27,6 +27,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -414,14 +415,15 @@ namespace mp2d
 
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
-    void sedimentation_ss08(TF* const restrict qrt, TF* const restrict nrt,
+    void sedimentation_ss08(TF* const restrict qrt, TF* const restrict nrt, TF* const restrict rr_bot,
                             TF* const restrict w_qr, TF* const restrict w_nr,
                             TF* const restrict c_qr, TF* const restrict c_nr,
                             TF* const restrict slope_qr, TF* const restrict slope_nr,
                             TF* const restrict flux_qr, TF* const restrict flux_nr,
                             const TF* const restrict mu_r, const TF* const restrict lambda_r,
                             const TF* const restrict qr, const TF* const restrict nr,
-                            const TF* const restrict rho, const TF* const restrict dzi,
+                            const TF* const restrict rho, const TF* const restrict rhoh,
+                            const TF* const restrict dzi,
                             const TF* const restrict dz, const double dt,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
@@ -570,6 +572,17 @@ namespace mp2d
                 qrt[ijk] += -(flux_qr[ik+kk2d] - flux_qr[ik]) / rho[k] * dzi[k];
                 nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
             }
+
+        // Store surface sedimentation flux
+        // Multiple with surface density to get a flux in kg m-2 s-1,
+        // with rho_water = 1000 kg/m3 this equals the rain rate in mm s-1
+        for (int i=istart; i<iend; i++)
+        {
+            const int ij  = i + j*icells;
+            const int ik  = i + kstart*icells;
+
+            rr_bot[ij] = -rhoh[kstart] * flux_qr[ik];
+        }
     }
 
 }
@@ -597,6 +610,25 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
 template<typename TF>
 Microphys_2mom_warm<TF>::~Microphys_2mom_warm()
 {
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::init()
+{
+    auto& gd = grid.get_grid_data();
+
+    rr_bot.resize(gd.ijcells);     // 2D surface sedimentation flux (rain rate)
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+{
+    // Add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_time_series("rr_mean", "Mean surface rain rate", "kg m-2 s-1");
+        stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
+    }
 }
 
 template<typename TF>
@@ -698,10 +730,10 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
                                      micro_constants);
 
         // Sedimentation; sub-grid sedimentation of rain
-        mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),
+        mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), rr_bot.data(),
                                  w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
                                  fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
-                                 fields.rhoref.data(), gd.dzi.data(), gd.dz.data(), dt,
+                                 fields.rhoref.data(), fields.rhorefh.data(), gd.dzi.data(), gd.dz.data(), dt,
                                  gd.istart, gd.jstart, gd.kstart,
                                  gd.iend,   gd.jend,   gd.kend,
                                  gd.icells, gd.kcells, gd.ijcells, j,
@@ -719,6 +751,10 @@ template<typename TF>
 void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name,
                                          Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh, const double dt)
 {
+     Mask<TF>& m = stats.masks[mask_name];
+
+     const TF no_offset = 0.;
+     stats.calc_mean_2d(m.tseries["rr_mean" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
 }
 
 template<typename TF>

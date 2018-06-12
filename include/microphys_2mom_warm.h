@@ -65,8 +65,8 @@ class Microphys_2mom_warm : public Microphys<TF>
         Microphys_2mom_warm(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys_2mom_warm();
 
-        void init() {};
-        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void init();
+        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, const double);
 
         void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const double);
@@ -95,5 +95,8 @@ class Microphys_2mom_warm : public Microphys<TF>
         TF cflmax;              // Max CFL number in microphysics sedimentation
 
         Micro_2mom_warm_constants<TF> micro_constants;
+
+        // Surface precipitation statistics
+        std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
 };
 #endif
