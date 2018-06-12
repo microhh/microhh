@@ -30,6 +30,7 @@
 #include "stats.h"
 #include "cross.h"
 #include "thermo.h"
+#include "boundary_cyclic.h"
 #include "thermo_moist_functions.h"
 
 #include "constants.h"
@@ -586,7 +587,8 @@ namespace mp2d
 
 template<typename TF>
 Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Microphys<TF>(masterin, gridin, fieldsin, inputin)
+    Microphys<TF>(masterin, gridin, fieldsin, inputin),
+    boundary_cyclic(masterin, gridin)
 {
     swmicrophys = Microphys_type::Warm_2mom;
 
@@ -800,12 +802,43 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 template<typename TF>
 bool Microphys_2mom_warm<TF>::has_mask(std::string name)
 {
-    return false;
+    if (std::find(available_masks.begin(), available_masks.end(), name) != available_masks.end())
+        return true;
+    else
+        return false;
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
+void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string name)
 {
+    auto& gd = grid.get_grid_data();
+
+    if (name == "qr")
+    {
+        TF threshold = 1e-8;
+        const int wloc[] = {0,0,1};
+        const int sloc[] = {0,0,0};
+
+        // Interpolate qr to half level:
+        auto qrh = fields.get_tmp();
+        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), sloc, wloc);
+
+        // Calculate masks
+        stats.set_mask_true(mfield, mfieldh);
+        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
+        stats.get_nmask(mfield, mfieldh);
+
+        fields.release_tmp(qrh);
+    }
+    else
+    {
+        std::string message = "Double moment warm microphysics can not provide mask: \"" + name +"\"";
+        throw std::runtime_error(message);
+    }
+
+    boundary_cyclic.exec(mfield.fld.data());
+    boundary_cyclic.exec(mfieldh.fld.data());
+    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
 }
 
 template class Microphys_2mom_warm<double>;

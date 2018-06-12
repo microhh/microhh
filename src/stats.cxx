@@ -91,17 +91,17 @@ namespace
         for (int n=0; n<ijcells; ++n)
             mask_bottom[n] = 1.;
     }
+
     template<typename TF>
     void calc_mask_thres(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
-                     const TF* const restrict fld,const TF* const restrict fldh, const TF* const restrict fldbot, const TF threshold, const bool mode,
-                     const int istart, const int jstart, const int kstart,
-                     const int iend,   const int jend,   const int kend,
-                     const int icells, const int ijcells)
+                         const TF* const restrict fld,const TF* const restrict fldh, const TF* const restrict fldbot, const TF threshold, const bool mode,
+                         const int istart, const int jstart, const int kstart,
+                         const int iend,   const int jend,   const int kend,
+                         const int icells, const int ijcells)
     {
         if (mode)
         {
             for (int k=kstart; k<kend; k++)
-            {
                 for (int j=jstart; j<jend; j++)
                     #pragma ivdep
                     for (int i=istart; i<iend; i++)
@@ -110,10 +110,8 @@ namespace
                         mask[ijk] *= fld[ijk] > threshold;
                         maskh[ijk] *= fldh[ijk] > threshold;
                     }
-            }
 
             // Set the mask for surface projected quantities
-            // In this case: velocity at surface, so zero
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
@@ -126,7 +124,6 @@ namespace
         else
         {
             for (int k=kstart; k<kend; k++)
-            {
                 for (int j=jstart; j<jend; j++)
                     #pragma ivdep
                     for (int i=istart; i<iend; i++)
@@ -135,7 +132,6 @@ namespace
                         mask[ijk] *= fld[ijk] <= threshold;
                         maskh[ijk] *= fldh[ijk] <= threshold;
                     }
-            }
 
             // Set the mask for surface projected quantities
             // In this case: velocity at surface, so zero
@@ -159,7 +155,6 @@ namespace
         if (mode)
         {
             for (int k=kstart; k<kend; k++)
-            {
                 for (int j=jstart; j<jend; j++)
                     #pragma ivdep
                     for (int i=istart; i<iend; i++)
@@ -168,7 +163,6 @@ namespace
                         mask[ijk] *= (fld[ijk]-fld_mean[k]) > threshold;
                         maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) > threshold;
                     }
-            }
 
             // Set the mask for surface projected quantities
             // In this case: velocity at surface, so zero
@@ -184,7 +178,6 @@ namespace
         else
         {
             for (int k=kstart; k<kend; k++)
-            {
                 for (int j=jstart; j<jend; j++)
                     #pragma ivdep
                     for (int i=istart; i<iend; i++)
@@ -193,7 +186,6 @@ namespace
                         mask[ijk] *= (fld[ijk]-fld_mean[k]) <= threshold;
                         maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) <= threshold;
                     }
-            }
 
             // Set the mask for surface projected quantities
             // In this case: velocity at surface, so zero
@@ -218,26 +210,23 @@ namespace
         {
             nmask_full[k] = 0;
             nmask_half[k] = 0;
+
             for (int j=0; j<jtot; ++j)
-            {
                 for (int i=0; i<itot; ++i)
                 {
                     const int ijk  = i + j*itot + k*ijcells;
                     nmask_full[k]+=mask_full[ijk];
                     nmask_half[k]+=mask_half[ijk];
                 }
-            }
         }
+
         nmask_bottom = 0;
         for (int j=0; j<jtot; ++j)
-        {
             for (int i=0; i<itot; ++i)
             {
                 const int ijk  = i + j*itot;
                 nmask_bottom+=mask_bottom[ijk];
             }
-        }
-
     }
 }
 

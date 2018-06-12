@@ -600,7 +600,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
 
     // Time variable surface pressure
     swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
-    available_masks.insert(available_masks.end(), {"ql", "qlcore", "qr"});
+    available_masks.insert(available_masks.end(), {"ql", "qlcore"});
 }
 
 template<typename TF>
@@ -760,6 +760,12 @@ void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats
         fields.release_tmp(b);
         fields.release_tmp(bh);
     }
+    else
+    {
+        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
+        throw std::runtime_error(message);
+    }
+    
     boundary_cyclic.exec(mfield.fld.data());
     boundary_cyclic.exec(mfieldh.fld.data());
     boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
