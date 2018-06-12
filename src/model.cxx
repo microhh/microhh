@@ -28,6 +28,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "buffer.h"
 #include "data_block.h"
 #include "timeloop.h"
 #include "fft.h"
@@ -119,6 +120,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
         force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
         stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *input);
         column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
@@ -167,6 +169,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    buffer->init();
     diff->init();
     pres->init();
     force->init();
@@ -225,6 +228,7 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *stats);
+    buffer->create(*input, *profs);
     force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     microphys->create(*input, *profs, *stats, *cross, *dump);
@@ -306,7 +310,7 @@ void Model<TF>::exec()
         radiation->exec(*thermo);
 
         // Calculate the tendency due to damping in the buffer layer.
-        // buffer->exec();
+        buffer->exec();
 
         // Apply the scalar decay.
         decay->exec(timeloop->get_sub_time_step());
@@ -322,7 +326,8 @@ void Model<TF>::exec()
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || 
+                dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
             {
                 #ifdef USECUDA
                 if(t_stat.joinable())
