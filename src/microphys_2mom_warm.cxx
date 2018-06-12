@@ -441,7 +441,6 @@ namespace mp2d
         const int kk2d = icells;
 
         // 1. Calculate sedimentation velocity at cell center
-
         for (int k=kstart; k<kend; k++)
         {
             const TF rho_n = pow(TF(1.2) / rho[k], TF(0.5));
@@ -574,7 +573,7 @@ namespace mp2d
 
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
-        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals the rain rate in mm s-1
+        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
         for (int i=istart; i<iend; i++)
         {
             const int ij  = i + j*icells;
@@ -630,26 +629,11 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
         stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
     }
 
-
     // Create cross sections
+    // 1. Variables that this class can calculate/provide:
     std::vector<std::string> allowed_crossvars = {"rr_bot"};
-
-    // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = cross.get_crosslist();
-
-    // Remove allowed cross-sections from global cross-section list
-    std::vector<std::string>::iterator it=crosslist_global->begin();
-    while (it != crosslist_global->end())
-    {
-        if (std::count(allowed_crossvars.begin(), allowed_crossvars.end(), *it))
-        {
-            // Remove variable from global list, put in local list
-            crosslist.push_back(*it);
-            crosslist_global->erase(it); // erase() returns iterator of next element..
-        }
-        else
-            ++it;
-    }
+    // 2. Cross-reference with the variables requested in the .ini file:
+    crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
 template<typename TF>
@@ -782,10 +766,13 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    for (auto& it : crosslist)
+    if (cross.get_switch())
     {
-        if (it == "rr_bot")
-            cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+        for (auto& it : crosslist)
+        {
+            if (it == "rr_bot")
+                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+        }
     }
 }
 

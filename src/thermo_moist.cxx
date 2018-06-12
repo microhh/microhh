@@ -1025,47 +1025,21 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_b = false;
         swcross_ql = false;
 
-        std::vector<std::string> allowed_crossvars_b; ///< List with allowed cross variables
-        std::vector<std::string> allowed_crossvars_ql; ///< List with allowed cross variables
+        // Vectors with allowed cross variables for buoyancy and liquid water
+        std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
+        std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
 
-        allowed_crossvars_b.push_back("b");
-        allowed_crossvars_b.push_back("bbot");
-        allowed_crossvars_b.push_back("bfluxbot");
-        if (grid.swspatialorder == "4")
-            allowed_crossvars_b.push_back("blngrad");
+        std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
+        std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
 
-        allowed_crossvars_ql.push_back("ql");
-        allowed_crossvars_ql.push_back("qlpath");
-        allowed_crossvars_ql.push_back("qlbase");
-        allowed_crossvars_ql.push_back("qltop");
+        if (bvars.size() > 0)
+            swcross_b  = true;
+        if (qlvars.size() > 0)
+            swcross_ql = true;
 
-        // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = cross.get_crosslist();
-
-        // Check input list of cross variables (crosslist)
-        std::vector<std::string>::iterator it=crosslist_global->begin();
-        while (it != crosslist_global->end())
-        {
-            if (std::count(allowed_crossvars_b.begin(), allowed_crossvars_b.end(), *it))
-            {
-                // Remove variable from global list, put in local list
-                crosslist.push_back(*it);
-                crosslist_global->erase(it); // erase() returns iterator of next element..
-                swcross_b = true;
-            }
-            else if (std::count(allowed_crossvars_ql.begin(), allowed_crossvars_ql.end(), *it))
-            {
-                // Remove variable from global list, put in local list
-                crosslist.push_back(*it);
-                crosslist_global->erase(it); // erase() returns iterator of next element..
-                swcross_ql = true;
-            }
-            else
-                ++it;
-        }
-
-        // Sort crosslist to group ql and b variables
-        std::sort(crosslist.begin(), crosslist.end());
+        // Merge into one vector
+        crosslist = bvars;
+        crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
     }
 }
 

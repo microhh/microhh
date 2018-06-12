@@ -488,6 +488,34 @@ std::vector<std::string>* Cross<TF>::get_crosslist()
     return &crosslist;
 }
 
+/*
+This function is called from various classes, "allowed_variables" is a vector
+with the variables that each class can potentially provide, get_enabled_variables()
+cross-references this with the cross-sections requested in the .ini file (crosslist),
+removes the cross-sections that the class can and should provide from crosslist,
+and returns a vector containing those variables (difficult explanation...)
+*/
+template<typename TF>
+std::vector<std::string> Cross<TF>::get_enabled_variables(std::vector<std::string> allowed_variables)
+{
+    std::vector<std::string> variables_to_return;
+
+    std::vector<std::string>::iterator it=crosslist.begin();
+    while (it != crosslist.end())
+    {
+        if (std::count(allowed_variables.begin(), allowed_variables.end(), *it))
+        {
+            // Remove variable from global list, put in list which is returned
+            variables_to_return.push_back(*it);
+            crosslist.erase(it); // erase() returns iterator of next element..
+        }
+        else
+            ++it;
+    }
+
+    return variables_to_return;
+}
+
 
 template<typename TF>
 int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)

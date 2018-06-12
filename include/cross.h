@@ -42,13 +42,12 @@ class Cross
         bool get_switch() { return swcross; }
 
         std::vector<std::string>* get_crosslist();
+        std::vector<std::string> get_enabled_variables(std::vector<std::string>);
 
         unsigned long get_time_limit(unsigned long);
         //int exec(double, unsigned long, int);
 
-
         bool do_cross(unsigned long);
-
 
         int cross_simple(TF*, std::string, int);
         int cross_lngrad(TF*, std::string, int);
