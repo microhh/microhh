@@ -72,14 +72,14 @@ void Pres_4<TF>::exec(const double dt)
     // 1. Create the input for the pressure solver.
     // In case of a two-dimensional run, remove calculation of v contribution.
     if (gd.jtot == 1)
-        input<false>(fields->sd["p"]->data,
-                     fields->u ->data, fields->v ->data, fields->w ->data,
-                     fields->ut->data, fields->vt->data, fields->wt->data, 
+        input<false>(fields.sd["p"]->fld.data(),
+                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                     fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
                      gd.dzi4.data(), dt);
     else
-        input<true>(fields->sd["p"]->data,
-                    fields->u ->data, fields->v ->data, fields->w ->data,
-                    fields->ut->data, fields->vt->data, fields->wt->data, 
+        input<true>(fields.sd["p"]->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                    fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
                     gd.dzi4.data(), dt);
 
     // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
@@ -95,33 +95,45 @@ void Pres_4<TF>::exec(const double dt)
        reads in case jblock does not divide by 4. */
     const int jslice = 1;
 
-    double *tmp2 = fields->atmp["tmp2"]->data;
-    double *tmp3 = fields->atmp["tmp3"]->data;
+    auto tmp1 = fields.get_tmp();
+
+    auto tmp2_fld = fields.get_tmp();
+    auto tmp3_fld = fields.get_tmp();
+
+    // Shortcuts for simpler notation.
+    TF* tmp2 = tmp2_fld->fld.data();
+    TF* tmp3 = tmp3_fld->fld.data();
 
     const int ns = gd.iblock*jslice*(gd.kmax+4);
 
-    solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, gd.dz,
-          m1, m2, m3, m4,
-          m5, m6, m7,
+    solve(fields.sd["p"]->fld.data(), tmp1->fld.data(), gd.dz.data(),
+          m1.data(), m2.data(), m3.data(), m4.data(),
+          m5.data(), m6.data(), m7.data(),
           &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
           &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-          bmati, bmatj,
+          bmati.data(), bmatj.data(),
           jslice);
 
     // 3. Get the pressure tendencies from the pressure field.
     if (gd.jtot == 1)
-        output<false>(fields->ut->data, fields->vt->data, fields->wt->data, 
-                      fields->sd["p"]->data, gd.dzhi4.data());
+        output<false>(
+                fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
+                fields.sd["p"]->fld.data(), gd.dzhi4.data());
     else
-        output<true>(fields->ut->data, fields->vt->data, fields->wt->data, 
-                     fields->sd["p"]->data, gd.dzhi4.data());
+        output<true>(
+                fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
+                fields.sd["p"]->fld.data(), gd.dzhi4.data());
 }
 
 template<typename TF>
-double Pres_4<TF>::check_divergence()
+TF Pres_4<TF>::check_divergence()
 {
     auto& gd = grid.get_grid_data();
-    return calc_divergence(fields->u->data, fields->v->data, fields->w->data, gd.dzi4.data());
+    return calc_divergence(
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    gd.dzi4.data());
 }
 #endif
 
@@ -140,6 +152,9 @@ void Pres_4<TF>::init()
     m5.resize(gd.kmax);
     m6.resize(gd.kmax);
     m7.resize(gd.kmax);
+
+    boundary_cyclic.init();
+    fft.init();
 }
 
 template<typename TF>
@@ -284,9 +299,9 @@ void Pres_4<TF>::input(
 
 template<typename TF>
 void Pres_4<TF>::solve(
-        TF* restrict p, TF* restrict work3d, TF* restrict dz,
-        TF* restrict m1, TF* restrict m2, TF* restrict m3, TF* restrict m4,
-        TF* restrict m5, TF* restrict m6, TF* restrict m7,
+        TF* restrict p, TF* restrict work3d, const TF* restrict dz,
+        const TF* restrict m1, const TF* restrict m2, const TF* restrict m3, const TF* restrict m4,
+        const TF* restrict m5, const TF* restrict m6, const TF* restrict m7,
         TF* restrict m1temp, TF* restrict m2temp, TF* restrict m3temp, TF* restrict m4temp,
         TF* restrict m5temp, TF* restrict m6temp, TF* restrict m7temp, TF* restrict ptemp,
         TF* restrict bmati, TF* restrict bmatj,
@@ -303,7 +318,7 @@ void Pres_4<TF>::solve(
     const int jgc    = gd.jgc;
     const int kgc    = gd.kgc;
 
-    grid->fft_forward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+    fft.exec_forward(p, work3d);
 
     int jj,kk,ik,ijk;
     int iindex,jindex;
@@ -311,8 +326,10 @@ void Pres_4<TF>::solve(
     jj = iblock;
     kk = iblock*jblock;
 
-    const int mpicoordx = master->mpicoordx;
-    const int mpicoordy = master->mpicoordy;
+    auto& md = master.get_MPI_data();
+
+    const int mpicoordx = md.mpicoordx;
+    const int mpicoordy = md.mpicoordy;
 
     // Calculate the step size.
     const int nj = jblock/jslice;
@@ -447,7 +464,7 @@ void Pres_4<TF>::solve(
                 }
     }
 
-    grid->fft_backward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+    fft.exec_backward(p, work3d);
 
     // Put the pressure back onto the original grid including ghost cells.
     jj = imax;
@@ -723,3 +740,6 @@ TF Pres_4<TF>::calc_divergence(
 
     return divmax;
 }
+
+template class Pres_4<double>;
+template class Pres_4<float>;

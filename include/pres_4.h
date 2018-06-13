@@ -41,8 +41,8 @@ class Pres_4 : public Pres<TF>
         void init();
         void set_values();
 
-        void exec(double);
-        double check_divergence();
+        void exec(const double);
+        TF check_divergence();
 
         #ifdef USECUDA
         void prepare_device();
@@ -68,15 +68,15 @@ class Pres_4 : public Pres<TF>
         std::vector<TF> m7;
 
         #ifdef USECUDA
-        double* bmati_g;
-        double* bmatj_g;
-        double* m1_g;
-        double* m2_g;
-        double* m3_g;
-        double* m4_g;
-        double* m5_g;
-        double* m6_g;
-        double* m7_g;
+        TF* bmati_g;
+        TF* bmatj_g;
+        TF* m1_g;
+        TF* m2_g;
+        TF* m3_g;
+        TF* m4_g;
+        TF* m5_g;
+        TF* m6_g;
+        TF* m7_g;
 
         cufftDoubleComplex* ffti_complex_g;
         cufftDoubleComplex* fftj_complex_g;
@@ -92,13 +92,13 @@ class Pres_4 : public Pres<TF>
                    TF* restrict, TF* restrict, TF* restrict,
                    const TF* restrict, const TF);
 
-        void solve(TF* restrict, TF* restrict, TF* restrict,
-                   TF* restrict, TF* restrict, TF* restrict, TF* restrict,
-                   TF* restrict, TF* restrict, TF* restrict,
+        void solve(TF* restrict, TF* restrict, const TF* restrict,
+                   const TF* restrict, const TF* restrict, const TF* restrict, const TF* restrict,
+                   const TF* restrict, const TF* restrict, const TF* restrict,
                    TF* restrict, TF* restrict, TF* restrict, TF* restrict,
                    TF* restrict, TF* restrict, TF* restrict, TF* restrict,
                    TF* restrict, TF* restrict,
-                   int);
+                   const int);
 
         template<bool>
         void output(TF* restrict, TF* restrict, TF* restrict,

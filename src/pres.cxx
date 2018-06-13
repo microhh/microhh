@@ -33,6 +33,7 @@
 #include "pres.h"
 #include "pres_disabled.h"
 #include "pres_2.h"
+#include "pres_4.h"
 
 template<typename TF>
 Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
@@ -69,8 +70,8 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(
         return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, fftin, inputin);
     else if (swpres == "2")
         return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, fftin, inputin);
-    // else if (swpres == "4")
-    //     return new Pres_4(modelin, inputin);
+    else if (swpres == "4")
+        return std::make_shared<Pres_4<TF>>(masterin, gridin, fieldsin, fftin, inputin);
     else
     {
         masterin.print_error("\"%s\" is an illegal value for swpres\n", swpres.c_str());
