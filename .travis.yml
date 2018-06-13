@@ -32,3 +32,6 @@ script:
   - make -j 4
 #  - cd ../cases/restart_serial_les/
 #  - python run_tests.py
+
+notifications:
+  - slack: microhh:MnnHkgLN7FeZFED03IsR6KCC
