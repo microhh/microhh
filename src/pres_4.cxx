@@ -172,11 +172,12 @@ void Pres_4<TF>::set_values()
     const int kstart = gd.kstart;
 
     // compute the modified wave numbers of the 4th order scheme
-    double dxidxi = 1./(gd.dx*gd.dx);
-    double dyidyi = 1./(gd.dy*gd.dy);
+    TF dxidxi = 1./(gd.dx*gd.dx);
+    TF dyidyi = 1./(gd.dy*gd.dy);
 
-    const double pi = std::acos(-1.);
+    const TF pi = std::acos(-1.);
 
+    // Convert the coefficients to float after calculation.
     for (int j=0; j<jtot/2+1; j++)
         bmatj[j] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)j/(double)jtot)
                    - 2.* (54./576.)   * std::cos(4.*pi*(double)j/(double)jtot)
@@ -256,9 +257,9 @@ void Pres_4<TF>::input(
     const int jjp = gd.imax;
     const int kkp = gd.imax*gd.jmax;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
-    const double dti = 1./dt;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
+    const TF dti = 1./dt;
 
     const int igc = gd.igc;
     const int jgc = gd.jgc;
@@ -529,8 +530,8 @@ void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt,
 
     const int kstart = gd.kstart;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
     for (int j=gd.jstart; j<gd.jend; j++)
         #pragma ivdep
@@ -727,10 +728,10 @@ TF Pres_4<TF>::calc_divergence(
     const int kk1 = 1*gd.ijcells;
     const int kk2 = 2*gd.ijcells;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
-    double div, divmax;
+    TF div, divmax;
     divmax = 0;
 
     for (int k=gd.kstart; k<gd.kend; k++)
