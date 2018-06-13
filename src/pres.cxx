@@ -63,7 +63,7 @@ template<typename TF>
 std::shared_ptr<Pres<TF>> Pres<TF>::factory(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin)
 {
-    std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2nd" : "4th";
+    std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
     std::string swpres = inputin.get_item<std::string>("pres", "swpres", "", swspatialorder);
 
     if (swpres == "0")

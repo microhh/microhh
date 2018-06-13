@@ -114,6 +114,10 @@ void Pres_4<TF>::exec(const double dt)
           bmati.data(), bmatj.data(),
           jslice);
 
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2_fld);
+    fields.release_tmp(tmp3_fld);
+
     // 3. Get the pressure tendencies from the pressure field.
     if (gd.jtot == 1)
         output<false>(
@@ -268,25 +272,25 @@ void Pres_4<TF>::input(
         boundary_cyclic.exec(vt, Edge::North_south_edge);
 
     // Set the bc. 
-    for (int j=0; j<grid->jmax; j++)
+    for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
-        for (int i=0; i<grid->imax; i++)
+        for (int i=0; i<gd.imax; i++)
         {
             const int ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
             wt[ijk-kk1] = -wt[ijk+kk1];
         }
-    for (int j=0; j<grid->jmax; j++)
+    for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
-        for (int i=0; i<grid->imax; i++)
+        for (int i=0; i<gd.imax; i++)
         {
             const int ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc)*kk1;
             wt[ijk+kk1] = -wt[ijk-kk1];
         }
 
-    for (int k=0; k<grid->kmax; k++)
-        for (int j=0; j<grid->jmax; j++)
+    for (int k=0; k<gd.kmax; k++)
+        for (int j=0; j<gd.jmax; j++)
             #pragma ivdep
-            for (int i=0; i<grid->imax; i++)
+            for (int i=0; i<gd.imax; i++)
             {
                 const int ijkp = i + j*jjp + k*kkp;
                 const int ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
@@ -471,14 +475,14 @@ void Pres_4<TF>::solve(
     kk = imax*jmax;
 
     int ijkp,jjp,kkp1,kkp2;
-    jjp = grid->icells;
-    kkp1 = 1*grid->ijcells;
-    kkp2 = 2*grid->ijcells;
+    jjp = gd.icells;
+    kkp1 = 1*gd.ijcells;
+    kkp2 = 2*gd.ijcells;
 
-    for (int k=0; k<grid->kmax; k++)
-        for (int j=0; j<grid->jmax; j++)
+    for (int k=0; k<gd.kmax; k++)
+        for (int j=0; j<gd.jmax; j++)
             #pragma ivdep
-            for (int i=0; i<grid->imax; i++)
+            for (int i=0; i<gd.imax; i++)
             {
                 ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
                 ijk  = i + j*jj + k*kk;
@@ -486,27 +490,27 @@ void Pres_4<TF>::solve(
             }
 
     // Set a zero gradient boundary at the bottom.
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int j=gd.jstart; j<gd.jend; j++)
         #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+        for (int i=gd.istart; i<gd.iend; i++)
         {
-            ijk = i + j*jjp + grid->kstart*kkp1;
+            ijk = i + j*jjp + gd.kstart*kkp1;
             p[ijk-kkp1] = p[ijk     ];
             p[ijk-kkp2] = p[ijk+kkp1];
         }
 
     // Set a zero gradient boundary at the top.
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int j=gd.jstart; j<gd.jend; j++)
         #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+        for (int i=gd.istart; i<gd.iend; i++)
         {
-            ijk = i + j*jjp + (grid->kend-1)*kkp1;
+            ijk = i + j*jjp + (gd.kend-1)*kkp1;
             p[ijk+kkp1] = p[ijk     ];
             p[ijk+kkp2] = p[ijk-kkp1];
         }
 
     // Set the cyclic boundary conditions.
-    grid->boundary_cyclic(p);
+    boundary_cyclic.exec(p);
 }
 
 template<typename TF>
@@ -514,21 +518,23 @@ template<bool dim3>
 void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt, 
                         const TF* restrict p , const TF* restrict dzhi4)
 {
+    auto& gd = grid.get_grid_data();
+
     const int ii1 = 1;
     const int ii2 = 2;
-    const int jj1 = 1*grid->icells;
-    const int jj2 = 2*grid->icells;
-    const int kk1 = 1*grid->ijcells;
-    const int kk2 = 2*grid->ijcells;
+    const int jj1 = 1*gd.icells;
+    const int jj2 = 2*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
 
-    const int kstart = grid->kstart;
+    const int kstart = gd.kstart;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
 
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int j=gd.jstart; j<gd.jend; j++)
         #pragma ivdep
-        for (int i=grid->istart; i<grid->iend; i++)
+        for (int i=gd.istart; i<gd.iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
             ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
@@ -536,10 +542,10 @@ void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt,
                 vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         }
 
-    for (int k=grid->kstart+1; k<grid->kend; k++)
-        for (int j=grid->jstart; j<grid->jend; j++)
+    for (int k=gd.kstart+1; k<gd.kend; k++)
+        for (int j=gd.jstart; j<gd.jend; j++)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=gd.istart; i<gd.iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
@@ -555,14 +561,16 @@ void Pres_4<TF>::hdma(
         TF* restrict m5, TF* restrict m6, TF* restrict m7, TF* restrict p,
         const int jslice)
 {
-    const int kmax   = grid->kmax;
-    const int iblock = grid->iblock;
+    auto& gd = grid.get_grid_data();
 
-    const int jj = grid->iblock;
+    const int kmax   = gd.kmax;
+    const int iblock = gd.iblock;
 
-    const int kk1 = 1*grid->iblock*jslice;
-    const int kk2 = 2*grid->iblock*jslice;
-    const int kk3 = 3*grid->iblock*jslice;
+    const int jj = gd.iblock;
+
+    const int kk1 = 1*gd.iblock*jslice;
+    const int kk2 = 2*gd.iblock*jslice;
+    const int kk3 = 3*gd.iblock*jslice;
 
     int k,ik;
 
@@ -710,23 +718,25 @@ template<typename TF>
 TF Pres_4<TF>::calc_divergence(
         const TF* restrict u, const TF* restrict v, const TF* restrict w, const TF* restrict dzi4)
 {
+    auto& gd = grid.get_grid_data();
+
     const int ii1 = 1;
     const int ii2 = 2;
-    const int jj1 = 1*grid->icells;
-    const int jj2 = 2*grid->icells;
-    const int kk1 = 1*grid->ijcells;
-    const int kk2 = 2*grid->ijcells;
+    const int jj1 = 1*gd.icells;
+    const int jj2 = 2*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
 
     double div, divmax;
     divmax = 0;
 
-    for (int k=grid->kstart; k<grid->kend; k++)
-        for (int j=grid->jstart; j<grid->jend; j++)
+    for (int k=gd.kstart; k<gd.kend; k++)
+        for (int j=gd.jstart; j<gd.jend; j++)
             #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
+            for (int i=gd.istart; i<gd.iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
@@ -736,7 +746,7 @@ TF Pres_4<TF>::calc_divergence(
                 divmax = std::max(divmax, std::abs(div));
             }
 
-    grid->get_max(&divmax);
+    master.max(&divmax, 1);
 
     return divmax;
 }
