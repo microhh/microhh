@@ -1,5 +1,7 @@
 MicroHH
 -------
+[![Travis](https://api.travis-ci.org/microhh/microhh2.svg?branch=master)](https://travis-ci.org/microhh/microhh2)
+
 MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer. The code is written in C++.
 
 MicroHH is hosted on GitHub (http://github.com/microhh). Here, the latest version of the source code can be found, as well as all releases. In case of any questions, please contact Chiel van Heerwaarden (chielvanheerwaarden at gmail.com). Bug notifications and fixes are always welcome.
