@@ -56,7 +56,7 @@ Pres_2<TF>::~Pres_2()
 template<typename TF>
 void Pres_2<TF>::exec(const double dt)
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
 
     // create the input for the pressure solver
     input(fields.sd.at("p")->fld.data(),

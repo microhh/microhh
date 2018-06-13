@@ -55,7 +55,8 @@ Pres_4<TF>::Pres_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT
     #endif
 }
 
-Pres_4::~Pres_4()
+template<typename TF>
+Pres_4<TF>::~Pres_4()
 {
     #ifdef USECUDA
     clear_device();
@@ -63,20 +64,23 @@ Pres_4::~Pres_4()
 }
 
 #ifndef USECUDA
-void Pres_4::exec(double dt)
+template<typename TF>
+void Pres_4<TF>::exec(const double dt)
 {
+    auto& gd = grid.get_grid_data();
+
     // 1. Create the input for the pressure solver.
     // In case of a two-dimensional run, remove calculation of v contribution.
-    if (grid->jtot == 1)
+    if (gd.jtot == 1)
         input<false>(fields->sd["p"]->data,
                      fields->u ->data, fields->v ->data, fields->w ->data,
                      fields->ut->data, fields->vt->data, fields->wt->data, 
-                     grid->dzi4, dt);
+                     gd.dzi4.data(), dt);
     else
         input<true>(fields->sd["p"]->data,
                     fields->u ->data, fields->v ->data, fields->w ->data,
                     fields->ut->data, fields->vt->data, fields->wt->data, 
-                    grid->dzi4, dt);
+                    gd.dzi4.data(), dt);
 
     // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
 
@@ -94,9 +98,9 @@ void Pres_4::exec(double dt)
     double *tmp2 = fields->atmp["tmp2"]->data;
     double *tmp3 = fields->atmp["tmp3"]->data;
 
-    const int ns = grid->iblock*jslice*(grid->kmax+4);
+    const int ns = gd.iblock*jslice*(gd.kmax+4);
 
-    solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, grid->dz,
+    solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, gd.dz,
           m1, m2, m3, m4,
           m5, m6, m7,
           &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
@@ -105,21 +109,24 @@ void Pres_4::exec(double dt)
           jslice);
 
     // 3. Get the pressure tendencies from the pressure field.
-    if (grid->jtot == 1)
+    if (gd.jtot == 1)
         output<false>(fields->ut->data, fields->vt->data, fields->wt->data, 
-                      fields->sd["p"]->data, grid->dzhi4);
+                      fields->sd["p"]->data, gd.dzhi4.data());
     else
         output<true>(fields->ut->data, fields->vt->data, fields->wt->data, 
-                     fields->sd["p"]->data, grid->dzhi4);
+                     fields->sd["p"]->data, gd.dzhi4.data());
 }
 
-double Pres_4::check_divergence()
+template<typename TF>
+double Pres_4<TF>::check_divergence()
 {
-    return calc_divergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
+    auto& gd = grid.get_grid_data();
+    return calc_divergence(fields->u->data, fields->v->data, fields->w->data, gd.dzi4.data());
 }
 #endif
 
-void Pres_4::init()
+template<typename TF>
+void Pres_4<TF>::init()
 {
     auto& gd = grid.get_grid_data();
 
@@ -135,7 +142,8 @@ void Pres_4::init()
     m7.resize(gd.kmax);
 }
 
-void Pres_4::set_values()
+template<typename TF>
+void Pres_4<TF>::set_values()
 {
     auto& gd = grid.get_grid_data();
 
@@ -209,47 +217,51 @@ void Pres_4::set_values()
     m7[k] = 0.;
 }
 
+template<typename TF>
 template<bool dim3>
-void Pres_4::input(double* restrict p, 
-                   double* restrict u , double* restrict v , double* restrict w ,
-                   double* restrict ut, double* restrict vt, double* restrict wt,
-                   double* restrict dzi4, double dt)
+void Pres_4<TF>::input(
+        TF* restrict p, 
+        const TF* restrict u, const TF* restrict v, const TF* restrict w ,
+        TF* restrict ut, TF* restrict vt, TF* restrict wt,
+        const TF* restrict dzi4, const TF dt)
 {
+    auto& gd = grid.get_grid_data();
+
     const int ii1 = 1;
     const int ii2 = 2;
-    const int jj1 = 1*grid->icells;
-    const int jj2 = 2*grid->icells;
-    const int kk1 = 1*grid->ijcells;
-    const int kk2 = 2*grid->ijcells;
+    const int jj1 = 1*gd.icells;
+    const int jj2 = 2*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
 
-    const int jjp = grid->imax;
-    const int kkp = grid->imax*grid->jmax;
+    const int jjp = gd.imax;
+    const int kkp = gd.imax*gd.jmax;
 
-    const double dxi = 1./grid->dx;
-    const double dyi = 1./grid->dy;
+    const double dxi = 1./gd.dx;
+    const double dyi = 1./gd.dy;
     const double dti = 1./dt;
 
-    const int igc = grid->igc;
-    const int jgc = grid->jgc;
-    const int kgc = grid->kgc;
+    const int igc = gd.igc;
+    const int jgc = gd.jgc;
+    const int kgc = gd.kgc;
 
-    const int kmax = grid->kmax;
+    const int kmax = gd.kmax;
 
     // Set the cyclic boundary conditions for the tendencies.
-    grid->boundary_cyclic(ut, East_west_edge);
+    boundary_cyclic.exec(ut, Edge::East_west_edge);
     if (dim3)
-        grid->boundary_cyclic(vt, North_south_edge);
+        boundary_cyclic.exec(vt, Edge::North_south_edge);
 
     // Set the bc. 
     for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->imax; i++)
         {
             const int ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
             wt[ijk-kk1] = -wt[ijk+kk1];
         }
     for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->imax; i++)
         {
             const int ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc)*kk1;
@@ -258,7 +270,7 @@ void Pres_4::input(double* restrict p,
 
     for (int k=0; k<grid->kmax; k++)
         for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<grid->imax; i++)
             {
                 const int ijkp = i + j*jjp + k*kkp;
@@ -270,22 +282,26 @@ void Pres_4::input(double* restrict p,
             }
 }
 
-void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict dz,
-                   double* restrict m1, double* restrict m2, double* restrict m3, double* restrict m4,
-                   double* restrict m5, double* restrict m6, double* restrict m7,
-                   double* restrict m1temp, double* restrict m2temp, double* restrict m3temp, double* restrict m4temp,
-                   double* restrict m5temp, double* restrict m6temp, double* restrict m7temp, double* restrict ptemp,
-                   double* restrict bmati, double* restrict bmatj,
-                   const int jslice)
+template<typename TF>
+void Pres_4<TF>::solve(
+        TF* restrict p, TF* restrict work3d, TF* restrict dz,
+        TF* restrict m1, TF* restrict m2, TF* restrict m3, TF* restrict m4,
+        TF* restrict m5, TF* restrict m6, TF* restrict m7,
+        TF* restrict m1temp, TF* restrict m2temp, TF* restrict m3temp, TF* restrict m4temp,
+        TF* restrict m5temp, TF* restrict m6temp, TF* restrict m7temp, TF* restrict ptemp,
+        TF* restrict bmati, TF* restrict bmatj,
+        const int jslice)
 {
-    const int imax   = grid->imax;
-    const int jmax   = grid->jmax;
-    const int kmax   = grid->kmax;
-    const int iblock = grid->iblock;
-    const int jblock = grid->jblock;
-    const int igc    = grid->igc;
-    const int jgc    = grid->jgc;
-    const int kgc    = grid->kgc;
+    auto& gd = grid.get_grid_data();
+
+    const int imax   = gd.imax;
+    const int jmax   = gd.jmax;
+    const int kmax   = gd.kmax;
+    const int iblock = gd.iblock;
+    const int jblock = gd.jblock;
+    const int igc    = gd.igc;
+    const int jgc    = gd.jgc;
+    const int kgc    = gd.kgc;
 
     grid->fft_forward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
@@ -308,7 +324,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
     for (int n=0; n<nj; ++n)
     {
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 // Set a zero gradient bc at the bottom.
@@ -324,7 +340,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
             }
 
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 ik = i + j*jj;
@@ -342,7 +358,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
             for (int j=0; j<jslice; ++j)
             {
                 jindex = mpicoordx*jblock + n*jslice + j;
-#pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<iblock; ++i)
                 {
                     // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
@@ -364,7 +380,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
         for (int j=0; j<jslice; ++j)
         {
             jindex = mpicoordx*jblock + n*jslice + j;
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
@@ -401,7 +417,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
         }
 
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 // Set the top boundary.
@@ -422,7 +438,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
         // Put back the solution.
         for (int k=0; k<kmax; ++k)
             for (int j=0; j<jslice; ++j)
-#pragma ivdep
+                #pragma ivdep
                 for (int i=0; i<iblock; ++i)
                 {
                     const int ik  = i + j*jj + k*kki1;
@@ -444,7 +460,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
 
     for (int k=0; k<grid->kmax; k++)
         for (int j=0; j<grid->jmax; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<grid->imax; i++)
             {
                 ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
@@ -454,7 +470,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
 
     // Set a zero gradient boundary at the bottom.
     for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             ijk = i + j*jjp + grid->kstart*kkp1;
@@ -464,7 +480,7 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
 
     // Set a zero gradient boundary at the top.
     for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             ijk = i + j*jjp + (grid->kend-1)*kkp1;
@@ -476,9 +492,10 @@ void Pres_4::solve(double* restrict p, double* restrict work3d, double* restrict
     grid->boundary_cyclic(p);
 }
 
+template<typename TF>
 template<bool dim3>
-void Pres_4::output(double* restrict ut, double* restrict vt, double* restrict wt, 
-                    double* restrict p , double* restrict dzhi4)
+void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt, 
+                        const TF* restrict p , const TF* restrict dzhi4)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -493,7 +510,7 @@ void Pres_4::output(double* restrict ut, double* restrict vt, double* restrict w
     const double dyi = 1./grid->dy;
 
     for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
@@ -504,7 +521,7 @@ void Pres_4::output(double* restrict ut, double* restrict vt, double* restrict w
 
     for (int k=grid->kstart+1; k<grid->kend; k++)
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
@@ -515,9 +532,11 @@ void Pres_4::output(double* restrict ut, double* restrict vt, double* restrict w
             }
 }
 
-void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3, double* restrict m4,
-                  double* restrict m5, double* restrict m6, double* restrict m7, double* restrict p,
-                  const int jslice)
+template<typename TF>
+void Pres_4<TF>::hdma(
+        TF* restrict m1, TF* restrict m2, TF* restrict m3, TF* restrict m4,
+        TF* restrict m5, TF* restrict m6, TF* restrict m7, TF* restrict p,
+        const int jslice)
 {
     const int kmax   = grid->kmax;
     const int iblock = grid->iblock;
@@ -533,7 +552,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
     // Use LU factorization.
     k = 0;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj;
@@ -548,7 +567,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     k = 1;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -562,7 +581,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     k = 2;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -576,7 +595,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     for (k=3; k<kmax+2; ++k)
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 ik = i + j*jj + k*kk1;
@@ -590,7 +609,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     k = kmax+1;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -599,7 +618,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     k = kmax+2;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -614,7 +633,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     k = kmax+3;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -630,7 +649,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
     // Do the backward substitution.
     // First, solve Ly = p, forward.
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj;
@@ -641,7 +660,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     for (k=3; k<kmax+4; ++k)
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 ik = i + j*jj + k*kk1;
@@ -651,7 +670,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
     // Second, solve Ux=y, backward.
     k = kmax+3;
     for (int j=0; j<jslice; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
@@ -662,7 +681,7 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
 
     for (k=kmax; k>=0; --k)
         for (int j=0; j<jslice; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<iblock; ++i)
             {
                 ik = i + j*jj + k*kk1;
@@ -670,7 +689,9 @@ void Pres_4::hdma(double* restrict m1, double* restrict m2, double* restrict m3,
             }
 }
 
-double Pres_4::calc_divergence(double* restrict u, double* restrict v, double* restrict w, double* restrict dzi4)
+template<typename TF>
+TF Pres_4<TF>::calc_divergence(
+        const TF* restrict u, const TF* restrict v, const TF* restrict w, const TF* restrict dzi4)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -687,7 +708,7 @@ double Pres_4::calc_divergence(double* restrict u, double* restrict v, double* r
 
     for (int k=grid->kstart; k<grid->kend; k++)
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;

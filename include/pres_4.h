@@ -88,9 +88,9 @@ class Pres_4 : public Pres<TF>
 
         template<bool>
         void input(TF* restrict, 
+                   const TF* restrict, const TF* restrict, const TF* restrict,
                    TF* restrict, TF* restrict, TF* restrict,
-                   TF* restrict, TF* restrict, TF* restrict,
-                   TF* restrict, TF);
+                   const TF* restrict, const TF);
 
         void solve(TF* restrict, TF* restrict, TF* restrict,
                    TF* restrict, TF* restrict, TF* restrict, TF* restrict,
@@ -102,12 +102,12 @@ class Pres_4 : public Pres<TF>
 
         template<bool>
         void output(TF* restrict, TF* restrict, TF* restrict,
-                    TF* restrict, TF* restrict);
+                    const TF* restrict, const TF* restrict);
 
         void hdma(TF* restrict, TF* restrict, TF* restrict, TF* restrict,
                   TF* restrict, TF* restrict, TF* restrict, TF* restrict,
                   int);
 
-        TF calc_divergence(TF* restrict, TF* restrict, TF* restrict, TF* restrict);
+        TF calc_divergence(const TF* restrict, const TF* restrict, const TF* restrict, const TF* restrict);
 };
 #endif
