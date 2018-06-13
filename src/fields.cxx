@@ -392,7 +392,7 @@ void Fields<TF>::check_added_cross(std::string var, std::string type, std::vecto
     if (position != crosslist->end())
     {
         // don't allow lngrad in 2nd order mode
-        if (!(type == "lngrad" && grid.swspatialorder == "2"))
+        if (!(type == "lngrad" && grid.get_spatial_order() == Grid_order::Second))
         {
             typelist->push_back(var);
             crosslist->erase(position);
@@ -527,7 +527,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     auto tmp = get_tmp();
     grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -545,7 +545,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
             stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
         }
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         master.print_message("4th order statistics not yet implemented in fields...\n");
         //stats.calc_grad_4th(u->data, m.profs["ugrad"].data, grid.dzhi4, uloc,
@@ -576,7 +576,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     auto maskh_on_v = get_tmp();
     grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -595,7 +595,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         }
 
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         //stats.calc_grad_4th(v->data, m.profs["vgrad"].data, grid.dzhi4, vloc,
         //                    atmp["tmp1"]->data, stats.nmaskh);
@@ -618,7 +618,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
             stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
         }
 
-        if (grid.swspatialorder == "2")
+        if (grid.get_spatial_order() == Grid_order::Second)
         {
             stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -637,7 +637,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
                                     it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
             }
         }
-        else if (grid.swspatialorder == "4")
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
             //stats.calc_grad_4th(it.second->data, m.profs[it.first+"grad"].data, grid.dzhi4, sloc,
             //                    atmp["tmp4"]->data, stats.nmaskh);
@@ -652,13 +652,13 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
     stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
                             m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         //stats.calc_grad_4th(sd["p"]->data, m.profs["pgrad"].data, grid.dzhi4, sloc,
         //                     atmp["tmp4"]->data, stats.nmaskh);

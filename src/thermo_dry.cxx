@@ -277,7 +277,7 @@ boundary_cyclic(masterin, gridin)
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-    if (grid.swspatialorder == "4" && bs.swbasestate == Basestate_type::anelastic)
+    if (grid.get_spatial_order() == Grid_order::Fourth && bs.swbasestate == Basestate_type::anelastic)
     {
         master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
         throw std::runtime_error("Illegal options swbasestate");
@@ -355,11 +355,11 @@ void Thermo_dry<TF>::exec( const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
@@ -634,7 +634,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d
         stats.calc_moment(b->fld.data(), m.profs["b"].data.data(), m.profs["b"+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
     }
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         auto tmp = fields.get_tmp();
         stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());

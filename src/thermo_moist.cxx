@@ -587,7 +587,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-    if (grid.swspatialorder == "4" && bs.swbasestate == Basestate_type::anelastic)
+    if (grid.get_spatial_order() == Grid_order::Fourth && bs.swbasestate == Basestate_type::anelastic)
     {
         master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
         throw std::runtime_error("Illegal options swbasestate");
@@ -1106,7 +1106,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
         stats.calc_moment(b->fld.data(), m.profs["b"].data.data(), m.profs["b"+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
     }
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         auto tmp = fields.get_tmp();
         stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());

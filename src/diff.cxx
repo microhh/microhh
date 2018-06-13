@@ -51,8 +51,11 @@ Diff<TF>::~Diff()
 }
 
 template<typename TF>
-std::shared_ptr<Diff<TF>> Diff<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const std::string swspatialorder)
+std::shared_ptr<Diff<TF>> Diff<TF>::factory(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
+    std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2nd" : "4th";
+
     std::string swdiff     = inputin.get_item<std::string>("diff",     "swdiff",     "", swspatialorder);
     std::string swboundary = inputin.get_item<std::string>("boundary", "swboundary", "", "default");
 

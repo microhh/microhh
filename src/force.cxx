@@ -414,12 +414,12 @@ void Force<TF>::exec(double dt)
 
     else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        if (grid.swspatialorder == "2")
+        if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
             grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
             gd.ijcells, gd.kstart, gd.kend);
-        else if (grid.swspatialorder == "4")
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
             grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,

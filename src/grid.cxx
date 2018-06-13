@@ -54,22 +54,27 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     utrans = input.get_item<TF>("grid", "utrans", "", 0.);
     vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
+    std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
-    if (!(swspatialorder == "2" || swspatialorder == "4"))
+    if (swspatialorder == "2")
+        spatial_order = Grid_order::Second;
+    else if (swspatialorder == "4")
+        spatial_order = Grid_order::Fourth;
+    else
     {
         master.print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-        throw 1;
+        throw std::runtime_error("Illegal value for swspatialorder");
     }
+
     // 2nd order scheme requires only 1 ghost cell
-    if (swspatialorder == "2")
+    if (spatial_order == Grid_order::Second)
     {
         gd.igc = 1;
         gd.jgc = 1;
         gd.kgc = 1;
     }
     // 4th order scheme requires 3 ghost cells
-    else if (swspatialorder == "4")
+    else if (spatial_order == Grid_order::Fourth)
     {
         gd.igc = 3;
         gd.jgc = 3;
@@ -227,7 +232,7 @@ void Grid<TF>::calculate()
     }
 
     // the calculation of ghost cells and flux levels has to go according to numerical scheme
-    if (swspatialorder == "2")
+    if (spatial_order == Grid_order::Second)
     {
         gd.z[gd.kstart-1] = -gd.z[gd.kstart];
         gd.z[gd.kend]     = 2.*gd.zsize - gd.z[gd.kend-1];
@@ -261,7 +266,7 @@ void Grid<TF>::calculate()
         // do not calculate 4th order gradients for 2nd order
     }
 
-    if (swspatialorder == "4")
+    if (spatial_order == Grid_order::Fourth)
     {
         using namespace Finite_difference::O4;
 

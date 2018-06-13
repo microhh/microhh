@@ -32,7 +32,6 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-
 /**
  * Base class for the advection scheme. This class is abstract and only
  * derived classes can be instantiated. Derived classes are
@@ -45,7 +44,7 @@ class Advec
         Advec(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
         virtual ~Advec(); ///< Destructor of the advection class.
 
-        static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const std::string); ///< Factory function for advection class generation.
+        static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for advection class generation.
 
         std::string get_switch();
 

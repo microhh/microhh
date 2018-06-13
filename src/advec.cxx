@@ -51,8 +51,10 @@ Advec<TF>::~Advec()
 }
 
 template<typename TF>
-std::shared_ptr<Advec<TF>> Advec<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,  Input& inputin, const std::string swspatialorder)
+std::shared_ptr<Advec<TF>> Advec<TF>::factory(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
+    std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2nd" : "4th";
     std::string swadvec = inputin.get_item<std::string>("advec", "swadvec", "", swspatialorder);
 
     if (swadvec == "0")
