@@ -91,7 +91,7 @@ namespace
 
         for (int l=0; l<ghost_cell.c_idw.size(); ++l)
         {
-            ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
+            ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5) + Constants::dsmall;
             ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
         }
     }
