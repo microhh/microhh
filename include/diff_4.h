@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2017 Chiel van Heerwaarden
+ * Copyright (c) 2011-2017 Thijs Heus
+ * Copyright (c) 2014-2017 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,17 +20,17 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2_H
-#define DIFF_2_H
+#ifndef DIFF_4_H
+#define DIFF_4_H
 
 #include "diff.h"
 
 template<typename TF>
-class Diff_2 : public Diff<TF>
+class Diff_4 : public Diff<TF>
 {
     public:
-        Diff_2(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        ~Diff_2();                                ///< Destructor of the diffusion class
+        Diff_4(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Diff_4();
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
@@ -52,7 +52,7 @@ class Diff_2 : public Diff<TF>
         using Diff<TF>::grid;
         using Diff<TF>::fields;
 
-        const Diffusion_type swdiff = Diffusion_type::Diff_2;
+        const Diffusion_type swdiff = Diffusion_type::Diff_4;
 
         double dnmax;
         double dnmul;
