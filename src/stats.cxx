@@ -1068,7 +1068,7 @@ void Stats<TF>::calc_grad_4th(
 template<typename TF>
 void Stats<TF>::calc_diff_4th(
         TF* restrict data, TF* restrict prof, const TF* restrict dzhi4,
-        const double visc, const int loc[3],
+        const TF visc, const int loc[3],
         TF* restrict mask, int* restrict nmask)
 {
     using namespace Finite_difference::O4;
@@ -1147,8 +1147,8 @@ void Stats<TF>::calc_diff_2nd(
     const int kstart = gd.kstart;
     const int kend = gd.kend;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
     // bottom boundary
     prof[kstart] = 0.;
@@ -1173,7 +1173,7 @@ void Stats<TF>::calc_diff_2nd(
                 {
                     const int ijk  = i + j*jj + k*kk;
                     // evisc * (du/dz + dw/dx)
-                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+                    const TF eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
                     prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
                 }
         }
@@ -1189,7 +1189,7 @@ void Stats<TF>::calc_diff_2nd(
                 {
                     const int ijk = i + j*jj + k*kk;
                     // evisc * (dv/dz + dw/dy)
-                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+                    const TF eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
                     prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
                 }
         }
@@ -1204,7 +1204,7 @@ void Stats<TF>::calc_diff_2nd(
                 for (int i=gd.istart; i<gd.iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+                    const TF eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
                     prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
                 }
         }
@@ -1226,7 +1226,7 @@ void Stats<TF>::calc_diff_2nd(
     for (int k=1; k<gd.kcells; k++)
     {
         if (nmask[k] > nthres)
-            prof[k] /= (double)(nmask[k]);
+            prof[k] /= static_cast<TF>(nmask[k]);
         else
             prof[k] = netcdf_fp_fillvalue<TF>();
     }

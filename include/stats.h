@@ -123,7 +123,7 @@ class Stats
 
         void calc_diff_4th(
                 TF*, TF*, const TF*,
-                const double, const int[3],
+                const TF, const int[3],
                 TF*, int*);
 
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
