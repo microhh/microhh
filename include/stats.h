@@ -120,13 +120,17 @@ class Stats
         void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
         void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
                            TF*, TF*, TF, const int[3], TF*, int*);
-        //void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
+
+        void calc_diff_4th(
+                TF*, TF*, const TF*,
+                const double, const int[3],
+                TF*, int*);
 
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
-        //void calc_grad_4th(double*, double*, double*, const int[3], double*, int*);
+        void calc_grad_4th(TF*, TF*, const TF*, const int[3], TF*, int*);
 
         void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-        //void calc_flux_4th(double*, double*, double*, double*, const int[3], double*, int*);
+        void calc_flux_4th(TF*, TF*, TF*, TF*, const int[3], TF*, int*);
 
         void add_fluxes   (TF*, TF*, TF*);
         //void calc_count   (double*, double*, double, double*, int*);
