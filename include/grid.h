@@ -143,7 +143,7 @@ class Grid
 
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); // Second order interpolation
-        //void interpolate_4th(double*, double*, const int[3], const int[3]); // Fourth order interpolation
+        void interpolate_4th(TF*, const TF*, const int[3], const int[3]); // Fourth order interpolation
 
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
