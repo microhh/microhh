@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_2_H
-#define ADVEC_2_H
+#ifndef ADVEC_4_H
+#define ADVEC_4_H
 
 #include "advec.h"
 
@@ -35,11 +35,11 @@ class Input;
  * Derived class for 2nd order advection scheme.
  */
 template<typename TF>
-class Advec_2 : public Advec<TF>
+class Advec_4 : public Advec<TF>
 {
     public:
-        Advec_2(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        ~Advec_2(); ///< Destructor of the advection class.
+        Advec_4(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
+        ~Advec_4(); ///< Destructor of the advection class.
 
         void exec(); ///< Execute the advection scheme.
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
