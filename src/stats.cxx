@@ -110,6 +110,14 @@ namespace
                     {
                         const int ijk = i + j*icells + k*ijcells;
                         mask[ijk] *= fld[ijk] > threshold;
+                    }
+
+            for (int k=kstart; k<kend+1; k++)
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
                         maskh[ijk] *= fldh[ijk] > threshold;
                     }
 
@@ -132,6 +140,14 @@ namespace
                     {
                         const int ijk = i + j*icells + k*ijcells;
                         mask[ijk] *= fld[ijk] <= threshold;
+                    }
+
+            for (int k=kstart; k<kend+1; k++)
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
                         maskh[ijk] *= fldh[ijk] <= threshold;
                     }
 
@@ -164,6 +180,14 @@ namespace
                     {
                         const int ijk = i + j*icells + k*ijcells;
                         mask[ijk] *= (fld[ijk]-fld_mean[k]) > threshold;
+                    }
+
+            for (int k=kstart; k<kend+1; k++)
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
                         maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) > threshold;
                     }
 
@@ -186,6 +210,14 @@ namespace
                     {
                         const int ijk = i + j*icells + k*ijcells;
                         mask[ijk] *= (fld[ijk]-fld_mean[k]) <= threshold;
+                    }
+
+            for (int k=kstart; k<kend+1; k++)
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
                         maskh[ijk] *= (fldh[ijk]-fldh_mean[k]) <= threshold;
                     }
 
@@ -561,6 +593,9 @@ void Stats<TF>::get_nmask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
                    nmask.data(), nmaskh.data(), nmaskbot,
                    gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
                    gd.icells, gd.ijcells, gd.kcells);
+
+    master.sum(nmask.data(),  gd.kcells);
+    master.sum(nmaskh.data(), gd.kcells);
 }
 
 template<typename TF>
