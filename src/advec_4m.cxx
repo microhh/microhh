@@ -527,21 +527,21 @@ void Advec_4m<TF>::exec()
         advec_u<TF,0>(
                 fields.mt.at("u")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
+                gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     
         advec_v<TF,0>(
                 fields.mt.at("v")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
+                gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     
         advec_w<TF,0>(
                 fields.mt.at("w")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzhi.data(), gd.dx, gd.dy,
+                gd.dzhi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     
@@ -549,7 +549,7 @@ void Advec_4m<TF>::exec()
             advec_s<TF,0>(
                     it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    gd.dzi.data(), gd.dx, gd.dy,
+                    gd.dzi4.data(), gd.dx, gd.dy,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
