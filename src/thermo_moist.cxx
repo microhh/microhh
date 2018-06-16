@@ -45,7 +45,6 @@
 #include "field3d_operators.h"
 
 using Finite_difference::O2::interp2;
-using Finite_difference::O4::interp4;
 using namespace Constants;
 using namespace Thermo_moist_functions;
 
@@ -564,6 +563,10 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
 {
     swthermo = "moist";
 
+    // 4th order code is not implemented in thermo_moist
+    if (grid.swspatialorder == "4")
+        throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
+
     // Initialize the prognostic fields
     fields.init_prognostic_field("thl", "Liquid water potential temperature", "K");
     fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
@@ -587,11 +590,6 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-    if (grid.swspatialorder == "4" && bs.swbasestate == Basestate_type::anelastic)
-    {
-        master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
-        throw std::runtime_error("Illegal options swbasestate");
-    }
 
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
@@ -1106,24 +1104,22 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
         stats.calc_moment(b->fld.data(), m.profs["b"].data.data(), m.profs["b"+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
     }
 
-    if (grid.swspatialorder == "2")
+    auto tmp = fields.get_tmp();
+    stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
+    stats.calc_flux_2nd(b->fld.data(), m.profs["b"].data.data(), fields.mp["w"]->fld.data(), m.profs["w"].data.data(),
+                        m.profs["bw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+    if (diff.get_switch() == Diffusion_type::Diff_smag2)
     {
-        auto tmp = fields.get_tmp();
-        stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(b->fld.data(), m.profs["b"].data.data(), fields.mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["bw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            stats.calc_diff_2nd(b->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-                                m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                                b->flux_bot.data(), b->flux_top.data(), diff.tPr, sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-        }
-        else
-            stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                                get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-        fields.release_tmp(tmp);
+        stats.calc_diff_2nd(b->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                            m.profs["bdiff"].data.data(), gd.dzhi.data(),
+                            b->flux_bot.data(), b->flux_top.data(), diff.tPr, sloc,
+                            mask_fieldh.fld.data(), stats.nmaskh.data());
     }
+    else
+        stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
+                            get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+    fields.release_tmp(tmp);
+
     // calculate the total fluxes
     stats.add_fluxes(m.profs["bflux"].data.data(), m.profs["bw"].data.data(), m.profs["bdiff"].data.data());
 
