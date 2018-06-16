@@ -39,7 +39,6 @@ template<typename TF>
 Advec_2<TF>::Advec_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swadvec = "2";
 }
 
 template<typename TF>

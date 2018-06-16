@@ -32,7 +32,6 @@ template<typename TF>
 Advec_disabled<TF>::Advec_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swadvec = "0";
 }
 
 template<typename TF>

@@ -25,7 +25,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
-#include "advec_4.h"
+#include "advec_4m.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -36,13 +36,13 @@ namespace
 }
 
 template<typename TF>
-Advec_4<TF>::Advec_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+Advec_4m<TF>::Advec_4m(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
 }
 
 template<typename TF>
-Advec_4<TF>::~Advec_4() {}
+Advec_4m<TF>::~Advec_4m() {}
 
 #ifndef USECUDA
 namespace
@@ -488,7 +488,7 @@ namespace
 }
 
 template<typename TF>
-double Advec_4<TF>::get_cfl(double dt)
+double Advec_4m<TF>::get_cfl(double dt)
 {
     auto& gd = grid.get_grid_data();
     TF cfl = calc_cfl<TF>(fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
@@ -502,7 +502,7 @@ double Advec_4<TF>::get_cfl(double dt)
 }
 
 template<typename TF>
-unsigned long Advec_4<TF>::get_time_limit(unsigned long idt, double dt)
+unsigned long Advec_4m<TF>::get_time_limit(unsigned long idt, double dt)
 {
     // Calculate cfl and prevent zero divisons.
     auto& gd = grid.get_grid_data();
@@ -518,7 +518,7 @@ unsigned long Advec_4<TF>::get_time_limit(unsigned long idt, double dt)
 }
 
 template<typename TF>
-void Advec_4<TF>::exec()
+void Advec_4m<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
@@ -587,5 +587,5 @@ void Advec_4<TF>::exec()
 }
 #endif
 
-template class Advec_4<double>;
-template class Advec_4<float>;
+template class Advec_4m<double>;
+template class Advec_4m<float>;

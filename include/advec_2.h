@@ -53,6 +53,5 @@ class Advec_2 : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
-        using Advec<TF>::swadvec;
 };
 #endif

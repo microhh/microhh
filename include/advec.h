@@ -45,10 +45,6 @@ class Advec
         virtual ~Advec(); ///< Destructor of the advection class.
 
         static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for advection class generation.
-
-        std::string get_switch();
-
-        // Pure virtual functions that have to be implemented in derived class.
         virtual void exec() = 0; ///< Execute the advection scheme.
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
@@ -61,7 +57,5 @@ class Advec
 
         double cflmax; ///< Maximum allowed value for the CFL criterion.
         const double cflmin; ///< Minimum value for CFL used to avoid overflows.
-
-        std::string swadvec;
 };
 #endif
