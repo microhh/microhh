@@ -93,7 +93,7 @@ namespace
     template<typename TF>
     inline TF calc_rain_diameter(const TF mr, const TF pirhow)
     {
-        return pow(mr/pirhow, TF(1.)/TF(3.));
+        return pow(mr/pirhow, TF(1)/TF(3));
     }
 
     // Shape parameter mu_r
@@ -102,20 +102,20 @@ namespace
     {
         //return 1./3.; // SB06
         //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return 10. * (TF(1.) + tanh2(TF(1200.) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return TF(10) * (TF(1) + tanh2(TF(1200) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
     }
 
     // Slope parameter lambda_r
     template<typename TF>
     inline TF calc_lambda_r(const TF mur, const TF dr)
     {
-        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
+        return pow((mur+TF(3))*(mur+TF(2))*(mur+TF(1)), TF(1)/TF(3)) / dr;
     }
 
     template<typename TF>
     inline TF minmod(const TF a, const TF b)
     {
-        return copysign(TF(1.), a) * std::max(TF(0.), std::min(std::abs(a), TF(copysign(TF(1.), a))*b));
+        return copysign(TF(1), a) * std::max(TF(0), std::min(std::abs(a), TF(copysign(TF(1), a))*b));
     }
 
     template<typename TF>
@@ -148,7 +148,7 @@ namespace mp3d
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
         const TF k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
         const TF nu_c   = 1;             // SB06, Table 1., same as UCLA-LES
-        const TF kccxs  = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2);
+        const TF kccxs  = k_cc / (TF(20.) * x_star) * (nu_c+TF(2))*(nu_c+TF(4)) / pow(nu_c+TF(1), 2);
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -160,10 +160,10 @@ namespace mp3d
                     {
                         const TF xc      = rho[k] * ql[ijk] / constants.Nc0;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
-                        const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
+                        const TF phi_au  = TF(600) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
                         //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
                         const TF au_tend = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
-                                               (TF(1.) + phi_au / pow(TF(1.)-tau, 2)); // SB06, eq 4
+                                               (TF(1) + phi_au / pow(TF(1)-tau, 2)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
@@ -193,7 +193,7 @@ namespace mp3d
                     const int ijk = i + j*jj + k*kk;
                     if(ql[ijk] > constants.ql_min && qr[ijk] > constants.qr_min)
                     {
-                        const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const TF tau     = TF(1) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
                         const TF phi_ac  = pow(tau / (tau + TF(5e-5)), 4); // SB06, Eq 8
                         const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(constants.rho_0 / rho[k], TF(0.5)); // SB06, Eq 7
 
@@ -274,7 +274,7 @@ namespace mp3d
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    const TF cfl_qr = TF(0.25) * (w_qr[ijk-ijcells] + TF(2.)*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * TF(dt);
+                    const TF cfl_qr = TF(0.25) * (w_qr[ijk-ijcells] + TF(2)*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * TF(dt);
                     cfl_max = std::max(cfl_max, cfl_qr);
                 }
 
@@ -313,10 +313,10 @@ namespace mp2d
                 }
                 else
                 {
-                    rain_mass[ik]     = 0;
-                    rain_diameter[ik] = 0;
-                    mu_r[ik]          = 0;
-                    lambda_r[ik]      = 0;
+                    rain_mass[ik]     = TF(0);
+                    rain_diameter[ik] = TF(0);
+                    mu_r[ik]          = TF(0);
+                    lambda_r[ik]      = TF(0);
                 }
             }
     }
@@ -350,12 +350,12 @@ namespace mp2d
 
                     const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
                     const TF Glv = pow(Rv * T / (esat(T) * constants.D_v) +
-                                       (Lv / (constants.K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                                       (Lv / (constants.K_t * T)) * (Lv / (Rv * T) - TF(1)), -1); // Cond/evap rate (kg m-1 s-1)?
 
                     const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
-                    const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+                    const TF F   = TF(1); // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
-                    const TF ev_tend = TF(2.) * constants.pi * dr * Glv * S * F * nr[ijk] / rho[k];
+                    const TF ev_tend = TF(2) * constants.pi * dr * Glv * S * F * nr[ijk] / rho[k];
 
                     qrt[ijk]  += ev_tend;
                     nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
@@ -395,8 +395,8 @@ namespace mp2d
                     const TF lambdar = lambda_r[ik];
 
                     // Selfcollection
-                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr /
-                                       lambdar * pow(constants.pirhow, TF(1.)/TF(3.)), -9) * pow(constants.rho_0 / rho[k], TF(0.5));
+                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1) + kappa_rr /
+                                       lambdar * pow(constants.pirhow, TF(1)/TF(3)), -9) * pow(constants.rho_0 / rho[k], TF(0.5));
                     nrt[ijk] += sc_tend;
 
                     // Breakup
@@ -407,7 +407,7 @@ namespace mp2d
                         if(dr <= D_eq)
                             phi_br = k_br1 * dDr;
                         else
-                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+                            phi_br = TF(2) * exp(k_br2 * dDr) - TF(1);
 
                         const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
                         nrt[ijk] += br_tend;
@@ -473,8 +473,8 @@ namespace mp2d
             const int ik2  = i + (kend    )*icells;
             w_qr[ik1] = w_qr[ik1+kk2d];
             w_nr[ik1] = w_nr[ik1+kk2d];
-            w_qr[ik2] = 0;
-            w_nr[ik2] = 0;
+            w_qr[ik2] = TF(0);
+            w_nr[ik2] = TF(0);
         }
 
         // 2. Calculate CFL number using interpolated sedimentation velocity
@@ -483,8 +483,8 @@ namespace mp2d
             for (int i=istart; i<iend; i++)
             {
                 const int ik  = i + k*icells;
-                c_qr[ik] = TF(0.25) * (w_qr[ik-kk2d] + TF(2.)*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt;
-                c_nr[ik] = TF(0.25) * (w_nr[ik-kk2d] + TF(2.)*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt;
+                c_qr[ik] = TF(0.25) * (w_qr[ik-kk2d] + TF(2)*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt;
+                c_nr[ik] = TF(0.25) * (w_nr[ik-kk2d] + TF(2)*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt;
             }
 
         // 3. Calculate slopes
@@ -504,8 +504,8 @@ namespace mp2d
         for (int i=istart; i<iend; i++)
         {
             const int ik  = i + kend*icells;
-            flux_qr[ik] = 0;
-            flux_nr[ik] = 0;
+            flux_qr[ik] = TF(0);
+            flux_nr[ik] = TF(0);
         }
 
         for (int k=kend-1; k>kstart-1; k--)
@@ -520,9 +520,9 @@ namespace mp2d
 
                 // q_rain
                 kk    = k;  // current grid level
-                ftot  = 0;  // cumulative 'flux' (kg m-2)
-                dzz   = 0;  // distance from zh[k]
-                cc    = std::min(TF(1.), c_qr[ik]);
+                ftot  = TF(0);  // cumulative 'flux' (kg m-2)
+                dzz   = TF(0);  // distance from zh[k]
+                cc    = std::min(TF(1), c_qr[ik]);
                 while (cc > 0 && kk < kend)
                 {
                     const int ikk  = i + kk*icells;
@@ -532,7 +532,7 @@ namespace mp2d
 
                     dzz   += dz[kk];
                     kk    += 1;
-                    cc     = std::min(TF(1.), c_qr[ikk] - dzz*dzi[kk]);
+                    cc     = std::min(TF(1), c_qr[ikk] - dzz*dzi[kk]);
                 }
 
                 // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
@@ -541,19 +541,19 @@ namespace mp2d
 
                 // number density
                 kk    = k;  // current grid level
-                ftot  = 0;  // cumulative 'flux'
-                dzz   = 0;  // distance from zh[k]
-                cc    = std::min(TF(1.), c_nr[ik]);
+                ftot  = TF(0);  // cumulative 'flux'
+                dzz   = TF(0);  // distance from zh[k]
+                cc    = std::min(TF(1), c_nr[ik]);
                 while (cc > 0 && kk < kend)
                 {
                     const int ikk  = i + kk*icells;
                     const int ijkk = i + j*icells + kk*ijcells;
 
-                    ftot += rho[kk] * (nr[ijkk] + TF(0.5) * slope_nr[ikk] * (TF(1.)-cc)) * cc * dz[kk];
+                    ftot += rho[kk] * (nr[ijkk] + TF(0.5) * slope_nr[ikk] * (TF(1)-cc)) * cc * dz[kk];
 
                     dzz   += dz[kk];
                     kk    += 1;
-                    cc     = std::min(TF(1.), c_nr[ikk] - dzz*dzi[k]);
+                    cc     = std::min(TF(1), c_nr[ikk] - dzz*dzi[k]);
                 }
 
                 // Given flux at top, limit bottom flux such that the number density stays >= 0.
