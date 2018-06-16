@@ -78,6 +78,7 @@ namespace
             nmask_half[k] = ijtot;
         }
     }
+
     // Sets all the mask values to one (non-masked field)
     template<typename TF>
     void calc_mask_true(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom, const int ijcells, const int ncells)
@@ -204,27 +205,28 @@ namespace
     template<typename TF>
     void calc_nmask(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom,
                    int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-                   const int itot, const int jtot, const int ktot, const int ijcells)
+                   const int istart, const int iend, const int jstart, const int jend, 
+                   const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
     {
-        for (int k=0; k<ktot; ++k)
+        for (int k=kstart; k<kend; ++k)
         {
             nmask_full[k] = 0;
             nmask_half[k] = 0;
 
-            for (int j=0; j<jtot; ++j)
-                for (int i=0; i<itot; ++i)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk  = i + j*itot + k*ijcells;
+                    const int ijk  = i + j*icells + k*ijcells;
                     nmask_full[k]+=mask_full[ijk];
                     nmask_half[k]+=mask_half[ijk];
                 }
         }
 
         nmask_bottom = 0;
-        for (int j=0; j<jtot; ++j)
-            for (int i=0; i<itot; ++i)
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
             {
-                const int ijk  = i + j*itot;
+                const int ijk  = i + j*icells;
                 nmask_bottom+=mask_bottom[ijk];
             }
     }
@@ -556,8 +558,9 @@ void Stats<TF>::get_nmask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
 {
     auto& gd = grid.get_grid_data();
     calc_nmask<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-                  nmask.data(), nmaskh.data(), nmaskbot,
-                  gd.itot, gd.jtot, gd.kcells, gd.ijcells);
+                   nmask.data(), nmaskh.data(), nmaskbot,
+                   gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
+                   gd.icells, gd.ijcells, gd.kcells);
 }
 
 template<typename TF>
