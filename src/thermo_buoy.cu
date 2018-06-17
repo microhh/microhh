@@ -32,7 +32,7 @@ namespace
 {
     template<typename TF> __global__
     void calc_buoyancy_g(TF* __restrict__ b,
-                        TF* __restrict__ bin)
+                         TF* __restrict__ bin)
     {
         b[threadIdx.x] = bin[threadIdx.x];
     }
@@ -236,7 +236,7 @@ void Thermo_buoy<TF>::exec(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax-1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    if (grid.swspatialorder== "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         if (bs.has_slope || bs.has_N2)
         {
@@ -278,7 +278,7 @@ void Thermo_buoy<TF>::exec(const double dt)
             cuda_check_error();
         }
     }
-    else if (grid.swspatialorder== "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         if (bs.has_slope || bs.has_N2)
         {

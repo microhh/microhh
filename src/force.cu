@@ -367,7 +367,7 @@ void Force<TF>::exec(double dt)
     }
     else if (swlspres== Large_scale_pressure_type::geo_wind)
     {
-        if (grid.swspatialorder == "2")
+        if (grid.get_spatial_order() == Grid_order::Second)
         {
             coriolis_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
@@ -378,7 +378,7 @@ void Force<TF>::exec(double dt)
                 gd.iend,    gd.jend,   gd.kend);
             cuda_check_error();
         }
-        else if (grid.swspatialorder == "4")
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
             coriolis_4th_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
