@@ -35,7 +35,6 @@ namespace
 {
     using namespace Constants;
     using namespace Finite_difference::O2;
-    using namespace Finite_difference::O4;
     using namespace Thermo_moist_functions;
 
     template<typename TF> __device__ TF sat_adjust_g(const TF s, const TF qt,
@@ -194,7 +193,7 @@ namespace
     }
 
     // BvS: no longer used, base state is calculated at the host
-    template <typename TF, int swspatialorder> __global__
+    template <typename TF> __global__
     void calc_base_state(TF* __restrict__ pref,     TF* __restrict__ prefh,
                          TF* __restrict__ rho,      TF* __restrict__ rhoh,
                          TF* __restrict__ thv,      TF* __restrict__ thvh,
@@ -207,17 +206,8 @@ namespace
         TF ql, si, qti, qli;
         TF rdcp = Rd/cp;
 
-        TF ssurf, qtsurf;
-        if (swspatialorder == 2)
-        {
-            ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-            qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
-        }
-        else if (swspatialorder == 4)
-        {
-            ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-            qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
-        }
+        const TF ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
+        const TF qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
         // Calculate surface (half=kstart) values
         exh[kstart]   = exner(pbot);
@@ -241,16 +231,8 @@ namespace
             prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv[k-1])),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
-            if (swspatialorder == 2)
-            {
-                si     = interp2(thlmean[k-1],thlmean[k]);
-                qti    = interp2(qtmean[k-1],qtmean[k]);
-            }
-            else if (swspatialorder == 4)
-            {
-                si     = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
-                qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
-            }
+            si     = interp2(thlmean[k-1],thlmean[k]);
+            qti    = interp2(qtmean[k-1],qtmean[k]);
 
             exh[k]   = exner(prefh[k]);
             qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
@@ -262,23 +244,13 @@ namespace
         }
 
         // Fill bottom and top full level ghost cells
-        if (swspatialorder == 2)
-        {
-            pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
-            pref[kend]     = static_cast<TF>(2.)*prefh[kend]   - pref[kend-1];
-        }
-        else if (swspatialorder == 4)
-        {
-            pref[kstart-1] = (static_cast<TF>(8.)/static_cast<TF>(3.))*prefh[kstart] - static_cast<TF>(2.)*pref[kstart] + (1./static_cast<TF>(3.))*pref[kstart+1];
-            pref[kstart-2] = static_cast<TF>(8.)*prefh[kstart]      - static_cast<TF>(9.)*pref[kstart] + static_cast<TF>(2.)*pref[kstart+1];
-            pref[kend]     = (static_cast<TF>(8.)/static_cast<TF>(3.))*prefh[kend]   - static_cast<TF>(2.)*pref[kend-1] + (1./static_cast<TF>(3.))*pref[kend-2];
-            pref[kend+1]   = static_cast<TF>(8.)*prefh[kend]        - static_cast<TF>(9.)*pref[kend-1] + static_cast<TF>(2.)*pref[kend-2];
-        }
+        pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
+        pref[kend]     = static_cast<TF>(2.)*prefh[kend]   - pref[kend-1];
     }
 
 
     // BvS: no longer used, base state is calculated at the host
-    template <typename TF, int swspatialorder> __global__
+    template <typename TF> __global__
     void calc_hydrostatic_pressure(TF* __restrict__ pref,     TF* __restrict__ prefh,
                                    TF* __restrict__ ex,       TF* __restrict__ exh,
                                    TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
@@ -286,19 +258,11 @@ namespace
                                    const TF* const __restrict__ dzh,
                                    const TF pbot, int kstart, int kend)
     {
-        TF ssurf, qtsurf, ql, si, qti, qli, thvh, thv;
+        TF ql, si, qti, qli, thvh, thv;
         TF rdcp = Rd/cp;
 
-        if (swspatialorder == 2)
-        {
-            ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-            qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
-        }
-        else if (swspatialorder == 4)
-        {
-            ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-            qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
-        }
+        const TF ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
+        const TF qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
         // Calculate surface (half=kstart) values
         ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]);
@@ -319,16 +283,8 @@ namespace
             prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv)),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
-            if (swspatialorder == 2)
-            {
-                si     = interp2(thlmean[k-1],thlmean[k]);
-                qti    = interp2(qtmean[k-1],qtmean[k]);
-            }
-            else if (swspatialorder == 4)
-            {
-                si     = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
-                qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
-            }
+            si     = interp2(thlmean[k-1],thlmean[k]);
+            qti    = interp2(qtmean[k-1],qtmean[k]);
 
             exh[k]   = exner(prefh[k]);
             qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
@@ -339,18 +295,8 @@ namespace
         }
 
         // Fill bottom and top full level ghost cells
-        if (swspatialorder == 2)
-        {
-            pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
-            pref[kend]     = static_cast<TF>(2.)*prefh[kend]   - pref[kend-1];
-        }
-        else if (swspatialorder == 4)
-        {
-            pref[kstart-1] = (static_cast<TF>(8.)/static_cast<TF>(3.))*prefh[kstart] - static_cast<TF>(2.)*pref[kstart] + (1./static_cast<TF>(3.))*pref[kstart+1];
-            pref[kstart-2] = static_cast<TF>(8.)*prefh[kstart]      - static_cast<TF>(9.)*pref[kstart] + static_cast<TF>(2.)*pref[kstart+1];
-            pref[kend]     = (static_cast<TF>(8.)/static_cast<TF>(3.))*prefh[kend]   - static_cast<TF>(2.)*pref[kend-1] + (1./static_cast<TF>(3.))*pref[kend-2];
-            pref[kend+1]   = static_cast<TF>(8.)*prefh[kend]        - static_cast<TF>(9.)*pref[kend-1] + static_cast<TF>(2.)*pref[kend-2];
-        }
+        pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
+        pref[kend]     = static_cast<TF>(2.)*prefh[kend]   - pref[kend-1];
     }
 
 } // end name    space
@@ -388,6 +334,7 @@ void Thermo_moist<TF>::clear_device()
     cuda_safe_call(cudaFree(bs.exnref_g ));
     cuda_safe_call(cudaFree(bs.exnrefh_g));
 }
+
 template<typename TF>
 void Thermo_moist<TF>::forward_device()
 {
@@ -399,6 +346,7 @@ void Thermo_moist<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice));
 }
+
 template<typename TF>
 void Thermo_moist<TF>::backward_device()
 {
@@ -428,18 +376,9 @@ void Thermo_moist<TF>::exec(const double dt)
     // Re-calculate hydrostatic pressure and exner
     if (bs.swupdatebasestate)
     {
-        if(grid.swspatialorder == "2")
-        {
-          calc_hydrostatic_pressure<TF,2><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                              gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        }
-        else if(grid.swspatialorder == "4")
-        {
-          calc_hydrostatic_pressure<TF,4><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                              gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        }
+        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         cuda_check_error();
 
         /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
@@ -458,21 +397,13 @@ void Thermo_moist<TF>::exec(const double dt)
         */
     }
 
-    if (grid.swspatialorder== "2")
-    {
-        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
-            fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
-            gd.istart,  gd.jstart, gd.kstart+1,
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
-    }
-    else if (grid.swspatialorder == "4")
-    {
-        master.print_error("4th order thermo_dry not (yet) implemented\n");
-        throw std::runtime_error("Illegal options 4th order thermo");
-    }
+    calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
+        fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
+        fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
+        gd.istart,  gd.jstart, gd.kstart+1,
+        gd.iend,    gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+    cuda_check_error();
 }
 #endif
 
@@ -496,14 +427,9 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
     if (bs.swupdatebasestate && (name == "b" || name == "ql"))
     {
-        if(grid.swspatialorder == "2")
-        calc_hydrostatic_pressure<TF,2><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                            fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                            gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        else if(grid.swspatialorder == "4")
-          calc_hydrostatic_pressure<TF,4><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                              fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                              gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
         cuda_check_error();
 
         /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,

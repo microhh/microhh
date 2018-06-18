@@ -431,7 +431,7 @@ void Model<TF>::prepare_gpu()
     master.print_message("Preparing the GPU\n");
     grid    ->prepare_device();
     fields  ->prepare_device();
-    // buffer  ->prepare_device();
+    buffer  ->prepare_device();
     thermo  ->prepare_device();
     boundary->prepare_device();
     diff    ->prepare_device();
