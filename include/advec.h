@@ -32,7 +32,6 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-
 /**
  * Base class for the advection scheme. This class is abstract and only
  * derived classes can be instantiated. Derived classes are
@@ -45,11 +44,7 @@ class Advec
         Advec(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
         virtual ~Advec(); ///< Destructor of the advection class.
 
-        static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const std::string); ///< Factory function for advection class generation.
-
-        std::string get_switch();
-
-        // Pure virtual functions that have to be implemented in derived class.
+        static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for advection class generation.
         virtual void exec() = 0; ///< Execute the advection scheme.
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
@@ -62,7 +57,5 @@ class Advec
 
         double cflmax; ///< Maximum allowed value for the CFL criterion.
         const double cflmin; ///< Minimum value for CFL used to avoid overflows.
-
-        std::string swadvec;
 };
 #endif

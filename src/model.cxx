@@ -28,6 +28,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "buffer.h"
 #include "data_block.h"
 #include "timeloop.h"
 #include "fft.h"
@@ -38,6 +39,7 @@
 #include "force.h"
 #include "thermo.h"
 #include "radiation.h"
+#include "microphys.h"
 #include "decay.h"
 #include "stats.h"
 #include "column.h"
@@ -104,19 +106,21 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid     = std::make_shared<Grid<TF>>(master, *input);
-        fields   = std::make_shared<Fields<TF>>(master, *grid, *input);
-        timeloop = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
-        fft      = std::make_shared<FFT<TF>>(master, *grid);
+        grid      = std::make_shared<Grid<TF>>(master, *input);
+        fields    = std::make_shared<Fields<TF>>(master, *grid, *input);
+        timeloop  = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
+        fft       = std::make_shared<FFT<TF>>(master, *grid);
 
-        boundary = Boundary<TF>::factory(master, *grid, *fields, *input);
-        advec    = Advec<TF>   ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        diff     = Diff<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        pres     = Pres<TF>    ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
-        thermo   = Thermo<TF>  ::factory(master, *grid, *fields, *input);
+        boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
+        advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
+        diff      = Diff<TF>     ::factory(master, *grid, *fields, *input);
+        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
+        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
+        microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
 
         radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
         force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
         stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *input);
         column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
@@ -165,10 +169,12 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    buffer->init();
     diff->init();
     pres->init();
     force->init();
     thermo->init();
+    microphys->init();
     radiation->init();
     decay->init(*input);
 
@@ -213,7 +219,6 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(timeloop->get_iotime(), sim_name);
     column->create(timeloop->get_iotime(), sim_name);
-    cross->create();
     dump->create();
 
     // Load the fields, and create the field statistics
@@ -222,10 +227,14 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *stats);
+    buffer->create(*input, *profs);
     force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
+    microphys->create(*input, *profs, *stats, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
+
+    cross->create();    // Cross needs to be called at the end!
 
     boundary->set_values();
     pres->set_values();
@@ -261,7 +270,7 @@ void Model<TF>::exec()
 
     // Update the time dependent parameters.
     // boundary->update_time_dependent();
-     force   ->update_time_dependent(*timeloop);
+    force->update_time_dependent(*timeloop);
 
     // Set the boundary conditions.
     boundary->exec(*thermo);
@@ -290,16 +299,19 @@ void Model<TF>::exec()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
         // Calculate the diffusion tendency.
-        diff->exec();
+        diff->exec(*boundary);
 
         // Calculate the thermodynamics and the buoyancy tendency.
-        thermo->exec();
+        thermo->exec(timeloop->get_sub_time_step());
+
+        // Calculate the microphysics.
+        microphys->exec(*thermo, timeloop->get_sub_time_step());
 
         // Calculate the radiation fluxes and the related heating rate.
         radiation->exec(*thermo);
 
         // Calculate the tendency due to damping in the buffer layer.
-        // buffer->exec();
+        buffer->exec();
 
         // Apply the scalar decay.
         decay->exec(timeloop->get_sub_time_step());
@@ -315,7 +327,8 @@ void Model<TF>::exec()
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+            if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) || 
+                dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
             {
                 #ifdef USECUDA
                 if(t_stat.joinable())
@@ -325,10 +338,10 @@ void Model<TF>::exec()
                 thermo  ->backward_device();
 
                 t_stat = std::thread(&Model::calculate_statistics, this,
-                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                        timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime(), timeloop->get_dt());
 
                 #else
-                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime());
+                calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime(), timeloop->get_dt());
                 #endif
             }
 
@@ -418,7 +431,7 @@ void Model<TF>::prepare_gpu()
     master.print_message("Preparing the GPU\n");
     grid    ->prepare_device();
     fields  ->prepare_device();
-    // buffer  ->prepare_device();
+    buffer  ->prepare_device();
     thermo  ->prepare_device();
     boundary->prepare_device();
     diff    ->prepare_device();
@@ -447,7 +460,7 @@ void Model<TF>::clear_gpu()
 
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
-void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime)
+void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime, double dt)
 {
     // Do the statistics.
     if(stats->do_statistics(itime))
@@ -464,6 +477,10 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 stats->get_mask(*mask_field, *mask_fieldh);
             else if (fields->has_mask(mask_name))
                 fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            else if (thermo->has_mask(mask_name))
+                thermo->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            else if (microphys->has_mask(mask_name))
+                microphys->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -471,10 +488,11 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             }
 
             // Calculate statistics
-            fields  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
-            thermo  ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
+            fields   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
+            thermo   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff, dt);
+            microphys->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, dt);
             //budget  ->exec_stats(&stats->masks[maskname]);
-            boundary->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
+            boundary ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
 
             fields->release_tmp(mask_field );
             fields->release_tmp(mask_fieldh);
@@ -487,16 +505,19 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
    if(cross->do_cross(itime))
     {
-        fields  ->exec_cross(*cross, iotime);
-        thermo  ->exec_cross(*cross, iotime);
+        fields   ->exec_cross(*cross, iotime);
+        thermo   ->exec_cross(*cross, iotime);
+        microphys->exec_cross(*cross, iotime);
 //        boundary->exec_cross(iotime);
     }
    // Save the 3d dumps to disk
     if(dump->do_dump(itime))
     {
-        fields->exec_dump(*dump, iotime);
-        thermo->exec_dump(*dump, iotime);
+        fields   ->exec_dump(*dump, iotime);
+        thermo   ->exec_dump(*dump, iotime);
+        microphys->exec_dump(*dump, iotime);
     }
+
     if(column->do_column(itime))
     {
         fields->exec_column(*column);
@@ -514,13 +535,14 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(column->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(advec    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();
@@ -538,6 +560,10 @@ void Model<TF>::add_statistics_masks()
         if (mask_name == "default")
             stats->add_mask(mask_name);
         else if (fields->has_mask(mask_name))
+            stats->add_mask(mask_name);
+        else if (thermo->has_mask(mask_name))
+            stats->add_mask(mask_name);
+        else if (microphys->has_mask(mask_name))
             stats->add_mask(mask_name);
         else
         {

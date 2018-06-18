@@ -84,7 +84,9 @@ void Boundary<TF>::process_bcs(Input& input)
     // set the bottom bc
     if (swbot == "noslip")
         mbcbot = Boundary_type::Dirichlet_type;
-    else if (swbot == "freeslip")
+    else if (swbot == "freeslip" )
+        mbcbot = Boundary_type::Neumann_type;
+    else if (swbot == "neumann" )
         mbcbot = Boundary_type::Neumann_type;
     else if (swbot == "ustar")
         mbcbot = Boundary_type::Ustar_type;
@@ -98,6 +100,8 @@ void Boundary<TF>::process_bcs(Input& input)
     if (swtop == "noslip")
         mbctop = Boundary_type::Dirichlet_type;
     else if (swtop == "freeslip")
+        mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "neumann")
         mbctop = Boundary_type::Neumann_type;
     else if (swtop == "ustar")
         mbctop = Boundary_type::Ustar_type;
@@ -585,7 +589,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
 
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         calc_ghost_cells_bot_2nd<TF>(fields.mp.at("u")->fld.data(), gd.dzh.data(), mbcbot,
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(),
@@ -611,7 +615,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
                     gd.kend, gd.icells, gd.jcells, gd.ijcells);
         }
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         calc_ghost_cells_bot_4th<TF>(fields.mp.at("u")->fld.data(), gd.z.data(), mbcbot,
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(),
@@ -652,7 +656,7 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder == "4")
+    if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         if (boundary_w_type == Boundary_w_type::Normal_type)
         {
@@ -737,7 +741,7 @@ void Boundary<TF>::update_slave_bcs()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         calc_slave_bc_bot<TF,2>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
                                 fields.mp.at("u")->fld.data(), gd.dzhi.data(),
@@ -755,7 +759,7 @@ void Boundary<TF>::update_slave_bcs()
                                     sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         calc_slave_bc_bot<TF,4>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
                                 fields.mp.at("u")->fld.data(), gd.dzhi4.data(),

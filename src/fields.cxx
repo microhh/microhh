@@ -334,7 +334,7 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
     // add the profiles to the columns
     if (dump.get_switch())
     {
-        // Get global dump-list from cross.cxx
+        // Get global dump-list from dump.cxx
         std::vector<std::string> *dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
@@ -372,6 +372,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "top",     crosslist_global, &cross_top);
             check_added_cross(it.first, "fluxbot", crosslist_global, &cross_fluxbot);
             check_added_cross(it.first, "fluxtop", crosslist_global, &cross_fluxtop);
+            check_added_cross(it.first, "path",    crosslist_global, &cross_path);
         }
 
         for (auto& it : sd)
@@ -391,7 +392,7 @@ void Fields<TF>::check_added_cross(std::string var, std::string type, std::vecto
     if (position != crosslist->end())
     {
         // don't allow lngrad in 2nd order mode
-        if (!(type == "lngrad" && grid.swspatialorder == "2"))
+        if (!(type == "lngrad" && grid.get_spatial_order() == Grid_order::Second))
         {
             typelist->push_back(var);
             crosslist->erase(position);
@@ -526,7 +527,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     auto tmp = get_tmp();
     grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -544,15 +545,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
             stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
         }
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        master.print_message("4th order statistics not yet implemented in fields...\n");
-        //stats.calc_grad_4th(u->data, m.profs["ugrad"].data, grid.dzhi4, uloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
-        //stats.calc_flux_4th(u->data, w->data, m.profs["uw"].data, atmp["tmp2"]->data, uloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
-        //stats.calc_diff_4th(u->data, m.profs["udiff"].data, grid.dzhi4, visc, uloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
+        stats.calc_grad_4th(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi4.data(), uloc,
+                            maskh_on_u->fld.data(), stats.nmaskh.data());
+        stats.calc_flux_4th(mp["u"]->fld.data(), mp["w"]->fld.data(), m.profs["uw"].data.data(), tmp->fld.data(), uloc,
+                            maskh_on_u->fld.data(), stats.nmaskh.data());
+        stats.calc_diff_4th(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi4.data(), visc, uloc,
+                            maskh_on_u->fld.data(), stats.nmaskh.data());
     }
     release_tmp(maskh_on_u);
 
@@ -575,7 +575,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     auto maskh_on_v = get_tmp();
     grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -594,14 +594,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
         }
 
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        //stats.calc_grad_4th(v->data, m.profs["vgrad"].data, grid.dzhi4, vloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
-        //stats.calc_flux_4th(v->data, w->data, m.profs["vw"].data, atmp["tmp2"]->data, vloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
-        //stats.calc_diff_4th(v->data, m.profs["vdiff"].data, grid.dzhi4, visc, vloc,
-        //                    atmp["tmp1"]->data, stats.nmaskh);
+        stats.calc_grad_4th(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi4.data(), vloc,
+                            maskh_on_v->fld.data(), stats.nmaskh.data());
+        stats.calc_flux_4th(mp["v"]->fld.data(), mp["w"]->fld.data(), m.profs["vw"].data.data(), tmp->fld.data(), vloc,
+                            maskh_on_v->fld.data(), stats.nmaskh.data());
+        stats.calc_diff_4th(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi4.data(), visc, vloc,
+                            maskh_on_v->fld.data(), stats.nmaskh.data());
     }
     release_tmp(maskh_on_v);
 
@@ -617,7 +617,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
             stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
         }
 
-        if (grid.swspatialorder == "2")
+        if (grid.get_spatial_order() == Grid_order::Second)
         {
             stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
             stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
@@ -636,36 +636,36 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
                                     it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
             }
         }
-        else if (grid.swspatialorder == "4")
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
-            //stats.calc_grad_4th(it.second->data, m.profs[it.first+"grad"].data, grid.dzhi4, sloc,
-            //                    atmp["tmp4"]->data, stats.nmaskh);
-            //stats.calc_flux_4th(it.second->data, w->data, m.profs[it.first+"w"].data, atmp["tmp1"]->data, sloc,
-            //                    atmp["tmp4"]->data, stats.nmaskh);
-            //stats.calc_diff_4th(it.second->data, m.profs[it.first+"diff"].data, grid.dzhi4, it.second->visc, sloc,
-            //                    atmp["tmp4"]->data, stats.nmaskh);
+            stats.calc_grad_4th(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi4.data(), sloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
+            stats.calc_flux_4th(it.second->fld.data(), mp["w"]->fld.data(), m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
+            stats.calc_diff_4th(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi4.data(), visc, sloc,
+                                mask_fieldh.fld.data(), stats.nmaskh.data());
         }
     }
 
-    // Calculate pressure statistics
+    // Calculate pressure statistics.
     stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
     stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
         stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
                             m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        //stats.calc_grad_4th(sd["p"]->data, m.profs["pgrad"].data, grid.dzhi4, sloc,
-        //                     atmp["tmp4"]->data, stats.nmaskh);
-        //stats.calc_flux_4th(sd["p"]->data, w->data, m.profs["pw"].data, atmp["tmp1"]->data, sloc,
-        //                     atmp["tmp4"]->data, stats.nmaskh);
+        stats.calc_grad_4th(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi4.data(), sloc,
+                            mask_fieldh.fld.data(), stats.nmaskh.data());
+        stats.calc_flux_4th(sd["p"]->fld.data(), mp["w"]->fld.data(), m.profs["pw"].data.data(), tmp->fld.data(), sloc,
+                            mask_fieldh.fld.data(), stats.nmaskh.data());
     }
 
-    // Calculate the total fluxes
+    // Calculate the total fluxes.
     stats.add_fluxes(m.profs["uflux"].data.data(), m.profs["uw"].data.data(), m.profs["udiff"].data.data());
     stats.add_fluxes(m.profs["vflux"].data.data(), m.profs["vw"].data.data(), m.profs["vdiff"].data.data());
     for (auto& it : sp)
@@ -1201,6 +1201,9 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : cross_top)
         cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
+
+    for (auto& it : cross_path)
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
 }
 
 template<typename TF>

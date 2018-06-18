@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2
-#define DIFF_2
+#ifndef DIFF_2_H
+#define DIFF_2_H
 
 #include "diff.h"
 
@@ -38,7 +38,7 @@ class Diff_2 : public Diff<TF>
 
         void set_values();
         void init() {};
-        void exec();
+        void exec(Boundary<TF>&);
 
         // Empty functions, these are allowed to pass.
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
@@ -56,11 +56,5 @@ class Diff_2 : public Diff<TF>
 
         double dnmax;
         double dnmul;
-
-
-        //double dnmul;
-
-        //void diff_c(double*, double*, double*, double*, double);
-        //void diff_w(double*, double*, double*, double*, double);
 };
 #endif

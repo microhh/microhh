@@ -150,7 +150,7 @@ void Timeloop<TF>::step_time()
 template<typename TF>
 bool Timeloop<TF>::do_check()
 {
-    if (iteration % outputiter == 0 && !in_substep())
+    if ((iteration % outputiter == 0 && !in_substep()) | !loop)
         return true;
 
     return false;

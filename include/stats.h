@@ -71,6 +71,8 @@ struct Mask
 template<typename TF>
 using Mask_map = std::map<std::string, Mask<TF>>;
 
+enum class Stats_mask_type {Plus, Min};
+
 template<typename TF>
 class Stats
 {
@@ -86,6 +88,10 @@ class Stats
         bool do_statistics(unsigned long);
 
         void get_mask(Field3d<TF>&, Field3d<TF>&);
+        void get_nmask(Field3d<TF>&, Field3d<TF>&);
+        void set_mask_true(Field3d<TF>&, Field3d<TF>&);
+        void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
+        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
 
         void exec(int, double, unsigned long);
 
@@ -106,22 +112,25 @@ class Stats
         void calc_area(TF*, const int[3], int*);
         void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
 
-        void calc_mean_2d(TF&, const TF* const,
-                          const TF,
-                          const TF* const, const int);
+        void calc_mean_2d(TF&, const TF* const, const TF, const TF* const, const int);
+        void calc_max_2d(TF&, const TF* const, const TF, const TF* const, const int);
 
         void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
 
         void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
         void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
                            TF*, TF*, TF, const int[3], TF*, int*);
-        //void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
+
+        void calc_diff_4th(
+                TF*, TF*, const TF*,
+                const TF, const int[3],
+                TF*, int*);
 
         void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
-        //void calc_grad_4th(double*, double*, double*, const int[3], double*, int*);
+        void calc_grad_4th(TF*, TF*, const TF*, const int[3], TF*, int*);
 
         void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-        //void calc_flux_4th(double*, double*, double*, double*, const int[3], double*, int*);
+        void calc_flux_4th(TF*, TF*, TF*, TF*, const int[3], TF*, int*);
 
         void add_fluxes   (TF*, TF*, TF*);
         //void calc_count   (double*, double*, double, double*, int*);

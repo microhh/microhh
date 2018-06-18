@@ -53,7 +53,7 @@ namespace
     {
         const int ii = 1;
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-    
+
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
         if (surface_model == Surface_model::Enabled)
         {
@@ -63,46 +63,46 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-    
+
                     strain2[ijk] = 2.*(
                                    // du/dx + du/dx
                                    + std::pow((u[ijk+ii]-u[ijk])*dxi, 2)
-    
+
                                    // dv/dy + dv/dy
                                    + std::pow((v[ijk+jj]-v[ijk])*dyi, 2)
-    
+
                                    // dw/dz + dw/dz
                                    + std::pow((w[ijk+kk]-w[ijk])*dzi[kstart], 2)
-    
+
                                    // du/dy + dv/dx
                                    + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
-    
+
                                    // du/dz
                                    + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
-    
+
                                    // dw/dx
                                    + 0.125*std::pow((w[ijk      ]-w[ijk-ii   ])*dxi, 2)
                                    + 0.125*std::pow((w[ijk+ii   ]-w[ijk      ])*dxi, 2)
                                    + 0.125*std::pow((w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
                                    + 0.125*std::pow((w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
-    
+
                                    // dv/dz
                                    + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
-    
+
                                    // dw/dy
                                    + 0.125*std::pow((w[ijk      ]-w[ijk-jj   ])*dyi, 2)
                                    + 0.125*std::pow((w[ijk+jj   ]-w[ijk      ])*dyi, 2)
                                    + 0.125*std::pow((w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
                                    + 0.125*std::pow((w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
-    
+
                     // add a small number to avoid zero divisions
                     strain2[ijk] += Constants::dsmall;
                 }
         }
-    
+
         for (int k=kstart+k_offset; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -112,31 +112,31 @@ namespace
                     strain2[ijk] = 2.*(
                                    // du/dx + du/dx
                                    + std::pow((u[ijk+ii]-u[ijk])*dxi, 2)
-    
+
                                    // dv/dy + dv/dy
                                    + std::pow((v[ijk+jj]-v[ijk])*dyi, 2)
-    
+
                                    // dw/dz + dw/dz
                                    + std::pow((w[ijk+kk]-w[ijk])*dzi[k], 2)
-    
+
                                    // du/dy + dv/dx
                                    + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
-    
+
                                    // du/dz + dw/dx
                                    + 0.125*std::pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, 2)
                                    + 0.125*std::pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
                                    + 0.125*std::pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
-    
+
                                    // dv/dz + dw/dy
                                    + 0.125*std::pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, 2)
                                    + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2)
                                    + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
                                    + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
-    
+
                            // Add a small number to avoid zero divisions.
                            strain2[ijk] += Constants::dsmall;
                 }
@@ -157,7 +157,7 @@ namespace
 
         // Wall damping constant.
         const int n = 2;
-    
+
         if (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
@@ -171,7 +171,7 @@ namespace
                         evisc[ijk] = mlen * std::sqrt(evisc[ijk]) + mvisc;
                     }
             }
-    
+
             boundary_cyclic.exec(evisc);
 
             /*
@@ -198,7 +198,7 @@ namespace
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
                 const TF mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
                 const TF fac   = std::pow(mlen, 2);
-    
+
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
@@ -207,7 +207,7 @@ namespace
                         evisc[ijk] = fac * std::sqrt(evisc[ijk]) + mvisc;
                     }
             }
-    
+
             boundary_cyclic.exec(evisc);
         }
     }
@@ -231,10 +231,10 @@ namespace
         {
             for (int k=kstart; k<kend; ++k)
             {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                // calculate smagorinsky constant times filter width squared, do not use wall damping with resolved walls.
                 const TF mlen = cs*std::pow(dx*dy*dz[k], 1./3.);
                 const TF fac = std::pow(mlen, 2);
-    
+
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
@@ -247,7 +247,6 @@ namespace
                     }
             }
 
-            /*
             // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
             // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
             const int kb = kstart;
@@ -258,22 +257,21 @@ namespace
                 {
                     const int ijkb = i + j*jj + kb*kk;
                     const int ijkt = i + j*jj + kt*kk;
-                    evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
-                    evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
+                    evisc[ijkb-kk] = evisc[ijkb];
+                    evisc[ijkt+kk] = evisc[ijkt];
                 }
-                */
         }
         else
         {
             // Variables for the wall damping.
             const TF n = 2.;
-    
+
             // Bottom boundary, here strain is fully parametrized using MO.
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
             const TF mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
             const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[kstart]+z0m), n))), 1./n);
             const TF fac = std::pow(mlen, 2);
-    
+
             for (int j=jstart; j<jend; ++j)
             {
                 #pragma ivdep
@@ -288,14 +286,14 @@ namespace
                     evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(static_cast<TF>(1.)-RitPrratio);
                 }
             }
-    
+
             for (int k=kstart+1; k<kend; ++k)
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
                 const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
                 const TF fac = std::pow(mlen, 2);
-    
+
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
@@ -308,7 +306,7 @@ namespace
                     }
             }
         }
-   
+
         boundary_cyclic.exec(evisc);
     }
 
@@ -323,11 +321,11 @@ namespace
                 const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         TF eviscn, eviscs, eviscb, evisct;
-    
+
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-       
+
         if (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
@@ -341,7 +339,7 @@ namespace
                     eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
                     evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
                     eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
-    
+
                     ut[ijk] +=
                              // du/dx + du/dx
                              + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
@@ -353,7 +351,7 @@ namespace
                              + ( rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
                                + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
                 }
-    
+
             // top boundary
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -377,7 +375,7 @@ namespace
                                 - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
                 }
         }
-    
+
         for (int k=kstart+k_offset; k<kend-k_offset; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -413,11 +411,11 @@ namespace
 
     {
         const int ii = 1;
-    
+
         TF evisce, eviscw, eviscb, evisct;
-    
+
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-    
+
         if (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
@@ -442,7 +440,7 @@ namespace
                              + ( rhorefh[kstart+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                                + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
                 }
-    
+
             // top boundary
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -466,7 +464,7 @@ namespace
                                 - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
                 }
         }
-    
+
         for (int k=kstart+k_offset; k<kend-k_offset; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -489,7 +487,7 @@ namespace
                                - rhorefh[k  ] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
                 }
     }
-   
+
     template <typename TF>
     void diff_w(TF* restrict wt,
                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
@@ -500,9 +498,9 @@ namespace
                 const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         TF evisce, eviscw, eviscn, eviscs;
-    
+
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -525,44 +523,72 @@ namespace
                                - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
                 }
     }
-    
-    template <typename TF>
+
+    template <typename TF, Surface_model surface_model>
     void diff_c(TF* restrict at, const TF* restrict a,
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxidxi, const TF dyidyi,
                 const TF* restrict evisc,
-                const TF* restrict fluxbot, const TF* restrict fluxtop, 
+                const TF* restrict fluxbot, const TF* restrict fluxtop,
                 const TF* restrict rhoref, const TF* restrict rhorefh, const TF tPr,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                 const int jj, const int kk)
     {
         const int ii = 1;
-    
+
         TF evisce, eviscw, eviscn, eviscs, evisct, eviscb;
+
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
     
-        // bottom boundary
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
-    
-                at[ijk] +=
-                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
-                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
-                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                         + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-                           + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
-            }
-    
-        for (int k=kstart+1; k<kend-1; ++k)
+        if (surface_model == Surface_model::Enabled)
+        {
+            // bottom boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                    eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                    eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                    eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                    evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                    eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+
+                    at[ijk] +=
+                             + ( evisce*(a[ijk+ii]-a[ijk   ])
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
+                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                             + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+                               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+                }
+
+            // top boundary
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + (kend-1)*kk;
+                    evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+                    eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+                    eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+                    eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+                    evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+                    eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+
+                    at[ijk] +=
+                             + ( evisce*(a[ijk+ii]-a[ijk   ])
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
+                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+                             + (-rhorefh[kend  ] * fluxtop[ij]
+                               - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
+                }
+        }
+
+        for (int k=kstart+k_offset; k<kend-k_offset; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -574,38 +600,15 @@ namespace
                     eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
                     evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
                     eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
-    
+
                     at[ijk] +=
-                             + ( evisce*(a[ijk+ii]-a[ijk   ]) 
+                             + ( evisce*(a[ijk+ii]-a[ijk   ])
                                - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                             + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
+                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
                                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
                              + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                                - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
                 }
-    
-        // top boundary
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + (kend-1)*kk;
-                evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-                eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-                eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-                eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-                evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-                eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
-    
-                at[ijk] +=
-                         + ( evisce*(a[ijk+ii]-a[ijk   ]) 
-                           - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                         + ( eviscn*(a[ijk+jj]-a[ijk   ]) 
-                           - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                         + (-rhorefh[kend  ] * fluxtop[ij]
-                           - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
-            }
     }
 
     template<typename TF>
@@ -616,7 +619,7 @@ namespace
         const TF one = 1.;
         const TF tPrfac = std::min(one, tPr);
         TF dnmul = 0;
-    
+
         // get the maximum time step for diffusion
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -626,9 +629,9 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
                 }
-    
+
         // get_max(&dnmul);
-    
+
         return dnmul;
     }
 } // End namespace.
@@ -708,46 +711,90 @@ void Diff_smag2<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec()
+void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
-    diff_u<TF, Surface_model::Enabled>(
-            fields.mt["u"]->fld.data(),
-            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-            fields.sd["evisc"]->fld.data(),
-            fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
-            fields.rhoref.data(), fields.rhorefh.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    if (boundary.get_switch() == "surface")
+    {
+        diff_u<TF, Surface_model::Enabled>(
+                fields.mt["u"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
-    diff_v<TF, Surface_model::Enabled>(
-            fields.mt["v"]->fld.data(),
-            fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-            fields.sd["evisc"]->fld.data(),
-            fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
-            fields.rhoref.data(), fields.rhorefh.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+        diff_v<TF, Surface_model::Enabled>(
+                fields.mt["v"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
-    diff_w<TF>(fields.mt["w"]->fld.data(),
-               fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-               gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-               fields.sd["evisc"]->fld.data(),
-               fields.rhoref.data(), fields.rhorefh.data(),
-               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-               gd.icells, gd.ijcells);
-
-    for (auto it : fields.st)
-        diff_c<TF>(it.second->fld.data(), fields.sp[it.first]->fld.data(),
-                   gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+        diff_w<TF>(fields.mt["w"]->fld.data(),
+                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
                    fields.sd["evisc"]->fld.data(),
-                   fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
-                   fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                   fields.rhoref.data(), fields.rhorefh.data(),
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                    gd.icells, gd.ijcells);
+
+        for (auto it : fields.st)
+            diff_c<TF, Surface_model::Enabled>(
+                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                    fields.sd["evisc"]->fld.data(),
+                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
+    else
+    {
+        diff_u<TF, Surface_model::Disabled>(
+                fields.mt["u"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        diff_v<TF, Surface_model::Disabled>(
+                fields.mt["v"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        diff_w<TF>(fields.mt["w"]->fld.data(),
+                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                   fields.sd["evisc"]->fld.data(),
+                   fields.rhoref.data(), fields.rhorefh.data(),
+                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                   gd.icells, gd.ijcells);
+
+        for (auto it : fields.st)
+            diff_c<TF, Surface_model::Disabled>(
+                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                    fields.sd["evisc"]->fld.data(),
+                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
 }
 
 template<typename TF>
@@ -811,8 +858,8 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         auto& gd = grid.get_grid_data();
         auto buoy_tmp = fields.get_tmp();
         auto tmp = fields.get_tmp();
-        thermo.get_buoyancy_fluxbot(*buoy_tmp);
-        thermo.get_thermo_field(*buoy_tmp, "N2", false);
+        thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
+        thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
         if (boundary.get_switch() == "surface")
             calc_evisc<TF, Surface_model::Enabled>(

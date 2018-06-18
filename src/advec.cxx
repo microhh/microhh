@@ -31,9 +31,10 @@
 #include "advec.h"
 #include "advec_disabled.h"
 #include "advec_2.h"
-// #include "advec_2i4.h"
-// #include "advec_4.h"
-// #include "advec_4m.h"
+#include "advec_2i3.h"
+#include "advec_2i4.h"
+#include "advec_4.h"
+#include "advec_4m.h"
 
 template<typename TF>
 Advec<TF>::Advec(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -41,7 +42,6 @@ Advec<TF>::Advec(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     cflmin(1.E-5)
 {
     cflmax = input.get_item<TF>("advec", "cflmax", "", 1.);
-    swadvec = "0";
 }
 
 template<typename TF>
@@ -50,31 +50,29 @@ Advec<TF>::~Advec()
 }
 
 template<typename TF>
-std::shared_ptr<Advec<TF>> Advec<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,  Input& inputin, const std::string swspatialorder)
+std::shared_ptr<Advec<TF>> Advec<TF>::factory(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
+    std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
     std::string swadvec = inputin.get_item<std::string>("advec", "swadvec", "", swspatialorder);
 
     if (swadvec == "0")
         return std::make_shared<Advec_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swadvec == "2")
         return std::make_shared<Advec_2<TF>>(masterin, gridin, fieldsin, inputin);
-    // else if (swadvec == "2i4")
-    //     return new Advec_2i4(modelin, inputin);
-    // else if (swadvec == "4")
-    //     return new Advec_4(modelin, inputin);
-    // else if (swadvec == "4m")
-    //     return new Advec_4m(modelin, inputin);
+    else if (swadvec == "2i3")
+        return std::make_shared<Advec_2i3<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swadvec == "2i4")
+        return std::make_shared<Advec_2i4<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swadvec == "4")
+        return std::make_shared<Advec_4<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swadvec == "4m")
+        return std::make_shared<Advec_4m<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         masterin.print_error("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
         throw std::runtime_error("Illegal options swadvec");
     }
-}
-
-template<typename TF>
-std::string Advec<TF>::get_switch()
-{
-    return swadvec;
 }
 
 template class Advec<double>;

@@ -37,11 +37,13 @@ template<typename> class Fields;
 template<typename> class Timeloop;
 template<typename> class FFT;
 template<typename> class Boundary;
+template<typename> class Buffer;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
 template<typename> class Force;
 template<typename> class Thermo;
+template<typename> class Microphys;
 template<typename> class Radiation;
 
 template<typename> class Decay;
@@ -78,11 +80,13 @@ class Model
         std::shared_ptr<FFT<TF>> fft;
 
         std::shared_ptr<Boundary<TF>> boundary;
+        std::shared_ptr<Buffer<TF>> buffer;
         std::shared_ptr<Advec<TF>> advec;
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
         std::shared_ptr<Force<TF>> force;
         std::shared_ptr<Thermo<TF>> thermo;
+        std::shared_ptr<Microphys<TF>> microphys;
         std::shared_ptr<Radiation<TF>> radiation;
 
         std::shared_ptr<Decay<TF>> decay;
@@ -100,7 +104,7 @@ class Model
 
         void delete_objects();
         void print_status();
-        void calculate_statistics(int, double, unsigned long, int);
+        void calculate_statistics(int, double, unsigned long, int, double);
         void set_time_step();
 
         void prepare_gpu();

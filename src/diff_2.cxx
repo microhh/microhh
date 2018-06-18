@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,9 +35,9 @@
 namespace
 {
     template<typename TF>
-    void diff_c(TF* restrict at, TF* restrict a, TF visc,
+    void diff_c(TF* restrict at, const TF* restrict a, const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk, const TF dx, const TF dy, const TF* const dzi, const TF* const dzhi)
+                const int jj, const int kk, const TF dx, const TF dy, const TF* restrict dzi, const TF* restrict dzhi)
     {
         const int ii = 1;
         const double dxidxi = 1/(dx*dx);
@@ -60,9 +60,9 @@ namespace
     }
 
     template<typename TF>
-    void diff_w(TF* restrict wt, TF* restrict w, TF visc,
+    void diff_w(TF* restrict wt, const TF* restrict w, const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk, const TF dx, const TF dy, const TF* const dzi, const TF* const dzhi)
+                const int jj, const int kk, const TF dx, const TF dy, const TF* restrict dzi, const TF* restrict dzhi)
     {
         const int ii = 1;
         const double dxidxi = 1/(dx*dx);
@@ -133,7 +133,7 @@ void Diff_2<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_2<TF>::exec()
+void Diff_2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 

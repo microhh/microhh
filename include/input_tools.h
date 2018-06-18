@@ -13,8 +13,8 @@ namespace Input_tools
         if (s.empty())
             throw std::runtime_error("Illegal string");
 
-        // Return string if all characters are alphanumeric.
-        if (find_if(s.begin(), s.end(), [](const char c) { return !(std::isalnum(c) || c == '[' || c == ']'); }) == s.end())
+        // Return string if all characters are alphanumeric or _ []
+        if (find_if(s.begin(), s.end(), [](const char c) { return !(std::isalnum(c) || c == '_' || c == '[' || c == ']'); }) == s.end())
             return;
         else
             throw std::runtime_error("Illegal string: " + s);

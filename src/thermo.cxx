@@ -21,6 +21,7 @@
  */
 
 #include <cstdio>
+#include <cmath>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -30,7 +31,7 @@
 #include "thermo.h"
 #include "thermo_buoy.h"
 #include "thermo_dry.h"
-//#include "thermo_moist.h"
+#include "thermo_moist.h"
 //#include "thermo_vapor.h"
 #include "thermo_disabled.h"
 
@@ -59,11 +60,10 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(Master& masterin, Grid<TF>& grid
         return std::make_shared<Thermo_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "dry")
         return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin);
-/*  if (swthermo == "moist")
-        return new Thermo_moist(masterin, gridin, fieldsin, inputin);
-    else if (swthermo == "vapor")
-        return new Thermo_vapor(masterin, gridin, fieldsin, inputin);
-*/
+    else if (swthermo == "moist")
+        return std::make_shared<Thermo_moist<TF>>(masterin, gridin, fieldsin, inputin);
+//    else if (swthermo == "vapor")
+//        return new Thermo_vapor(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "buoy")
         return std::make_shared<Thermo_buoy<TF>>(masterin, gridin, fieldsin, inputin);
     else

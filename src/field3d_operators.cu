@@ -33,7 +33,7 @@
 
 #ifdef USECUDA
 template<typename TF>
-void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
+void Field3d_operators<TF>::calc_mean_profile_g(TF* const restrict prof, const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -51,7 +51,7 @@ void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF*
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
+TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
 {
     using namespace Tools_g;
 
@@ -72,13 +72,13 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
     reduce_all<TF>     (&tmp->fld_g[gd.jtot*gd.ktot], tmp->fld_g, gd.ktot, 1, gd.ktot, Sum_type, scalefac);
     // Copy back result from GPU
     cuda_safe_call(cudaMemcpy(&mean_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
-    
+
     fields.release_tmp_g(tmp);
     return mean_value;
 }
 
 template<typename TF>
-TF Field3d_operators<TF>::calc_max(const TF* const restrict fld)
+TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)
 {
     using namespace Tools_g;
 

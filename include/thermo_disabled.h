@@ -53,12 +53,13 @@ class Thermo_disabled : public Thermo<TF>
         // Interfacing functions to get buoyancy properties from other classes.
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
-        void exec() {};
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&) {};
+        void exec(const double) {};
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent() {};
         TF get_buoyancy_diffusivity();
@@ -70,15 +71,20 @@ class Thermo_disabled : public Thermo<TF>
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
+        void get_thermo_field_g(Field3d<TF>&, std::string, bool) {};
+        void get_buoyancy_surf_g(Field3d<TF>&) {};
+        void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
+
         #endif
 
         // Empty functions that shall throw.
-        void get_thermo_field(Field3d<TF>&, std::string, bool) { throw 1; }
-        void get_buoyancy_surf(Field3d<TF>&) { throw 1; }
-        void get_buoyancy_fluxbot(Field3d<TF>&) { throw 1; }
-        void get_T_bot(Field3d<TF>&) { throw std::runtime_error("Function get_T_bot not implemented"); }
+        void get_thermo_field(Field3d<TF>&, std::string, bool, bool) { throw 1; }
+        void get_buoyancy_surf(Field3d<TF>&, bool) { throw 1; }
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool) { throw 1; }
+        void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
+        const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
 
     private:
         using Thermo<TF>::swthermo;

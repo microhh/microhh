@@ -37,9 +37,9 @@ class Advec_disabled : public Advec<TF>
         Advec_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
         virtual ~Advec_disabled();              ///< Destructor of the advection class.
 
-        virtual void exec(); ///< Execute the advection scheme.
-        virtual unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-        virtual double get_cfl(double); ///< Retrieve the CFL number.
+        void exec(); ///< Execute the advection scheme.
+        unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
+        double get_cfl(double); ///< Retrieve the CFL number.
 
     private:
         using Advec<TF>::master;
@@ -49,6 +49,5 @@ class Advec_disabled : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
-        using Advec<TF>::swadvec;
 };
 #endif

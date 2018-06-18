@@ -28,8 +28,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-
-enum class Direction {Top_to_bottom, Bottom_to_top};
+enum class Cross_direction {Top_to_bottom, Bottom_to_top};
 
 template<typename TF>
 class Cross
@@ -43,10 +42,10 @@ class Cross
         bool get_switch() { return swcross; }
 
         std::vector<std::string>* get_crosslist();
+        std::vector<std::string> get_enabled_variables(std::vector<std::string>);
 
         unsigned long get_time_limit(unsigned long);
         //int exec(double, unsigned long, int);
-
 
         bool do_cross(unsigned long);
 
@@ -54,7 +53,7 @@ class Cross
         int cross_lngrad(TF*, std::string, int);
         int cross_plane (TF*, std::string, int);
         int cross_path  (TF*, std::string, int);
-        int cross_height_threshold(TF*, TF*, TF, Direction, std::string, int);
+        int cross_height_threshold(TF*, TF, Cross_direction, std::string, int);
 
     private:
         Master& master;
@@ -88,4 +87,3 @@ class Cross
         int check_save(int, char *);
 };
 #endif
-

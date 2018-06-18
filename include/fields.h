@@ -163,6 +163,7 @@ class Fields
         std::vector<std::string> cross_top;
         std::vector<std::string> cross_fluxbot;
         std::vector<std::string> cross_fluxtop;
+        std::vector<std::string> cross_path;
 
         void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
 

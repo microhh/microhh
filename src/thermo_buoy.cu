@@ -32,7 +32,7 @@ namespace
 {
     template<typename TF> __global__
     void calc_buoyancy_g(TF* __restrict__ b,
-                        TF* __restrict__ bin)
+                         TF* __restrict__ bin)
     {
         b[threadIdx.x] = bin[threadIdx.x];
     }
@@ -225,7 +225,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::exec()
+void Thermo_buoy<TF>::exec(const double dt)
 {
 	auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -236,7 +236,7 @@ void Thermo_buoy<TF>::exec()
     dim3 gridGPU (gridi, gridj, gd.kmax-1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    if (grid.swspatialorder== "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         if (bs.has_slope || bs.has_N2)
         {
@@ -278,7 +278,7 @@ void Thermo_buoy<TF>::exec()
             cuda_check_error();
         }
     }
-    else if (grid.swspatialorder== "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         if (bs.has_slope || bs.has_N2)
         {
@@ -324,7 +324,7 @@ void Thermo_buoy<TF>::exec()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic)
+void Thermo_buoy<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool cyclic)
 {
     auto& gd = grid.get_grid_data();
 

@@ -205,6 +205,26 @@ namespace
                                     + cosalpha *  interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
                 }
     }
+
+    template<typename TF>
+    void calc_baroclinic(TF* const restrict bt, const TF* const restrict v,
+                         const TF dbdy_ls,
+                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                         const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
+
 }
 
 template<typename TF>
@@ -225,6 +245,9 @@ Thermo<TF>(masterin, gridin, fieldsin, inputin)
     if (bs.has_slope || bs.has_N2)
         master.print_message("Slope-enabled thermodynamics is activated\n");
 
+    swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
+    if (swbaroclinic)
+        dbdy_ls = inputin.get_item<TF>("thermo", "dbdy_ls", "");
 }
 
 template<typename TF>
@@ -234,10 +257,10 @@ Thermo_buoy<TF>::~Thermo_buoy()
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::exec()
+void Thermo_buoy<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
 	    if (bs.has_slope || bs.has_N2)
 	    {
@@ -249,8 +272,14 @@ void Thermo_buoy<TF>::exec()
         {
 	        calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
+
+        if (swbaroclinic)
+            calc_baroclinic(fields.st.at("b")->fld.data(), fields.mp.at("v")->fld.data(),
+                            dbdy_ls,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
 	    if (bs.has_slope || bs.has_N2)
 	    {
@@ -272,16 +301,14 @@ unsigned long Thermo_buoy<TF>::get_time_limit(unsigned long idt, const double dt
     return Constants::ulhuge;
 }
 
-#ifndef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic)
+void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy(b.fld.data(), fields.sp.at("b")->fld.data(), gd.ncells);
 
     // Note: calc_buoyancy already handles the lateral ghost cells
 }
-#endif
 
 template<typename TF>
 void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string>& list)
@@ -290,14 +317,14 @@ void Thermo_buoy<TF>::get_prog_vars(std::vector<std::string>& list)
 }
 
 template<typename TF>
-void Thermo_buoy<TF>::get_buoyancy_fluxbot(Field3d<TF>& b)
+void Thermo_buoy<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("b")->flux_bot.data(), gd.icells, gd.jcells);
 }
 
 template<typename TF>
-void Thermo_buoy<TF>::get_buoyancy_surf(Field3d<TF>& b)
+void Thermo_buoy<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     calc_buoyancy_bot(b.fld.data()         , b.fld_bot.data(),

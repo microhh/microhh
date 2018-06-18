@@ -38,9 +38,8 @@
 
 namespace
 {
-
     template<typename TF>
-    void calc_lngrad(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
+    void calc_lngrad_4th(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
             int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
     {
         using namespace Finite_difference::O4;
@@ -58,7 +57,7 @@ namespace
         // calculate the log of the gradient
         // bottom
         for (int j=jstart; j<jend; j++)
-    #pragma ivdep
+            #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
@@ -126,6 +125,36 @@ namespace
                               + cg3*(ti0*a[ijk-kk1] + ti1*a[ijk    ] + ti2*a[ijk+kk1] + ti3*a[ijk+kk2]) ) * dzi4[kend-1], 2.) );
             }
 
+    }
+
+    template<typename TF>
+    void calc_lngrad_2nd(
+            const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi,
+            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    {
+        using namespace Finite_difference::O2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // calculate the log of the gradient
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    lngrad[ijk] = std::log( Constants::dtiny
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+ii])
+                                        - interp2(a[ijk-ii], a[ijk   ]) ) * dxi, TF(2))
+
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+jj])
+                                        - interp2(a[ijk-jj], a[ijk   ]) ) * dyi, TF(2))
+
+                            + std::pow( ( interp2(a[ijk   ], a[ijk+kk])
+                                        - interp2(a[ijk-kk], a[ijk   ]) ) * dzi[k], TF(2)) );
+                }
     }
 
     template<typename TF>
@@ -459,6 +488,34 @@ std::vector<std::string>* Cross<TF>::get_crosslist()
     return &crosslist;
 }
 
+/*
+This function is called from various classes, "allowed_variables" is a vector
+with the variables that each class can potentially provide, get_enabled_variables()
+cross-references this with the cross-sections requested in the .ini file (crosslist),
+removes the cross-sections that the class can and should provide from crosslist,
+and returns a vector containing those variables (difficult explanation...)
+*/
+template<typename TF>
+std::vector<std::string> Cross<TF>::get_enabled_variables(std::vector<std::string> allowed_variables)
+{
+    std::vector<std::string> variables_to_return;
+
+    std::vector<std::string>::iterator it=crosslist.begin();
+    while (it != crosslist.end())
+    {
+        if (std::count(allowed_variables.begin(), allowed_variables.end(), *it))
+        {
+            // Remove variable from global list, put in list which is returned
+            variables_to_return.push_back(*it);
+            crosslist.erase(it); // erase() returns iterator of next element..
+        }
+        else
+            ++it;
+    }
+
+    return variables_to_return;
+}
+
 
 template<typename TF>
 int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
@@ -555,8 +612,16 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     auto lngrad = lngradfld->fld.data();
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
-    calc_lngrad<TF>(a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(), gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
- //   calc_lngrad1<TF>(a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data());//, gd.dzi4.data());
+
+    if (grid.get_spatial_order() == Grid_order::Second)
+        calc_lngrad_2nd<TF>(
+                a, lngrad, gd.dxi, gd.dyi, gd.dzi.data(),
+                gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
+        calc_lngrad_4th<TF>(
+                a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(),
+                gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+
     // loop over the index arrays to save all xz cross sections
     for (auto& it: jxz)
     {
@@ -607,11 +672,11 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
  * @param tmp1 Pointer to temporary field for writing the cross-section
  * @param z Pointer to 1D field containing the levels of data
  * @param threshold Threshold value
- * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom)
+ * @param Cross_direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom)
  * @param name String containing the output name of the cross-section
  */
 template<typename TF>
-int Cross<TF>::cross_height_threshold(TF* restrict data, TF* restrict z, TF threshold, Direction direction, std::string name, int iotime)
+int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Cross_direction direction, std::string name, int iotime)
 {
 
     auto& gd = grid.get_grid_data();
@@ -620,8 +685,8 @@ int Cross<TF>::cross_height_threshold(TF* restrict data, TF* restrict z, TF thre
     auto height = tmpfld->fld.data();
 
     TF fillvalue = -1e-9; //TODO: SET FILL VALUE
-    bool isupward = (direction == Direction::Bottom_to_top);
-    calc_cross_height_threshold<TF>(data, height, z, threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    bool isupward = (direction == Cross_direction::Bottom_to_top);
+    calc_cross_height_threshold<TF>(data, height, gd.z.data(), threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
 
     nerror += cross_plane(height, name, iotime);
     fields.release_tmp(tmpfld);

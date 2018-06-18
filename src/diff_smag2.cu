@@ -38,14 +38,14 @@ namespace
 {
     namespace most = Monin_obukhov;
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void strain2_g(TF* __restrict__ strain2,
                    TF* __restrict__ u,  TF* __restrict__ v,  TF* __restrict__ w,
                    TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-                   TF* __restrict__ ustar, TF* __restrict__ obuk, 
-                   TF* __restrict__ z, TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi, 
-                   const int istart, const int jstart, const int kstart, 
-                   const int iend,   const int jend,   const int kend, 
+                   TF* __restrict__ ustar, TF* __restrict__ obuk,
+                   TF* __restrict__ z, TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
+                   const int istart, const int jstart, const int kstart,
+                   const int iend,   const int jend,   const int kend,
                    const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -66,7 +66,7 @@ namespace
                    // dv/dz
                    + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
                 // add a small number to avoid zero divisions
-                strain2[ijk] += Constants::dsmall;  
+                strain2[ijk] += Constants::dsmall;
             }
             else
             {
@@ -98,13 +98,13 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void evisc_g(TF* __restrict__ evisc, TF* __restrict__ N2,
                  TF* __restrict__ bfluxbot, TF* __restrict__ ustar, TF* __restrict__ obuk,
                  TF* __restrict__ mlen,
                  const TF tPri, const TF z0m, const TF zsl,
                  const int istart, const int jstart, const int kstart,
-                 const int iend,   const int jend,   const int kend, 
+                 const int iend,   const int jend,   const int kend,
                  const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -133,10 +133,10 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void evisc_neutral_g(TF* __restrict__ evisc, TF* __restrict__ mlen,
-                         const int istart, const int jstart, const int kstart, 
-                         const int iend,   const int jend,   const int kend, 
+                         const int istart, const int jstart, const int kstart,
+                         const int iend,   const int jend,   const int kend,
                          const int jj,     const int kk)
 
     {
@@ -151,16 +151,16 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void diff_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt, 
+    template<typename TF> __global__
+    void diff_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
                     TF* __restrict__ evisc,
                     TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                    TF* __restrict__ fluxbotu, TF* __restrict__ fluxtopu, 
-                    TF* __restrict__ fluxbotv, TF* __restrict__ fluxtopv, 
+                    TF* __restrict__ fluxbotu, TF* __restrict__ fluxtopu,
+                    TF* __restrict__ fluxbotv, TF* __restrict__ fluxtopv,
                     TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
-                    TF* __restrict__ rhoref, TF* __restrict__ rhorefh, 
-                    const int istart, const int jstart, const int kstart, 
-                    const int iend,   const int jend,   const int kend, 
+                    TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                    const int istart, const int jstart, const int kstart,
+                    const int iend,   const int jend,   const int kend,
                     const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -288,13 +288,13 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void diff_c_g(TF* __restrict__ at, TF* __restrict__ a, TF* __restrict__ evisc,
-                  TF* __restrict__ fluxbot, TF* __restrict__ fluxtop, 
+                  TF* __restrict__ fluxbot, TF* __restrict__ fluxtop,
                   TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
-                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh, const TF tPri, 
-                  const int istart, const int jstart, const int kstart, 
-                  const int iend,   const int jend,   const int kend, 
+                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh, const TF tPri,
+                  const int istart, const int jstart, const int kstart,
+                  const int iend,   const int jend,   const int kend,
                   const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -316,9 +316,9 @@ namespace
                 const TF evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
 
                 at[ijk] +=
-                    + (  evisce*(a[ijk+ii]-a[ijk   ]) 
-                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                    + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+                    + (  evisce*(a[ijk+ii]-a[ijk   ])
+                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+                    + (  eviscn*(a[ijk+jj]-a[ijk   ])
                        - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
                     + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                        + rhorefh[k  ] * fluxbot[ij] ) / rhoref[k] * dzi[k];
@@ -332,9 +332,9 @@ namespace
                 const TF eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
 
                 at[ijk] +=
-                    + (  evisce*(a[ijk+ii]-a[ijk   ]) 
-                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                    + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+                    + (  evisce*(a[ijk+ii]-a[ijk   ])
+                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+                    + (  eviscn*(a[ijk+jj]-a[ijk   ])
                        - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
                     + (- rhorefh[k  ] * fluxtop[ij]
                        - rhorefh[k-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k-1] ) / rhoref[k-1] * dzi[k-1];
@@ -349,9 +349,9 @@ namespace
                 const TF eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
 
                 at[ijk] +=
-                    + (  evisce*(a[ijk+ii]-a[ijk   ]) 
-                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
-                    + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+                    + (  evisce*(a[ijk+ii]-a[ijk   ])
+                       - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+                    + (  eviscn*(a[ijk+jj]-a[ijk   ])
                        - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
                     + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                        - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
@@ -359,11 +359,11 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc, 
+    template<typename TF> __global__
+    void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc,
                       TF* __restrict__ dzi, TF tPrfac, const TF dxidxi, const TF dyidyi,
-                      const int istart, const int jstart, const int kstart, 
-                      const int iend,   const int jend,   const int kend, 
+                      const int istart, const int jstart, const int kstart,
+                      const int iend,   const int jend,   const int kend,
                       const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -388,7 +388,7 @@ void Diff_smag2<TF>::prepare_device()
     const TF n=2.;
     TF mlen0;
     TF *mlen = new TF[gd.kcells];
-    for (int k=0; k<gd.kcells; ++k) 
+    for (int k=0; k<gd.kcells; ++k)
     {
         const TF z0m = 0.1; // CvH REMOVE THIS ASAP.
         mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
@@ -426,14 +426,14 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
     // Calculate total strain rate
     strain2_g<<<gridGPU, blockGPU>>>(
-        fields.sd["evisc"]->fld_g, 
+        fields.sd["evisc"]->fld_g,
         fields.mp["u"]->fld_g, fields.mp["v"]->fld_g, fields.mp["w"]->fld_g,
         fields.mp["u"]->flux_bot_g, fields.mp["v"]->flux_bot_g,
         boundary.ustar_g, boundary.obuk_g,
         gd.z_g, gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-        gd.istart, gd.jstart, gd.kstart, 
+        gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);  
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // start with retrieving the stability information
@@ -441,9 +441,9 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     {
         evisc_neutral_g<<<gridGPU, blockGPU>>>(
             fields.sd["evisc"]->fld_g, mlen_g,
-            gd.istart, gd.jstart, gd.kstart, 
+            gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);  
+            gd.icells, gd.ijcells);
         cuda_check_error();
 
         boundary_cyclic.exec_g(fields.sd["evisc"]->fld_g);
@@ -453,19 +453,19 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     {
         // store the buoyancyflux in datafluxbot of tmp1
         auto tmp1 = fields.get_tmp_g();
-        thermo.get_buoyancy_fluxbot(*tmp1);
+        thermo.get_buoyancy_fluxbot_g(*tmp1);
         // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
-        thermo.get_thermo_field(*tmp1, "N2", false);
+        thermo.get_thermo_field_g(*tmp1, "N2", false);
 
         // Calculate eddy viscosity
         TF tPri = 1./tPr;
         evisc_g<<<gridGPU, blockGPU>>>(
-            fields.sd["evisc"]->fld_g, tmp1->fld_g, 
+            fields.sd["evisc"]->fld_g, tmp1->fld_g,
             tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
             mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
-            gd.istart, gd.jstart, gd.kstart, 
+            gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);  
+            gd.icells, gd.ijcells);
         cuda_check_error();
 
         fields.release_tmp_g(tmp1);
@@ -477,7 +477,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec()
+void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
@@ -495,26 +495,26 @@ void Diff_smag2<TF>::exec()
 
     diff_uvw_g<<<gridGPU, blockGPU>>>(
             fields.mt["u"]->fld_g, fields.mt["v"]->fld_g, fields.mt["w"]->fld_g,
-            fields.sd["evisc"]->fld_g, 
+            fields.sd["evisc"]->fld_g,
             fields.mp["u"]->fld_g, fields.mp["v"]->fld_g, fields.mp["w"]->fld_g,
             fields.mp["u"]->flux_bot_g, fields.mp["u"]->flux_top_g,
             fields.mp["v"]->flux_bot_g, fields.mp["v"]->flux_top_g,
             gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
             fields.rhoref_g, fields.rhorefh_g,
-            gd.istart, gd.jstart, gd.kstart, 
+            gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);  
+            gd.icells, gd.ijcells);
     cuda_check_error();
 
     for (auto it : fields.st)
         diff_c_g<<<gridGPU, blockGPU>>>(
-                it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd["evisc"]->fld_g, 
+                it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd["evisc"]->fld_g,
                 fields.sp[it.first]->flux_bot_g, fields.sp[it.first]->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                 fields.rhoref_g, fields.rhorefh_g, tPri,
-                gd.istart, gd.jstart, gd.kstart, 
+                gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);  
+                gd.icells, gd.ijcells);
     cuda_check_error();
 }
 #endif
@@ -542,14 +542,14 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     // Calculate dnmul in tmp1 field
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
             tmp1->fld_g, fields.sd["evisc"]->fld_g,
-            gd.dzi_g, tPrfac, dxidxi, dyidyi,  
-            gd.istart, gd.jstart, gd.kstart, 
+            gd.dzi_g, tPrfac, dxidxi, dyidyi,
+            gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);  
+            gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Get maximum from tmp1 field
-    double dnmul = field3d_operators.calc_max(tmp1->fld_g);
+    double dnmul = field3d_operators.calc_max_g(tmp1->fld_g);
     dnmul = std::max(Constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
@@ -582,15 +582,15 @@ double Diff_smag2<TF>::get_dn(double dt)
 
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
         dnmul_tmp->fld_g, fields.sd["evisc"]->fld_g,
-        gd.dzi_g, tPrfac, dxidxi, dyidyi,  
-        gd.istart, gd.jstart, gd.kstart, 
+        gd.dzi_g, tPrfac, dxidxi, dyidyi,
+        gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);  
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Get maximum from tmp1 field
     // CvH This is odd, because there might be need for calc_max in CPU version.
-    double dnmul = field3d_operators.calc_max(dnmul_tmp->fld_g);
+    double dnmul = field3d_operators.calc_max_g(dnmul_tmp->fld_g);
 
     fields.release_tmp_g(dnmul_tmp);
 

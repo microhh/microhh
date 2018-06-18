@@ -217,7 +217,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Large-scale pressure forcing.
     if (swlspres_in == "0")
+    {
         swlspres = Large_scale_pressure_type::disabled;
+    }
     else if (swlspres_in == "uflux")
     {
         swlspres = Large_scale_pressure_type::fixed_flux;
@@ -226,11 +228,14 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::geo_wind;
-        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo",   "", "0");
+        fc = inputin.get_item<TF>("force", "fc", "");
+        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
         tdep_geo.vars = {"ug", "vg"};
     }
     else
+    {
         throw std::runtime_error("Invalid option for \"swlspres\"");
+    }
 
     // Large-scale tendencies due to advection and other processes.
     if (swls_in == "0")
@@ -238,8 +243,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swls_in == "1")
     {
         swls = Large_scale_tendency_type::enabled;
-        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls",   "", "0");
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
+
+        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls", "", false);
         tdep_ls.vars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
     }
     else
@@ -253,7 +259,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swwls_in == "1")
     {
         swwls = Large_scale_subsidence_type::enabled;
-        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls",   "", "0");
+        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls", "", false);
         fields.set_calc_mean_profs(true);
     }
     else
@@ -267,7 +273,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge",   "", "0");
+        // BvS: shouldn't there be a `nudgelist = get_list()` somewhere here?
+        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge", "", false);
         tdep_nudge.vars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
         fields.set_calc_mean_profs(true);
     }
@@ -280,9 +287,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 template <typename TF>
 Force<TF>::~Force()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template <typename TF>
@@ -298,8 +302,8 @@ void Force<TF>::init()
 
     if (swls == Large_scale_tendency_type::enabled)
     {
-        for (auto& it : lsprofs)
-            it.second.resize(gd.kcells);
+        for (auto& it : lslist)
+            lsprofs[it] = std::vector<TF>(gd.kcells);
     }
     if (swwls == Large_scale_subsidence_type::enabled)
         wls.resize(gd.kcells);
@@ -321,7 +325,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
         if (tdep_geo.sw)
-            create_timedep(tdep_geo,"g");
+            create_timedep(tdep_geo, "g");
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -410,12 +414,12 @@ void Force<TF>::exec(double dt)
 
     else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        if (grid.swspatialorder == "2")
+        if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
             grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
             gd.ijcells, gd.kstart, gd.kend);
-        else if (grid.swspatialorder == "4")
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
             grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
