@@ -564,7 +564,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     swthermo = "moist";
 
     // 4th order code is not implemented in thermo_moist
-    if (grid.swspatialorder == "4")
+    if (grid.get_spatial_order() == Grid_order::Fourth)
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields

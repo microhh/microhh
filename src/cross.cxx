@@ -613,11 +613,11 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
 
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
         calc_lngrad_2nd<TF>(
                 a, lngrad, gd.dxi, gd.dyi, gd.dzi.data(),
                 gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
         calc_lngrad_4th<TF>(
                 a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(),
                 gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);

@@ -36,6 +36,8 @@ class Master;
 class Input;
 class Data_block;
 
+enum class Grid_order { Second, Fourth };
+
 template<typename TF>
 struct Grid_data
 {
@@ -130,9 +132,8 @@ class Grid
         TF utrans; // Galilean transformation velocity in x-direction.
         TF vtrans; // Galilean transformation velocity in y-direction.
 
-        std::string swspatialorder; // Default spatial order of the operators to be used on this grid.
-
         const Grid_data<TF>& get_grid_data();
+        Grid_order get_spatial_order() const { return spatial_order; }
 
         void set_minimum_ghost_cells(int, int, int);
 
@@ -142,7 +143,7 @@ class Grid
 
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); // Second order interpolation
-        //void interpolate_4th(double*, double*, const int[3], const int[3]); // Fourth order interpolation
+        void interpolate_4th(TF*, const TF*, const int[3], const int[3]); // Fourth order interpolation
 
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
@@ -151,6 +152,8 @@ class Grid
     private:
         Master& master; // Reference to master class.
         Transpose<TF> transpose;
+
+        Grid_order spatial_order; // Default spatial order of the operators to be used on this grid.
 
         bool mpitypes;  // Boolean to check whether MPI datatypes are created.
 

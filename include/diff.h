@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF
-#define DIFF
+#ifndef DIFF_H
+#define DIFF_H
 
 // forward declaration to speed up build time
 class Master;
@@ -31,7 +31,7 @@ template<typename> class Fields;
 template<typename> class Boundary;
 template<typename> class Thermo;
 
-enum class Diffusion_type {Disabled, Diff_2, Diff_smag2};
+enum class Diffusion_type {Disabled, Diff_2, Diff_4, Diff_smag2};
 
 template <typename TF>
 class Diff
@@ -50,7 +50,7 @@ class Diff
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
         virtual double get_dn(double) = 0;
 
-        static std::shared_ptr<Diff> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const std::string);
+        static std::shared_ptr<Diff> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
 
         #ifdef USECUDA
         // GPU functions and variables

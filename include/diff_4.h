@@ -20,34 +20,41 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_DISABLED
-#define ADVEC_DISABLED
+#ifndef DIFF_4_H
+#define DIFF_4_H
 
-#include "advec.h"
+#include "diff.h"
 
-class Input;
-
-/**
- * Derived class for a disabled advection scheme
- */
 template<typename TF>
-class Advec_disabled : public Advec<TF>
+class Diff_4 : public Diff<TF>
 {
     public:
-        Advec_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        virtual ~Advec_disabled();              ///< Destructor of the advection class.
+        Diff_4(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Diff_4();
 
-        void exec(); ///< Execute the advection scheme.
-        unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-        double get_cfl(double); ///< Retrieve the CFL number.
+        Diffusion_type get_switch() const;
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
+
+        void set_values();
+        void init() {};
+        void exec(Boundary<TF>&);
+
+        // Empty functions, these are allowed to pass.
+        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+
+        #ifdef USECUDA
+        void prepare_device() {};
+        #endif
 
     private:
-        using Advec<TF>::master;
-        using Advec<TF>::grid;
-        using Advec<TF>::fields;
-        using Advec<TF>::field3d_operators;
+        using Diff<TF>::master;
+        using Diff<TF>::grid;
+        using Diff<TF>::fields;
 
-        using Advec<TF>::cflmax;
-        using Advec<TF>::cflmin;
+        const Diffusion_type swdiff = Diffusion_type::Diff_4;
+
+        double dnmax;
+        double dnmul;
 };
 #endif

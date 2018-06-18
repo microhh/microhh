@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_2
-#define ADVEC_2
+#ifndef ADVEC_2_H
+#define ADVEC_2_H
 
 #include "advec.h"
 
@@ -39,11 +39,11 @@ class Advec_2 : public Advec<TF>
 {
     public:
         Advec_2(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        virtual ~Advec_2();              ///< Destructor of the advection class.
+        ~Advec_2(); ///< Destructor of the advection class.
 
-        virtual void exec(); ///< Execute the advection scheme.
-        virtual unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-        virtual double get_cfl(double); ///< Get the CFL number.
+        void exec(); ///< Execute the advection scheme.
+        unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+        double get_cfl(double); ///< Get the CFL number.
 
     private:
         using Advec<TF>::master;
@@ -53,6 +53,5 @@ class Advec_2 : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
-        using Advec<TF>::swadvec;
 };
 #endif

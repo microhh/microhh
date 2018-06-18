@@ -112,9 +112,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         fft       = std::make_shared<FFT<TF>>(master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
-        advec     = Advec<TF>    ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        diff      = Diff<TF>     ::factory(master, *grid, *fields, *input, grid->swspatialorder);
-        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input, grid->swspatialorder);
+        advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
+        diff      = Diff<TF>     ::factory(master, *grid, *fields, *input);
+        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
 

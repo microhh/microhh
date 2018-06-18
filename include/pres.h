@@ -42,7 +42,7 @@ class Pres
         Pres(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
         virtual ~Pres();
 
-        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&, const std::string);
+        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
 
         virtual void init() = 0;
         virtual void set_values() = 0;

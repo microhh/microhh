@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,26 +20,30 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_DISABLED
-#define ADVEC_DISABLED
+#ifndef ADVEC_4_H
+#define ADVEC_4_H
 
 #include "advec.h"
 
+class Master;
+template<typename> class Advec;
+template<typename> class Grid;
+template<typename> class Fields;
 class Input;
 
 /**
- * Derived class for a disabled advection scheme
+ * Derived class for 2nd order advection scheme.
  */
 template<typename TF>
-class Advec_disabled : public Advec<TF>
+class Advec_4 : public Advec<TF>
 {
     public:
-        Advec_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        virtual ~Advec_disabled();              ///< Destructor of the advection class.
+        Advec_4(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
+        ~Advec_4(); ///< Destructor of the advection class.
 
         void exec(); ///< Execute the advection scheme.
-        unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-        double get_cfl(double); ///< Retrieve the CFL number.
+        unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+        double get_cfl(double); ///< Get the CFL number.
 
     private:
         using Advec<TF>::master;

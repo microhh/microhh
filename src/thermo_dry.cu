@@ -200,7 +200,7 @@ void Thermo_dry<TF>::exec(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    if (grid.swspatialorder== "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("th")->fld_g, bs.threfh_g, Constants::grav,
@@ -210,7 +210,7 @@ void Thermo_dry<TF>::exec(const double dt)
 
         cuda_check_error();
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         master.print_error("4th order thermo_dry not (yet) implemented\n");
         throw std::runtime_error("Illegal options 4th order thermo");

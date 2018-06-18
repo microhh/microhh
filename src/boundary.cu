@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -259,7 +259,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
     // Calculate the boundary values.
     update_bcs(thermo);
 
-    if(grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
         calc_ghost_cells_bot_2nd_g<TF><<<grid2dGPU, block2dGPU>>>(
             fields.mp.at("u")->fld_g, gd.dzh_g, mbcbot,
@@ -300,7 +300,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
             cuda_check_error();
         }
     }
-    else if(grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         calc_ghost_cells_bot_4th_g<TF><<<grid2dGPU, block2dGPU>>>(
             fields.mp.at("u")->fld_g, gd.dzh_g, mbcbot,
@@ -357,7 +357,7 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
     dim3 grid2dGPU (gridi,  gridj );
     dim3 block2dGPU(blocki, blockj);
 
-    if (grid.swspatialorder == "4")
+    if (grid.get_spatial_order() == Grid_order::Fourth)
     {
         if (boundary_w_type == Boundary_w_type::Normal_type)
         {

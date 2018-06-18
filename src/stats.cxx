@@ -949,56 +949,60 @@ void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict fld_mean, TF* rest
     }
 }
 
-//void Stats::calc_flux_4th(double* restrict data, double* restrict w, double* restrict prof, double* restrict tmp1, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    using namespace Finite_difference::O4;
-//
-//    const int jj  = 1*grid->icells;
-//    const int kk1 = 1*grid->ijcells;
-//    const int kk2 = 2*grid->ijcells;
-//
-//    // set a pointer to the field that contains w, either interpolated or the original
-//    double* restrict calcw = w;
-//
-//    // define the locations
-//    const int wloc [3] = {0,0,1};
-//    const int uwloc[3] = {1,0,1};
-//    const int vwloc[3] = {0,1,1};
-//
-//    if (loc[0] == 1)
-//    {
-//        grid->interpolate_4th(tmp1, w, wloc, uwloc);
-//        calcw = tmp1;
-//    }
-//    else if (loc[1] == 1)
-//    {
-//        grid->interpolate_4th(tmp1, w, wloc, vwloc);
-//        calcw = tmp1;
-//    }
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk1;
-//                prof[k] += mask[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
+template<typename TF>
+void Stats<TF>::calc_flux_4th(
+        TF* restrict data, TF* restrict w, TF* restrict prof, TF* restrict tmp1, const int loc[3],
+        TF* restrict mask, int* restrict nmask)
+{
+    using namespace Finite_difference::O4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int jj  = 1*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
+
+    // set a pointer to the field that contains w, either interpolated or the original
+    TF* restrict calcw = w;
+
+    // define the locations
+    const int wloc [3] = {0,0,1};
+    const int uwloc[3] = {1,0,1};
+    const int vwloc[3] = {0,1,1};
+
+    if (loc[0] == 1)
+    {
+        grid.interpolate_4th(tmp1, w, wloc, uwloc);
+        calcw = tmp1;
+    }
+    else if (loc[1] == 1)
+    {
+        grid.interpolate_4th(tmp1, w, wloc, vwloc);
+        calcw = tmp1;
+    }
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                prof[k] += mask[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
 
 template<typename TF>
 void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi,
@@ -1029,69 +1033,78 @@ void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* re
     }
 }
 
-//void Stats::calc_grad_4th(double* restrict data, double* restrict prof, double* restrict dzhi4, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    using namespace Finite_difference::O4;
-//
-//    const int jj  = 1*grid->icells;
-//    const int kk1 = 1*grid->ijcells;
-//    const int kk2 = 2*grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk1;
-//                prof[k] += mask[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-//
-//void Stats::calc_diff_4th(double* restrict data, double* restrict prof, double* restrict dzhi4, double visc, const int loc[3],
-//                          double* restrict mask, int* restrict nmask)
-//{
-//    using namespace Finite_difference::O4;
-//
-//    const int jj  = 1*grid->icells;
-//    const int kk1 = 1*grid->ijcells;
-//    const int kk2 = 2*grid->ijcells;
-//
-//    for (int k=grid->kstart; k<grid->kend+1; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk1;
-//                prof[k] -= mask[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=1; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
+template<typename TF>
+void Stats<TF>::calc_grad_4th(
+        TF* restrict data, TF* restrict prof, const TF* restrict dzhi4, const int loc[3],
+        TF* restrict mask, int* restrict nmask)
+{
+    using namespace Finite_difference::O4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int jj  = 1*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                prof[k] += mask[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_diff_4th(
+        TF* restrict data, TF* restrict prof, const TF* restrict dzhi4,
+        const TF visc, const int loc[3],
+        TF* restrict mask, int* restrict nmask)
+{
+    using namespace Finite_difference::O4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int jj  = 1*gd.icells;
+    const int kk1 = 1*gd.ijcells;
+    const int kk2 = 2*gd.ijcells;
+
+    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    {
+        prof[k] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                prof[k] -= mask[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+            }
+    }
+
+    master.sum(prof, gd.kcells);
+
+    for (int k=1; k<gd.kcells; k++)
+    {
+        if (nmask[k] > nthres)
+            prof[k] /= static_cast<TF>(nmask[k]);
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
 
 template<typename TF>
 void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi, TF visc, const int loc[3],
@@ -1138,8 +1151,8 @@ void Stats<TF>::calc_diff_2nd(
     const int kstart = gd.kstart;
     const int kend = gd.kend;
 
-    const double dxi = 1./gd.dx;
-    const double dyi = 1./gd.dy;
+    const TF dxi = 1./gd.dx;
+    const TF dyi = 1./gd.dy;
 
     // bottom boundary
     prof[kstart] = 0.;
@@ -1164,7 +1177,7 @@ void Stats<TF>::calc_diff_2nd(
                 {
                     const int ijk  = i + j*jj + k*kk;
                     // evisc * (du/dz + dw/dx)
-                    const double eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+                    const TF eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
                     prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
                 }
         }
@@ -1180,7 +1193,7 @@ void Stats<TF>::calc_diff_2nd(
                 {
                     const int ijk = i + j*jj + k*kk;
                     // evisc * (dv/dz + dw/dy)
-                    const double eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+                    const TF eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
                     prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
                 }
         }
@@ -1195,7 +1208,7 @@ void Stats<TF>::calc_diff_2nd(
                 for (int i=gd.istart; i<gd.iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const double eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+                    const TF eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
                     prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
                 }
         }
@@ -1217,9 +1230,9 @@ void Stats<TF>::calc_diff_2nd(
     for (int k=1; k<gd.kcells; k++)
     {
         if (nmask[k] > nthres)
-            prof[k] /= (double)(nmask[k]);
+            prof[k] /= static_cast<TF>(nmask[k]);
         else
-            prof[k] = NC_FILL_DOUBLE;
+            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 }
 

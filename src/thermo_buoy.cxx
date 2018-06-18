@@ -260,7 +260,7 @@ template<typename TF>
 void Thermo_buoy<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
-    if (grid.swspatialorder == "2")
+    if (grid.get_spatial_order() == Grid_order::Second)
     {
 	    if (bs.has_slope || bs.has_N2)
 	    {
@@ -279,7 +279,7 @@ void Thermo_buoy<TF>::exec(const double dt)
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                             gd.icells, gd.ijcells);
     }
-    else if (grid.swspatialorder == "4")
+    else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
 	    if (bs.has_slope || bs.has_N2)
 	    {

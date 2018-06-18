@@ -1,15 +1,37 @@
+dist: xenial
+
+branches:
+  only:
+    - master
+
 language: cpp
 
 compiler:
   - gcc
+  - clang
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y fftw3 libnetcdf-dev cmake
+  - sudo apt-get install -y gfortran fftw3 libfftw3-dev libnetcdf-dev libnetcdf-c++4 libnetcdf-c++4-dev cmake libboost-dev mpich libmpich-dev
+  - pip install --user numpy
 
 before_script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake -DSYST=ubuntu ..
+  - cd ..
+  - mkdir build_parallel
+  - cd build_parallel
+  - cmake -DSYST=ubuntu -DUSEMPI=true ..
+  - cd ..
 
-script: make -j 4
+script:
+  - cd build
+  - make -j 4
+  - cd ../build_parallel
+  - make -j 4
+#  - cd ../cases/restart_serial_les/
+#  - python run_tests.py
+
+notifications:
+  - slack: microhh:MnnHkgLN7FeZFED03IsR6KCC

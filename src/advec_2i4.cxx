@@ -39,8 +39,6 @@ template<typename TF>
 Advec_2i4<TF>::Advec_2i4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swadvec = "2i4";
-
     const int igc = 2;
     const int jgc = 2;
     const int kgc = 2;

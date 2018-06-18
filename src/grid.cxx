@@ -56,22 +56,27 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     utrans = input.get_item<TF>("grid", "utrans", "", 0.);
     vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
+    std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
-    if (!(swspatialorder == "2" || swspatialorder == "4"))
+    if (swspatialorder == "2")
+        spatial_order = Grid_order::Second;
+    else if (swspatialorder == "4")
+        spatial_order = Grid_order::Fourth;
+    else
     {
         master.print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-        throw 1;
+        throw std::runtime_error("Illegal value for swspatialorder");
     }
+
     // 2nd order scheme requires only 1 ghost cell
-    if (swspatialorder == "2")
+    if (spatial_order == Grid_order::Second)
     {
         gd.igc = 1;
         gd.jgc = 1;
         gd.kgc = 1;
     }
     // 4th order scheme requires 3 ghost cells
-    else if (swspatialorder == "4")
+    else if (spatial_order == Grid_order::Fourth)
     {
         gd.igc = 3;
         gd.jgc = 3;
@@ -229,7 +234,7 @@ void Grid<TF>::calculate()
     }
 
     // the calculation of ghost cells and flux levels has to go according to numerical scheme
-    if (swspatialorder == "2")
+    if (spatial_order == Grid_order::Second)
     {
         gd.z[gd.kstart-1] = -gd.z[gd.kstart];
         gd.z[gd.kend]     = 2.*gd.zsize - gd.z[gd.kend-1];
@@ -263,7 +268,7 @@ void Grid<TF>::calculate()
         // do not calculate 4th order gradients for 2nd order
     }
 
-    if (swspatialorder == "4")
+    if (spatial_order == Grid_order::Fourth)
     {
         using namespace Finite_difference::O4;
 
@@ -461,43 +466,44 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
     }
 }
 
-// /**
-//  * This function does a fourth order horizontal interpolation in the x-direction
-//  * to the selected location on the grid.
-//  * @param out Pointer to the output field.
-//  * @param in Pointer to the input field.
-//  * @param locx Integer containing the location of the input field,
-//  * where a value of 1 refers to the flux level.
-//  */
-// template<typename TF>
-// void Grid<TF>::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
-// {
-//     using namespace Finite_difference::O4;
-//
-//     // interpolation function, locx = 1 indicates that the reference is at the half level
-//     const int ii = 1;
-//     const int jj = icells;
-//     const int kk = ijcells;
-//
-//     // a shift to the left gives minus 1 a shift to the right +1
-//     const int iih1 = 1*(locin[0]-locout[0])*ii;
-//     const int iih2 = 2*(locin[0]-locout[0])*ii;
-//     const int jjh1 = 1*(locin[1]-locout[1])*jj;
-//     const int jjh2 = 2*(locin[1]-locout[1])*jj;
-//
-//     // \TODO add the vertical component
-//     for (int k=0; k<kcells; ++k)
-//         for (int j=jstart; j<jend; ++j)
-// #pragma ivdep
-//             for (int i=istart; i<iend; ++i)
-//             {
-//                 const int ijk = i + j*jj + k*kk;
-//                 out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
-//                          + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
-//                          + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
-//                          + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
-//             }
-// }
+/**
+ * This function does a fourth order horizontal interpolation in the x-direction
+ * to the selected location on the grid.
+ * @param out Pointer to the output field.
+ * @param in Pointer to the input field.
+ * @param locx Integer containing the location of the input field,
+ * where a value of 1 refers to the flux level.
+ */
+template<typename TF>
+void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const int locin[3], const int locout[3])
+{
+    using namespace Finite_difference::O4;
+
+    // interpolation function, locx = 1 indicates that the reference is at the half level
+    const int ii = 1;
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+
+    // a shift to the left gives minus 1 a shift to the right +1
+    const int iih1 = 1*(locin[0]-locout[0])*ii;
+    const int iih2 = 2*(locin[0]-locout[0])*ii;
+    const int jjh1 = 1*(locin[1]-locout[1])*jj;
+    const int jjh2 = 2*(locin[1]-locout[1])*jj;
+
+    // \TODO add the vertical component
+    for (int k=0; k<gd.kcells; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+#pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
+                         + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
+                         + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
+                         + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
+            }
+}
+
 //
 // template<typename TF>
 // void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
