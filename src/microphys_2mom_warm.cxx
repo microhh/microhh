@@ -811,7 +811,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
         std::vector<TF> p     = thermo.get_p_vector();
         std::vector<TF> exner = thermo.get_exner_vector();
 
-        // Microphysics is handled in XZ slices, to
+        // Microphysics is (partially) handled in XZ slices, to
         // (1) limit the required number of tmp fields
         // (2) re-use some expensive calculations used in multiple microphysics routines.
         const int ikcells    = gd.icells * gd.kcells;                           // Size of XZ slice
@@ -865,10 +865,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                              gd.icells, gd.ijcells,
                              micro_constants);
 
-        stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -883,14 +883,82 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                         gd.icells, gd.ijcells,
                         micro_constants);
 
-        stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_thlt"].data.data(), thlt->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["accr_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["accr_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
+        // Rest of the microphysics is handled per XZ slice
+        // Evaporation; evaporation of rain drops in unsaturated environment
+        // -------------------------
+        zero_field(qrt->fld.data(),  gd.ncells);
+        zero_field(nrt->fld.data(),  gd.ncells);
+        zero_field(thlt->fld.data(), gd.ncells);
+        zero_field(qtt->fld.data(),  gd.ncells);
 
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r,
+                                             fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                             gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j, micro_constants);
 
+            mp2d::evaporation(qrt->fld.data(), nrt->fld.data(),  qtt->fld.data(), thlt->fld.data(),
+                              fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),  ql->fld.data(),
+                              fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(), fields.rhoref.data(), exner.data(), p.data(),
+                              rain_mass, rain_diam,
+                              gd.istart, gd.jstart, gd.kstart,
+                              gd.iend,   gd.jend,   gd.kend,
+                              gd.icells, gd.ijcells, j,
+                              micro_constants);
+        }
 
+        stats.calc_mean(m.profs["evap_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["evap_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["evap_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["evap_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
+        // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        // -------------------------
+        zero_field(nrt->fld.data(),  gd.ncells);
+
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r,
+                                             fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                             gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j, micro_constants);
+
+            mp2d::selfcollection_breakup(nrt->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                         rain_mass, rain_diam, lambda_r,
+                                         gd.istart, gd.jstart, gd.kstart,
+                                         gd.iend,   gd.jend,   gd.kend,
+                                         gd.icells, gd.ijcells, j,
+                                         micro_constants);
+        }
+
+        stats.calc_mean(m.profs["scbr_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+
+        // Sedimentation; sub-grid sedimentation of rain
+        // -------------------------
+        zero_field(qrt->fld.data(),  gd.ncells);
+        zero_field(nrt->fld.data(),  gd.ncells);
+
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r,
+                                             fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
+                                             gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j, micro_constants);
+
+            mp2d::sedimentation_ss08(qrt->fld.data(), nrt->fld.data(), rr_bot.data(),
+                                     w_qr, w_nr, c_qr, c_nr, slope_qr, slope_nr, flux_qr, flux_nr, mu_r, lambda_r,
+                                     fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+                                     fields.rhoref.data(), fields.rhorefh.data(), gd.dzi.data(), gd.dz.data(), dt,
+                                     gd.istart, gd.jstart, gd.kstart,
+                                     gd.iend,   gd.jend,   gd.kend,
+                                     gd.icells, gd.kcells, gd.ijcells, j,
+                                     micro_constants);
+        }
+
+        stats.calc_mean(m.profs["sed_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["sed_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)
