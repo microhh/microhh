@@ -60,6 +60,13 @@ namespace
     }
 
     template<typename TF>
+    void zero_field(TF* const restrict field, const int ncells)
+    {
+        for (int n=0; n<ncells; n++)
+            field[n] = TF(0);
+    }
+
+    template<typename TF>
     TF* get_tmp_slice(std::vector<std::shared_ptr<Field3d<TF>>> &tmp_fields, int &slice_counter,
                       const int jcells, const int ikcells)
     {
@@ -602,7 +609,7 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
-    fields.init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1");
     fields.init_prognostic_field("nr", "Number density rain", "m-3");
 }
 
@@ -628,8 +635,32 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     // Add variables to the statistics
     if (stats.get_switch())
     {
+        // Time series
         stats.add_time_series("rr_mean", "Mean surface rain rate", "kg m-2 s-1");
         stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
+
+        if (swmicrobudget)
+        {
+            // Microphysics tendencies for qr, nr, thl and qt
+            stats.add_prof("sed_qrt",  "Sedimentation tendency of qr", "kg kg-1 s-1", "z");
+            stats.add_prof("sed_nrt",  "Sedimentation tendency of nr", "m3 s-1", "z");
+
+            stats.add_prof("auto_qrt" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z");
+            stats.add_prof("auto_nrt" , "Autoconversion tendency nr",  "m-3 s-1", "z");
+            stats.add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z");
+            stats.add_prof("auto_qtt" , "Autoconversion tendency qt",  "kg kg-1 s-1", "z");
+
+            stats.add_prof("evap_qrt" , "Evaporation tendency qr",  "kg kg-1 s-1", "z");
+            stats.add_prof("evap_nrt" , "Evaporation tendency nr",  "m-3 s-1", "z");
+            stats.add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z");
+            stats.add_prof("evap_qtt" , "Evaporation tendency qt",  "kg kg-1 s-1", "z");
+
+            stats.add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z");
+
+            stats.add_prof("accr_qrt" , "Accretion tendency qr",  "kg kg-1 s-1", "z");
+            stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
+            stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z");
+        }
     }
 
     // Create cross sections
@@ -751,19 +782,126 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     // Release all local tmp fields in use
     for (auto& it: tmp_fields)
         fields.release_tmp(it);
-
     fields.release_tmp(ql);
 }
 
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name,
-                                         Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh, const double dt)
+                                         Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
+                                         Thermo<TF>& thermo, const double dt)
 {
-     Mask<TF>& m = stats.masks[mask_name];
+    auto& gd = grid.get_grid_data();
 
-     const TF no_offset = 0.;
-     stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-     stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    Mask<TF>& m = stats.masks[mask_name];
+
+    // Time series
+    const TF no_offset = 0.;
+    stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+
+
+    if (swmicrobudget)
+    {
+        // Vertical profiles. The statistics of qr & nr are handled by fields.cxx
+        // Get cloud liquid water specific humidity from thermodynamics
+        auto ql = fields.get_tmp();
+        thermo.get_thermo_field(*ql, "ql", false, false);
+
+        // Get pressure and exner function from thermodynamics
+        std::vector<TF> p     = thermo.get_p_vector();
+        std::vector<TF> exner = thermo.get_exner_vector();
+
+        // Microphysics is handled in XZ slices, to
+        // (1) limit the required number of tmp fields
+        // (2) re-use some expensive calculations used in multiple microphysics routines.
+        const int ikcells    = gd.icells * gd.kcells;                           // Size of XZ slice
+        const int n_slices   = 12;                                              // Number of XZ slices required
+        const int n_tmp_flds = std::ceil(static_cast<TF>(n_slices)/gd.jcells);  // Number of required tmp fields
+
+        // Load the required number of tmp fields:
+        std::vector<std::shared_ptr<Field3d<TF>>> tmp_fields;
+        for (int n=0; n<n_tmp_flds; ++n)
+            tmp_fields.push_back(fields.get_tmp());
+
+        // Get pointers to slices in tmp fields:
+        int slice_counter = 0;
+
+        TF* w_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* w_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        TF* c_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* c_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        TF* slope_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* slope_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        TF* flux_qr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* flux_nr = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        TF* rain_mass = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* rain_diam = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        TF* lambda_r = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+        TF* mu_r     = get_tmp_slice<TF>(tmp_fields, slice_counter, gd.jcells, ikcells);
+
+        // Get 4 tmp fields for all tendencies (qrt, nrt, thlt, qtt) :-(
+        auto qrt  = fields.get_tmp();
+        auto nrt  = fields.get_tmp();
+        auto thlt = fields.get_tmp();
+        auto qtt  = fields.get_tmp();
+
+        // Calculate tendencies
+        // Autoconversion; formation of rain drop by coagulating cloud droplets
+        // -------------------------
+        zero_field(qrt->fld.data(),  gd.ncells);
+        zero_field(nrt->fld.data(),  gd.ncells);
+        zero_field(thlt->fld.data(), gd.ncells);
+        zero_field(qtt->fld.data(),  gd.ncells);
+
+        mp3d::autoconversion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
+                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
+                             gd.istart, gd.jstart, gd.kstart,
+                             gd.iend,   gd.jend,   gd.kend,
+                             gd.icells, gd.ijcells,
+                             micro_constants);
+
+        stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+
+        // Accretion; growth of raindrops collecting cloud droplets
+        // -------------------------
+        zero_field(qrt->fld.data(),  gd.ncells);
+        zero_field(thlt->fld.data(), gd.ncells);
+        zero_field(qtt->fld.data(),  gd.ncells);
+
+        mp3d::accretion(qrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
+                        fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
+                        gd.istart, gd.jstart, gd.kstart,
+                        gd.iend,   gd.jend,   gd.kend,
+                        gd.icells, gd.ijcells,
+                        micro_constants);
+
+        stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["accr_thlt"].data.data(), thlt->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+        stats.calc_mean(m.profs["accr_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmask.data());
+
+
+
+
+
+
+        // Release all local tmp fields in use
+        for (auto& it: tmp_fields)
+            fields.release_tmp(it);
+
+        fields.release_tmp(ql  );
+        fields.release_tmp(qrt );
+        fields.release_tmp(nrt );
+        fields.release_tmp(thlt);
+        fields.release_tmp(qtt );
+    }
 }
 
 template<typename TF>

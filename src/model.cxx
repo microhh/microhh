@@ -490,7 +490,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             // Calculate statistics
             fields   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
             thermo   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff, dt);
-            microphys->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, dt);
+            microphys->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *thermo, dt);
             //budget  ->exec_stats(&stats->masks[maskname]);
             boundary ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
 
