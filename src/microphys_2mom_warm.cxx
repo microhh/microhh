@@ -670,6 +670,7 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 {
@@ -784,6 +785,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         fields.release_tmp(it);
     fields.release_tmp(ql);
 }
+#endif
 
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name,
@@ -985,6 +987,7 @@ void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const double dt)
 {
@@ -1005,6 +1008,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 
     return idt * cflmax / cfl;
 }
+#endif
 
 template<typename TF>
 bool Microphys_2mom_warm<TF>::has_mask(std::string name)
