@@ -40,6 +40,7 @@
 
 using namespace Constants;
 using namespace Thermo_moist_functions;
+using namespace Micro_2mom_warm_constants;
 
 namespace
 {
@@ -82,18 +83,18 @@ namespace
     // Given rain water content (qr), number density (nr) and density (rho)
     // calculate mean mass of rain drop
     template<typename TF>
-    inline TF calc_rain_mass(const TF qr, const TF nr, const TF rho, const TF mr_min, const TF mr_max)
+    inline TF calc_rain_mass(const TF qr, const TF nr, const TF rho)
     {
         //TF mr = rho * qr / (nr + dsmall);
         TF mr = rho * qr / std::max(nr, TF(1.));
-        return std::min(std::max(mr, mr_min), mr_max);
+        return std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
     }
 
     // Given mean mass rain drop, calculate mean diameter
     template<typename TF>
-    inline TF calc_rain_diameter(const TF mr, const TF pirhow)
+    inline TF calc_rain_diameter(const TF mr)
     {
-        return pow(mr/pirhow, TF(1.)/TF(3.));
+        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
     }
 
     // Shape parameter mu_r
@@ -142,8 +143,7 @@ namespace mp3d
                         const TF* const restrict rho, const TF* const restrict exner,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend,
-                        const int jj, const int kk,
-                        Micro_2mom_warm_constants<TF> constants)
+                        const int jj, const int kk)
     {
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
         const TF k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
@@ -156,9 +156,9 @@ namespace mp3d
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > constants.ql_min)
+                    if(ql[ijk] > ql_min<TF>)
                     {
-                        const TF xc      = rho[k] * ql[ijk] / constants.Nc0;    // Mean mass of cloud drops [kg]
+                        const TF xc      = rho[k] * ql[ijk] / Nc0<TF>;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                         const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
                         //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
@@ -180,8 +180,7 @@ namespace mp3d
                    const TF* const restrict rho, const TF* const restrict exner,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend,
-                   const int jj, const int kk,
-                   Micro_2mom_warm_constants<TF> constants)
+                   const int jj, const int kk)
     {
         const TF k_cr  = 5.25; // SB06, p49
 
@@ -191,11 +190,11 @@ namespace mp3d
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > constants.ql_min && qr[ijk] > constants.qr_min)
+                    if(ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
                     {
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
                         const TF phi_ac  = pow(tau / (tau + TF(5e-5)), 4); // SB06, Eq 8
-                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(constants.rho_0 / rho[k], TF(0.5)); // SB06, Eq 7
+                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0<TF> / rho[k], TF(0.5)); // SB06, Eq 7
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  -= ac_tend;
@@ -213,8 +212,7 @@ namespace mp3d
                                   const double dt,
                                   const int istart, const int jstart, const int kstart,
                                   const int iend,   const int jend,   const int kend,
-                                  const int icells, const int ijcells,
-                                  Micro_2mom_warm_constants<TF> constants)
+                                  const int icells, const int ijcells)
     {
         const TF w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
         const TF a_R = 9.65;   // SB06, p51
@@ -230,11 +228,11 @@ namespace mp3d
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if(qr[ijk] > constants.qr_min)
+                    if(qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
-                        const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k], constants.mr_min, constants.mr_max);
-                        const TF dr      = calc_rain_diameter(mr, constants.pirhow);
+                        const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const TF dr      = calc_rain_diameter(mr);
                         const TF mur     = calc_mu_r(dr);
                         const TF lambdar = calc_lambda_r(mur, dr);
 
@@ -293,8 +291,7 @@ namespace mp2d
                                     const TF* const restrict rho,
                                     const int istart, const int iend,
                                     const int kstart, const int kend,
-                                    const int icells, const int ijcells, const int j,
-                                    Micro_2mom_warm_constants<TF> constants)
+                                    const int icells, const int ijcells, const int j)
     {
 
         for (int k=kstart; k<kend; k++)
@@ -304,10 +301,10 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > constants.qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
-                    rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k], constants.mr_min, constants.mr_max);
-                    rain_diameter[ik] = calc_rain_diameter(rain_mass[ik], constants.pirhow);
+                    rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                    rain_diameter[ik] = calc_rain_diameter(rain_mass[ik]);
                     mu_r[ik]          = calc_mu_r(rain_diameter[ik]);
                     lambda_r[ik]      = calc_lambda_r(mu_r[ik], rain_diameter[ik]);
                 }
@@ -331,8 +328,7 @@ namespace mp2d
                      const TF* const restrict rain_mass, const TF* const restrict rain_diameter,
                      const int istart, const int jstart, const int kstart,
                      const int iend,   const int jend,   const int kend,
-                     const int jj, const int kk, const int j,
-                     Micro_2mom_warm_constants<TF> constants)
+                     const int jj, const int kk, const int j)
     {
         const TF lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
 
@@ -343,19 +339,19 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > constants.qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     const TF mr  = rain_mass[ik];
                     const TF dr  = rain_diameter[ik];
 
                     const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
-                    const TF Glv = pow(Rv * T / (esat(T) * constants.D_v) +
-                                       (Lv / (constants.K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                    const TF Glv = pow(Rv * T / (esat(T) * D_v<TF>) +
+                                       (Lv / (K_t<TF> * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
 
                     const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
                     const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
-                    const TF ev_tend = TF(2.) * constants.pi * dr * Glv * S * F * nr[ijk] / rho[k];
+                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
 
                     qrt[ijk]  += ev_tend;
                     nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
@@ -372,8 +368,7 @@ namespace mp2d
                                 const TF* const restrict lambda_r,
                                 const int istart, const int jstart, const int kstart,
                                 const int iend,   const int jend,   const int kend,
-                                const int jj, const int kk, const int j,
-                                Micro_2mom_warm_constants<TF> constants)
+                                const int jj, const int kk, const int j)
     {
         const TF k_rr     = 7.12;   // SB06, p49
         const TF kappa_rr = 60.7;   // SB06, p49
@@ -388,7 +383,7 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > constants.qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     // Calculate mean rain drop mass and diameter
                     const TF dr      = rain_diameter[ik];
@@ -396,7 +391,7 @@ namespace mp2d
 
                     // Selfcollection
                     const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr /
-                                       lambdar * pow(constants.pirhow, TF(1.)/TF(3.)), -9) * pow(constants.rho_0 / rho[k], TF(0.5));
+                                       lambdar * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * pow(rho_0<TF> / rho[k], TF(0.5));
                     nrt[ijk] += sc_tend;
 
                     // Breakup
@@ -430,8 +425,7 @@ namespace mp2d
                             const TF* const restrict dz, const double dt,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
-                            const int icells, const int kcells, const int ijcells, const int j,
-                            Micro_2mom_warm_constants<TF> constants)
+                            const int icells, const int kcells, const int ijcells, const int j)
     {
         const TF w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
         const TF a_R = 9.65;   // SB06, p51
@@ -452,7 +446,7 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > constants.qr_min)
+                if(qr[ijk] > qr_min<TF>)
                 {
                     // SS08:
                     w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
@@ -700,16 +694,14 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
                          fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
                          gd.istart, gd.jstart, gd.kstart,
                          gd.iend,   gd.jend,   gd.kend,
-                         gd.icells, gd.ijcells,
-                         micro_constants);
+                         gd.icells, gd.ijcells);
 
     // Accretion; growth of raindrops collecting cloud droplets
     mp3d::accretion(fields.st.at("qr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
                     fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, gd.ijcells,
-                    micro_constants);
+                    gd.icells, gd.ijcells);
 
     // Rest of the microphysics is handled per XZ slice
     for (int j=gd.jstart; j<gd.jend; ++j)
@@ -717,7 +709,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         // Prepare the XZ slices which are used in all routines
         mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r,
                                          fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
-                                         gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j, micro_constants);
+                                         gd.istart, gd.iend, gd.kstart, gd.kend, gd.icells, gd.ijcells, j);
 
         // Evaporation; evaporation of rain drops in unsaturated environment
         mp2d::evaporation(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(),  fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
@@ -726,16 +718,14 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
                           rain_mass, rain_diam,
                           gd.istart, gd.jstart, gd.kstart,
                           gd.iend,   gd.jend,   gd.kend,
-                          gd.icells, gd.ijcells, j,
-                          micro_constants);
+                          gd.icells, gd.ijcells, j);
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         mp2d::selfcollection_breakup(fields.st.at("nr")->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(), fields.rhoref.data(),
                                      rain_mass, rain_diam, lambda_r,
                                      gd.istart, gd.jstart, gd.kstart,
                                      gd.iend,   gd.jend,   gd.kend,
-                                     gd.icells, gd.ijcells, j,
-                                     micro_constants);
+                                     gd.icells, gd.ijcells, j);
 
         // Sedimentation; sub-grid sedimentation of rain
         mp2d::sedimentation_ss08(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), rr_bot.data(),
@@ -744,8 +734,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
                                  fields.rhoref.data(), fields.rhorefh.data(), gd.dzi.data(), gd.dz.data(), dt,
                                  gd.istart, gd.jstart, gd.kstart,
                                  gd.iend,   gd.jend,   gd.kend,
-                                 gd.icells, gd.kcells, gd.ijcells, j,
-                                 micro_constants);
+                                 gd.icells, gd.kcells, gd.ijcells, j);
     }
 
     // Release all local tmp fields in use
@@ -790,8 +779,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
                                               fields.rhoref.data(), gd.dzi.data(), dt,
                                               gd.istart, gd.jstart, gd.kstart,
                                               gd.iend,   gd.jend,   gd.kend,
-                                              gd.icells, gd.ijcells,
-                                              micro_constants);
+                                              gd.icells, gd.ijcells);
     fields.release_tmp(w_qr);
 
     // Get maximum CFL across all MPI tasks
