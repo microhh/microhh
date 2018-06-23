@@ -65,7 +65,7 @@ namespace
                              const TF du, const TF bfluxbot, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+        const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / std::pow(du, 3);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
@@ -75,7 +75,7 @@ namespace
                                   const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = Constants::kappa * db * zsl / std::pow(du, 2);
+        const float Ri = Constants::kappa<TF> * db * zsl / std::pow(du, 2);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
@@ -164,7 +164,7 @@ namespace
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij = i + j*jj;
-                    obuk[ij] = -std::pow(ustar[ij], static_cast<TF>(3)) / (Constants::kappa*bfluxbot[ij]);
+                    obuk[ij] = -std::pow(ustar[ij], static_cast<TF>(3)) / (Constants::kappa<TF>*bfluxbot[ij]);
                 }
         }
         // case 2: fixed buoyancy surface value and free ustar

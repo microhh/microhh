@@ -58,7 +58,7 @@ namespace
     TF calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
-        const TF Ri = -Constants::kappa * bfluxbot * zsl / pow(du, 3);
+        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / pow(du, 3);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -66,7 +66,7 @@ namespace
     TF calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
-        const TF Ri = Constants::kappa * db * zsl / pow(du, 2);
+        const TF Ri = Constants::kappa<TF> * db * zsl / pow(du, 2);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -114,7 +114,7 @@ namespace
             // case 1: fixed buoyancy flux and fixed ustar
             if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk[ij] = -pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
+                obuk[ij] = -pow(ustar[ij], 3) / (Constants::kappa<TF>*bfluxbot[ij]);
             }
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
