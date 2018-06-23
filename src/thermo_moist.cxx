@@ -116,7 +116,7 @@ namespace
         rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
-        pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
+        pref[kstart]  = prefh[kstart] * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
 
         for (int k=kstart+1; k<kend+1; ++k)
         {
@@ -127,7 +127,7 @@ namespace
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
-            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
+            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
             exh[k]   = exner(prefh[k]);
 
             // 3. Use interpolated conserved quantities to calculate half-level[k] values
@@ -139,7 +139,7 @@ namespace
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
-            pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
+            pref[k] = pref[k-1] * std::exp(-grav<TF> * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
         }
 
         pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
@@ -386,7 +386,7 @@ namespace
                {
                    const int ijk = i + j*jj + k*kk;
 
-                   N2[ijk] = grav/thvref[k]*0.5*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
+                   N2[ijk] = grav<TF>/thvref[k]*0.5*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                }
    }
 

@@ -40,7 +40,7 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF thvref)
     {
-        return grav * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
+        return grav<TF> * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
     }
 
     template<typename TF>
@@ -58,13 +58,13 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_no_ql(const TF thl, const TF qt, const TF thvref)
     {
-        return grav * (thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt) - thvref) / thvref;
+        return grav<TF> * (thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt) - thvref) / thvref;
     }
 
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_flux_no_ql(const TF thl, const TF thlflux, const TF qt, const TF qtflux, const TF thvref)
     {
-        return grav/thvref * (thlflux * (1. - (1.-Rv<TF>/Rd<TF>)*qt) - (1.-Rv<TF>/Rd<TF>)*thl*qtflux);
+        return grav<TF>/thvref * (thlflux * (1. - (1.-Rv<TF>/Rd<TF>)*qt) - (1.-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
     //CUDA_MACRO inline TF esat(const TF T)
@@ -84,12 +84,12 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat(const TF T)
     {
         #ifdef __CUDACC__
-        const TF x=fmax(-75.,T-T0<TF>);
+        const TF x=fmax(TF(-75.), T-T0<TF>);
         #else
-        const TF x=std::max(-75.,T-T0<TF>);
+        const TF x=std::max(TF(-75.), T-T0<TF>);
         #endif
 
-        return c00+x*(c10+x*(c20+x*(c30+x*(c40+x*(c50+x*(c60+x*(c70+x*(c80+x*(c90+x*c100)))))))));
+        return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
     }
 
     template<typename TF>

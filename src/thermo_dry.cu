@@ -47,7 +47,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += grav/threfh[k] * (static_cast<TF>(0.5)*(th[ijk-kk]+th[ijk]) - threfh[k]);
+            wt[ijk] += grav<TF>/threfh[k] * (static_cast<TF>(0.5)*(th[ijk-kk]+th[ijk]) - threfh[k]);
         }
     }
 
@@ -66,7 +66,7 @@ namespace
         if (i < iend && j < jend && k < kcells)
         {
             const int ijk = i + j*jj + k*kk;
-            b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
+            b[ijk] = grav<TF>/thref[k] * (th[ijk] - thref[k]);
         }
     }
 
@@ -85,8 +85,8 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
 
-            bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
-            b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
+            bbot[ij] = grav<TF>/threfh[kstart] * (thbot[ij] - threfh[kstart]);
+            b[ijk]   = grav<TF>/thref [kstart] * (th[ijk]   - thref [kstart]);
         }
     }
 
@@ -102,7 +102,7 @@ namespace
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
+            bfluxbot[ij] = grav<TF>/threfh[kstart]*thfluxbot[ij];
         }
     }
 
@@ -120,7 +120,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = grav/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 } // end namespace

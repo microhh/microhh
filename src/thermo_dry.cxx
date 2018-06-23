@@ -57,7 +57,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
+                    b[ijk] = grav<TF>/thref[k] * (th[ijk] - thref[k]);
                 }
     }
 
@@ -72,7 +72,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    N2[ijk] = grav/thref[k]*static_cast<TF>(0.5)*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
+                    N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
                 }
     }
 
@@ -141,8 +141,8 @@ namespace
             {
                 const int ij  = i + j*icells;
                 const int ijk = i + j*icells + kstart*ijcells;
-                bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
-                b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
+                bbot[ij] = grav<TF>/threfh[kstart] * (thbot[ij] - threfh[kstart]);
+                b[ijk]   = grav<TF>/thref [kstart] * (th[ijk]   - thref [kstart]);
             }
     }
 
@@ -156,7 +156,7 @@ namespace
             for (int i=0; i<icells; ++i)
             {
                 const int ij = i + j*icells;
-                bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
+                bfluxbot[ij] = grav<TF>/threfh[kstart]*thfluxbot[ij];
             }
     }
 
@@ -173,7 +173,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    wt[ijk] += grav/threfh[k] * (interp2(th[ijk-ijcells], th[ijk]) - threfh[k]);
+                    wt[ijk] += grav<TF>/threfh[k] * (interp2(th[ijk-ijcells], th[ijk]) - threfh[k]);
                 }
     }
 
@@ -191,7 +191,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    wt[ijk] += grav/threfh[k] * (interp4(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
+                    wt[ijk] += grav<TF>/threfh[k] * (interp4(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
                 }
     }
 
@@ -239,11 +239,11 @@ namespace
 
         // Calculate pressure
         prefh[kstart] = pbot;
-        pref [kstart] = pbot * std::exp(-grav * z[kstart] / (Rd<TF> * threfh[kstart] * exner(prefh[kstart])));
+        pref [kstart] = pbot * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * threfh[kstart] * exner(prefh[kstart])));
         for (int k=kstart+1; k<kend+1; ++k)
         {
-            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
-            pref [k] = pref [k-1] * std::exp(-grav * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
+            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
+            pref [k] = pref [k-1] * std::exp(-grav<TF> * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
         }
         pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
 

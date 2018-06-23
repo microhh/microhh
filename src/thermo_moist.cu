@@ -170,7 +170,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = grav/thvref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = grav<TF>/thvref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 
@@ -217,7 +217,7 @@ namespace
         rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // First full grid level pressure
-        pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh[kstart])),(1./rdcp));
+        pref[kstart] = pow((pow(pbot,rdcp) - grav<TF> * pow(p0,rdcp) * z[kstart] / (cp * thvh[kstart])),(1./rdcp));
 
         for (int k=kstart+1; k<kend+1; k++)
         {
@@ -228,7 +228,7 @@ namespace
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
-            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv[k-1])),(1./rdcp));
+            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav<TF> * pow(p0,rdcp) * dz[k-1] / (cp * thv[k-1])),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
             si     = interp2(thlmean[k-1],thlmean[k]);
@@ -240,7 +240,7 @@ namespace
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate full level pressure at z[k]
-            pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh[k])),(1./rdcp));
+            pref[k]  = pow((pow(pref[k-1],rdcp) - grav<TF> * pow(p0,rdcp) * dzh[k] / (cp * thvh[k])),(1./rdcp));
         }
 
         // Fill bottom and top full level ghost cells
@@ -270,7 +270,7 @@ namespace
         prefh[kstart] = pbot;
 
         // First full grid level pressure
-        pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh)),(1./rdcp));
+        pref[kstart] = pow((pow(pbot,rdcp) - grav<TF> * pow(p0,rdcp) * z[kstart] / (cp * thvh)),(1./rdcp));
 
         for (int k=kstart+1; k<kend+1; k++)
         {
@@ -280,7 +280,7 @@ namespace
             thv      = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtmean[k-1] - Rv<TF>/Rd<TF>*ql);
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
-            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv)),(1./rdcp));
+            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav<TF> * pow(p0,rdcp) * dz[k-1] / (cp * thv)),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
             si     = interp2(thlmean[k-1],thlmean[k]);
@@ -291,7 +291,7 @@ namespace
             thvh     = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv<TF>/Rd<TF>)*qti - Rv<TF>/Rd<TF>*qli);
 
             // 4. Calculate full level pressure at z[k]
-            pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh)),(1./rdcp));
+            pref[k]  = pow((pow(pref[k-1],rdcp) - grav<TF> * pow(p0,rdcp) * dzh[k] / (cp * thvh)),(1./rdcp));
         }
 
         // Fill bottom and top full level ghost cells
