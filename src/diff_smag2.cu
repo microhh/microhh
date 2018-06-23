@@ -62,9 +62,9 @@ namespace
             {
                 strain2[ijk] = 2.*(
                    // du/dz
-                   + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
+                   + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
                    // dv/dz
-                   + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
+                   + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
@@ -119,7 +119,7 @@ namespace
             if (k == kstart)
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                TF RitPrratio = -bfluxbot[ij]/(Constants::kappa*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
+                TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
                 RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
             }
@@ -393,7 +393,7 @@ void Diff_smag2<TF>::prepare_device()
         const TF z0m = 0.1; // CvH REMOVE THIS ASAP.
         mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
         // mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+z0m), n))), 1./n), 2);
+        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+z0m), n))), 1./n), 2);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);

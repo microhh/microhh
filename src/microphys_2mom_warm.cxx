@@ -168,7 +168,7 @@ namespace mp3d
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
                         qtt[ijk]  -= au_tend;
-                        thlt[ijk] += Lv / (cp * exner[k]) * au_tend;
+                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * au_tend;
                     }
                 }
     }
@@ -198,7 +198,7 @@ namespace mp3d
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  -= ac_tend;
-                        thlt[ijk] += Lv / (cp * exner[k]) * ac_tend;
+                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * ac_tend;
                     }
                 }
     }
@@ -344,9 +344,9 @@ namespace mp2d
                     const TF mr  = rain_mass[ik];
                     const TF dr  = rain_diameter[ik];
 
-                    const TF T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
-                    const TF Glv = pow(Rv * T / (esat(T) * D_v<TF>) +
-                                       (Lv / (K_t<TF> * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                    const TF T   = thl[ijk] * exner[k] + (Lv<TF> * ql[ijk]) / (cp<TF> * exner[k]); // Absolute temperature [K]
+                    const TF Glv = pow(Rv<TF> * T / (esat(T) * D_v<TF>) +
+                                       (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
 
                     const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
                     const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
@@ -356,7 +356,7 @@ namespace mp2d
                     qrt[ijk]  += ev_tend;
                     nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
                     qtt[ijk]  -= ev_tend;
-                    thlt[ijk] += Lv / (cp * exner[k]) * ev_tend;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
                 }
             }
     }

@@ -109,16 +109,16 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF fm(const TF zsl, const TF z0m, const TF L)
     {
         return (L <= TF(0.))
-            ? Constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
-            : Constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
+            ? Constants::kappa<TF> / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
+            : Constants::kappa<TF> / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
     }
 
     template<typename TF>
     CUDA_MACRO inline TF fh(const TF zsl, const TF z0h, const TF L)
     {
         return (L <= TF(0.))
-            ? Constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
-            : Constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
+            ? Constants::kappa<TF> / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
+            : Constants::kappa<TF> / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
     }
 }
 #endif

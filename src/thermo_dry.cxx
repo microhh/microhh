@@ -239,11 +239,11 @@ namespace
 
         // Calculate pressure
         prefh[kstart] = pbot;
-        pref [kstart] = pbot * std::exp(-grav * z[kstart] / (Rd * threfh[kstart] * exner(prefh[kstart])));
+        pref [kstart] = pbot * std::exp(-grav * z[kstart] / (Rd<TF> * threfh[kstart] * exner(prefh[kstart])));
         for (int k=kstart+1; k<kend+1; ++k)
         {
-            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd * thref[k-1] * exner(pref[k-1])));
-            pref [k] = pref [k-1] * std::exp(-grav * dzh[k ] / (Rd * threfh[k ] * exner(prefh[k ])));
+            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
+            pref [k] = pref [k-1] * std::exp(-grav * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
         }
         pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
 
@@ -252,8 +252,8 @@ namespace
         {
             exnref[k]  = exner(pref[k] );
             exnrefh[k] = exner(prefh[k]);
-            rhoref[k]  = pref[k]  / (Rd * thref[k]  * exnref[k] );
-            rhorefh[k] = prefh[k] / (Rd * threfh[k] * exnrefh[k]);
+            rhoref[k]  = pref[k]  / (Rd<TF> * thref[k]  * exnref[k] );
+            rhorefh[k] = prefh[k] / (Rd<TF> * threfh[k] * exnrefh[k]);
         }
     }
 }

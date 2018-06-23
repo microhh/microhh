@@ -27,16 +27,15 @@
 
 namespace Constants
 {
-    const double kappa = 0.4;        ///< von Karman constant
+    template<typename TF> const double kappa = 0.4;        ///< von Karman constant
     const double grav  = 9.81;       ///< Gravitational acceleration [m s-2]
-    const double Rd    = 287.04;     ///< Gas constant for dry air [J K-1 kg-1]
-    const double Rv    = 461.5;      ///< Gas constant for water vapor [J K-1 kg-1]
-    const double cp    = 1005;       ///< Specific heat of air at constant pressure [J kg-1 K-1]
-    const double Lv    = 2.5e6;      ///< Latent heat of condensation or vaporization [J kg-1]
-    const double T0    = 273.15;     ///< Freezing / melting temperature [K]
-    const double p0    = 1.e5;       ///< Reference pressure [pa]
-
-    const double ep    = Rd/Rv;
+    template<typename TF> const double Rd    = 287.04;     ///< Gas constant for dry air [J K-1 kg-1]
+    template<typename TF> const double Rv    = 461.5;      ///< Gas constant for water vapor [J K-1 kg-1]
+    template<typename TF> const double cp    = 1005;       ///< Specific heat of air at constant pressure [J kg-1 K-1]
+    template<typename TF> const double Lv    = 2.5e6;      ///< Latent heat of condensation or vaporization [J kg-1]
+    template<typename TF> const double T0    = 273.15;     ///< Freezing / melting temperature [K]
+    template<typename TF> const double p0    = 1.e5;       ///< Reference pressure [pa]
+    template<typename TF> const double ep    = Rd<TF>/Rv<TF>;
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)

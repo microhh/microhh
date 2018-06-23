@@ -80,7 +80,7 @@ namespace
             ++niter;
             tnr_old = tnr;
             qs = qsat(p, tnr);
-            tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv, 2)*qs)/ (Rv*cp*std::pow(tnr, 2)));
+            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(std::pow(Lv<TF>, 2)*qs)/ (Rv<TF>*cp<TF>*std::pow(tnr, 2)));
         }
 
         if (niter == nitermax)
@@ -113,10 +113,10 @@ namespace
         exh[kstart]   = exner(prefh[kstart]);
         ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
         thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
-        rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
+        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
-        pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd * exh[kstart] * thvh[kstart]));
+        pref[kstart]  = prefh[kstart] * std::exp(-grav * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
 
         for (int k=kstart+1; k<kend+1; ++k)
         {
@@ -124,10 +124,10 @@ namespace
             ex[k-1]  = exner(pref[k-1]);
             ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]).ql;
             thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
-            rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
+            rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
-            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd * ex[k-1] * thv[k-1]));
+            prefh[k] = prefh[k-1] * std::exp(-grav * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
             exh[k]   = exner(prefh[k]);
 
             // 3. Use interpolated conserved quantities to calculate half-level[k] values
@@ -136,10 +136,10 @@ namespace
             const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
 
             thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
-            rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
+            rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
-            pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd * exh[k] * thvh[k]));
+            pref[k] = pref[k-1] * std::exp(-grav * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
         }
 
         pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];

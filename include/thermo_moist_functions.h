@@ -40,31 +40,31 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF thvref)
     {
-        return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+        return grav * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
     }
 
     template<typename TF>
     CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql)
     {
-        return (thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql);
+        return (thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql);
     }
 
     template<typename TF>
     CUDA_MACRO inline TF virtual_temperature_no_ql(const TF exn, const TF thl, const TF qt)
     {
-        return thl * (1. - (1. - Rv/Rd)*qt);
+        return thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt);
     }
 
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_no_ql(const TF thl, const TF qt, const TF thvref)
     {
-        return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
+        return grav * (thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt) - thvref) / thvref;
     }
 
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_flux_no_ql(const TF thl, const TF thlflux, const TF qt, const TF qtflux, const TF thvref)
     {
-        return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
+        return grav/thvref * (thlflux * (1. - (1.-Rv<TF>/Rd<TF>)*qt) - (1.-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
     //CUDA_MACRO inline TF esat(const TF T)
@@ -84,9 +84,9 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat(const TF T)
     {
         #ifdef __CUDACC__
-        const TF x=fmax(-75.,T-T0);
+        const TF x=fmax(-75.,T-T0<TF>);
         #else
-        const TF x=std::max(-75.,T-T0);
+        const TF x=std::max(-75.,T-T0<TF>);
         #endif
 
         return c00+x*(c10+x*(c20+x*(c30+x*(c40+x*(c50+x*(c60+x*(c70+x*(c80+x*(c90+x*c100)))))))));
@@ -95,13 +95,13 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF qsat(const TF p, const TF T)
     {
-        return ep*esat(T)/(p-(1-ep)*esat(T));
+        return ep<TF>*esat(T)/(p-(1-ep<TF>)*esat(T));
     }
 
     template<typename TF>
     CUDA_MACRO inline TF exner(const TF p)
     {
-        return pow((p/p0),(Rd/cp));
+        return pow((p/p0<TF>),(Rd<TF>/cp<TF>));
     }
 }
 #endif
