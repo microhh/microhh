@@ -40,31 +40,31 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF thvref)
     {
-        return grav<TF> * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
+        return grav<TF> * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
     }
 
     template<typename TF>
     CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql)
     {
-        return (thl + Lv<TF>*ql/(cp<TF>*exn)) * (1. - (1. - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql);
+        return (thl + Lv<TF>*ql/(cp<TF>*exn)) * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql);
     }
 
     template<typename TF>
     CUDA_MACRO inline TF virtual_temperature_no_ql(const TF exn, const TF thl, const TF qt)
     {
-        return thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt);
+        return thl * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt);
     }
 
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_no_ql(const TF thl, const TF qt, const TF thvref)
     {
-        return grav<TF> * (thl * (1. - (1. - Rv<TF>/Rd<TF>)*qt) - thvref) / thvref;
+        return grav<TF> * (thl * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt) - thvref) / thvref;
     }
 
     template<typename TF>
     CUDA_MACRO inline TF buoyancy_flux_no_ql(const TF thl, const TF thlflux, const TF qt, const TF qtflux, const TF thvref)
     {
-        return grav<TF>/thvref * (thlflux * (1. - (1.-Rv<TF>/Rd<TF>)*qt) - (1.-Rv<TF>/Rd<TF>)*thl*qtflux);
+        return grav<TF>/thvref * (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
     //CUDA_MACRO inline TF esat(const TF T)
@@ -95,7 +95,7 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF qsat(const TF p, const TF T)
     {
-        return ep<TF>*esat(T)/(p-(1-ep<TF>)*esat(T));
+        return ep<TF>*esat(T)/(p-(TF(1.)-ep<TF>)*esat(T));
     }
 
     template<typename TF>
