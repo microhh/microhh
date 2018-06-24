@@ -62,9 +62,9 @@ namespace
             {
                 strain2[ijk] = TF(2.)*(
                    // du/dz
-                   + TF(0.5)*pow(-TF(0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2))
+                   + TF(0.5)*pow(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2))
                    // dv/dz
-                   + TF(0.5)*pow(-TF(0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2)) );
+                   + TF(0.5)*pow(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2)) );
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
@@ -120,15 +120,15 @@ namespace
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
+                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
+                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
         }
     }
@@ -196,7 +196,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)* dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -210,7 +210,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        + rhorefh[k  ] * fluxbotv[ij] ) / rhoref[k] * dzi[k];
@@ -220,7 +220,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.) * dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -234,7 +234,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (- rhorefh[k  ] * fluxtopv[ij]
                        - rhorefh[k-1] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k-1] * dzi[k-1];
@@ -255,7 +255,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.) * dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -269,7 +269,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        - rhorefh[k  ] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
