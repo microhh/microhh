@@ -46,7 +46,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF grad2x(const TF a, const TF b)
+        CUDA_MACRO inline TF grad2(const TF a, const TF b)
         {
             return (b - a);
         }
@@ -111,13 +111,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d, const TF dxi)
-        {
-            return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-        }
-
-        template<typename TF>
-        CUDA_MACRO inline TF grad4x(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d)
         {
             return ( -(1./24.)*(d-a) + (27./24.)*(c-b) );
         }

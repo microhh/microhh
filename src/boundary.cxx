@@ -448,7 +448,7 @@ namespace
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
-            using Finite_difference::O4::grad4x;
+            using Finite_difference::O4::grad4;
 
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
@@ -456,8 +456,8 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
-                    a[ijk-kk1] = TF(-1.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
-                    a[ijk-kk2] = TF(-3.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
+                    a[ijk-kk1] = TF(-1.)*grad4(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
+                    a[ijk-kk2] = TF(-3.)*grad4(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
                 }
         }
     }
@@ -485,7 +485,7 @@ namespace
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
-            using Finite_difference::O4::grad4x;
+            using Finite_difference::O4::grad4;
 
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
@@ -493,8 +493,8 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + (kend-1)*kk1;
-                    a[ijk+kk1] = TF(1.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
-                    a[ijk+kk2] = TF(3.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
+                    a[ijk+kk1] = TF(1.)*grad4(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
+                    a[ijk+kk2] = TF(3.)*grad4(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
                 }
         }
     }
@@ -713,9 +713,9 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
                     if (spatial_order == 2)
-                        agradbot[ij] = O2::grad2x(a[ijk-kk1], a[ijk]) * dzhi[kstart];
+                        agradbot[ij] = O2::grad2(a[ijk-kk1], a[ijk]) * dzhi[kstart];
                     else if (spatial_order == 4)
-                        agradbot[ij] = O4::grad4x(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
+                        agradbot[ij] = O4::grad4(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
                     afluxbot[ij] = -visc*agradbot[ij];
                 }
         }
