@@ -71,21 +71,21 @@ namespace Finite_difference
         const double ti3  =  5./16.;
 
         // 4th order gradient
-        const double cg0  =   1.;
-        const double cg1  = -27.;
-        const double cg2  =  27.;
-        const double cg3  =  -1.;
-        const double cgi  =   1./24.;
+        const double cg0  =   1./24.;
+        const double cg1  = -27./24.;
+        const double cg2  =  27./24.;
+        const double cg3  =  -1./24.;
+        const double cgi  =   1.;
 
-        const double bg0  = -23.;
-        const double bg1  =  21.;
-        const double bg2  =   3.;
-        const double bg3  =  -1.;
+        const double bg0  = -23./24.;
+        const double bg1  =  21./24.;
+        const double bg2  =   3./24.;
+        const double bg3  =  -1./24.;
 
-        const double tg0  =   1.;
-        const double tg1  =  -3.;
-        const double tg2  = -21.;
-        const double tg3  =  23.;
+        const double tg0  =   1./24.;
+        const double tg1  =  -3./24.;
+        const double tg2  = -21./24.;
+        const double tg3  =  23./24.;
 
         //// 4th order divgrad
         const double cdg0 = -1460./576.;
@@ -120,7 +120,7 @@ namespace Finite_difference
         template<typename TF>
         CUDA_MACRO inline TF grad4x(const TF a, const TF b, const TF c, const TF d)
         {
-            return (-(d-a) + 27.*(c-b));
+            return ( -(1./24.)*(d-a) + (27./24.)*(c-b) );
         }
     }
 }

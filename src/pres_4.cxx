@@ -206,34 +206,34 @@ void Pres_4<TF>::set_values()
     k  = 0;
     kc = kstart+k;
     m1[k] = 0.;
-    m2[k] = (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-    m3[k] = ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
-    m4[k] = ( 27.*dzhi4[kc+1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-    m5[k] = (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
-    m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
-    m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
+    m2[k] = (1./576.) * (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
+    m3[k] = (1./576.) * ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
+    m4[k] = (1./576.) * ( 27.*dzhi4[kc+1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
+    m5[k] = (1./576.) * (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
+    m6[k] = (1./576.) * (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
+    m7[k] = (1./576.) * (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
 
     for (int k=1; k<kmax-1; k++)
     {
         kc = kstart+k;
-        m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
-        m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-        m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
-        m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-        m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
-        m6[k] = (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
-        m7[k] = (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
+        m1[k] = (1./576.) * (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
+        m2[k] = (1./576.) * ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
+        m3[k] = (1./576.) * (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
+        m4[k] = (1./576.) * (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
+        m5[k] = (1./576.) * (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
+        m6[k] = (1./576.) * (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
+        m7[k] = (1./576.) * (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
     }                                                                                                                                       
 
     // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
     k  = kmax-1;
     kc = kstart+k;
-    m1[k] = (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
-    m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
-    m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
-    m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] + 27.*dzhi4[kc] ) * dzi4[kc];
-    m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
-    m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
+    m1[k] = (1./576.) * (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
+    m2[k] = (1./576.) * ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
+    m3[k] = (1./576.) * (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
+    m4[k] = (1./576.) * (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] + 27.*dzhi4[kc] ) * dzi4[kc];
+    m5[k] = (1./576.) * (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
+    m6[k] = (1./576.) * (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
     m7[k] = 0.;
 }
 
