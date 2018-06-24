@@ -87,8 +87,8 @@ namespace
     {
         const int ii = 1;
 
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -118,8 +118,8 @@ namespace
     {
         const int ii = 1;
 
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -149,8 +149,8 @@ namespace
     {
         const int ii = 1;
 
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
 
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -180,8 +180,8 @@ namespace
     {
         const int ii = 1;
 
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
