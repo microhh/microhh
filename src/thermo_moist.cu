@@ -56,7 +56,7 @@ namespace
             qs = qsat(p,tnr);
             tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,2)*qs)/ (Rv<TF>*cp<TF>*pow(tnr,2)));
         }
-        ql = fmax(0.,qt-qs);
+        ql = fmaxf(0.,qt-qs);
         return ql;
     }
 

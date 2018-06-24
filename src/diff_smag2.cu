@@ -120,14 +120,14 @@ namespace
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
+                RitPrratio = fminf(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
             }
             else
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
+                RitPrratio = fminf(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
             }
         }

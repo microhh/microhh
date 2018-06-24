@@ -38,7 +38,7 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF phim_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return std::pow(TF(1.) + TF(3.6)*std::pow(std::abs(zeta), TF(2./3.)), TF(-1./2.));
+        return pow(TF(1.) + TF(3.6)*pow(abs(zeta), TF(2./3.)), TF(-1./2.));
     }
 
     template<typename TF>
@@ -58,7 +58,7 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF phih_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return std::pow(TF(1.) + TF(7.9)*std::pow(std::abs(zeta), TF(2./3.)), TF(-1./2.));
+        return pow(TF(1.) + TF(7.9)*pow(abs(zeta), TF(2./3.)), TF(-1./2.));
     }
 
     template<typename TF>
@@ -81,7 +81,7 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF psim_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return TF(3.)*std::log( ( TF(1.) + TF(1.)/phim_unstable(zeta) ) / TF(2.));
+        return TF(3.)*log( ( TF(1.) + TF(1.)/phim_unstable(zeta) ) / TF(2.));
     }
 
     template<typename TF>
@@ -95,7 +95,7 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF psih_unstable(const TF zeta)
     {
         // Wilson, 2001 functions, see Wyngaard, page 222.
-        return TF(3.) * std::log( ( TF(1.) + TF(1.) / phih_unstable(zeta) ) / TF(2.));
+        return TF(3.) * log( ( TF(1.) + TF(1.) / phih_unstable(zeta) ) / TF(2.));
     }
 
     template<typename TF>
@@ -109,16 +109,16 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF fm(const TF zsl, const TF z0m, const TF L)
     {
         return (L <= TF(0.))
-            ? Constants::kappa<TF> / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
-            : Constants::kappa<TF> / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
+            ? Constants::kappa<TF> / (log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
+            : Constants::kappa<TF> / (log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
     }
 
     template<typename TF>
     CUDA_MACRO inline TF fh(const TF zsl, const TF z0h, const TF L)
     {
         return (L <= TF(0.))
-            ? Constants::kappa<TF> / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
-            : Constants::kappa<TF> / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
+            ? Constants::kappa<TF> / (log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
+            : Constants::kappa<TF> / (log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
     }
 }
 #endif
