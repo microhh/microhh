@@ -93,19 +93,19 @@ namespace Finite_difference
         const double cdg3 =     1./576.;
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4c(const TF a, const TF b, const TF c, const TF d)
         {
             return ci0*a + ci1*b + ci2*c + ci3*d;
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4bot(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4b(const TF a, const TF b, const TF c, const TF d)
         {
             return bi0*a + bi1*b - bi2*c + bi3*d;
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4top(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4t(const TF a, const TF b, const TF c, const TF d)
         {
             return ti0*a + ti1*b + ti2*c + ti3*d;
         }

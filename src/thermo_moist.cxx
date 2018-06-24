@@ -426,8 +426,8 @@ namespace
                    const int ijk = i + j*jj + k*kk1;
                    const int ij  = i + j*jj;
 
-                   thlh[ij]    = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                   qth[ij]     = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+                   thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+                   qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
                    const TF tl = thlh[ij] * exnh;
 
                    // Calculate first estimate of ql using Tl

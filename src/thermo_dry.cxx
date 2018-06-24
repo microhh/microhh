@@ -40,7 +40,7 @@
 #include "thermo_dry.h"
 #include "thermo_moist_functions.h"  // For Exner function
 
-using Finite_difference::O4::interp4;
+using Finite_difference::O4::interp4c;
 using namespace Constants;
 using namespace Thermo_moist_functions;
 
@@ -182,7 +182,7 @@ namespace
                                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                                 const int icells, const int ijcells)
     {
-        using Finite_difference::O4::interp4;
+        using Finite_difference::O4::interp4c;
 
         const int ijcells2 = 2*ijcells;
         for (int k=kstart+1; k<kend; ++k)
@@ -191,7 +191,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    wt[ijk] += grav<TF>/threfh[k] * (interp4(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
+                    wt[ijk] += grav<TF>/threfh[k] * (interp4c(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
                 }
     }
 

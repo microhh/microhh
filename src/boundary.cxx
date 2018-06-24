@@ -730,7 +730,7 @@ namespace
                     if (spatial_order == 2)
                         abot[ij] = O2::interp2(a[ijk-kk1], a[ijk]);
                     else if (spatial_order == 4)
-                        abot[ij] = O4::interp4(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]);
+                        abot[ij] = O4::interp4c(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]);
                 }
         }
     }
