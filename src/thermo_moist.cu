@@ -54,7 +54,7 @@ namespace
             ++niter;
             tnr_old = tnr;
             qs = qsat(p,tnr);
-            tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(pow(Lv,2)*qs)/ (Rv*cp*pow(tnr,2)));
+            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,TF(2))*qs)/ (Rv<TF>*cp<TF>*pow(tnr,TF(2))));
         }
         ql = fmax(0.,qt-qs);
         return ql;
@@ -170,7 +170,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = grav/thvref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = grav<TF>/thvref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 
@@ -194,17 +194,17 @@ namespace
 
     // BvS: no longer used, base state is calculated at the host
     template <typename TF> __global__
-    void calc_base_state(TF* __restrict__ pref,     TF* __restrict__ prefh,
-                         TF* __restrict__ rho,      TF* __restrict__ rhoh,
-                         TF* __restrict__ thv,      TF* __restrict__ thvh,
-                         TF* __restrict__ ex,       TF* __restrict__ exh,
-                         TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
-                         TF* __restrict__ z,        TF* __restrict__ dz,
-                         TF* __restrict__ dzh,
-                         TF pbot, int kstart, int kend)
+    void calc_base_state_g(TF* __restrict__ pref,     TF* __restrict__ prefh,
+                           TF* __restrict__ rho,      TF* __restrict__ rhoh,
+                           TF* __restrict__ thv,      TF* __restrict__ thvh,
+                           TF* __restrict__ ex,       TF* __restrict__ exh,
+                           TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
+                           TF* __restrict__ z,        TF* __restrict__ dz,
+                           TF* __restrict__ dzh,
+                           TF pbot, int kstart, int kend)
     {
         TF ql, si, qti, qli;
-        TF rdcp = Rd/cp;
+        TF rdcp = Rd<TF>/cp<TF>;
 
         const TF ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
         const TF qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
@@ -212,23 +212,23 @@ namespace
         // Calculate surface (half=kstart) values
         exh[kstart]   = exner(pbot);
         ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]);
-        thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+        thvh[kstart]  = (ssurf + Lv<TF>*ql/(cp<TF>*exh[kstart])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtsurf - Rv<TF>/Rd<TF>*ql);
         prefh[kstart] = pbot;
-        rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
+        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // First full grid level pressure
-        pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh[kstart])),(1./rdcp));
+        pref[kstart] = pow((pow(pbot,rdcp) - grav<TF> * pow(p0<TF>,rdcp) * z[kstart] / (cp<TF> * thvh[kstart])),(1./rdcp));
 
         for (int k=kstart+1; k<kend+1; k++)
         {
             // 1. Calculate values at full level below zh[k]
             ex[k-1]  = exner(pref[k-1]);
             ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
-            thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql);
-            rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
+            thv[k-1] = (thlmean[k-1] + Lv<TF>*ql/(cp<TF>*ex[k-1])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtmean[k-1] - Rv<TF>/Rd<TF>*ql);
+            rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
-            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv[k-1])),(1./rdcp));
+            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav<TF> * pow(p0<TF>,rdcp) * dz[k-1] / (cp<TF> * thv[k-1])),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
             si     = interp2(thlmean[k-1],thlmean[k]);
@@ -236,11 +236,11 @@ namespace
 
             exh[k]   = exner(prefh[k]);
             qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
-            thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli);
-            rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
+            thvh[k]  = (si + Lv<TF>*qli/(cp<TF>*exh[k])) * (1. - (1. - Rv<TF>/Rd<TF>)*qti - Rv<TF>/Rd<TF>*qli);
+            rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate full level pressure at z[k]
-            pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh[k])),(1./rdcp));
+            pref[k]  = pow((pow(pref[k-1],rdcp) - grav<TF> * pow(p0<TF>,rdcp) * dzh[k] / (cp<TF> * thvh[k])),(1./rdcp));
         }
 
         // Fill bottom and top full level ghost cells
@@ -251,36 +251,36 @@ namespace
 
     // BvS: no longer used, base state is calculated at the host
     template <typename TF> __global__
-    void calc_hydrostatic_pressure(TF* __restrict__ pref,     TF* __restrict__ prefh,
-                                   TF* __restrict__ ex,       TF* __restrict__ exh,
-                                   TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
-                                   const TF* const __restrict__ z,        const TF* const __restrict__ dz,
-                                   const TF* const __restrict__ dzh,
-                                   const TF pbot, int kstart, int kend)
+    void calc_hydrostatic_pressure_g(TF* __restrict__ pref,     TF* __restrict__ prefh,
+                                     TF* __restrict__ ex,       TF* __restrict__ exh,
+                                     TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
+                                     const TF* const __restrict__ z,        const TF* const __restrict__ dz,
+                                     const TF* const __restrict__ dzh,
+                                     const TF pbot, int kstart, int kend)
     {
         TF ql, si, qti, qli, thvh, thv;
-        TF rdcp = Rd/cp;
+        TF rdcp = Rd<TF>/cp<TF>;
 
         const TF ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
         const TF qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
         // Calculate surface (half=kstart) values
         ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]);
-        thvh          = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+        thvh          = (ssurf + Lv<TF>*ql/(cp<TF>*exh[kstart])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtsurf - Rv<TF>/Rd<TF>*ql);
         prefh[kstart] = pbot;
 
         // First full grid level pressure
-        pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh)),(1./rdcp));
+        pref[kstart] = pow((pow(pbot,rdcp) - grav<TF> * pow(p0<TF>,rdcp) * z[kstart] / (cp<TF> * thvh)),(1./rdcp));
 
         for (int k=kstart+1; k<kend+1; k++)
         {
             // 1. Calculate values at full level below zh[k]
             ex[k-1]  = exner(pref[k-1]);
             ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
-            thv      = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql);
+            thv      = (thlmean[k-1] + Lv<TF>*ql/(cp<TF>*ex[k-1])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtmean[k-1] - Rv<TF>/Rd<TF>*ql);
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
-            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv)),(1./rdcp));
+            prefh[k] = pow((pow(prefh[k-1],rdcp) - grav<TF> * pow(p0<TF>,rdcp) * dz[k-1] / (cp<TF> * thv)),(1./rdcp));
 
             // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
             si     = interp2(thlmean[k-1],thlmean[k]);
@@ -288,10 +288,10 @@ namespace
 
             exh[k]   = exner(prefh[k]);
             qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
-            thvh     = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli);
+            thvh     = (si + Lv<TF>*qli/(cp<TF>*exh[k])) * (1. - (1. - Rv<TF>/Rd<TF>)*qti - Rv<TF>/Rd<TF>*qli);
 
             // 4. Calculate full level pressure at z[k]
-            pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh)),(1./rdcp));
+            pref[k]  = pow((pow(pref[k-1],rdcp) - grav<TF> * pow(p0<TF>,rdcp) * dzh[k] / (cp<TF> * thvh)),(1./rdcp));
         }
 
         // Fill bottom and top full level ghost cells
@@ -376,25 +376,28 @@ void Thermo_moist<TF>::exec(const double dt)
     // Re-calculate hydrostatic pressure and exner
     if (bs.swupdatebasestate)
     {
-        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        cuda_check_error();
+        //calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+        //                                        fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+        //                                        gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        //cuda_check_error();
 
-        /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+        // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
-        int kcells = gd.kcells;
-        TF *tmp2 = fields->atmp["tmp2"]->data;
-        calc_base_state(bs.pref, bs.prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], bs.exnref, bs.exnrefh,
-                fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+        auto tmp = fields.get_tmp();
+
+        calc_base_state(bs.pref.data(), bs.prefh.data(),
+                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+
+        fields.release_tmp(tmp);
 
         // Only half level pressure and bs.exner needed for BuoyancyTend()
-        cudaMemcpy(bs.prefh_g,   bs.prefh,   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh, gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        */
+        cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
@@ -427,25 +430,28 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
     if (bs.swupdatebasestate && (name == "b" || name == "ql"))
     {
-        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        cuda_check_error();
+        //calc_hydrostatic_pressure_g<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+        //                                          fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+        //                                          gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        //cuda_check_error();
 
-        /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+        // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
-        int kcells = gd.kcells;
-        TF *tmp2 = fields->atmp["tmp2"]->data;
-        calc_base_state(bs.pref, bs.prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], bs.exnref, bs.exnrefh,
-                fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+        auto tmp = fields.get_tmp();
 
-        // Only full level pressure and exner needed
-        cudaMemcpy(bs.pref_g,   bs.pref,   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnref_g, bs.exnref, gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        */
+        calc_base_state(bs.pref.data(), bs.prefh.data(),
+                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+
+        fields.release_tmp(tmp);
+
+        // Only full level pressure and bs.exner needed for calculating buoyancy of ql
+        cudaMemcpy(bs.pref_g,   bs.pref.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnref_g, bs.exnref.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
     if (name == "b")
