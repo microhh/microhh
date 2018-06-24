@@ -127,7 +127,47 @@ namespace
         }
     }
 
+    // Evaporation: evaporation of rain drops in unsaturated environment
+    template<typename TF> __global__
+    void evaporation_g(TF* const restrict qrt, TF* const restrict nrt,
+                       TF* const restrict qtt, TF* const restrict thlt,
+                       const TF* const restrict qr, const TF* const restrict nr,
+                       const TF* const restrict ql, const TF* const restrict qt, const TF* const restrict thl,
+                       const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
+                       const int istart, const int jstart, const int kstart,
+                       const int iend,   const int jend,   const int kend,
+                       const int jj, const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
+        const TF lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            if (qr[ijk] > qr_min<TF>)
+            {
+                const TF mr = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                const TF dr = calc_rain_diameter(mr);
+
+                const TF T   = thl[ijk] * exner[k] + (Lv<TF> * ql[ijk]) / (cp<TF> * exner[k]); // Absolute temperature [K]
+                const TF Glv = pow(Rv<TF> * T / (esat(T) * D_v<TF>) +
+                                   (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - TF(1)), TF(-1)); // Cond/evap rate (kg m-1 s-1)?
+
+                const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - TF(1); // Saturation
+                const TF F   = TF(1.); // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+
+                const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
+
+                qrt[ijk]  += ev_tend;
+                nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
+                qtt[ijk]  -= ev_tend;
+                thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+            }
+        }
+    }
 
 
 }
@@ -183,6 +223,16 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+
+    // Evaporation; evaporation of rain drops in unsaturated environment
+    evaporation_g<<<gridGPU, blockGPU>>>(
+        fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,  fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
+        fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g,  ql->fld_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("thl")->fld_g, fields.rhoref_g, exner, p,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
 
     fields.release_tmp_g(ql);
 }
