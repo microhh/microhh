@@ -169,6 +169,60 @@ namespace
         }
     }
 
+    // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    template<typename TF> __global__
+    void selfcollection_breakup_g(TF* const __restrict__ nrt, const TF* const __restrict__ qr, const TF* const __restrict__ nr, const TF* const __restrict__ rho,
+                                  const int istart, const int jstart, const int kstart,
+                                  const int iend,   const int jend,   const int kend,
+                                  const int jj, const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        const TF k_rr     = 7.12;   // SB06, p49
+        const TF kappa_rr = 60.7;   // SB06, p49
+        const TF D_eq     = 0.9e-3; // SB06, list of symbols
+        const TF k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            if (qr[ijk] > qr_min<TF>)
+            {
+                // Calculate mean rain drop mass and diameter
+                const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                const TF dr      = calc_rain_diameter(mr);
+                const TF mu_r    = calc_mu_r(dr);
+                const TF lambdar = calc_lambda_r(mu_r, dr);
+
+                // Selfcollection
+                const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr /
+                                   lambdar * pow(pirhow<TF>, TF(1.)/TF(3.)), TF(-9)) * pow(rho_0<TF> / rho[k], TF(0.5));
+                nrt[ijk] += sc_tend;
+
+                // Breakup
+                const TF dDr = dr - D_eq;
+                if(dr > 0.35e-3)
+                {
+                    TF phi_br;
+                    if(dr <= D_eq)
+                        phi_br = k_br1 * dDr;
+                    else
+                        phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+
+                    const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
+                    nrt[ijk] += br_tend;
+                }
+            }
+        }
+    }
+
+
+
+
+
 
 }
 
@@ -229,6 +283,13 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,  fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g,  ql->fld_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("thl")->fld_g, fields.rhoref_g, exner, p,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
+    // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    selfcollection_breakup_g<<<gridGPU, blockGPU>>>(
+        fields.st.at("nr")->fld_g, fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
