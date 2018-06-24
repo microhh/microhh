@@ -68,7 +68,7 @@ namespace
         if (i < icells && j < jcells)
         {
             if (sw == Boundary_type::Dirichlet_type)
-                a[ijk-kk] = 2.*abot[ij] - a[ijk];
+                a[ijk-kk] = TF(2.)*abot[ij] - a[ijk];
 
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
@@ -90,7 +90,7 @@ namespace
         if (i < icells && j < jcells)
         {
             if (sw == Boundary_type::Dirichlet_type)
-                a[ijk+kk] = 2.*atop[ij] - a[ijk];
+                a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
 
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
@@ -115,14 +115,14 @@ namespace
         {
             if (sw == Boundary_type::Dirichlet_type)
             {
-                a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
-                a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
+                a[ijk-kk1] = TF(8./3.)*abot[ij] - TF(2.)*a[ijk] + TF(1./3.)*a[ijk+kk1];
+                a[ijk-kk2] = TF(8.)*abot[ij] - TF(9.)*a[ijk] + TF(2.)*a[ijk+kk1];
             }
 
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
             {
-                a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
-                a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
+                a[ijk-kk1] = TF(-1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
+                a[ijk-kk2] = TF(-1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
             }
         }
     }
@@ -145,14 +145,14 @@ namespace
         {
             if (sw == Boundary_type::Dirichlet_type)
             {
-                a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
-                a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
+                a[ijk+kk1] = TF(8./3.)*atop[ij] - TF(2.)*a[ijk] + TF(1./3.)*a[ijk-kk1];
+                a[ijk+kk2] = TF(8.)*atop[ij] - TF(9.)*a[ijk] + TF(2.)*a[ijk-kk1];
             }
 
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
             {
-                a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
-                a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
+                a[ijk+kk1] = TF(1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
+                a[ijk+kk2] = TF(1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
             }
         }
     }
@@ -172,7 +172,7 @@ namespace
 
         if (i < icells && j < jcells)
         {
-            w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
+            w[ijk-kk1] = TF(-6.)*w[ijk+kk1] + TF(4.)*w[ijk+kk2] - w[ijk+kk3];
         }
     }
 
@@ -191,7 +191,7 @@ namespace
 
         if (i < icells && j < jcells)
         {
-            w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
+            w[ijk+kk1] = TF(-6.)*w[ijk-kk1] + TF(4.)*w[ijk-kk2] - w[ijk-kk3];
         }
     }
 

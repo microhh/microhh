@@ -40,13 +40,12 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z + kstart;
 
-        // const double cA0 =  0.;
-        const double cA1 = -5./9.;
-        const double cA2 = -153./128.;
+        constexpr TF cA1 = -5./9.;
+        constexpr TF cA2 = -153./128.;
 
-        const double cB0 =  1./ 3.;
-        const double cB1 = 15./16.;
-        const double cB2 =  8./15.;
+        constexpr TF cB0 =  1./ 3.;
+        constexpr TF cB1 = 15./16.;
+        constexpr TF cB2 =  8./15.;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -64,7 +63,7 @@ namespace
                     break;
                 case 2:
                     a [ijk] = a[ijk] + cB2*dt*at[ijk];
-                    at[ijk] = 0.;
+                    at[ijk] = TF(0.);
                     break;
             }
         }
@@ -80,17 +79,16 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z + kstart;
 
-        // const double cA0 =   0.;
-        const double cA1 = - 567301805773./1357537059087.;
-        const double cA2 = -2404267990393./2016746695238.;
-        const double cA3 = -3550918686646./2091501179385.;
-        const double cA4 = -1275806237668./ 842570457699.;
+        constexpr TF cA1 = - 567301805773./1357537059087.;
+        constexpr TF cA2 = -2404267990393./2016746695238.;
+        constexpr TF cA3 = -3550918686646./2091501179385.;
+        constexpr TF cA4 = -1275806237668./ 842570457699.;
 
-        const double cB0 = 1432997174477./ 9575080441755.;
-        const double cB1 = 5161836677717./13612068292357.;
-        const double cB2 = 1720146321549./ 2090206949498.;
-        const double cB3 = 3134564353537./ 4481467310338.;
-        const double cB4 = 2277821191437./14882151754819.;
+        constexpr TF cB0 = 1432997174477./ 9575080441755.;
+        constexpr TF cB1 = 5161836677717./13612068292357.;
+        constexpr TF cB2 = 1720146321549./ 2090206949498.;
+        constexpr TF cB3 = 3134564353537./ 4481467310338.;
+        constexpr TF cB4 = 2277821191437./14882151754819.;
 
         if (i < iend && j < jend && k < kend)
         {
