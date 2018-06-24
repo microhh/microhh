@@ -62,9 +62,9 @@ namespace
             {
                 strain2[ijk] = TF(2.)*(
                    // du/dz
-                   + TF(0.5)*pow(-TF(0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
+                   + TF(0.5)*pow(-TF(0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2))
                    // dv/dz
-                   + TF(0.5)*pow(-TF(0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
+                   + TF(0.5)*pow(-TF(0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2)) );
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
@@ -72,26 +72,26 @@ namespace
             {
                 strain2[ijk] =TF(2.)*(
                     // du/dx + du/dx
-                    + pow((u[ijk+ii]-u[ijk])*dxi, 2)
+                    + pow((u[ijk+ii]-u[ijk])*dxi, TF(2))
                     // dv/dy + dv/dy
-                    + pow((v[ijk+jj]-v[ijk])*dyi, 2)
+                    + pow((v[ijk+jj]-v[ijk])*dyi, TF(2))
                     // dw/dz + dw/dz
-                    + pow((w[ijk+kk]-w[ijk])*dzi[k], 2)
+                    + pow((w[ijk+kk]-w[ijk])*dzi[k], TF(2))
                     // du/dy + dv/dx
-                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
+                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, TF(2))
                     // du/dz + dw/dx
-                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
-                    + TF(0.125)*pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
+                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, TF(2))
+                    + TF(0.125)*pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, TF(2))
                     // dv/dz + dw/dy
-                    + TF(0.125)*pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, 2)
-                    + TF(0.125)*pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2)
-                    + TF(0.125)*pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
-                    + TF(0.125)*pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
+                    + TF(0.125)*pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, TF(2))
+                    + TF(0.125)*pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, TF(2))
+                    + TF(0.125)*pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, TF(2))
+                    + TF(0.125)*pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, TF(2)) );
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
