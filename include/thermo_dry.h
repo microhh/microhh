@@ -83,6 +83,7 @@ class Thermo_dry : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
 
         // Empty functions that are allowed to pass.
