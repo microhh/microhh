@@ -538,10 +538,6 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
 {
     swmicrophys = Microphys_type::Warm_2mom;
 
-    #ifdef USECUDA
-    throw std::runtime_error("swmicro = \"2mom_warm\" not (yet) implemented in CUDA\n");
-    #endif
-
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
