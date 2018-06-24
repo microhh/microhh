@@ -75,7 +75,6 @@ namespace Finite_difference
         const double cg1  = -27./24.;
         const double cg2  =  27./24.;
         const double cg3  =  -1./24.;
-        const double cgi  =   1.;
 
         const double bg0  = -23./24.;
         const double bg1  =  21./24.;
