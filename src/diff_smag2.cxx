@@ -81,7 +81,7 @@ namespace
                                    + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
 
                                    // du/dz
-                                   + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+                                   + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
 
                                    // dw/dx
                                    + 0.125*std::pow((w[ijk      ]-w[ijk-ii   ])*dxi, 2)
@@ -90,7 +90,7 @@ namespace
                                    + 0.125*std::pow((w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
 
                                    // dv/dz
-                                   + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+                                   + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
 
                                    // dw/dy
                                    + 0.125*std::pow((w[ijk      ]-w[ijk-jj   ])*dyi, 2)
@@ -196,7 +196,7 @@ namespace
             {
                 // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-                const TF mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+                const TF mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), 1./n);
                 const TF fac   = std::pow(mlen, 2);
 
                 for (int j=jstart; j<jend; ++j)
@@ -269,7 +269,7 @@ namespace
             // Bottom boundary, here strain is fully parametrized using MO.
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
             const TF mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
-            const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[kstart]+z0m), n))), 1./n);
+            const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa<TF>*(z[kstart]+z0m), n))), 1./n);
             const TF fac = std::pow(mlen, 2);
 
             for (int j=jstart; j<jend; ++j)
@@ -281,7 +281,7 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
                     // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
-                    TF RitPrratio = -bfluxbot[ij]/(Constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+                    TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, static_cast<TF>(1.-Constants::dsmall));
                     evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(static_cast<TF>(1.)-RitPrratio);
                 }
@@ -291,7 +291,7 @@ namespace
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-                const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+                const TF mlen = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), 1./n);
                 const TF fac = std::pow(mlen, 2);
 
                 for (int j=jstart; j<jend; ++j)

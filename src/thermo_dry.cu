@@ -31,9 +31,11 @@
 
 namespace
 {
+    using namespace Constants;
+
     template<typename TF> __global__
     void calc_buoyancy_tend_2nd_g(TF* __restrict__ wt,
-                                  TF* __restrict__ th, TF* __restrict__ threfh, double grav,
+                                  TF* __restrict__ th, TF* __restrict__ threfh,
                                   int istart, int jstart, int kstart,
                                   int iend,   int jend,   int kend,
                                   int jj, int kk)
@@ -45,14 +47,14 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += grav/threfh[k] * (static_cast<TF>(0.5)*(th[ijk-kk]+th[ijk]) - threfh[k]);
+            wt[ijk] += grav<TF>/threfh[k] * (static_cast<TF>(0.5)*(th[ijk-kk]+th[ijk]) - threfh[k]);
         }
     }
 
 
     template<typename TF> __global__
     void calc_buoyancy_g(TF* __restrict__ b,
-                         TF* __restrict__ th, TF* __restrict__ thref, double grav,
+                         TF* __restrict__ th, TF* __restrict__ thref,
                          int istart, int jstart,
                          int iend,   int jend,   int kcells,
                          int jj, int kk)
@@ -64,7 +66,7 @@ namespace
         if (i < iend && j < jend && k < kcells)
         {
             const int ijk = i + j*jj + k*kk;
-            b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
+            b[ijk] = grav<TF>/thref[k] * (th[ijk] - thref[k]);
         }
     }
 
@@ -72,7 +74,7 @@ namespace
     void calc_buoyancy_bot_g(TF* __restrict__ b,     TF* __restrict__ bbot,
                              TF* __restrict__ th,    TF* __restrict__ thbot,
                              TF* __restrict__ thref, TF* __restrict__ threfh,
-                             double grav, int kstart, int icells, int jcells,
+                             int kstart, int icells, int jcells,
                              int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -83,15 +85,15 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
 
-            bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
-            b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
+            bbot[ij] = grav<TF>/threfh[kstart] * (thbot[ij] - threfh[kstart]);
+            b[ijk]   = grav<TF>/thref [kstart] * (th[ijk]   - thref [kstart]);
         }
     }
 
     template<typename TF> __global__
     void calc_buoyancy_flux_bot_g(TF* __restrict__ bfluxbot, TF* __restrict__ thfluxbot,
                                   TF* __restrict__ threfh,
-                                  double grav, int kstart, int icells, int jcells,
+                                  int kstart, int icells, int jcells,
                                   int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -100,13 +102,13 @@ namespace
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
+            bfluxbot[ij] = grav<TF>/threfh[kstart]*thfluxbot[ij];
         }
     }
 
     template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2,    TF* __restrict__ th,
-                   TF* __restrict__ thref, double grav, TF* __restrict__ dzi,
+                   TF* __restrict__ thref, TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -118,7 +120,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = Constants::grav/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 } // end namespace
@@ -203,7 +205,7 @@ void Thermo_dry<TF>::exec(const double dt)
     if (grid.get_spatial_order() == Grid_order::Second)
     {
         calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("w")->fld_g, fields.sp.at("th")->fld_g, bs.threfh_g, Constants::grav,
+            fields.mt.at("w")->fld_g, fields.sp.at("th")->fld_g, bs.threfh_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -238,7 +240,7 @@ void Thermo_dry<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool
     if (name == "b")
     {
         calc_buoyancy_g<<<gridGPU, blockGPU>>>(
-            fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g, Constants::grav,
+            fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g,
             gd.istart, gd.jstart,
             gd.iend, gd.jend, gd.kcells,
             gd.icells, gd.ijcells);
@@ -247,7 +249,7 @@ void Thermo_dry<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
-            fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g, Constants::grav, gd.dzi_g,
+            fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g, gd.dzi_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -280,7 +282,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         b.flux_bot_g, fields.sp.at("th")->flux_bot_g,
-        bs.threfh_g, Constants::grav, gd.kstart, gd.icells, gd.jcells,
+        bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
@@ -303,13 +305,13 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
     calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
         b.fld_g, b.flux_bot_g,
         fields.sp.at("th")->fld_g, fields.sp.at("th")->fld_bot_g,
-        bs.thref_g, bs.threfh_g, Constants::grav, gd.kstart, gd.icells, gd.jcells,
+        bs.thref_g, bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         b.flux_bot_g, fields.sp.at("th")->flux_bot_g,
-        bs.threfh_g, Constants::grav, gd.kstart, gd.icells, gd.jcells,
+        bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
