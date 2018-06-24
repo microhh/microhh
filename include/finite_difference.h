@@ -36,13 +36,13 @@ namespace Finite_difference
         template<typename TF>
         CUDA_MACRO inline TF interp2(const TF a, const TF b)
         {
-            return 0.5 * (a + b);
+            return TF(0.5) * (a + b);
         }
 
         template<typename TF>
         CUDA_MACRO inline TF interp22(const TF a, const TF b, const TF c, const TF d)
         {
-            return 0.25 * (a + b + c + d);
+            return TF(0.25) * (a + b + c + d);
         }
 
         template<typename TF>
