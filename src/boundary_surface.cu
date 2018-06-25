@@ -195,13 +195,13 @@ namespace
                 const TF minval = 1.e-2;
 
                 // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                const TF vonu2 = fmaxf(minval, TF(0.25)*( pow(v[ijk-ii]-vbot[ij-ii], 2) + pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
+                const TF vonu2 = fmax(minval, TF(0.25)*( pow(v[ijk-ii]-vbot[ij-ii], 2) + pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
                                                        + pow(v[ijk   ]-vbot[ij   ], 2) + pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
-                const TF uonv2 = fmaxf(minval, TF(0.25)*( pow(u[ijk-jj]-ubot[ij-jj], 2) + pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
+                const TF uonv2 = fmax(minval, TF(0.25)*( pow(u[ijk-jj]-ubot[ij-jj], 2) + pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
                                                        + pow(u[ijk   ]-ubot[ij   ], 2) + pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
 
-                const TF u2 = fmaxf(minval, pow(u[ijk]-ubot[ij], 2));
-                const TF v2 = fmaxf(minval, pow(v[ijk]-vbot[ij], 2));
+                const TF u2 = fmax(minval, pow(u[ijk]-ubot[ij], 2));
+                const TF v2 = fmax(minval, pow(v[ijk]-vbot[ij], 2));
 
                 const TF ustaronu4 = TF(0.5)*(pow(ustar[ij-ii], 4) + pow(ustar[ij], 4));
                 const TF ustaronv4 = TF(0.5)*(pow(ustar[ij-jj], 4) + pow(ustar[ij], 4));
