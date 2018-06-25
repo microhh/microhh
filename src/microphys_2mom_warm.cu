@@ -511,6 +511,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // Accretion; growth of raindrops collecting cloud droplets
     micro::accretion_g<<<gridGPU, blockGPU>>>(
@@ -519,6 +520,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // Evaporation; evaporation of rain drops in unsaturated environment
     micro::evaporation_g<<<gridGPU, blockGPU>>>(
@@ -528,6 +530,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     fields.release_tmp_g(ql);
 
@@ -537,6 +540,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // Sedimentation; sub-grid sedimentation of rain
     // ---------------------------------------------
@@ -550,6 +554,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 2. Set the top and bottom velocity ghost cells
     sedimentation::set_bc_g<<<grid2dGPU, block2dGPU>>>(
@@ -557,6 +562,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // qr --------------------
     // 3. Calculate CFL numbers for qr and nr
@@ -567,6 +573,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     fields.release_tmp_g(w_qr);    
 
@@ -578,6 +585,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 5. Calculate sedimentation fluxes
     auto flux_qr = fields.get_tmp_g();
@@ -589,6 +597,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 6. Limit fluxes such that qr stays >= 0.
     sedimentation::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
@@ -597,6 +606,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 7. Calculate flux divergence
     sedimentation::calc_flux_div_g<<<gridGPU, blockGPU>>>(
@@ -605,6 +615,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     fields.release_tmp_g(cfl_qr);
     fields.release_tmp_g(slope_qr);
@@ -619,6 +630,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     fields.release_tmp_g(w_nr);    
 
@@ -630,6 +642,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 5. Calculate sedimentation fluxes
     auto flux_nr = fields.get_tmp_g();
@@ -641,6 +654,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 6. Limit fluxes such that nr stays >= 0.
     sedimentation::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
@@ -649,6 +663,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     // 7. Calculate flux divergence
     sedimentation::calc_flux_div_g<<<gridGPU, blockGPU>>>(
@@ -657,6 +672,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
+    cuda_check_error();
 
     fields.release_tmp_g(cfl_nr);
     fields.release_tmp_g(slope_nr);
