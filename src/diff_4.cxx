@@ -61,13 +61,13 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
-                at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                 if (dim3)
-                    at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzhi4[kstart-1]
-                                  + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kstart  ]
-                                  + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[kstart+1]
-                                  + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzhi4[kstart+2] )
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                at[ijk] += visc * ( cg0<TF>*(bg0<TF>*a[ijk-kk2] + bg1<TF>*a[ijk-kk1] + bg2<TF>*a[ijk    ] + bg3<TF>*a[ijk+kk1]) * dzhi4[kstart-1]
+                                  + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzhi4[kstart  ]
+                                  + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzhi4[kstart+1]
+                                  + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzhi4[kstart+2] )
                                 * dzi4[kstart];
             }
     
@@ -77,13 +77,13 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                     if (dim3)
-                        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                    at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[k-1]
-                                      + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[k  ]
-                                      + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[k+1]
-                                      + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzhi4[k+2] )
+                        at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                    at[ijk] += visc * ( cg0<TF>*(cg0<TF>*a[ijk-kk3] + cg1<TF>*a[ijk-kk2] + cg2<TF>*a[ijk-kk1] + cg3<TF>*a[ijk    ]) * dzhi4[k-1]
+                                      + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzhi4[k  ]
+                                      + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzhi4[k+1]
+                                      + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzhi4[k+2] )
                                     * dzi4[k];
                 }
     
@@ -93,13 +93,13 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                 if (dim3)
-                    at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[kend-2]
-                                  + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kend-1]
-                                  + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[kend  ]
-                                  + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzhi4[kend+1] )
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                at[ijk] += visc * ( cg0<TF>*(cg0<TF>*a[ijk-kk3] + cg1<TF>*a[ijk-kk2] + cg2<TF>*a[ijk-kk1] + cg3<TF>*a[ijk    ]) * dzhi4[kend-2]
+                                  + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzhi4[kend-1]
+                                  + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzhi4[kend  ]
+                                  + cg3<TF>*(tg0<TF>*a[ijk-kk1] + tg1<TF>*a[ijk    ] + tg2<TF>*a[ijk+kk1] + tg3<TF>*a[ijk+kk2]) * dzhi4[kend+1] )
                                 * dzi4[kend-1];
             }
     }
@@ -128,13 +128,13 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kstart+1)*kk1;
-                at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                 if (dim3)
-                    at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzi4[kstart-1]
-                                  + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kstart  ]
-                                  + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[kstart+1]
-                                  + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzi4[kstart+2] )
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                at[ijk] += visc * ( cg0<TF>*(bg0<TF>*a[ijk-kk2] + bg1<TF>*a[ijk-kk1] + bg2<TF>*a[ijk    ] + bg3<TF>*a[ijk+kk1]) * dzi4[kstart-1]
+                                  + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzi4[kstart  ]
+                                  + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzi4[kstart+1]
+                                  + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzi4[kstart+2] )
                                 * dzhi4[kstart+1];
             }
     
@@ -144,13 +144,13 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                     if (dim3)
-                        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                    at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[k-2]
-                                      + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
-                                      + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[k  ]
-                                      + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzi4[k+1] )
+                        at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                    at[ijk] += visc * ( cg0<TF>*(cg0<TF>*a[ijk-kk3] + cg1<TF>*a[ijk-kk2] + cg2<TF>*a[ijk-kk1] + cg3<TF>*a[ijk    ]) * dzi4[k-2]
+                                      + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzi4[k-1]
+                                      + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzi4[k  ]
+                                      + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzi4[k+1] )
                                     * dzhi4[k];
                 }
     
@@ -160,13 +160,13 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+                at[ijk] += visc * (cdg3<TF>*a[ijk-ii3] + cdg2<TF>*a[ijk-ii2] + cdg1<TF>*a[ijk-ii1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+ii1] + cdg2<TF>*a[ijk+ii2] + cdg3<TF>*a[ijk+ii3])*dxidxi;
                 if (dim3)
-                    at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-                at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[kend-3]
-                                  + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kend-2]
-                                  + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[kend-1]
-                                  + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzi4[kend  ] )
+                    at[ijk] += visc * (cdg3<TF>*a[ijk-jj3] + cdg2<TF>*a[ijk-jj2] + cdg1<TF>*a[ijk-jj1] + cdg0<TF>*a[ijk] + cdg1<TF>*a[ijk+jj1] + cdg2<TF>*a[ijk+jj2] + cdg3<TF>*a[ijk+jj3])*dyidyi;
+                at[ijk] += visc * ( cg0<TF>*(cg0<TF>*a[ijk-kk3] + cg1<TF>*a[ijk-kk2] + cg2<TF>*a[ijk-kk1] + cg3<TF>*a[ijk    ]) * dzi4[kend-3]
+                                  + cg1<TF>*(cg0<TF>*a[ijk-kk2] + cg1<TF>*a[ijk-kk1] + cg2<TF>*a[ijk    ] + cg3<TF>*a[ijk+kk1]) * dzi4[kend-2]
+                                  + cg2<TF>*(cg0<TF>*a[ijk-kk1] + cg1<TF>*a[ijk    ] + cg2<TF>*a[ijk+kk1] + cg3<TF>*a[ijk+kk2]) * dzi4[kend-1]
+                                  + cg3<TF>*(tg0<TF>*a[ijk-kk1] + tg1<TF>*a[ijk    ] + tg2<TF>*a[ijk+kk1] + tg3<TF>*a[ijk+kk2]) * dzi4[kend  ] )
                                 * dzhi4[kend-1];
             }
     }

@@ -62,20 +62,20 @@ namespace
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
                 lngrad[ijk] = std::log( Constants::dtiny +
-                    std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
-                              + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
-                              + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
-                              + cg3*(ci0*a[ijk    ] + ci1*a[ijk+ii1] + ci2*a[ijk+ii2] + ci3*a[ijk+ii3]) ) * dxi, 2.)
+                    std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-ii3] + ci1<TF>*a[ijk-ii2] + ci2<TF>*a[ijk-ii1] + ci3<TF>*a[ijk    ])
+                              + cg1<TF>*(ci0<TF>*a[ijk-ii2] + ci1<TF>*a[ijk-ii1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+ii1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-ii1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+ii1] + ci3<TF>*a[ijk+ii2])
+                              + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+ii1] + ci2<TF>*a[ijk+ii2] + ci3<TF>*a[ijk+ii3]) ) * dxi, 2.)
 
-                  + std::pow( ( cg0*(ci0*a[ijk-jj3] + ci1*a[ijk-jj2] + ci2*a[ijk-jj1] + ci3*a[ijk    ])
-                              + cg1*(ci0*a[ijk-jj2] + ci1*a[ijk-jj1] + ci2*a[ijk    ] + ci3*a[ijk+jj1])
-                              + cg2*(ci0*a[ijk-jj1] + ci1*a[ijk    ] + ci2*a[ijk+jj1] + ci3*a[ijk+jj2])
-                              + cg3*(ci0*a[ijk    ] + ci1*a[ijk+jj1] + ci2*a[ijk+jj2] + ci3*a[ijk+jj3]) ) * dyi, 2.)
+                  + std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-jj3] + ci1<TF>*a[ijk-jj2] + ci2<TF>*a[ijk-jj1] + ci3<TF>*a[ijk    ])
+                              + cg1<TF>*(ci0<TF>*a[ijk-jj2] + ci1<TF>*a[ijk-jj1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+jj1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-jj1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+jj1] + ci3<TF>*a[ijk+jj2])
+                              + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+jj1] + ci2<TF>*a[ijk+jj2] + ci3<TF>*a[ijk+jj3]) ) * dyi, 2.)
 
-                  + std::pow( ( cg0*(bi0*a[ijk-kk2] + bi1*a[ijk-kk1] + bi2*a[ijk    ] + bi3*a[ijk+kk1])
-                              + cg1*(ci0*a[ijk-kk2] + ci1*a[ijk-kk1] + ci2*a[ijk    ] + ci3*a[ijk+kk1])
-                              + cg2*(ci0*a[ijk-kk1] + ci1*a[ijk    ] + ci2*a[ijk+kk1] + ci3*a[ijk+kk2])
-                              + cg3*(ci0*a[ijk    ] + ci1*a[ijk+kk1] + ci2*a[ijk+kk2] + ci3*a[ijk+kk3]) ) * dzi4[kstart], 2.) );
+                  + std::pow( ( cg0<TF>*(bi0<TF>*a[ijk-kk2] + bi1<TF>*a[ijk-kk1] + bi2<TF>*a[ijk    ] + bi3<TF>*a[ijk+kk1])
+                              + cg1<TF>*(ci0<TF>*a[ijk-kk2] + ci1<TF>*a[ijk-kk1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+kk1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-kk1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+kk1] + ci3<TF>*a[ijk+kk2])
+                              + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+kk1] + ci2<TF>*a[ijk+kk2] + ci3<TF>*a[ijk+kk3]) ) * dzi4[kstart], 2.) );
             }
 
         // interior
@@ -86,20 +86,20 @@ namespace
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     lngrad[ijk] = std::log( Constants::dtiny +
-                        std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
-                                  + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
-                                  + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
-                                  + cg3*(ci0*a[ijk    ] + ci1*a[ijk+ii1] + ci2*a[ijk+ii2] + ci3*a[ijk+ii3]) ) * dxi, 2.)
+                        std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-ii3] + ci1<TF>*a[ijk-ii2] + ci2<TF>*a[ijk-ii1] + ci3<TF>*a[ijk    ])
+                                  + cg1<TF>*(ci0<TF>*a[ijk-ii2] + ci1<TF>*a[ijk-ii1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+ii1])
+                                  + cg2<TF>*(ci0<TF>*a[ijk-ii1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+ii1] + ci3<TF>*a[ijk+ii2])
+                                  + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+ii1] + ci2<TF>*a[ijk+ii2] + ci3<TF>*a[ijk+ii3]) ) * dxi, 2.)
 
-                      + std::pow( ( cg0*(ci0*a[ijk-jj3] + ci1*a[ijk-jj2] + ci2*a[ijk-jj1] + ci3*a[ijk    ])
-                                  + cg1*(ci0*a[ijk-jj2] + ci1*a[ijk-jj1] + ci2*a[ijk    ] + ci3*a[ijk+jj1])
-                                  + cg2*(ci0*a[ijk-jj1] + ci1*a[ijk    ] + ci2*a[ijk+jj1] + ci3*a[ijk+jj2])
-                                  + cg3*(ci0*a[ijk    ] + ci1*a[ijk+jj1] + ci2*a[ijk+jj2] + ci3*a[ijk+jj3]) ) * dyi, 2.)
+                      + std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-jj3] + ci1<TF>*a[ijk-jj2] + ci2<TF>*a[ijk-jj1] + ci3<TF>*a[ijk    ])
+                                  + cg1<TF>*(ci0<TF>*a[ijk-jj2] + ci1<TF>*a[ijk-jj1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+jj1])
+                                  + cg2<TF>*(ci0<TF>*a[ijk-jj1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+jj1] + ci3<TF>*a[ijk+jj2])
+                                  + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+jj1] + ci2<TF>*a[ijk+jj2] + ci3<TF>*a[ijk+jj3]) ) * dyi, 2.)
 
-                      + std::pow( ( cg0*(ci0*a[ijk-kk3] + ci1*a[ijk-kk2] + ci2*a[ijk-kk1] + ci3*a[ijk    ])
-                                  + cg1*(ci0*a[ijk-kk2] + ci1*a[ijk-kk1] + ci2*a[ijk    ] + ci3*a[ijk+kk1])
-                                  + cg2*(ci0*a[ijk-kk1] + ci1*a[ijk    ] + ci2*a[ijk+kk1] + ci3*a[ijk+kk2])
-                                  + cg3*(ci0*a[ijk    ] + ci1*a[ijk+kk1] + ci2*a[ijk+kk2] + ci3*a[ijk+kk3]) ) * dzi4[k], 2.) );
+                      + std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-kk3] + ci1<TF>*a[ijk-kk2] + ci2<TF>*a[ijk-kk1] + ci3<TF>*a[ijk    ])
+                                  + cg1<TF>*(ci0<TF>*a[ijk-kk2] + ci1<TF>*a[ijk-kk1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+kk1])
+                                  + cg2<TF>*(ci0<TF>*a[ijk-kk1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+kk1] + ci3<TF>*a[ijk+kk2])
+                                  + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+kk1] + ci2<TF>*a[ijk+kk2] + ci3<TF>*a[ijk+kk3]) ) * dzi4[k], 2.) );
                 }
 
         // top
@@ -109,20 +109,20 @@ namespace
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
                 lngrad[ijk] = std::log(Constants::dtiny +
-                    std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
-                              + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
-                              + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
-                              + cg3*(ci0*a[ijk    ] + ci1*a[ijk+ii1] + ci2*a[ijk+ii2] + ci3*a[ijk+ii3]) ) * dxi, 2.)
+                    std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-ii3] + ci1<TF>*a[ijk-ii2] + ci2<TF>*a[ijk-ii1] + ci3<TF>*a[ijk    ])
+                              + cg1<TF>*(ci0<TF>*a[ijk-ii2] + ci1<TF>*a[ijk-ii1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+ii1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-ii1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+ii1] + ci3<TF>*a[ijk+ii2])
+                              + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+ii1] + ci2<TF>*a[ijk+ii2] + ci3<TF>*a[ijk+ii3]) ) * dxi, 2.)
 
-                  + std::pow( ( cg0*(ci0*a[ijk-jj3] + ci1*a[ijk-jj2] + ci2*a[ijk-jj1] + ci3*a[ijk    ])
-                              + cg1*(ci0*a[ijk-jj2] + ci1*a[ijk-jj1] + ci2*a[ijk    ] + ci3*a[ijk+jj1])
-                              + cg2*(ci0*a[ijk-jj1] + ci1*a[ijk    ] + ci2*a[ijk+jj1] + ci3*a[ijk+jj2])
-                              + cg3*(ci0*a[ijk    ] + ci1*a[ijk+jj1] + ci2*a[ijk+jj2] + ci3*a[ijk+jj3]) ) * dyi, 2.)
+                  + std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-jj3] + ci1<TF>*a[ijk-jj2] + ci2<TF>*a[ijk-jj1] + ci3<TF>*a[ijk    ])
+                              + cg1<TF>*(ci0<TF>*a[ijk-jj2] + ci1<TF>*a[ijk-jj1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+jj1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-jj1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+jj1] + ci3<TF>*a[ijk+jj2])
+                              + cg3<TF>*(ci0<TF>*a[ijk    ] + ci1<TF>*a[ijk+jj1] + ci2<TF>*a[ijk+jj2] + ci3<TF>*a[ijk+jj3]) ) * dyi, 2.)
 
-                  + std::pow( ( cg0*(ci0*a[ijk-kk3] + ci1*a[ijk-kk2] + ci2*a[ijk-kk1] + ci3*a[ijk    ])
-                              + cg1*(ci0*a[ijk-kk2] + ci1*a[ijk-kk1] + ci2*a[ijk    ] + ci3*a[ijk+kk1])
-                              + cg2*(ci0*a[ijk-kk1] + ci1*a[ijk    ] + ci2*a[ijk+kk1] + ci3*a[ijk+kk2])
-                              + cg3*(ti0*a[ijk-kk1] + ti1*a[ijk    ] + ti2*a[ijk+kk1] + ti3*a[ijk+kk2]) ) * dzi4[kend-1], 2.) );
+                  + std::pow( ( cg0<TF>*(ci0<TF>*a[ijk-kk3] + ci1<TF>*a[ijk-kk2] + ci2<TF>*a[ijk-kk1] + ci3<TF>*a[ijk    ])
+                              + cg1<TF>*(ci0<TF>*a[ijk-kk2] + ci1<TF>*a[ijk-kk1] + ci2<TF>*a[ijk    ] + ci3<TF>*a[ijk+kk1])
+                              + cg2<TF>*(ci0<TF>*a[ijk-kk1] + ci1<TF>*a[ijk    ] + ci2<TF>*a[ijk+kk1] + ci3<TF>*a[ijk+kk2])
+                              + cg3<TF>*(ti0<TF>*a[ijk-kk1] + ti1<TF>*a[ijk    ] + ti2<TF>*a[ijk+kk1] + ti3<TF>*a[ijk+kk2]) ) * dzi4[kend-1], 2.) );
             }
 
     }

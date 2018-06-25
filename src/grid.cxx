@@ -285,11 +285,11 @@ void Grid<TF>::calculate()
 
         gd.zh[gd.kstart] = 0.;
         for (int k=gd.kstart+1; k<gd.kend; ++k)
-            gd.zh[k] = ci0*gd.z[k-2] + ci1*gd.z[k-1] + ci2*gd.z[k] + ci3*gd.z[k+1];
+            gd.zh[k] = ci0<TF>*gd.z[k-2] + ci1<TF>*gd.z[k-1] + ci2<TF>*gd.z[k] + ci3<TF>*gd.z[k+1];
         gd.zh[gd.kend] = gd.zsize;
 
-        gd.zh[gd.kstart-1] = bi0*gd.z[gd.kstart-2] + bi1*gd.z[gd.kstart-1] + bi2*gd.z[gd.kstart] + bi3*gd.z[gd.kstart+1];
-        gd.zh[gd.kend+1]   = ti0*gd.z[gd.kend-2  ] + ti1*gd.z[gd.kend-1  ] + ti2*gd.z[gd.kend  ] + ti3*gd.z[gd.kend+1  ];
+        gd.zh[gd.kstart-1] = bi0<TF>*gd.z[gd.kstart-2] + bi1<TF>*gd.z[gd.kstart-1] + bi2<TF>*gd.z[gd.kstart] + bi3<TF>*gd.z[gd.kstart+1];
+        gd.zh[gd.kend+1]   = ti0<TF>*gd.z[gd.kend-2  ] + ti1<TF>*gd.z[gd.kend-1  ] + ti2<TF>*gd.z[gd.kend  ] + ti3<TF>*gd.z[gd.kend+1  ];
 
         // calculate the half levels according to the numerical scheme
         // compute the height of the grid cells
@@ -315,21 +315,21 @@ void Grid<TF>::calculate()
         // calculate the fourth order gradients
         for (int k=gd.kstart; k<gd.kend; ++k)
         {
-            gd.dzi4 [k] = 1./(cg0*gd.zh[k-1] + cg1*gd.zh[k  ] + cg2*gd.zh[k+1] + cg3*gd.zh[k+2]);
-            gd.dzhi4[k] = 1./(cg0*gd.z [k-2] + cg1*gd.z [k-1] + cg2*gd.z [k  ] + cg3*gd.z [k+1]);
+            gd.dzi4 [k] = 1./(cg0<TF>*gd.zh[k-1] + cg1<TF>*gd.zh[k  ] + cg2<TF>*gd.zh[k+1] + cg3<TF>*gd.zh[k+2]);
+            gd.dzhi4[k] = 1./(cg0<TF>*gd.z [k-2] + cg1<TF>*gd.z [k-1] + cg2<TF>*gd.z [k  ] + cg3<TF>*gd.z [k+1]);
         }
-        gd.dzhi4[gd.kend] = 1./(cg0*gd.z[gd.kend-2] + cg1*gd.z[gd.kend-1] + cg2*gd.z[gd.kend] + cg3*gd.z[gd.kend+1]);
+        gd.dzhi4[gd.kend] = 1./(cg0<TF>*gd.z[gd.kend-2] + cg1<TF>*gd.z[gd.kend-1] + cg2<TF>*gd.z[gd.kend] + cg3<TF>*gd.z[gd.kend+1]);
 
         // bc's
-        gd.dzi4 [gd.kstart-1] = 1./(bg0*gd.zh[gd.kstart-1] + bg1*gd.zh[gd.kstart  ] + bg2*gd.zh[gd.kstart+1] + bg3*gd.zh[gd.kstart+2]);
-        gd.dzhi4[gd.kstart-1] = 1./(bg0*gd.z [gd.kstart-2] + bg1*gd.z [gd.kstart-1] + bg2*gd.z [gd.kstart  ] + bg3*gd.z [gd.kstart+1]);
+        gd.dzi4 [gd.kstart-1] = 1./(bg0<TF>*gd.zh[gd.kstart-1] + bg1<TF>*gd.zh[gd.kstart  ] + bg2<TF>*gd.zh[gd.kstart+1] + bg3<TF>*gd.zh[gd.kstart+2]);
+        gd.dzhi4[gd.kstart-1] = 1./(bg0<TF>*gd.z [gd.kstart-2] + bg1<TF>*gd.z [gd.kstart-1] + bg2<TF>*gd.z [gd.kstart  ] + bg3<TF>*gd.z [gd.kstart+1]);
 
-        gd.dzi4 [gd.kend  ] = 1./(tg0*gd.zh[gd.kend-2] + tg1*gd.zh[gd.kend-1] + tg2*gd.zh[gd.kend] + tg3*gd.zh[gd.kend+1]);
-        gd.dzhi4[gd.kend+1] = 1./(tg0*gd.z [gd.kend-2] + tg1*gd.z [gd.kend-1] + tg2*gd.z [gd.kend] + tg3*gd.z [gd.kend+1]);
+        gd.dzi4 [gd.kend  ] = 1./(tg0<TF>*gd.zh[gd.kend-2] + tg1<TF>*gd.zh[gd.kend-1] + tg2<TF>*gd.zh[gd.kend] + tg3<TF>*gd.zh[gd.kend+1]);
+        gd.dzhi4[gd.kend+1] = 1./(tg0<TF>*gd.z [gd.kend-2] + tg1<TF>*gd.z [gd.kend-1] + tg2<TF>*gd.z [gd.kend] + tg3<TF>*gd.z [gd.kend+1]);
 
         // Define gradients at the boundary for the divgrad calculations.
-        gd.dzhi4bot = 1./(bg0*gd.z[gd.kstart-1] + bg1*gd.z[gd.kstart] + bg2*gd.z[gd.kstart+1] + bg3*gd.z[gd.kstart+2]);
-        gd.dzhi4top = 1./(tg0*gd.z[gd.kend-3  ] + tg1*gd.z[gd.kend-2] + tg2*gd.z[gd.kend-1  ] + tg3*gd.z[gd.kend    ]);
+        gd.dzhi4bot = 1./(bg0<TF>*gd.z[gd.kstart-1] + bg1<TF>*gd.z[gd.kstart] + bg2<TF>*gd.z[gd.kstart+1] + bg3<TF>*gd.z[gd.kstart+2]);
+        gd.dzhi4top = 1./(tg0<TF>*gd.z[gd.kend-3  ] + tg1<TF>*gd.z[gd.kend-2] + tg2<TF>*gd.z[gd.kend-1  ] + tg3<TF>*gd.z[gd.kend    ]);
 
         // Initialize the unused values at a huge value to allow for easier error tracing.
         gd.dzi4[gd.kstart-2] = Constants::dhuge;
@@ -497,10 +497,10 @@ void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const in
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
-                         + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
-                         + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
-                         + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
+                out[ijk] = ci0<TF>*(ci0<TF>*in[ijk-iih1-jjh1] + ci1<TF>*in[ijk-jjh1] + ci2<TF>*in[ijk+iih1-jjh1] + ci3<TF>*in[ijk+iih2-jjh1])
+                         + ci1<TF>*(ci0<TF>*in[ijk-iih1     ] + ci1<TF>*in[ijk     ] + ci2<TF>*in[ijk+iih1     ] + ci3<TF>*in[ijk+iih2     ])
+                         + ci2<TF>*(ci0<TF>*in[ijk-iih1+jjh1] + ci1<TF>*in[ijk+jjh1] + ci2<TF>*in[ijk+iih1+jjh1] + ci3<TF>*in[ijk+iih2+jjh1])
+                         + ci3<TF>*(ci0<TF>*in[ijk-iih1+jjh2] + ci1<TF>*in[ijk+jjh2] + ci2<TF>*in[ijk+iih1+jjh2] + ci3<TF>*in[ijk+iih2+jjh2]);
             }
 }
 

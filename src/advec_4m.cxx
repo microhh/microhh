@@ -75,9 +75,9 @@ namespace
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     // CvH all constants are still DP, this needs to change. The static_cast is to make it work for testing.
-                    cfl = std::max(cfl, static_cast<TF>(std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi 
-                                      + std::abs(ci0*v[ijk-jj1] + ci1*v[ijk] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2])*dyi 
-                                      + std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k]) );
+                    cfl = std::max(cfl, static_cast<TF>(std::abs(ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2])*dxi 
+                                      + std::abs(ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2])*dyi 
+                                      + std::abs(ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2])*dzi[k]) );
                 }
 
         master.max(&cfl, 1);
