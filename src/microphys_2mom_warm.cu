@@ -37,7 +37,7 @@ using namespace Thermo_moist_functions;
 using namespace Micro_2mom_warm_constants;
 using namespace Micro_2mom_warm_functions;
 
-namespace
+namespace micro
 {
     template<typename TF> __global__
     void remove_negative_values_g(TF* __restrict__ field,
@@ -218,9 +218,96 @@ namespace
             }
         }
     }
+}
 
+namespace sedimentation
+{
+    // Sedimentation from Stevens and Seifert (2008)
+    template<typename TF> __global__
+    void calc_velocity_g(TF* const __restrict__ w_qr, TF* const __restrict__ w_nr,
+                         const TF* const __restrict__ qr, const TF* const __restrict__ nr,
+                         const TF* const __restrict__ rho,
+                         const int istart, const int jstart, const int kstart,
+                         const int iend,   const int jend,   const int kend,
+                         const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
+        const TF w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const TF a_R   = 9.65;   // SB06, p51
+        const TF c_R   = 600;    // SB06, p51
+        const TF Dv    = 25.0e-6;
+        const TF b_R   = a_R * exp(c_R*Dv); // UCLA-LES
 
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+
+            if (qr[ijk] > qr_min<TF>)
+            {
+                // SS08:
+                const TF rho_n   = pow(TF(1.2) / rho[k], TF(0.5));
+                const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                const TF dr      = calc_rain_diameter(mr);
+                const TF mu_r    = calc_mu_r(dr);
+                const TF lambdar = calc_lambda_r(mu_r, dr);
+
+                w_qr[ijk] = fmin(w_max, fmax(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mu_r+TF(4.))))));
+                w_nr[ijk] = fmin(w_max, fmax(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambdar, TF(-1.)*(mu_r+TF(1.))))));
+            }
+            else
+            {
+                w_qr[ijk] = TF(0.);
+                w_nr[ijk] = TF(0.);
+            }
+        }
+    }
+
+    template<typename TF> __global__
+    void set_bc_g(TF* __restrict__ w_qr, TF* __restrict__ w_nr,
+                  const int istart, const int jstart, const int kstart,
+                  const int iend,   const int jend,   const int kend,
+                  const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ijkb = i + j*icells + kstart*ijcells;
+            const int ijkt = i + j*icells + kend  *ijcells;
+            const int kk = ijcells;
+
+            // Constant fall speed from lowest grid point to surface (?)
+            w_qr[ijkb-kk] = w_qr[ijkb];
+            w_nr[ijkb-kk] = w_nr[ijkb];
+
+            // Zero velocity in top ghost cell
+            w_qr[ijkt] = TF(0.);
+            w_nr[ijkt] = TF(0.);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_cfl_g(TF* const __restrict__ cfl, const TF* const __restrict__ w,
+                    const TF* const __restrict__ dzi, const TF dt,
+                    const int istart, const int jstart, const int kstart,
+                    const int iend,   const int jend,   const int kend,
+                    const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+        const int kk = ijcells;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            cfl[ijk] = TF(0.25) * (w[ijk-kk] + w[ijk] + w[ijk] + w[ijk+kk]) * dzi[k] * dt;
+        }
+    }
 
 
 
@@ -240,12 +327,16 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
+    dim3 grid2dGPU (gridi, gridj);
+    dim3 block2dGPU(blocki, blockj);
+
+
     // Remove negative values from the qr and nr fields
-    remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("qr")->fld_g,
+    micro::remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("qr")->fld_g,
         gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     cuda_check_error();
 
-    remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("nr")->fld_g,
+    micro::remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("nr")->fld_g,
         gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -262,7 +353,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     // ---------------------------------
     
     // Autoconversion; formation of rain drop by coagulating cloud droplets
-    autoconversion_g<<<gridGPU, blockGPU>>>(
+    micro::autoconversion_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,
         fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner,
@@ -271,7 +362,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.icells, gd.ijcells);
 
     // Accretion; growth of raindrops collecting cloud droplets
-    accretion_g<<<gridGPU, blockGPU>>>(
+    micro::accretion_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner,
         gd.istart, gd.jstart, gd.kstart,
@@ -279,7 +370,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.icells, gd.ijcells);
 
     // Evaporation; evaporation of rain drops in unsaturated environment
-    evaporation_g<<<gridGPU, blockGPU>>>(
+    micro::evaporation_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,  fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g,  ql->fld_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("thl")->fld_g, fields.rhoref_g, exner, p,
@@ -287,15 +378,61 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
 
+    fields.release_tmp_g(ql);
+
     // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
-    selfcollection_breakup_g<<<gridGPU, blockGPU>>>(
+    micro::selfcollection_breakup_g<<<gridGPU, blockGPU>>>(
         fields.st.at("nr")->fld_g, fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
 
+    // Sedimentation; sub-grid sedimentation of rain
+    // ---------------------------------------------
+    // 1. Calculate sedimentation velocity of qr
+    auto w_qr = fields.get_tmp_g();
+    auto w_nr = fields.get_tmp_g();
 
-    fields.release_tmp_g(ql);
+    sedimentation::calc_velocity_g<<<gridGPU, blockGPU>>>(
+        w_qr->fld_g, w_nr->fld_g,
+        fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
+    // 2. Set the top and bottom velocity ghost cells
+    sedimentation::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+        w_qr->fld_g, w_nr->fld_g,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
+    // 3. Calculate CFL numbers for qr and nr
+    auto cfl_qr = fields.get_tmp_g();
+
+    sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
+        cfl_qr->fld_g, w_qr->fld_g, gd.dzi_g, TF(dt),
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
+    fields.release_tmp_g(w_qr);    
+    auto cfl_nr = fields.get_tmp_g();
+
+    sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
+        cfl_nr->fld_g, w_nr->fld_g, gd.dzi_g, TF(dt),
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
+    fields.release_tmp_g(w_nr);    
+
+
+
+
+
+    fields.release_tmp_g(cfl_qr);
+    fields.release_tmp_g(cfl_nr);
 }
 #endif
 
