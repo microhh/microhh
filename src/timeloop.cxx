@@ -222,8 +222,8 @@ namespace
              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
              const int jj, const int kk)
     {
-        const TF cA [] = {0., -5./9., -153./128.};
-        const TF cB [] = {1./3., 15./16., 8./15.};
+        constexpr TF cA [] = {0., -5./9., -153./128.};
+        constexpr TF cB [] = {1./3., 15./16., 8./15.};
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -252,14 +252,14 @@ namespace
              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
              const int jj, const int kk)
     {
-        const TF cA [] = {
+        constexpr TF cA [] = {
             0.,
             - 567301805773./1357537059087.,
             -2404267990393./2016746695238.,
             -3550918686646./2091501179385.,
             -1275806237668./ 842570457699.};
 
-        const TF cB [] = {
+        constexpr TF cB [] = {
             1432997174477./ 9575080441755.,
             5161836677717./13612068292357.,
             1720146321549./ 2090206949498.,
@@ -288,15 +288,17 @@ namespace
                 }
     }
 
-    inline double rk3subdt(const double dt, const int substep)
+    template<typename TF>
+    inline TF rk3subdt(const TF dt, const int substep)
     {
-        const double cB [] = {1./3., 15./16., 8./15.};
+        constexpr TF cB [] = {1./3., 15./16., 8./15.};
         return cB[substep]*dt;
     }
 
-    inline double rk4subdt(const double dt, const int substep)
+    template<typename TF>
+    inline TF rk4subdt(const TF dt, const int substep)
     {
-        const double cB [] = {
+        constexpr TF cB [] = {
             1432997174477./ 9575080441755.,
             5161836677717./13612068292357.,
             1720146321549./ 2090206949498.,

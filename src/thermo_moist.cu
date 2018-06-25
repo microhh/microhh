@@ -54,7 +54,7 @@ namespace
             ++niter;
             tnr_old = tnr;
             qs = qsat(p,tnr);
-            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,2)*qs)/ (Rv<TF>*cp<TF>*pow(tnr,2)));
+            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,TF(2))*qs)/ (Rv<TF>*cp<TF>*pow(tnr,TF(2))));
         }
         ql = fmax(0.,qt-qs);
         return ql;
@@ -194,14 +194,14 @@ namespace
 
     // BvS: no longer used, base state is calculated at the host
     template <typename TF> __global__
-    void calc_base_state(TF* __restrict__ pref,     TF* __restrict__ prefh,
-                         TF* __restrict__ rho,      TF* __restrict__ rhoh,
-                         TF* __restrict__ thv,      TF* __restrict__ thvh,
-                         TF* __restrict__ ex,       TF* __restrict__ exh,
-                         TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
-                         TF* __restrict__ z,        TF* __restrict__ dz,
-                         TF* __restrict__ dzh,
-                         TF pbot, int kstart, int kend)
+    void calc_base_state_g(TF* __restrict__ pref,     TF* __restrict__ prefh,
+                           TF* __restrict__ rho,      TF* __restrict__ rhoh,
+                           TF* __restrict__ thv,      TF* __restrict__ thvh,
+                           TF* __restrict__ ex,       TF* __restrict__ exh,
+                           TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
+                           TF* __restrict__ z,        TF* __restrict__ dz,
+                           TF* __restrict__ dzh,
+                           TF pbot, int kstart, int kend)
     {
         TF ql, si, qti, qli;
         TF rdcp = Rd<TF>/cp<TF>;
@@ -251,12 +251,12 @@ namespace
 
     // BvS: no longer used, base state is calculated at the host
     template <typename TF> __global__
-    void calc_hydrostatic_pressure(TF* __restrict__ pref,     TF* __restrict__ prefh,
-                                   TF* __restrict__ ex,       TF* __restrict__ exh,
-                                   TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
-                                   const TF* const __restrict__ z,        const TF* const __restrict__ dz,
-                                   const TF* const __restrict__ dzh,
-                                   const TF pbot, int kstart, int kend)
+    void calc_hydrostatic_pressure_g(TF* __restrict__ pref,     TF* __restrict__ prefh,
+                                     TF* __restrict__ ex,       TF* __restrict__ exh,
+                                     TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
+                                     const TF* const __restrict__ z,        const TF* const __restrict__ dz,
+                                     const TF* const __restrict__ dzh,
+                                     const TF pbot, int kstart, int kend)
     {
         TF ql, si, qti, qli, thvh, thv;
         TF rdcp = Rd<TF>/cp<TF>;
@@ -376,25 +376,28 @@ void Thermo_moist<TF>::exec(const double dt)
     // Re-calculate hydrostatic pressure and exner
     if (bs.swupdatebasestate)
     {
-        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        cuda_check_error();
+        //calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+        //                                        fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+        //                                        gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        //cuda_check_error();
 
-        /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+        // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
-        int kcells = gd.kcells;
-        TF *tmp2 = fields->atmp["tmp2"]->data;
-        calc_base_state(bs.pref, bs.prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], bs.exnref, bs.exnrefh,
-                fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+        auto tmp = fields.get_tmp();
+
+        calc_base_state(bs.pref.data(), bs.prefh.data(),
+                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+
+        fields.release_tmp(tmp);
 
         // Only half level pressure and bs.exner needed for BuoyancyTend()
-        cudaMemcpy(bs.prefh_g,   bs.prefh,   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh, gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        */
+        cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
@@ -427,25 +430,28 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
     if (bs.swupdatebasestate && (name == "b" || name == "ql"))
     {
-        calc_hydrostatic_pressure<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
-                                                fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
-                                                gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
-        cuda_check_error();
+        //calc_hydrostatic_pressure_g<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
+        //                                          fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
+        //                                          gd.z_g, gd.dz_g, gd.dzh_g, bs.pbot, gd.kstart, gd.kend);
+        //cuda_check_error();
 
-        /* BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+        // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields->sp["thl"]->datamean, fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields->sp["qt"]->datamean,  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
-        int kcells = gd.kcells;
-        TF *tmp2 = fields->atmp["tmp2"]->data;
-        calc_base_state(bs.pref, bs.prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], bs.exnref, bs.exnrefh,
-                fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+        auto tmp = fields.get_tmp();
 
-        // Only full level pressure and exner needed
-        cudaMemcpy(bs.pref_g,   bs.pref,   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnref_g, bs.exnref, gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        */
+        calc_base_state(bs.pref.data(), bs.prefh.data(),
+                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+
+        fields.release_tmp(tmp);
+
+        // Only full level pressure and bs.exner needed for calculating buoyancy of ql
+        cudaMemcpy(bs.pref_g,   bs.pref.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnref_g, bs.exnref.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
     if (name == "b")

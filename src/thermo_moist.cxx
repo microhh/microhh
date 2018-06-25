@@ -50,100 +50,6 @@ using namespace Thermo_moist_functions;
 
 namespace
 {
-    template<typename TF>
-    struct Struct_sat_adjust
-    {
-        TF ql;
-        TF t;
-        TF qs;
-    };
-
-    template<typename TF>
-    inline Struct_sat_adjust<TF> sat_adjust(const TF thl, const TF qt, const TF p, const TF exn)
-    {
-        int niter = 0;
-        int nitermax = 30;
-        TF ql, tl, tnr_old = 1.e9, tnr, qs=0;
-        tl = thl * exn;
-        Struct_sat_adjust<TF> ans;
-
-        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        ans.ql = 0;
-        ans.t = tl;
-        ans.qs = qsat(p, tl);
-        if(qt-ans.qs <= 0)
-            return ans;
-
-        tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
-        {
-            ++niter;
-            tnr_old = tnr;
-            qs = qsat(p, tnr);
-            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(std::pow(Lv<TF>, 2)*qs)/ (Rv<TF>*cp<TF>*std::pow(tnr, 2)));
-        }
-
-        if (niter == nitermax)
-            throw std::runtime_error("Non-converging saturation adjustment.");
-
-        ql = std::max(TF(0.), qt - qs);
-
-        ans.ql = ql;
-        ans.t  = tnr;
-        ans.qs = qs;
-        return ans;
-    }
-
-    template<typename TF>
-    void  calc_base_state(TF* restrict pref,    TF* restrict prefh,
-                          TF* restrict rho,     TF* restrict rhoh,
-                          TF* restrict thv,     TF* restrict thvh,
-                          TF* restrict ex,      TF* restrict exh,
-                          TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
-                          const int kstart, const int kend,
-                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
-    {
-        const TF thlsurf = interp2(thlmean[kstart-1], thlmean[kstart]);
-        const TF qtsurf  = interp2(qtmean[kstart-1],  qtmean[kstart]);
-
-        TF ql;
-
-        // Calculate the values at the surface (half level == kstart)
-        prefh[kstart] = pbot;
-        exh[kstart]   = exner(prefh[kstart]);
-        ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
-        thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
-        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
-
-        // Calculate the first full level pressure
-        pref[kstart]  = prefh[kstart] * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
-
-        for (int k=kstart+1; k<kend+1; ++k)
-        {
-            // 1. Calculate remaining values (thv and rho) at full-level[k-1]
-            ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]).ql;
-            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
-            rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
-
-            // 2. Calculate pressure at half-level[k]
-            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
-            exh[k]   = exner(prefh[k]);
-
-            // 3. Use interpolated conserved quantities to calculate half-level[k] values
-            const TF thli = interp2(thlmean[k-1], thlmean[k]);
-            const TF qti  = interp2(qtmean [k-1], qtmean [k]);
-            const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
-
-            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
-            rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
-
-            // 4. Calculate pressure at full-level[k]
-            pref[k] = pref[k-1] * std::exp(-grav<TF> * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
-        }
-
-        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
-   }
 
    template<typename TF>
    void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0,
@@ -520,8 +426,8 @@ namespace
                    const int ijk = i + j*jj + k*kk1;
                    const int ij  = i + j*jj;
 
-                   thlh[ij]    = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                   qth[ij]     = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+                   thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+                   qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
                    const TF tl = thlh[ij] * exnh;
 
                    // Calculate first estimate of ql using Tl
@@ -624,8 +530,6 @@ void Thermo_moist<TF>::init()
 template<typename TF>
 void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
-
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields

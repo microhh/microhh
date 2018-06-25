@@ -206,34 +206,34 @@ void Pres_4<TF>::set_values()
     k  = 0;
     kc = kstart+k;
     m1[k] = 0.;
-    m2[k] = (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-    m3[k] = ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
-    m4[k] = ( 27.*dzhi4[kc+1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-    m5[k] = (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
-    m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
-    m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
+    m2[k] = (1./576.) * (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
+    m3[k] = (1./576.) * ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
+    m4[k] = (1./576.) * ( 27.*dzhi4[kc+1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
+    m5[k] = (1./576.) * (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
+    m6[k] = (1./576.) * (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
+    m7[k] = (1./576.) * (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
 
     for (int k=1; k<kmax-1; k++)
     {
         kc = kstart+k;
-        m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
-        m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-        m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
-        m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-        m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
-        m6[k] = (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
-        m7[k] = (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
+        m1[k] = (1./576.) * (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
+        m2[k] = (1./576.) * ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
+        m3[k] = (1./576.) * (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
+        m4[k] = (1./576.) * (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
+        m5[k] = (1./576.) * (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
+        m6[k] = (1./576.) * (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
+        m7[k] = (1./576.) * (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
     }                                                                                                                                       
 
     // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
     k  = kmax-1;
     kc = kstart+k;
-    m1[k] = (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
-    m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
-    m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
-    m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] + 27.*dzhi4[kc] ) * dzi4[kc];
-    m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
-    m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
+    m1[k] = (1./576.) * (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
+    m2[k] = (1./576.) * ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
+    m3[k] = (1./576.) * (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
+    m4[k] = (1./576.) * (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] + 27.*dzhi4[kc] ) * dzi4[kc];
+    m5[k] = (1./576.) * (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
+    m6[k] = (1./576.) * (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
     m7[k] = 0.;
 }
 
@@ -295,10 +295,10 @@ void Pres_4<TF>::input(
             {
                 const int ijkp = i + j*jjp + k*kkp;
                 const int ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-                p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi;
+                p[ijkp]  = (cg0<TF>*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1<TF>*(ut[ijk] + u[ijk]*dti) + cg2<TF>*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3<TF>*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * dxi;
                 if (dim3)
-                    p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi;
-                p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
+                    p[ijkp] += (cg0<TF>*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1<TF>*(vt[ijk] + v[ijk]*dti) + cg2<TF>*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3<TF>*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * dyi;
+                p[ijkp] += (cg0<TF>*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1<TF>*(wt[ijk] + w[ijk]*dti) + cg2<TF>*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3<TF>*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
             }
 }
 
@@ -538,9 +538,9 @@ void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt,
         for (int i=gd.istart; i<gd.iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
-            ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+            ut[ijk] -= (cg0<TF>*p[ijk-ii2] + cg1<TF>*p[ijk-ii1] + cg2<TF>*p[ijk] + cg3<TF>*p[ijk+ii1]) * dxi;
             if (dim3)
-                vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+                vt[ijk] -= (cg0<TF>*p[ijk-jj2] + cg1<TF>*p[ijk-jj1] + cg2<TF>*p[ijk] + cg3<TF>*p[ijk+jj1]) * dyi;
         }
 
     for (int k=gd.kstart+1; k<gd.kend; k++)
@@ -549,10 +549,10 @@ void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt,
             for (int i=gd.istart; i<gd.iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+                ut[ijk] -= (cg0<TF>*p[ijk-ii2] + cg1<TF>*p[ijk-ii1] + cg2<TF>*p[ijk] + cg3<TF>*p[ijk+ii1]) * dxi;
                 if (dim3)
-                    vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
-                wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
+                    vt[ijk] -= (cg0<TF>*p[ijk-jj2] + cg1<TF>*p[ijk-jj1] + cg2<TF>*p[ijk] + cg3<TF>*p[ijk+jj1]) * dyi;
+                wt[ijk] -= (cg0<TF>*p[ijk-kk2] + cg1<TF>*p[ijk-kk1] + cg2<TF>*p[ijk] + cg3<TF>*p[ijk+kk1]) * dzhi4[k];
             }
 }
 
@@ -740,9 +740,9 @@ TF Pres_4<TF>::calc_divergence(
             for (int i=gd.istart; i<gd.iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
-                    + (cg0*v[ijk-jj1] + cg1*v[ijk] + cg2*v[ijk+jj1] + cg3*v[ijk+jj2]) * cgi*dyi
-                    + (cg0*w[ijk-kk1] + cg1*w[ijk] + cg2*w[ijk+kk1] + cg3*w[ijk+kk2]) * dzi4[k];
+                div = (cg0<TF>*u[ijk-ii1] + cg1<TF>*u[ijk] + cg2<TF>*u[ijk+ii1] + cg3<TF>*u[ijk+ii2]) * dxi
+                    + (cg0<TF>*v[ijk-jj1] + cg1<TF>*v[ijk] + cg2<TF>*v[ijk+jj1] + cg3<TF>*v[ijk+jj2]) * dyi
+                    + (cg0<TF>*w[ijk-kk1] + cg1<TF>*w[ijk] + cg2<TF>*w[ijk+kk1] + cg3<TF>*w[ijk+kk2]) * dzi4[k];
 
                 divmax = std::max(divmax, std::abs(div));
             }

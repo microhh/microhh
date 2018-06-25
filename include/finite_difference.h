@@ -36,17 +36,17 @@ namespace Finite_difference
         template<typename TF>
         CUDA_MACRO inline TF interp2(const TF a, const TF b)
         {
-            return 0.5 * (a + b);
+            return TF(0.5) * (a + b);
         }
 
         template<typename TF>
         CUDA_MACRO inline TF interp22(const TF a, const TF b, const TF c, const TF d)
         {
-            return 0.25 * (a + b + c + d);
+            return TF(0.25) * (a + b + c + d);
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF grad2x(const TF a, const TF b)
+        CUDA_MACRO inline TF grad2(const TF a, const TF b)
         {
             return (b - a);
         }
@@ -54,73 +54,63 @@ namespace Finite_difference
 
     namespace O4
     {
-        // 4th order interpolation
-        const double ci0  = -1./16.;
-        const double ci1  =  9./16.;
-        const double ci2  =  9./16.;
-        const double ci3  = -1./16.;
+        template <typename TF> constexpr TF ci0  = -1./16.;
+        template <typename TF> constexpr TF ci1  =  9./16.;
+        template <typename TF> constexpr TF ci2  =  9./16.;
+        template <typename TF> constexpr TF ci3  = -1./16.;
 
-        const double bi0  =  5./16.;
-        const double bi1  = 15./16.;
-        const double bi2  = -5./16.;
-        const double bi3  =  1./16.;
+        template <typename TF> constexpr TF bi0  =  5./16.;
+        template <typename TF> constexpr TF bi1  = 15./16.;
+        template <typename TF> constexpr TF bi2  = -5./16.;
+        template <typename TF> constexpr TF bi3  =  1./16.;
 
-        const double ti0  =  1./16.;
-        const double ti1  = -5./16.;
-        const double ti2  = 15./16.;
-        const double ti3  =  5./16.;
+        template <typename TF> constexpr TF ti0  =  1./16.;
+        template <typename TF> constexpr TF ti1  = -5./16.;
+        template <typename TF> constexpr TF ti2  = 15./16.;
+        template <typename TF> constexpr TF ti3  =  5./16.;
 
-        // 4th order gradient
-        const double cg0  =   1.;
-        const double cg1  = -27.;
-        const double cg2  =  27.;
-        const double cg3  =  -1.;
-        const double cgi  =   1./24.;
+        template <typename TF> constexpr TF cg0  =   1./24.;
+        template <typename TF> constexpr TF cg1  = -27./24.;
+        template <typename TF> constexpr TF cg2  =  27./24.;
+        template <typename TF> constexpr TF cg3  =  -1./24.;
 
-        const double bg0  = -23.;
-        const double bg1  =  21.;
-        const double bg2  =   3.;
-        const double bg3  =  -1.;
+        template <typename TF> constexpr TF bg0  = -23./24.;
+        template <typename TF> constexpr TF bg1  =  21./24.;
+        template <typename TF> constexpr TF bg2  =   3./24.;
+        template <typename TF> constexpr TF bg3  =  -1./24.;
 
-        const double tg0  =   1.;
-        const double tg1  =  -3.;
-        const double tg2  = -21.;
-        const double tg3  =  23.;
+        template <typename TF> constexpr TF tg0  =   1./24.;
+        template <typename TF> constexpr TF tg1  =  -3./24.;
+        template <typename TF> constexpr TF tg2  = -21./24.;
+        template <typename TF> constexpr TF tg3  =  23./24.;
 
-        //// 4th order divgrad
-        const double cdg0 = -1460./576.;
-        const double cdg1 =   783./576.;
-        const double cdg2 =   -54./576.;
-        const double cdg3 =     1./576.;
+        template <typename TF> constexpr TF cdg0 = -1460./576.;
+        template <typename TF> constexpr TF cdg1 =   783./576.;
+        template <typename TF> constexpr TF cdg2 =   -54./576.;
+        template <typename TF> constexpr TF cdg3 =     1./576.;
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4c(const TF a, const TF b, const TF c, const TF d)
         {
-            return ci0*a + ci1*b + ci2*c + ci3*d;
+            return ci0<TF>*(a+d) + ci1<TF>*(b+c);
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4bot(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4b(const TF a, const TF b, const TF c, const TF d)
         {
-            return bi0*a + bi1*b - bi2*c + bi3*d;
+            return bi0<TF>*a + bi1<TF>*b - bi2<TF>*c + bi3<TF>*d;
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4top(const TF a, const TF b, const TF c, const TF d)
+        CUDA_MACRO inline TF interp4t(const TF a, const TF b, const TF c, const TF d)
         {
-            return ti0*a + ti1*b + ti2*c + ti3*d;
+            return ti0<TF>*a + ti1<TF>*b + ti2<TF>*c + ti3<TF>*d;
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d, const TF dxi)
+        CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d)
         {
-            return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-        }
-
-        template<typename TF>
-        CUDA_MACRO inline TF grad4x(const TF a, const TF b, const TF c, const TF d)
-        {
-            return (-(d-a) + 27.*(c-b));
+            return ( - cg0<TF>*(d-a) - cg1<TF>*(c-b) );
         }
     }
 }

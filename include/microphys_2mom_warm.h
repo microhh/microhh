@@ -68,7 +68,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, const double);
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const double);
+        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, Thermo<TF>&, const double);
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long);
 

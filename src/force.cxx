@@ -107,10 +107,10 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1])
-                                      + ci1*(ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ])
-                                      + ci2*(ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1])
-                                      + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) )
+                    ut[ijk] += fc * ( ( ci0<TF>*(ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1])
+                                      + ci1<TF>*(ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ])
+                                      + ci2<TF>*(ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1])
+                                      + ci3<TF>*(ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) )
                                     + vgrid - vg[k] );
                 }
 
@@ -120,10 +120,10 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii1-jj2] + ci1*u[ijk-jj2] + ci2*u[ijk+ii1-jj2] + ci3*u[ijk+ii2-jj2])
-                                      + ci1*(ci0*u[ijk-ii1-jj1] + ci1*u[ijk-jj1] + ci2*u[ijk+ii1-jj1] + ci3*u[ijk+ii2-jj1])
-                                      + ci2*(ci0*u[ijk-ii1    ] + ci1*u[ijk    ] + ci2*u[ijk+ii1    ] + ci3*u[ijk+ii2    ])
-                                      + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) )
+                    vt[ijk] -= fc * ( ( ci0<TF>*(ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk+ii1-jj2] + ci3<TF>*u[ijk+ii2-jj2])
+                                      + ci1<TF>*(ci0<TF>*u[ijk-ii1-jj1] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk+ii1-jj1] + ci3<TF>*u[ijk+ii2-jj1])
+                                      + ci2<TF>*(ci0<TF>*u[ijk-ii1    ] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1    ] + ci3<TF>*u[ijk+ii2    ])
+                                      + ci3<TF>*(ci0<TF>*u[ijk-ii1+jj1] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+ii1+jj1] + ci3<TF>*u[ijk+ii2+jj1]) )
                                     + ugrid - ug[k]);
                 }
     }
