@@ -25,6 +25,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <mutex>
 #include "boundary_cyclic.h"
 #include "field3d.h"
 #include "field3d_io.h"
@@ -151,6 +152,8 @@ class Fields
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
+
+        std::mutex tmp_fld_mutex;
 
         // cross sections
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.

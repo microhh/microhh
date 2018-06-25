@@ -404,6 +404,7 @@ void Fields<TF>::check_added_cross(std::string var, std::string type, std::vecto
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 {
+    std::lock_guard<std::mutex> lock(tmp_fld_mutex);
     std::shared_ptr<Field3d<TF>> tmp;
 
     // In case of insufficient tmp fields, allocate a new one.
@@ -417,6 +418,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
         tmp = atmp.back();
 
     atmp.pop_back();
+
     return tmp;
 }
 
