@@ -329,56 +329,6 @@ namespace sedimentation
         }
     }
 
-    //template<typename TF> __global__
-    //void calc_flux_g(TF* const __restrict__ flux, const TF* const __restrict__ fld,
-    //                 const TF* const __restrict__ slope, const TF* const __restrict__ cfl, 
-    //                 const TF* const __restrict__ dz, const TF* const __restrict__ dzi,
-    //                 const TF* const __restrict__ rho,
-    //                 const TF dt,
-    //                 const int istart, const int jstart, const int kstart,
-    //                 const int iend,   const int jend,   const int kend,
-    //                 const int icells, const int ijcells)
-    //{
-    //    const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-    //    const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-    //    if (i < iend && j < jend)
-    //    {
-    //        for (int k=kend; k>kstart-1; k--)
-    //        {
-    //            const int ijk = i + j*icells + k*ijcells;
-
-    //            if (k == kend || cfl[ijk] < 1e-3)
-    //                flux[ijk] = TF(0.);
-    //            else
-    //            {
-    //                int kk;
-    //                TF ftot, dzz, cc;
-
-    //                kk    = k;      // current grid level
-    //                ftot  = TF(0);  // cumulative 'flux'
-    //                dzz   = TF(0);  // distance from zh[k]
-    //                cc    = fmin(TF(1), cfl[ijk]);
-    //                while (cc > 0 && kk < kend)
-    //                {
-    //                    const int ijk2 = i + j*icells + kk*ijcells;
-
-    //                    ftot  += rho[kk] * (fld[ijk2] + TF(0.5) * slope[ijk2] * (TF(1.)-cc)) * cc * dz[kk];
-
-    //                    dzz   += dz[kk];
-    //                    kk    += 1;
-    //                    cc     = std::min(TF(1.), cfl[ijk2] - dzz*dzi[kk]);
-    //                }
-
-    //                // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
-    //                ftot = fmin(ftot, rho[k] * dz[k] * fld[ijk] - flux[ijk+ijcells] * dt);
-    //                flux[ijk] = -ftot / dt;
-    //            }
-    //        }
-    //    }
-    //}
-
-    
     template<typename TF> __global__
     void calc_flux_g(TF* const __restrict__ flux, const TF* const __restrict__ fld,
                      const TF* const __restrict__ slope, const TF* const __restrict__ cfl, 
@@ -433,7 +383,7 @@ namespace sedimentation
 
         if (i < iend && j < jend)
         {
-            for (int k=kend; k>kstart-1; k--)
+            for (int k=kend-1; k>kstart-1; k--)
             {
                 const int ijk = i + j*icells + k*ijcells;
 
