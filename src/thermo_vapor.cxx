@@ -49,52 +49,7 @@ using namespace Constants;
 using namespace Thermo_moist_functions;
 
 namespace
-{    template<typename TF>
-    void  calc_base_state(TF* restrict pref,    TF* restrict prefh,
-                          TF* restrict rho,     TF* restrict rhoh,
-                          TF* restrict thv,     TF* restrict thvh,
-                          TF* restrict ex,      TF* restrict exh,
-                          TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
-                          const int kstart, const int kend,
-                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
-    {
-        const TF thlsurf = interp2(thlmean[kstart-1], thlmean[kstart]);
-        const TF qtsurf  = interp2(qtmean[kstart-1],  qtmean[kstart]);
-
-        // Calculate the values at the surface (half level == kstart)
-        prefh[kstart] = pbot;
-        exh[kstart]   = exner(prefh[kstart]);
-        thvh[kstart]  = virtual_temperature_no_ql(exh[kstart], thlsurf, qtsurf);
-        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
-
-        // Calculate the first full level pressure
-        pref[kstart]  = prefh[kstart] * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
-
-        for (int k=kstart+1; k<kend+1; ++k)
-        {
-            // 1. Calculate remaining values (thv and rho) at full-level[k-1]
-            ex[k-1]  = exner(pref[k-1]);
-            thv[k-1] = virtual_temperature_no_ql(ex[k-1], thlmean[k-1], qtmean[k-1]);
-            rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
-
-            // 2. Calculate pressure at half-level[k]
-            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
-            exh[k]   = exner(prefh[k]);
-
-            // 3. Use interpolated conserved quantities to calculate half-level[k] values
-            const TF thli = interp2(thlmean[k-1], thlmean[k]);
-            const TF qti  = interp2(qtmean [k-1], qtmean [k]);
-
-            thvh[k]  = virtual_temperature_no_ql(exh[k], thli, qti);
-            rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
-
-            // 4. Calculate pressure at full-level[k]
-            pref[k] = pref[k-1] * std::exp(-grav<TF> * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
-        }
-
-        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
-   }
-
+{
    template<typename TF>
    void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0,
                          const TF* const z, const TF* const zh,
@@ -431,7 +386,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(),
+    calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(),
                     bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
                     gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -476,7 +431,7 @@ void Thermo_vapor<TF>::exec(const double dt)
     // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref, thvref to prevent overwriting base state
     auto tmp = fields.get_tmp();
     if (bs.swupdatebasestate)
-        calc_base_state(bs.pref.data(), bs.prefh.data(),
+        calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(),
                         &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
                         bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
                         bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
@@ -551,7 +506,7 @@ void Thermo_vapor<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     if (bs.swupdatebasestate)
     {
         auto tmp = fields.get_tmp();
-        calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
+        calc_base_state_no_ql(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
                         &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(),
                         fields.sp.at("qt")->fld_mean.data(), base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
         fields.release_tmp(tmp);

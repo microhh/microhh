@@ -50,7 +50,7 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
-    CUDA_MACRO inline TF virtual_temperature_no_ql(const TF exn, const TF thl, const TF qt)
+    CUDA_MACRO inline TF virtual_temperature_no_ql(const TF thl, const TF qt)
     {
         return thl * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt);
     }
@@ -191,6 +191,52 @@ namespace Thermo_moist_functions
             const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
 
             thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
+            rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
+
+            // 4. Calculate pressure at full-level[k]
+            pref[k] = pref[k-1] * std::exp(-grav<TF> * dzh[k] / (Rd<TF> * exh[k] * thvh[k]));
+        }
+
+        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
+    }
+    
+    template<typename TF>
+    void  calc_base_state_no_ql(TF* restrict pref,    TF* restrict prefh,
+                          TF* restrict rho,     TF* restrict rhoh,
+                          TF* restrict thv,     TF* restrict thvh,
+                          TF* restrict ex,      TF* restrict exh,
+                          TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
+                          const int kstart, const int kend,
+                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
+    {
+        const TF thlsurf = TF(0.5)*(thlmean[kstart-1 ]+ thlmean[kstart]);
+        const TF qtsurf  = TF(0.5)*(qtmean[kstart-1] +  qtmean[kstart]);
+
+        // Calculate the values at the surface (half level == kstart)
+        prefh[kstart] = pbot;
+        exh[kstart]   = exner(prefh[kstart]);
+        thvh[kstart]  = virtual_temperature_no_ql(thlsurf, qtsurf);
+        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
+
+        // Calculate the first full level pressure
+        pref[kstart]  = prefh[kstart] * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
+
+        for (int k=kstart+1; k<kend+1; ++k)
+        {
+            // 1. Calculate remaining values (thv and rho) at full-level[k-1]
+            ex[k-1]  = exner(pref[k-1]);
+            thv[k-1] = virtual_temperature_no_ql(thlmean[k-1], qtmean[k-1]);
+            rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
+
+            // 2. Calculate pressure at half-level[k]
+            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]));
+            exh[k]   = exner(prefh[k]);
+
+            // 3. Use interpolated conserved quantities to calculate half-level[k] values
+            const TF thli = TF(0.5)*(thlmean[k-1] + thlmean[k]);
+            const TF qti  = TF(0.5)*(qtmean [k-1] + qtmean [k]);
+
+            thvh[k]  = virtual_temperature_no_ql(thli, qti);
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
