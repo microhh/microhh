@@ -33,12 +33,12 @@
 #include "thermo.h"
 #include "tools.h"
 #include "monin_obukhov.h"
+#include "fast_math.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
-
-    template<typename TF> __device__ TF pow2(const TF a) { return a*a; }
+    namespace fm = Fast_math;
 
     template<typename TF> __global__
     void strain2_g(TF* __restrict__ strain2,
@@ -63,10 +63,34 @@ namespace
             if (k == kstart)
             {
                 strain2[ijk] = TF(2.)*(
-                   // du/dz
-                   + TF(0.5)*pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]))
-                   // dv/dz
-                   + TF(0.5)*pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij])) );
+                    // du/dx + du/dx
+                    + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
+
+                    // dv/dy + dv/dy
+                    + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
+
+                    // dw/dz + dw/dz
+                    + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
+
+                    // du/dy + dv/dx
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
+
+                    // du/dz + dw/dx
+                    + TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]))
+                    + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
+
+                    // dv/dz + dw/dy
+                    + TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]))
+                    + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
@@ -75,26 +99,26 @@ namespace
             {
                 strain2[ijk] =TF(2.)*(
                     // du/dx + du/dx
-                    + pow2((u[ijk+ii]-u[ijk])*dxi)
+                    + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
                     // dv/dy + dv/dy
-                    + pow2((v[ijk+jj]-v[ijk])*dyi)
+                    + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
                     // dw/dz + dw/dz
-                    + pow2((w[ijk+kk]-w[ijk])*dzi[k])
+                    + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
                     // du/dy + dv/dx
-                    + TF(0.125)*pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                    + TF(0.125)*pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                    + TF(0.125)*pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                    + TF(0.125)*pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
                     // du/dz + dw/dx
-                    + TF(0.125)*pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
-                    + TF(0.125)*pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
-                    + TF(0.125)*pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                    + TF(0.125)*pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
                     // dv/dz + dw/dy
-                    + TF(0.125)*pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
-                    + TF(0.125)*pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
-                    + TF(0.125)*pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                    + TF(0.125)*pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
+                    + TF(0.125)*fm::pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;

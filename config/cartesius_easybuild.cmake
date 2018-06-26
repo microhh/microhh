@@ -41,12 +41,15 @@ if(USECUDA)
 endif()
 
 if(USEICC)
+    set(USER_CXX_FLAGS "-std=c++14 -restrict")
     set(USER_CXX_FLAGS_RELEASE "-Ofast -xAVX -axCORE-AVX-I,CORE-AVX2,CORE-AVX512")
+    add_definitions(-DRESTRICTKEYWORD=restrict)
 else()
+    set(USER_CXX_FLAGS "-std=c++14")
     set(USER_CXX_FLAGS_RELEASE "-Ofast -march=ivybridge") # -march optimized for the CPU present in Cartesius GPU nodes
+    add_definitions(-DRESTRICTKEYWORD=__restrict__)
 endif()
 
-set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 #set(FFTW_INCLUDE_DIR "/home/bstratum/tools/fftw3_linked/include")
@@ -74,5 +77,3 @@ if(USECUDA)
     list(APPEND CUDA_NVCC_FLAGS "-std=c++14")
     list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 endif()
-
-add_definitions(-DRESTRICTKEYWORD=__restrict__)
