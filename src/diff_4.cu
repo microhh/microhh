@@ -26,6 +26,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "tools.h"
+#include "finite_difference.h"
 
 using namespace Finite_difference::O4;
 
@@ -160,6 +161,8 @@ namespace
 template<typename TF>
 void Diff_4<TF>::exec(Boundary<TF>& boundary)
 {
+    auto& gd = grid.get_grid_data();
+
     const int blocki = 128;
     const int blockj = 2;
     const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -181,18 +184,18 @@ void Diff_4<TF>::exec(Boundary<TF>& boundary)
             fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
             gd.dzi4_g, gd.dzhi4_g,
             gd.dx, gd.dy, fields.visc,
-            gd.icellsp, gd.ijcellsp,
-            gd.istart,  gd.jstart, gd.kstart,
-            gd.iend,    gd.jend,   gd.kend);
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
     diff_w_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
             gd.dzi4_g, gd.dzhi4_g,
             gd.dx, gd.dy, fields.visc,
-            gd.icellsp, gd.ijcellsp,
-            gd.istart,  gd.jstart, gd.kstart,
-            gd.iend,    gd.jend,   gd.kend);
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
     for (auto& it : fields.st)
