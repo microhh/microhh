@@ -506,7 +506,7 @@ double Advec_4<TF>::get_cfl(const double dt)
 
     cfl = cfl*dt;
 
-    fields.release_tmp(cfl_3d);
+    fields.release_tmp_g(cfl_3d);
 
     return cfl;
 }
