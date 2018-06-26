@@ -124,23 +124,23 @@ namespace
 
             // Set a zero gradient bc at the bottom.
             ik = i + j*jj;
-            m1temp[ik] =  0.;
-            m2temp[ik] =  0.;
-            m3temp[ik] =  0.;
-            m4temp[ik] =  1.;
-            m5temp[ik] =  0.;
-            m6temp[ik] =  0.;
-            m7temp[ik] = -1.;
-            ptemp [ik] =  0.;
+            m1temp[ik] = TF( 0.);
+            m2temp[ik] = TF( 0.);
+            m3temp[ik] = TF( 0.);
+            m4temp[ik] = TF( 1.);
+            m5temp[ik] = TF( 0.);
+            m6temp[ik] = TF( 0.);
+            m7temp[ik] = TF(-1.);
+            ptemp [ik] = TF( 0.);
 
-            m1temp[ik+kki1] =  0.;
-            m2temp[ik+kki1] =  0.;
-            m3temp[ik+kki1] =  0.;
-            m4temp[ik+kki1] =  1.;
-            m5temp[ik+kki1] = -1.;
-            m6temp[ik+kki1] =  0.;
-            m7temp[ik+kki1] =  0.;
-            ptemp [ik+kki1] =  0.;
+            m1temp[ik+kki1] = TF( 0.);
+            m2temp[ik+kki1] = TF( 0.);
+            m3temp[ik+kki1] = TF( 0.);
+            m4temp[ik+kki1] = TF( 1.);
+            m5temp[ik+kki1] = TF(-1.);
+            m6temp[ik+kki1] = TF( 0.);
+            m7temp[ik+kki1] = TF( 0.);
+            ptemp [ik+kki1] = TF( 0.);
 
             for (int k=0; k<kmax; ++k)
             {
@@ -161,41 +161,41 @@ namespace
             ik = i + j*jj + kmax*kki1;
             if (iindex == 0 && jindex == 0)
             {
-                m1temp[ik+kki2] =    0.;
-                m2temp[ik+kki2] = -1/3.;
-                m3temp[ik+kki2] =    2.;
-                m4temp[ik+kki2] =    1.;
+                m1temp[ik+kki2] = TF(   0.);
+                m2temp[ik+kki2] = TF(-1/3.);
+                m3temp[ik+kki2] = TF(   2.);
+                m4temp[ik+kki2] = TF(   1.);
 
-                m1temp[ik+kki3] =   -2.;
-                m2temp[ik+kki3] =    9.;
-                m3temp[ik+kki3] =    0.;
-                m4temp[ik+kki3] =    1.;
+                m1temp[ik+kki3] = TF(  -2.);
+                m2temp[ik+kki3] = TF(   9.);
+                m3temp[ik+kki3] = TF(   0.);
+                m4temp[ik+kki3] = TF(   1.);
             }
 
             // Set dp/dz at top to zero.
             else
             {
-                m1temp[ik+kki2] =  0.;
-                m2temp[ik+kki2] =  0.;
-                m3temp[ik+kki2] = -1.;
-                m4temp[ik+kki2] =  1.;
+                m1temp[ik+kki2] = TF( 0.);
+                m2temp[ik+kki2] = TF( 0.);
+                m3temp[ik+kki2] = TF(-1.);
+                m4temp[ik+kki2] = TF( 1.);
 
-                m1temp[ik+kki3] = -1.;
-                m2temp[ik+kki3] =  0.;
-                m3temp[ik+kki3] =  0.;
-                m4temp[ik+kki3] =  1.;
+                m1temp[ik+kki3] = TF(-1.);
+                m2temp[ik+kki3] = TF( 0.);
+                m3temp[ik+kki3] = TF( 0.);
+                m4temp[ik+kki3] = TF( 1.);
             }
 
             // Set the top boundary.
-            m5temp[ik+kki2] = 0.;
-            m6temp[ik+kki2] = 0.;
-            m7temp[ik+kki2] = 0.;
-            ptemp [ik+kki2] = 0.;
+            m5temp[ik+kki2] = TF(0.);
+            m6temp[ik+kki2] = TF(0.);
+            m7temp[ik+kki2] = TF(0.);
+            ptemp [ik+kki2] = TF(0.);
 
-            m5temp[ik+kki3] = 0.;
-            m6temp[ik+kki3] = 0.;
-            m7temp[ik+kki3] = 0.;
-            ptemp [ik+kki3] = 0.;
+            m5temp[ik+kki3] = TF(0.);
+            m6temp[ik+kki3] = TF(0.);
+            m7temp[ik+kki3] = TF(0.);
+            ptemp [ik+kki3] = TF(0.);
         }
     }
 
@@ -248,18 +248,18 @@ namespace
             // Use LU factorization.
             k = 0;
             ik = i + j*jj;
-            m1[ik] = 1.;
-            m2[ik] = 1.;
-            m3[ik] = 1.            / m4[ik];
-            m4[ik] = 1.;
+            m1[ik] = TF(1.);
+            m2[ik] = TF(1.);
+            m3[ik] = TF(1.)            / m4[ik];
+            m4[ik] = TF(1.);
             m5[ik] = m5[ik]*m3[ik];
             m6[ik] = m6[ik]*m3[ik];
             m7[ik] = m7[ik]*m3[ik];
 
             k = 1;
             ik = i + j*jj + k*kk1;
-            m1[ik] = 1.;
-            m2[ik] = 1.;
+            m1[ik] = TF(1.);
+            m2[ik] = TF(1.);
             m3[ik] = m3[ik]                     / m4[ik-kk1];
             m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
             m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
@@ -267,7 +267,7 @@ namespace
 
             k = 2;
             ik = i + j*jj + k*kk1;
-            m1[ik] = 1.;
+            m1[ik] = TF(1.);
             m2[ik] =   m2[ik]                                           / m4[ik-kk2];
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
@@ -287,7 +287,7 @@ namespace
 
             k = kmax+1;
             ik = i + j*jj + k*kk1;
-            m7[ik] = 1.;
+            m7[ik] = TF(1.);
 
             k = kmax+2;
             ik = i + j*jj + k*kk1;
@@ -296,8 +296,8 @@ namespace
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
             m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-            m6[ik] = 1.;
-            m7[ik] = 1.;
+            m6[ik] = TF(1.);
+            m7[ik] = TF(1.);
 
             k = kmax+3;
             ik = i + j*jj + k*kk1;
@@ -305,9 +305,9 @@ namespace
             m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-            m5[ik] = 1.;
-            m6[ik] = 1.;
-            m7[ik] = 1.;
+            m5[ik] = TF(1.);
+            m6[ik] = TF(1.);
+            m7[ik] = TF(1.);
 
             // Do the backward substitution.
             // First, solve Ly = p, forward.
