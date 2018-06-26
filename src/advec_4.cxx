@@ -62,8 +62,8 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
     
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
     
         TF cfl = 0;
     
@@ -73,10 +73,9 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    // CvH all constants are still DP, this needs to change. The static_cast is to make it work for testing.
-                    cfl = std::max(cfl, static_cast<TF>(std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi 
-                                      + std::abs(ci0*v[ijk-jj1] + ci1*v[ijk] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2])*dyi 
-                                      + std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k]) );
+                    cfl = std::max(cfl, std::abs(interp4c(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi
+                                      + std::abs(interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]))*dyi
+                                      + std::abs(interp4c(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]))*dzi[k]);
                 }
 
         master.max(&cfl, 1);
@@ -104,8 +103,8 @@ namespace
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
     
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
     
         // bottom boundary
         for (int j=jstart; j<jend; j++)
@@ -113,23 +112,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
-                ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
-                           + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
-                           + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
-                           + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
+                ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
-                               + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
-                               + cg2*((ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1]) * (ci0*u[ijk-jj1] + ci1*u[ijk    ] + ci2*u[ijk+jj1] + ci3*u[ijk+jj2]))
-                               + cg3*((ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) * (ci0*u[ijk    ] + ci1*u[ijk+jj1] + ci2*u[ijk+jj2] + ci3*u[ijk+jj3])) ) * cgi*dyi;
+                    ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                 }
     
-                ut[ijk] -= ( cg0*((ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+ii1-kk1]) * (bi0*u[ijk-kk2] + bi1*u[ijk-kk1] + bi2*u[ijk    ] + bi3*u[ijk+kk1]))
-                           + cg1*((ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk    ] + ci3*w[ijk+ii1    ]) * (ci0*u[ijk-kk2] + ci1*u[ijk-kk1] + ci2*u[ijk    ] + ci3*u[ijk+kk1]))
-                           + cg2*((ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+ii1+kk1]) * (ci0*u[ijk-kk1] + ci1*u[ijk    ] + ci2*u[ijk+kk1] + ci3*u[ijk+kk2]))
-                           + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ci0*u[ijk    ] + ci1*u[ijk+kk1] + ci2*u[ijk+kk2] + ci3*u[ijk+kk3])) )
+                ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (bi0<TF>*u[ijk-kk2] + bi1<TF>*u[ijk-kk1] + bi2<TF>*u[ijk    ] + bi3<TF>*u[ijk+kk1]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
+                           + cg3<TF>*((ci0<TF>*w[ijk-ii2+kk2] + ci1<TF>*w[ijk-ii1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+ii1+kk2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+kk1] + ci2<TF>*u[ijk+kk2] + ci3<TF>*u[ijk+kk3])) )
                          * dzi4[kstart];
             }
     
@@ -139,23 +138,23 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
-                               + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
-                               + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
-                               + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
+                    ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
+                               + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
+                               + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
     
                     if (dim3)
                     {
-                        ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
-                                   + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
-                                   + cg2*((ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1]) * (ci0*u[ijk-jj1] + ci1*u[ijk    ] + ci2*u[ijk+jj1] + ci3*u[ijk+jj2]))
-                                   + cg3*((ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) * (ci0*u[ijk    ] + ci1*u[ijk+jj1] + ci2*u[ijk+jj2] + ci3*u[ijk+jj3])) ) * cgi*dyi;
+                        ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
+                                   + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
+                                   + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
+                                   + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                     }
     
-                    ut[ijk] -= ( cg0*((ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+ii1-kk1]) * (ci0*u[ijk-kk3] + ci1*u[ijk-kk2] + ci2*u[ijk-kk1] + ci3*u[ijk    ]))
-                               + cg1*((ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk    ] + ci3*w[ijk+ii1    ]) * (ci0*u[ijk-kk2] + ci1*u[ijk-kk1] + ci2*u[ijk    ] + ci3*u[ijk+kk1]))
-                               + cg2*((ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+ii1+kk1]) * (ci0*u[ijk-kk1] + ci1*u[ijk    ] + ci2*u[ijk+kk1] + ci3*u[ijk+kk2]))
-                               + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ci0*u[ijk    ] + ci1*u[ijk+kk1] + ci2*u[ijk+kk2] + ci3*u[ijk+kk3])) )
+                    ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
+                               + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
+                               + cg3<TF>*((ci0<TF>*w[ijk-ii2+kk2] + ci1<TF>*w[ijk-ii1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+ii1+kk2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+kk1] + ci2<TF>*u[ijk+kk2] + ci3<TF>*u[ijk+kk3])) )
                              * dzi4[k];
                 }
     
@@ -165,23 +164,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
-                           + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
-                           + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
-                           + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
+                ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
-                               + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
-                               + cg2*((ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1]) * (ci0*u[ijk-jj1] + ci1*u[ijk    ] + ci2*u[ijk+jj1] + ci3*u[ijk+jj2]))
-                               + cg3*((ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) * (ci0*u[ijk    ] + ci1*u[ijk+jj1] + ci2*u[ijk+jj2] + ci3*u[ijk+jj3])) ) * cgi*dyi;
+                    ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                 }
     
-                ut[ijk] -= ( cg0*((ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+ii1-kk1]) * (ci0*u[ijk-kk3] + ci1*u[ijk-kk2] + ci2*u[ijk-kk1] + ci3*u[ijk    ]))
-                           + cg1*((ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk    ] + ci3*w[ijk+ii1    ]) * (ci0*u[ijk-kk2] + ci1*u[ijk-kk1] + ci2*u[ijk    ] + ci3*u[ijk+kk1]))
-                           + cg2*((ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+ii1+kk1]) * (ci0*u[ijk-kk1] + ci1*u[ijk    ] + ci2*u[ijk+kk1] + ci3*u[ijk+kk2]))
-                           + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ti0*u[ijk-kk1] + ti1*u[ijk    ] + ti2*u[ijk+kk1] + ti3*u[ijk+kk2])) )
+                ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
+                           + cg3<TF>*((ci0<TF>*w[ijk-ii2+kk2] + ci1<TF>*w[ijk-ii1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+ii1+kk2]) * (ti0<TF>*u[ijk-kk1] + ti1<TF>*u[ijk    ] + ti2<TF>*u[ijk+kk1] + ti3<TF>*u[ijk+kk2])) )
                          * dzi4[kend-1];
             }
     }
@@ -204,8 +203,8 @@ namespace
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
     
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
     
         // bottom boundary
         for (int j=jstart; j<jend; j++)
@@ -213,23 +212,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
-                vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
-                           + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
-                           + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
-                           + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
+                vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
-                               + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
-                               + cg2*((ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]) * (ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]))
-                               + cg3*((ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3]) * (ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3])) ) * cgi*dyi;
+                    vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                 }
     
-                vt[ijk] -= ( cg0*((ci0*w[ijk-jj2-kk1] + ci1*w[ijk-jj1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+jj1-kk1]) * (bi0*v[ijk-kk2] + bi1*v[ijk-kk1] + bi2*v[ijk    ] + bi3*v[ijk+kk1]))
-                           + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
-                           + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
-                           + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ci0*v[ijk    ] + ci1*v[ijk+kk1] + ci2*v[ijk+kk2] + ci3*v[ijk+kk3])) )
+                vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (bi0<TF>*v[ijk-kk2] + bi1<TF>*v[ijk-kk1] + bi2<TF>*v[ijk    ] + bi3<TF>*v[ijk+kk1]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
+                           + cg3<TF>*((ci0<TF>*w[ijk-jj2+kk2] + ci1<TF>*w[ijk-jj1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+jj1+kk2]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+kk1] + ci2<TF>*v[ijk+kk2] + ci3<TF>*v[ijk+kk3])) )
                          * dzi4[kstart];
             }
     
@@ -239,23 +238,23 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
-                               + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
-                               + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
-                               + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
+                    vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
+                               + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
     
                     if (dim3)
                     {
-                        vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
-                                   + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
-                                   + cg2*((ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]) * (ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]))
-                                   + cg3*((ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3]) * (ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3])) ) * cgi*dyi;
+                        vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
+                                   + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
+                                   + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
+                                   + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                     }
     
-                    vt[ijk] -= ( cg0*((ci0*w[ijk-jj2-kk1] + ci1*w[ijk-jj1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+jj1-kk1]) * (ci0*v[ijk-kk3] + ci1*v[ijk-kk2] + ci2*v[ijk-kk1] + ci3*v[ijk    ]))
-                               + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
-                               + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
-                               + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ci0*v[ijk    ] + ci1*v[ijk+kk1] + ci2*v[ijk+kk2] + ci3*v[ijk+kk3])) )
+                    vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
+                               + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
+                               + cg3<TF>*((ci0<TF>*w[ijk-jj2+kk2] + ci1<TF>*w[ijk-jj1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+jj1+kk2]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+kk1] + ci2<TF>*v[ijk+kk2] + ci3<TF>*v[ijk+kk3])) )
                              * dzi4[k];
                 }
     
@@ -265,23 +264,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
-                           + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
-                           + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
-                           + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
+                vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
-                               + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
-                               + cg2*((ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]) * (ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]))
-                               + cg3*((ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3]) * (ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3])) ) * cgi*dyi;
+                    vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                 }
     
-                vt[ijk] -= ( cg0*((ci0*w[ijk-jj2-kk1] + ci1*w[ijk-jj1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+jj1-kk1]) * (ci0*v[ijk-kk3] + ci1*v[ijk-kk2] + ci2*v[ijk-kk1] + ci3*v[ijk    ]))
-                           + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
-                           + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
-                           + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ti0*v[ijk-kk1] + ti1*v[ijk    ] + ti2*v[ijk+kk1] + ti3*v[ijk+kk2])) )
+                vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
+                           + cg3<TF>*((ci0<TF>*w[ijk-jj2+kk2] + ci1<TF>*w[ijk-jj1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+jj1+kk2]) * (ti0<TF>*v[ijk-kk1] + ti1<TF>*v[ijk    ] + ti2<TF>*v[ijk+kk1] + ti3<TF>*v[ijk+kk2])) )
                          * dzi4[kend-1];
             }
     }
@@ -304,8 +303,8 @@ namespace
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
     
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
     
         // bottom boundary
         for (int j=jstart; j<jend; j++)
@@ -313,24 +312,24 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kstart+1)*kk1;
-                wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
-                        + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
-                        + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
-                        + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
+                wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
-                            + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
-                            + cg2*((ci0*v[ijk+jj1-kk2] + ci1*v[ijk+jj1-kk1] + ci2*v[ijk+jj1] + ci3*v[ijk+jj1+kk1]) * (ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2]))
-                            + cg3*((ci0*v[ijk+jj2-kk2] + ci1*v[ijk+jj2-kk1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3])) ) * cgi*dyi;
+                    wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                 }
     
-                wt[ijk] -= ( cg0*((bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1]) * (bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1]))
-                        + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
-                        + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
-                        + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) * (ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])) )
-                    * dzhi4[kstart+1];
+                wt[ijk] -= ( cg0<TF>*((bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]) * (bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
+                           + cg3<TF>*((ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3])) )
+                         * dzhi4[kstart+1];
             }
     
         for (int k=kstart+2; k<kend-1; k++)
@@ -339,24 +338,24 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
-                            + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
-                            + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
-                            + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
+                    wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
+                               + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
     
                     if (dim3)
                     {
-                        wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
-                                + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
-                                + cg2*((ci0*v[ijk+jj1-kk2] + ci1*v[ijk+jj1-kk1] + ci2*v[ijk+jj1] + ci3*v[ijk+jj1+kk1]) * (ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2]))
-                                + cg3*((ci0*v[ijk+jj2-kk2] + ci1*v[ijk+jj2-kk1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3])) ) * cgi*dyi;
+                        wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
+                                   + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
+                                   + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
+                                   + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                     }
     
-                    wt[ijk] -= ( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]) * (ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]))
-                            + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
-                            + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
-                            + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) * (ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])) )
-                        * dzhi4[k];
+                    wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
+                               + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
+                               + cg3<TF>*((ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3])) )
+                             * dzhi4[k];
                 }
     
         // top boundary
@@ -365,24 +364,24 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
-                        + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
-                        + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
-                        + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
+                wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
+                           + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
+                           + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
-                            + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
-                            + cg2*((ci0*v[ijk+jj1-kk2] + ci1*v[ijk+jj1-kk1] + ci2*v[ijk+jj1] + ci3*v[ijk+jj1+kk1]) * (ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2]))
-                            + cg3*((ci0*v[ijk+jj2-kk2] + ci1*v[ijk+jj2-kk1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3])) ) * cgi*dyi;
+                    wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
+                               + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
+                               + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
+                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                 }
     
-                wt[ijk] -= ( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]) * (ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]))
-                        + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
-                        + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
-                        + cg3*((ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2]) * (ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2])) )
-                    * dzhi4[kend-1];
+                wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
+                           + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
+                           + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
+                           + cg3<TF>*((ti0<TF>*w[ijk-kk1] + ti1<TF>*w[ijk    ] + ti2<TF>*w[ijk+kk1] + ti3<TF>*w[ijk+kk2]) * (ti0<TF>*w[ijk-kk1] + ti1<TF>*w[ijk    ] + ti2<TF>*w[ijk+kk1] + ti3<TF>*w[ijk+kk2])) )
+                         * dzhi4[kend-1];
             }
     }
 
@@ -404,8 +403,8 @@ namespace
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
     
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
     
         // bottom boundary
         for (int j=jstart; j<jend; j++)
@@ -413,23 +412,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + kstart*kk1;
-                st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
-                           + cg1*(u[ijk    ] * (ci0*s[ijk-ii2] + ci1*s[ijk-ii1] + ci2*s[ijk    ] + ci3*s[ijk+ii1]))
-                           + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
-                           + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
+                st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
+                           + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
+                           + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
+                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
-                               + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))
-                               + cg2*(v[ijk+jj1] * (ci0*s[ijk-jj1] + ci1*s[ijk    ] + ci2*s[ijk+jj1] + ci3*s[ijk+jj2]))
-                               + cg3*(v[ijk+jj2] * (ci0*s[ijk    ] + ci1*s[ijk+jj1] + ci2*s[ijk+jj2] + ci3*s[ijk+jj3])) ) * cgi*dyi;
+                    st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
+                               + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
+                               + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
+                               + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                 }
     
-                st[ijk] -= ( cg0*(w[ijk-kk1] * (bi0*s[ijk-kk2] + bi1*s[ijk-kk1] + bi2*s[ijk    ] + bi3*s[ijk+kk1]))
-                           + cg1*(w[ijk    ] * (ci0*s[ijk-kk2] + ci1*s[ijk-kk1] + ci2*s[ijk    ] + ci3*s[ijk+kk1]))
-                           + cg2*(w[ijk+kk1] * (ci0*s[ijk-kk1] + ci1*s[ijk    ] + ci2*s[ijk+kk1] + ci3*s[ijk+kk2]))
-                           + cg3*(w[ijk+kk2] * (ci0*s[ijk    ] + ci1*s[ijk+kk1] + ci2*s[ijk+kk2] + ci3*s[ijk+kk3])) )
+                st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (bi0<TF>*s[ijk-kk2] + bi1<TF>*s[ijk-kk1] + bi2<TF>*s[ijk    ] + bi3<TF>*s[ijk+kk1]))
+                           + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
+                           + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
+                           + cg3<TF>*(w[ijk+kk2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+kk1] + ci2<TF>*s[ijk+kk2] + ci3<TF>*s[ijk+kk3])) )
                          * dzi4[kstart];
             }
     
@@ -439,23 +438,23 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
-                               + cg1*(u[ijk    ] * (ci0*s[ijk-ii2] + ci1*s[ijk-ii1] + ci2*s[ijk    ] + ci3*s[ijk+ii1]))
-                               + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
-                               + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
+                    st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
+                               + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
+                               + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
+                               + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
     
                     if (dim3)
                     {
-                        st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
-                                   + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))
-                                   + cg2*(v[ijk+jj1] * (ci0*s[ijk-jj1] + ci1*s[ijk    ] + ci2*s[ijk+jj1] + ci3*s[ijk+jj2]))
-                                   + cg3*(v[ijk+jj2] * (ci0*s[ijk    ] + ci1*s[ijk+jj1] + ci2*s[ijk+jj2] + ci3*s[ijk+jj3])) ) * cgi*dyi;
+                        st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
+                                   + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
+                                   + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
+                                   + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                     }
     
-                    st[ijk] -= ( cg0*(w[ijk-kk1] * (ci0*s[ijk-kk3] + ci1*s[ijk-kk2] + ci2*s[ijk-kk1] + ci3*s[ijk    ]))
-                               + cg1*(w[ijk    ] * (ci0*s[ijk-kk2] + ci1*s[ijk-kk1] + ci2*s[ijk    ] + ci3*s[ijk+kk1]))
-                               + cg2*(w[ijk+kk1] * (ci0*s[ijk-kk1] + ci1*s[ijk    ] + ci2*s[ijk+kk1] + ci3*s[ijk+kk2]))
-                               + cg3*(w[ijk+kk2] * (ci0*s[ijk    ] + ci1*s[ijk+kk1] + ci2*s[ijk+kk2] + ci3*s[ijk+kk3])) )
+                    st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
+                               + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
+                               + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
+                               + cg3<TF>*(w[ijk+kk2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+kk1] + ci2<TF>*s[ijk+kk2] + ci3<TF>*s[ijk+kk3])) )
                              * dzi4[k];
                 }
     
@@ -465,23 +464,23 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*jj1 + (kend-1)*kk1;
-                st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
-                           + cg1*(u[ijk    ] * (ci0*s[ijk-ii2] + ci1*s[ijk-ii1] + ci2*s[ijk    ] + ci3*s[ijk+ii1]))
-                           + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
-                           + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
+                st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
+                           + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
+                           + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
+                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
     
                 if (dim3)
                 {
-                    st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
-                               + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))
-                               + cg2*(v[ijk+jj1] * (ci0*s[ijk-jj1] + ci1*s[ijk    ] + ci2*s[ijk+jj1] + ci3*s[ijk+jj2]))
-                               + cg3*(v[ijk+jj2] * (ci0*s[ijk    ] + ci1*s[ijk+jj1] + ci2*s[ijk+jj2] + ci3*s[ijk+jj3])) ) * cgi*dyi;
+                    st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
+                               + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
+                               + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
+                               + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                 }
     
-                st[ijk] -= ( cg0*(w[ijk-kk1] * (ci0*s[ijk-kk3] + ci1*s[ijk-kk2] + ci2*s[ijk-kk1] + ci3*s[ijk    ]))
-                           + cg1*(w[ijk    ] * (ci0*s[ijk-kk2] + ci1*s[ijk-kk1] + ci2*s[ijk    ] + ci3*s[ijk+kk1]))
-                           + cg2*(w[ijk+kk1] * (ci0*s[ijk-kk1] + ci1*s[ijk    ] + ci2*s[ijk+kk1] + ci3*s[ijk+kk2]))
-                           + cg3*(w[ijk+kk2] * (ti0*s[ijk-kk1] + ti1*s[ijk    ] + ti2*s[ijk+kk1] + ti3*s[ijk+kk2])) )
+                st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
+                           + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
+                           + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
+                           + cg3<TF>*(w[ijk+kk2] * (ti0<TF>*s[ijk-kk1] + ti1<TF>*s[ijk    ] + ti2<TF>*s[ijk+kk1] + ti3<TF>*s[ijk+kk2])) )
                          * dzi4[kend-1];
             }
         }

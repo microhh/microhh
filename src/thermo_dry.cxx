@@ -40,7 +40,7 @@
 #include "thermo_dry.h"
 #include "thermo_moist_functions.h"  // For Exner function
 
-using Finite_difference::O4::interp4;
+using Finite_difference::O4::interp4c;
 using namespace Constants;
 using namespace Thermo_moist_functions;
 
@@ -72,7 +72,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
+                    N2[ijk] = grav<TF>/thref[k]*TF(0.5)*(th[ijk+ijcells] - th[ijk-ijcells])*dzi[k];
                 }
     }
 
@@ -182,7 +182,7 @@ namespace
                                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                                 const int icells, const int ijcells)
     {
-        using Finite_difference::O4::interp4;
+        using Finite_difference::O4::interp4c;
 
         const int ijcells2 = 2*ijcells;
         for (int k=kstart+1; k<kend; ++k)
@@ -191,7 +191,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    wt[ijk] += grav<TF>/threfh[k] * (interp4(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
+                    wt[ijk] += grav<TF>/threfh[k] * (interp4c(th[ijk-ijcells2], th[ijk-ijcells], th[ijk], th[ijk+ijcells]) - threfh[k]);
                 }
     }
 
@@ -230,12 +230,12 @@ namespace
         threfh[kend] = thref[kend-1] + (zh[kend]-z[kend-1])*(thref[kend-1]-thref[kend-2])*dzhi[kend-1];
 
         // set the ghost cells for the reference potential temperature
-        thref[kstart-1] = static_cast<TF>(2.)*threfh[kstart] - thref[kstart];
-        thref[kend]     = static_cast<TF>(2.)*threfh[kend]   - thref[kend-1];
+        thref[kstart-1] = TF(2.)*threfh[kstart] - thref[kstart];
+        thref[kend]     = TF(2.)*threfh[kend]   - thref[kend-1];
 
         // interpolate the input sounding to half levels
         for (int k=kstart+1; k<kend; ++k)
-            threfh[k] = static_cast<TF>(0.5)*(thref[k-1] + thref[k]);
+            threfh[k] = TF(0.5)*(thref[k-1] + thref[k]);
 
         // Calculate pressure
         prefh[kstart] = pbot;
@@ -245,7 +245,7 @@ namespace
             prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
             pref [k] = pref [k-1] * std::exp(-grav<TF> * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
         }
-        pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
+        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
 
         // Calculate density and exner
         for (int k=0; k<kcells; ++k)

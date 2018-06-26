@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -155,9 +155,9 @@ void Pres_2<TF>::input(TF* const restrict p,
     const int jjp = gd.imax;
     const int kkp = gd.imax*gd.jmax;
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-    const TF dti = 1./dt;
+    const TF dxi = TF(1.)/gd.dx;
+    const TF dyi = TF(1.)/gd.dy;
+    const TF dti = TF(1.)/dt;
 
     const int igc = gd.igc;
     const int jgc = gd.jgc;
@@ -358,8 +358,8 @@ void Pres_2<TF>::output(TF* const restrict ut, TF* const restrict vt, TF* const 
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
+    const TF dxi = TF(1.)/gd.dx;
+    const TF dyi = TF(1.)/gd.dy;
 
     for (int k=gd.kstart; k<gd.kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
@@ -385,8 +385,8 @@ TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restr
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
+    const TF dxi = TF(1.)/gd.dx;
+    const TF dyi = TF(1.)/gd.dy;
 
     TF div = 0.;
     TF divmax = 0.;

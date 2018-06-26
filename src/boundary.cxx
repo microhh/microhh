@@ -377,7 +377,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    a[ijk-kk] = 2.*abot[ij] - a[ijk];
+                    a[ijk-kk] = TF(2.)*abot[ij] - a[ijk];
                 }
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
@@ -409,7 +409,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + (kend-1)*kk;
-                    a[ijk+kk] = 2.*atop[ij] - a[ijk];
+                    a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
                 }
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
@@ -442,13 +442,13 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
-                    a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
-                    a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
+                    a[ijk-kk1] = TF(8./3.)*abot[ij] - TF(2.)*a[ijk] + TF(1./3.)*a[ijk+kk1];
+                    a[ijk-kk2] = TF(8.)*abot[ij] - TF(9.)*a[ijk] + TF(2.)*a[ijk+kk1];
                 }
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
-            using Finite_difference::O4::grad4x;
+            using Finite_difference::O4::grad4;
 
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
@@ -456,8 +456,8 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
-                    a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
-                    a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
+                    a[ijk-kk1] = TF(-1.)*grad4(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
+                    a[ijk-kk2] = TF(-3.)*grad4(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
                 }
         }
     }
@@ -479,13 +479,13 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + (kend-1)*kk1;
-                    a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
-                    a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
+                    a[ijk+kk1] = TF(8./3.)*atop[ij] - TF(2.)*a[ijk] + TF(1./3.)*a[ijk-kk1];
+                    a[ijk+kk2] = TF(8.)*atop[ij] - TF(9.)*a[ijk] + TF(2.)*a[ijk-kk1];
                 }
         }
         else if (boundary_type == Boundary_type::Neumann_type || boundary_type == Boundary_type::Flux_type)
         {
-            using Finite_difference::O4::grad4x;
+            using Finite_difference::O4::grad4;
 
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
@@ -493,8 +493,8 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + (kend-1)*kk1;
-                    a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
-                    a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
+                    a[ijk+kk1] = TF(1.)*grad4(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
+                    a[ijk+kk2] = TF(3.)*grad4(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
                 }
         }
     }
@@ -550,7 +550,7 @@ namespace
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kstart*kk1;
-                w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
+                w[ijk-kk1] = TF(-6.)*w[ijk+kk1] + TF(4.)*w[ijk+kk2] - w[ijk+kk3];
             }
     }
 
@@ -568,7 +568,7 @@ namespace
             for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj + kend*kk1;
-                w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
+                w[ijk+kk1] = TF(-6.)*w[ijk-kk1] + TF(4.)*w[ijk-kk2] - w[ijk-kk3];
             }
     }
 }
@@ -713,9 +713,9 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
                     if (spatial_order == 2)
-                        agradbot[ij] = O2::grad2x(a[ijk-kk1], a[ijk]) * dzhi[kstart];
+                        agradbot[ij] = O2::grad2(a[ijk-kk1], a[ijk]) * dzhi[kstart];
                     else if (spatial_order == 4)
-                        agradbot[ij] = O4::grad4x(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
+                        agradbot[ij] = O4::grad4(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
                     afluxbot[ij] = -visc*agradbot[ij];
                 }
         }
@@ -730,7 +730,7 @@ namespace
                     if (spatial_order == 2)
                         abot[ij] = O2::interp2(a[ijk-kk1], a[ijk]);
                     else if (spatial_order == 4)
-                        abot[ij] = O4::interp4(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]);
+                        abot[ij] = O4::interp4c(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]);
                 }
         }
     }

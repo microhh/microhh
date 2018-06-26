@@ -16,6 +16,7 @@
 # module purge
 # module load eb (Use the new software development and installation framework EasyBuild, currently implemented by SURFsara)
 # module load surfsara
+# module load intel/2018a
 # module load CMake/3.7.2-intel-2016b (Loads as well the MPI and Intel Compiler)
 # module load cuDNN/7.0.5-CUDA-9.0.176 (Loads CUDA as well,cuDNN needed for Tensorflow-gpu)
 # module load netCDF/4.4.1.1-intel-2016b (Loads as well HDF5,cURL,sZIP)
@@ -45,7 +46,7 @@ else()
     set(USER_CXX_FLAGS_RELEASE "-Ofast -march=ivybridge") # -march optimized for the CPU present in Cartesius GPU nodes
 endif()
 
-set(USER_CXX_FLAGS " -std=c++14")
+set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 #set(FFTW_INCLUDE_DIR "/home/bstratum/tools/fftw3_linked/include")

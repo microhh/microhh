@@ -989,7 +989,7 @@ void Stats<TF>::calc_flux_4th(
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+                prof[k] += mask[ijk]*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
             }
     }
 
@@ -1054,7 +1054,7 @@ void Stats<TF>::calc_grad_4th(
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+                prof[k] += mask[ijk]*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
             }
     }
 
@@ -1091,7 +1091,7 @@ void Stats<TF>::calc_diff_4th(
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
-                prof[k] -= mask[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+                prof[k] -= mask[ijk]*visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
             }
     }
 

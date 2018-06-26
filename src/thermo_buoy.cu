@@ -144,7 +144,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1];
+            wt[ijk] += ci0<TF>*b[ijk-kk2] + ci1<TF>*b[ijk-kk1] + ci2<TF>*b[ijk] + ci3<TF>*b[ijk+kk1];
         }
     }
 
@@ -167,7 +167,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            ut[ijk] += sinalpha * (ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk] + ci3*b[ijk+ii1]);
+            ut[ijk] += sinalpha * (ci0<TF>*b[ijk-ii2] + ci1<TF>*b[ijk-ii1] + ci2<TF>*b[ijk] + ci3<TF>*b[ijk+ii1]);
         }
     }
 
@@ -190,7 +190,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += cosalpha * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1]);
+            wt[ijk] += cosalpha * (ci0<TF>*b[ijk-kk2] + ci1<TF>*b[ijk-kk1] + ci2<TF>*b[ijk] + ci3<TF>*b[ijk+kk1]);
         }
     }
 
@@ -217,8 +217,8 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            bt[ijk] -= n2 * ( sinalpha * ( (ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) + utrans )
-                            + cosalpha * (  ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) );
+            bt[ijk] -= n2 * ( sinalpha * ( (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) + utrans )
+                            + cosalpha * (  ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) );
         }
     }
 } // End namespace.

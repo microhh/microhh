@@ -33,10 +33,12 @@
 #include "thermo.h"
 #include "tools.h"
 #include "monin_obukhov.h"
+#include "fast_math.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
+    namespace fm = Fast_math;
 
     template<typename TF> __global__
     void strain2_g(TF* __restrict__ strain2,
@@ -61,10 +63,35 @@ namespace
             if (k == kstart)
             {
                 strain2[ijk] = TF(2.)*(
-                   // du/dz
-                   + TF(0.5)*pow(-TF(0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2))
-                   // dv/dz
-                   + TF(0.5)*pow(-TF(0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), TF(2)) );
+                    // du/dx + du/dx
+                    + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
+
+                    // dv/dy + dv/dy
+                    + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
+
+                    // dw/dz + dw/dz
+                    + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
+
+                    // du/dy + dv/dx
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
+
+                    // du/dz + dw/dx
+                    + TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]))
+                    + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                    + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
+
+                    // dv/dz + dw/dy
+                    + TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]))
+                    + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                    + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
+
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
@@ -72,26 +99,27 @@ namespace
             {
                 strain2[ijk] =TF(2.)*(
                     // du/dx + du/dx
-                    + pow((u[ijk+ii]-u[ijk])*dxi, TF(2))
+                    + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
                     // dv/dy + dv/dy
-                    + pow((v[ijk+jj]-v[ijk])*dyi, TF(2))
+                    + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
                     // dw/dz + dw/dz
-                    + pow((w[ijk+kk]-w[ijk])*dzi[k], TF(2))
+                    + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
                     // du/dy + dv/dx
-                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, TF(2))
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
                     // du/dz + dw/dx
-                    + TF(0.125)*pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, TF(2))
-                    + TF(0.125)*pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, TF(2))
+                    + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                    + TF(0.125)*fm::pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
                     // dv/dz + dw/dy
-                    + TF(0.125)*pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, TF(2))
-                    + TF(0.125)*pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, TF(2))
-                    + TF(0.125)*pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, TF(2))
-                    + TF(0.125)*pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, TF(2)) );
+                    + TF(0.125)*fm::pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                    + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
+
                 // add a small number to avoid zero divisions
                 strain2[ijk] += Constants::dsmall;
             }
@@ -120,15 +148,15 @@ namespace
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
+                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, 1.-Constants::dsmall);
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
+                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
         }
     }
@@ -196,7 +224,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)* dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -210,7 +238,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        + rhorefh[k  ] * fluxbotv[ij] ) / rhoref[k] * dzi[k];
@@ -220,7 +248,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.) * dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -234,7 +262,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (- rhorefh[k  ] * fluxtopv[ij]
                        - rhorefh[k-1] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k-1] * dzi[k-1];
@@ -255,7 +283,7 @@ namespace
                 ut[ijk] +=
                     // du/dx + du/dx
                     + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.) * dxi
+                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -269,7 +297,7 @@ namespace
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
                     + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.) * dyi
+                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        - rhorefh[k  ] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];

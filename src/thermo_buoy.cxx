@@ -32,7 +32,7 @@
 #include "master.h"
 
 using Finite_difference::O2::interp2;
-using Finite_difference::O4::interp4;
+using Finite_difference::O4::interp4c;
 
 
 namespace
@@ -145,7 +145,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
+                    wt[ijk] += interp4c(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
                 }
     }
 
@@ -161,7 +161,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    ut[ijk] += sinalpha * interp4(b[ijk-2], b[ijk-1], b[ijk], b[ijk+1]);
+                    ut[ijk] += sinalpha * interp4c(b[ijk-2], b[ijk-1], b[ijk], b[ijk+1]);
                 }
     }
 
@@ -180,7 +180,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    wt[ijk] += cosalpha * interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
+                    wt[ijk] += cosalpha * interp4c(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
                 }
     }
     template<typename TF>
@@ -201,8 +201,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    bt[ijk] -= n2 * ( sinalpha * (interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]) + utrans)
-                                    + cosalpha *  interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
+                    bt[ijk] -= n2 * ( sinalpha * (interp4c(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]) + utrans)
+                                    + cosalpha *  interp4c(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
                 }
     }
 
