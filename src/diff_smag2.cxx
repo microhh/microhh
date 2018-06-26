@@ -32,12 +32,14 @@
 #include "monin_obukhov.h"
 #include "thermo.h"
 #include "boundary.h"
+#include "fast_math.h"
 
 #include "diff_smag2.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
+    namespace fm = Fast_math;
 
     enum class Surface_model {Enabled, Disabled};
 
@@ -66,37 +68,37 @@ namespace
 
                     strain2[ijk] = TF(2.)*(
                                    // du/dx + du/dx
-                                   + std::pow((u[ijk+ii]-u[ijk])*dxi, TF(2))
+                                   + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
 
                                    // dv/dy + dv/dy
-                                   + std::pow((v[ijk+jj]-v[ijk])*dyi, TF(2))
+                                   + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
 
                                    // dw/dz + dw/dz
-                                   + std::pow((w[ijk+kk]-w[ijk])*dzi[kstart], TF(2))
+                                   + fm::pow2((w[ijk+kk]-w[ijk])*dzi[kstart])
 
                                    // du/dy + dv/dx
-                                   + TF(0.125)*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, TF(2))
+                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
                                    // du/dz
-                                   + TF(0.5)*std::pow(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), TF(2.))
+                                   + TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
 
                                    // dw/dx
-                                   + TF(0.125)*std::pow((w[ijk      ]-w[ijk-ii   ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk+ii   ]-w[ijk      ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk   +kk]-w[ijk-ii+kk])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk+ii+kk]-w[ijk   +kk])*dxi, TF(2))
+                                   + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
+                                   + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
+                                   + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                                   + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
                                    // dv/dz
-                                   + TF(0.5)*std::pow(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), TF(2))
+                                   + TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
 
                                    // dw/dy
-                                   + TF(0.125)*std::pow((w[ijk      ]-w[ijk-jj   ])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk+jj   ]-w[ijk      ])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk   +kk]-w[ijk-jj+kk])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((w[ijk+jj+kk]-w[ijk   +kk])*dyi, TF(2)) );
+                                   + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
+                                   + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
+                                   + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                                   + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
                     // add a small number to avoid zero divisions
                     strain2[ijk] += Constants::dsmall;
@@ -111,31 +113,31 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     strain2[ijk] = TF(2.)*(
                                    // du/dx + du/dx
-                                   + std::pow((u[ijk+ii]-u[ijk])*dxi, TF(2))
+                                   + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
 
                                    // dv/dy + dv/dy
-                                   + std::pow((v[ijk+jj]-v[ijk])*dyi, TF(2))
+                                   + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
 
                                    // dw/dz + dw/dz
-                                   + std::pow((w[ijk+kk]-w[ijk])*dzi[k], TF(2))
+                                   + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
 
                                    // du/dy + dv/dx
-                                   + TF(0.125)*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, TF(2))
+                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
                                    // du/dz + dw/dx
-                                   + TF(0.125)*std::pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, TF(2))
-                                   + TF(0.125)*std::pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, TF(2))
+                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                                   + TF(0.125)*fm::pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
                                    // dv/dz + dw/dy
-                                   + TF(0.125)*std::pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, TF(2))
-                                   + TF(0.125)*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, TF(2)) );
+                                   + TF(0.125)*fm::pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
+                                   + TF(0.125)*fm::pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
+                                   + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                                   + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
                            // Add a small number to avoid zero divisions.
                            strain2[ijk] += Constants::dsmall;
@@ -162,7 +164,7 @@ namespace
         {
             for (int k=kstart; k<kend; ++k)
             {
-                const TF mlen = std::pow(cs*std::pow(dx*dy*dz[k], TF(1./3.)), TF(2));
+                const TF mlen = fm::pow2(cs*std::pow(dx*dy*dz[k], TF(1./3.)));
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
@@ -197,7 +199,7 @@ namespace
                 // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], TF(1./3.));
                 const TF mlen  = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), TF(1.)/n);
-                const TF fac   = std::pow(mlen, TF(2));
+                const TF fac   = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -233,7 +235,7 @@ namespace
             {
                 // calculate smagorinsky constant times filter width squared, do not use wall damping with resolved walls.
                 const TF mlen = cs*std::pow(dx*dy*dz[k], TF(1./3.));
-                const TF fac = std::pow(mlen, TF(2));
+                const TF fac = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -270,7 +272,7 @@ namespace
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
             const TF mlen0 = cs*std::pow(dx*dy*dz[kstart], TF(1./3.));
             const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m), n))), TF(1.)/n);
-            const TF fac = std::pow(mlen, TF(2));
+            const TF fac = fm::pow2(mlen);
 
             for (int j=jstart; j<jend; ++j)
             {
@@ -292,7 +294,7 @@ namespace
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], TF(1./3.));
                 const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), TF(1.)/n);
-                const TF fac = std::pow(mlen, TF(2));
+                const TF fac = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
