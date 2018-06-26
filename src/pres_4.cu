@@ -460,16 +460,16 @@ void Pres_4<TF>::prepare_device()
     cuda_safe_call(cudaMalloc((void**)&m6_g, kmemsize));
     cuda_safe_call(cudaMalloc((void**)&m7_g, kmemsize));
 
-    cuda_safe_call(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bmati_g, bmati.data(), imemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bmatj_g, bmatj.data(), jmemsize, cudaMemcpyHostToDevice));
 
-    cuda_safe_call(cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m1_g, m1.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m2_g, m2.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m3_g, m3.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m4_g, m4.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m5_g, m5.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m6_g, m6.data(), kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(m7_g, m7.data(), kmemsize, cudaMemcpyHostToDevice));
 
     make_cufft_plan();
 }
@@ -615,6 +615,9 @@ void Pres_4<TF>::exec(double dt)
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
 }
 
 template<typename TF>
@@ -644,6 +647,8 @@ TF Pres_4<TF>::check_divergence()
 
     TF divmax = field3d_operators.calc_max_g(div->fld_g);
     // TO-DO: add grid.get_max() or similar for future parallel versions
+
+    fields.release_tmp_g(div);
 
     return divmax;
 }
