@@ -29,6 +29,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "finite_difference.h"
 #include "pres.h"
 #include "pres_4.h"
 #include "defines.h"
@@ -41,7 +42,7 @@ namespace
     using namespace Finite_difference::O4;
 
     template<typename TF> __global__
-    void gcwt_g(TF* const __restrict__ wt,
+    void ghost_cells_wt_g(TF* const __restrict__ wt,
                 const int jj, const int kk,
                 const int istart, const int jstart, const int kstart,
                 const int iend,   const int jend,   const int kend)
@@ -442,9 +443,11 @@ namespace
 template<typename TF>
 void Pres_4<TF>::prepare_device()
 {
-    const int kmemsize = grid->kmax*sizeof(TF);
-    const int imemsize = grid->itot*sizeof(TF);
-    const int jmemsize = grid->jtot*sizeof(TF);
+    auto& gd = grid.get_grid_data();
+
+    const int kmemsize = gd.kmax*sizeof(TF);
+    const int imemsize = gd.itot*sizeof(TF);
+    const int jmemsize = gd.jtot*sizeof(TF);
 
     cuda_safe_call(cudaMalloc((void**)&bmati_g, imemsize));
     cuda_safe_call(cudaMalloc((void**)&bmatj_g, jmemsize));
@@ -489,13 +492,16 @@ void Pres_4<TF>::clear_device()
 template<typename TF>
 void Pres_4<TF>::exec(double dt)
 {
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
     // 1. Create the input for the pressure solver.
     const int blocki = 128;
     const int blockj = 2;
-    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
-    dim3 gridGPU (gridi, gridj, grid->kmax);
+    dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
     dim3 grid2dGPU (gridi, gridj);
@@ -506,63 +512,66 @@ void Pres_4<TF>::exec(double dt)
 
     const TF dti = 1./dt;
 
-    const int offs = grid->memoffset;
+    // Calculate the cyclic BCs first.
+    boundary_cyclic.exec_g(fields.mt.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
-    // calculate the cyclic BCs first
-    grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
-    grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
-    grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
-
-    gcwt_g<<<grid2dGPU, block2dGPU>>>(
-        &fields->wt->data_g[offs],
-        grid->icellsp, grid->ijcellsp,
-        grid->istart,  grid->jstart, grid->kstart,
-        grid->iend,    grid->jend,   grid->kend);
+    ghost_cells_wt_g<<<grid2dGPU, block2dGPU>>>(
+        fields.mt.at("w")->fld_g,
+        gd.icells, gd.ijcells,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
     pres_in_g<<<gridGPU, blockGPU>>>(
-        fields->sd["p"]->data_g,
-        &fields->u ->data_g[offs], &fields->v ->data_g[offs], &fields->w ->data_g[offs],
-        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-        grid->dzi4_g, grid->dxi, grid->dyi, dti,
-        grid->icellsp, grid->ijcellsp,
-        grid->imax, grid->imax*grid->jmax,
-        grid->imax, grid->jmax, grid->kmax,
-        grid->igc,  grid->jgc, grid->kgc);
+        fields.sd.at("p")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+        gd.dzi4_g, gd.dxi, gd.dyi, dti,
+        gd.icells, gd.ijcells,
+        gd.imax, gd.imax*gd.jmax,
+        gd.imax, gd.jmax, gd.kmax,
+        gd.igc,  gd.jgc,  gd.kgc);
     cuda_check_error();
 
-    fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
+    // Get two free tmp fields on GPU.
+    auto tmp1 = fields.get_tmp_g();
+    auto tmp2 = fields.get_tmp_g();
 
-    TF *tmp1_g = fields->atmp["tmp1"]->data_g;
-    TF *tmp2_g = fields->atmp["tmp2"]->data_g;
+    fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     // Set jslice to a higher value
-    const int jslice = std::max(grid->jblock/4, 1);
+    const int jslice = std::max(gd.jblock/4, 1);
 
     const int blockis = 128;
     const int blockjs = 1;
-    const int gridis  = grid->iblock/blockis + (grid->iblock%blockis > 0);
-    const int gridjs  =       jslice/blockjs + (      jslice%blockjs > 0);
+    const int gridis  = gd.iblock/blockis + (gd.iblock%blockis > 0);
+    const int gridjs  =    jslice/blockjs + (   jslice%blockjs > 0);
 
     dim3 grid2dsGPU (gridis , gridjs );
     dim3 block2dsGPU(blockis, blockjs);
 
-    const int ns = grid->iblock*jslice*(grid->kmax+4);
-    const int nj = grid->jblock/jslice;
+    const int ns = gd.iblock*jslice*(gd.kmax+4);
+    const int nj = gd.jblock/jslice;
+
+    // Shortcuts for short calls.
+    TF* tmp1_g = tmp1->fld_g;
+    TF* tmp2_g = tmp2->fld_g;
 
     for (int n=0; n<nj; ++n)
     {
         // Prepare the fields that go into the matrix solver
         solve_in_g<<<grid2dsGPU,block2dsGPU>>>(
-            fields->sd["p"]->data_g,
+            fields.sd.at("p")->fld_g,
             m1_g, m2_g, m3_g, m4_g,
             m5_g, m6_g, m7_g,
             &tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
             &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
             bmati_g, bmatj_g,
-            master->mpicoordx, master->mpicoordy,
-            grid->iblock, grid->jblock,
-            grid->kmax,
+            md.mpicoordx, md.mpicoordy,
+            gd.iblock, gd.jblock,
+            gd.kmax,
             n, jslice);
         cuda_check_error();
 
@@ -570,69 +579,71 @@ void Pres_4<TF>::exec(double dt)
         hdma_g<<<grid2dsGPU,block2dsGPU>>>(
             &tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
             &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
-            grid->iblock, grid->kmax, jslice);
+            gd.iblock, gd.kmax, jslice);
         cuda_check_error();
 
         // Put the solution back into the pressure field
         solve_put_back_g<<<grid2dsGPU,block2dsGPU>>>(
-            fields->sd["p"]->data_g,
+            fields.sd.at("p")->fld_g,
             &tmp2_g[3*ns],
-            grid->iblock, grid->jblock,
-            grid->kmax,
+            gd.iblock, gd.jblock,
+            gd.kmax,
             n, jslice);
         cuda_check_error();
     }
 
-    fft_backward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
+    fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(TF), cudaMemcpyDeviceToDevice));
+    cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
     solve_out_g<<<gridGPU, blockGPU>>>(
-        &fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
-        grid->imax, grid->imax*grid->jmax,
-        grid->icellsp, grid->ijcellsp,
-        grid->istart,  grid->jstart, grid->kstart,
-        grid->imax,    grid->jmax,   grid->kmax);
+        fields.sd.at("p")->fld_g, tmp1->fld_g,
+        gd.imax, gd.imax*gd.jmax,
+        gd.icells, gd.ijcells,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.imax,   gd.jmax,   gd.kmax);
     cuda_check_error();
 
-    grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
+    boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
     // 3. Get the pressure tendencies from the pressure field.
     pres_out_g<<<gridGPU, blockGPU>>>(
-        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-        &fields->sd["p"]->data_g[offs],
-        grid->dzhi4_g, grid->dxi, grid->dyi,
-        grid->icellsp, grid->ijcellsp,
-        grid->istart,  grid->jstart, grid->kstart,
-        grid->iend,    grid->jend,   grid->kend);
+        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+        fields.sd.at("p")->fld_g,
+        gd.dzhi4_g, gd.dxi, gd.dyi,
+        gd.icells, gd.ijcells,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 }
 
 template<typename TF>
 TF Pres_4<TF>::check_divergence()
 {
+    auto& gd = grid.get_grid_data();
+
     const int blocki = 128;
     const int blockj = 2;
-    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
-    dim3 gridGPU (gridi, gridj, grid->kmax);
+    dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const int offs = grid->memoffset;
+    auto div = fields.get_tmp_g();
 
     calc_divergence_g<<<gridGPU, blockGPU>>>(
-        &fields->atmp["tmp1"]->data_g[offs],
-        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-        grid->dzi4_g,
-        grid->dxi, grid->dyi,
-        grid->icellsp, grid->ijcellsp,
-        grid->istart,  grid->jstart, grid->kstart,
-        grid->iend,    grid->jend,   grid->kend);
+            div->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            gd.dzi4_g,
+            gd.dxi, gd.dyi,
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
-    double divmax = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
-    grid->get_max(&divmax);
+    TF divmax = field3d_operators.calc_max_g(div->fld_g);
+    // TO-DO: add grid.get_max() or similar for future parallel versions
 
     return divmax;
 }
