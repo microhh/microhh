@@ -33,6 +33,7 @@
 #include <cmath>
 
 #include "microphys.h"
+#include "field3d_operators.h"
 
 class Master;
 class Input;
@@ -49,19 +50,20 @@ template<typename> class Microphys;
 // Constants specific or tuned for this microphysics scheme
 namespace Micro_2mom_warm_constants
 {
-    template<typename TF> constexpr TF pi      = 3.14159265359;
-    template<typename TF> constexpr TF Nc0     = 70e6;                // Fixed cloud droplet number
-    template<typename TF> constexpr TF K_t     = 2.5e-2;              // Conductivity of heat [J/(sKm)]
-    template<typename TF> constexpr TF D_v     = 3.e-5;               // Diffusivity of water vapor [m2/s]
-    template<typename TF> constexpr TF rho_w   = 1.e3;                // Density water
-    template<typename TF> constexpr TF rho_0   = 1.225;               // SB06, p48
-    template<typename TF> constexpr TF pirhow  = pi<TF>*rho_w<TF>/6.;
-    template<typename TF> constexpr TF mc_min  = 4.2e-15;             // Min mean mass of cloud droplet
-    template<typename TF> constexpr TF mc_max  = 2.6e-10;             // Max mean mass of cloud droplet
-    template<typename TF> constexpr TF mr_min  = mc_max<TF>;          // Min mean mass of precipitation drop
-    template<typename TF> constexpr TF mr_max  = 3e-6;                // Max mean mass of precipitation drop // as in UCLA-LES
-    template<typename TF> constexpr TF ql_min  = 1.e-6;               // Min cloud liquid water for which calculations are performed
-    template<typename TF> constexpr TF qr_min  = 1.e-15;              // Min rain liquid water for which calculations are performed
+    template<typename TF> constexpr TF pi       = 3.14159265359;
+    template<typename TF> constexpr TF Nc0      = 70e6;                // Fixed cloud droplet number
+    template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
+    template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
+    template<typename TF> constexpr TF rho_w    = 1.e3;                // Density water
+    template<typename TF> constexpr TF rho_0    = 1.225;               // SB06, p48
+    template<typename TF> constexpr TF pirhow   = pi<TF>*rho_w<TF>/6.;
+    template<typename TF> constexpr TF mc_min   = 4.2e-15;             // Min mean mass of cloud droplet
+    template<typename TF> constexpr TF mc_max   = 2.6e-10;             // Max mean mass of cloud droplet
+    template<typename TF> constexpr TF mr_min   = mc_max<TF>;          // Min mean mass of precipitation drop
+    template<typename TF> constexpr TF mr_max   = 3e-6;                // Max mean mass of precipitation drop // as in UCLA-LES
+    template<typename TF> constexpr TF ql_min   = 1.e-6;               // Min cloud liquid water for which calculations are performed
+    template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
+    template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
 }
 
 namespace Micro_2mom_warm_functions
@@ -176,6 +178,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         using Microphys<TF>::master;
         using Microphys<TF>::grid;
         using Microphys<TF>::fields;
+        using Microphys<TF>::field3d_operators;
 
         Boundary_cyclic<TF> boundary_cyclic;
 

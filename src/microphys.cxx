@@ -32,7 +32,7 @@
 
 template<typename TF>
 Microphys<TF>::Microphys(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
 {
 }
 
