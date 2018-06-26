@@ -32,7 +32,7 @@ using namespace Finite_difference::O4;
 
 namespace
 {
-    __global__
+    template<typename TF> __global__
     void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
                    const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
@@ -60,12 +60,12 @@ namespace
                 ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
                            + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
-                           + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * cgi<TF>*dxi;
+                           + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
 
                 ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
                            + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
                            + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
-                           + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * cgi<TF>*dyi;
+                           + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
 
                 ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
                            + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
@@ -74,7 +74,7 @@ namespace
             }
         }
 
-    template<int loc> __global__
+    template<typename TF, int loc> __global__
     void advec_u_boundary_g(TF* __restrict__ ut, const TF* __restrict__ u,
                             const TF* __restrict__ v,  const TF* __restrict__ w,
                             const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
@@ -105,12 +105,12 @@ namespace
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
 
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
 
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (bi0<TF>*u[ijk-kk2] + bi1<TF>*u[ijk-kk1] + bi2<TF>*u[ijk    ] + bi3<TF>*u[ijk+kk1]))
                                + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
@@ -125,12 +125,12 @@ namespace
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]) * (ci0<TF>*u[ijk-ii3] + ci1<TF>*u[ijk-ii2] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
 
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk-ii2    ] + ci1<TF>*v[ijk-ii1    ] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1    ]) * (ci0<TF>*u[ijk-jj2] + ci1<TF>*u[ijk-jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
 
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
@@ -141,7 +141,7 @@ namespace
         }
 
 
-    __global__
+    template<typename TF> __global__
     void advec_v_g(TF* __restrict__ vt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
                    const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
@@ -170,12 +170,12 @@ namespace
             vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
                        + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                        + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
-                       + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * cgi<TF>*dxi;
+                       + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
 
             vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
                        + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
                        + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
-                       + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * cgi<TF>*dyi;
+                       + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
 
             vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
                        + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
@@ -184,7 +184,7 @@ namespace
         }
     }
 
-    template<int loc> __global__
+    template<typename TF, int loc> __global__
     void advec_v_boundary_g(TF* __restrict__ vt, const TF* __restrict__ u,
                             const TF* __restrict__ v,  const TF* __restrict__ w,
                             const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
@@ -215,12 +215,12 @@ namespace
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
 
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
 
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (bi0<TF>*v[ijk-kk2] + bi1<TF>*v[ijk-kk1] + bi2<TF>*v[ijk    ] + bi3<TF>*v[ijk+kk1]))
                                + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
@@ -235,12 +235,12 @@ namespace
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-jj2] + ci1<TF>*u[ijk-ii1-jj1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+jj1]) * (ci0<TF>*v[ijk-ii3] + ci1<TF>*v[ijk-ii2] + ci2<TF>*v[ijk-ii1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
 
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]) * (ci0<TF>*v[ijk-jj2] + ci1<TF>*v[ijk-jj1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
 
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
@@ -250,7 +250,7 @@ namespace
             }
         }
 
-    __global__
+    template<typename TF> __global__
     void advec_w_g(TF* __restrict__ wt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
                    const TF* __restrict__ dzhi4, const TF dxi, const TF dyi,
@@ -279,12 +279,12 @@ namespace
             wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
                        + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                        + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
-                       + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * cgi<TF>*dxi;
+                       + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
 
             wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
                        + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
                        + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
-                       + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * cgi<TF>*dyi;
+                       + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
 
             wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
                        + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
@@ -293,7 +293,7 @@ namespace
         }
     }
 
-    template<int loc> __global__
+    template<typename TF, int loc> __global__
     void advec_w_boundary_g(TF* __restrict__ wt, const TF* __restrict__ u,
                             const TF* __restrict__ v,  const TF* __restrict__ w,
                             const TF* __restrict__ dzhi4, const TF dxi, const TF dyi,
@@ -324,12 +324,12 @@ namespace
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
 
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
 
                     wt[ijk] -= ( cg0<TF>*((bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]) * (bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]))
                                + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
@@ -344,12 +344,12 @@ namespace
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*u[ijk-ii1-kk2] + ci1<TF>*u[ijk-ii1-kk1] + ci2<TF>*u[ijk-ii1] + ci3<TF>*u[ijk-ii1+kk1]) * (ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
-                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * cgi<TF>*dxi;
+                               + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
 
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*v[ijk    -kk2] + ci1<TF>*v[ijk    -kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk    +kk1]) * (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1]))
                                + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
-                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * cgi<TF>*dyi;
+                               + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
 
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
@@ -359,7 +359,7 @@ namespace
             }
         }
 
-    __global__
+    template<typename TF> __global__
     void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s,
                    const TF* __restrict__ u,  const TF* __restrict__ v, const TF* __restrict__ w,
                    const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
@@ -390,12 +390,12 @@ namespace
                 st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                            + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
-                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * cgi<TF>*dxi;
+                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
 
                 st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
                            + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
-                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * cgi<TF>*dyi;
+                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
 
                 st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (bi0<TF>*s[ijk-kk2] + bi1<TF>*s[ijk-kk1] + bi2<TF>*s[ijk    ] + bi3<TF>*s[ijk+kk1]))
                            + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
@@ -407,12 +407,12 @@ namespace
                 st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                            + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
-                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * cgi<TF>*dxi;
+                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
 
                 st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
                            + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
-                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * cgi<TF>*dyi;
+                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
 
                 st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
@@ -424,12 +424,12 @@ namespace
                 st[ijk] -= ( cg0<TF>*(u[ijk-ii1] * (ci0<TF>*s[ijk-ii3] + ci1<TF>*s[ijk-ii2] + ci2<TF>*s[ijk-ii1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                            + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
-                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * cgi<TF>*dxi;
+                           + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
 
                 st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(v[ijk    ] * (ci0<TF>*s[ijk-jj2] + ci1<TF>*s[ijk-jj1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+jj1]))
                            + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
-                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * cgi<TF>*dyi;
+                           + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
 
                 st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
@@ -439,7 +439,7 @@ namespace
         }
     }
 
-    __global__
+    template<typename TF> __global__
     void calc_cfl_g(TF* const __restrict__ tmp1,
                     const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
                     const TF* __restrict__ dzi, const TF dxi, const TF dyi,
@@ -490,18 +490,23 @@ double Advec_4<TF>::get_cfl(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
+    auto cfl_3d = fields.get_tmp_g();
+
     calc_cfl_g<<<gridGPU, blockGPU>>>(
-        &fields->atmp["tmp1"]->data_g[offs],
-        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+        cfl_3d->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
-    double cfl = gd.get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-    gd.get_max(&cfl); 
+    TF cfl = field3d_operators.calc_max_g(cfl_3d->fld_g);
+    // TO DO communicate.
+
     cfl = cfl*dt;
+
+    fields.release_tmp(cfl_3d);
 
     return cfl;
 }
@@ -523,17 +528,17 @@ void Advec_4<TF>::exec()
     dim3 blockGPU2D(blocki, blockj, 1);
 
     // Top and bottom boundary:
-    advec_u_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
-        &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, gd.dxi, gd.dyi,
+    advec_u_boundary_g<TF,0><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
-    advec_u_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
-        &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, dxi, dyi,
+    advec_u_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -541,25 +546,25 @@ void Advec_4<TF>::exec()
 
     // Interior:
     advec_u_g<<<gridGPU, blockGPU>>>(
-        &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, dxi, dyi,
+        fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
     // Top and bottom boundary:
-    advec_v_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
-        &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, dxi, dyi,
+    advec_v_boundary_g<TF,0><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
-    advec_v_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
-        &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, dxi, dyi,
+    advec_v_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -567,25 +572,25 @@ void Advec_4<TF>::exec()
 
     // Interior
     advec_v_g<<<gridGPU, blockGPU>>>(
-        &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzi4_g, dxi, dyi,
+        fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
     // Top and bottom boundary:
-    advec_w_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
-        &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzhi4_g, dxi, dyi,
+    advec_w_boundary_g<TF,0><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzhi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error(); 
 
-    advec_w_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
-        &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzhi4_g, dxi, dyi,
+    advec_w_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
+        fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzhi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -593,8 +598,8 @@ void Advec_4<TF>::exec()
 
     // Interior:
     advec_w_g<<<gridGPU, blockGPU>>>(
-        &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-        &fields->w->data_g[offs], gd.dzhi4_g, dxi, dyi,
+        fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+        fields.mp.at("w")->fld_g, gd.dzhi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -602,9 +607,9 @@ void Advec_4<TF>::exec()
 
     for (auto& it : fields.st)
         advec_s_g<<<gridGPU, blockGPU>>>(
-            &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
-            &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-            gd.dzi4_g, dxi, dyi,
+            it.second->fld_g, fields.sp.at(it.first)->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            gd.dzi4_g, gd.dxi, gd.dyi,
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
