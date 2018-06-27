@@ -52,7 +52,7 @@ namespace
     template<typename TF>
     TF calc_cfl(
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF dt, Master& master,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -63,9 +63,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         TF cfl = 0;
     
@@ -113,7 +110,7 @@ namespace
     void advec_u(
             TF* const restrict ut,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -124,9 +121,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart; 
     
@@ -232,7 +226,7 @@ namespace
     void advec_v(
             TF* const restrict vt,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -243,9 +237,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart;
         for (int j=jstart; j<jend; ++j)
@@ -349,8 +340,8 @@ namespace
     template<typename TF>
     void advec_w(
             TF* const restrict wt,
-            const TF* const restrict u, const TF* const restrict v, TF* const restrict w,
-            const TF* const restrict dzhi, const TF dx, const TF dy,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict dzhi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -361,9 +352,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart+1;
         for (int j=jstart; j<jend; ++j)
@@ -432,7 +420,7 @@ namespace
     void advec_s(
             TF* const restrict st, const TF* const restrict s,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -443,9 +431,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         // assume that w at the boundary equals zero...
         int k = kstart;
@@ -540,7 +525,7 @@ double Advec_2i4<TF>::get_cfl(double dt)
     auto& gd = grid.get_grid_data();
     TF cfl = calc_cfl<TF>(
             fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -557,7 +542,7 @@ unsigned long Advec_2i4<TF>::get_time_limit(unsigned long idt, double dt)
 
     double cfl = calc_cfl<TF>(
             fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -572,21 +557,21 @@ void Advec_2i4<TF>::exec()
     auto& gd = grid.get_grid_data();
     advec_u(fields.mt.at("u")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     advec_v(fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     advec_w(fields.mt.at("w")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzhi.data(), gd.dx, gd.dy,
+            gd.dzhi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -594,7 +579,7 @@ void Advec_2i4<TF>::exec()
     for (auto& it : fields.st)
         advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
+                gd.dzi.data(), gd.dxi, gd.dyi,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
