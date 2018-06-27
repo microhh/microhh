@@ -30,11 +30,6 @@
 #include "constants.h"
 #include "finite_difference.h"
 
-namespace
-{
-    using namespace Finite_difference::O2;
-}
-
 template<typename TF>
 Advec_2i4<TF>::Advec_2i4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
@@ -51,16 +46,8 @@ Advec_2i4<TF>::~Advec_2i4() {}
 #ifndef USECUDA
 namespace
 {
+    using namespace Finite_difference::O2;
     using Finite_difference::O4::interp4c;
-    /*
-    template<typename TF>
-    inline TF interp4c(const TF a, const TF b, const TF c, const TF d) 
-    {
-        const TF c0 = 7./12.;
-        const TF c1 = 1./12.;
-        return c0*(b + c) - c1*(a + d);
-    }
-    */
 
     template<typename TF>
     TF calc_cfl(

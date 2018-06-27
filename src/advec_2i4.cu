@@ -39,7 +39,7 @@ namespace
                    const TF* __restrict__ v,  const TF* __restrict__ w,
                    const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
                    const TF* __restrict__ dzi, const TF dxi, const TF dyi, 
-                   const int jj, int kk,
+                   const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
     {
@@ -124,7 +124,7 @@ namespace
                    const TF* __restrict__ v,  const TF* __restrict__ w,
                    const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
                    const TF* __restrict__ dzi, const TF dxi, const TF dyi, 
-                   const int jj, int kk,
+                   const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
     {
@@ -444,13 +444,10 @@ void Advec_2i4<TF>::exec()
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-
     advec_u_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -459,7 +456,7 @@ void Advec_2i4<TF>::exec()
     advec_v_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("v")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -468,7 +465,7 @@ void Advec_2i4<TF>::exec()
     advec_w_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("w")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -478,7 +475,7 @@ void Advec_2i4<TF>::exec()
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
             it.second->fld_g, fields.sp.at(it.first)->fld_g,
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+            fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
