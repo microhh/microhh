@@ -394,9 +394,15 @@ namespace
                 st[ijk] += 
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+    
+                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+    
+                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
@@ -405,33 +411,55 @@ namespace
                 st[ijk] += 
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+    
+                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+    
+                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                       - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
+    
+                    + ( rhorefh[k+1] * std::abs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
                 st[ijk] += 
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+    
+                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+    
+                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
                       - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+
+                    // CvH: this is not correct, it mismatches with the interior because a term is missing!
             }
             else if (k == kend-1)
             {
                 st[ijk] += 
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+    
+                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+    
+                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - (-rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
@@ -440,12 +468,21 @@ namespace
                 st[ijk] += 
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+    
+                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+    
+                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                       - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+    
+                    + ( rhorefh[k+1] * std::abs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                      - rhorefh[k  ] * std::abs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
         }
     }

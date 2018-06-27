@@ -639,6 +639,7 @@ namespace
     
                          - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
                            - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                // CvH: something is missing here!!!
             }
     
         // assume that w at the boundary equals zero...
