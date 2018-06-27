@@ -63,14 +63,14 @@ namespace
                     - ( interp2(u[ijk        ], u[ijk+ii1]) * interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                       - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
-                      - std::abs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                      - fabs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                      - std::abs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                    + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                      - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
@@ -80,19 +80,19 @@ namespace
                     - ( interp2(u[ijk        ], u[ijk+ii1]) * interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                       - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
-                      - std::abs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                      - fabs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                      - std::abs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                    + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                      - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                       - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
@@ -100,19 +100,19 @@ namespace
                     - ( interp2(u[ijk        ], u[ijk+ii1]) * interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                       - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
-                      - std::abs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                      - fabs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                      - std::abs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                    + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                      - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
                       - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
     
-                    - ( rhorefh[k  ] * std::abs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    - ( rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
@@ -120,14 +120,14 @@ namespace
                     - ( interp2(u[ijk        ], u[ijk+ii1]) * interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                       - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
-                      - std::abs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                      - fabs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                      - std::abs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                    + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                      - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
                     - (-rhorefh[k] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
             }
@@ -137,20 +137,20 @@ namespace
                     - ( interp2(u[ijk        ], u[ijk+ii1]) * interp4_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                       - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
-                      - std::abs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk        ], u[ijk+ii1])) * interp3_ws(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                      - fabs(interp2(u[ijk-ii1    ], u[ijk    ])) * interp3_ws(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                      - std::abs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                    + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp3_ws(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                      - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp3_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                       - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
-                      - rhorefh[k  ] * std::abs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
+                      - rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
         }
     }
@@ -185,14 +185,14 @@ namespace
                     - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                       - interp2(u[ijk    -jj1], u[ijk    ]) * interp4_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                      - fabs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk        ], v[ijk+jj1]) * interp4_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
                       - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
-                      - std::abs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                      - fabs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
                     - ( rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
@@ -202,19 +202,19 @@ namespace
                     - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                       - interp2(u[ijk    -jj1], u[ijk    ]) * interp4_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                      - fabs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk        ], v[ijk+jj1]) * interp4_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
                       - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
-                      - std::abs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                      - fabs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
                     - ( rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
                       - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(interp2(w[ijk-jj1+kk1], w[ijk+kk1])) * interp3_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(interp2(w[ijk-jj1+kk1], w[ijk+kk1])) * interp3_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
@@ -222,19 +222,19 @@ namespace
                     - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                       - interp2(u[ijk    -jj1], u[ijk    ]) * interp4_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                      - fabs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk        ], v[ijk+jj1]) * interp4_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
                       - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
-                      - std::abs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                      - fabs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
                     - ( rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1])
                       - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp4_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
     
-                    - ( rhorefh[k  ] * std::abs(interp2(w[ijk-jj1    ], w[ijk    ])) * interp3_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    - ( rhorefh[k  ] * fabs(interp2(w[ijk-jj1    ], w[ijk    ])) * interp3_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
@@ -242,14 +242,14 @@ namespace
                     - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                       - interp2(u[ijk    -jj1], u[ijk    ]) * interp4_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                      - fabs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk        ], v[ijk+jj1]) * interp4_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
                       - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
-                      - std::abs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                      - fabs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
                     - (-rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) / rhoref[k] * dzi[k];
             }
@@ -259,20 +259,20 @@ namespace
                     - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                       - interp2(u[ijk    -jj1], u[ijk    ]) * interp4_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-jj1], u[ijk+ii1])) * interp3_ws(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                      - fabs(interp2(u[ijk    -jj1], u[ijk    ])) * interp3_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk        ], v[ijk+jj1]) * interp4_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
                       - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
-                      - std::abs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk        ], v[ijk+jj1])) * interp3_ws(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                      - fabs(interp2(v[ijk-jj1    ], v[ijk    ])) * interp3_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
                     - ( rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
                       - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp4_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(interp2(w[ijk-jj1+kk1], w[ijk+kk1])) * interp3_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
-                      - rhorefh[k  ] * std::abs(interp2(w[ijk-jj1    ], w[ijk    ])) * interp3_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(interp2(w[ijk-jj1+kk1], w[ijk+kk1])) * interp3_ws(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
+                      - rhorefh[k  ] * fabs(interp2(w[ijk-jj1    ], w[ijk    ])) * interp3_ws(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
         }
     }
@@ -307,19 +307,19 @@ namespace
                     - ( interp2(u[ijk+ii1-kk1], u[ijk+ii1]) * interp4_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
                       - interp2(u[ijk    -kk1], u[ijk    ]) * interp4_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+                      - fabs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk+jj1-kk1], v[ijk+jj1]) * interp4_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
                       - interp2(v[ijk    -kk1], v[ijk    ]) * interp4_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
-                      - std::abs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+                      - fabs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
                     - ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
                       - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) / rhorefh[k] * dzhi[k]
 
-                    + ( rhoref[k  ] * std::abs(interp2(w[ijk        ], w[ijk+kk1])) * interp3_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) ) / rhorefh[k] * dzhi[k];
+                    + ( rhoref[k  ] * fabs(interp2(w[ijk        ], w[ijk+kk1])) * interp3_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) ) / rhorefh[k] * dzhi[k];
             }
             else if (k == kend-1)
             {
@@ -327,19 +327,19 @@ namespace
                     - ( interp2(u[ijk+ii1-kk1], u[ijk+ii1]) * interp4_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
                       - interp2(u[ijk    -kk1], u[ijk    ]) * interp4_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+                      - fabs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk+jj1-kk1], v[ijk+jj1]) * interp4_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
                       - interp2(v[ijk    -kk1], v[ijk    ]) * interp4_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
-                      - std::abs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+                      - fabs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
                     - ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
                       - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp4_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
     
-                    - ( rhoref[k-1] * std::abs(interp2(w[ijk-kk1    ], w[ijk    ])) * interp3_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
+                    - ( rhoref[k-1] * fabs(interp2(w[ijk-kk1    ], w[ijk    ])) * interp3_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
             }
             else
             {
@@ -347,20 +347,20 @@ namespace
                     - ( interp2(u[ijk+ii1-kk1], u[ijk+ii1]) * interp4_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
                       - interp2(u[ijk    -kk1], u[ijk    ]) * interp4_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
-                      - std::abs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+                    + ( fabs(interp2(u[ijk+ii1-kk1], u[ijk+ii1])) * interp3_ws(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+                      - fabs(interp2(u[ijk    -kk1], u[ijk    ])) * interp3_ws(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
 
                     - ( interp2(v[ijk+jj1-kk1], v[ijk+jj1]) * interp4_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
                       - interp2(v[ijk    -kk1], v[ijk    ]) * interp4_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
     
-                    + ( std::abs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
-                      - std::abs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+                    + ( fabs(interp2(v[ijk+jj1-kk1], v[ijk+jj1])) * interp3_ws(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+                      - fabs(interp2(v[ijk    -kk1], v[ijk    ])) * interp3_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
                     - ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
                       - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp4_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
     
-                    + ( rhoref[k  ] * std::abs(interp2(w[ijk        ], w[ijk+kk1])) * interp3_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
-                      - rhoref[k-1] * std::abs(interp2(w[ijk-kk1    ], w[ijk    ])) * interp3_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
+                    + ( rhoref[k  ] * fabs(interp2(w[ijk        ], w[ijk+kk1])) * interp3_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
+                      - rhoref[k-1] * fabs(interp2(w[ijk-kk1    ], w[ijk    ])) * interp3_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
             }
         }
     }
@@ -395,14 +395,14 @@ namespace
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                    + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                    + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
@@ -412,19 +412,19 @@ namespace
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                    + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                    + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                       - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
@@ -432,19 +432,19 @@ namespace
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                    + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                    + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
                       - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
 
-                    - ( rhorefh[k  ] * std::abs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    - ( rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
@@ -452,14 +452,14 @@ namespace
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                    + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                    + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - (-rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
@@ -469,20 +469,20 @@ namespace
                     - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                       - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
     
-                    + ( std::abs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                      - std::abs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                    + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                      - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                       - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
-                    + ( std::abs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                      - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                    + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                      - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                       - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
     
-                    + ( rhorefh[k+1] * std::abs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                      - rhorefh[k  ] * std::abs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                      - rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
         }
     }
@@ -546,14 +546,11 @@ double Advec_2i3<TF>::get_cfl(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-
     auto tmp1 = fields.get_tmp_g();
 
     calc_cfl_g<<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        tmp1->fld_g, gd.dzi_g, dxi, dyi,
+        tmp1->fld_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -579,13 +576,10 @@ void Advec_2i3<TF>::exec()
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-
     advec_u_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -594,7 +588,7 @@ void Advec_2i3<TF>::exec()
     advec_v_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("v")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -603,7 +597,7 @@ void Advec_2i3<TF>::exec()
     advec_w_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("w")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, dxi, dyi,
+        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
@@ -613,7 +607,7 @@ void Advec_2i3<TF>::exec()
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
             it.second->fld_g, fields.sp.at(it.first)->fld_g,
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,
+            fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);

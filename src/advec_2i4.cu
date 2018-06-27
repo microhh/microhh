@@ -411,14 +411,11 @@ double Advec_2i4<TF>::get_cfl(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-
     auto tmp1 = fields.get_tmp_g();
 
     calc_cfl_g<<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        tmp1->fld_g, gd.dzi_g, dxi, dyi,
+        tmp1->fld_g, gd.dzi_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -436,6 +433,7 @@ template<typename TF>
 void Advec_2i4<TF>::exec()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
