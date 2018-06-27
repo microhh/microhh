@@ -30,11 +30,6 @@
 #include "constants.h"
 #include "finite_difference.h"
 
-namespace
-{
-    using namespace Finite_difference::O2;
-}
-
 template<typename TF>
 Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
@@ -51,26 +46,13 @@ Advec_2i3<TF>::~Advec_2i3() {}
 #ifndef USECUDA
 namespace
 {
-    template<typename TF>
-    inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d) 
-    {
-        const TF c0 = 7./12.;
-        const TF c1 = 1./12.;
-        return c0*(b + c) - c1*(a + d);
-    }
-
-    template<typename TF>
-    inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d) 
-    {
-        const TF c0 = 3./12.;
-        const TF c1 = 1./12.;
-        return c0*(c - b) - c1*(d - a);
-    }
+    using namespace Finite_difference::O2;
+    using namespace Finite_difference::O4;
 
     template<typename TF>
     TF calc_cfl(
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF dt, Master& master,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -81,9 +63,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         TF cfl = 0;
     
@@ -131,7 +110,7 @@ namespace
     void advec_u(
             TF* const restrict ut,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -142,9 +121,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart; 
     
@@ -287,7 +263,7 @@ namespace
     void advec_v(
             TF* const restrict vt,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -298,9 +274,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart;
         for (int j=jstart; j<jend; ++j)
@@ -441,8 +414,8 @@ namespace
     template<typename TF>
     void advec_w(
             TF* const restrict wt,
-            const TF* const restrict u, const TF* const restrict v, TF* const restrict w,
-            const TF* const restrict dzhi, const TF dx, const TF dy,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict dzhi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -453,9 +426,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         int k = kstart+1;
         for (int j=jstart; j<jend; ++j)
@@ -481,8 +451,8 @@ namespace
                          // w*dw/dz 
                          - ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
                            - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) / rhorefh[k] * dzhi[k]
-    
-                         + ( rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) ) / rhorefh[k] * dzhi[k];
+
+                         + ( rhoref[k  ] * std::abs(interp2(w[ijk        ], w[ijk+kk1])) * interp3_ws(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) ) / rhorefh[k] * dzhi[k];
             }
     
         for (k=kstart+2; k<kend-1; ++k)
@@ -547,7 +517,7 @@ namespace
     void advec_s(
             TF* const restrict st, const TF* const restrict s,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict dzi, const TF dxi, const TF dyi,
             const TF* const restrict rhoref, const TF* const restrict rhorefh,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -558,9 +528,6 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-
-        const TF dxi = 1./dx;
-        const TF dyi = 1./dy;
 
         // assume that w at the boundary equals zero...
         int k = kstart;
@@ -656,7 +623,9 @@ namespace
                            - std::abs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
     
                          - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
-                           - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                           - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k]
+
+                         - ( rhorefh[k  ] * std::abs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
     
         // assume that w at the boundary equals zero...
@@ -690,7 +659,7 @@ double Advec_2i3<TF>::get_cfl(double dt)
     auto& gd = grid.get_grid_data();
     TF cfl = calc_cfl<TF>(
             fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -707,7 +676,7 @@ unsigned long Advec_2i3<TF>::get_time_limit(unsigned long idt, double dt)
 
     double cfl = calc_cfl<TF>(
             fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             dt, master,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -722,21 +691,21 @@ void Advec_2i3<TF>::exec()
     auto& gd = grid.get_grid_data();
     advec_u(fields.mt.at("u")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     advec_v(fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzi.data(), gd.dx, gd.dy,
+            gd.dzi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     advec_w(fields.mt.at("w")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            gd.dzhi.data(), gd.dx, gd.dy,
+            gd.dzhi.data(), gd.dxi, gd.dyi,
             fields.rhoref.data(), fields.rhorefh.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -744,7 +713,7 @@ void Advec_2i3<TF>::exec()
     for (auto& it : fields.st)
         advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
+                gd.dzi.data(), gd.dxi, gd.dyi,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);

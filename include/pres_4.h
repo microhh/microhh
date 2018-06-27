@@ -68,6 +68,10 @@ class Pres_4 : public Pres<TF>
         std::vector<TF> m7;
 
         #ifdef USECUDA
+        using Pres<TF>::make_cufft_plan;
+        using Pres<TF>::fft_forward;
+        using Pres<TF>::fft_backward;
+
         TF* bmati_g;
         TF* bmatj_g;
         TF* m1_g;
