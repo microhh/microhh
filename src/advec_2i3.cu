@@ -25,7 +25,6 @@
 #include "fields.h"
 #include "tools.h"
 #include "constants.h"
-#include "tools.h"
 #include "finite_difference.h"
 #include "field3d_operators.h"
 

@@ -108,6 +108,22 @@ namespace Finite_difference
         }
 
         template<typename TF>
+        CUDA_MACRO inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d) 
+        {
+            const TF c0 = TF(7./12.);
+            const TF c1 = TF(1./12.);
+            return c0*(b + c) - c1*(a + d);
+        }
+
+        template<typename TF>
+        CUDA_MACRO inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d) 
+        {
+            const TF c0 = TF(3./12.);
+            const TF c1 = TF(1./12.);
+            return c0*(c - b) - c1*(d - a);
+        }
+
+        template<typename TF>
         CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d)
         {
             return ( - cg0<TF>*(d-a) - cg1<TF>*(c-b) );
