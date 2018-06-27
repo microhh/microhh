@@ -427,6 +427,7 @@ void Grid<TF>::interpolate_2nd(TF* const restrict out, const TF* const restrict 
     if (kkh == kk)
         kend = gd.kcells - 1;
 
+    #pragma omp parallel for
     for (int k=kstart; k<kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
@@ -491,6 +492,7 @@ void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const in
     const int jjh2 = 2*(locin[1]-locout[1])*jj;
 
     // \TODO add the vertical component
+    #pragma omp parallel for
     for (int k=0; k<gd.kcells; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
 #pragma ivdep

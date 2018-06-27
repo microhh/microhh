@@ -27,7 +27,6 @@
 #include <iomanip>
 #include <netcdf>       // C++
 #include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
-
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -142,7 +141,7 @@ namespace
 
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres_pert(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
-                     const TF* const restrict fld, const TF* const restrict fld_mean, const TF* const restrict fldh, 
+                     const TF* const restrict fld, const TF* const restrict fld_mean, const TF* const restrict fldh,
                      const TF* const restrict fldh_mean, const TF* const restrict fldbot, const TF threshold,
                      const int istart, const int jstart, const int kstart,
                      const int iend,   const int jend,   const int kend,
@@ -182,7 +181,7 @@ namespace
     template<typename TF>
     void calc_nmask(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom,
                    int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-                   const int istart, const int iend, const int jstart, const int jend, 
+                   const int istart, const int iend, const int jstart, const int jend,
                    const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
     {
         for (int k=kstart; k<kend; ++k)
@@ -640,27 +639,26 @@ void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data
 {
     auto& gd = grid.get_grid_data();
 
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; j++)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; i++)
-            {
-                const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*(data[ijk] + offset);
-            }
-    }
-
-    master.sum(prof, gd.kcells);
-
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; k++)
     {
         if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
+        {
+          prof[k] = 0.;
+          for (int j=gd.jstart; j<gd.jend; j++)
+              #pragma ivdep
+              for (int i=gd.istart; i<gd.iend; i++)
+              {
+                  const int ijk  = i + j*gd.icells + k*gd.ijcells;
+                  prof[k] += mask[ijk]*(data[ijk] + offset);
+              }
+          prof[k] = netcdf_fp_fillvalue<TF>();
+        }
         else
-            prof[k] = netcdf_fp_fillvalue<TF>();
+          prof[k] = netcdf_fp_fillvalue<TF>();
     }
+
+    master.sum(prof, gd.kcells);
 }
 
 template<typename TF>
@@ -871,32 +869,32 @@ void Stats<TF>::calc_max_2d(TF& max, const TF* const restrict data,
 //}
 
 template<typename TF>
-void Stats<TF>::calc_moment(TF* restrict data, TF* restrict fld_mean, TF* restrict prof, TF power,
+void Stats<TF>::calc_moment(TF* restrict data, TF* restrict fld_mean, TF* restrict prof, const int power,
                             TF* restrict mask, int* restrict nmask)
 {
     auto& gd = grid.get_grid_data();
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*std::pow(data[ijk]-fld_mean[k], power);
-            }
+        if (nmask[k] > nthres)
+        {
+          for (int j=gd.jstart; j<gd.jend; ++j)
+              #pragma ivdep
+              for (int i=gd.istart; i<gd.iend; ++i)
+              {
+                  const int ijk = i + j*gd.icells + k*gd.ijcells;
+                  prof[k] += mask[ijk]*std::pow(data[ijk]-fld_mean[k],power);
+              }
+           prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 
     master.sum(prof, gd.kcells);
 
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -926,6 +924,7 @@ void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict fld_mean, TF* rest
         calcw = tmp1;
     }
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -981,6 +980,7 @@ void Stats<TF>::calc_flux_4th(
         calcw = tmp1;
     }
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -1010,6 +1010,7 @@ void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* re
 {
     auto& gd = grid.get_grid_data();
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -1046,6 +1047,7 @@ void Stats<TF>::calc_grad_4th(
     const int kk1 = 1*gd.ijcells;
     const int kk2 = 2*gd.ijcells;
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -1083,6 +1085,7 @@ void Stats<TF>::calc_diff_4th(
     const int kk1 = 1*gd.ijcells;
     const int kk2 = 2*gd.ijcells;
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -1114,6 +1117,7 @@ void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* re
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
+    #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
         prof[k] = 0.;
@@ -1168,7 +1172,8 @@ void Stats<TF>::calc_diff_2nd(
     // calculate the interior
     if (loc[0] == 1)
     {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
+      #pragma omp parallel for
+      for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
             prof[k] = 0.;
             for (int j=gd.jstart; j<gd.jend; ++j)
@@ -1184,7 +1189,8 @@ void Stats<TF>::calc_diff_2nd(
     }
     else if (loc[1] == 1)
     {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
+      #pragma omp parallel for
+      for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
             prof[k] = 0.;
             for (int j=gd.jstart; j<gd.jend; ++j)
@@ -1200,7 +1206,8 @@ void Stats<TF>::calc_diff_2nd(
     }
     else
     {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
+      #pragma omp parallel for
+      for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
             prof[k] = 0.;
             for (int j=gd.jstart; j<gd.jend; ++j)
