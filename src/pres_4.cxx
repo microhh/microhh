@@ -59,7 +59,7 @@ template<typename TF>
 Pres_4<TF>::~Pres_4()
 {
     #ifdef USECUDA
-    clear_device();
+    // clear_device();
     #endif
 }
 
