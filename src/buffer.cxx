@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,7 +32,6 @@
 #include "buffer.h"
 #include "defines.h"
 #include "data_block.h"
-
 
 namespace
 {
@@ -130,6 +129,7 @@ void Buffer<TF>::create(Input& inputin, Data_block& profs)
         if (bufferkstarth == gd.kend)
         {
             master.print_error("buffer is too close to the model top\n");
+            throw std::runtime_error("Buffer is too close to the model top\n");
         }
 
         // Allocate the buffer for w on 0.
