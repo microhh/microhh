@@ -62,12 +62,14 @@ namespace
         const int ijtot = itot*jtot;
         nmask_bottom = ijtot;
 
+        #pragma omp parallel for
         for (int n=0; n<ncells; ++n)
         {
             mask_full[n] = 1.;
             mask_half[n] = 1.;
         }
 
+        #pragma omp parallel for
         for (int n=0; n<ijcells; ++n)
             mask_bottom[n] = 1.;
 
@@ -82,12 +84,14 @@ namespace
     template<typename TF>
     void calc_mask_true(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom, const int ijcells, const int ncells)
     {
+        #pragma omp parallel for
         for (int n=0; n<ncells; ++n)
         {
             mask_full[n] = 1.;
             mask_half[n] = 1.;
         }
 
+        #pragma omp parallel for
         for (int n=0; n<ijcells; ++n)
             mask_bottom[n] = 1.;
     }
@@ -110,6 +114,7 @@ namespace
                          const int icells, const int ijcells)
     {
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -119,6 +124,7 @@ namespace
                     mask[ijk] *= compare<TF, mode>(fld[ijk], threshold);
                 }
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend+1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -129,6 +135,7 @@ namespace
                 }
 
         // Set the mask for surface projected quantities
+        #pragma omp parallel for
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -148,6 +155,7 @@ namespace
                      const int icells, const int ijcells)
     {
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -157,6 +165,7 @@ namespace
                     mask[ijk] *= compare<TF, mode>((fld[ijk]-fld_mean[k]), threshold);
                 }
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend+1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -167,6 +176,7 @@ namespace
                 }
 
         // Set the mask for surface projected quantities
+        #pragma omp parallel for
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -184,6 +194,7 @@ namespace
                    const int istart, const int iend, const int jstart, const int jend,
                    const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
     {
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             nmask_full[k] = 0;
@@ -199,6 +210,7 @@ namespace
         }
 
         nmask_bottom = 0;
+        #pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
@@ -652,7 +664,7 @@ void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data
                   const int ijk  = i + j*gd.icells + k*gd.ijcells;
                   prof[k] += mask[ijk]*(data[ijk] + offset);
               }
-          prof[k] = netcdf_fp_fillvalue<TF>();
+          prof[k] /= static_cast<TF>(nmask[k]);
         }
         else
           prof[k] = netcdf_fp_fillvalue<TF>();
@@ -927,25 +939,25 @@ void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict fld_mean, TF* rest
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk  = i + j*gd.icells + k*kk;
-                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
-            }
+        if (nmask[k] > nthres && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk  = i + j*gd.icells + k*kk;
+                    prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
 
-    for (int k=1; k<gd.kcells; ++k)
-    {
-        if (nmask[k] > nthres && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -983,25 +995,25 @@ void Stats<TF>::calc_flux_4th(
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
-            }
+        if (nmask[k] > nthres)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    prof[k] += mask[ijk]*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
 
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -1013,25 +1025,25 @@ void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* re
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*(data[ijk]-data[ijk-gd.ijcells])*dzhi[k];
-            }
+        if (nmask[k] > nthres)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*gd.icells + k*gd.ijcells;
+                    prof[k] += mask[ijk]*(data[ijk]-data[ijk-gd.ijcells])*dzhi[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
 
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -1050,25 +1062,24 @@ void Stats<TF>::calc_grad_4th(
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
-            }
+        if (nmask[k] > nthres)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    prof[k] += mask[ijk]*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -1088,25 +1099,25 @@ void Stats<TF>::calc_diff_4th(
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] -= mask[ijk]*visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
-            }
+        if (nmask[k] > nthres)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    prof[k] -= mask[ijk]*visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
 
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -1120,25 +1131,24 @@ void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* re
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
-            }
+        if (nmask[k] > nthres)
+        {
+            prof[k] = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 
     master.sum(prof, gd.kcells);
-
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
@@ -1159,15 +1169,22 @@ void Stats<TF>::calc_diff_2nd(
     const TF dyi = 1./gd.dy;
 
     // bottom boundary
-    prof[kstart] = 0.;
-    for (int j=gd.jstart; j<gd.jend; ++j)
-        #pragma ivdep
-        for (int i=gd.istart; i<gd.iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            prof[kstart] += mask[ijk]*fluxbot[ij];
-        }
+    if (nmask[kstart] > nthres)
+    {
+        prof[kstart] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                prof[kstart] += mask[ijk]*fluxbot[ij];
+            }
+        prof[kstart] /= static_cast<TF>(nmask[kstart]);
+    }
+    else
+        prof[kstart] = netcdf_fp_fillvalue<TF>();
+
 
     // calculate the interior
     if (loc[0] == 1)
@@ -1175,33 +1192,48 @@ void Stats<TF>::calc_diff_2nd(
       #pragma omp parallel for
       for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk  = i + j*jj + k*kk;
-                    // evisc * (du/dz + dw/dx)
-                    const TF eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
-                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
-                }
+            if (nmask[k] > nthres)
+            {
+                prof[k] = 0.;
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    #pragma ivdep
+                    for (int i=gd.istart; i<gd.iend; ++i)
+                    {
+                        const int ijk  = i + j*jj + k*kk;
+                        // evisc * (du/dz + dw/dx)
+                        const TF eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+                        prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                    }
+            prof[k] /= static_cast<TF>(nmask[k]);
         }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
+        }
+
     }
     else if (loc[1] == 1)
     {
       #pragma omp parallel for
       for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    // evisc * (dv/dz + dw/dy)
-                    const TF eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
-                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
-                }
+            if (nmask[k] > nthres)
+            {
+                prof[k] = 0.;
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    #pragma ivdep
+                    for (int i=gd.istart; i<gd.iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        // evisc * (dv/dz + dw/dy)
+                        const TF eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+                        prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
+            else
+                prof[k] = netcdf_fp_fillvalue<TF>();
+
         }
     }
     else
@@ -1209,38 +1241,44 @@ void Stats<TF>::calc_diff_2nd(
       #pragma omp parallel for
       for (int k=gd.kstart+1; k<gd.kend; ++k)
         {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const TF eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
-                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
-                }
+            if (nmask[k] > nthres)
+            {
+                prof[k] = 0.;
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    #pragma ivdep
+                    for (int i=gd.istart; i<gd.iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const TF eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+                        prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
+            else
+                prof[k] = netcdf_fp_fillvalue<TF>();
+
         }
     }
 
     // top boundary
-    prof[kend] = 0.;
-    for (int j=gd.jstart; j<gd.jend; ++j)
-        #pragma ivdep
-        for (int i=gd.istart; i<gd.iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kend*kk;
-            prof[kend] += mask[ijk]*fluxtop[ij];
-        }
+    if (nmask[kend] > nthres)
+    {
+        prof[kend] = 0.;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kend*kk;
+                prof[kend] += mask[ijk]*fluxtop[ij];
+            }
+        prof[kend] /= static_cast<TF>(nmask[kend]);
+    }
+    else
+        prof[kend] = netcdf_fp_fillvalue<TF>();
+
 
     master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
 }
 
 template<typename TF>
