@@ -511,8 +511,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
             stats.add_prof("T", "Absolute temperature", "K", "z");
         }
 

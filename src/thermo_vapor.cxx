@@ -649,15 +649,15 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
+            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
             stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
             stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
         }
         else
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
@@ -786,8 +786,8 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
-        m.profs["ph"  ].data = bs_stats.pref;
-        m.profs["phh" ].data = bs_stats.prefh;
+        m.profs["phydro"  ].data = bs_stats.pref;
+        m.profs["phydroh" ].data = bs_stats.prefh;
         m.profs["rho" ].data = fields.rhoref;
         m.profs["rhoh"].data = fields.rhorefh;
     }
