@@ -210,7 +210,6 @@ namespace
         }
 
         nmask_bottom = 0;
-        #pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
