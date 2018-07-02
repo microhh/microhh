@@ -80,6 +80,7 @@ namespace
                                const int kstart, const int kend,
                                const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=kstart+1; k<kend; k++)
        {
            const TF exnh = exner(ph[k]);
@@ -120,6 +121,7 @@ namespace
                       const int kstart, const int kend,
                       const int kcells, const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=0; k<kcells; k++)
        {
            const TF ex = exner(p[k]);
@@ -220,6 +222,7 @@ namespace
                           const int jj, const int kk)
    {
        // Calculate the ql field
+       #pragma omp parallel for
        for (int k=kstart; k<kend; k++)
        {
            const TF ex = exner(p[k]);
@@ -285,6 +288,7 @@ namespace
                 const int kstart, const int kend,
                 const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=kstart; k<kend; ++k)
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
@@ -303,6 +307,7 @@ namespace
                const int jstart, const int jend,
                const int jj, const int kk, const int kcells)
    {
+       #pragma omp parallel for
        for (int k=0; k<kcells; ++k)
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
