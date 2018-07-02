@@ -246,7 +246,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
         std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
         for(auto& it : tdepvars)
-            tdep_ls.emplace(it, new Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_ls", "", false)));
+            tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"ls", inputin.get_item<bool>("force", "swtimedep_ls", "", false)));
     }
     else
     {
@@ -278,7 +278,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
         std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
         for(auto& it : tdepvars)
-            tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_nudge", "", false)));
+            tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it+"nudge", inputin.get_item<bool>("force", "swtimedep_nudge", "", false)));
         fields.set_calc_mean_profs(true);
     }
     else
