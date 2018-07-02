@@ -20,31 +20,32 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tools.h"
+ #include <algorithm>
+
 #include "data_block.h"
 #include "timedep.h"
 
-
 template<typename TF>
-Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, std::string varname, std::bool is_timedep) :
-    master(masterin), grid(gridin)
+Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varnamein, const bool is_timedep) :
+    master(masterin), grid(gridin), varname(varnamein)
 {
-    sw = is_timedep;
-    varname = varname;
+    if(is_timedep)
+        sw = Timedep_switch::enabled;
+    else
+        sw = Timedep_switch::disabled;
 }
 
+#ifndef USECUDA
 template<typename TF>
 Timedep<TF>::~Timedep()
 {
-    #ifdef USECUDA
-        cuda_safe_call(cudaFree(data_g));
-    #endif
 }
+#endif
 
 template <typename TF>
 void Timedep<TF>::create_timedep_prof()
 {
-    if (sw == false)
+    if (sw == Timedep_switch::disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -53,19 +54,19 @@ void Timedep<TF>::create_timedep_prof()
     std::vector<std::string> headers = data_block.get_headers();
     // Sort the times
     std::sort(headers.begin()+1, headers.end());
-
+    std::vector<TF> tmp(gd.kmax);
     for (auto& it : headers)
     {
         time.push_back(std::stod(it));
         data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
-        data.insert(data[var].end(),tmp.begin(),tmp.end());
+        data.insert(data.end(),tmp.begin(),tmp.end());
     }
 }
 
 template <typename TF>
 void Timedep<TF>::create_timedep()
 {
-    if (sw == false)
+    if (sw == Timedep_switch::disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -81,7 +82,7 @@ void Timedep<TF>::create_timedep()
 template <typename TF>
 void Timedep<TF>::update_time_dependent_prof(std::vector<TF> prof, Timeloop<TF>& timeloop)
 {
-    if (sw == false)
+    if (sw == Timedep_switch::disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -98,9 +99,9 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF> prof, Timeloop<TF>&
         prof[k+kgc] = fac0 * data[index0*kk+k] + fac1 * data[index1*kk+k];
 }
 template <typename TF>
-TF Timedep<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Timedep<TF>::update_time_dependent(TF val, Timeloop<TF>& timeloop)
 {
-    if (sw == false)
+    if (sw == Timedep_switch::disabled)
         return;
 
     // Get/calculate the interpolation indexes/factors
@@ -108,7 +109,8 @@ TF Timedep<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     TF fac0 = 0., fac1 = 0.;
     timeloop.get_interpolation_factors(index0, index1, fac0, fac1, time);
 
-    return fac0 * data + fac1 * data[name];
+    val = fac0 * data[index0] + fac1 * data[index1];
+    return;
 }
 
 template class Timedep<double>;

@@ -41,11 +41,22 @@ namespace
     }
 } // end namespace
 
+
+#ifdef USECUDA
+template<typename TF>
+Timedep<TF>::~Timedep()
+{
+    #ifdef USECUDA
+    cuda_safe_call(cudaFree(data_g));
+    #endif
+}
+#endif
+
 #ifdef USECUDA
 template <typename TF>
 void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
 {
-    if (sw == false)
+    if (sw == Timedep_switch::disabled)
         return;
 
     auto& gd = grid.get_grid_data();

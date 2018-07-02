@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TIMEDEP
-#define TIMEDEP
+#ifndef TIMEDEP_H
+#define TIMEDEP_H
 
 #include "master.h"
 #include "grid.h"
@@ -30,21 +30,23 @@
 class Master;
 template<typename> class Grid;
 
+enum class Timedep_switch {disabled, enabled};
+
 template<typename TF>
 class Timedep
 {
     public:
-        Timedep(Master&, Grid<TF>&, std::string, std::bool);
+        Timedep(Master&, Grid<TF>&, const std::string, const bool);
         ~Timedep();
 
-        bool sw;
-        std::string varname;
+        Timedep_switch sw;
+        const std::string varname;
         std::vector<double> time;
         std::vector<TF> data;
 
 
         void create_timedep();
-        TF update_time_dependent(Timeloop<TF>&);
+        void update_time_dependent(TF, Timeloop<TF>&);
 
         void create_timedep_prof();
         void update_time_dependent_prof(std::vector<TF>, Timeloop<TF>&);

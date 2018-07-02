@@ -29,7 +29,7 @@
 
 class Master;
 class Input;
-template<typename> class Timeloop;
+
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;

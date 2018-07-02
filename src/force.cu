@@ -220,7 +220,7 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
         for (auto& it : tdep_geo)
         {
-            if (it.second.sw)
+            if (it.second.sw == Timedep_switch::enabled)
             {
                 int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
                 cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
@@ -238,7 +238,7 @@ void Force<TF>::prepare_device()
         }
         for (auto& it : tdep_ls)
         {
-            if (it.second.sw)
+            if (it.second.sw == Timedep_switch::enabled)
             {
                 int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
                 cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
@@ -259,7 +259,7 @@ void Force<TF>::prepare_device()
 
         for (auto& it : tdep_nudge)
         {
-            if (it.second.sw)
+            if (it.second.sw == Timedep_switch::enabled)
             {
                 int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
                 cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
@@ -273,7 +273,7 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
 
-        if (tdep_wls.sw)
+        if (tdep_wls.sw == Timedep_switch::enabled)
         {
             int nmemsize2 = gd.kmax*tdep_wls.time.size()*sizeof(TF);
             cuda_safe_call(cudaMalloc(&tdep_wls.data_g, nmemsize2));
