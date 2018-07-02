@@ -100,10 +100,10 @@ class Force
 
         std::vector<TF> nudge_factor;  ///< Height varying nudging factor (1/s)
 
-        std::map<std::string, Timedep<TF>> tdep_ls;
-        std::map<std::string, Timedep<TF>> tdep_geo;
-        std::map<std::string, Timedep<TF>> tdep_nudge;
-        Timedep<TF> tdep_wls;
+        std::map<std::string, Timedep<TF>*> tdep_ls;
+        std::map<std::string, Timedep<TF>*> tdep_geo;
+        std::map<std::string, Timedep<TF>*> tdep_nudge;
+        std::unique_ptr<Timedep<TF>> tdep_wls;
 
         // GPU functions and variables
         TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.

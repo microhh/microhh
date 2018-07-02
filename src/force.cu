@@ -220,11 +220,11 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
         for (auto& it : tdep_geo)
         {
-            if (it.second.sw == Timedep_switch::enabled)
+            if (it.second->sw == Timedep_switch::enabled)
             {
-                int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second.data_g, it.second.data.data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -238,11 +238,11 @@ void Force<TF>::prepare_device()
         }
         for (auto& it : tdep_ls)
         {
-            if (it.second.sw == Timedep_switch::enabled)
+            if (it.second->sw == Timedep_switch::enabled)
             {
-                int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second.data_g, it.second.data.data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -259,11 +259,11 @@ void Force<TF>::prepare_device()
 
         for (auto& it : tdep_nudge)
         {
-            if (it.second.sw == Timedep_switch::enabled)
+            if (it.second->sw == Timedep_switch::enabled)
             {
-                int nmemsize2 = gd.kmax*it.second.time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second.data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second.data_g, it.second.data.data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -273,11 +273,11 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
 
-        if (tdep_wls.sw == Timedep_switch::enabled)
+        if (tdep_wls->sw == Timedep_switch::enabled)
         {
-            int nmemsize2 = gd.kmax*tdep_wls.time.size()*sizeof(TF);
-            cuda_safe_call(cudaMalloc(&tdep_wls.data_g, nmemsize2));
-            cuda_safe_call(cudaMemcpy(tdep_wls.data_g, tdep_wls.data.data(), nmemsize2, cudaMemcpyHostToDevice));
+            int nmemsize2 = gd.kmax*tdep_wls->time.size()*sizeof(TF);
+            cuda_safe_call(cudaMalloc(&tdep_wls->data_g, nmemsize2));
+            cuda_safe_call(cudaMemcpy(tdep_wls->data_g, tdep_wls->data.data(), nmemsize2, cudaMemcpyHostToDevice));
         }
     }
 }
@@ -415,15 +415,15 @@ template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     for (auto& it : tdep_ls)
-        it.second.update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+        it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
 
     for (auto& it : tdep_nudge)
-        it.second.update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+        it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
 
-    tdep_geo.at("ug").update_time_dependent_prof_g(ug_g, timeloop);
-    tdep_geo.at("vg").update_time_dependent_prof_g(vg_g, timeloop);
+    tdep_geo.at("ug")->update_time_dependent_prof_g(ug_g, timeloop);
+    tdep_geo.at("vg")->update_time_dependent_prof_g(vg_g, timeloop);
 
-    tdep_wls.update_time_dependent_prof_g(wls_g, timeloop);
+    tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
 #endif
 

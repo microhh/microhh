@@ -228,8 +228,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo["ug"] = Timedep<TF>(master, grid, "ug", inputin.get_item<bool>("force", "swtimedep_geo", "", false));
-        tdep_geo["vg"] = Timedep<TF>(master, grid, "vg", inputin.get_item<bool>("force", "swtimedep_geo", "", false));
+        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "ug", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "vg", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
     else
     {
@@ -246,7 +246,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
         std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
         for(auto& it : tdepvars)
-            tdep_ls[it] = Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_ls", "", false));
+            tdep_ls.emplace(it, new Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_ls", "", false)));
     }
     else
     {
@@ -259,7 +259,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swwls_in == "1")
     {
         swwls = Large_scale_subsidence_type::enabled;
-        tdep_wls = Timedep<TF>(master, grid, "wls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
+        tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "wls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
 
         fields.set_calc_mean_profs(true);
     }
@@ -278,7 +278,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
         std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
         for(auto& it : tdepvars)
-            tdep_nudge[it] = Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_ls", "", false));
+            tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it, inputin.get_item<bool>("force", "swtimedep_nudge", "", false)));
         fields.set_calc_mean_profs(true);
     }
     else
@@ -328,7 +328,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
         for (auto& it : tdep_geo)
-            it.second.create_timedep_prof();
+            it.second->create_timedep_prof();
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -346,7 +346,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 
         // Process the time dependent data
         for (auto& it : tdep_ls)
-            it.second.create_timedep_prof();
+            it.second->create_timedep_prof();
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -367,14 +367,14 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 
         // Process the time dependent data
         for (auto& it : tdep_nudge)
-            it.second.create_timedep_prof();
+            it.second->create_timedep_prof();
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
-        tdep_wls.create_timedep_prof();
+        tdep_wls->create_timedep_prof();
     }
 }
 
@@ -438,15 +438,15 @@ template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     for (auto& it : tdep_ls)
-        it.second.update_time_dependent_prof(lsprofs[it.first],timeloop);
+        it.second->update_time_dependent_prof(lsprofs[it.first],timeloop);
 
     for (auto& it : tdep_nudge)
-        it.second.update_time_dependent_prof(nudgeprofs[it.first],timeloop);
+        it.second->update_time_dependent_prof(nudgeprofs[it.first],timeloop);
 
-    tdep_geo.at("ug").update_time_dependent_prof(ug, timeloop);
-    tdep_geo.at("vg").update_time_dependent_prof(vg, timeloop);
+    tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
+    tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
 
-    tdep_wls.update_time_dependent_prof_g(wls_g, timeloop);
+    tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
 #endif
 
