@@ -33,6 +33,7 @@ template<typename> class Timeloop;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
+template<typename> class Timedep;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -99,29 +100,10 @@ class Force
 
         std::vector<TF> nudge_factor;  ///< Height varying nudging factor (1/s)
 
-        struct Time_dep
-        {
-            Time_dep() : sw(false) {}; // Initialize the switches to zero.
-            Time_dep(const Time_dep&) = delete; // Delete the copy assignment to prevent mistakes.
-            Time_dep& operator=(const Time_dep&) = delete; // Delete the copy assignment to prevent mistakes.
-            Time_dep(Time_dep&&) = delete; // Delete the move assignment to prevent mistakes.
-            Time_dep& operator=(Time_dep&&) = delete; // Delete the move assignment to prevent mistakes.
-            
-            bool sw;
-            std::vector<std::string> vars;
-            std::map<std::string, std::vector<double>> time;
-            std::map<std::string, std::vector<TF>> data;
-            std::map<std::string, TF*> data_g;
-        };
-
-        Time_dep tdep_ls;
-        Time_dep tdep_geo;
-        Time_dep tdep_wls;
-        Time_dep tdep_nudge;
-
-        void create_timedep(Time_dep&, std::string);
-        void update_time_dependent_profs(Timeloop<TF>&, std::map<std::string, std::vector<TF>>, Time_dep&);
-        void update_time_dependent_prof(Timeloop<TF>&, std::vector<TF>, Time_dep&, const std::string&);
+        std::map<std::string, Timedep<TF>> tdep_ls;
+        std::map<std::string, Timedep<TF>> tdep_geo;
+        std::map<std::string, Timedep<TF>> tdep_nudge;
+        Timedep<TF> tdep_wls;
 
         // GPU functions and variables
         TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
@@ -129,9 +111,5 @@ class Force
         TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
-        #ifdef USECUDA
-        void update_time_dependent_profs_g(Timeloop<TF>&, std::map<std::string, TF*>, Time_dep&);
-        void update_time_dependent_prof_g(Timeloop<TF>&, TF*, Time_dep&, const std::string&);
-        #endif
 };
 #endif
