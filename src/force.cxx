@@ -259,14 +259,13 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swwls_in == "1")
     {
         swwls = Large_scale_subsidence_type::enabled;
-        tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "wls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
-
         fields.set_calc_mean_profs(true);
     }
     else
     {
         throw std::runtime_error("Invalid option for \"swwls\"");
     }
+    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "wls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
 
     // Nudging.
     if (swnudge_in == "0")

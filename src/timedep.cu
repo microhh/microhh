@@ -44,11 +44,19 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-Timedep<TF>::~Timedep()
+void Timedep<TF>::clear_device()
 {
-    #ifdef USECUDA
     cuda_safe_call(cudaFree(data_g));
-    #endif
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Timedep<TF>::prepare_device(const int ncells)
+{
+    const int nmemsize = ncells*sizeof(TF);
+    cuda_safe_call(cudaMalloc(&data_g,  nmemsize));
+    cuda_safe_call(cudaMemcpy(data_g, data.data(), nmemsize, cudaMemcpyHostToDevice));
 }
 #endif
 

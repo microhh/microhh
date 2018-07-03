@@ -289,12 +289,16 @@ void Force<TF>::clear_device()
     {
         cuda_safe_call(cudaFree(ug_g));
         cuda_safe_call(cudaFree(vg_g));
+        for(auto& it : tdep_geo)
+            it.second->clear_device();
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
         for(auto& it : lsprofs_g)
             cuda_safe_call(cudaFree(it.second));
+        for(auto& it : tdep_ls)
+            it.second->clear_device();
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -302,11 +306,16 @@ void Force<TF>::clear_device()
         for(auto& it : nudgeprofs_g)
             cuda_safe_call(cudaFree(it.second));
         cuda_safe_call(cudaFree(nudge_factor_g));
+        for(auto& it : tdep_nudge)
+            it.second->clear_device();
+
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         cuda_safe_call(cudaFree(wls_g));
+        if(tdep_wls->sw == Timedep_switch::enabled)
+            tdep_wls->clear_device();
     }
 }
 

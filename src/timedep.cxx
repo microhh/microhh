@@ -35,12 +35,10 @@ Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varna
         sw = Timedep_switch::disabled;
 }
 
-#ifndef USECUDA
 template<typename TF>
 Timedep<TF>::~Timedep()
 {
 }
-#endif
 
 template <typename TF>
 void Timedep<TF>::create_timedep_prof()
@@ -61,6 +59,10 @@ void Timedep<TF>::create_timedep_prof()
         data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
         data.insert(data.end(),tmp.begin(),tmp.end());
     }
+
+    #ifdef USECUDA
+    prepare_device(data.size());
+    #endif
 }
 
 template <typename TF>
@@ -77,6 +79,9 @@ void Timedep<TF>::create_timedep()
     data.resize(length);
     data_block.get_vector(time, "time", length, 0, 0);
     data_block.get_vector(time, varname, length, 0, 0);
+    #ifdef USECUDA
+    prepare_device(length);
+    #endif
 }
 
 template <typename TF>

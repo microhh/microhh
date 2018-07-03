@@ -344,6 +344,12 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
     }
 }
 #endif
+template<typename TF>
+void Boundary<TF>::clear_device()
+{
+    for(auto& it : tdep_bc)
+        it.second->clear_device();
+}
 
 #ifdef USECUDA
 template<typename TF>

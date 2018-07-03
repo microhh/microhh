@@ -121,6 +121,10 @@ class Boundary
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
         void process_time_dependent(Input&); ///< Process the time dependent settings from the ini file.
+        #ifdef USECUDA
+        void clear_device();
+        #endif
+
         // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
