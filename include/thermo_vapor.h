@@ -23,6 +23,7 @@
 #ifndef THERMO_VAPOR
 #define THERMO_VAPOR
 
+#include "timedep.h"
 #include "thermo.h"
 
 class Master;
@@ -34,6 +35,8 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timeloop;
+
 class Data_block;
 
 
@@ -88,7 +91,7 @@ class Thermo_vapor : public Thermo<TF>
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
         bool has_mask(std::string);
 
-        void update_time_dependent();
+        void update_time_dependent(Timeloop<TF>&);
 
     private:
         using Thermo<TF>::swthermo;
@@ -143,9 +146,7 @@ class Thermo_vapor : public Thermo<TF>
         background_state bs;
         background_state bs_stats;
 
-        bool swtimedep_pbot;
-        std::vector<double> timedeptime;
-        std::vector<TF> timedeppbot;
+        std::unique_ptr<Timedep<TF>> tdep_pbot;
 
 };
 #endif

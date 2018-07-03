@@ -446,7 +446,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
     tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
 
-    tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
+    tdep_wls->update_time_dependent_prof(wls, timeloop);
 }
 #endif
 

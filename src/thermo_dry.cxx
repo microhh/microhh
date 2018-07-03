@@ -287,6 +287,9 @@ boundary_cyclic(masterin, gridin)
     if (swbaroclinic)
         dthetady_ls = inputin.get_item<TF>("thermo", "dthetady_ls", "");
 
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "pbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+
+
 }
 
 template<typename TF>
@@ -342,6 +345,10 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     // Init the toolbox classes.
     boundary_cyclic.init();
 
+    // Process the time dependent surface pressure
+    tdep_pbot->create_timedep();
+
+
     // Set up output classes
     create_stats(stats);
     create_column(column);
@@ -371,6 +378,12 @@ void Thermo_dry<TF>::exec( const double dt)
                         gd.icells, gd.ijcells);
 }
 #endif
+
+template<typename TF>
+void Thermo_dry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+}
 
 template<typename TF>
 unsigned long Thermo_dry<TF>::get_time_limit(unsigned long idt, const double dt)

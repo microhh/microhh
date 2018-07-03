@@ -508,7 +508,8 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
 
     // Time variable surface pressure
-    swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "pbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+
     available_masks.insert(available_masks.end(), {"ql", "qlcore"});
 }
 
@@ -568,13 +569,9 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-/*    if (swtimedep_pbot == 1)
-    {
-        const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
-        if (nerror > 0)
-            throw 1;
-    }
-*/
+    tdep_pbot->create_timedep();
+
+
     // Init the toolbox classes.
     boundary_cyclic.init();
 
@@ -698,19 +695,10 @@ bool Thermo_moist<TF>::check_field_exists(const std::string name)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::update_time_dependent()
+void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-/*    if (swtimedep_pbot == 0)
-        return;
-
-    // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
-
-    bs.pbot = fac0 * timedeppbot[index0] + fac1 * timedeppbot[index1];
-*/}
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+}
 
 template<typename TF>
 void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)

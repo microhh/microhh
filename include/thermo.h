@@ -32,6 +32,7 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timeloop;
 
 class Data_block;
 /**
@@ -75,7 +76,7 @@ class Thermo
 
         virtual TF get_buoyancy_diffusivity() = 0;
 
-        virtual void update_time_dependent() = 0;
+        virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         #ifdef USECUDA
         // GPU functions and variables.

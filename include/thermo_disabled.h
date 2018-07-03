@@ -36,6 +36,8 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
+template<typename> class Timeloop;
+
 
 
 template<typename TF>
@@ -61,7 +63,7 @@ class Thermo_disabled : public Thermo<TF>
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
-        void update_time_dependent() {};
+        void update_time_dependent(Timeloop<TF>&) {};
         TF get_buoyancy_diffusivity();
 
         unsigned long get_time_limit(unsigned long, double);

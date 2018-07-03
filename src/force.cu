@@ -25,12 +25,12 @@
 #include "grid.h"
 #include "fields.h"
 #include "field3d_operators.h"
+#include "timeloop.h"
 #include "timedep.h"
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
 #include "boundary.h"
-#include "timeloop.h"
 #include "data_block.h"
 #include "force.h"
 
