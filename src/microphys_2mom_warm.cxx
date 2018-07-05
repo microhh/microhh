@@ -605,6 +605,10 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1");
     fields.init_prognostic_field("nr", "Number density rain", "m-3");
+
+    // Load the viscosity for both fields.
+    fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
+    fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
 }
 
 template<typename TF>
@@ -1001,8 +1005,6 @@ bool Microphys_2mom_warm<TF>::has_mask(std::string name)
 template<typename TF>
 void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string name)
 {
-    auto& gd = grid.get_grid_data();
-
     if (name == "qr")
     {
         TF threshold = 1e-8;
