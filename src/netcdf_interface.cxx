@@ -124,7 +124,7 @@ Netcdf_variable Netcdf_handle::add_variable(
 
     for (int i=0; i<dim_ids_size; ++i)
     {
-        const int dim_id = dim_ids[i];
+        const int dim_id = dim_ids.at(i);
 
         size_t dim_len;
 
@@ -300,4 +300,4 @@ void Netcdf_variable::insert(const double value, const std::vector<size_t> i_sta
 }
 
 // template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<size_t>&, const std::vector<size_t>&);
-// template void Netcdf_handle::get_variable<float>(std::vector<float>&, const std::string&, const std::vector<size_t>&, const std::vector<size_t>&);
+// template void Netcdf_handle::get_variable<float> (std::vector<float> &, const std::string&, const std::vector<size_t>&, const std::vector<size_t>&);

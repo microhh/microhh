@@ -1,4 +1,7 @@
-import numpy
+import numpy as np
+import netCDF4 as nc
+
+float_type = "f8"
 
 # Get number of vertical levels and size from .ini file
 with open('bomex.ini') as f:
@@ -11,14 +14,16 @@ with open('bomex.ini') as f:
 dz = zsize / kmax
 
 # set the height
-z     = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-thl   = numpy.zeros(numpy.size(z))
-qt    = numpy.zeros(numpy.size(z))
-u     = numpy.zeros(numpy.size(z))
-ug    = numpy.zeros(numpy.size(z))
-wls   = numpy.zeros(numpy.size(z))
-thlls = numpy.zeros(numpy.size(z))
-qtls  = numpy.zeros(numpy.size(z))
+z     = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+thl   = np.zeros(np.size(z))
+qt    = np.zeros(np.size(z))
+u     = np.zeros(np.size(z))
+ug    = np.zeros(np.size(z))
+v     = np.zeros(np.size(z))
+vg    = np.zeros(np.size(z))
+wls   = np.zeros(np.size(z))
+thlls = np.zeros(np.size(z))
+qtls  = np.zeros(np.size(z))
 
 for k in range(kmax):
   # temperature
@@ -75,10 +80,38 @@ wls  /= 100.   # from cm/s to m/s
 thlls  /= 86400. # from K/d to K/s
 qtls *= 1.e-8
 
+nc_file = nc.Dataset("bomex.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file.createDimension("z", kmax)
+
+nc_z     = nc_file.createVariable("z"    , float_type, ("z"))
+nc_thl   = nc_file.createVariable("thl"  , float_type, ("z"))
+nc_qt    = nc_file.createVariable("qt"   , float_type, ("z"))
+nc_u     = nc_file.createVariable("u"    , float_type, ("z"))
+nc_ug    = nc_file.createVariable("ug"   , float_type, ("z"))
+nc_v     = nc_file.createVariable("v"    , float_type, ("z"))
+nc_vg    = nc_file.createVariable("vg"   , float_type, ("z"))
+nc_wls   = nc_file.createVariable("wls"  , float_type, ("z"))
+nc_thlls = nc_file.createVariable("thlls", float_type, ("z"))
+nc_qtls  = nc_file.createVariable("qtls" , float_type, ("z"))
+
+nc_z    [:] = z    [:]
+nc_thl  [:] = thl  [:]
+nc_qt   [:] = qt   [:]
+nc_u    [:] = u    [:]
+nc_ug   [:] = ug   [:]
+nc_v    [:] = v    [:]
+nc_vg   [:] = vg   [:]
+nc_wls  [:] = wls  [:]
+nc_thlls[:] = thlls[:]
+nc_qtls [:] = qtls [:]
+
+nc_file.close()
+
+"""
 # write the data to a file
 proffile = open('bomex.prof','w')
 proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s} {5:^20s} {6:^20s} {7:^20s}\n'.format('z','thl','qt','u','ug','wls','thlls','qtls'))
 for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E} {7:1.14E}\n'.format(z[k], thl[k], qt[k], u[k], ug[k], wls[k], thlls[k], qtls[k]))
 proffile.close()
-
+"""
