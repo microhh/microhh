@@ -9,7 +9,7 @@ do
     echo $dir
     cd $dir
     if [ -f run.sh ]; then
-      run.sh
+      time run.sh
     fi
     cd $basedir
 done

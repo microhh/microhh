@@ -6,7 +6,7 @@ error_exit()
 	exit 1
 }
 
-casename=${PWD##*/}
+casename=drycblles
 errorfile=$casename.err
 
 echo "Case" $casename
