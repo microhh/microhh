@@ -30,6 +30,7 @@
 class Master;
 class Input;
 class Data_block;
+class Netcdf_file;
 
 template<typename> class Grid;
 template<typename> class Fields;
@@ -71,6 +72,7 @@ class Model
 
         std::shared_ptr<Input> input;
         std::shared_ptr<Data_block> profs;
+        std::shared_ptr<Netcdf_file> nc_input;
 
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
