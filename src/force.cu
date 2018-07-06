@@ -20,7 +20,6 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -429,8 +428,11 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     for (auto& it : tdep_nudge)
         it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
 
-    tdep_geo.at("ug")->update_time_dependent_prof_g(ug_g, timeloop);
-    tdep_geo.at("vg")->update_time_dependent_prof_g(vg_g, timeloop);
+    if (swlspres == Large_scale_pressure_type::geo_wind)
+    {
+        tdep_geo.at("ug")->update_time_dependent_prof_g(ug_g, timeloop);
+        tdep_geo.at("vg")->update_time_dependent_prof_g(vg_g, timeloop);
+    }
 
     tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
