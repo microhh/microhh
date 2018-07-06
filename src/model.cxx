@@ -33,6 +33,7 @@
 #include "fields.h"
 #include "buffer.h"
 #include "data_block.h"
+#include "netcdf_interface.h"
 #include "timeloop.h"
 #include "fft.h"
 #include "boundary.h"
@@ -106,6 +107,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     input = std::make_shared<Input>(master, sim_name + ".ini");
     profs = std::make_shared<Data_block>(master, sim_name + ".prof");
+    nc_input = std::make_shared<Netcdf_file>(master, sim_name + ".nc", Netcdf_mode::Read);
 
     try
     {
