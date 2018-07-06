@@ -15,12 +15,13 @@ class Netcdf_group;
 class Netcdf_variable
 {
     public:
-        Netcdf_variable(Netcdf_handle&, const int, const std::vector<size_t>&);
+        Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<size_t>&);
         void insert(const std::vector<double>&, const std::vector<size_t>);
         void insert(const std::vector<double>&, const std::vector<size_t>, const std::vector<size_t>);
         void insert(const double, const std::vector<size_t>);
 
     private:
+        Master& master;
         Netcdf_handle& nc_file;
         const int var_id;
         const std::vector<size_t> dim_sizes;
