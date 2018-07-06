@@ -107,7 +107,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     input = std::make_shared<Input>(master, sim_name + ".ini");
     profs = std::make_shared<Data_block>(master, sim_name + ".prof");
-    nc_input = std::make_shared<Netcdf_file>(master, sim_name + ".nc", Netcdf_mode::Read);
+    input_nc = std::make_shared<Netcdf_file>(master, sim_name + ".nc", Netcdf_mode::Read);
 
     try
     {
@@ -247,7 +247,7 @@ void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
     grid->create(*profs);
-    fields->create(*input, *profs);
+    fields->create(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
