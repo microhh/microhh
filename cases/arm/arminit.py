@@ -98,20 +98,25 @@ print('rho = ', rho)
 t *= 3600. # h to s
 sbotthl = H/(rho*cp)
 sbotqt  = LE/(rho*Lv)
-timefile = open('arm.time','w')
-timefile.write('{0:^20s} {1:^20s} {2:^20s}\n'.format('t','sbot[thl]', 'sbot[qt]'))
+timefile = open('sbot[thl].time','w')
+timefile.write('{0:^20s} {1:^20s}\n'.format('time','sbot[thl]'))
 for n in range(t.size):
-  timefile.write('{0:1.14E} {1:1.14E} {2:1.14E}\n'.format(t[n], sbotthl[n], sbotqt[n]))
+  timefile.write('{0:1.14E} {1:1.14E}\n'.format(t[n], sbotthl[n]))
+timefile.close()
+timefile = open('sbot[qt].time','w')
+timefile.write('{0:^20s} {1:^20s}\n'.format('time','sbot[qt]'))
+for n in range(t.size):
+  timefile.write('{0:1.14E} {1:1.14E}\n'.format(t[n], sbotqt[n]))
 timefile.close()
 
 # write the large scale forcing data to a file
-timeproffile = open('thlls.timeprof','w')
+timeproffile = open('thlls.time','w')
 timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
 for k in range(kmax):
   timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], thlls[0,k], thlls[1,k], thlls[2,k], thlls[3,k], thlls[4,k], thlls[5,k]))
 timeproffile.close()
 
-timeproffile = open('qtls.timeprof','w')
+timeproffile = open('qtls.time','w')
 timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
 for k in range(kmax):
   timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], qtls[0,k], qtls[1,k], qtls[2,k], qtls[3,k], qtls[4,k], qtls[5,k]))

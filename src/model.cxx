@@ -265,8 +265,9 @@ void Model<TF>::exec()
     master.print_message("Starting time integration\n");
 
     // Update the time dependent parameters.
-    // boundary->update_time_dependent();
-    force->update_time_dependent(*timeloop);
+    boundary->update_time_dependent(*timeloop);
+    force   ->update_time_dependent(*timeloop);
+    thermo  ->update_time_dependent(*timeloop);
 
     // Set the boundary conditions.
     boundary->exec(*thermo);
@@ -399,7 +400,8 @@ void Model<TF>::exec()
             }
 
             // Update the time dependent parameters.
-            // boundary->update_time_dependent();
+            boundary->update_time_dependent(*timeloop);
+            thermo  ->update_time_dependent(*timeloop);
             force   ->update_time_dependent(*timeloop);
 
             // Set the boundary conditions.

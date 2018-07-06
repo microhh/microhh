@@ -20,8 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
- #include <algorithm>
-
+#include <algorithm>
 #include "data_block.h"
 #include "timedep.h"
 
@@ -48,18 +47,17 @@ void Timedep<TF>::create_timedep_prof()
 
     auto& gd = grid.get_grid_data();
     Data_block data_block(master, varname+".time");
-
     std::vector<std::string> headers = data_block.get_headers();
     // Sort the times
-    std::sort(headers.begin()+1, headers.end());
-    std::vector<TF> tmp(gd.kmax);
+    headers.erase(headers.begin());
+    std::sort(headers.begin(), headers.end());
+    std::vector<TF> tmp(gd.kcells);
     for (auto& it : headers)
     {
         time.push_back(std::stod(it));
         data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
         data.insert(data.end(),tmp.begin(),tmp.end());
     }
-
     #ifdef USECUDA
     prepare_device(data.size());
     #endif
@@ -78,14 +76,14 @@ void Timedep<TF>::create_timedep()
     time.resize(length);
     data.resize(length);
     data_block.get_vector(time, "time", length, 0, 0);
-    data_block.get_vector(time, varname, length, 0, 0);
+    data_block.get_vector(data, varname, length, 0, 0);
     #ifdef USECUDA
     prepare_device(length);
     #endif
 }
 
 template <typename TF>
-void Timedep<TF>::update_time_dependent_prof(std::vector<TF> prof, Timeloop<TF>& timeloop)
+void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>& timeloop)
 {
     if (sw == Timedep_switch::disabled)
         return;
@@ -95,26 +93,22 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF> prof, Timeloop<TF>&
     const int kgc = gd.kgc;
 
     // Get/calculate the interpolation indexes/factors
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, time);
+    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     // Calculate the new vertical profile
     for (int k=0; k<gd.kmax; ++k)
-        prof[k+kgc] = fac0 * data[index0*kk+k] + fac1 * data[index1*kk+k];
+        prof[k+kgc] = ifac.fac0 * data[ifac.index0*kk+k] + ifac.fac1 * data[ifac.index1*kk+k];
 }
+
 template <typename TF>
-void Timedep<TF>::update_time_dependent(TF val, Timeloop<TF>& timeloop)
+void Timedep<TF>::update_time_dependent(TF& val, Timeloop<TF>& timeloop)
 {
     if (sw == Timedep_switch::disabled)
         return;
 
     // Get/calculate the interpolation indexes/factors
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, time);
-
-    val = fac0 * data[index0] + fac1 * data[index1];
+    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    val = ifac.fac0 * data[ifac.index0] + ifac.fac1 * data[ifac.index1];
     return;
 }
 

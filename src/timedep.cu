@@ -46,7 +46,8 @@ namespace
 template<typename TF>
 void Timedep<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(data_g));
+    if(sw == Timedep_switch::enabled)
+        cuda_safe_call(cudaFree(data_g));
 }
 #endif
 
@@ -72,13 +73,11 @@ void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
     const int gridk  = gd.kmax/blockk + (gd.kmax%blockk > 0);
 
     // Get/calculate the interpolation indexes/factors
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, time);
+    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     // Calculate the new vertical profile
     calc_time_dependent_prof_g<<<gridk, blockk>>>(
-        prof, data_g, fac0, fac1, index0, index1, gd.kmax, gd.kgc);
+        prof, data_g, ifac.fac0, ifac.fac1, ifac.index0, ifac.index1, gd.kmax, gd.kgc);
     cuda_check_error();
 }
 #endif

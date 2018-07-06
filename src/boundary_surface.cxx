@@ -437,7 +437,7 @@ Boundary_surface<TF>::~Boundary_surface()
 template<typename TF>
 void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
 {
-    // process_time_dependent(input);
+    Boundary<TF>::process_time_dependent(input);
 
     // add variables to the statistics
     if (stats.get_switch())

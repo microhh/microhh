@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include <cstdio>
 #include <cmath>
 #include "input.h"
@@ -458,40 +459,44 @@ void Timeloop<TF>::step_post_proc_time()
 }
 
 template<typename TF>
-void Timeloop<TF>::get_interpolation_factors(int index0, int index1, TF fac0, TF fac1, std::vector<double> timevec)
+interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(std::vector<double> timevec)
 {
     // 1. Get the indexes and factors for the interpolation in time
-    index0 = 0;
-    index1 = 0;
+    std::vector<unsigned long> itimevec(timevec.size());
+    for (int t=0; t<timevec.size(); ++t)
+        itimevec[t]  = (unsigned long)(ifactor * timevec[t] + 0.5);
 
-    for (auto& t : timevec)
+    interpolation_factors<TF> ifac;
+    ifac.index1 = 0;
+    for (auto& t : itimevec)
     {
-        if (time < t)
+        if (itime < t)
             break;
         else
-            ++index1;
+            ++ifac.index1;
     }
+    if (itime == itimevec[itimevec.size()-1])
+        ifac.index1=itimevec.size()-1;
 
     // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
-    if (index1 == 0)
+    if (ifac.index1 == 0)
     {
-        fac0   = 0.;
-        fac1   = 1.;
-        index0 = 0;
+        master.print_error("Interpolation time is out of range; t0 = %g; current time is %g \n", timevec[0], time);
+        throw std::runtime_error("Interpolation time out of range");
     }
-    else if (index1 == timevec.size())
+    else if (ifac.index1 == timevec.size())
     {
-        fac0   = 1.;
-        fac1   = 0.;
-        index0 = index1-1;
-        index1 = index0;
+        master.print_error("Interpolation time is out of range; t1 = %g; current time is %g \n", timevec[timevec.size()-1], time);
+        throw std::runtime_error("Interpolation time out of range");
     }
     else
     {
-        index0 = index1-1;
-        fac0 = (timevec[index1] - time) / (timevec[index1] - timevec[index0]);
-        fac1 = (time - timevec[index0]) / (timevec[index1] - timevec[index0]);
+        ifac.index0 = ifac.index1-1;
+        ifac.fac0 = (itimevec[ifac.index1] - itime) / (itimevec[ifac.index1] - itimevec[ifac.index0]);
+        ifac.fac1 = (itime - itimevec[ifac.index0]) / (itimevec[ifac.index1] - itimevec[ifac.index0]);
     }
+
+    return ifac;
 }
 
 template class Timeloop<double>;

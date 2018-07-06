@@ -244,9 +244,12 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swls = Large_scale_tendency_type::enabled;
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
 
-        std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
-        for(auto& it : tdepvars)
-            tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"ls", inputin.get_item<bool>("force", "swtimedep_ls", "", false)));
+        if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
+        {
+            std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
+            for(auto& it : tdepvars)
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"ls", true));
+        }
     }
     else
     {
@@ -275,9 +278,12 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swnudge = Nudging_type::enabled;
         nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
 
-        std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
-        for(auto& it : tdepvars)
-            tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it+"nudge", inputin.get_item<bool>("force", "swtimedep_nudge", "", false)));
+        if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
+        {
+            std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
+            for(auto& it : tdepvars)
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"nudge", true));
+        }
         fields.set_calc_mean_profs(true);
     }
     else
