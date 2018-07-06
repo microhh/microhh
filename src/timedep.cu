@@ -20,7 +20,6 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
 #include "tools.h"
 #include "grid.h"
 #include "timedep.h"
@@ -66,10 +65,9 @@ void Timedep<TF>::prepare_device(const int ncells)
 template <typename TF>
 void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
 {
-    std::cout << "b\n";
     if (sw == Timedep_switch::Disabled)
         return;
-std::cout << "b\n";
+
     auto& gd = grid.get_grid_data();
     const int blockk = 128;
     const int gridk  = gd.kmax/blockk + (gd.kmax%blockk > 0);
