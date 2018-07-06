@@ -30,7 +30,7 @@
 class Master;
 template<typename> class Grid;
 
-enum class Timedep_switch {disabled, enabled};
+enum class Timedep_switch {Disabled, Enabled};
 
 template<typename TF>
 class Timedep

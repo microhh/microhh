@@ -46,7 +46,7 @@ namespace
 template<typename TF>
 void Timedep<TF>::clear_device()
 {
-    if(sw == Timedep_switch::enabled)
+    if(sw == Timedep_switch::Enabled)
         cuda_safe_call(cudaFree(data_g));
 }
 #endif
@@ -65,7 +65,7 @@ void Timedep<TF>::prepare_device(const int ncells)
 template <typename TF>
 void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
 {
-    if (sw == Timedep_switch::disabled)
+    if (sw == Timedep_switch::Disabled)
         return;
 
     auto& gd = grid.get_grid_data();

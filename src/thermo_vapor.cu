@@ -169,7 +169,7 @@ void Thermo_vapor<TF>::clear_device()
     cuda_safe_call(cudaFree(bs.prefh_g  ));
     cuda_safe_call(cudaFree(bs.exnref_g ));
     cuda_safe_call(cudaFree(bs.exnrefh_g));
-    if(tdep_pbot->sw == Timedep_switch::enabled)
+    if(tdep_pbot->sw == Timedep_switch::Enabled)
         tdep_pbot->clear_device();
 }
 

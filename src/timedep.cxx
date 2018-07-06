@@ -29,9 +29,9 @@ Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varna
     master(masterin), grid(gridin), varname(varnamein)
 {
     if(is_timedep)
-        sw = Timedep_switch::enabled;
+        sw = Timedep_switch::Enabled;
     else
-        sw = Timedep_switch::disabled;
+        sw = Timedep_switch::Disabled;
 }
 
 template<typename TF>
@@ -42,7 +42,7 @@ Timedep<TF>::~Timedep()
 template <typename TF>
 void Timedep<TF>::create_timedep_prof()
 {
-    if (sw == Timedep_switch::disabled)
+    if (sw == Timedep_switch::Disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -66,7 +66,7 @@ void Timedep<TF>::create_timedep_prof()
 template <typename TF>
 void Timedep<TF>::create_timedep()
 {
-    if (sw == Timedep_switch::disabled)
+    if (sw == Timedep_switch::Disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -85,7 +85,7 @@ void Timedep<TF>::create_timedep()
 template <typename TF>
 void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>& timeloop)
 {
-    if (sw == Timedep_switch::disabled)
+    if (sw == Timedep_switch::Disabled)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -103,7 +103,7 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>
 template <typename TF>
 void Timedep<TF>::update_time_dependent(TF& val, Timeloop<TF>& timeloop)
 {
-    if (sw == Timedep_switch::disabled)
+    if (sw == Timedep_switch::Disabled)
         return;
 
     // Get/calculate the interpolation indexes/factors
