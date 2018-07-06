@@ -228,8 +228,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "ug", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
-        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "vg", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
     else
     {
@@ -248,7 +248,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
             for(auto& it : tdepvars)
-                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"ls", true));
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_ls", true));
         }
     }
     else
@@ -268,7 +268,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         throw std::runtime_error("Invalid option for \"swwls\"");
     }
-    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "wls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
+    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "w_ls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
 
     // Nudging.
     if (swnudge_in == "0")
@@ -282,7 +282,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
             for(auto& it : tdepvars)
-                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"nudge", true));
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
         }
         fields.set_calc_mean_profs(true);
     }

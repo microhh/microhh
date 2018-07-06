@@ -287,7 +287,7 @@ boundary_cyclic(masterin, gridin)
     if (swbaroclinic)
         dthetady_ls = inputin.get_item<TF>("thermo", "dthetady_ls", "");
 
-    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "pbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
 
 }

@@ -242,7 +242,7 @@ void Boundary<TF>::process_time_dependent(Input& input)
         // see if there is data available for the surface boundary conditions
         for (auto& it : fields.sp)
         {
-            std::string name = "sbot[" + it.first + "]";
+            std::string name = it.first+"_sbot";
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 // Process the time dependent data

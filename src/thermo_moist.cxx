@@ -508,7 +508,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
 
     // Time variable surface pressure
-    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "pbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
     available_masks.insert(available_masks.end(), {"ql", "qlcore"});
 }
