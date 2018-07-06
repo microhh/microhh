@@ -32,7 +32,8 @@
 #include "fields.h"
 #include "field3d.h"
 #include "input.h"
-#include "data_block.h"
+// #include "data_block.h"
+#include "netcdf_interface.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "stats.h"
@@ -786,26 +787,26 @@ void Fields<TF>::init_tmp_field_g()
 
 
 template<typename TF>
-void Fields<TF>::create(Input& inputin, Data_block& profs)
+void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
 {
     // Randomize the momentum
-    randomize(inputin, "u", mp.at("u")->fld.data());
-    randomize(inputin, "w", mp.at("w")->fld.data());
+    randomize(input, "u", mp.at("u")->fld.data());
+    randomize(input, "w", mp.at("w")->fld.data());
 
     // Only add perturbation to v in case of a 3d run.
     const Grid_data<TF>& gd = grid.get_grid_data();
     if (gd.jtot > 1)
-        randomize(inputin, "v", mp.at("v")->fld.data());
+        randomize(input, "v", mp.at("v")->fld.data());
 
     // Randomize the scalars
     for (auto& it : sp)
-        randomize(inputin, it.first, it.second->fld.data());
+        randomize(input, it.first, it.second->fld.data());
 
     // Add Vortices
-    add_vortex_pair(inputin);
+    add_vortex_pair(input);
 
     // Add the mean profiles to the fields
-    add_mean_profs(profs);
+    add_mean_profs(input_nc);
 
     /*
     nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid.utrans);
@@ -898,24 +899,31 @@ namespace
 }
 
 template<typename TF>
-void Fields<TF>::add_mean_profs(Data_block& profs)
+void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
-    profs.get_vector(prof, "u", gd.ktot, 0, 0);
+    const std::vector<size_t> start = {0};
+    const std::vector<size_t> count = {static_cast<size_t>(gd.ktot)};
+
+    // profs.get_vector(prof, "u", gd.ktot, 0, 0);
+    input_nc.get_variable(prof, "u", start, count);
+
     add_mean_prof_to_field<TF>(mp["u"]->fld.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    profs.get_vector(prof, "v", gd.ktot, 0, 0);
+    //profs.get_vector(prof, "v", gd.ktot, 0, 0);
+    input_nc.get_variable(prof, "v", start, count);
     add_mean_prof_to_field<TF>(mp["v"]->fld.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        profs.get_vector(prof, f.first, gd.ktot, 0, 0);
+        // profs.get_vector(prof, f.first, gd.ktot, 0, 0);
+        input_nc.get_variable(prof, f.first, start, count);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);

@@ -149,8 +149,10 @@ Netcdf_group::Netcdf_group(Master& master, int ncid_in, int root_ncid_in) :
     root_ncid = root_ncid_in;
 }
 
+template<>
 void Netcdf_handle::get_variable(
         std::vector<double>& values,
+
         const std::string& name,
         const std::vector<size_t>& i_start,
         const std::vector<size_t>& i_count)
@@ -161,6 +163,26 @@ void Netcdf_handle::get_variable(
     // CvH: Add check if the vector is large enough.
     nc_check( nc_get_vara_double(ncid, var_id, i_start.data(), i_count.data(), values.data()) );
 }
+
+template<>
+void Netcdf_handle::get_variable(
+        std::vector<float>& values,
+        const std::string& name,
+        const std::vector<size_t>& i_start,
+        const std::vector<size_t>& i_count)
+{
+    int var_id;
+    nc_check( nc_inq_varid(ncid, name.c_str(), &var_id) );
+
+    // CvH: This needs to be removed once the stats is properly templated.
+    std::vector<double>values_double(values.size());
+
+    // CvH: Add check if the vector is large enough.
+    nc_check( nc_get_vara_double(ncid, var_id, i_start.data(), i_count.data(), values_double.data()) );
+
+    std::copy(values_double.begin(), values_double.end(), values.begin());
+}
+
 
 Netcdf_variable::Netcdf_variable(Netcdf_handle& nc_file, const int var_id, const std::vector<size_t>& dim_sizes) :
     nc_file(nc_file), var_id(var_id), dim_sizes(dim_sizes)
@@ -183,3 +205,6 @@ void Netcdf_variable::insert(const double value, const std::vector<size_t> i_sta
 {
     nc_file.insert(value, var_id, i_start, dim_sizes);
 }
+
+// template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<size_t>&, const std::vector<size_t>&);
+// template void Netcdf_handle::get_variable<float>(std::vector<float>&, const std::string&, const std::vector<size_t>&, const std::vector<size_t>&);

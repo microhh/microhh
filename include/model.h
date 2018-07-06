@@ -72,7 +72,7 @@ class Model
 
         std::shared_ptr<Input> input;
         std::shared_ptr<Data_block> profs;
-        std::shared_ptr<Netcdf_file> nc_input;
+        std::shared_ptr<Netcdf_file> input_nc;
 
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
