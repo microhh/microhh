@@ -1,5 +1,5 @@
 #!/bin/bash
-python drycbl_flowprof.py
+$PYTHON_EXEC drycbl_flowprof.py
 
 rm -f *.000*
 rm -f *.out

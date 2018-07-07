@@ -1,5 +1,5 @@
 #!/bin/bash
-python drycbllesprof.py
+$PYTHON_EXEC drycbllesprof.py
 
 rm -f *.000*
 rm -f *.out
