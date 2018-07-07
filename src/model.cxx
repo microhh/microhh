@@ -24,7 +24,9 @@
 #include <cstdio>
 #include <algorithm>
 #include <cmath>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "master.h"
 #include "input.h"
 #include "grid.h"
