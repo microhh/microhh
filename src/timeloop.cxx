@@ -464,7 +464,7 @@ interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(std::vector<do
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());
     for (int t=0; t<timevec.size(); ++t)
-        itimevec[t]  = (unsigned long)(ifactor * timevec[t] + 0.5);
+        itimevec[t] = static_cast<unsigned long>(ifactor * timevec[t] + 0.5);
 
     interpolation_factors<TF> ifac;
     ifac.index1 = 0;
@@ -475,8 +475,9 @@ interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(std::vector<do
         else
             ++ifac.index1;
     }
+
     if (itime == itimevec[itimevec.size()-1])
-        ifac.index1=itimevec.size()-1;
+        ifac.index1 = itimevec.size()-1;
 
     // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
     if (ifac.index1 == 0)
@@ -492,8 +493,8 @@ interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(std::vector<do
     else
     {
         ifac.index0 = ifac.index1-1;
-        ifac.fac0 = (itimevec[ifac.index1] - itime) / (itimevec[ifac.index1] - itimevec[ifac.index0]);
-        ifac.fac1 = (itime - itimevec[ifac.index0]) / (itimevec[ifac.index1] - itimevec[ifac.index0]);
+        ifac.fac0 = TF(itimevec[ifac.index1] - itime) / TF(itimevec[ifac.index1] - itimevec[ifac.index0]);
+        ifac.fac1 = TF(itime - itimevec[ifac.index0]) / TF(itimevec[ifac.index1] - itimevec[ifac.index0]);
     }
 
     return ifac;
