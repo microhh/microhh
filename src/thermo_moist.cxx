@@ -132,7 +132,6 @@ namespace
                    for (int i=istart; i<iend; i++)
                    {
                        const int ijk = i + j*jj + k*kk;
-                       const int ij  = i + j*jj;
                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
                    }
            }
@@ -184,13 +183,14 @@ namespace
                         thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                         qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                     }
-                    for (int j=jstart; j<jend; j++)
-                        #pragma ivdep
-                        for (int i=istart; i<iend; i++)
-                        {
-                            const int ij  = i + j*jj;
-                            ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                        }
+
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    }
             }
             else
             {
@@ -614,7 +614,6 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -1047,8 +1046,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
 template<typename TF>
 void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {
-    auto& gd = grid.get_grid_data();
-
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -1078,10 +1075,10 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
+
     auto output = fields.get_tmp();
 
     if(swcross_b)
