@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -39,12 +39,6 @@ class Timedep
         Timedep(Master&, Grid<TF>&, const std::string, const bool);
         ~Timedep();
 
-        Timedep_switch sw;
-        const std::string varname;
-        std::vector<double> time;
-        std::vector<TF> data;
-
-
         void create_timedep();
         void update_time_dependent(TF&, Timeloop<TF>&);
 
@@ -52,14 +46,21 @@ class Timedep
         void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&);
 
         #ifdef USECUDA
-            TF* data_g;
-            void update_time_dependent_prof_g(TF*, Timeloop<TF>&);
-            void prepare_device(const int);
-            void clear_device();
+        TF* data_g;
+        void update_time_dependent_prof_g(TF*, Timeloop<TF>&);
+        void prepare_device(const int);
+        void clear_device();
         #endif
 
     private:
         Master& master;
         Grid<TF>& grid;
+        const std::string varname;
+
+        Timedep_switch sw;
+
+        std::vector<double> time;
+        std::vector<TF> data;
+
 };
 #endif

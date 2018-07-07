@@ -229,9 +229,8 @@ void Boundary<TF>::create(Input& input, Stats<TF>& stats)
 template<typename TF>
 void Boundary<TF>::process_time_dependent(Input& input)
 {
-    int nerror = 0;
     // get the list of time varying variables
-    bool swtimedep   = input.get_item<bool>("boundary", "swtimedep"  , "", false);
+    bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
     std::vector<std::string> timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
 
     if (swtimedep)
