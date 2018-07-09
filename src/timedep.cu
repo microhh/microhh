@@ -53,9 +53,9 @@ void Timedep<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Timedep<TF>::prepare_device(const int ncells)
+void Timedep<TF>::prepare_device()
 {
-    const int nmemsize = ncells*sizeof(TF);
+    const int nmemsize = data.size()*sizeof(TF);
     cuda_safe_call(cudaMalloc(&data_g,  nmemsize));
     cuda_safe_call(cudaMemcpy(data_g, data.data(), nmemsize, cudaMemcpyHostToDevice));
 }

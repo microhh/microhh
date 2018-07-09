@@ -61,7 +61,7 @@ void Timedep<TF>::create_timedep_prof()
         data.insert(data.end(),tmp.begin(),tmp.end());
     }
     #ifdef USECUDA
-    prepare_device(data.size());
+    prepare_device();
     #endif
 }
 
@@ -79,7 +79,7 @@ void Timedep<TF>::create_timedep()
     data_block.get_vector(time, "time", length, 0, 0);
     data_block.get_vector(data, varname, length, 0, 0);
     #ifdef USECUDA
-    prepare_device(length);
+    prepare_device();
     #endif
 }
 

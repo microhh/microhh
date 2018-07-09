@@ -217,15 +217,6 @@ void Force<TF>::prepare_device()
 
         cuda_safe_call(cudaMemcpy(ug_g, ug.data(), nmemsize, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
-        for (auto& it : tdep_geo)
-        {
-            if (it.second->sw == Timedep_switch::Enabled)
-            {
-                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
-            }
-        }
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -234,15 +225,6 @@ void Force<TF>::prepare_device()
         {
             cuda_safe_call(cudaMalloc(&lsprofs_g[it], nmemsize));
             cuda_safe_call(cudaMemcpy(lsprofs_g[it], lsprofs[it].data(), nmemsize, cudaMemcpyHostToDevice));
-        }
-        for (auto& it : tdep_ls)
-        {
-            if (it.second->sw == Timedep_switch::Enabled)
-            {
-                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
-            }
         }
     }
 
@@ -255,29 +237,12 @@ void Force<TF>::prepare_device()
         }
         cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
-
-        for (auto& it : tdep_nudge)
-        {
-            if (it.second->sw == Timedep_switch::Enabled)
-            {
-                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
-            }
-        }
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
-
-        if (tdep_wls->sw == Timedep_switch::Enabled)
-        {
-            int nmemsize2 = gd.kmax*tdep_wls->time.size()*sizeof(TF);
-            cuda_safe_call(cudaMalloc(&tdep_wls->data_g, nmemsize2));
-            cuda_safe_call(cudaMemcpy(tdep_wls->data_g, tdep_wls->data.data(), nmemsize2, cudaMemcpyHostToDevice));
-        }
     }
 }
 
@@ -313,8 +278,7 @@ void Force<TF>::clear_device()
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         cuda_safe_call(cudaFree(wls_g));
-        if(tdep_wls->sw == Timedep_switch::Enabled)
-            tdep_wls->clear_device();
+        tdep_wls->clear_device();
     }
 }
 
