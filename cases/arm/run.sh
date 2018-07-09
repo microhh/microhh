@@ -11,7 +11,7 @@ errorfile=$casename.err
 
 echo "Case" $casename
 echo "Python preprocessing..."
-echo $PYTHON_EXEC
+
 $PYTHON_EXEC ${casename}prof.py >> $errorfile ||error_exit
 echo "Model initialization..."
 ${MICROHH_EXEC} init $casename >> $errorfile ||error_exit
