@@ -36,8 +36,8 @@ for k in range(kmax):
 proffile.close()
 
 # write surface temperature
-timefile = open('gabls1.time','w')
-timefile.write('t     sbot[th] \n')
+timefile = open('th_sbot.time','w')
+timefile.write('t     th_sbot \n')
 timefile.write('0     265 \n')
 timefile.write('32400 262.75 \n')
 timefile.close()

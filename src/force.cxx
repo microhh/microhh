@@ -21,13 +21,12 @@
  */
 
 #include <cstdio>
-#include <algorithm>
-#include <iostream>
 #include <math.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "field3d_operators.h"
+#include "timedep.h"
 #include "force.h"
 #include "defines.h"
 #include "finite_difference.h"
@@ -207,7 +206,6 @@ template<typename TF>
 Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
-    // Read the switches from the input
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
     std::string swls_in     = inputin.get_item<std::string>("force", "swls", "", "0");
     std::string swwls_in    = inputin.get_item<std::string>("force", "swwls", "", "0");
@@ -229,8 +227,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.sw = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
-        tdep_geo.vars = {"ug", "vg"};
+        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
     else
     {
@@ -245,8 +243,12 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swls = Large_scale_tendency_type::enabled;
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
 
-        tdep_ls.sw = inputin.get_item<bool>("force", "swtimedep_ls", "", false);
-        tdep_ls.vars = inputin.get_list<std::string>("force", "timedeptime_ls", "", std::vector<std::string>());
+        if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
+        {
+            std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
+            for(auto& it : tdepvars)
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_ls", true));
+        }
     }
     else
     {
@@ -259,13 +261,13 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swwls_in == "1")
     {
         swwls = Large_scale_subsidence_type::enabled;
-        tdep_wls.sw = inputin.get_item<bool>("force", "swtimedep_wls", "", false);
         fields.set_calc_mean_profs(true);
     }
     else
     {
         throw std::runtime_error("Invalid option for \"swwls\"");
     }
+    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "w_ls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
 
     // Nudging.
     if (swnudge_in == "0")
@@ -273,9 +275,14 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        // BvS: shouldn't there be a `nudgelist = get_list()` somewhere here?
-        tdep_nudge.sw   = inputin.get_item<bool>("force", "swtimedep_nudge", "", false);
-        tdep_nudge.vars = inputin.get_list<std::string>("force", "timedeptime_nudge", "", std::vector<std::string>());
+        nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+
+        if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
+        {
+            std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
+            for(auto& it : tdepvars)
+                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
+        }
         fields.set_calc_mean_profs(true);
     }
     else
@@ -324,8 +331,8 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(ug, "ug", gd.kmax, 0, gd.kstart);
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
-        if (tdep_geo.sw)
-            create_timedep(tdep_geo, "g");
+        for (auto& it : tdep_geo)
+            it.second->create_timedep_prof();
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -342,8 +349,8 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
             profs.get_vector(lsprofs[it],it+"ls", gd.kmax, 0, gd.kstart);
 
         // Process the time dependent data
-        if (tdep_ls.sw)
-            create_timedep(tdep_geo,"ls");
+        for (auto& it : tdep_ls)
+            it.second->create_timedep_prof();
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -363,38 +370,15 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
             profs.get_vector(nudgeprofs[it],it+"nudge", gd.kmax, 0, gd.kstart);
 
         // Process the time dependent data
-        if (tdep_nudge.sw)
-            create_timedep(tdep_nudge,"nudge");
+        for (auto& it : tdep_nudge)
+            it.second->create_timedep_prof();
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
-
-        if (tdep_wls.sw)
-            create_timedep(tdep_wls,"wls");
-    }
-}
-
-template <typename TF>
-void Force<TF>::create_timedep(Force<TF>::Time_dep& timedep, std::string suffix)
-{
-    auto& gd = grid.get_grid_data();
-    std::vector<TF> tmp;
-    for (auto& var : timedep.vars)
-    {
-        Data_block data_block(master, var+suffix);
-        std::vector<std::string> headers = data_block.get_headers();
-        // Sort the times
-        std::sort(headers.begin()+1, headers.end());
-
-        for (auto& it : headers)
-        {
-            timedep.time[var].push_back(std::stod(it));
-            data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
-            timedep.data[var].insert(timedep.data[var].end(),tmp.begin(),tmp.end());
-        }
+        tdep_wls->create_timedep_prof();
     }
 }
 
@@ -457,58 +441,21 @@ void Force<TF>::exec(double dt)
 template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    if (tdep_ls.sw)
-        update_time_dependent_profs(timeloop, lsprofs, tdep_ls);
-    if (tdep_nudge.sw)
-        update_time_dependent_profs(timeloop, nudgeprofs, tdep_nudge);
-    if (tdep_geo.sw)
+    for (auto& it : tdep_ls)
+        it.second->update_time_dependent_prof(lsprofs[it.first],timeloop);
+
+    for (auto& it : tdep_nudge)
+        it.second->update_time_dependent_prof(nudgeprofs[it.first],timeloop);
+
+    if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        update_time_dependent_prof(timeloop, ug, tdep_geo,"u");
-        update_time_dependent_prof(timeloop, vg, tdep_geo,"v");
+        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
     }
-    if (tdep_wls.sw)
-        update_time_dependent_prof(timeloop, wls, tdep_wls,"w");
+
+    tdep_wls->update_time_dependent_prof(wls, timeloop);
 }
 #endif
-
-template <typename TF>
-void Force<TF>::update_time_dependent_profs(Timeloop<TF>& timeloop, std::map<std::string, std::vector<TF>> profiles, Time_dep& timedep)
-{
-    auto& gd = grid.get_grid_data();
-    const int kk = gd.kmax;
-    const int kgc = gd.kgc;
-
-    // Loop over all profiles which might be time dependent
-    for (auto& it : timedep.data)
-    {
-        // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
-        int index0 = 0, index1 = 0;
-        TF fac0 = 0., fac1 = 0.;
-
-        timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
-
-        // Calculate the new vertical profile
-        for (int k=0; k<gd.kmax; ++k    )
-            profiles[it.first][k+kgc] = fac0 * it.second[index0*kk+k] + fac1 * it.second[index1*kk+k];
-    }
-}
-
-template <typename TF>
-void Force<TF>::update_time_dependent_prof(Timeloop<TF>& timeloop, std::vector<TF> prof, Time_dep& timedep, const std::string& name)
-{
-    auto& gd = grid.get_grid_data();
-    const int kk = gd.kmax;
-    const int kgc = gd.kgc;
-
-    // Get/calculate the interpolation indexes/factors
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[name]);
-
-    // Calculate the new vertical profile
-    for (int k=0; k<gd.kmax; ++k)
-        prof[k+kgc] = fac0 * timedep.data[name][index0*kk+k] + fac1 * timedep.data[name][index1*kk+k];
-}
 
 template class Force<double>;
 template class Force<float>;

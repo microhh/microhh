@@ -80,6 +80,7 @@ namespace
                                const int kstart, const int kend,
                                const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=kstart+1; k<kend; k++)
        {
            const TF exnh = exner(ph[k]);
@@ -120,6 +121,7 @@ namespace
                       const int kstart, const int kend,
                       const int kcells, const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=0; k<kcells; k++)
        {
            const TF ex = exner(p[k]);
@@ -130,7 +132,6 @@ namespace
                    for (int i=istart; i<iend; i++)
                    {
                        const int ijk = i + j*jj + k*kk;
-                       const int ij  = i + j*jj;
                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
                    }
            }
@@ -182,13 +183,14 @@ namespace
                         thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                         qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                     }
-                    for (int j=jstart; j<jend; j++)
-                        #pragma ivdep
-                        for (int i=istart; i<iend; i++)
-                        {
-                            const int ij  = i + j*jj;
-                            ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                        }
+
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    }
             }
             else
             {
@@ -220,6 +222,7 @@ namespace
                           const int jj, const int kk)
    {
        // Calculate the ql field
+       #pragma omp parallel for
        for (int k=kstart; k<kend; k++)
        {
            const TF ex = exner(p[k]);
@@ -285,13 +288,13 @@ namespace
                 const int kstart, const int kend,
                 const int jj, const int kk)
    {
+       #pragma omp parallel for
        for (int k=kstart; k<kend; ++k)
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
                for (int i=istart; i<iend; ++i)
                {
                    const int ijk = i + j*jj + k*kk;
-
                    N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                }
    }
@@ -303,6 +306,7 @@ namespace
                const int jstart, const int jend,
                const int jj, const int kk, const int kcells)
    {
+       #pragma omp parallel for
        for (int k=0; k<kcells; ++k)
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
@@ -503,7 +507,8 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
 
     // Time variable surface pressure
-    swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+
     available_masks.insert(available_masks.end(), {"ql", "qlcore"});
 }
 
@@ -563,13 +568,9 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-/*    if (swtimedep_pbot == 1)
-    {
-        const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
-        if (nerror > 0)
-            throw 1;
-    }
-*/
+    tdep_pbot->create_timedep();
+
+
     // Init the toolbox classes.
     boundary_cyclic.init();
 
@@ -612,7 +613,6 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -693,19 +693,10 @@ bool Thermo_moist<TF>::check_field_exists(const std::string name)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::update_time_dependent()
+void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-/*    if (swtimedep_pbot == 0)
-        return;
-
-    // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
-
-    bs.pbot = fac0 * timedeppbot[index0] + fac1 * timedeppbot[index1];
-*/}
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+}
 
 template<typename TF>
 void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
@@ -759,7 +750,7 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "T")
     {
@@ -881,15 +872,15 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
+            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
             stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
             stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
         }
         else
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("pydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
@@ -1043,8 +1034,8 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
-        m.profs["ph"  ].data = bs_stats.pref;
-        m.profs["phh" ].data = bs_stats.prefh;
+        m.profs["phydro"  ].data = bs_stats.pref;
+        m.profs["phydroh" ].data = bs_stats.prefh;
         m.profs["rho" ].data = fields.rhoref;
         m.profs["rhoh"].data = fields.rhorefh;
     }
@@ -1054,8 +1045,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
 template<typename TF>
 void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {
-    auto& gd = grid.get_grid_data();
-
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -1085,10 +1074,10 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
+
     auto output = fields.get_tmp();
 
     if(swcross_b)

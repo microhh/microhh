@@ -287,6 +287,9 @@ boundary_cyclic(masterin, gridin)
     if (swbaroclinic)
         dthetady_ls = inputin.get_item<TF>("thermo", "dthetady_ls", "");
 
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+
+
 }
 
 template<typename TF>
@@ -342,6 +345,10 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     // Init the toolbox classes.
     boundary_cyclic.init();
 
+    // Process the time dependent surface pressure
+    tdep_pbot->create_timedep();
+
+
     // Set up output classes
     create_stats(stats);
     create_column(column);
@@ -371,6 +378,12 @@ void Thermo_dry<TF>::exec( const double dt)
                         gd.icells, gd.ijcells);
 }
 #endif
+
+template<typename TF>
+void Thermo_dry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+}
 
 template<typename TF>
 unsigned long Thermo_dry<TF>::get_time_limit(unsigned long idt, const double dt)
@@ -511,8 +524,8 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
             stats.add_prof("T", "Absolute temperature", "K", "z");
         }
 

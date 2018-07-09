@@ -20,16 +20,16 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "field3d_operators.h"
+#include "timeloop.h"
+#include "timedep.h"
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
 #include "boundary.h"
-#include "timeloop.h"
 #include "data_block.h"
 #include "force.h"
 
@@ -217,15 +217,13 @@ void Force<TF>::prepare_device()
 
         cuda_safe_call(cudaMemcpy(ug_g, ug.data(), nmemsize, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
-
-        if (tdep_geo.sw)
+        for (auto& it : tdep_geo)
         {
-
-            for (auto& it : tdep_geo.data_g)
+            if (it.second->sw == Timedep_switch::Enabled)
             {
-                int nmemsize2 = gd.kmax*tdep_geo.time[it.first].size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second, tdep_geo.data[it.first].data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -237,14 +235,13 @@ void Force<TF>::prepare_device()
             cuda_safe_call(cudaMalloc(&lsprofs_g[it], nmemsize));
             cuda_safe_call(cudaMemcpy(lsprofs_g[it], lsprofs[it].data(), nmemsize, cudaMemcpyHostToDevice));
         }
-        if (tdep_ls.sw)
+        for (auto& it : tdep_ls)
         {
-
-            for (auto& it : tdep_ls.data_g)
+            if (it.second->sw == Timedep_switch::Enabled)
             {
-                int nmemsize2 = gd.kmax*tdep_ls.time[it.first].size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second, tdep_ls.data[it.first].data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -259,14 +256,13 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
 
-        if (tdep_nudge.sw)
+        for (auto& it : tdep_nudge)
         {
-
-            for (auto& it : tdep_nudge.data_g)
+            if (it.second->sw == Timedep_switch::Enabled)
             {
-                int nmemsize2 = gd.kmax*tdep_nudge.time[it.first].size()*sizeof(TF);
-                cuda_safe_call(cudaMalloc(&it.second, nmemsize2));
-                cuda_safe_call(cudaMemcpy(it.second, tdep_nudge.data[it.first].data(), nmemsize2, cudaMemcpyHostToDevice));
+                int nmemsize2 = gd.kmax*it.second->time.size()*sizeof(TF);
+                cuda_safe_call(cudaMalloc(&it.second->data_g, nmemsize2));
+                cuda_safe_call(cudaMemcpy(it.second->data_g, it.second->data.data(), nmemsize2, cudaMemcpyHostToDevice));
             }
         }
     }
@@ -276,11 +272,11 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
 
-        if (tdep_wls.sw)
+        if (tdep_wls->sw == Timedep_switch::Enabled)
         {
-            int nmemsize2 = gd.kmax*tdep_geo.time["wls"].size()*sizeof(TF);
-            cuda_safe_call(cudaMalloc(&tdep_geo.data_g["wls"], nmemsize2));
-            cuda_safe_call(cudaMemcpy(tdep_geo.data_g["wls"], tdep_geo.data["wls"].data(), nmemsize2, cudaMemcpyHostToDevice));
+            int nmemsize2 = gd.kmax*tdep_wls->time.size()*sizeof(TF);
+            cuda_safe_call(cudaMalloc(&tdep_wls->data_g, nmemsize2));
+            cuda_safe_call(cudaMemcpy(tdep_wls->data_g, tdep_wls->data.data(), nmemsize2, cudaMemcpyHostToDevice));
         }
     }
 }
@@ -292,44 +288,33 @@ void Force<TF>::clear_device()
     {
         cuda_safe_call(cudaFree(ug_g));
         cuda_safe_call(cudaFree(vg_g));
-        if (tdep_geo.sw)
-        {
-            for (auto& it : tdep_geo.data_g)
-                cuda_safe_call(cudaFree(it.second));
-        }
+        for(auto& it : tdep_geo)
+            it.second->clear_device();
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
         for(auto& it : lsprofs_g)
             cuda_safe_call(cudaFree(it.second));
-            if (tdep_ls.sw)
-            {
-                for (auto& it : tdep_ls.data_g)
-                    cuda_safe_call(cudaFree(it.second));
-            }
+        for(auto& it : tdep_ls)
+            it.second->clear_device();
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for(auto& it : nudgeprofs_g)
             cuda_safe_call(cudaFree(it.second));
-            cuda_safe_call(cudaFree(nudge_factor_g));
-            if (tdep_nudge.sw)
-            {
-                for (auto& it : tdep_nudge.data_g)
-                    cuda_safe_call(cudaFree(it.second));
-            }
+        cuda_safe_call(cudaFree(nudge_factor_g));
+        for(auto& it : tdep_nudge)
+            it.second->clear_device();
+
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         cuda_safe_call(cudaFree(wls_g));
-        if (tdep_wls.sw)
-        {
-            for (auto& it : tdep_wls.data_g)
-                cuda_safe_call(cudaFree(it.second));
-        }
+        if(tdep_wls->sw == Timedep_switch::Enabled)
+            tdep_wls->clear_device();
     }
 }
 
@@ -437,62 +422,19 @@ void Force<TF>::exec(double dt)
 template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    if (tdep_ls.sw)
-        update_time_dependent_profs_g(timeloop, lsprofs_g, tdep_ls);
-    if (tdep_nudge.sw)
-        update_time_dependent_profs_g(timeloop, nudgeprofs_g, tdep_nudge);
-    if (tdep_geo.sw)
+    for (auto& it : tdep_ls)
+        it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+
+    for (auto& it : tdep_nudge)
+        it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+
+    if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        update_time_dependent_prof_g(timeloop, ug_g, tdep_geo, "u");
-        update_time_dependent_prof_g(timeloop, vg_g, tdep_geo, "v");
+        tdep_geo.at("ug")->update_time_dependent_prof_g(ug_g, timeloop);
+        tdep_geo.at("vg")->update_time_dependent_prof_g(vg_g, timeloop);
     }
-    if (tdep_wls.sw)
-        update_time_dependent_prof_g(timeloop, wls_g, tdep_wls, "w");
-}
-#endif
 
-#ifdef USECUDA
-template<typename TF>
-void Force<TF>::update_time_dependent_profs_g(Timeloop<TF>& timeloop, std::map<std::string, TF*> profiles, Time_dep& timedep)
-{
-    auto& gd = grid.get_grid_data();
-    const int blockk = 128;
-    const int gridk  = gd.kmax/blockk + (gd.kmax%blockk > 0);
-
-    // Loop over all profiles which might be time dependent
-    for (auto& it : timedep.data_g)
-    {
-        // Get/calculate the interpolation indexes/factors
-        int index0 = 0, index1 = 0;
-        TF fac0 = 0., fac1 = 0.;
-
-        timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
-
-        // Calculate the new vertical profile
-        calc_time_dependent_prof_g<<<gridk, blockk>>>(
-            profiles[it.first], it.second, fac0, fac1, index0, index1, gd.kmax, gd.kgc);
-        cuda_check_error();
-    }
-}
-#endif
-
-#ifdef USECUDA
-template <typename TF>
-void Force<TF>::update_time_dependent_prof_g(Timeloop<TF>& timeloop, TF* prof, Time_dep& timedep, const std::string& name)
-{
-    auto& gd = grid.get_grid_data();
-    const int blockk = 128;
-    const int gridk  = gd.kmax/blockk + (gd.kmax%blockk > 0);
-
-    // Get/calculate the interpolation indexes/factors
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[name]);
-
-    // Calculate the new vertical profile
-    calc_time_dependent_prof_g<<<gridk, blockk>>>(
-        prof, timedep.data_g[name], fac0, fac1, index0, index1, gd.kmax, gd.kgc);
-    cuda_check_error();
+    tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
 #endif
 

@@ -42,7 +42,7 @@ template<typename> class Microphys;
 // Constants specific or tuned for this microphysics scheme
 namespace Micro_2mom_warm_constants
 {
-    template<typename TF> const TF pi      = std::acos(-1.);      // 3.1415..
+    template<typename TF> const TF pi      = 3.141592653589793;   // 3.1415..
     template<typename TF> const TF Nc0     = 70e6;                // Fixed cloud droplet number
     template<typename TF> const TF K_t     = 2.5e-2;              // Conductivity of heat [J/(sKm)]
     template<typename TF> const TF D_v     = 3.e-5;               // Diffusivity of water vapor [m2/s]

@@ -23,6 +23,7 @@
 #ifndef THERMO_MOIST
 #define THERMO_MOIST
 
+#include "timedep.h"
 #include "thermo.h"
 
 class Master;
@@ -34,6 +35,9 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timedep;
+template<typename> class Timeloop;
+
 class Data_block;
 
 
@@ -90,7 +94,7 @@ class Thermo_moist : public Thermo<TF>
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
         bool has_mask(std::string);
 
-        void update_time_dependent();
+        void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
     private:
         using Thermo<TF>::swthermo;
@@ -145,12 +149,8 @@ class Thermo_moist : public Thermo<TF>
         background_state bs;
         background_state bs_stats;
 
-        bool swtimedep_pbot;
-        std::vector<double> timedeptime;
-        std::vector<TF> timedeppbot;
+        std::unique_ptr<Timedep<TF>> tdep_pbot;
 
-        // masks
-//        void calc_mask_ql    (TF*, TF*, TF*, int *, int *, int *, TF*);//
-//        void calc_mask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double*);
+
 };
 #endif

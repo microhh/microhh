@@ -23,6 +23,7 @@
 #ifndef THERMO_DRY
 #define THERMO_DRY
 
+#include "timedep.h"
 #include "thermo.h"
 
 class Master;
@@ -34,6 +35,8 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timedep;
+template<typename> class Timeloop;
 class Data_block;
 
 
@@ -89,7 +92,7 @@ class Thermo_dry : public Thermo<TF>
         void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
-        void update_time_dependent() {};
+        void update_time_dependent(Timeloop<TF>&);
 
     private:
         using Thermo<TF>::swthermo;
@@ -138,5 +141,8 @@ class Thermo_dry : public Thermo<TF>
 
         bool swbaroclinic;
         TF dthetady_ls;
+
+        std::unique_ptr<Timedep<TF>> tdep_pbot;
+
 };
 #endif

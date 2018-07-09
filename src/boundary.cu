@@ -27,12 +27,13 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "boundary.h"
-#include "defines.h"
 #include "timeloop.h"
+#include "timedep.h"
+#include "defines.h"
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
+#include "boundary.h"
 
 using namespace Finite_difference::O4;
 
@@ -343,6 +344,12 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
     }
 }
 #endif
+template<typename TF>
+void Boundary<TF>::clear_device()
+{
+    for(auto& it : tdep_bc)
+        it.second->clear_device();
+}
 
 #ifdef USECUDA
 template<typename TF>
@@ -418,6 +425,23 @@ void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict afl
         cuda_check_error();
     }
 }
+
+#ifdef USECUDA
+template <typename TF>
+void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    const TF no_offset = 0.;
+
+    for (auto& it : tdep_bc)
+    {
+        it.second->update_time_dependent(sbc.at(it.first).bot,timeloop);
+        set_bc_g(fields.sp.at(it.first)->fld_bot_g, fields.sp.at(it.first)->grad_bot_g, fields.sp.at(it.first)->flux_bot_g,
+                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset);
+    }
+}
+#endif
 
 template class Boundary<double>;
 template class Boundary<float>;

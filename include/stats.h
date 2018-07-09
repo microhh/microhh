@@ -115,7 +115,7 @@ class Stats
         void calc_mean_2d(TF&, const TF* const, const TF, const TF* const, const int);
         void calc_max_2d(TF&, const TF* const, const TF, const TF* const, const int);
 
-        void calc_moment(TF*, TF*, TF*, TF, TF*, int*);
+        void calc_moment(TF*, TF*, TF*, const int, TF*, int*);
 
         void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
         void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,

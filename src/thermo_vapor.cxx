@@ -344,7 +344,8 @@ Thermo_vapor<TF>::Thermo_vapor(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
 
     // Time variable surface pressure
-    swtimedep_pbot = inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false);
+    tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
+
 }
 
 template<typename TF>
@@ -405,13 +406,8 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-/*    if (swtimedep_pbot == 1)
-    {
-        const int nerror = inputin->get_time(&timedeppbot, &timedeptime, "pbot");
-        if (nerror > 0)
-            throw 1;
-    }
-*/
+    tdep_pbot->create_timedep();
+
     // Init the toolbox classes.
     boundary_cyclic.init();
 
@@ -476,19 +472,10 @@ bool Thermo_vapor<TF>::check_field_exists(const std::string name)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::update_time_dependent()
+void Thermo_vapor<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-/*    if (swtimedep_pbot == 0)
-        return;
-
-    // Get/calculate the interpolation indexes/factors. Assing to zero to avoid compiler warnings.
-    int index0 = 0, index1 = 0;
-    TF fac0 = 0., fac1 = 0.;
-
-    timeloop.get_interpolation_factors(index0, index1, fac0, fac1, timedep.time[it.first]);
-
-    bs.pbot = fac0 * timedeppbot[index0] + fac1 * timedeppbot[index1];
-*/}
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+}
 
 template<typename TF>
 void Thermo_vapor<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
@@ -649,15 +636,15 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
+            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
             stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
             stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
         }
         else
         {
-            stats.add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z");
@@ -786,8 +773,8 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
-        m.profs["ph"  ].data = bs_stats.pref;
-        m.profs["phh" ].data = bs_stats.prefh;
+        m.profs["phydro"  ].data = bs_stats.pref;
+        m.profs["phydroh" ].data = bs_stats.prefh;
         m.profs["rho" ].data = fields.rhoref;
         m.profs["rhoh"].data = fields.rhorefh;
     }

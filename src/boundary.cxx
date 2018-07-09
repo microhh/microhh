@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "defines.h"
 #include "timeloop.h"
+#include "timedep.h"
 #include "finite_difference.h"
 
 #include "boundary_cyclic.h"
@@ -39,6 +40,51 @@
 // #include "boundary_surface_bulk.h"
 // #include "boundary_surface_patch.h"
 // #include "boundary_patch.h"
+
+
+namespace
+{
+    template<typename TF>
+    void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
+                const Boundary_type sw, const TF aval, const TF visc, const TF offset,
+                const int icells, const int jcells)
+    {
+        const int jj = icells;
+
+        if (sw == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    a[ij] = aval - offset;
+                }
+        }
+        else if (sw == Boundary_type::Neumann_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    agrad[ij] = aval;
+                    aflux[ij] = -aval*visc;
+                }
+        }
+        else if (sw == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    aflux[ij] = aval;
+                    agrad[ij] = -aval/visc;
+                }
+        }
+    }
+}
 
 template<typename TF>
 Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -147,10 +193,6 @@ void Boundary<TF>::process_bcs(Input& input)
         }
     }
 
-    // get the list of time varying variables
-    swtimedep   = input.get_item<std::string>("boundary", "swtimedep"  , "", "0");
-    timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
-
     if (nerror)
         throw 1;
 }
@@ -180,16 +222,18 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary<TF>::create(Input& input, Stats<TF>& stats)
 {
-    // process_time_dependent(input);
+    process_time_dependent(input);
 }
 
-/*
-template<typename TF>
-void Boundary<TF>::process_time_dependent(Input* inputin)
-{
-    int nerror = 0;
 
-    if (swtimedep == "1")
+template<typename TF>
+void Boundary<TF>::process_time_dependent(Input& input)
+{
+    // get the list of time varying variables
+    bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
+    std::vector<std::string> timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
+
+    if (swtimedep)
     {
         // create temporary list to check which entries are used
         std::vector<std::string> tmplist = timedeplist;
@@ -197,10 +241,12 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
         // see if there is data available for the surface boundary conditions
         for (auto& it : fields.sp)
         {
-            std::string name = "sbot[" + it.first + "]";
+            std::string name = it.first+"_sbot";
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
-                nerror += inputin->get_time(&timedepdata[name], &timedeptime, name);
+                // Process the time dependent data
+                tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
+                tdep_bc.at(it.first)->create_timedep();
 
                 // remove the item from the tmplist
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -214,118 +260,23 @@ void Boundary<TF>::process_time_dependent(Input* inputin)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
-    if (nerror)
-        throw 1;
 }
-
-template<typename TF>
-void Boundary<TF>::update_time_dependent()
-{
-    if (swtimedep == "0")
-        return;
-
-    // first find the index for the time entries
-    unsigned int index0 = 0;
-    unsigned int index1 = 0;
-    for (std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
-    {
-        if (model->timeloop->get_time() < *it)
-            break;
-        else
-            ++index1;
-    }
-
-    // second, calculate the weighting factor
-    double fac0, fac1;
-
-    // correct for out of range situations where the simulation is longer than the time range in input
-    if (index1 == 0)
-    {
-        fac0 = 0.;
-        fac1 = 1.;
-        index0 = 0;
-    }
-    else if (index1 == timedeptime.size())
-    {
-        fac0 = 1.;
-        fac1 = 0.;
-        index0 = index1-1;
-        index1 = index0;
-    }
-    else
-    {
-        index0 = index1-1;
-        double timestep;
-        timestep = timedeptime[index1] - timedeptime[index0];
-        fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
-        fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
-    }
-
-    // process time dependent bcs for the surface fluxes
-    for (FieldMap::const_iterator it1=fields.sp.begin(); it1!=fields.sp.end(); ++it1)
-    {
-        std::string name = "sbot[" + it1->first + "]";
-        std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
-        if (it2 != timedepdata.end())
-        {
-            sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
-
-            // BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
-            const double noOffset = 0.;
-
 #ifndef USECUDA
-            set_bc(it1->second->fld_bot, it1->second->grad_bot, it1->second->flux_bot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
-#else
-            set_bc_g(it1->second->fld_bot_g, it1->second->grad_bot_g, it1->second->flux_bot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
-#endif
-        }
-    }
-}
-*/
-
-namespace
+template <typename TF>
+void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    template<typename TF>
-    void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
-                const Boundary_type sw, const TF aval, const TF visc, const TF offset,
-                const int icells, const int jcells)
-    {
-        const int jj = icells;
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
-        if (sw == Boundary_type::Dirichlet_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-                    a[ij] = aval - offset;
-                }
-        }
-        else if (sw == Boundary_type::Neumann_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-                    agrad[ij] = aval;
-                    aflux[ij] = -aval*visc;
-                }
-        }
-        else if (sw == Boundary_type::Flux_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-                    aflux[ij] = aval;
-                    agrad[ij] = -aval/visc;
-                }
-        }
+    const TF no_offset = 0.;
+
+    for (auto& it : tdep_bc)
+    {
+        it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
+        set_bc<TF>(fields.sp.at(it.first)->fld_bot.data(), fields.sp.at(it.first)->grad_bot.data(), fields.sp.at(it.first)->flux_bot.data(),
+                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset, gd.icells, gd.jcells);
     }
 }
+#endif
 
 template<typename TF>
 void Boundary<TF>::set_values()
