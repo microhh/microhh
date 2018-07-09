@@ -117,7 +117,7 @@ namespace Thermo_moist_functions
     inline Struct_sat_adjust<TF> sat_adjust(const TF thl, const TF qt, const TF p, const TF exn)
     {
         int niter = 0;
-        int nitermax = 30;
+        int nitermax = 100;
         TF ql, tl, tnr_old = 1.e9, tnr, qs=0;
         tl = thl * exn;
         Struct_sat_adjust<TF> ans;
@@ -199,7 +199,7 @@ namespace Thermo_moist_functions
 
         pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
     }
-    
+
     template<typename TF>
     void  calc_base_state_no_ql(TF* restrict pref,    TF* restrict prefh,
                           TF* restrict rho,     TF* restrict rhoh,
