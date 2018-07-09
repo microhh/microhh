@@ -229,9 +229,8 @@ void Boundary<TF>::create(Input& input, Stats<TF>& stats)
 template<typename TF>
 void Boundary<TF>::process_time_dependent(Input& input)
 {
-    int nerror = 0;
     // get the list of time varying variables
-    bool swtimedep   = input.get_item<bool>("boundary", "swtimedep"  , "", false);
+    bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
     std::vector<std::string> timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
 
     if (swtimedep)
@@ -272,7 +271,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     for (auto& it : tdep_bc)
     {
-        it.second->update_time_dependent(sbc.at(it.first).bot,timeloop);
+        it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
         set_bc<TF>(fields.sp.at(it.first)->fld_bot.data(), fields.sp.at(it.first)->grad_bot.data(), fields.sp.at(it.first)->flux_bot.data(),
                 sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset, gd.icells, gd.jcells);
     }

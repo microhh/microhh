@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+
 #include "data_block.h"
 #include "timedep.h"
 
@@ -48,6 +49,7 @@ void Timedep<TF>::create_timedep_prof()
     auto& gd = grid.get_grid_data();
     Data_block data_block(master, varname+".time");
     std::vector<std::string> headers = data_block.get_headers();
+
     // Sort the times
     headers.erase(headers.begin());
     std::sort(headers.begin(), headers.end());
@@ -69,7 +71,6 @@ void Timedep<TF>::create_timedep()
     if (sw == Timedep_switch::Disabled)
         return;
 
-    auto& gd = grid.get_grid_data();
     Data_block data_block(master, varname+".time");
 
     int length = data_block.get_vector_length("time");

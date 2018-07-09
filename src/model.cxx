@@ -24,7 +24,9 @@
 #include <cstdio>
 #include <algorithm>
 #include <cmath>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -627,7 +629,7 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-        if (!std::isfinite(cfl))
+        if ( !(std::isfinite(cfl) && std::isfinite(dn) && std::isfinite(mom) && std::isfinite(tke) && std::isfinite(mass)) )
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);
