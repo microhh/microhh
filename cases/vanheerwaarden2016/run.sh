@@ -6,15 +6,21 @@ error_exit()
 	exit 1
 }
 
-casename=${PWD##*/}
-errorfile=$casename.err
+for dir in */
+do
+  cd $dir
+  casename=${PWD##*/}
+  errorfile=$casename.err
 
-echo "Case" $casename
-echo "Python preprocessing..."
-$PYTHON_EXEC ${casename}prof.py >> $errorfile ||error_exit
-echo "Model initialization..."
-${MICROHH_EXEC} init $casename >> $errorfile ||error_exit
-echo "Model execution..."
-${MICROHH_EXEC} run $casename >> $errorfile ||error_exit
+  echo "Case" $casename
+  echo "Python preprocessing..."
+  $PYTHON_EXEC ${casename}prof.py >> $errorfile ||error_exit
+  echo "Model initialization..."
+  ${MICROHH_EXEC} init thermal >> $errorfile ||error_exit
+  echo "Model execution..."
+  ${MICROHH_EXEC} run thermal >> $errorfile ||error_exit
+  cd ..
+done
+
 echo "Succes!"
 

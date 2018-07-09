@@ -50,7 +50,7 @@ for k in range(kmax):
   b[k] = N2*z[k]
 
 # write the data to a file
-proffile = open('drycbl.prof','w')
+proffile = open('thermal.prof','w')
 proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
 for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
