@@ -20,6 +20,29 @@ def determine_mode(namelist):
     return mode, npx*npy
 
 
+def run_scripts(case_name, scripts):
+    if scripts is not None:
+        for script, functions in scripts.items():
+
+            # Import module as name minus the `.py` at the end
+            module = script.replace('.py', '')
+
+            # Import module; this executes all code that is not in classes/functions
+            lib = importlib.import_module('{0}.{1}'.format(case_name, module))
+
+            # Call specific routines in the module:
+            if functions is not None:
+                if isinstance(functions, list):
+                    for function in functions:
+                        rc = getattr(lib, function)()
+                        if rc != 0:
+                            print('ERROR: {}: {}() returned {}'.format(script, function, rc))
+                else:
+                    rc = getattr(lib, functions)()
+                    if rc != 0:
+                        print('ERROR: {}: {}() returned {}'.format(script, functions, rc))
+
+
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = sp.communicate()
@@ -33,6 +56,8 @@ def execute(command):
 
 
 def test_cases(cases, executable):
+    if not os.path.exists(executable):
+        raise Exception('ERROR: Executable {} does not exists'.format(executable))
 
     # Aaarghhh
     executable = '../{}'.format(executable)
@@ -54,20 +79,21 @@ def test_cases(cases, executable):
                 replace_namelist_value('{0}.ini'.format(case.name), variable, value)
 
             # Create input data, and do other pre-processing
-            for script in case.pre:
-                module = script.split('.')[0]
-                importlib.import_module('{0}.{1}'.format(case.name, module))
+            run_scripts(case.name, case.pre)
 
             # Determine whether to run serial or parallel
             mode, ntasks = determine_mode(case.options)
 
             # Run init and run phases
-            execute('rm -f *000*')
+            execute('rm -f *000*')      # BvS: do we want this?
             for phase in ['init', 'run']:
                 if mode == 'serial':
                     execute('{} {} {}'.format(executable, phase, case.name))
                 elif mode == 'parallel':
                     execute('mpirun -n {} {} {} {}'.format(ntasks, executable, phase, case.name))
+
+            # Run the post-processing steps
+            run_scripts(case.name, case.post)
 
             # Restore original .ini file and remove backup
             shutil.copy('{0}.ini.original'.format(case.name), '{0}.ini'.format(case.name))
@@ -90,48 +116,24 @@ class Case:
 
         # By default; run {name}prof.py in preprocessing phase
         if self.pre is None:
-            self.pre = ['{0}prof.py'.format(name)]
-
-
-#def test_all('mode'):
-#    pass
-
+            self.pre = {'{}prof.py'.format(name): None}
 
 
 
 if __name__ == "__main__":
 
-    if (False):
-        #
-        # Manual tests
-        #
-
+    if (True):
         # Serial
         cases = [
-            Case("bomex",     { "itot" : 32, "jtot" : 8,  "ktot" : 64, "endtime": 3600 }),
-            Case("drycblles", { "itot" : 16, "jtot" : 16, "ktot" : 64 })
-                ]
-
-        test_cases(cases, '../build/microhh')
-        test_cases(cases, '../build/microhh_single')
-
-        # Parallel
-        cases = [
-            Case("bomex",     { "npx": 2, "npy": 2, "itot" : 32, "jtot" : 8,  "ktot" : 64, "endtime": 3600 }),
-            Case("drycblles", { "npx": 2, "npy": 2, "itot" : 16, "jtot" : 16, "ktot" : 64 })
+            Case("bomex",     { "itot" : 16, "jtot" : 16,  "ktot" : 32, "endtime": 3600 }),
+            Case("drycblles", { "itot" : 16, "jtot" : 16, "ktot" : 32 }, post={'validate.py': ['test1', 'test2']})
                 ]
 
         test_cases(cases, '../build/microhh')
         test_cases(cases, '../build/microhh_single')
 
     if (False):
-        #
-        # Automatic tests
-        #
-
         blacklist = ['prandtlslope']
-        #                fails           fails            fails           SLOW!         fails
-        #blacklist = ['conservation', 'gabls4s3_nbl', 'moser180_buoy', 'prandtlslope', 'shapiro', 'taylorgreen']
 
         # Settings for all test cases:
         settings = { "itot" : 16, "jtot" : 16,  "ktot" : 16, "endtime": 10 }
@@ -145,12 +147,12 @@ if __name__ == "__main__":
         test_cases(cases, '../build/microhh')
         test_cases(cases, '../build/microhh_single')
 
-    if (True):
-        #
-        # undo Barts mistakes..
-        #
-
-        dirs  = glob.glob('*')
-        for dir in dirs:
-            if os.path.isdir(dir):
-                execute('git checkout {0}/{0}.ini'.format(dir))
+#    if (False):
+#        #
+#        # undo Barts mistakes..
+#        #
+#
+#        dirs  = glob.glob('*')
+#        for dir in dirs:
+#            if os.path.isdir(dir):
+#                execute('git checkout {0}/{0}.ini'.format(dir))
