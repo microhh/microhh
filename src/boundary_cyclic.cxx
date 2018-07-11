@@ -50,6 +50,7 @@ namespace
     template<typename TF> MPI_Datatype mpi_fp_type();
     template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
     template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
+    template<> MPI_Datatype mpi_fp_type<unsigned int>() { return MPI_UNSIGNED; }
 }
 
 template<typename TF>
@@ -380,3 +381,4 @@ void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
 
 template class Boundary_cyclic<double>;
 template class Boundary_cyclic<float>;
+template class Boundary_cyclic<unsigned int>;
