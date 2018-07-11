@@ -15,7 +15,7 @@ def replace_namelist_value(namelist_file, variable, new_value):
 
 def determine_mode(namelist):
     npx = namelist['npx'] if 'npx' in namelist.keys() else 1
-    npy = namelist['npx'] if 'npx' in namelist.keys() else 1
+    npy = namelist['npy'] if 'npy' in namelist.keys() else 1
     mode = 'serial' if npx*npy == 1 else 'parallel'
     return mode, npx*npy
 
@@ -46,6 +46,8 @@ def run_scripts(case_name, scripts):
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = sp.communicate()
+    sp.wait()
+
     if sp.returncode != 0:
         with open('stdout.log', 'w') as  f:
             f.write(out.decode('utf-8'))
@@ -63,7 +65,11 @@ def test_cases(cases, executable):
     executable = '../{}'.format(executable)
 
     for case in cases:
-        print('Testing case \"{}\" for executable \"{}\"'.format(case.name, executable))
+
+        # Determine whether to run serial or parallel
+        mode, ntasks = determine_mode(case.options)
+
+        print('Testing case \"{}\" for executable \"{}\" ({})'.format(case.name, executable, mode))
 
         # Move to working directory
         os.chdir(case.name)
@@ -80,9 +86,6 @@ def test_cases(cases, executable):
 
             # Create input data, and do other pre-processing
             run_scripts(case.name, case.pre)
-
-            # Determine whether to run serial or parallel
-            mode, ntasks = determine_mode(case.options)
 
             # Run init and run phases
             execute('rm -f *000*')      # BvS: do we want this?
@@ -119,7 +122,6 @@ class Case:
             self.pre = {'{}prof.py'.format(name): None}
 
 
-
 if __name__ == "__main__":
 
     if (True):
@@ -132,6 +134,15 @@ if __name__ == "__main__":
         test_cases(cases, '../build/microhh')
         test_cases(cases, '../build/microhh_single')
 
+        # Parallel
+        cases = [
+            Case("bomex",     { "npx": 1, "npy": 2, "itot" : 16, "jtot" : 16,  "ktot" : 32, "endtime": 3600 }),
+            Case("drycblles", { "npx": 1, "npy": 2, "itot" : 16, "jtot" : 16, "ktot" : 32 }, post={'validate.py': ['test1', 'test2']})
+                ]
+
+        test_cases(cases, '../build_parallel/microhh')
+        test_cases(cases, '../build_parallel/microhh_single')
+
     if (False):
         blacklist = ['prandtlslope']
 
@@ -141,11 +152,10 @@ if __name__ == "__main__":
         dirs  = glob.glob('*')
         cases = []
         for dir in dirs:
-            if os.path.isdir(dir) and dir not in blacklist and 'restart' not in dir:
+            if os.path.isdir(dir) and dir not in blacklist:
                 cases.append(Case(dir, settings))
 
         test_cases(cases, '../build/microhh')
-        test_cases(cases, '../build/microhh_single')
 
 #    if (False):
 #        #
