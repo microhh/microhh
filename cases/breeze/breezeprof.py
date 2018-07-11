@@ -55,7 +55,7 @@ for k in range(1,kmax):
   stretch[k] = dz[k]/dz[k-1]
 
 zsize = z[kmax-1] + 0.5*dz[kmax-1]
-print('zsize = ', zsize)
+#print('zsize = ', zsize)
 
 b0    = 1.
 delta = 4.407731e-3

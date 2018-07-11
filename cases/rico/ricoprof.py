@@ -26,7 +26,7 @@ wls   = np.zeros(z.size)
 thlls = np.zeros(z.size)
 qtls  = np.zeros(z.size)
 
-print('Setup = %s'%case)
+#print('Setup = %s'%case)
 for k in range(kmax):
 
     # Liquid water potential temperature: same in GCSS and SS08
@@ -110,4 +110,4 @@ ps  = 101540.
 SST = 299.8 
 ths = SST / (ps/1.e5)**(287.04/1005.)
 qs  = qsat(ps, SST) 
-print('sbot[thl]=%f, sbot[qt]=%f'%(ths, qs))
+#print('sbot[thl]=%f, sbot[qt]=%f'%(ths, qs))

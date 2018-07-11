@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 # Get number of vertical levels and size from .ini file
 with open('drycblles.ini') as f:
@@ -13,10 +13,10 @@ dz = zsize / kmax
 dthetadz = 0.003
 
 # set the height
-z    = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-th   = numpy.zeros(numpy.size(z))
-thls = numpy.zeros(numpy.size(z))
-wls  = numpy.zeros(numpy.size(z))
+z    = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+th   = np.zeros(np.size(z))
+thls = np.zeros(np.size(z))
+wls  = np.zeros(np.size(z))
 
 # linearly stratified profile
 for k in range(kmax):
