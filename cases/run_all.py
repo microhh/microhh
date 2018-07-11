@@ -150,7 +150,7 @@ if __name__ == "__main__":
         test_cases(cases, '../build_parallel/microhh')
         test_cases(cases, '../build_parallel/microhh_single')
 
-    if (False):
+    if (True):
         blacklist = ['prandtlslope']
 
         # Settings for all test cases:
@@ -172,10 +172,10 @@ if __name__ == "__main__":
         test_cases(cases_parallel, '../build_parallel/microhh_single')
 
 
-    if (True):
-        # DANGER: checkout all ini files
-        dirs  = glob.glob('*')
-        for dir in dirs:
-            if os.path.isdir(dir):
-                execute('git checkout {0}/{0}.ini'.format(dir))
+#    if (False):
+#        # DANGER: checkout all ini files
+#        dirs  = glob.glob('*')
+#        for dir in dirs:
+#            if os.path.isdir(dir):
+#                execute('git checkout {0}/{0}.ini'.format(dir))
 
