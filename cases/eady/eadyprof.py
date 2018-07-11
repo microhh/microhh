@@ -22,7 +22,7 @@ dudz = 1e-2
 th = 300. + dthetadz*z
 u = dudz*z
 ug = u.copy()
-print("dthetady_ls = {0}".format(-dudz*fc))
+#print("dthetady_ls = {0}".format(-dudz*fc))
 
 # write the data to a file
 proffile = open('eady.prof','w')

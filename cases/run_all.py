@@ -5,6 +5,8 @@ import re
 import os
 import glob
 
+from messages import *
+
 def replace_namelist_value(namelist_file, variable, new_value):
     with open(namelist_file, "r") as source:
         lines = source.readlines()
@@ -21,26 +23,29 @@ def determine_mode(namelist):
 
 
 def run_scripts(case_name, scripts):
+    def exec_function(lib, function):
+        rc = getattr(lib, function)()
+
+        if rc != 0:
+            print_error('{}: {}() returned {}'.format(script, function, rc))
+
     if scripts is not None:
+        # Loop over, and execute all functions
         for script, functions in scripts.items():
 
-            # Import module as name minus the `.py` at the end
+            # Module name = script name minus the `.py`
             module = script.replace('.py', '')
 
             # Import module; this executes all code that is not in classes/functions
             lib = importlib.import_module('{0}.{1}'.format(case_name, module))
 
-            # Call specific routines in the module:
+            # If any specific routines are specified, run them
             if functions is not None:
                 if isinstance(functions, list):
                     for function in functions:
-                        rc = getattr(lib, function)()
-                        if rc != 0:
-                            print('ERROR: {}: {}() returned {}'.format(script, function, rc))
+                        exec_function(lib, function)
                 else:
-                    rc = getattr(lib, functions)()
-                    if rc != 0:
-                        print('ERROR: {}: {}() returned {}'.format(script, functions, rc))
+                    exec_function(lib, functions)
 
 
 def execute(command):
@@ -48,28 +53,30 @@ def execute(command):
     out, err = sp.communicate()
     sp.wait()
 
-    if sp.returncode != 0:
-        with open('stdout.log', 'w') as  f:
-            f.write(out.decode('utf-8'))
-        with open('stderr.log', 'w') as  f:
-            f.write(err.decode('utf-8'))
+    # Write the standard output and errors to logflies
+    with open('stdout.log', 'w') as  f:
+        f.write(out.decode('utf-8'))
+    with open('stderr.log', 'w') as  f:
+        f.write(err.decode('utf-8'))
 
-        print('ERROR: \"{}\" returned \"{}\". Output written to stdout.log and stderr.log'.format(command, sp.returncode))
+    if sp.returncode != 0:
+        print_error('\"{}\" returned \"{}\".'.format(command, sp.returncode))
 
 
 def test_cases(cases, executable):
     if not os.path.exists(executable):
         raise Exception('ERROR: Executable {} does not exists'.format(executable))
 
-    # Aaarghhh
-    executable = '../{}'.format(executable)
+    # Get the absolute path to the executable
+    executable_rel = executable
+    executable = os.path.abspath(executable)
 
     for case in cases:
 
         # Determine whether to run serial or parallel
         mode, ntasks = determine_mode(case.options)
 
-        print('Testing case \"{}\" for executable \"{}\" ({})'.format(case.name, executable, mode))
+        print_header('Testing case \"{}\" for executable \"{}\" ({})'.format(case.name, executable_rel, mode))
 
         # Move to working directory
         os.chdir(case.name)
@@ -103,7 +110,7 @@ def test_cases(cases, executable):
             os.remove('{0}.ini.original'.format(case.name))
 
         else:
-            print('WARNING: cannot find {0}.ini and/or {0}prof.py, skipping...!'.format(case.name))
+            print_warning('cannot find {0}.ini and/or {0}prof.py, skipping...!'.format(case.name))
 
         # Go back to root of all cases
         os.chdir('..')
@@ -124,7 +131,7 @@ class Case:
 
 if __name__ == "__main__":
 
-    if (True):
+    if (False):
         # Serial
         cases = [
             Case("bomex",     { "itot" : 16, "jtot" : 16,  "ktot" : 32, "endtime": 3600 }),
@@ -147,22 +154,28 @@ if __name__ == "__main__":
         blacklist = ['prandtlslope']
 
         # Settings for all test cases:
-        settings = { "itot" : 16, "jtot" : 16,  "ktot" : 16, "endtime": 10 }
+        settings_serial   = { "itot" : 16, "jtot" : 8,  "ktot" : 16, "endtime": 10 }
+        settings_parallel = { "itot" : 16, "jtot" : 8,  "ktot" : 16, "endtime": 10, "npx": 1, "npy": 2 }
 
         dirs  = glob.glob('*')
-        cases = []
+        cases_serial   = []
+        cases_parallel = []
         for dir in dirs:
             if os.path.isdir(dir) and dir not in blacklist:
-                cases.append(Case(dir, settings))
+                cases_serial  .append(Case(dir, settings_serial  ))
+                cases_parallel.append(Case(dir, settings_parallel))
 
-        test_cases(cases, '../build/microhh')
+        test_cases(cases_serial, '../build/microhh')
+        test_cases(cases_serial, '../build/microhh_single')
 
-#    if (False):
-#        #
-#        # undo Barts mistakes..
-#        #
-#
-#        dirs  = glob.glob('*')
-#        for dir in dirs:
-#            if os.path.isdir(dir):
-#                execute('git checkout {0}/{0}.ini'.format(dir))
+        test_cases(cases_parallel, '../build_parallel/microhh')
+        test_cases(cases_parallel, '../build_parallel/microhh_single')
+
+
+    if (True):
+        # DANGER: checkout all ini files
+        dirs  = glob.glob('*')
+        for dir in dirs:
+            if os.path.isdir(dir):
+                execute('git checkout {0}/{0}.ini'.format(dir))
+
