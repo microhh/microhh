@@ -23,6 +23,7 @@
 #ifndef THERMO_DRY
 #define THERMO_DRY
 
+#include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"
 

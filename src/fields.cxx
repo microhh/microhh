@@ -198,7 +198,6 @@ template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
-    boundary_cyclic(master, grid),
     field3d_io(master, grid),
     field3d_operators(master, grid, *this)
 {
@@ -230,7 +229,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     n_tmp_fields = 4;
 
     // Specify the masks that fields can provide / calculate
-    available_masks.insert(available_masks.end(), {"wplus", "wmin"});
+    available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
 
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     /*
@@ -305,7 +304,6 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     vmodel.resize(gd.kcells);
 
     // Init the toolbox classes.
-    boundary_cyclic.init();
     field3d_io.init();
 
     // Set up output classes
@@ -503,7 +501,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("v", *mp["v"], vloc, no_offset, no_threshold, operators);
     for (auto& it : sp)
     {
-        stats.calc_stats("it.first", *it.second, sloc, no_offset, no_threshold, operators);
+        stats.calc_stats(it.first, *it.second, sloc, no_offset, no_threshold, operators);
     }
     stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"});
 

@@ -233,7 +233,8 @@ namespace
 
 template<typename TF>
 Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin),  boundary_cyclic(master, grid)
+
 {
     swstats = inputin.get_item<bool>("stats", "swstats", "", false);
 
@@ -257,6 +258,8 @@ void Stats<TF>::init(double ifactor)
         return;
 
     auto& gd = grid.get_grid_data();
+
+    boundary_cyclic.init();
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
     statistics_counter = 0;
@@ -341,11 +344,17 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             //m.data_file->sync();
             nc_sync(m.data_file->getId());
         }
+
+        m.nmask. resize(gd.kcells);
+        m.nmaskh.resize(gd.kcells);
+        std::cout << mask.first << m.nmask.size() << "\n";
+
     }
 
     // For each mask, add the area as a variable.
     add_prof("area" , "Fractional area contained in mask", "-", "z" );
     add_prof("areah", "Fractional area contained in mask", "-", "zh");
+
 }
 
 template<typename TF>
@@ -446,9 +455,6 @@ void Stats<TF>::add_mask(const std::string maskname)
     int nmasks = masks.size();
     masks[maskname].flag = (1 << 2 * (nmasks - 1));
     masks[maskname].flag = (1 << 2 * (nmasks-1) + 1);
-    masks[maskname].nmask. resize(gd.kcells);
-    masks[maskname].nmaskh.resize(gd.kcells);
-
 }
 
 // Add a new profile to each of the NetCDF files
@@ -568,8 +574,8 @@ void Stats<TF>::finalize_masks()
     const int sloc[] = {0,0,0};
     const int wloc[] = {0,0,1};
 
-//    boundary_cyclic.exec(mfield);
-//    boundary_cyclic.exec_2d(mfield_bot);
+    boundary_cyclic.exec(mfield.data());
+    boundary_cyclic.exec_2d(mfield_bot.data());
 
     for (auto& it : masks)
     {
@@ -659,12 +665,9 @@ void Stats<TF>::set_mask_thres_pert(std::string mask_name, Field3d<TF>& fld, Fie
 template<typename TF>
 void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 {
-    auto& gd = grid.get_grid_data();
-
     for (auto& it : masks)
     {
-        for(int k=gd.kstart; gd.kend; ++k)
-            it.second.profs.at(varname).data[k] = prof[k];
+        it.second.profs.at(varname).data = prof;
     }
 }
 
@@ -689,6 +692,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
                 flag = m.second.flag;
             else
                 flag = m.second.flagh;
+
             calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
@@ -728,6 +732,10 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
 
         }
+        else if (it == "flux")
+        {
+
+        }
         else if (it == "grad")
         {
 
@@ -746,6 +754,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
         else
         {
+            std::cout << varname << " " <<it<< "\n";
             throw std::runtime_error("Invalid operations in stat.");
         }
     }

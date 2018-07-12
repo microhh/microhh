@@ -26,6 +26,8 @@
 #include <netcdf>
 using namespace netCDF;
 
+#include "boundary_cyclic.h"
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -115,6 +117,7 @@ class Stats
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         bool swstats;           ///< Statistics on/off switch
 

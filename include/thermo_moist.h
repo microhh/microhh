@@ -23,6 +23,7 @@
 #ifndef THERMO_MOIST
 #define THERMO_MOIST
 
+#include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"
 

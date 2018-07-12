@@ -43,6 +43,9 @@ class Boundary_cyclic
         void exec(TF* const restrict, Edge=Edge::Both_edges); // Fills the ghost cells in the periodic directions.
         void exec_2d(TF* const restrict); // Fills the ghost cells of one slice in the periodic direction.
 
+        void exec(unsigned int* const restrict, Edge=Edge::Both_edges); // Fills the ghost cells in the periodic directions.
+        void exec_2d(unsigned int* const restrict); // Fills the ghost cells of one slice in the periodic direction.
+
         void exec_g(TF*);   // Fills the ghost cells in the periodic directions.
         void exec_2d_g(TF*); // Fills the ghost cells of one slice in the periodic directions.
 
@@ -59,6 +62,10 @@ class Boundary_cyclic
         MPI_Datatype northsouthedge;   ///< MPI datatype containing the ghostcells at the north-south sides.
         MPI_Datatype eastwestedge2d;   ///< MPI datatype containing the ghostcells for one slice at the east-west sides.
         MPI_Datatype northsouthedge2d; ///< MPI datatype containing the ghostcells for one slice at the north-south sides.
+        MPI_Datatype eastwestedge_uint;     ///< MPI datatype containing the ghostcells at the east-west sides.
+        MPI_Datatype northsouthedge_uint;   ///< MPI datatype containing the ghostcells at the north-south sides.
+        MPI_Datatype eastwestedge2d_uint;   ///< MPI datatype containing the ghostcells for one slice at the east-west sides.
+        MPI_Datatype northsouthedge2d_uint; ///< MPI datatype containing the ghostcells for one slice at the north-south sides.
         #endif
 };
 #endif

@@ -26,7 +26,6 @@
 #include <map>
 #include <vector>
 #include <mutex>
-#include "boundary_cyclic.h"
 #include "field3d.h"
 #include "field3d_io.h"
 #include "field3d_operators.h"
@@ -142,7 +141,6 @@ class Fields
     private:
         Master& master;
         Grid<TF>& grid;
-        Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;
         Field3d_operators<TF> field3d_operators;
 

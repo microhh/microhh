@@ -31,7 +31,6 @@
 #include "stats.h"
 #include "cross.h"
 #include "thermo.h"
-#include "boundary_cyclic.h"
 #include "thermo_moist_functions.h"
 
 #include "constants.h"
@@ -589,8 +588,7 @@ namespace mp2d
 
 template<typename TF>
 Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Microphys<TF>(masterin, gridin, fieldsin, inputin),
-    boundary_cyclic(masterin, gridin)
+    Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
     swmicrophys = Microphys_type::Warm_2mom;
 

@@ -23,6 +23,7 @@
 #ifndef THERMO_VAPOR
 #define THERMO_VAPOR
 
+#include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"
 

@@ -90,8 +90,6 @@ class Microphys_2mom_warm : public Microphys<TF>
         using Microphys<TF>::grid;
         using Microphys<TF>::fields;
 
-        Boundary_cyclic<TF> boundary_cyclic;
-
         bool swmicrobudget;     // Output full microphysics budget terms
         TF cflmax;              // Max CFL number in microphysics sedimentation
 
