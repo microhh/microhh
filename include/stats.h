@@ -110,7 +110,7 @@ class Stats
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         void add_time_series(std::string, std::string, std::string);
 
-        void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, const std::vector<std::string>);
+        void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, std::vector<std::string>);
         void set_prof(const std::string, const std::vector<TF>);
 
     private:
