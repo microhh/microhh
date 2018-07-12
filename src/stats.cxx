@@ -225,6 +225,18 @@ namespace
         }
     }
 
+    template<typename TF>
+    void add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff, const TF fillvalue, const int kstart, const int kend)
+    {
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (turb[k] == fillvalue || diff[k] == fillvalue)
+                flux[k] = fillvalue;
+            else
+                flux[k] = turb[k] + diff[k];
+        }
+    }
+
     bool has_only_digits(const std::string s)
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
@@ -453,8 +465,8 @@ void Stats<TF>::add_mask(const std::string maskname)
     masks[maskname].name = maskname;
     masks[maskname].data_file = 0;
     int nmasks = masks.size();
-    masks[maskname].flag = (1 << 2 * (nmasks - 1));
-    masks[maskname].flag = (1 << 2 * (nmasks-1) + 1);
+    masks[maskname].flag = (1 << (2 * (nmasks - 1)));
+    masks[maskname].flag = (1 << (2 * (nmasks-1) + 1));
 }
 
 // Add a new profile to each of the NetCDF files
@@ -705,10 +717,10 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
     //Loop over all other operations.
     for(auto& it : operations)
     {
+        name = varname+it;
         if(has_only_digits(it))
         {
             int power = std::stoi(it);
-            name = varname+it;
             for (auto& m : masks)
             {
 
@@ -734,7 +746,13 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
         else if (it == "flux")
         {
-
+/*            for (auto& m : masks)
+            {
+                add_fluxes(m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
+                        netcdf_fp_fillvalue<TF>(), gd.kstart, gd.kend);
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            }
+*/
         }
         else if (it == "grad")
         {
