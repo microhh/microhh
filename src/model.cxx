@@ -489,8 +489,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
                 throw std::runtime_error(error_message);
             }
-            stats->finalize_masks();
         }
+        stats->finalize_masks();
         // Calculate statistics
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);

@@ -57,12 +57,12 @@ namespace
 
 
     template<typename TF, Stats_mask_type mode>
-    TF compare(const TF value, const TF threshold)
+    TF is_false(const TF value, const TF threshold)
     {
         if (mode == Stats_mask_type::Plus)
-            return (value > threshold);
-        else if (mode == Stats_mask_type::Min)
             return (value <= threshold);
+        else if (mode == Stats_mask_type::Min)
+            return (value > threshold);
     }
 
     template<typename TF, Stats_mask_type mode>
@@ -81,8 +81,8 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    mfield[ijk] = (mfield[ijk] & flag ) * compare<TF, mode>(fld[ijk], threshold);
-                    mfield[ijk] = (mfield[ijk] & flagh) * compare<TF, mode>(fldh[ijk], threshold);
+                    mfield[ijk] -= (mfield[ijk] & flag)  * is_false<TF, mode>(fld[ijk], threshold);
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
                 }
 
         // Set the mask for surface projected quantities
@@ -93,8 +93,8 @@ namespace
             {
                 const int ij  = i + j*icells;
                 const int ij2 = i + j*icells + (kend+1)*ijcells;
-                mfield_bot[ij] = (mfield_bot[ij] & flag)*compare<TF, mode>(fld_bot[ij], threshold);
-                mfield[ij2] = (mfield[ij2] & flagh) * compare<TF, mode>(fldh[ij2], threshold);
+                mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij], threshold);
+                mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2], threshold);
             }
     }
 
@@ -115,10 +115,9 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    mfield[ijk] = (mfield[ijk] & flag ) * compare<TF, mode>(fld[ijk]-fld_mean[k], threshold);
-                    mfield[ijk] = (mfield[ijk] & flagh) * compare<TF, mode>(fldh[ijk]-fldh_mean[k], threshold);
+                    mfield[ijk] -=  (mfield[ijk] & flag)  * is_false<TF, mode>(fld[ijk]-fld_mean[k], threshold);
+                    mfield[ijk] -=  (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk]-fldh_mean[k], threshold);
                 }
-
         // Set the mask for surface projected quantities
         #pragma omp parallel for
         for (int j=jstart; j<jend; j++)
@@ -127,9 +126,10 @@ namespace
             {
                 const int ij  = i + j*icells;
                 const int ij2 = i + j*icells + (kend+1)*ijcells;
-                mfield_bot[ij] = (mfield_bot[ij] & flag)*compare<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
-                mfield[ij2] = (mfield[ij2] & flagh) * compare<TF, mode>(fldh[ij2]-fldh_mean[kend], threshold);
+                mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
+                mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2]-fld_mean[kend+1], threshold);
             }
+
     }
 
     template<typename TF>
@@ -147,7 +147,7 @@ namespace
     // Sets all the mask values to one (non-masked field)
     template<typename TF>
     void calc_nmask(int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-                    const unsigned int* const mfield, const unsigned int* const mfield_bot,const int flag,const int flagh,
+                    const unsigned int* const mfield, const unsigned int* const mfield_bot,const unsigned int flag,const unsigned int flagh,
                    const int istart, const int iend, const int jstart, const int jend,
                    const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
     {
@@ -161,17 +161,16 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    nmask_full[k]+=(mfield[ijk] & flag);
-                    nmask_half[k]+=(mfield[ijk] & flagh);
+                    nmask_full[k]+=((mfield[ijk] & flag)>0);
+                    nmask_half[k]+=((mfield[ijk] & flagh)>0);
                 }
         }
-
         nmask_bottom = 0;
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                nmask_bottom+=(mfield_bot[ij] & flag);
+                nmask_bottom+=((mfield_bot[ij] & flag)>0);
             }
     }
 
@@ -191,7 +190,7 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += (mask[ijk] & flag)*(fld[ijk] + offset);
+                    prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
                 }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
@@ -464,7 +463,7 @@ void Stats<TF>::add_mask(const std::string maskname)
     masks[maskname].data_file = 0;
     int nmasks = masks.size();
     masks[maskname].flag = (1 << (2 * (nmasks - 1)));
-    masks[maskname].flag = (1 << (2 * (nmasks-1) + 1));
+    masks[maskname].flagh = (1 << (2 * (nmasks-1) + 1));
 }
 
 // Add a new profile to each of the NetCDF files
@@ -570,10 +569,15 @@ template<typename TF>
 void Stats<TF>::initialize_masks()
 {
     auto& gd = grid.get_grid_data();
+    unsigned int flagmax = 0;
+    for (auto& it : masks)
+    {
+        flagmax+=it.second.flag+it.second.flagh;
+    }
     for (int n=0; n<gd.ncells; ++n)
-        mfield[n] = std::numeric_limits<int>::max();
+        mfield[n] = flagmax;
     for (int n=0; n<gd.ijcells; ++n)
-        mfield_bot[n] = std::numeric_limits<int>::max();
+        mfield_bot[n] = flagmax;
 }
 
 
@@ -586,7 +590,6 @@ void Stats<TF>::finalize_masks()
 
     boundary_cyclic.exec(mfield.data());
     boundary_cyclic.exec_2d(mfield_bot.data());
-
     for (auto& it : masks)
     {
         calc_nmask<TF>(it.second.nmask.data(), it.second.nmaskh.data(), it.second.nmask_bot,
@@ -639,6 +642,7 @@ void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<
 template<typename TF>
 void Stats<TF>::set_mask_thres_pert(std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
+
     auto& gd = grid.get_grid_data();
     unsigned int flag, flagh;
     bool found_mask = false;
@@ -669,6 +673,7 @@ void Stats<TF>::set_mask_thres_pert(std::string mask_name, Field3d<TF>& fld, Fie
             gd.icells, gd.ijcells);
     else
         throw std::runtime_error("Invalid mask type in set_mask_thres_pert()");
+
 }
 
 
