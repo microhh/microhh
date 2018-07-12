@@ -250,10 +250,10 @@ void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
         const int eastin  = gd.iend;
 
         // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge, md.neast, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ westin], ncount, eastwestedge, md.nwest, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[westout], ncount, eastwestedge, md.nwest, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ eastin], ncount, eastwestedge, md.neast, 2, md.commxy, master.get_request_ptr());
+        MPI_Isend(&data[eastout], ncount, eastwestedge_uint, md.neast, 1, md.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ westin], ncount, eastwestedge_uint, md.nwest, 1, md.commxy, master.get_request_ptr());
+        MPI_Isend(&data[westout], ncount, eastwestedge_uint, md.nwest, 2, md.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ eastin], ncount, eastwestedge_uint, md.neast, 2, md.commxy, master.get_request_ptr());
         master.wait_all();
     }
 
@@ -269,10 +269,10 @@ void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
             const int northin  = gd.jend  *gd.icells;
 
             // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge, md.nnorth, 1, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ southin], ncount, northsouthedge, md.nsouth, 1, md.commxy, master.get_request_ptr());
-            MPI_Isend(&data[southout], ncount, northsouthedge, md.nsouth, 2, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ northin], ncount, northsouthedge, md.nnorth, 2, md.commxy, master.get_request_ptr());
+            MPI_Isend(&data[northout], ncount, northsouthedge_uint, md.nnorth, 1, md.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ southin], ncount, northsouthedge_uint, md.nsouth, 1, md.commxy, master.get_request_ptr());
+            MPI_Isend(&data[southout], ncount, northsouthedge_uint, md.nsouth, 2, md.commxy, master.get_request_ptr());
+            MPI_Irecv(&data[ northin], ncount, northsouthedge_uint, md.nnorth, 2, md.commxy, master.get_request_ptr());
             master.wait_all();
         }
         // In case of 2D, fill all the ghost cells in the y-direction with the same value.
@@ -317,20 +317,20 @@ void Boundary_cyclic<TF>::exec_2d(unsigned int* const restrict data)
     const int northin  = gd.jend  *gd.icells;
 
     // First, send and receive the ghost cells in east-west direction.
-    MPI_Isend(&data[eastout], ncount, eastwestedge2d, md.neast, 1, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ westin], ncount, eastwestedge2d, md.nwest, 1, md.commxy, master.get_request_ptr());
-    MPI_Isend(&data[westout], ncount, eastwestedge2d, md.nwest, 2, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d, md.neast, 2, md.commxy, master.get_request_ptr());
+    MPI_Isend(&data[eastout], ncount, eastwestedge2d_uint, md.neast, 1, md.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ westin], ncount, eastwestedge2d_uint, md.nwest, 1, md.commxy, master.get_request_ptr());
+    MPI_Isend(&data[westout], ncount, eastwestedge2d_uint, md.nwest, 2, md.commxy, master.get_request_ptr());
+    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d_uint, md.neast, 2, md.commxy, master.get_request_ptr());
     master.wait_all();
 
     // If the run is 3D, apply the BCs.
     if (gd.jtot > 1)
     {
         // Second, send and receive the ghost cells in the north-south direction.
-        MPI_Isend(&data[northout], ncount, northsouthedge2d, md.nnorth, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ southin], ncount, northsouthedge2d, md.nsouth, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[southout], ncount, northsouthedge2d, md.nsouth, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ northin], ncount, northsouthedge2d, md.nnorth, 2, md.commxy, master.get_request_ptr());
+        MPI_Isend(&data[northout], ncount, northsouthedge2d_uint, md.nnorth, 1, md.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ southin], ncount, northsouthedge2d_uint, md.nsouth, 1, md.commxy, master.get_request_ptr());
+        MPI_Isend(&data[southout], ncount, northsouthedge2d_uint, md.nsouth, 2, md.commxy, master.get_request_ptr());
+        MPI_Irecv(&data[ northin], ncount, northsouthedge2d_uint, md.nnorth, 2, md.commxy, master.get_request_ptr());
         master.wait_all();
     }
     // In case of 2D, fill all the ghost cells with the current value.
