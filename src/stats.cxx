@@ -695,8 +695,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
     sanatize_operations_vector(operations);
 
     // Process mean first
-    auto it = std::find(operations.begin(), operations.end(), "mean");
-    if (it != operations.end())
+    if (std::find(operations.begin(), operations.end(), "mean") != operations.end())
     {
         for (auto& m : masks)
         {
