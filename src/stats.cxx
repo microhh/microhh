@@ -91,7 +91,7 @@ namespace
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ij  = i + j*icells + kstart*ijcells;
+                const int ij  = i + j*icells;
                 const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] = (mfield_bot[ij] & flag)*compare<TF, mode>(fld_bot[ij], threshold);
                 mfield[ij2] = (mfield[ij2] & flagh) * compare<TF, mode>(fldh[ij2], threshold);
@@ -125,7 +125,7 @@ namespace
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ij  = i + j*icells + kstart*ijcells;
+                const int ij  = i + j*icells;
                 const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] = (mfield_bot[ij] & flag)*compare<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
                 mfield[ij2] = (mfield[ij2] & flagh) * compare<TF, mode>(fldh[ij2]-fldh_mean[kend], threshold);
@@ -359,8 +359,6 @@ void Stats<TF>::create(int iotime, std::string sim_name)
 
         m.nmask. resize(gd.kcells);
         m.nmaskh.resize(gd.kcells);
-        std::cout << mask.first << m.nmask.size() << "\n";
-
     }
 
     // For each mask, add the area as a variable.
@@ -772,7 +770,6 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
         else
         {
-            std::cout << varname << " " <<it<< "\n";
             throw std::runtime_error("Invalid operations in stat.");
         }
     }
@@ -783,16 +780,20 @@ void Stats<TF>::sanatize_operations_vector(std::vector<std::string> operations)
 {
     // Sanatize the operations vector:
     //find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
-    for(auto it : operations)
+    std::vector<std::string> tmpvec = operations;
+    for(auto it : tmpvec)
     {
-        if(has_only_digits(it))
-        {
-            operations.push_back("mean");
-        }
         if(it == "flux")
         {
             operations.push_back("diff");
             operations.push_back("w");
+        }
+    }
+    for(auto it : tmpvec)
+    {
+        if(has_only_digits(it) || (it == "w"))
+        {
+            operations.push_back("mean");
         }
     }
     // Check for duplicates
