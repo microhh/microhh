@@ -129,7 +129,7 @@ void Column<TF>::create(int iotime, std::string sim_name)
         iter_var.putAtt("units", "-");
         iter_var.putAtt("long_name", "Iteration number");
 
-        t_var = data_file->addVar("t", ncDouble, t_dim);
+        t_var = data_file->addVar("time", ncDouble, t_dim);
         t_var.putAtt("units", "s");
         t_var.putAtt("long_name", "Time");
 
@@ -264,4 +264,3 @@ void Column<TF>::calc_column(std::string profname, const TF* const restrict data
 
 template class Column<double>;
 template class Column<float>;
-

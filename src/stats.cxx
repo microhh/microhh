@@ -334,7 +334,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             m.iter_var.putAtt("units", "-");
             m.iter_var.putAtt("long_name", "Iteration number");
 
-            m.t_var = m.data_file->addVar("t", ncDouble, m.t_dim);
+            m.t_var = m.data_file->addVar("time", ncDouble, m.t_dim);
             m.t_var.putAtt("units", "s");
             m.t_var.putAtt("long_name", "Time");
 
