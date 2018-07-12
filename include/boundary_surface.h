@@ -37,7 +37,7 @@ class Boundary_surface : public Boundary<TF>
         void create(Input&, Stats<TF>&);
         void set_values();
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&);
+        void exec_stats(Stats<TF>&);
         void exec_cross(int);
 
         using Boundary<TF>::ustar;
@@ -55,11 +55,11 @@ class Boundary_surface : public Boundary<TF>
         void prepare_device();
         void clear_device();
         void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS 
+        void backward_device(); // TMP BVS
         #endif
 
     protected:
-        void process_input(Input&, Thermo<TF>&); // Process and check the surface input 
+        void process_input(Input&, Thermo<TF>&); // Process and check the surface input
         void init_surface(); // Allocate and initialize the surface arrays
         void init_solver(); // Prepare the lookup table's for the surface layer solver
         void set_ustar(); // Set fixed ustar

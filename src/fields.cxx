@@ -457,35 +457,34 @@ void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
 #endif
 
 template<typename TF>
-void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
+void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
+    //We don't have to do anything for the default mask
+    if (mask_name == "default")
+        return;
+
     auto& gd = grid.get_grid_data();
+    const int wloc[] = {0,0,1};
+    const int sloc[] = {0,0,0};
 
+    // Interpolate w to half level:
+    auto wf = get_tmp();
+    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), wloc, sloc);
+
+    // Calculate masks
+    TF threshold = 0;
     if (mask_name == "wplus")
-        calc_mask_w<TF, Mask_type::Wplus>(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
-                                          stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
-                                          gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Plus);
     else if (mask_name == "wmin")
-        calc_mask_w<TF, Mask_type::Wmin >(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
-                                          stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
-                                          gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Min);
 
-    boundary_cyclic.exec(mfield.fld.data());
-    boundary_cyclic.exec(mfieldh.fld.data());
-    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
-
-    master.sum(stats.nmask.data() , gd.kcells);
-    master.sum(stats.nmaskh.data(), gd.kcells);
-    stats.nmaskbot = stats.nmaskh[gd.kstart];
+    release_tmp(wf);
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff)
+void Fields<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
-
-    Mask<TF>& m = stats.masks[mask_name];
 
     // Define locations
     const int uloc[] = {1,0,0};
@@ -497,187 +496,17 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>
     const int vwloc[] = {0,1,1};
 
     const TF no_offset = 0.;
-
-    // Save the area coverage of the mask
-    stats.calc_area(m.profs["area" ].data.data(), sloc, stats.nmask .data());
-    stats.calc_area(m.profs["areah"].data.data(), wloc, stats.nmaskh.data());
-
-    // Start with the stats on the w location, to make the wmean known for the flux calculations
-    stats.calc_mean(m.profs["w"].data.data(), mp["w"]->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmaskh.data());
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["w"]->fld.data(), m.profs["w"].data.data(), m.profs["w"+sn].data.data(), n, mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-
-    // Calculate the stats on the u location
-    // Interpolate the mask horizontally onto the u coordinate.
-    auto mask_on_u = get_tmp();
-    grid.interpolate_2nd(mask_on_u->fld.data(), mask_field.fld.data(), sloc, uloc);
-
-    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, mask_on_u->fld.data(), stats.nmask.data());
-    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, mask_on_u->fld.data(), stats.nmask.data());
-
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, mask_on_u->fld.data(), stats.nmask.data());
-    }
-    release_tmp(mask_on_u);
-
-    // Interpolate the mask on half level horizontally onto the u coordinate
-    auto maskh_on_u = get_tmp();
-    auto tmp = get_tmp();
-    grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["uw"].data.data(), tmp->fld.data(), uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
-
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            stats.calc_diff_2nd(mp["u"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                m.profs["udiff"].data.data(), gd.dzhi.data(),
-                                mp["u"]->flux_bot.data(), mp["u"]->flux_top.data(), 1., uloc,
-                                maskh_on_u->fld.data(), stats.nmaskh.data());
-        }
-        else
-        {
-            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
-        }
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi4.data(), uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(mp["u"]->fld.data(), mp["w"]->fld.data(), m.profs["uw"].data.data(), tmp->fld.data(), uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_diff_4th(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi4.data(), visc, uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-    }
-    release_tmp(maskh_on_u);
-
-    // Calculate the statistics on the v location
-    auto mask_on_v = get_tmp();
-
-    grid.interpolate_2nd(mask_on_v->fld.data(), mask_field.fld.data(), sloc, vloc);
-    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, mask_on_v->fld.data(), stats.nmask.data());
-    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, mask_on_v->fld.data(), stats.nmask.data());
-
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, mask_on_v->fld.data(), stats.nmask.data());
-    }
-    release_tmp(mask_on_v);
-
-
-    // interpolate the mask on half level horizontally onto the u coordinate
-    auto maskh_on_v = get_tmp();
-    grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["vw"].data.data(), tmp->fld.data(), vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
-
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            stats.calc_diff_2nd(mp["v"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                m.profs["vdiff"].data.data(), gd.dzhi.data(),
-                                mp["v"]->flux_bot.data(), mp["v"]->flux_top.data(), 1., vloc,
-                                maskh_on_v->fld.data(), stats.nmaskh.data());
-        }
-        else
-        {
-            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
-        }
-
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi4.data(), vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(mp["v"]->fld.data(), mp["w"]->fld.data(), m.profs["vw"].data.data(), tmp->fld.data(), vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_diff_4th(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi4.data(), visc, vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-    }
-    release_tmp(maskh_on_v);
-
-    // calculate stats for the prognostic scalars
-    //Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
+    const TF no_threshold = 0.;
+    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
+    stats.calc_stats("w", *mp["w"], wloc, no_offset, no_threshold, {"mean","2","3","4"});
+    stats.calc_stats("u", *mp["u"], uloc, no_offset, no_threshold, operators);
+    stats.calc_stats("v", *mp["v"], vloc, no_offset, no_threshold, operators);
     for (auto& it : sp)
     {
-        stats.calc_mean(m.profs[it.first].data.data(), it.second->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
-        for (int n=2; n<5; ++n)
-        {
-            std::string sn = std::to_string(n);
-            stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
-        }
-
-        if (grid.get_spatial_order() == Grid_order::Second)
-        {
-            stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                                m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-
-            if (diff.get_switch() == Diffusion_type::Diff_smag2)
-            {
-                stats.calc_diff_2nd(it.second->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                    m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
-                                    it.second->flux_bot.data(), it.second->flux_top.data(), diff.tPr, sloc,
-                                    mask_fieldh.fld.data(), stats.nmaskh.data());
-            }
-            else
-            {
-                stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
-                                    it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-            }
-        }
-        else if (grid.get_spatial_order() == Grid_order::Fourth)
-        {
-            stats.calc_grad_4th(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi4.data(), sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_flux_4th(it.second->fld.data(), mp["w"]->fld.data(), m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_diff_4th(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi4.data(), visc, sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-        }
+        stats.calc_stats("it.first", *it.second, sloc, no_offset, no_threshold, operators);
     }
+    stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"});
 
-    // Calculate pressure statistics.
-    stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi4.data(), sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(sd["p"]->fld.data(), mp["w"]->fld.data(), m.profs["pw"].data.data(), tmp->fld.data(), sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-
-    // Calculate the total fluxes.
-    stats.add_fluxes(m.profs["uflux"].data.data(), m.profs["uw"].data.data(), m.profs["udiff"].data.data());
-    stats.add_fluxes(m.profs["vflux"].data.data(), m.profs["vw"].data.data(), m.profs["vdiff"].data.data());
-    for (auto& it : sp)
-        stats.add_fluxes(m.profs[it.first+"flux"].data.data(), m.profs[it.first+"w"].data.data(), m.profs[it.first+"diff"].data.data());
-
-    if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
-    release_tmp(tmp);
 }
 
 template<typename TF>
@@ -685,12 +514,6 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 {
     calc_mean_profs = sw;
 }
-/*
-void Fields::set_minimum_tmp_fields(int n)
-{
-    n_tmp_fields = std::max(n_tmp_fields, n);
-}
-*/
 
 template<typename TF>
 void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit)
@@ -982,7 +805,7 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 //}
 
 template <typename TF>
-void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
+void Fields<TF>::create_stats(Stats<TF>& stats)
 {
     // Add the profiles to te statistics
     if (stats.get_switch())
@@ -1002,10 +825,6 @@ void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
         stats.add_prof(sd["p"]->name + sn,    "Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
         stats.add_prof(sd["p"]->name +"w",    "Turbulent flux of the "   + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
         stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
-
-//        // CvH, shouldn't this call be in the diffusion class? BvS: yes ;-)
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
 
         // Add the second up to fourth moments of the velocity and scalars
         for (int n=2; n<5; ++n)

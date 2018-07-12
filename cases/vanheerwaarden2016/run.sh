@@ -6,7 +6,7 @@ error_exit()
 	exit 1
 }
 
-for dir in */
+for dir in ReS ReM
 do
   cd $dir
   casename=${PWD##*/}

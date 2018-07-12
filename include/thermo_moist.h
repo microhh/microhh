@@ -62,7 +62,7 @@ class Thermo_moist : public Thermo<TF>
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
+        void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
@@ -91,7 +91,7 @@ class Thermo_moist : public Thermo<TF>
         #endif
 
         // Empty functions that are allowed to pass.
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
+        void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.

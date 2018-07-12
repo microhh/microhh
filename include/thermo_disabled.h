@@ -56,11 +56,11 @@ class Thermo_disabled : public Thermo<TF>
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(const double) {};
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};

@@ -59,14 +59,14 @@ class Fields
 
         void init(Dump<TF>&,Cross<TF>&);   ///< Initialization of the field arrays.
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
-        void create_stats(Stats<TF>&, const Diff<TF>&);    ///< Initialization of the fields statistics.
+        void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
 
         void exec();
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&);   ///< Calculate the statistics
+        void get_mask(Stats<TF>&, std::string);
+        void exec_stats(Stats<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
         void init_momentum_field  (std::string, std::string, std::string);

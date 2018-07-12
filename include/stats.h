@@ -58,6 +58,11 @@ template<typename TF>
 struct Mask
 {
     std::string name;
+    unsigned int flag;
+    unsigned int flagh;
+    std::vector<int> nmask;
+    std::vector<int> nmaskh;
+    int nmask_bot;
     NcFile* data_file;
     NcDim z_dim;
     NcDim zh_dim;
@@ -87,20 +92,14 @@ class Stats
         bool get_switch() { return swstats; }
         bool do_statistics(unsigned long);
 
-        void get_mask(Field3d<TF>&, Field3d<TF>&);
-        void get_nmask(Field3d<TF>&, Field3d<TF>&);
-        void set_mask_true(Field3d<TF>&, Field3d<TF>&);
-        void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
-        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
+        void initialize_masks();
+        void finalize_masks();
+
+        const std::vector<std::string>& get_mask_list();
+        void set_mask_thres(std::string, Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type );
+        void set_mask_thres_pert(std::string, Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type );
 
         void exec(int, double, unsigned long);
-
-        // Container for all stats, masks as uppermost in hierarchy
-        Mask_map<TF> masks;
-        std::vector<int> nmask;
-        std::vector<int> nmaskh;
-        int nmaskbot;
-        const std::vector<std::string>& get_mask_list();
 
         // Interface functions.
         void add_mask(const std::string);
@@ -109,35 +108,8 @@ class Stats
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         void add_time_series(std::string, std::string, std::string);
 
-        void calc_area(TF*, const int[3], int*);
-        void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
-
-        void calc_mean_2d(TF&, const TF* const, const TF, const TF* const, const int);
-        void calc_max_2d(TF&, const TF* const, const TF, const TF* const, const int);
-
-        void calc_moment(TF*, TF*, TF*, const int, TF*, int*);
-
-        void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
-        void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
-                           TF*, TF*, TF, const int[3], TF*, int*);
-
-        void calc_diff_4th(
-                TF*, TF*, const TF*,
-                const TF, const int[3],
-                TF*, int*);
-
-        void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
-        void calc_grad_4th(TF*, TF*, const TF*, const int[3], TF*, int*);
-
-        void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-        void calc_flux_4th(TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-
-        void add_fluxes   (TF*, TF*, TF*);
-        //void calc_count   (double*, double*, double, double*, int*);
-        //void calc_path    (double*, double*, int*, double*);
-        //void calc_cover   (double*, double*, int*, double*, double);
-
-        //void calc_sorted_prof(double*, double*, double*);
+        void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, const std::vector<std::string>);
+        void set_prof(const std::string, const std::vector<TF>);
 
     private:
         Master& master;
@@ -146,15 +118,19 @@ class Stats
 
         bool swstats;           ///< Statistics on/off switch
 
+
         int statistics_counter;
         double sampletime;
         unsigned long isampletime;
 
+        // Container for all stats, masks as uppermost in hierarchy
+        Mask_map<TF> masks;
         std::vector<std::string> masklist;
+        std::vector<unsigned int> mfield;
+        std::vector<unsigned int> mfield_bot;
 
-        //// mask calculations
-        //void calc_mask(double*, double*, double*, int*, int*, int*);
+        void sanatize_operations_vector(std::vector<std::string>);
+        bool wmean_set;
 
-        static const int nthres = 0;
 };
 #endif

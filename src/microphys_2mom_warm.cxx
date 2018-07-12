@@ -780,18 +780,17 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name,
-                                         Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-                                         Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    Mask<TF>& m = stats.masks[mask_name];
-
     // Time series
     const TF no_offset = 0.;
-    stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-    stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    const TF no_threshold = 0.;
+    const int sloc[] = {0,0,0};
+
+//    stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+//    stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
 
     if (swmicrobudget)
     {
@@ -857,10 +856,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
 
-        stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("auto_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"});
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -874,9 +873,9 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                         gd.iend,   gd.jend,   gd.kend,
                         gd.icells, gd.ijcells);
 
-        stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("accr_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"});
 
         // Rest of the microphysics is handled per XZ slice
         // Evaporation; evaporation of rain drops in unsaturated environment
@@ -901,10 +900,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                               gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["evap_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("evap_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"});
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         // -------------------------
@@ -923,7 +922,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                                          gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["scbr_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("scbr_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"});
 
         // Sedimentation; sub-grid sedimentation of rain
         // -------------------------
@@ -945,8 +944,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                                      gd.icells, gd.kcells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["sed_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["sed_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("sed_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("sed_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"});
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)
@@ -1003,9 +1002,9 @@ bool Microphys_2mom_warm<TF>::has_mask(std::string name)
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string name)
+void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    if (name == "qr")
+    if (mask_name == "qr")
     {
         TF threshold = 1e-8;
         const int wloc[] = {0,0,1};
@@ -1016,21 +1015,15 @@ void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh
         grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), sloc, wloc);
 
         // Calculate masks
-        stats.set_mask_true(mfield, mfieldh);
-        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
-        stats.get_nmask(mfield, mfieldh);
+        stats.set_mask_thres(mask_name, *qrh, *fields.sp.at("qr"), threshold, Stats_mask_type::Plus);
 
         fields.release_tmp(qrh);
     }
     else
     {
-        std::string message = "Double moment warm microphysics can not provide mask: \"" + name +"\"";
+        std::string message = "Double moment warm microphysics can not provide mask: \"" + mask_name +"\"";
         throw std::runtime_error(message);
     }
-
-    boundary_cyclic.exec(mfield.fld.data());
-    boundary_cyclic.exec(mfieldh.fld.data());
-    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
 }
 
 template class Microphys_2mom_warm<double>;

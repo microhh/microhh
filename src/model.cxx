@@ -221,7 +221,7 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
-    fields->create_stats(*stats, *diff);
+    fields->create_stats(*stats);
     fields->create_column(*column);
 
     boundary->create(*input, *stats);
@@ -474,36 +474,29 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     {
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 
+        stats->initialize_masks();
         for (auto& mask_name : mask_list)
         {
-            auto mask_field  = fields->get_tmp();
-            auto mask_fieldh = fields->get_tmp();
-
             // Get the mask from one of the mask providing classes
-            if (mask_name == "default")
-                stats->get_mask(*mask_field, *mask_fieldh);
-            else if (fields->has_mask(mask_name))
-                fields->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+            if (fields->has_mask(mask_name))
+                fields->get_mask(*stats, mask_name);
             else if (thermo->has_mask(mask_name))
-                thermo->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+                thermo->get_mask(*stats, mask_name);
             else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*mask_field, *mask_fieldh, *stats, mask_name);
+                microphys->get_mask(*stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
                 throw std::runtime_error(error_message);
             }
-
-            // Calculate statistics
-            fields   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff);
-            thermo   ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *diff, dt);
-            microphys->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh, *thermo, dt);
-            //budget  ->exec_stats(&stats->masks[maskname]);
-            boundary ->exec_stats(*stats, mask_name, *mask_field, *mask_fieldh);
-
-            fields->release_tmp(mask_field );
-            fields->release_tmp(mask_fieldh);
+            stats->finalize_masks();
         }
+        // Calculate statistics
+        fields   ->exec_stats(*stats);
+        thermo   ->exec_stats(*stats);
+        microphys->exec_stats(*stats, *thermo, dt);
+        //budget  ->exec_stats(&stats->masks[maskname]);
+        boundary ->exec_stats(*stats);
 
         // Store the statistics data.
         stats->exec(iteration, time, itime);

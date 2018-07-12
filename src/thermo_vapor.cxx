@@ -448,7 +448,7 @@ unsigned long Thermo_vapor<TF>::get_time_limit(unsigned long idt, const double d
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
+void Thermo_vapor<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     std::string message = "Vapor thermodynamics can not provide mask: \"" + mask_name +"\"";
     throw std::runtime_error(message);
@@ -715,8 +715,7 @@ void Thermo_vapor<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff, const double dt)
+void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -724,9 +723,8 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     bs_stats = bs;
     #endif
 
-    Mask<TF>& m = stats.masks[mask_name];
-
-    const TF no_offset = 0.;
+    const TF no_offset    = 0.;
+    const TF no_threshold = 0.;
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
@@ -738,46 +736,21 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     const int sloc[] = {0,0,0};
 
     // calculate the mean
-    stats.calc_mean(m.profs["b"].data.data(), b->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    // calculate the moments
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(b->fld.data(), m.profs["b"].data.data(), m.profs["b"+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
-    }
+    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators);
 
-    auto tmp = fields.get_tmp();
-    stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-    stats.calc_flux_2nd(b->fld.data(), m.profs["b"].data.data(), fields.mp["w"]->fld.data(), m.profs["w"].data.data(),
-                        m.profs["bw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    if (diff.get_switch() == Diffusion_type::Diff_smag2)
-    {
-        stats.calc_diff_2nd(b->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-                            m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                            b->flux_bot.data(), b->flux_top.data(), diff.tPr, sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-    else
-        stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                            get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    fields.release_tmp(tmp);
-
-    // calculate the total fluxes
-    stats.add_fluxes(m.profs["bflux"].data.data(), m.profs["bw"].data.data(), m.profs["bdiff"].data.data());
-
-    // calculate the sorted buoyancy profile
-    //stats->calc_sorted_prof(fields.sd["tmp1"]->data, fields.sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
     // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
-        m.profs["phydro"  ].data = bs_stats.pref;
-        m.profs["phydroh" ].data = bs_stats.prefh;
-        m.profs["rho" ].data = fields.rhoref;
-        m.profs["rhoh"].data = fields.rhorefh;
+        stats.set_prof("phydro" , bs_stats.pref);
+        stats.set_prof("phydroh", bs_stats.prefh);
+        stats.set_prof("rho"    , fields.rhoref);
+        stats.set_prof("rhoh"   , fields.rhorefh);
     }
+
 }
 
 

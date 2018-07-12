@@ -70,11 +70,11 @@ class Thermo_buoy : public Thermo<TF>
         // Empty functions that are allowed to pass.
         void init() {}
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_column(Column<TF>&) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
         void update_time_dependent(Timeloop<TF>&) {};
