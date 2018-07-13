@@ -92,9 +92,9 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ij  = i + j*icells;
-                const int ij2 = i + j*icells + (kend+1)*ijcells;
+                // const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij], threshold);
-                mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2], threshold);
+                // mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2], threshold);
             }
     }
 
@@ -125,9 +125,9 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ij  = i + j*icells;
-                const int ij2 = i + j*icells + (kend+1)*ijcells;
+                // const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
-                mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2]-fld_mean[kend+1], threshold);
+                // mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2]-fld_mean[kend+1], threshold);
             }
 
     }
@@ -186,12 +186,12 @@ namespace
             {
                 prof[k] = 0.;
                 for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
-                }
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
+                    }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
             else
@@ -211,12 +211,12 @@ namespace
             {
                 prof[k] = 0.;
                 for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
-                }
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
+                    }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
             else
