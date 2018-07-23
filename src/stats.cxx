@@ -742,6 +742,28 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             if(!wmean_set)
                 throw std::runtime_error("W mean not calculated in stat - needed for flux");
+
+            auto tmp = fields.get_tmp();
+            for (auto& m : masks)
+            {
+                if(loc[2]==0)
+                    flag = m.second.flag;
+                else
+                    flag = m.second.flagh;
+                if (grid.get_spatial_order() == Grid_order::Second)
+                {
+                    calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                        tmp->fld.data(), loc, mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+                else if (grid.get_spatial_order() == Grid_order::Fourth)
+                {
+                    calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                        tmp->fld.data(), loc, mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            }
+            fields.release_tmp(tmp);
+
         }
         else if (it == "diff")
         {
@@ -779,6 +801,107 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
     }
 }
+
+
+template<typename TF>
+void Stats<TF>::calc_flux_2nd(TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, TF* const restrict w, const TF* const restrict wmean,
+                              TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+{
+
+    // set a pointer to the field that contains w, either interpolated or the original
+    TF* restrict calcw = w;
+
+    // define the locations
+    const int wloc [3] = {0,0,1};
+    const int uwloc[3] = {1,0,1};
+    const int vwloc[3] = {0,1,1};
+
+    if (loc[0] == 1)
+    {
+        grid.interpolate_2nd(tmp1, w, wloc, uwloc);
+        calcw = tmp1;
+    }
+    else if (loc[1] == 1)
+    {
+        grid.interpolate_2nd(tmp1, w, wloc, vwloc);
+        calcw = tmp1;
+    }
+
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
+    {
+        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        {
+            prof[k] = 0.;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_flux_4th(TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, TF* const restrict w, const TF* const restrict wmean,
+                              TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+{
+
+    using namespace Finite_difference::O4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int jj  = 1*icells;
+    const int kk1 = 1*ijcells;
+    const int kk2 = 2*ijcells;
+
+    // set a pointer to the field that contains w, either interpolated or the original
+    TF* restrict calcw = w;
+
+    // define the locations
+    const int wloc [3] = {0,0,1};
+    const int uwloc[3] = {1,0,1};
+    const int vwloc[3] = {0,1,1};
+
+    if (loc[0] == 1)
+    {
+        grid.interpolate_4th(tmp1, w, wloc, uwloc);
+        calcw = tmp1;
+    }
+    else if (loc[1] == 1)
+    {
+        grid.interpolate_4th(tmp1, w, wloc, vwloc);
+        calcw = tmp1;
+    }
+
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
+    {
+        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        {
+            prof[k] = 0.;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
 
 template<typename TF>
 void Stats<TF>::sanatize_operations_vector(std::vector<std::string> operations)
