@@ -226,7 +226,7 @@ namespace
     }
 
     template<typename TF>
-    void add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff, const TF fillvalue, const int kstart, const int kend)
+    void add_fluxes(TF* const restrict flux, const TF* const restrict turb, const TF* const restrict diff, const TF fillvalue, const int kstart, const int kend)
     {
         for (int k=kstart; k<kend+1; ++k)
         {
@@ -236,6 +236,73 @@ namespace
                 flux[k] = turb[k] + diff[k];
         }
     }
+
+
+    template<typename TF>
+    void calc_frac(TF* const restrict prof, const TF* const restrict fld, const TF offset, const TF threshold,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; k++)
+        {
+            if (nmask[k])
+            {
+                prof[k] = 0.;
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += static_cast<TF>((mask[ijk] & flag) > 0)*(fld[ijk] + offset > threshold);
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
+            else
+                prof[k] = netcdf_fp_fillvalue<TF>();
+        }
+    }
+
+    template<typename TF>
+    void calc_path(TF path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho, const int kstart, const int kend)
+    {
+        path = 0.;
+        for (int k=kstart; k<kend+1; k++)
+        {
+            path += data[k]*rho[k]*dz[k];
+        }
+
+    }
+
+    template<typename TF>
+    void calc_cover(TF cover, const TF* const restrict fld, const TF offset, const TF threshold,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    {
+        cover  = 0.;
+        TF nmaskcover = 0.;
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                for (int k=kstart; k<kend+1; k++)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    if((mask[ijk] & flag) > 0)
+                    {
+                        ++nmaskcover;
+                        if((fld[ijk] + offset > threshold))
+                        {
+                            ++cover;
+                            break;
+                        }
+                    }
+                }
+
+            }
+        cover /= nmaskcover;
+    }
+
 
     bool has_only_digits(const std::string s)
     {
@@ -818,15 +885,39 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
         else if (it == "path")
         {
-
+            for (auto& m : masks)
+            {
+                calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(), gd.kstart, gd.kend);
+            }
         }
         else if (it == "cover")
         {
+            for (auto& m : masks)
+            {
+                if(loc[2]==0)
+                    flag = m.second.flag;
+                else
+                    flag = m.second.flagh;
 
+                calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            }
         }
         else if (it == "frac")
         {
+            for (auto& m : masks)
+            {
+                if(loc[2]==0)
+                    flag = m.second.flag;
+                else
+                    flag = m.second.flagh;
 
+                calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            }
+        }
+        else if (it == "mean2d")
+        {
         }
         else
         {
@@ -1015,7 +1106,7 @@ void Stats<TF>::sanatize_operations_vector(std::vector<std::string> operations)
     }
     for(auto it : tmpvec)
     {
-        if(has_only_digits(it) || (it == "w"))
+        if(has_only_digits(it) || (it == "w") || (it == "path"))
         {
             operations.push_back("mean");
         }
