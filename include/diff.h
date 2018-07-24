@@ -46,6 +46,7 @@ class Diff
         virtual void exec_viscosity(Boundary<TF>&, Thermo<TF>&) = 0;
         virtual void init() = 0;
         virtual void exec(Boundary<TF>&) = 0;
+        virtual void diff_flux(Field3d<TF>&, const Field3d<TF>& , const int*) = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
         virtual double get_dn(double) = 0;

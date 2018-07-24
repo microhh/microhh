@@ -28,6 +28,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "diff.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
@@ -591,7 +592,7 @@ void Boundary_surface<TF>::exec_cross(int iotime)
 */
 
 template<typename TF>
-void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
+void Boundary_surface<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     //const TF no_offset = 0.;
     //stats.calc_mean_2d(m.tseries["obuk" ].data, obuk.data() , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);

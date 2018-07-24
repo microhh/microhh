@@ -39,6 +39,7 @@
 #include "finite_difference.h"
 //#include "diff_smag2.h"
 #include "timeloop.h"
+#include "diff.h"
 
 using namespace netCDF;
 using namespace netCDF::exceptions;
@@ -687,7 +688,7 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const int* loc, const TF offset, const TF threshold, std::vector<std::string> operations)
+void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const int* loc, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -747,9 +748,9 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             for (auto& m : masks)
             {
                 if(loc[2]==0)
-                    flag = m.second.flag;
-                else
                     flag = m.second.flagh;
+                else
+                    flag = m.second.flag;
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
@@ -767,21 +768,53 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         }
         else if (it == "diff")
         {
+            auto diffusion = fields.get_tmp();
+            diff.diff_flux(*diffusion, fld, loc);
+
+            for (auto& m : masks)
+            {
+                if(loc[2]==0)
+                    flag = m.second.flagh;
+                else
+                    flag = m.second.flag;
+
+                calc_mean(m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            }
+            fields.release_tmp(diffusion);
 
         }
         else if (it == "flux")
         {
-/*            for (auto& m : masks)
+            for (auto& m : masks)
             {
                 add_fluxes(m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
                         netcdf_fp_fillvalue<TF>(), gd.kstart, gd.kend);
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
-*/
+
         }
         else if (it == "grad")
         {
-
+            for (auto& m : masks)
+            {
+                if(loc[2]==0)
+                    flag = m.second.flagh;
+                else
+                    flag = m.second.flag;
+                if (grid.get_spatial_order() == Grid_order::Second)
+                {
+                    calc_grad_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, m.second.nmask.data(),
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+                else if (grid.get_spatial_order() == Grid_order::Fourth)
+                {
+                    calc_grad_4th(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, m.second.nmask.data(),
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            }
         }
         else if (it == "path")
         {
@@ -899,6 +932,69 @@ void Stats<TF>::calc_flux_4th(TF* const restrict prof, const TF* const restrict 
         }
         else
             prof[k] = netcdf_fp_fillvalue<TF>();
+    }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_grad_2nd(TF* const restrict prof, const TF* const restrict data, const TF* const restrict dzhi,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+{
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
+    {
+        if (nmask[k])
+        {
+            prof[k] = 0.;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    prof[k] +=static_cast<TF>(mask[ijk] & flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
+    }
+
+}
+
+template<typename TF>
+void Stats<TF>::calc_grad_4th(
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict dzhi4,
+        const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+{
+    using namespace Finite_difference::O4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int jj  = 1*icells;
+    const int kk1 = 1*ijcells;
+    const int kk2 = 2*ijcells;
+
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
+    {
+        if (nmask[k])
+        {
+            prof[k] = 0.;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    prof[k] +=static_cast<TF>(mask[ijk] & flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                }
+            prof[k] /= static_cast<TF>(nmask[k]);
+        }
+        else
+            prof[k] = netcdf_fp_fillvalue<TF>();
+
     }
 }
 

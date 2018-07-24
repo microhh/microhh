@@ -26,6 +26,8 @@
 #include "boundary.h"
 #include "stats.h"
 
+template<typename> class Diff;
+
 template<typename TF>
 class Boundary_surface : public Boundary<TF>
 {
@@ -37,7 +39,7 @@ class Boundary_surface : public Boundary<TF>
         void create(Input&, Stats<TF>&);
         void set_values();
 
-        void exec_stats(Stats<TF>&);
+        void exec_stats(Stats<TF>&, Diff<TF>&);
         void exec_cross(int);
 
         using Boundary<TF>::ustar;

@@ -715,7 +715,7 @@ void Thermo_vapor<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
+void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -738,7 +738,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators, diff);
 
     fields.release_tmp(b);
 

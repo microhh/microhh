@@ -31,7 +31,8 @@
 #include "finite_difference.h"
 #include "data_block.h"
 #include "stats.h"
-#include "diff_smag2.h"
+#include "diff.h"
+
 #include "master.h"
 #include "cross.h"
 #include "column.h"
@@ -615,7 +616,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 }
 
 template<typename TF>
-void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
+void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -638,7 +639,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators, diff);
 
     fields.release_tmp(b);
 }

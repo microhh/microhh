@@ -27,6 +27,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "diff.h"
 #include "defines.h"
 #include "timeloop.h"
 #include "timedep.h"
@@ -635,7 +636,7 @@ void Boundary<TF>::exec_cross()
 */
 
 template<typename TF>
-void Boundary<TF>::exec_stats(Stats<TF>&)
+void Boundary<TF>::exec_stats(Stats<TF>&, Diff<TF>&)
 {
 }
 

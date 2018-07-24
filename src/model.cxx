@@ -492,11 +492,11 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         }
         stats->finalize_masks();
         // Calculate statistics
-        fields   ->exec_stats(*stats);
-        thermo   ->exec_stats(*stats);
-        microphys->exec_stats(*stats, *thermo, dt);
+        fields   ->exec_stats(*stats, *diff);
+        thermo   ->exec_stats(*stats, *diff);
+        microphys->exec_stats(*stats, *diff, *thermo, dt);
         //budget  ->exec_stats(&stats->masks[maskname]);
-        boundary ->exec_stats(*stats);
+        boundary ->exec_stats(*stats, *diff);
 
         // Store the statistics data.
         stats->exec(iteration, time, itime);

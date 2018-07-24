@@ -29,7 +29,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
-#include "diff_smag2.h"
+#include "diff.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -958,7 +958,7 @@ void Thermo_moist<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
+void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -981,14 +981,14 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators, diff);
 
     fields.release_tmp(b);
 
     // calculate the liquid water stats
     auto ql = fields.get_tmp();
     get_thermo_field(*ql, "ql", true, true);
-    stats.calc_stats("ql", *ql, sloc, no_offset, no_threshold, {"mean","cover","frac","path"});
+    stats.calc_stats("ql", *ql, sloc, no_offset, no_threshold, {"mean","cover","frac","path"}, diff);
 
     fields.release_tmp(ql);
 

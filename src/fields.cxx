@@ -480,7 +480,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats)
+void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -496,14 +496,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-    stats.calc_stats("w", *mp["w"], wloc, no_offset, no_threshold, {"mean","2","3","4"});
-    stats.calc_stats("u", *mp["u"], uloc, no_offset, no_threshold, operators);
-    stats.calc_stats("v", *mp["v"], vloc, no_offset, no_threshold, operators);
+    stats.calc_stats("w", *mp["w"], wloc, no_offset, no_threshold, {"mean","2","3","4"}, diff);
+    stats.calc_stats("u", *mp["u"], uloc, no_offset, no_threshold, operators, diff);
+    stats.calc_stats("v", *mp["v"], vloc, no_offset, no_threshold, operators, diff);
     for (auto& it : sp)
     {
-        stats.calc_stats(it.first, *it.second, sloc, no_offset, no_threshold, operators);
+        stats.calc_stats(it.first, *it.second, sloc, no_offset, no_threshold, operators, diff);
     }
-    stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"});
+    stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"}, diff);
 
 }
 

@@ -32,6 +32,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Diff;
 
 // Struct for profiles
 template<typename TF>
@@ -110,7 +111,7 @@ class Stats
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         void add_time_series(std::string, std::string, std::string);
 
-        void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, std::vector<std::string>);
+        void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, std::vector<std::string>, Diff<TF>&);
         void set_prof(const std::string, const std::vector<TF>);
 
     private:
@@ -136,6 +137,25 @@ class Stats
                           const int, const int, const int, const int, const int, const int, const int, const int);
         void calc_flux_4th(TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
                         const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_grad_2nd(TF* const restrict, const TF* const restrict, const TF* const restrict,
+                            const unsigned int* const, const unsigned int, const int* const,
+                            const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_grad_4th(TF* const restrict, const TF* const restrict, const TF* const restrict,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(TF* restrict, TF* restrict, const TF* restrict, TF, const int*,
+            const unsigned int* const, const unsigned int, const int* const,
+            const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(TF* restrict, TF* restrict w, TF* restrict,
+                TF* restrict, const TF* restrict,
+                TF* restrict, TF* restrict, const TF, const int*,
+                const unsigned int* const, const unsigned int, const int* const,
+                const TF, const TF, const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_4th(
+                TF* restrict, TF* restrict, const TF* restrict,
+                const TF, const int*,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
 
         void sanatize_operations_vector(std::vector<std::string>);
         bool wmean_set;

@@ -83,6 +83,23 @@ namespace
                               - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
                 }
     }
+
+    template<typename TF>
+    void calc_diff_flux(TF* const restrict out, const TF* const restrict data, const TF visc, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        out[ijk] =visc*(data[ijk] - data[ijk-ijcells])*dzhi[k];
+                    }
+        }
+    }
 }
 
 template<typename TF>
@@ -155,6 +172,13 @@ void Diff_2<TF>::exec(Boundary<TF>& boundary)
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
 }
 #endif
+
+template<typename TF>
+void Diff_2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data, const int loc[3])
+{
+    auto& gd = grid.get_grid_data();
+    calc_diff_flux(out.fld.data(), data.fld.data(), data.visc, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+}
 
 template class Diff_2<double>;
 template class Diff_2<float>;
