@@ -23,6 +23,7 @@
 #ifndef STATS
 #define STATS
 
+#include <regex>
 #include <netcdf>
 using namespace netCDF;
 
@@ -122,7 +123,9 @@ class Stats
         Boundary_cyclic<TF> boundary_cyclic;
 
         bool swstats;           ///< Statistics on/off switch
-
+        std::vector<std::regex> whitelist;
+        std::vector<std::regex> blacklist;
+        std::vector<std::string> varlist;
 
         int statistics_counter;
         double sampletime;

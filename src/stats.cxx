@@ -338,6 +338,20 @@ Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default");  // Add the default mask, which calculates the domain mean without sampling.
+        std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
+        std::string a="bla";
+        for (auto& it : whitelistin)
+        {
+            std::regex re(it);
+            whitelist.push_back(re);
+        }
+        std::vector<std::string> blacklistin = inputin.get_list<std::string>("stats", "blacklist", "", std::vector<std::string>());
+        for (auto& it : blacklistin)
+        {
+            std::regex re(it);
+            blacklist.push_back(re);
+        }
+
     }
 }
 
@@ -555,6 +569,29 @@ template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
     auto& gd = grid.get_grid_data();
+
+    //Check whether variable is part of whitelist/blacklist;
+    bool is_whitelist;
+    for (const auto& it : whitelist)
+    {
+        is_whitelist = std::regex_match(name, it);
+        if(is_whitelist)
+            break;
+    }
+    if(!is_whitelist)
+    {
+        for (const auto& it : blacklist)
+        {
+            if(std::regex_match(name, it))
+            {
+                master.print_message("NOT doing statistics for  %s\n", name);
+                return;
+            }
+        }
+
+    }
+
+    varlist.push_back(name);
 
     // Add profile to all the NetCDF files
     for (auto& mask : masks)
@@ -805,7 +842,11 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
     for(auto& it : operations)
     {
         name = varname+it;
-        if(has_only_digits(it))
+        auto it1 = std::find(varlist.begin(), varlist.end(), name);
+        if (it1 == varlist.end())
+        {
+        }
+        else if(has_only_digits(it))
         {
             int power = std::stoi(it);
             for (auto& m : masks)
