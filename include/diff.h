@@ -30,6 +30,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Boundary;
 template<typename> class Thermo;
+template<typename> class Stats;
 
 enum class Diffusion_type {Disabled, Diff_2, Diff_4, Diff_smag2};
 
@@ -46,6 +47,7 @@ class Diff
         virtual void exec_viscosity(Boundary<TF>&, Thermo<TF>&) = 0;
         virtual void init() = 0;
         virtual void exec(Boundary<TF>&) = 0;
+        virtual void exec_stats(Stats<TF>&) = 0;
         virtual void diff_flux(Field3d<TF>&, const Field3d<TF>& , const int*) = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;

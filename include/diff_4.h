@@ -39,6 +39,7 @@ class Diff_4 : public Diff<TF>
         void set_values();
         void init() {};
         void exec(Boundary<TF>&);
+        void exec_stats(Stats<TF>&) {};
 
         // Empty functions, these are allowed to pass.
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}

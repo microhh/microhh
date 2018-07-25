@@ -32,6 +32,7 @@
 #include "monin_obukhov.h"
 #include "thermo.h"
 #include "boundary.h"
+#include "stats.h"
 #include "fast_math.h"
 
 #include "diff_smag2.h"
@@ -963,6 +964,20 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 }
 #endif
 
+template<typename TF>
+void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Define locations
+    const int sloc[] = {0,0,0};
+
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+    Diff<TF>* diff = this;
+    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
+    stats.calc_stats("evisc", *fields.sd["evisc"], sloc, no_offset, no_threshold, {"mean"}, *diff);
+}
 
 template<typename TF>
 void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data, const int loc[3])

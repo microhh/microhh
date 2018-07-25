@@ -42,6 +42,7 @@ class Diff_disabled : public Diff<TF>
         void init() {}
         void exec(Boundary<TF>&) {}
         void diff_flux(Field3d<TF>&, const Field3d<TF>&, const int*) {}
+        void exec_stats(Stats<TF>&) {};
 
 
         #ifdef USECUDA
