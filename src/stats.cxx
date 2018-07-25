@@ -175,30 +175,46 @@ namespace
             }
     }
 
-    template<typename TF>
-    void calc_mean(TF* const restrict prof, const TF* const restrict fld, const TF offset,
-                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
-    {
-        #pragma omp parallel for
-        for (int k=kstart; k<kend+1; k++)
+        template<typename TF>
+        void calc_mean(TF* const restrict prof, const TF* const restrict fld, const TF offset,
+                        const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
         {
-            if (nmask[k])
+            #pragma omp parallel for
+            for (int k=kstart; k<kend+1; k++)
             {
-                prof[k] = 0.;
-                for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
-                    }
-                prof[k] /= static_cast<TF>(nmask[k]);
+                if (nmask[k])
+                {
+                    prof[k] = 0.;
+                    for (int j=jstart; j<jend; j++)
+                        #pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ijk  = i + j*icells + k*ijcells;
+                            prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
+                        }
+                    prof[k] /= static_cast<TF>(nmask[k]);
+                }
+                else
+                    prof[k] = netcdf_fp_fillvalue<TF>();
             }
-            else
-                prof[k] = netcdf_fp_fillvalue<TF>();
         }
-    }
+
+
+        template<typename TF>
+        void calc_mean_2d(TF& out, const TF* const restrict fld, const TF offset,
+                        const int istart, const int iend, const int jstart, const int jend, const int icells, const int itot, const int jtot)
+        {
+                    out = 0.;
+                    for (int j=jstart; j<jend; j++)
+                        #pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ij  = i + j*icells;
+                            out = fld[ij] + offset;
+                        }
+                    out /= static_cast<TF>(itot*jtot);
+        }
 
     template<typename TF>
     void calc_moment(TF* const restrict prof, const TF* const restrict fld, const TF* const restrict fld_mean, const TF offset,
@@ -264,7 +280,7 @@ namespace
     }
 
     template<typename TF>
-    void calc_path(TF path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho, const int kstart, const int kend)
+    void calc_path(TF& path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho, const int kstart, const int kend)
     {
         path = 0.;
         for (int k=kstart; k<kend+1; k++)
@@ -275,7 +291,7 @@ namespace
     }
 
     template<typename TF>
-    void calc_cover(TF cover, const TF* const restrict fld, const TF offset, const TF threshold,
+    void calc_cover(TF& cover, const TF* const restrict fld, const TF offset, const TF threshold,
                     const unsigned int* const mask, const unsigned int flag, const int* const nmask,
                     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
     {
@@ -888,6 +904,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             for (auto& m : masks)
             {
                 calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(), gd.kstart, gd.kend);
+                master.sum(&m.second.tseries.at(name).data, 1);
             }
         }
         else if (it == "cover")
@@ -901,6 +918,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
 
                 calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(&m.second.tseries.at(name).data, 1);
             }
         }
         else if (it == "frac")
@@ -914,14 +932,32 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
 
                 calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+
             }
-        }
-        else if (it == "mean2d")
-        {
         }
         else
         {
             throw std::runtime_error("Invalid operations in stat.");
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_2d(const std::string varname, const std::vector<TF>& fld, const TF offset, std::vector<std::string> operations)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Process mean first
+    auto it = std::find(operations.begin(), operations.end(), "mean");
+    if (it != operations.end())
+    {
+        for (auto& m : masks)
+        {
+
+            calc_mean_2d(m.second.tseries.at(varname).data, fld.data(), offset,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
+            master.sum(&m.second.tseries.at(varname).data, 1);
         }
     }
 }

@@ -636,7 +636,7 @@ void Boundary<TF>::exec_cross()
 */
 
 template<typename TF>
-void Boundary<TF>::exec_stats(Stats<TF>&, Diff<TF>&)
+void Boundary<TF>::exec_stats(Stats<TF>&)
 {
 }
 

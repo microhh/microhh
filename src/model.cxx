@@ -496,7 +496,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_stats(*stats, *diff);
         microphys->exec_stats(*stats, *diff, *thermo, dt);
         //budget  ->exec_stats(&stats->masks[maskname]);
-        boundary ->exec_stats(*stats, *diff);
+        boundary ->exec_stats(*stats);
 
         // Store the statistics data.
         stats->exec(iteration, time, itime);

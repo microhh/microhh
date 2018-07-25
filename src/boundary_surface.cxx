@@ -592,11 +592,11 @@ void Boundary_surface<TF>::exec_cross(int iotime)
 */
 
 template<typename TF>
-void Boundary_surface<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
+void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
 {
-    //const TF no_offset = 0.;
-    //stats.calc_mean_2d(m.tseries["obuk" ].data, obuk.data() , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-    //stats.calc_mean_2d(m.tseries["ustar"].data, ustar.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    const TF no_offset = 0.;
+    stats.calc_stats_2d("obuk", obuk, no_offset, {"mean"});
+    stats.calc_stats_2d("ustar", ustar, no_offset, {"mean"});
 }
 
 template<typename TF>
