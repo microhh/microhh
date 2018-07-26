@@ -766,7 +766,7 @@ double Diff_smag2<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::set_values()
+void Diff_smag2<TF>::create(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -779,6 +779,8 @@ void Diff_smag2<TF>::set_values()
     dnmul = 0;
     for (int k=gd.kstart; k<gd.kend; ++k)
         dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
+
+    create_stats(stats);
 }
 
 #ifndef USECUDA
@@ -965,6 +967,16 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 #endif
 
 template<typename TF>
+void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
+{
+    // Add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_prof(fields.sd["evisc"]->name, fields.sd["evisc"]->longname, fields.sd["evisc"]->unit, "z");
+    }
+}
+
+template<typename TF>
 void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
@@ -975,7 +987,7 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     Diff<TF>* diff = this;
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
+
     stats.calc_stats("evisc", *fields.sd["evisc"], sloc, no_offset, no_threshold, {"mean"}, *diff);
 }
 
@@ -989,13 +1001,15 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 
     int nend = gd.istart+gd.jstart*gd.icells+gd.kend*gd.ijcells;
     calc_diff_flux_bc(&out.fld[nend], data.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
-
     if (loc[0]==1)
-        calc_diff_flux_u(out.fld.data(), data.fld.data(), fields.sp["w"]->fld.data(), fields.sd["evisc"]->fld.data(), gd.dxi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-    else if (loc[1]==1)
-        calc_diff_flux_v(out.fld.data(), data.fld.data(), fields.sp["w"]->fld.data(), fields.sd["evisc"]->fld.data(), gd.dyi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-    else
-        calc_diff_flux_c(out.fld.data(), data.fld.data(), fields.sd["evisc"]->fld.data(), tPr, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_diff_flux_u(fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+            gd.dxi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+   else if (loc[1]==1)
+       calc_diff_flux_v(out.fld.data(), data.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+            gd.dyi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+   else
+       calc_diff_flux_c(out.fld.data(), data.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+            gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 }
 
 template class Diff_smag2<double>;

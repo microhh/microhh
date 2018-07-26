@@ -43,7 +43,7 @@ class Diff
 
         // Pure virtual functions below which have to be implemented by the derived class
         virtual Diffusion_type get_switch() const = 0;
-        virtual void set_values() = 0;
+        virtual void create(Stats<TF>&) = 0;
         virtual void exec_viscosity(Boundary<TF>&, Thermo<TF>&) = 0;
         virtual void init() = 0;
         virtual void exec(Boundary<TF>&) = 0;

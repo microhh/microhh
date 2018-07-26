@@ -36,7 +36,7 @@ class Diff_4 : public Diff<TF>
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
-        void set_values();
+        void create(Stats<TF>&);
         void init() {};
         void exec(Boundary<TF>&);
         void exec_stats(Stats<TF>&) {};

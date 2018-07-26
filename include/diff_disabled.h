@@ -37,7 +37,7 @@ class Diff_disabled : public Diff<TF>
         double get_dn(double);
 
         // Empty functions which simply pass for disabled diffusion
-        void set_values() {}
+        void create(Stats<TF>&) {}
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
         void init() {}
         void exec(Boundary<TF>&) {}

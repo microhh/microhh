@@ -133,7 +133,7 @@ double Diff_2<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_2<TF>::set_values()
+void Diff_2<TF>::create(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
