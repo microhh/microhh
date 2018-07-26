@@ -236,7 +236,7 @@ void Model<TF>::load()
 
     boundary->set_values();
     pres->set_values();
-    diff->set_values();
+    diff->create(*stats);
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -501,7 +501,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
         // Store the statistics data.
         stats->exec(iteration, time, itime);
-    }
+}
 
 //    // Save the selected cross sections to disk, cross sections are handled on CPU.
    if(cross->do_cross(itime))

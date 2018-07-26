@@ -126,6 +126,7 @@ class Stats
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
+        bool is_blacklisted(std::string);
 
         int statistics_counter;
         double sampletime;
