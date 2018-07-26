@@ -280,17 +280,41 @@ namespace
     }
 
     template<typename TF>
-    void calc_path(TF& path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho, const int* const restrict nmask, const int kstart, const int kend)
+    void calc_path(TF& path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
     {
-        path = 0.;
-        for (int k=kstart; k<kend; k++)
-        {
-            if(nmask[k])
+        TF nmask_proj = 0.;
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
             {
-                path += data[k]*rho[k]*dz[k];
+                for (int k=kstart; k<kend; k++)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    if((mask[ijk] & flag)>0)
+                    {
+                        ++nmask_proj;
+                        break;
+                    }
+                }
             }
+
+        if (nmask_proj>0)
+        {
+            path = 0.;
+            for (int k=kstart; k<kend; k++)
+            {
+                if(nmask[k])
+                {
+                    path += data[k]*rho[k]*dz[k]*nmask[k];
+                }
+            }
+            path /= static_cast<TF>(nmask_proj);
         }
-        path /= static_cast<TF>(nmask[kstart]);
+        else
+            path = netcdf_fp_fillvalue<TF>();
+
     }
 
     template<typename TF>
@@ -304,12 +328,13 @@ namespace
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                for (int k=kstart; k<kend+1; k++)
+                TF maskincolumn = 0;
+                for (int k=kstart; k<kend; k++)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
                     if((mask[ijk] & flag) > 0)
                     {
-                        ++nmaskcover;
+                        maskincolumn = 1.;
                         if((fld[ijk] + offset > threshold))
                         {
                             ++cover;
@@ -317,9 +342,14 @@ namespace
                         }
                     }
                 }
-
+                nmaskcover += maskincolumn;
             }
-        cover /= nmaskcover;
+
+        if(nmaskcover>0)
+            cover /= nmaskcover;
+        else
+            cover = netcdf_fp_fillvalue<TF>();
+
     }
 
 
@@ -957,7 +987,13 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(), m.second.nmask.data(), gd.kstart, gd.kend);
+                if(loc[2]==0)
+                    flag = m.second.flag;
+                else
+                    flag = m.second.flagh;
+
+                calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
+                        mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 master.sum(&m.second.tseries.at(name).data, 1);
             }
         }
