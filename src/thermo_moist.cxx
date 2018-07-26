@@ -889,10 +889,10 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
         stats.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-        stats.add_prof("cfrac", "Cloud fraction", "-", "z");
+        stats.add_prof("qlfrac", "Cloud fraction", "-", "z");
 
-        stats.add_time_series("lwp", "Liquid water path", "kg m-2");
-        stats.add_time_series("ccover", "Projected cloud cover", "-");
+        stats.add_time_series("qlpath", "Liquid water path", "kg m-2");
+        stats.add_time_series("qlcover", "Projected cloud cover", "-");
     }
 }
 
