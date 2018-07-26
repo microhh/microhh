@@ -46,7 +46,7 @@ template<typename TF>
 void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
-    const double n = gd.itot * gd.jtot;
+    const TF n = gd.itot * gd.jtot;
 
     #pragma omp parallel for
     for (int k=0; k<gd.kcells; ++k)
@@ -63,6 +63,25 @@ void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF*
     }
     master.sum(prof, gd.kcells);
 
+}
+
+template<typename TF>
+void Field3d_operators<TF>::subtract_mean_profile(TF* const restrict fld, const TF* const restrict prof)
+{
+    const auto& gd = grid.get_grid_data();
+    const TF n = gd.itot * gd.jtot;
+
+    #pragma omp parallel for
+    for (int k=0; k<gd.kcells; ++k)
+    {
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk  = i + j*gd.icells + k*gd.ijcells;
+                fld[ijk] -= prof[k];
+            }
+    }
 }
 
 // Calculate the volume weighted total mean

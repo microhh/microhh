@@ -93,9 +93,7 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ij  = i + j*icells;
-                // const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij], threshold);
-                // mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2], threshold);
             }
     }
 
@@ -126,9 +124,7 @@ namespace
             for (int i=istart; i<iend; i++)
             {
                 const int ij  = i + j*icells;
-                // const int ij2 = i + j*icells + (kend+1)*ijcells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag)  * is_false<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
-                // mfield[ij2]    -= (mfield[ij2] & flagh) * is_false<TF, mode>(fldh[ij2]-fld_mean[kend+1], threshold);
             }
 
     }
@@ -800,44 +796,6 @@ void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<
     else
         throw std::runtime_error("Invalid mask type in set_mask_thres()");
 }
-
-template<typename TF>
-void Stats<TF>::set_mask_thres_pert(std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
-{
-
-    auto& gd = grid.get_grid_data();
-    unsigned int flag, flagh;
-    bool found_mask = false;
-
-    for(auto& it : masks)
-    {
-        if(it.second.name == mask_name)
-        {
-            found_mask = true;
-            flag  = it.second.flag;
-            flagh = it.second.flagh;
-        }
-    }
-    if(!found_mask)
-        throw std::runtime_error("Invalid mask name in set_mask_thres()");
-
-    if (mode == Stats_mask_type::Plus)
-        calc_mask_thres_pert<TF, Stats_mask_type::Plus>(mfield.data(), mfield_bot.data(), flag, flagh,
-            fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-    else if (mode == Stats_mask_type::Min)
-        calc_mask_thres_pert<TF, Stats_mask_type::Min>(mfield.data(), mfield_bot.data(), flag, flagh,
-            fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-    else
-        throw std::runtime_error("Invalid mask type in set_mask_thres_pert()");
-
-}
-
 
 template<typename TF>
 void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)

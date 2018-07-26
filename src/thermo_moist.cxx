@@ -651,8 +651,10 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
         field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
         field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
+        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
+        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
 
-        stats.set_mask_thres_pert(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
 
         fields.release_tmp(b);
         fields.release_tmp(bh);
