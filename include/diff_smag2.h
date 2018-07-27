@@ -49,7 +49,7 @@ class Diff_smag2 : public Diff<TF>
         void exec_stats(Stats<TF>&);
 
         #ifdef USECUDA
-        void prepare_device();
+        void prepare_device(Boundary<TF>&);
         void clear_device();
         #endif
 
@@ -65,7 +65,7 @@ class Diff_smag2 : public Diff<TF>
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
 
         void create_stats(Stats<TF>&);
-        
+
         TF* mlen_g;
 
         double dnmax;

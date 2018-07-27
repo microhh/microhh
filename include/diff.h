@@ -57,7 +57,7 @@ class Diff
 
         #ifdef USECUDA
         // GPU functions and variables
-        virtual void prepare_device() = 0;
+        virtual void prepare_device(Boundary<TF>&) = 0;
         #endif
 
         TF tPr;

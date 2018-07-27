@@ -46,7 +46,7 @@ class Diff_4 : public Diff<TF>
         void diff_flux(Field3d<TF>&, const Field3d<TF>& , const int*);
 
         #ifdef USECUDA
-        void prepare_device() {};
+        void prepare_device(Boundary<TF>&) {};
         #endif
 
     private:

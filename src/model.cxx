@@ -441,7 +441,7 @@ void Model<TF>::prepare_gpu()
     buffer  ->prepare_device();
     thermo  ->prepare_device();
     boundary->prepare_device();
-    diff    ->prepare_device();
+    diff    ->prepare_device(*boundary);
     force   ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check

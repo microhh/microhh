@@ -409,7 +409,7 @@ namespace
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::prepare_device()
+void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
@@ -418,10 +418,8 @@ void Diff_smag2<TF>::prepare_device()
     TF *mlen = new TF[gd.kcells];
     for (int k=0; k<gd.kcells; ++k)
     {
-        const TF z0m = 0.1; // CvH REMOVE THIS ASAP.
         mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
-        // mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+z0m), n))), 1./n), 2);
+        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
