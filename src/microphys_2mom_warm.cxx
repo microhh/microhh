@@ -633,8 +633,8 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     if (stats.get_switch())
     {
         // Time series
-        stats.add_time_series("rr_mean", "Mean surface rain rate", "kg m-2 s-1");
-        stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
+        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1");
+        stats.add_time_series("qrpath", "Rain water path", "kg m-2");
 
         if (swmicrobudget)
         {
@@ -788,8 +788,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
     const TF no_threshold = 0.;
     const int sloc[] = {0,0,0};
 
-//    stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-//    stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
+    stats.calc_stats("qr" , *fields.sp.at("qr") , sloc, no_offset, no_threshold, {"path"}, diff);
 
     if (swmicrobudget)
     {
