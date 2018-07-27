@@ -43,9 +43,9 @@ class Field3d_operators
         TF calc_max(const TF* const);
 
         #ifdef USECUDA
-            void calc_mean_profile_g(TF* const, const TF* const); // Calculate mean profile into fld_mean
-            TF calc_mean_g(const TF* const); // Calculate volume-weighted mean.
-            TF calc_max_g(const TF* const);
+        void calc_mean_profile_g(TF* const, const TF* const); // Calculate mean profile into fld_mean
+        TF calc_mean_g(const TF* const); // Calculate volume-weighted mean.
+        TF calc_max_g(const TF* const);
         #endif
 
     private:

@@ -86,6 +86,7 @@ class Thermo_vapor : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string);
         #endif
 
         // Empty functions that are allowed to pass.

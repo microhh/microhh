@@ -324,6 +324,27 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
 
 #ifdef USECUDA
 template<typename TF>
+TF* Thermo_vapor<TF>::get_basestate_fld_g(std::string name)
+{
+    // BvS TO-DO: change std::string to enum
+    if (name == "pref")
+        return bs.pref_g;
+    else if (name == "prefh")
+        return bs.prefh_g;
+    else if (name == "exner")
+        return bs.exnref_g;
+    else if (name == "exnerh")
+        return bs.exnrefh_g;
+    else
+    {
+        std::string error_message = "Can not get basestate field \"" + name + "\" from thermo_moist";
+        throw std::runtime_error(error_message);
+    }
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
 void Thermo_vapor<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
 {
     auto& gd = grid.get_grid_data();

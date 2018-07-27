@@ -77,6 +77,7 @@ class Microphys
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
         Microphys_type swmicrophys;
 };
