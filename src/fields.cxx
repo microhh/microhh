@@ -472,9 +472,9 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     // Calculate masks
     TF threshold = 0;
     if (mask_name == "wplus")
-        stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Plus);
+        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
     else if (mask_name == "wmin")
-        stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Min);
+        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
 
     release_tmp(wf);
 }

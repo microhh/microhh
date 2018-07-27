@@ -21,12 +21,13 @@
  */
 
 //#include <cstdio>
-//#include <algorithm>
+#include <algorithm>
 #include <iostream>
-//#include <math.h>
+#include <math.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "decay.h"
 
 namespace
@@ -99,7 +100,7 @@ void Decay<TF>::create(Input& inputin)
 {
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 template <typename TF>
 void Decay<TF>::exec(double dt)
 {
@@ -118,7 +119,86 @@ void Decay<TF>::exec(double dt)
     }
 
 }
-//#endif
+#endif
+
+template<typename TF>
+bool Decay<TF>::has_mask(std::string name)
+{
+    if (std::find(available_masks.begin(), available_masks.end(), name) != available_masks.end())
+        return true;
+    else
+        return false;
+}
+
+template<typename TF>
+void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+{
+    auto& gd = grid.get_grid_data();
+
+    if (mask_name == "couvreux")
+    {
+        if(fields.sp.find("couvreux")==fields.sp.end())
+        {
+            std::string message = "Couvreux mask not available without couvreux scalar";
+            throw std::runtime_error(message);
+        }
+
+        const int wloc[] = {0,0,1};
+        const int sloc[] = {0,0,0};
+
+        TF ijtot = static_cast<TF>(gd.itot*gd.jtot);
+
+        auto couvreux = fields.get_tmp();
+        auto couvreuxh = fields.get_tmp();
+        // Calculate mean and variance
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            TF mean = 0.;
+            TF var = 0.;
+            for (int j=gd.jstart; j<gd.jend; ++j)
+            {
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*gd.icells + k*gd.ijcells;
+                    mean+=fields.sp.at("couvreux")->fld[ijk];
+                    var +=fields.sp.at("couvreux")->fld[ijk]*fields.sp.at("couvreux")->fld[ijk];
+                }
+            }
+            master.sum(&mean,1);
+            master.sum(&var,1);
+            mean/=ijtot;
+            var/=ijtot;
+            var -= mean*mean;
+            TF std = sqrt(var);
+
+
+            for (int j=gd.jstart; j<gd.jend; ++j)
+            {
+                #pragma ivdep
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*gd.icells + k*gd.ijcells;
+                    couvreux->fld[ijk] = fields.sp.at("couvreux")->fld[ijk] - mean - std;
+                }
+            }
+            const int ijk = gd.istart +gd.jstart*gd.icells + k*gd.ijcells;
+        }
+        grid.interpolate_2nd(couvreuxh->fld.data(), couvreux->fld.data(), sloc, wloc);
+
+        // Calculate masks
+        TF threshold = 0.;
+        stats.set_mask_thres(mask_name, *couvreux, *couvreuxh, threshold, Stats_mask_type::Plus);
+
+        fields.release_tmp(couvreux);
+        fields.release_tmp(couvreuxh);
+    }
+    else
+    {
+        std::string message = "Decay can not provide mask: \"" + mask_name +"\"";
+        throw std::runtime_error(message);
+    }
+}
 
 
 template class Decay<double>;
