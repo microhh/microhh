@@ -738,6 +738,7 @@ Diffusion_type Diff_smag2<TF>::get_switch() const
     return swdiff;
 }
 
+#ifndef USECUDA
 template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
@@ -752,7 +753,9 @@ unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const doub
 
     return idt * dnmax / (dt * dnmul);
 }
+#endif
 
+#ifndef USECUDA
 template<typename TF>
 double Diff_smag2<TF>::get_dn(const double dt)
 {
@@ -764,6 +767,7 @@ double Diff_smag2<TF>::get_dn(const double dt)
 
     return dnmul*dt;
 }
+#endif
 
 template<typename TF>
 void Diff_smag2<TF>::create(Stats<TF>& stats)
