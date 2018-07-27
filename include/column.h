@@ -32,19 +32,6 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-// struct for profiles
-template<typename TF>
-struct Column_var
-{
-    NcVar ncvar;
-    std::vector<TF> data;
-};
-
-
-// typedefs for containers of profiles and time series
-template<typename TF>
-using Column_map = std::map<std::string, Column_var<TF>>;
-
 
 template<typename TF>
 class Column
@@ -54,7 +41,7 @@ class Column
         ~Column();
 
         void init(double);
-        void create(int, std::string);
+        void create(Input&, int, std::string);
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swcolumn; }
@@ -67,18 +54,32 @@ class Column
         void calc_column(std::string, const TF* const,
                        const TF);
 
-        std::string name;
-        NcFile* data_file;
-        NcDim z_dim;
-        NcDim zh_dim;
-        NcDim t_dim;
-        NcVar iter_var;
-        NcVar t_var;
-        Column_map<TF> profs;
 
     private:
-        void calc_column(TF* const, const TF* const,
-                       const TF, const int[2]);
+
+        // struct for profiles
+        struct Prof_var
+        {
+            NcVar ncvar;
+            std::vector<TF> data;
+        };
+
+        using Prof_map = std::map<std::string, Prof_var>;
+
+        // structure
+        struct Column_struct
+        {
+            std::vector<int> coord;
+            NcFile* data_file;
+            NcDim z_dim;
+            NcDim zh_dim;
+            NcDim t_dim;
+            NcVar iter_var;
+            NcVar t_var;
+            Prof_map profs;
+        };
+
+        std::vector<Column_struct> columns;
 
     protected:
         Master& master;
