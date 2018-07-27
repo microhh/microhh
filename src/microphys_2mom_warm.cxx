@@ -1014,7 +1014,7 @@ void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), sloc, wloc);
 
         // Calculate masks
-        stats.set_mask_thres(mask_name, *qrh, *fields.sp.at("qr"), threshold, Stats_mask_type::Plus);
+        stats.set_mask_thres(mask_name, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
 
         fields.release_tmp(qrh);
     }
