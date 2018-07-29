@@ -883,7 +883,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
-                    calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                    calc_flux_4th(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
                         tmp->fld.data(), loc, mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
