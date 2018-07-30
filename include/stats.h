@@ -81,6 +81,7 @@ template<typename TF>
 using Mask_map = std::map<std::string, Mask<TF>>;
 
 enum class Stats_mask_type {Plus, Min};
+enum class Stats_whitelist_type {White, Black, Default};
 
 template<typename TF>
 class Stats
@@ -106,13 +107,15 @@ class Stats
 
         // Interface functions.
         void add_mask(const std::string);
-        void add_prof(std::string, std::string, std::string, std::string);
+        void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
-        void add_time_series(std::string, std::string, std::string);
+        void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         void calc_stats(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, std::vector<std::string>, Diff<TF>&);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF, std::vector<std::string>);
+        void calc_covariance(const std::string, const Field3d<TF>&, const int[3], const TF, const TF, const int,
+                             const std::string, const Field3d<TF>&, const int[3], const TF, const TF, const int);
         void set_prof(const std::string, const std::vector<TF>);
 
     private:
@@ -125,7 +128,7 @@ class Stats
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
-        bool is_blacklisted(std::string);
+        bool is_blacklisted(std::string, Stats_whitelist_type);
 
         int statistics_counter;
         double sampletime;

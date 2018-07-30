@@ -171,46 +171,46 @@ namespace
             }
     }
 
-        template<typename TF>
-        void calc_mean(TF* const restrict prof, const TF* const restrict fld, const TF offset,
-                        const unsigned int* const mask, const unsigned int flag, const int* const nmask,
-                        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    template<typename TF>
+    void calc_mean(TF* const restrict prof, const TF* const restrict fld, const TF offset,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; k++)
         {
-            #pragma omp parallel for
-            for (int k=kstart; k<kend+1; k++)
+            if (nmask[k])
             {
-                if (nmask[k])
-                {
-                    prof[k] = 0.;
-                    for (int j=jstart; j<jend; j++)
-                        #pragma ivdep
-                        for (int i=istart; i<iend; i++)
-                        {
-                            const int ijk  = i + j*icells + k*ijcells;
-                            prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
-                        }
-                    prof[k] /= static_cast<TF>(nmask[k]);
-                }
-                else
-                    prof[k] = netcdf_fp_fillvalue<TF>();
+                prof[k] = 0.;
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
             }
+            else
+                prof[k] = netcdf_fp_fillvalue<TF>();
         }
+    }
 
 
-        template<typename TF>
-        void calc_mean_2d(TF& out, const TF* const restrict fld, const TF offset,
-                        const int istart, const int iend, const int jstart, const int jend, const int icells, const int itot, const int jtot)
-        {
-                    out = 0.;
-                    for (int j=jstart; j<jend; j++)
-                        #pragma ivdep
-                        for (int i=istart; i<iend; i++)
-                        {
-                            const int ij  = i + j*icells;
-                            out = fld[ij] + offset;
-                        }
-                    out /= static_cast<TF>(itot*jtot);
-        }
+    template<typename TF>
+    void calc_mean_2d(TF& out, const TF* const restrict fld, const TF offset,
+                    const int istart, const int iend, const int jstart, const int jend, const int icells, const int itot, const int jtot)
+    {
+                out = 0.;
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*icells;
+                        out = fld[ij] + offset;
+                    }
+                out /= static_cast<TF>(itot*jtot);
+    }
 
     template<typename TF>
     void calc_moment(TF* const restrict prof, const TF* const restrict fld, const TF* const restrict fld_mean, const TF offset,
@@ -229,6 +229,32 @@ namespace
                     {
                         const int ijk  = i + j*icells + k*ijcells;
                         prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
+            else
+                prof[k] = netcdf_fp_fillvalue<TF>();
+        }
+    }
+
+    template<typename TF>
+    void calc_cov(TF* const restrict prof, const TF* const restrict fld1, const TF* const restrict fld1_mean, const TF offset1, const int pow1,
+                    const TF* const restrict fld2, const TF* const restrict fld2_mean, const TF offset2, const int pow2,
+                    const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; k++)
+        {
+            if (nmask[k] && fld1_mean[k] != netcdf_fp_fillvalue<TF>() && fld2_mean[k] != netcdf_fp_fillvalue<TF>())
+            {
+                prof[k] = 0.;
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
                     }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
@@ -368,6 +394,10 @@ Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default");  // Add the default mask, which calculates the domain mean without sampling.
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
+
+        //Anything without an underscore is mean value, so should be on the whitelist
+        //std::regex re("^[^_]*$");
+        //whitelist.push_back(re);
 
         for (auto& it : whitelistin)
         {
@@ -595,12 +625,12 @@ void Stats<TF>::add_mask(const std::string maskname)
 
 // Add a new profile to each of the NetCDF files
 template<typename TF>
-void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
+void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
 
     //Check whether variable is part of whitelist/blacklist;
-    if(is_blacklisted(name))
+    if(is_blacklisted(name, wltype))
         return;
 
     // Add profile to all the NetCDF files
@@ -676,10 +706,10 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
 }
 //
 template<typename TF>
-void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit)
+void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
 {
     //Check whether variable is part of whitelist/blacklist;
-    if(is_blacklisted(name))
+    if(is_blacklisted(name, wltype))
         return;
 
     // add the series to all files
@@ -704,14 +734,22 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
 }
 
 template<typename TF>
-bool Stats<TF>::is_blacklisted(const std::string name)
+bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wltype)
 {
+    if(wltype == Stats_whitelist_type::White)
+        return false;
     for (const auto& it : whitelist)
     {
         if(std::regex_match(name, it))
+        {
+            if(wltype == Stats_whitelist_type::Black)
+                master.print_message("DOING statistics for  %s\n", name.c_str());
             return false;
+        }
     }
 
+    if(wltype == Stats_whitelist_type::Black)
+        return true;
     for (const auto& it : blacklist)
     {
         if(std::regex_match(name, it))
@@ -819,9 +857,9 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
     auto it = std::find(operations.begin(), operations.end(), "mean");
     if (it != operations.end())
     {
-        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
-        if (it1 != varlist.end())
-        {
+        // auto it1 = std::find(varlist.begin(), varlist.end(), varname);
+        // if (it1 != varlist.end())
+        // {
             for (auto& m : masks)
             {
                 if(loc[2]==0)
@@ -836,7 +874,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             if(varname == "w")
                 wmean_set = true;
             operations.erase(it);
-        }
+        //}
     }
 
     //Loop over all other operations.
@@ -876,6 +914,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
+
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
@@ -1010,6 +1049,83 @@ void Stats<TF>::calc_stats_2d(const std::string varname, const std::vector<TF>& 
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
                 master.sum(&m.second.tseries.at(varname).data, 1);
             }
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& fld1, const int* loc1, const TF offset1, const TF threshold1, const int power1,
+                                const std::string varname2, const Field3d<TF>& fld2, const int* loc2, const TF offset2, const TF threshold2, const int power2)
+{
+    auto& gd = grid.get_grid_data();
+
+    std::string name = varname1+std::to_string(power1)+varname2+std::to_string(power2);
+    unsigned int flag;
+    auto it1 = std::find(varlist.begin(), varlist.end(), name);
+    int* nmask;
+    if (it1 != varlist.end())
+    {
+        if((loc1[0] == loc2[0]) & (loc1[1] == loc2[1]) & (loc1[2] == loc2[2]) )
+        {
+            TF fld1_mean[gd.kcells];
+            for (auto& m : masks)
+            {
+                if(loc2[2]==0)
+                {
+                    flag = m.second.flag;
+                    for(int k = gd.kstart; k<gd.kend+1; ++k)
+                    {
+                        fld1_mean[k] = m.second.profs.at(varname1).data[k];
+                    }
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    for(int k = gd.kstart; k<gd.kend+1; ++k)
+                    {
+                        if (fld1_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld1_mean[k] != netcdf_fp_fillvalue<TF>())
+                            fld1_mean[k] = 0.5*(m.second.profs.at(varname1).data[k]+m.second.profs.at(varname1).data[k-1]);
+                        else
+                            fld1_mean[k] = netcdf_fp_fillvalue<TF>();
+
+                    }
+                    nmask = m.second.nmaskh.data();
+                }
+                calc_cov(m.second.profs.at(name).data.data(), fld1.fld.data(), fld1_mean, offset1, power1,
+                        fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            }
+        }
+        else
+        {
+                auto tmp = fields.get_tmp();
+
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), loc1, loc2);
+                for (auto& m : masks)
+                {
+                    if(loc2[2]==0)
+                    {
+                        flag = m.second.flag;
+                        nmask = m.second.nmask.data();
+                    }
+                    else
+                    {
+                        flag = m.second.flagh;
+                        nmask = m.second.nmaskh.data();
+                    }
+
+                    calc_cov(m.second.profs.at(name).data.data(), tmp->fld.data(), m.second.profs.at(varname1).data.data(), offset1, power1,
+                            fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
+                            mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+                }
+
+                fields.release_tmp(tmp);
         }
     }
 }

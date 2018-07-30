@@ -647,7 +647,7 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z");
+        stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);
         for (int n=2; n<5; ++n)
         {
             std::stringstream ss;

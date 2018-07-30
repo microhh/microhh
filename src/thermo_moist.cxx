@@ -876,7 +876,7 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z");
+        stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);
         for (int n=2; n<5; ++n)
         {
             std::stringstream ss;
@@ -890,7 +890,7 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
         stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-        stats.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+        stats.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z", Stats_whitelist_type::White);
         stats.add_prof("qlfrac", "Cloud fraction", "-", "z");
 
         stats.add_time_series("qlpath", "Liquid water path", "kg m-2");

@@ -505,6 +505,42 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
     }
     stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"}, diff);
 
+    // Calculate covariances
+    for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+    {
+        int loc1[3];
+        if(it1->first == "u")
+            memcpy(loc1, uloc, sizeof loc1);
+        else if(it1->first == "v")
+            memcpy(loc1, vloc, sizeof loc1);
+        else if(it1->first == "w")
+            memcpy(loc1, wloc, sizeof loc1);
+        else
+            memcpy(loc1, sloc, sizeof loc1);
+
+        for (typename Field_map<TF>::iterator it2=ap.begin(); it2!=ap.end(); ++it2)
+        {
+            int loc2[3];
+            if(it2->first == "u")
+                memcpy(loc2, uloc, sizeof loc2);
+            else if(it2->first == "v")
+                memcpy(loc2, vloc, sizeof loc2);
+            else if(it2->first == "w")
+                memcpy(loc2, wloc, sizeof loc2);
+            else
+                memcpy(loc2, sloc, sizeof loc2);
+
+            for (int pow1 = 1; pow1<5; ++pow1)
+            {
+                for (int pow2 = 1; pow2<5; ++pow2)
+                {
+                    stats.calc_covariance(it1->first, *it1->second, loc1, no_offset, no_threshold, pow1,
+                                          it2->first, *it2->second, loc2, no_offset, no_threshold, pow2);
+                }
+            }
+        }
+    }
+
 }
 
 template<typename TF>
@@ -809,16 +845,16 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
     if (stats.get_switch())
     {
         // Mean velocity compontents
-        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z", Stats_whitelist_type::White );
+        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z", Stats_whitelist_type::White );
+        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh", Stats_whitelist_type::White);
 
         // Mean prognostic scalars
         for (auto& it : sp)
-            stats.add_prof(it.first, it.second->longname, it.second->unit, "z");
+            stats.add_prof(it.first, it.second->longname, it.second->unit, "z", Stats_whitelist_type::White);
 
         // Pressure with its variance, fluxes and gradients
-        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z", Stats_whitelist_type::White);
         std::string sn("2");
         stats.add_prof(sd["p"]->name + sn,    "Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
         stats.add_prof(sd["p"]->name +"w",    "Turbulent flux of the "   + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
@@ -861,6 +897,34 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("vflux", "Total flux of the " + ap["v"]->longname, "m2 s-2", "zh");
         for (auto& it : sp)
             stats.add_prof(it.first+"flux", "Total flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
+
+        // Covariances
+        for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+        {
+            for (typename Field_map<TF>::iterator it2=it1; it2!=ap.end(); ++it2)
+            {
+                std::string locstring;
+                if(it2->first == "w")
+                    locstring = "zh";
+                else
+                    locstring = "z";
+
+                for (int pow1 = 1; pow1<5; ++pow1)
+                {
+                    for (int pow2 = 1; pow2<5; ++pow2)
+                    {
+                        std::string spow1 = std::to_string(pow1);
+                        std::string spow2 = std::to_string(pow2);
+
+                        std::string name = it1->first + spow1 + it2->first +spow2;
+                        std::string longname = "Covariance of " + it1->first +spow1 + " and " + it2->first +spow2;
+                        std::string unit = "(" + it1->second->unit + ")" + spow1 + "(" + it2->second->unit + ")" + spow2;
+                        stats.add_prof(name, longname, unit, locstring, Stats_whitelist_type::Black);
+                    }
+                }
+            }
+        }
+
     }
 }
 
