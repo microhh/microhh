@@ -485,13 +485,13 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
     auto& gd = grid.get_grid_data();
 
     // Define locations
-    const int uloc[] = {1,0,0};
-    const int vloc[] = {0,1,0};
-    const int wloc[] = {0,0,1};
-    const int sloc[] = {0,0,0};
+    const std::array<int,3> uloc = {1,0,0};
+    const std::array<int,3> vloc = {0,1,0};
+    const std::array<int,3> wloc = {0,0,1};
+    const std::array<int,3> sloc = {0,0,0};
 
-    const int uwloc[] = {1,0,1};
-    const int vwloc[] = {0,1,1};
+    const std::array<int,3> uwloc = {1,0,1};
+    const std::array<int,3> vwloc = {0,1,1};
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
@@ -506,36 +506,36 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
     stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"}, diff);
 
     // Calculate covariances
-    for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+    for (auto& it1 : ap)
     {
-        int loc1[3];
-        if(it1->first == "u")
-            memcpy(loc1, uloc, sizeof loc1);
-        else if(it1->first == "v")
-            memcpy(loc1, vloc, sizeof loc1);
-        else if(it1->first == "w")
-            memcpy(loc1, wloc, sizeof loc1);
+        std::array<int,3> loc1;
+        if(it1.first == "u")
+            loc1 = uloc;
+        else if(it1.first == "v")
+            loc1 = vloc;
+        else if(it1.first == "w")
+            loc1 = wloc;
         else
-            memcpy(loc1, sloc, sizeof loc1);
+            loc1 = sloc;
 
-        for (typename Field_map<TF>::iterator it2=ap.begin(); it2!=ap.end(); ++it2)
+        for (auto& it2 : ap)
         {
-            int loc2[3];
-            if(it2->first == "u")
-                memcpy(loc2, uloc, sizeof loc2);
-            else if(it2->first == "v")
-                memcpy(loc2, vloc, sizeof loc2);
-            else if(it2->first == "w")
-                memcpy(loc2, wloc, sizeof loc2);
+            std::array<int,3> loc2;
+            if(it2.first == "u")
+                loc2 = uloc;
+            else if(it2.first == "v")
+                loc2 = vloc;
+            else if(it2.first == "w")
+                loc2 = wloc;
             else
-                memcpy(loc2, sloc, sizeof loc2);
+                loc2 = sloc;
 
             for (int pow1 = 1; pow1<5; ++pow1)
             {
                 for (int pow2 = 1; pow2<5; ++pow2)
                 {
-                    stats.calc_covariance(it1->first, *it1->second, loc1, no_offset, no_threshold, pow1,
-                                          it2->first, *it2->second, loc2, no_offset, no_threshold, pow2);
+                    stats.calc_covariance(it1.first, *it1.second, loc1, no_offset, no_threshold, pow1,
+                                          it2.first, *it2.second, loc2, no_offset, no_threshold, pow2);
                 }
             }
         }

@@ -728,7 +728,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
     // Time series
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    const int sloc[] = {0,0,0};
+    const std::array<int,3> sloc = {0,0,0};
 
     stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
     stats.calc_stats("qr" , *fields.sp.at("qr") , sloc, no_offset, no_threshold, {"path"}, diff);

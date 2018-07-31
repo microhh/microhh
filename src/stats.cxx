@@ -845,7 +845,7 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const int* loc, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
+void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const std::array<int,3>& loc, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -918,12 +918,12 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), loc, mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                        tmp->fld.data(), loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
                     calc_flux_4th(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), loc, mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                        tmp->fld.data(), loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
@@ -933,7 +933,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         else if (it == "diff")
         {
             auto diffusion = fields.get_tmp();
-            diff.diff_flux(*diffusion, fld, loc);
+            diff.diff_flux(*diffusion, fld, loc.data());
 
             for (auto& m : masks)
             {
@@ -1054,8 +1054,8 @@ void Stats<TF>::calc_stats_2d(const std::string varname, const std::vector<TF>& 
 }
 
 template<typename TF>
-void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& fld1, const int* loc1, const TF offset1, const TF threshold1, const int power1,
-                                const std::string varname2, const Field3d<TF>& fld2, const int* loc2, const TF offset2, const TF threshold2, const int power2)
+void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& fld1, const std::array<int,3>& loc1, const TF offset1, const TF threshold1, const int power1,
+                                const std::string varname2, const Field3d<TF>& fld2, const std::array<int,3>& loc2, const TF offset2, const TF threshold2, const int power2)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1065,7 +1065,7 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
     int* nmask;
     if (it1 != varlist.end())
     {
-        if((loc1[0] == loc2[0]) & (loc1[1] == loc2[1]) & (loc1[2] == loc2[2]) )
+        if(loc1 == loc2)
         {
             TF fld1_mean[gd.kcells];
             for (auto& m : masks)
@@ -1103,7 +1103,7 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
         {
                 auto tmp = fields.get_tmp();
 
-                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), loc1, loc2);
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), loc1.data(), loc2.data());
                 for (auto& m : masks)
                 {
                     if(loc2[2]==0)

@@ -986,7 +986,7 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
     auto& gd = grid.get_grid_data();
 
     // Define locations
-    const int sloc[] = {0,0,0};
+    const std::array<int,3> sloc = {0,0,0};
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;

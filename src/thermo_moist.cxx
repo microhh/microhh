@@ -978,7 +978,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
     get_buoyancy_fluxbot(*b, true);
 
     // define the location
-    const int sloc[] = {0,0,0};
+    const std::array<int,3> sloc = {0,0,0};
 
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
