@@ -575,6 +575,8 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1");
         stats.add_time_series("qrpath", "Rain water path", "kg m-2");
+        stats.add_time_series("qrcover", "Rain water cover", "-");
+        stats.add_prof("qrfrac", "Rain water fraction", "-", "z");
 
         if (swmicrobudget)
         {
@@ -728,10 +730,11 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
     // Time series
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
+    const TF threshold_qr = 1.e-6;
     const std::array<int,3> sloc = {0,0,0};
 
     stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
-    stats.calc_stats("qr" , *fields.sp.at("qr") , sloc, no_offset, no_threshold, {"path"}, diff);
+    stats.calc_stats("qr" , *fields.sp.at("qr") , sloc, no_offset, threshold_qr, {"path","frac","cover"}, diff);
 
     if (swmicrobudget)
     {
