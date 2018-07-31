@@ -59,8 +59,6 @@ class Decay
         Fields<TF>& fields;
 
         // Internal switches for various forcings
-        Decay_type swdecay;
-        std::vector<std::string> decaylist;         ///< List of variables that have a decay.
         struct Decay_var
         {
             double timescale; ///< Decay timescale.

@@ -53,16 +53,6 @@ template<typename TF>
 Decay<TF>::Decay(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-    // Read the switches from the input
-    std::string swdecay_in = inputin.get_item<std::string>("decay", "swdecay", "", "0");
-
-    // Set the internal switches and read other required input
-    if (swdecay_in == "0")
-        swdecay = Decay_type::disabled;
-    else if (swdecay_in == "exponential")
-        swdecay = Decay_type::enabled;
-    else
-        throw std::runtime_error("Invalid option for \"swdecay\"");
 }
 
 template <typename TF>
@@ -73,24 +63,20 @@ Decay<TF>::~Decay()
 template <typename TF>
 void Decay<TF>::init(Input& inputin)
 {
-    if (swdecay == Decay_type::enabled)
+    std::string type;
+    for (auto& it : fields.st)
     {
-        std::string type;
-        for (auto& it : fields.st)
+        type = inputin.get_item<std::string>("decay", "swdecay", it.first,"0");
+        if (type == "0")
         {
-            type = inputin.get_item<std::string>("decay", "type", it.first,"0");
-            if (type == "0")
-            {
-            }
-            else if (type == "exponential")
-            {
-                dmap[it.first].type = Decay_type::exponential;
-                dmap[it.first].timescale = inputin.get_item<TF>("decay", "timescale", it.first);
-            }
-            else
-                throw std::runtime_error("Invalid option for \"decay type\"");
         }
-
+        else if (type == "exponential")
+        {
+            dmap[it.first].type = Decay_type::exponential;
+            dmap[it.first].timescale = inputin.get_item<TF>("decay", "timescale", it.first);
+        }
+        else
+            throw std::runtime_error("Invalid option for \"decay type\"");
     }
 
 }
@@ -105,19 +91,13 @@ template <typename TF>
 void Decay<TF>::exec(double dt)
 {
     auto& gd = grid.get_grid_data();
-
-    if (swdecay == Decay_type::enabled)
+    for (auto& it : dmap)
     {
-        for (auto& it : dmap)
+        if (it.second.type == Decay_type::exponential)
         {
-            if (it.second.type == Decay_type::exponential)
-            {
-                enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            }
+            enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
-
     }
-
 }
 #endif
 

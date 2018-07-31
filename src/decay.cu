@@ -61,22 +61,18 @@ void Decay<TF>::exec(double dt)
 
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
-    
-    if (swdecay == Decay_type::enabled)
+
+    for (auto& it : dmap)
     {
-        for (auto& it : dmap)
+        if (it.second.type == Decay_type::exponential)
         {
-            if (it.second.type == Decay_type::exponential)
-            {
-                const TF rate = 1./(std::max(it.second.timescale, dt));
-                enforce_exponential_decay_g<<<gridGPU, blockGPU>>>(
-                    fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g, rate,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                cuda_check_error();
+            const TF rate = 1./(std::max(it.second.timescale, dt));
+            enforce_exponential_decay_g<<<gridGPU, blockGPU>>>(
+                fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g, rate,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            cuda_check_error();
 
-            }
         }
-
     }
 
 }
