@@ -94,8 +94,8 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    std::vector<int> coordx = inputin.get_list<int>("column", "coordinates", "x", std::vector<int>());
-    std::vector<int> coordy = inputin.get_list<int>("column", "coordinates", "y", std::vector<int>());
+    std::vector<TF> coordx = inputin.get_list<TF>("column", "coordinates", "x", std::vector<TF>());
+    std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
     if(coordx.size()!=coordy.size())
     {
         master.print_error("Column error: X-coord array and Y-coord array do not match in size \n");
@@ -104,8 +104,8 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
 
     for (int n=0; n<coordx.size(); ++n)
     {
-        int i = coordx[n];
-        int j = coordy[n];
+        int i = (int) floor(coordx[n]/gd.dx);
+        int j = (int) floor(coordy[n]/gd.dy);
         if (i >= (md.mpicoordx)*gd.imax & i < (md.mpicoordx+1)*gd.imax &
             j >= (md.mpicoordy)*gd.jmax & j < (md.mpicoordy+1)*gd.jmax)
         {
