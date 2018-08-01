@@ -174,7 +174,7 @@ void Diff_2<TF>::exec(Boundary<TF>& boundary)
 #endif
 
 template<typename TF>
-void Diff_2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data, const int loc[3])
+void Diff_2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
 {
     auto& gd = grid.get_grid_data();
     calc_diff_flux(out.fld.data(), data.fld.data(), data.visc, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);

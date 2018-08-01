@@ -68,9 +68,9 @@ class Fields
         void exec_stats(Stats<TF>&, Diff<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
-        void init_momentum_field  (std::string, std::string, std::string);
-        void init_prognostic_field(std::string, std::string, std::string);
-        void init_diagnostic_field(std::string, std::string, std::string);
+        void init_momentum_field  (std::string, std::string, std::string, const std::array<int,3>&);
+        void init_prognostic_field(std::string, std::string, std::string, const std::array<int,3>&);
+        void init_diagnostic_field(std::string, std::string, std::string, const std::array<int,3>&);
 
         void init_tmp_field();
 

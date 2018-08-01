@@ -535,6 +535,7 @@ template<typename TF>
 Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
+    auto& gd = grid.get_grid_data();
     swmicrophys = Microphys_type::Warm_2mom;
 
     // Read microphysics switches and settings
@@ -542,8 +543,8 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1");
-    fields.init_prognostic_field("nr", "Number density rain", "m-3");
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
+    fields.init_prognostic_field("nr", "Number density rain", "m-3", gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -731,16 +732,16 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     const TF threshold_qr = 1.e-6;
-    const std::array<int,3> sloc = {0,0,0};
 
     stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
-    stats.calc_stats("qr" , *fields.sp.at("qr") , sloc, no_offset, threshold_qr, {"path","frac","cover"}, diff);
+    stats.calc_stats("qr" , *fields.sp.at("qr"), no_offset, threshold_qr, {"path","frac","cover"}, diff);
 
     if (swmicrobudget)
     {
         // Vertical profiles. The statistics of qr & nr are handled by fields.cxx
         // Get cloud liquid water specific humidity from thermodynamics
         auto ql = fields.get_tmp();
+        ql->loc = gd.sloc;
         thermo.get_thermo_field(*ql, "ql", false, false);
 
         // Get pressure and exner function from thermodynamics
@@ -785,6 +786,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
         auto nrt  = fields.get_tmp();
         auto thlt = fields.get_tmp();
         auto qtt  = fields.get_tmp();
+        qrt->loc  = gd.sloc;
+        nrt->loc  = gd.sloc;
+        thlt->loc = gd.sloc;
+        qtt->loc  = gd.sloc;
 
         // Calculate tendencies
         // Autoconversion; formation of rain drop by coagulating cloud droplets
@@ -800,10 +805,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
 
-        stats.calc_stats("auto_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -817,9 +822,9 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
                         gd.iend,   gd.jend,   gd.kend,
                         gd.icells, gd.ijcells);
 
-        stats.calc_stats("accr_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("accr_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("accr_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
 
         // Rest of the microphysics is handled per XZ slice
         // Evaporation; evaporation of rain drops in unsaturated environment
@@ -844,10 +849,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
                               gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("evap_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_thlt", *thlt, sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_qtt" , *qtt , sloc, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         // -------------------------
@@ -866,7 +871,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
                                          gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("scbr_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
 
         // Sedimentation; sub-grid sedimentation of rain
         // -------------------------
@@ -888,8 +893,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Therm
                                      gd.icells, gd.kcells, gd.ijcells, j);
         }
 
-        stats.calc_stats("sed_qrt" , *qrt , sloc, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("sed_nrt" , *nrt , sloc, no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)
@@ -950,15 +955,15 @@ bool Microphys_2mom_warm<TF>::has_mask(std::string name)
 template<typename TF>
 void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
+    auto& gd = grid.get_grid_data();
+
     if (mask_name == "qr")
     {
-        TF threshold = 1e-8;
-        const int wloc[] = {0,0,1};
-        const int sloc[] = {0,0,0};
+        TF threshold = 1e-6;
 
         // Interpolate qr to half level:
         auto qrh = fields.get_tmp();
-        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), sloc, wloc);
+        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), gd.sloc.data(), gd.wloc.data());
 
         // Calculate masks
         stats.set_mask_thres(mask_name, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);

@@ -33,11 +33,9 @@
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
-//#include "thermo_moist.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-//#include "diff_smag2.h"
 #include "timeloop.h"
 #include "diff.h"
 
@@ -781,8 +779,6 @@ template<typename TF>
 void Stats<TF>::finalize_masks()
 {
     auto& gd = grid.get_grid_data();
-    const int sloc[] = {0,0,0};
-    const int wloc[] = {0,0,1};
 
     boundary_cyclic.exec(mfield.data());
     boundary_cyclic.exec_2d(mfield_bot.data());
@@ -795,8 +791,8 @@ void Stats<TF>::finalize_masks()
         master.sum(it.second.nmask.data() , gd.kcells);
         master.sum(it.second.nmaskh.data(), gd.kcells);
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
-        calc_area(it.second.profs["area" ].data.data(), sloc, it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
-        calc_area(it.second.profs["areah"].data.data(), wloc, it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+        calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+        calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
 
@@ -845,7 +841,7 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const std::array<int,3>& loc, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
+void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
@@ -862,7 +858,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         // {
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -891,7 +887,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             for (auto& m : masks)
             {
 
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -910,7 +906,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             auto tmp = fields.get_tmp();
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -918,12 +914,12 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                        tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
                     calc_flux_4th(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                        tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
@@ -933,11 +929,11 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         else if (it == "diff")
         {
             auto diffusion = fields.get_tmp();
-            diff.diff_flux(*diffusion, fld, loc.data());
+            diff.diff_flux(*diffusion, fld);
 
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -963,7 +959,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -984,7 +980,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -998,7 +994,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -1012,7 +1008,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if(loc[2]==0)
+                if(fld.loc[2]==0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -1054,8 +1050,8 @@ void Stats<TF>::calc_stats_2d(const std::string varname, const std::vector<TF>& 
 }
 
 template<typename TF>
-void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& fld1, const std::array<int,3>& loc1, const TF offset1, const TF threshold1, const int power1,
-                                const std::string varname2, const Field3d<TF>& fld2, const std::array<int,3>& loc2, const TF offset2, const TF threshold2, const int power2)
+void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& fld1, const TF offset1, const TF threshold1, const int power1,
+                                const std::string varname2, const Field3d<TF>& fld2, const TF offset2, const TF threshold2, const int power2)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1065,12 +1061,12 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
     int* nmask;
     if (it1 != varlist.end())
     {
-        if(loc1 == loc2)
+        if(fld1.loc == fld2.loc)
         {
             TF fld1_mean[gd.kcells];
             for (auto& m : masks)
             {
-                if(loc2[2]==0)
+                if(fld2.loc[2]==0)
                 {
                     flag = m.second.flag;
                     for(int k = gd.kstart; k<gd.kend+1; ++k)
@@ -1103,10 +1099,10 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
         {
                 auto tmp = fields.get_tmp();
 
-                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), loc1.data(), loc2.data());
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
                 for (auto& m : masks)
                 {
-                    if(loc2[2]==0)
+                    if(fld2.loc[2]==0)
                     {
                         flag = m.second.flag;
                         nmask = m.second.nmask.data();
@@ -1137,22 +1133,19 @@ void Stats<TF>::calc_flux_2nd(TF* const restrict prof, const TF* const restrict 
                               const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
 {
 
+    auto& gd = grid.get_grid_data();
     // set a pointer to the field that contains w, either interpolated or the original
     TF* restrict calcw = w;
 
-    // define the locations
-    const int wloc [3] = {0,0,1};
-    const int uwloc[3] = {1,0,1};
-    const int vwloc[3] = {0,1,1};
 
     if (loc[0] == 1)
     {
-        grid.interpolate_2nd(tmp1, w, wloc, uwloc);
+        grid.interpolate_2nd(tmp1, w, gd.wloc.data(), gd.uwloc.data());
         calcw = tmp1;
     }
     else if (loc[1] == 1)
     {
-        grid.interpolate_2nd(tmp1, w, wloc, vwloc);
+        grid.interpolate_2nd(tmp1, w, gd.wloc.data(), gd.vwloc.data());
         calcw = tmp1;
     }
 
@@ -1194,19 +1187,15 @@ void Stats<TF>::calc_flux_4th(TF* const restrict prof, const TF* const restrict 
     // set a pointer to the field that contains w, either interpolated or the original
     TF* restrict calcw = w;
 
-    // define the locations
-    const int wloc [3] = {0,0,1};
-    const int uwloc[3] = {1,0,1};
-    const int vwloc[3] = {0,1,1};
 
     if (loc[0] == 1)
     {
-        grid.interpolate_4th(tmp1, w, wloc, uwloc);
+        grid.interpolate_4th(tmp1, w, gd.wloc.data(), gd.uwloc.data());
         calcw = tmp1;
     }
     else if (loc[1] == 1)
     {
-        grid.interpolate_4th(tmp1, w, wloc, vwloc);
+        grid.interpolate_4th(tmp1, w, gd.wloc.data(), gd.vwloc.data());
         calcw = tmp1;
     }
 

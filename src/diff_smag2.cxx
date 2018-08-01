@@ -714,11 +714,12 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     boundary_cyclic(master, grid),
     field3d_operators(master, grid, fields)
 {
+    auto& gd = grid.get_grid_data();
     dnmax = inputin.get_item<TF>("diff", "dnmax", "", 0.4  );
     cs    = inputin.get_item<TF>("diff", "cs"   , "", 0.23 );
     tPr   = inputin.get_item<TF>("diff", "tPr"  , "", 1./3.);
 
-    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
+    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", gd.sloc);
 }
 
 template<typename TF>
@@ -985,18 +986,15 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    // Define locations
-    const std::array<int,3> sloc = {0,0,0};
-
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     Diff<TF>* diff = this;
 
-    stats.calc_stats("evisc", *fields.sd["evisc"], sloc, no_offset, no_threshold, {"mean"}, *diff);
+    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, {"mean"}, *diff);
 }
 
 template<typename TF>
-void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data, const int loc[3])
+void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1005,10 +1003,10 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 
     int nend = gd.istart+gd.jstart*gd.icells+gd.kend*gd.ijcells;
     calc_diff_flux_bc(&out.fld[nend], data.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
-    if (loc[0]==1)
+    if (data.loc[0]==1)
         calc_diff_flux_u(fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
             gd.dxi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-   else if (loc[1]==1)
+   else if (data.loc[1]==1)
        calc_diff_flux_v(out.fld.data(), data.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
             gd.dyi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
    else

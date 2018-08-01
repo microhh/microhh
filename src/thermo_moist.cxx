@@ -471,6 +471,8 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     boundary_cyclic(masterin, gridin),
     field3d_operators(master, grid, fieldsin)
 {
+    auto& gd = grid.get_grid_data();
+
     swthermo = "moist";
 
     // 4th order code is not implemented in thermo_moist
@@ -478,8 +480,8 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields
-    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K");
-    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
+    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", gd.sloc);
+    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", gd.sloc);
 
     // Get the diffusivities of temperature and moisture
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
@@ -973,24 +975,24 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
+    b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // define the location
-    const std::array<int,3> sloc = {0,0,0};
-
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators, diff);
+    stats.calc_stats("b", *b, no_offset, no_threshold, operators, diff);
 
     fields.release_tmp(b);
 
     // calculate the liquid water stats
     auto ql = fields.get_tmp();
+    ql->loc = gd.sloc;
+
     get_thermo_field(*ql, "ql", true, true);
-    stats.calc_stats("ql", *ql, sloc, no_offset, no_threshold, {"mean","cover","frac","path"}, diff);
+    stats.calc_stats("ql", *ql, no_offset, no_threshold, {"mean","cover","frac","path"}, diff);
 
     fields.release_tmp(ql);
 

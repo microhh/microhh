@@ -25,6 +25,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 class Master;
 template<typename> class Grid;
@@ -34,7 +35,7 @@ class Field3d
 {
     public:
         // Functions
-        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string);
+        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string, const std::array<int,3>&);
         ~Field3d();
 
         int init();
@@ -52,6 +53,7 @@ class Field3d
         std::string name;
         std::string unit;
         std::string longname;
+        std::array<int,3> loc;
 
         TF visc;
 
@@ -74,4 +76,3 @@ class Field3d
         Grid<TF>& grid;
 };
 #endif
-

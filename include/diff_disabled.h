@@ -41,7 +41,7 @@ class Diff_disabled : public Diff<TF>
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
         void init() {}
         void exec(Boundary<TF>&) {}
-        void diff_flux(Field3d<TF>&, const Field3d<TF>&, const int*) {}
+        void diff_flux(Field3d<TF>&, const Field3d<TF>&) {}
         void exec_stats(Stats<TF>&) {};
 
 

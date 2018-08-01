@@ -264,9 +264,11 @@ Thermo_dry<TF>::Thermo_dry(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 Thermo<TF>(masterin, gridin, fieldsin, inputin),
 boundary_cyclic(masterin, gridin)
 {
+    auto& gd = grid.get_grid_data();
+
     swthermo = "dry";
 
-    fields.init_prognostic_field("th", "Potential Temperature", "K");
+    fields.init_prognostic_field("th", "Potential Temperature", "K", gd.sloc);
 
     fields.sp.at("th")->visc = inputin.get_item<TF>("fields", "svisc", "th");
 
@@ -629,17 +631,15 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
+    b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // define the location
-    const std::array<int,3> sloc = {0,0,0};
-
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, sloc, no_offset, no_threshold, operators, diff);
+    stats.calc_stats("b", *b, no_offset, no_threshold, operators, diff);
 
     fields.release_tmp(b);
 }

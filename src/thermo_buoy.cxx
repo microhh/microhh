@@ -231,9 +231,10 @@ template<typename TF>
 Thermo_buoy<TF>::Thermo_buoy(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
 Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
+    auto& gd = grid.get_grid_data();
     swthermo = "buoy";
 
-    fields.init_prognostic_field("b", "Buoyancy", "m s-2");
+    fields.init_prognostic_field("b", "Buoyancy", "m s-2", gd.sloc);
 
     bs.alpha = inputin.get_item<TF>("thermo", "alpha", "", 0.);
     bs.n2 = inputin.get_item<TF>("thermo", "N2"   , "", 0.);

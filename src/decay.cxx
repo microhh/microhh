@@ -123,9 +123,6 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
             throw std::runtime_error(message);
         }
 
-        const int wloc[] = {0,0,1};
-        const int sloc[] = {0,0,0};
-
         TF ijtot = static_cast<TF>(gd.itot*gd.jtot);
 
         auto couvreux = fields.get_tmp();
@@ -164,7 +161,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
             }
             const int ijk = gd.istart +gd.jstart*gd.icells + k*gd.ijcells;
         }
-        grid.interpolate_2nd(couvreuxh->fld.data(), couvreux->fld.data(), sloc, wloc);
+        grid.interpolate_2nd(couvreuxh->fld.data(), couvreux->fld.data(), gd.sloc.data(), gd.wloc.data());
 
         // Calculate masks
         TF threshold = 0.;

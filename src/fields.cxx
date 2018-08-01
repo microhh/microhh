@@ -201,6 +201,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     field3d_io(master, grid),
     field3d_operators(master, grid, *this)
 {
+    auto& gd = grid.get_grid_data();
     calc_mean_profs = false;
 
     // Initialize GPU pointers
@@ -214,15 +215,16 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
-        init_prognostic_field(s, s, "-");
+        init_prognostic_field(s, s, "-", gd.sloc);
         sp.at(s)->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
     // initialize the basic set of fields
-    init_momentum_field("u", "U velocity", "m s-1");
-    init_momentum_field("v", "V velocity", "m s-1");
-    init_momentum_field("w", "Vertical velocity", "m s-1");
-    init_diagnostic_field("p", "Pressure", "Pa");
+
+    init_momentum_field("u", "U velocity", "m s-1", gd.uloc);
+    init_momentum_field("v", "V velocity", "m s-1", gd.vloc);
+    init_momentum_field("w", "Vertical velocity", "m s-1", gd.wloc);
+    init_diagnostic_field("p", "Pressure", "Pa", gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
     // before the init phase, where they are initialized in Fields::init()
@@ -462,12 +464,10 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         return;
 
     auto& gd = grid.get_grid_data();
-    const int wloc[] = {0,0,1};
-    const int sloc[] = {0,0,0};
 
     // Interpolate w to half level:
     auto wf = get_tmp();
-    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), wloc, sloc);
+    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
 
     // Calculate masks
     TF threshold = 0;
@@ -484,58 +484,29 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
-    // Define locations
-    const std::array<int,3> uloc = {1,0,0};
-    const std::array<int,3> vloc = {0,1,0};
-    const std::array<int,3> wloc = {0,0,1};
-    const std::array<int,3> sloc = {0,0,0};
-
-    const std::array<int,3> uwloc = {1,0,1};
-    const std::array<int,3> vwloc = {0,1,1};
-
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-    stats.calc_stats("w", *mp["w"], wloc, no_offset, no_threshold, {"mean","2","3","4"}, diff);
-    stats.calc_stats("u", *mp["u"], uloc, no_offset, no_threshold, operators, diff);
-    stats.calc_stats("v", *mp["v"], vloc, no_offset, no_threshold, operators, diff);
+    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"}, diff);
+    stats.calc_stats("u", *mp["u"], no_offset, no_threshold, operators, diff);
+    stats.calc_stats("v", *mp["v"], no_offset, no_threshold, operators, diff);
     for (auto& it : sp)
     {
-        stats.calc_stats(it.first, *it.second, sloc, no_offset, no_threshold, operators, diff);
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators, diff);
     }
-    stats.calc_stats("p", *sd["p"], sloc, no_offset, no_threshold, {"mean","2","w","grad"}, diff);
+    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, {"mean","2","w","grad"}, diff);
 
     // Calculate covariances
     for (auto& it1 : ap)
     {
-        std::array<int,3> loc1;
-        if(it1.first == "u")
-            loc1 = uloc;
-        else if(it1.first == "v")
-            loc1 = vloc;
-        else if(it1.first == "w")
-            loc1 = wloc;
-        else
-            loc1 = sloc;
-
         for (auto& it2 : ap)
         {
-            std::array<int,3> loc2;
-            if(it2.first == "u")
-                loc2 = uloc;
-            else if(it2.first == "v")
-                loc2 = vloc;
-            else if(it2.first == "w")
-                loc2 = wloc;
-            else
-                loc2 = sloc;
-
             for (int pow1 = 1; pow1<5; ++pow1)
             {
                 for (int pow2 = 1; pow2<5; ++pow2)
                 {
-                    stats.calc_covariance(it1.first, *it1.second, loc1, no_offset, no_threshold, pow1,
-                                          it2.first, *it2.second, loc2, no_offset, no_threshold, pow2);
+                    stats.calc_covariance(it1.first, *it1.second, no_offset, no_threshold, pow1,
+                                          it2.first, *it2.second, no_offset, no_threshold, pow2);
                 }
             }
         }
@@ -550,7 +521,7 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 }
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -559,13 +530,13 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
     }
 
     // Add a new prognostic momentum variable.
-    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
     std::string tunit     = unit + "s-1";
     std::string tlongname = "Tendency of " + longname;
-    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
+    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // Add the prognostic variable and its tendency to the collection
     // of all fields and tendencies.
@@ -575,7 +546,7 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 }
 
 template<typename TF>
-void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -584,13 +555,13 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
     }
 
     // add a new scalar variable
-    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
 
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = unit + "s-1";
-    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
+    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // add the prognostic variable and its tendency to the collection
     // of all fields and tendencies
@@ -600,7 +571,7 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 }
 
 template<typename TF>
-void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit)
+void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -608,7 +579,7 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
         throw 1;
     }
 
-    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
     a [fldname] = sd[fldname];
 }
 
@@ -620,10 +591,11 @@ void Fields<TF>::init_tmp_field()
     std::string fldname = "tmp" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
+    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
 }
 
 #ifdef USECUDA
@@ -635,10 +607,11 @@ void Fields<TF>::init_tmp_field_g()
     std::string fldname = "tmp_gpu" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
+    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
 }
 #endif
 
