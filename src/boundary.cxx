@@ -38,7 +38,7 @@
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
-// #include "boundary_surface_bulk.h"
+#include "boundary_surface_bulk.h"
 // #include "boundary_surface_patch.h"
 // #include "boundary_patch.h"
 
@@ -751,8 +751,10 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     // else if (swboundary == "default")
     if (swboundary == "default")
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
-    else if (swboundary == "surface")
-        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+        else if (swboundary == "surface")
+            return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+        else if (swboundary == "surface_bulk")
+            return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
     else
     {
         master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
