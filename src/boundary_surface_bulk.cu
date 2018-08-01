@@ -21,6 +21,7 @@
  */
  #include <cmath>
  #include "fast_math.h"
+ #include "constants.h"
  #include "tools.h"
  #include "master.h"
  #include "grid.h"
@@ -37,7 +38,7 @@ namespace
     void calculate_du_g(TF* __restrict__ dutot,
                   TF* __restrict__ u,    TF* __restrict__ v,
                   TF* __restrict__ ubot, TF* __restrict__ vbot,
-                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -52,7 +53,7 @@ namespace
 
             const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
                          + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-            dutot[ij] = fmax(pow(du2, TF(0.5)), minval);
+            dutot[ij] = fmax(sqrt(du2), minval);
         }
     }
 
@@ -62,7 +63,7 @@ namespace
                       TF* __restrict__ u,        TF* __restrict__ v,
                       TF* __restrict__ ubot,     TF* __restrict__ vbot,
                       TF* __restrict__ dutot,    TF Cm, TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -86,7 +87,7 @@ namespace
                       TF* __restrict__ s,
                       TF* __restrict__ sbot,
                       TF* __restrict__ dutot,    TF Cs, TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -99,6 +100,28 @@ namespace
 
             sfluxbot[ij] = -Cs * dutot[ij] * (s[ijk]-sbot[ij]);
             sgradbot[ij] = (s[ijk]-sbot[ij])/zsl;
+        }
+    }
+
+    template<typename TF> __global__
+    void surface_scaling_g(TF* __restrict__ ustar,
+                      TF* __restrict__ obuk,
+                      TF* __restrict__ dutot,
+                      TF* __restrict__ bfluxbot,
+                      TF Cm,
+                      const int istart, const int iend, const int jstart, const int jend, const int jj)
+
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jj;
+            const double sqrt_Cm = sqrt(Cm);
+
+            ustar[ij] = sqrt_Cm * dutot[ij];
+            obuk[ij] = - fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
         }
     }
 
@@ -180,7 +203,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
         dutot->fld_g,
         fields.mp["u"]->fld_g,     fields.mp["v"]->fld_g,
         fields.mp["u"]->fld_bot_g, fields.mp["v"]->fld_bot_g,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.jcells, gd.ijcells);
+        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     cuda_check_error();
 
@@ -195,7 +218,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
         fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
         fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
         dutot->fld_g, bulk_cm, zsl,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.jcells, gd.ijcells);
+        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on the surface fluxes
@@ -211,12 +234,19 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
             it.second->flux_bot_g, it.second->grad_bot_g,
             it.second->fld_g, it.second->fld_bot_g,
             dutot->fld_g, bulk_cs[it.first], zsl,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.jcells, gd.ijcells);
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         cuda_check_error();
         boundary_cyclic.exec_2d_g(it.second->flux_bot_g);
         boundary_cyclic.exec_2d_g(it.second->grad_bot_g);
     }
 
+    auto b= fields.get_tmp_g();
+    thermo.get_buoyancy_fluxbot_g(*b);
+    surface_scaling_g<<<gridGPU2, blockGPU2>>>(
+        ustar_g, obuk_g, dutot->fld_g, b->flux_bot_g, bulk_cm,
+        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+
+    fields.release_tmp_g(b);
     fields.release_tmp_g(dutot);
 
 }

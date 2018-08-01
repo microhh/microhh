@@ -36,7 +36,7 @@ namespace
 
     template<typename TF>
     void calculate_du(TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
-                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -62,7 +62,7 @@ namespace
                       TF* restrict u, TF* restrict v,
                       TF* restrict ubot, TF* restrict vbot,
                       TF* restrict dutot, const TF Cm, const TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -84,7 +84,7 @@ namespace
     template<typename TF>
     void scalar_fluxgrad(TF* restrict sfluxbot, TF* restrict sgradbot, TF* restrict s, TF* restrict sbot,
                     TF* restrict dutot, const TF Cs, const TF zsl,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -99,6 +99,24 @@ namespace
                 sgradbot[ij] = (s[ijk]-sbot[ij])/zsl;
             }
 
+    }
+
+    template<typename TF>
+    void surface_scaling(TF* restrict ustar, TF* restrict obuk, TF* restrict dutot, TF* restrict bfluxbot, const TF Cm,
+                    const int istart, const int iend, const int jstart, const int jend, const int jj)
+    {
+
+        const double sqrt_Cm = sqrt(Cm);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+
+                ustar[ij] = sqrt_Cm * dutot[ij];
+                obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
+            }
     }
 }
 
@@ -230,8 +248,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
     // Calculate total wind speed difference with surface
     calculate_du(dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
     boundary_cyclic.exec_2d(dutot->fld.data());
 
     // Calculate surface momentum fluxes and gradients
@@ -240,7 +257,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
                     fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
                     fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
                     dutot->fld.data(), bulk_cm, zsl,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.jcells, gd.ijcells);
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     boundary_cyclic.exec_2d(fields.mp.at("u")->flux_bot.data());
     boundary_cyclic.exec_2d(fields.mp.at("v")->flux_bot.data());
@@ -253,11 +270,17 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
         scalar_fluxgrad(it.second->flux_bot.data(), it.second->grad_bot.data(),
                         it.second->fld.data(), it.second->fld_bot.data(),
                         dutot->fld.data(), bulk_cs[it.first], zsl,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.jcells, gd.ijcells);
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         boundary_cyclic.exec_2d(it.second->flux_bot.data());
         boundary_cyclic.exec_2d(it.second->grad_bot.data());
     }
 
+    auto b= fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(*b, false);
+    surface_scaling(ustar.data(), obuk.data(), dutot->fld.data(), b->flux_bot.data(), bulk_cm,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+
+    fields.release_tmp(b);
     fields.release_tmp(dutot);
 
 }
