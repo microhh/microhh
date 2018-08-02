@@ -386,19 +386,26 @@ void Force<TF>::exec(double dt)
 template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    for (auto& it : tdep_ls)
-        it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+    if (swls == Large_scale_tendency_type::enabled)
+    {
+        for (auto& it : tdep_ls)
+            it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+    }
 
-    for (auto& it : tdep_nudge)
-        it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+    if (swnudge == Nudging_type::enabled)
+    {
+        for (auto& it : tdep_nudge)
+            it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+    }
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        tdep_geo.at("ug")->update_time_dependent_prof_g(ug_g, timeloop);
-        tdep_geo.at("vg")->update_time_dependent_prof_g(vg_g, timeloop);
+        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
     }
 
-    tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
+    if (swwls == Large_scale_subsidence_type::enabled)
+        tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
 #endif
 
