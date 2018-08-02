@@ -627,7 +627,7 @@ void Model<TF>::print_status()
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
             std::fflush(dnsout);
         }
-        if (!(cfl>0. && cfl < 10.))
+        if (!(cfl>=0. && cfl < 10.))
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);
