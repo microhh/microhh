@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -58,8 +58,8 @@ class Field3d
         TF visc;
 
         // Device functions and variables
-        void init_device();  ///< Allocate Field3D fields at device
-        void clear_device(); ///< Deallocate Field3D fields at device
+        void init_device();  // Allocate Field3D fields at device
+        void clear_device(); // Deallocate Field3D fields at device
 
         TF* fld_g;
         TF* fld_bot_g;
@@ -69,7 +69,6 @@ class Field3d
         TF* grad_top_g;
         TF* flux_bot_g;
         TF* flux_top_g;
-
 
     private:
         Master& master;

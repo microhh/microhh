@@ -486,10 +486,11 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
+    const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
     stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"}, diff);
     stats.calc_stats("u", *mp["u"], no_offset, no_threshold, operators, diff);
     stats.calc_stats("v", *mp["v"], no_offset, no_threshold, operators, diff);
+
     for (auto& it : sp)
     {
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators, diff);
@@ -511,7 +512,6 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
             }
         }
     }
-
 }
 
 template<typename TF>
@@ -818,8 +818,8 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
     if (stats.get_switch())
     {
         // Mean velocity compontents
-        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z", Stats_whitelist_type::White );
-        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z", Stats_whitelist_type::White );
+        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z",  Stats_whitelist_type::White );
+        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z",  Stats_whitelist_type::White );
         stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh", Stats_whitelist_type::White);
 
         // Mean prognostic scalars
@@ -897,21 +897,19 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
                 }
             }
         }
-
     }
 }
 
 template<typename TF>
 void Fields<TF>::create_column(Column<TF>& column)
 {
-
     // add the profiles to the columns
     if (column.get_switch())
     {
         // add variables to the statistics
         column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
         column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh" );
+        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
 
         for (auto& it : sp)
             column.add_prof(it.first,it.second->longname, it.second->unit, "z");
@@ -1078,10 +1076,12 @@ void Fields<TF>::exec_column(Column<TF>& column)
     column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
     column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
     column.calc_column("w",mp["w"]->fld.data(), no_offset);
+
     for (auto& it : sp)
     {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
     }
+
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }
 
