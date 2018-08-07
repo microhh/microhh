@@ -884,7 +884,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         // {
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -916,7 +916,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             for (auto& m : masks)
             {
 
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -935,7 +935,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
             auto tmp = fields.get_tmp();
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -962,7 +962,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
 
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -988,7 +988,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flagh;
                 else
                     flag = m.second.flag;
@@ -1009,7 +1009,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -1023,7 +1023,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -1037,7 +1037,7 @@ void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, co
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2]==0)
+                if (fld.loc[2] == 0)
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
@@ -1094,7 +1094,7 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
             TF fld1_mean[gd.kcells];
             for (auto& m : masks)
             {
-                if (fld2.loc[2]==0)
+                if (fld2.loc[2] == 0)
                 {
                     flag = m.second.flag;
                     for (int k = gd.kstart; k<gd.kend+1; ++k)
@@ -1132,7 +1132,7 @@ void Stats<TF>::calc_covariance(const std::string varname1, const Field3d<TF>& f
                 grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
                 for (auto& m : masks)
                 {
-                    if (fld2.loc[2]==0)
+                    if (fld2.loc[2] == 0)
                     {
                         flag = m.second.flag;
                         nmask = m.second.nmask.data();
@@ -1265,7 +1265,7 @@ void Stats<TF>::calc_grad_2nd(TF* const restrict prof, const TF* const restrict 
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    prof[k] +=static_cast<TF>(mask[ijk] & flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
+                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
                 }
             prof[k] /= static_cast<TF>(nmask[k]);
         }
@@ -1300,7 +1300,7 @@ void Stats<TF>::calc_grad_4th(
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    prof[k] +=static_cast<TF>(mask[ijk] & flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
                 }
             prof[k] /= static_cast<TF>(nmask[k]);
         }
