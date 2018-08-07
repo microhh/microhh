@@ -56,12 +56,12 @@ class Fields
         Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
-        void init(Dump<TF>&,Cross<TF>&);   ///< Initialization of the field arrays.
+        void init(Dump<TF>&,Cross<TF>&);  ///< Initialization of the field arrays.
         void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
-        void create_dump(Dump<TF>&);        ///< Initialization of the single column output.
-        void create_cross(Cross<TF>&);      ///< Initialization of the single column output.
+        void create_dump(Dump<TF>&);      ///< Initialization of the single column output.
+        void create_cross(Cross<TF>&);    ///< Initialization of the single column output.
 
         void exec();
         void get_mask(Stats<TF>&, std::string);

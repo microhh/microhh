@@ -164,7 +164,7 @@ class Stats
                 const unsigned int* const, const unsigned int, const int* const,
                 const int, const int, const int, const int, const int, const int, const int, const int);
 
-        void sanatize_operations_vector(std::vector<std::string>);
+        void sanitize_operations_vector(std::vector<std::string>);
         bool wmean_set;
 
 };

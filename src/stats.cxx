@@ -866,14 +866,16 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::calc_stats(const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold, std::vector<std::string> operations, Diff<TF>& diff)
+void Stats<TF>::calc_stats(
+        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold,
+        std::vector<std::string> operations, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 
     unsigned int flag;
     std::string name;
 
-    sanatize_operations_vector(operations);
+    sanitize_operations_vector(operations);
 
     // Process mean first
     auto it = std::find(operations.begin(), operations.end(), "mean");
@@ -1311,9 +1313,9 @@ void Stats<TF>::calc_grad_4th(
 }
 
 template<typename TF>
-void Stats<TF>::sanatize_operations_vector(std::vector<std::string> operations)
+void Stats<TF>::sanitize_operations_vector(std::vector<std::string> operations)
 {
-    // Sanatize the operations vector:
+    // Sanitize the operations vector:
     // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
 
     std::vector<std::string> tmpvec = operations;

@@ -348,9 +348,9 @@ void Model<TF>::exec()
                     {
                         #pragma omp taskwait
                         #ifdef USECUDA
-                            fields  ->backward_device();
-                            boundary->backward_device();
-                            thermo  ->backward_device();
+                        fields  ->backward_device();
+                        boundary->backward_device();
+                        thermo  ->backward_device();
                         #endif
                         #pragma omp task default(shared)
                         calculate_statistics(
@@ -474,7 +474,7 @@ template<typename TF>
 void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime, double dt)
 {
     // Do the statistics.
-    if(stats->do_statistics(itime))
+    if (stats->do_statistics(itime))
     {
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
@@ -491,7 +491,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
-
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -604,7 +603,8 @@ void Model<TF>::print_status()
             std::string outputname = sim_name + ".out";
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
-            std::fprintf(dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+            std::fprintf(
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
                     "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
         }
         first = false;
