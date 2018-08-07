@@ -502,7 +502,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
         {
             m.z_dim  = m.data_file->addDim("z" , gd.kmax);
             m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
-            m.t_dim  = m.data_file->addDim("t");
+            m.t_dim  = m.data_file->addDim("time");
 
             NcVar z_var;
             NcVar zh_var;
@@ -930,8 +930,11 @@ void Stats<TF>::calc_stats(
                     flag = m.second.flag;
                 else
                     flag = m.second.flagh;
-                calc_moment(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, m.second.nmask.data(),
-                        power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+                calc_moment(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                        power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
@@ -1144,34 +1147,34 @@ void Stats<TF>::calc_covariance(
         }
         else
         {
-                auto tmp = fields.get_tmp();
+            auto tmp = fields.get_tmp();
 
-                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
-                for (auto& m : masks)
+            grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
+            for (auto& m : masks)
+            {
+                if (fld2.loc[2] == 0)
                 {
-                    if (fld2.loc[2] == 0)
-                    {
-                        flag = m.second.flag;
-                        nmask = m.second.nmask.data();
-                    }
-                    else
-                    {
-                        flag = m.second.flagh;
-                        nmask = m.second.nmaskh.data();
-                    }
-
-                    calc_cov(
-                            m.second.profs.at(name).data.data(), tmp->fld.data(), m.second.profs.at(varname1).data.data(), offset1, power1,
-                            fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
-                            mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                            gd.icells, gd.ijcells);
-
-                    master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-
+                    flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
                 }
 
-                fields.release_tmp(tmp);
+                calc_cov(
+                        m.second.profs.at(name).data.data(), tmp->fld.data(), m.second.profs.at(varname1).data.data(), offset1, power1,
+                        fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            }
+
+            fields.release_tmp(tmp);
         }
     }
 }
