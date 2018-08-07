@@ -249,28 +249,28 @@ void Force<TF>::prepare_device()
 template<typename TF>
 void Force<TF>::clear_device()
 {
-    if (swlspres== Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::geo_wind)
     {
         cuda_safe_call(cudaFree(ug_g));
         cuda_safe_call(cudaFree(vg_g));
-        for(auto& it : tdep_geo)
+        for (auto& it : tdep_geo)
             it.second->clear_device();
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
-        for(auto& it : lsprofs_g)
+        for (auto& it : lsprofs_g)
             cuda_safe_call(cudaFree(it.second));
-        for(auto& it : tdep_ls)
+        for (auto& it : tdep_ls)
             it.second->clear_device();
     }
 
     if (swnudge == Nudging_type::enabled)
     {
-        for(auto& it : nudgeprofs_g)
+        for (auto& it : nudgeprofs_g)
             cuda_safe_call(cudaFree(it.second));
         cuda_safe_call(cudaFree(nudge_factor_g));
-        for(auto& it : tdep_nudge)
+        for (auto& it : tdep_nudge)
             it.second->clear_device();
 
     }
@@ -310,8 +310,8 @@ void Force<TF>::exec(double dt)
             fields.mt.at("u")->fld_g,
             fbody,
             gd.icells, gd.ijcells,
-            gd.istart,  gd.jstart, gd.kstart,
-            gd.iend,    gd.jend,   gd.kend);
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
     }
     else if (swlspres== Large_scale_pressure_type::geo_wind)
@@ -323,8 +323,8 @@ void Force<TF>::exec(double dt)
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
                 ug_g, vg_g, fc, grid.utrans, grid.vtrans,
                 gd.icells, gd.ijcells,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend);
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend);
             cuda_check_error();
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
@@ -334,8 +334,8 @@ void Force<TF>::exec(double dt)
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
                 ug_g, vg_g, fc, grid.utrans, grid.vtrans,
                 gd.icells, gd.ijcells,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend);
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend);
             cuda_check_error();
         }
     }
@@ -346,8 +346,8 @@ void Force<TF>::exec(double dt)
         {
             large_scale_source_g<<<gridGPU, blockGPU>>>(
                 fields.st.at(it)->fld_g, lsprofs_g.at(it),
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
@@ -360,8 +360,8 @@ void Force<TF>::exec(double dt)
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
                 fields.st.at(it)->fld_g, fields.sp.at(it)->fld_mean_g,
                 nudgeprofs_g.at(it), nudge_factor_g,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
@@ -373,8 +373,8 @@ void Force<TF>::exec(double dt)
         {
             advec_wls_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_mean_g, wls_g, gd.dzhi_g,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }

@@ -39,9 +39,11 @@ using namespace Finite_difference::O2;
 namespace
 {
     template<typename TF>
-    void enforce_fixed_flux(TF* restrict ut,
-                            const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
-                            const TF dt, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    void enforce_fixed_flux(
+            TF* restrict ut,
+            const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
+            const TF dt, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
     {
         const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
 
@@ -51,7 +53,7 @@ namespace
                for (int i=istart; i<iend; ++i)
                {
                    const int ijk = i + j*jj + k*kk;
-                   ut[ijk] +=fbody;
+                   ut[ijk] += fbody;
                }
     }
     template<typename TF>
@@ -87,10 +89,10 @@ namespace
 
     template<typename TF>
     void calc_coriolis_4th(TF* const restrict ut, TF* const restrict vt,
-                                  const TF* const restrict u , const TF* const restrict v ,
-                                  const TF* const restrict ug, const TF* const restrict vg, TF const fc,
-                                  const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
-                                  const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+                           const TF* const restrict u , const TF* const restrict v ,
+                           const TF* const restrict ug, const TF* const restrict vg, TF const fc,
+                           const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
+                           const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
     {
         using namespace Finite_difference::O4;
 
@@ -169,9 +171,9 @@ namespace
 
     template<typename TF>
     void advec_wls_2nd(TF* const restrict st, const TF* const restrict s,
-                              const TF* const restrict wls, const TF* const dzhi,
-                              const int istart, const int iend, const int icells, const int jstart, const int jend,
-                              const int ijcells, const int kstart, const int kend)
+                       const TF* const restrict wls, const TF* const dzhi,
+                       const int istart, const int iend, const int icells, const int jstart, const int jend,
+                       const int ijcells, const int kstart, const int kend)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -275,7 +277,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+        nudgelist = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
 
         if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
         {
@@ -341,7 +343,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : lslist)
             if (!fields.ap.count(it))
             {
-                throw std::runtime_error("field  %s in [force][lslist] is illegal\n");
+                throw std::runtime_error("field %s in [force][lslist] is illegal\n");
             }
 
         // read the large scale sources, which are the variable names with a "ls" suffix
