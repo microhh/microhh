@@ -285,6 +285,7 @@ void Model<TF>::exec()
 
     // Print the initial status information.
     print_status();
+
     #ifdef USECUDA
         #ifdef _OPENMP
             omp_set_nested(1);
@@ -297,129 +298,132 @@ void Model<TF>::exec()
             const int nthreads_out=1;
         #endif
     #endif
+
     #pragma omp parallel num_threads(nthreads_out)
     {
-    #pragma omp master
-    {
-        // start the time loop
-        while (true)
+        #pragma omp master
         {
-            // Determine the time step.
-            set_time_step();
-
-            // Calculate the advection tendency.
-            boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-            advec->exec();
-            boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
-            // Calculate the diffusion tendency.
-            diff->exec(*boundary);
-
-            // Calculate the thermodynamics and the buoyancy tendency.
-            thermo->exec(timeloop->get_sub_time_step());
-
-            // Calculate the microphysics.
-            microphys->exec(*thermo, timeloop->get_sub_time_step());
-
-            // Calculate the radiation fluxes and the related heating rate.
-            radiation->exec(*thermo);
-
-            // Calculate the tendency due to damping in the buffer layer.
-            buffer->exec();
-
-            // Apply the scalar decay.
-            decay->exec(timeloop->get_sub_time_step());
-
-            // Apply the large scale forcings. Keep this one always right before the pressure.
-            force->exec(timeloop->get_sub_time_step());
-
-            // Solve the poisson equation for pressure.
-            boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-            pres->exec(timeloop->get_sub_time_step());
-            boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
-            // Allow only for statistics when not in substep and not directly after restart.
-            if (timeloop->is_stats_step())
+            // start the time loop
+            while (true)
             {
-                if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                    dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
-                {
-                    #pragma omp taskwait
-                    #ifdef USECUDA
-                        fields  ->backward_device();
-                        boundary->backward_device();
-                        thermo  ->backward_device();
-                    #endif
-                    #pragma omp task default(shared)
-                    calculate_statistics(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(), timeloop->get_iotime(), timeloop->get_dt());
+                // Determine the time step.
+                set_time_step();
 
+                // Calculate the advection tendency.
+                boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+                advec->exec();
+                boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+                // Calculate the diffusion tendency.
+                diff->exec(*boundary);
+
+                // Calculate the thermodynamics and the buoyancy tendency.
+                thermo->exec(timeloop->get_sub_time_step());
+
+                // Calculate the microphysics.
+                microphys->exec(*thermo, timeloop->get_sub_time_step());
+
+                // Calculate the radiation fluxes and the related heating rate.
+                radiation->exec(*thermo);
+
+                // Calculate the tendency due to damping in the buffer layer.
+                buffer->exec();
+
+                // Apply the scalar decay.
+                decay->exec(timeloop->get_sub_time_step());
+
+                // Apply the large scale forcings. Keep this one always right before the pressure.
+                force->exec(timeloop->get_sub_time_step());
+
+                // Solve the poisson equation for pressure.
+                boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+                pres->exec(timeloop->get_sub_time_step());
+                boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+                // Allow only for statistics when not in substep and not directly after restart.
+                if (timeloop->is_stats_step())
+                {
+                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
+                        dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+                    {
+                        #pragma omp taskwait
+                        #ifdef USECUDA
+                            fields  ->backward_device();
+                            boundary->backward_device();
+                            thermo  ->backward_device();
+                        #endif
+                        #pragma omp task default(shared)
+                        calculate_statistics(
+                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
+                                timeloop->get_iotime(), timeloop->get_dt());
+                    }
                 }
 
-            }
-
-            // Exit the simulation when the runtime has been hit.
-            if (timeloop->is_finished())
-                break;
-
-            // RUN MODE: In case of run mode do the time stepping.
-            if (sim_mode == Sim_mode::Run)
-            {
-                // Integrate in time.
-                timeloop->exec();
-
-                // Increase the time with the time step.
-                timeloop->step_time();
-
-                // Save the data for restarts.
-                if (timeloop->do_save())
-                {
-                    #pragma omp taskwait
-                    #ifdef USECUDA
-                    fields  ->backward_device();
-                    boundary->backward_device();
-                    thermo  ->backward_device();
-                    #endif
-
-                    // Save data to disk.
-                    timeloop->save(timeloop->get_iotime());
-                    fields  ->save(timeloop->get_iotime());
-                }
-            }
-
-            // POST PROCESS MODE: In case of post-process mode, load a new set of files.
-            else if (sim_mode == Sim_mode::Post)
-            {
-                // Step to the next time step.
-                timeloop->step_post_proc_time();
-
-                // In case the simulation is done, step out of the loop.
+                // Exit the simulation when the runtime has been hit.
                 if (timeloop->is_finished())
                     break;
 
-                // Load the data from disk.
-                timeloop->load(timeloop->get_iotime());
-                fields  ->load(timeloop->get_iotime());
-            }
+                // RUN MODE: In case of run mode do the time stepping.
+                if (sim_mode == Sim_mode::Run)
+                {
+                    // Integrate in time.
+                    timeloop->exec();
 
-            // Update the time dependent parameters.
-            boundary->update_time_dependent(*timeloop);
-            thermo  ->update_time_dependent(*timeloop);
-            force   ->update_time_dependent(*timeloop);
+                    // Increase the time with the time step.
+                    timeloop->step_time();
 
-            // Set the boundary conditions.
-            boundary->exec(*thermo);
+                    // Save the data for restarts.
+                    if (timeloop->do_save())
+                    {
+                        #pragma omp taskwait
+                        #ifdef USECUDA
+                        fields  ->backward_device();
+                        boundary->backward_device();
+                        thermo  ->backward_device();
+                        #endif
 
-            // Calculate the field means, in case needed.
-            // fields->exec();
+                        // Save data to disk.
+                        timeloop->save(timeloop->get_iotime());
+                        fields  ->save(timeloop->get_iotime());
+                    }
+                }
 
-            // Get the viscosity to be used in diffusion.
-            diff->exec_viscosity(*boundary, *thermo);
+                // POST PROCESS MODE: In case of post-process mode, load a new set of files.
+                else if (sim_mode == Sim_mode::Post)
+                {
+                    // Step to the next time step.
+                    timeloop->step_post_proc_time();
 
-            // Write status information to disk.
-            print_status();
+                    // In case the simulation is done, step out of the loop.
+                    if (timeloop->is_finished())
+                        break;
 
-        } // End time loop.
-    }}  //End OpenMP master and parallel
+                    // Load the data from disk.
+                    timeloop->load(timeloop->get_iotime());
+                    fields  ->load(timeloop->get_iotime());
+                }
+
+                // Update the time dependent parameters.
+                boundary->update_time_dependent(*timeloop);
+                thermo  ->update_time_dependent(*timeloop);
+                force   ->update_time_dependent(*timeloop);
+
+                // Set the boundary conditions.
+                boundary->exec(*thermo);
+
+                // Calculate the field means, in case needed.
+                // fields->exec();
+
+                // Get the viscosity to be used in diffusion.
+                diff->exec_viscosity(*boundary, *thermo);
+
+                // Write status information to disk.
+                print_status();
+
+            } // End time loop.
+        } // End OpenMP master region.
+    } // End OpenMP parallel region.
+
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
@@ -472,6 +476,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Do the statistics.
     if(stats->do_statistics(itime))
     {
+        // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 
         stats->initialize_masks();
@@ -494,6 +499,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             }
         }
         stats->finalize_masks();
+
         // Calculate statistics
         fields   ->exec_stats(*stats, *diff);
         thermo   ->exec_stats(*stats, *diff);
@@ -504,25 +510,26 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
         // Store the statistics data.
         stats->exec(iteration, time, itime);
-}
+    }
 
-//    // Save the selected cross sections to disk, cross sections are handled on CPU.
-   if(cross->do_cross(itime))
+    // Save the selected cross sections to disk, cross sections are handled on CPU.
+    if (cross->do_cross(itime))
     {
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
-//        boundary->exec_cross(iotime);
+        // boundary->exec_cross(iotime);
     }
-   // Save the 3d dumps to disk
-    if(dump->do_dump(itime))
+
+    // Save the 3d dumps to disk.
+    if (dump->do_dump(itime))
     {
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
     }
 
-    if(column->do_column(itime))
+    if (column->do_column(itime))
     {
         fields->exec_column(*column);
         thermo->exec_column(*column);
@@ -627,6 +634,7 @@ void Model<TF>::print_status()
                     iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
             std::fflush(dnsout);
         }
+
         if (!(cfl>=0. && cfl < 10.))
         {
             std::string error_message = "Simulation has non-finite numbers";
