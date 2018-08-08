@@ -142,7 +142,7 @@ if(DOXYGEN_FOUND)
     ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
     COMMENT "Generating API documentation with Doxygen." VERBATIM
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_INSTALL_PREFIX})
 else(DOXYGEN)
   message(STATUS "WARNING: Doxygen not found - Reference manual will not be created.")
 endif()
