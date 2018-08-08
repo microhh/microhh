@@ -33,8 +33,10 @@
 namespace
 {
     template<typename TF>
-    void enforce_exponential_decay(TF* restrict tend, const TF* var, const TF decaytime, const TF dt, const int istart, const int iend, const int jstart, const int jend,
-                            const int kstart, const int kend, const int jj, const int kk)
+    void enforce_exponential_decay(
+            TF* restrict tend, const TF* var, const TF decaytime, const TF dt,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
     {
         const TF rate = 1./(std::max(decaytime, dt));
 
@@ -66,7 +68,7 @@ void Decay<TF>::init(Input& inputin)
     std::string type;
     for (auto& it : fields.st)
     {
-        type = inputin.get_item<std::string>("decay", "swdecay", it.first,"0");
+        type = inputin.get_item<std::string>("decay", "swdecay", it.first, "0");
         if (type == "0")
         {
         }
@@ -95,7 +97,10 @@ void Decay<TF>::exec(double dt)
     {
         if (it.second.type == Decay_type::exponential)
         {
-            enforce_exponential_decay<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            enforce_exponential_decay<TF>(
+                    fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
         }
     }
 }
@@ -117,7 +122,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     if (mask_name == "couvreux")
     {
-        if(fields.sp.find("couvreux")==fields.sp.end())
+        if (fields.sp.find("couvreux") == fields.sp.end())
         {
             std::string message = "Couvreux mask not available without couvreux scalar";
             throw std::runtime_error(message);
@@ -127,6 +132,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
         auto couvreux = fields.get_tmp();
         auto couvreuxh = fields.get_tmp();
+
         // Calculate mean and variance
         for (int k=gd.kstart; k<gd.kend; ++k)
         {
@@ -138,17 +144,16 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                 for (int i=gd.istart; i<gd.iend; ++i)
                 {
                     const int ijk = i + j*gd.icells + k*gd.ijcells;
-                    mean+=fields.sp.at("couvreux")->fld[ijk];
-                    var +=fields.sp.at("couvreux")->fld[ijk]*fields.sp.at("couvreux")->fld[ijk];
+                    mean += fields.sp.at("couvreux")->fld[ijk];
+                    var  += fields.sp.at("couvreux")->fld[ijk]*fields.sp.at("couvreux")->fld[ijk];
                 }
             }
             master.sum(&mean,1);
             master.sum(&var,1);
-            mean/=ijtot;
-            var/=ijtot;
+            mean /= ijtot;
+            var /= ijtot;
             var -= mean*mean;
             TF std = sqrt(var);
-
 
             for (int j=gd.jstart; j<gd.jend; ++j)
             {
@@ -159,7 +164,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                     couvreux->fld[ijk] = fields.sp.at("couvreux")->fld[ijk] - mean - std;
                 }
             }
-            const int ijk = gd.istart +gd.jstart*gd.icells + k*gd.ijcells;
+            const int ijk = gd.istart + gd.jstart*gd.icells + k*gd.ijcells;
         }
         grid.interpolate_2nd(couvreuxh->fld.data(), couvreux->fld.data(), gd.sloc.data(), gd.wloc.data());
 
@@ -172,11 +177,10 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     }
     else
     {
-        std::string message = "Decay can not provide mask: \"" + mask_name +"\"";
+        std::string message = "Decay cannot provide mask: \"" + mask_name +"\"";
         throw std::runtime_error(message);
     }
 }
-
 
 template class Decay<double>;
 template class Decay<float>;
