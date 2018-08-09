@@ -35,8 +35,10 @@ namespace
     namespace fm = Fast_math;
 
     template<typename TF>
-    void calculate_du(TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void calculate_du(
+            TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -57,12 +59,14 @@ namespace
     }
 
     template<typename TF>
-    void momentum_fluxgrad(TF* restrict ufluxbot, TF* restrict vfluxbot,
-                      TF* restrict ugradbot, TF* restrict vgradbot,
-                      TF* restrict u, TF* restrict v,
-                      TF* restrict ubot, TF* restrict vbot,
-                      TF* restrict dutot, const TF Cm, const TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void momentum_fluxgrad(
+            TF* restrict ufluxbot, TF* restrict vfluxbot,
+            TF* restrict ugradbot, TF* restrict vgradbot,
+            TF* restrict u, TF* restrict v,
+            TF* restrict ubot, TF* restrict vbot,
+            TF* restrict dutot, const TF Cm, const TF zsl,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -82,9 +86,11 @@ namespace
     }
 
     template<typename TF>
-    void scalar_fluxgrad(TF* restrict sfluxbot, TF* restrict sgradbot, TF* restrict s, TF* restrict sbot,
-                    TF* restrict dutot, const TF Cs, const TF zsl,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void scalar_fluxgrad(
+            TF* restrict sfluxbot, TF* restrict sgradbot, TF* restrict s, TF* restrict sbot,
+            TF* restrict dutot, const TF Cs, const TF zsl,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -102,8 +108,9 @@ namespace
     }
 
     template<typename TF>
-    void surface_scaling(TF* restrict ustar, TF* restrict obuk, TF* restrict dutot, TF* restrict bfluxbot, const TF Cm,
-                    const int istart, const int iend, const int jstart, const int jend, const int jj)
+    void surface_scaling(
+            TF* restrict ustar, TF* restrict obuk, TF* restrict dutot, TF* restrict bfluxbot, const TF Cm,
+            const int istart, const int iend, const int jstart, const int jend, const int jj)
     {
 
         const double sqrt_Cm = sqrt(Cm);
