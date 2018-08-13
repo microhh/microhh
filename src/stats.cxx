@@ -972,7 +972,7 @@ void Stats<TF>::calc_stats(
         else if (it == "diff")
         {
             auto diffusion = fields.get_tmp();
-            diff.diff_flux(*diffusion, fld);
+            // diff.diff_flux(*diffusion, fld);
 
             for (auto& m : masks)
             {
@@ -981,8 +981,11 @@ void Stats<TF>::calc_stats(
                 else
                     flag = m.second.flag;
 
-                calc_mean(m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                calc_mean(
+                        m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
 

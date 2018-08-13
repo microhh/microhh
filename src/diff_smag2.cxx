@@ -639,46 +639,55 @@ namespace
     }
 
     template<typename TF>
-    void calc_diff_flux_c(TF* const restrict out, const TF* const restrict data, const TF* const evisc, const TF tPr, const TF* const dzhi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,const int icells, const int ijcells)
+    void calc_diff_flux_c(
+            TF* const restrict out, const TF* const restrict data, const TF* const evisc,
+            const TF tPr, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
         {
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ijk = i + j*icells + k*ijcells;
-                        const TF eviscc = 0.5*(evisc[ijk-ijcells]+evisc[ijk])/tPr;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const TF eviscc = 0.5*(evisc[ijk-ijcells]+evisc[ijk])/tPr;
 
-                        out[ijk] =eviscc*(data[ijk] - data[ijk-ijcells])*dzhi[k];
-                    }
+                    out[ijk] = eviscc*(data[ijk] - data[ijk-ijcells])*dzhi[k];
+                }
         }
     }
 
     template<typename TF>
-    void calc_diff_flux_u(TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc, const TF dxi, const TF* const dzhi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,const int icells, const int ijcells)
+    void calc_diff_flux_u(
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            const TF dxi, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int ii = 1;
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
         {
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ijk = i + j*icells + k*ijcells;
-                        const TF eviscu = 0.25*(evisc[ijk-ii-ijcells]+evisc[ijk-ii]+evisc[ijk-ijcells]+evisc[ijk]);
-                        out[ijk] = eviscu*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
-                    }
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const TF eviscu = 0.25*(evisc[ijk-ii-ijcells]+evisc[ijk-ii]+evisc[ijk-ijcells]+evisc[ijk]);
+                    out[ijk] = eviscu*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                }
         }
     }
 
     template<typename TF>
-    void calc_diff_flux_v(TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc, const TF dyi, const TF* const dzhi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,const int icells, const int ijcells)
+    void calc_diff_flux_v(
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            const TF dyi, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
@@ -994,24 +1003,34 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
+void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
 {
     auto& gd = grid.get_grid_data();
 
-    int nstart = gd.istart+gd.jstart*gd.icells+gd.kstart*gd.ijcells;
-    calc_diff_flux_bc(&out.fld[nstart], data.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    int nstart = gd.istart + gd.jstart*gd.icells + gd.kstart*gd.ijcells;
+    calc_diff_flux_bc(&out.fld[nstart], fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
 
-    int nend = gd.istart+gd.jstart*gd.icells+gd.kend*gd.ijcells;
-    calc_diff_flux_bc(&out.fld[nend], data.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
-    if (data.loc[0]==1)
-        calc_diff_flux_u(fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-            gd.dxi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-   else if (data.loc[1]==1)
-       calc_diff_flux_v(out.fld.data(), data.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-            gd.dyi, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-   else
-       calc_diff_flux_c(out.fld.data(), data.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
-            gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    int nend = gd.istart + gd.jstart*gd.icells + gd.kend*gd.ijcells;
+    calc_diff_flux_bc(&out.fld[nend], fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+
+    if (fld_in.loc[0] == 1)
+        calc_diff_flux_u(
+                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                gd.dxi, gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else if (fld_in.loc[1] == 1)
+        calc_diff_flux_v(
+                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                gd.dyi, gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else
+        calc_diff_flux_c(
+                out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 }
 
 template class Diff_smag2<double>;
