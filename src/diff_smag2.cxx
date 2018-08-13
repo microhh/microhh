@@ -640,10 +640,10 @@ namespace
 
     template<typename TF>
     void calc_diff_flux_c(
-            TF* const restrict out, const TF* const restrict data, const TF* const evisc,
-            const TF tPr, const TF* const dzhi,
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict evisc,
+            const TF tPr, const TF* const restrict dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int icells, const int ijcells)
+            const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
@@ -652,10 +652,10 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + j*icells + k*ijcells;
-                    const TF eviscc = 0.5*(evisc[ijk-ijcells]+evisc[ijk])/tPr;
+                    const int ijk = i + j*jj + k*kk;
+                    const TF eviscc = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
 
-                    out[ijk] = eviscc*(data[ijk] - data[ijk-ijcells])*dzhi[k];
+                    out[ijk] = - eviscc*(data[ijk] - data[ijk-kk])*dzhi[k];
                 }
         }
     }
