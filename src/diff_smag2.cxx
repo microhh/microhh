@@ -704,14 +704,18 @@ namespace
     }
 
     template<typename TF>
-    void calc_diff_flux_bc(TF* const restrict out, const TF* const restrict data, const int istart, const int iend, const int jstart, const int jend, const int icells)
+    void calc_diff_flux_bc(
+            TF* const restrict out, const TF* const restrict data,
+            const int istart, const int iend, const int jstart, const int jend, const int k,
+            const int icells, const int ijcells)
     {
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                out[ij] = data[ij];
+                const int ijk = i + j*icells + k*ijcells;
+                out[ijk] = data[ij];
             }
     }
 
@@ -1007,12 +1011,12 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
-    int nstart = gd.istart + gd.jstart*gd.icells + gd.kstart*gd.ijcells;
-    calc_diff_flux_bc(&out.fld[nstart], fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    // Calculate the boundary fluxes.
+    // CvH: Is this OK for wall-resolved LES?
+    calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
 
-    int nend = gd.istart + gd.jstart*gd.icells + gd.kend*gd.ijcells;
-    calc_diff_flux_bc(&out.fld[nend], fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
-
+    // Calculate the interior.
     if (fld_in.loc[0] == 1)
         calc_diff_flux_u(
                 out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),

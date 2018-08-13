@@ -63,6 +63,9 @@ namespace
             return (value > threshold);
     }
 
+    template<typename TF>
+    TF in_mask(const unsigned int mask, const unsigned int flag) { return static_cast<TF>( (mask & flag) != 0 ); }
+
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres(
             unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot, const unsigned int flag, const unsigned int flagh,
@@ -192,7 +195,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += static_cast<TF>((mask[ijk] & flag)>0)*(fld[ijk] + offset);
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*(fld[ijk] + offset);
                     }
 
                 prof[k] /= static_cast<TF>(nmask[k]);
@@ -938,7 +941,6 @@ void Stats<TF>::calc_stats(
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             }
-
         }
         else if (it == "w")
         {
@@ -955,13 +957,19 @@ void Stats<TF>::calc_stats(
 
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
-                    calc_flux_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    calc_flux_2nd(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
+                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(),
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
-                    calc_flux_4th(m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                        tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    calc_flux_4th(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
+                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(),
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -972,7 +980,7 @@ void Stats<TF>::calc_stats(
         else if (it == "diff")
         {
             auto diffusion = fields.get_tmp();
-            // diff.diff_flux(*diffusion, fld);
+            diff.diff_flux(*diffusion, fld);
 
             for (auto& m : masks)
             {
@@ -1184,7 +1192,8 @@ void Stats<TF>::calc_covariance(
 
 template<typename TF>
 void Stats<TF>::calc_flux_2nd(
-        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, TF* const restrict w, const TF* const restrict wmean,
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean,
+        TF* const restrict w, const TF* const restrict wmean,
         TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
         const int icells, const int ijcells)
@@ -1215,8 +1224,8 @@ void Stats<TF>::calc_flux_2nd(
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                    const int ijk = i + j*icells + k*ijcells;
+                    prof[k] += in_mask<TF>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
                 }
 
             prof[k] /= static_cast<TF>(nmask[k]);
@@ -1266,7 +1275,7 @@ void Stats<TF>::calc_flux_4th(
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                    prof[k] += in_mask<TF>(mask[ijk], flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
                 }
             prof[k] /= static_cast<TF>(nmask[k]);
         }
