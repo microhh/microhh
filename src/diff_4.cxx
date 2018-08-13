@@ -172,8 +172,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_diff_flux(TF* const restrict out, const TF* const restrict data, const TF visc, const TF* const dzhi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,const int icells, const int ijcells)
+    void calc_diff_flux(
+            TF* const restrict out, const TF* const restrict data, const TF visc, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int jj  = 1*icells;
         const int kk1 = 1*ijcells;
@@ -187,7 +189,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*icells + k*ijcells;
-                        out[ijk] = visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi[k];
+                        out[ijk] = - visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi[k];
                     }
         }
     }
@@ -289,10 +291,13 @@ void Diff_4<TF>::exec(Boundary<TF>& boundary)
 
 
 template<typename TF>
-void Diff_4<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
+void Diff_4<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& in)
 {
     auto& gd = grid.get_grid_data();
-    calc_diff_flux(out.fld.data(), data.fld.data(), data.visc, gd.dzhi4.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    calc_diff_flux(
+            out.fld.data(), in.fld.data(), in.visc, gd.dzhi4.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 }
 
 template class Diff_4<double>;

@@ -219,11 +219,15 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
         sp.at(s)->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
-    // initialize the basic set of fields
-
+    // Initialize the basic set of fields.
     init_momentum_field("u", "U velocity", "m s-1", gd.uloc);
     init_momentum_field("v", "V velocity", "m s-1", gd.vloc);
     init_momentum_field("w", "Vertical velocity", "m s-1", gd.wloc);
+
+    mp.at("u")->visc = visc;
+    mp.at("v")->visc = visc;
+    mp.at("w")->visc = visc;
+
     init_diagnostic_field("p", "Pressure", "Pa", gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
@@ -338,7 +342,7 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
         std::vector<std::string> *dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+        std::vector<std::string>::iterator dumpvar = dumplist_global->begin();
         while (dumpvar != dumplist_global->end())
         {
             if (a.count(*dumpvar))
