@@ -68,14 +68,14 @@ namespace
 
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres(
-            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot, const unsigned int flag, const unsigned int flagh,
+            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
+            const unsigned int flag, const unsigned int flagh,
             const TF* const restrict fld, const TF* const restrict fldh,
             const TF* const restrict fld_bot, const TF threshold,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
             const int icells, const int ijcells)
     {
-
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -86,6 +86,16 @@ namespace
                     mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk], threshold);
                     mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
                 }
+
+        // Set the top value for the flux level.
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*icells + kend*ijcells;
+                mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
+            }
 
         // Set the mask for surface projected quantities
         #pragma omp parallel for
@@ -98,10 +108,10 @@ namespace
             }
     }
 
-
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres_pert(
-            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot, const unsigned int flag, const unsigned int flagh,
+            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
+            const unsigned int flag, const unsigned int flagh,
             const TF* const restrict fld, const TF* const restrict fld_mean, const TF* const restrict fldh,
             const TF* const restrict fldh_mean, const TF* const restrict fld_bot, const TF threshold,
             const int istart, const int jstart, const int kstart,
