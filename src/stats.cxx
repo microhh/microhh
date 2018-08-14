@@ -174,8 +174,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    nmask_full[k] += ((mfield[ijk] & flag )>0);
-                    nmask_half[k] += ((mfield[ijk] & flagh)>0);
+                    nmask_full[k] += in_mask<int>(mfield[ijk], flag );
+                    nmask_half[k] += in_mask<int>(mfield[ijk], flagh);
                 }
         }
 
@@ -186,8 +186,8 @@ namespace
             {
                 const int ij      = i + j*icells;
                 const int ijk     = i + j*icells + kend*ijcells;
-                nmask_bottom     += ((mfield_bot[ij] & flag)>0);
-                nmask_half[kend] += ((mfield[ijk] & flagh)>0);
+                nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
+                nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
     }
 
@@ -393,7 +393,7 @@ namespace
                 for (int k=kstart; k<kend; ++k)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    if ((mask[ijk] & flag) > 0)
+                    if (in_mask<bool>(mask[ijk], flag))
                     {
                         maskincolumn = 1.;
                         if (fld[ijk] + offset > threshold)
