@@ -199,8 +199,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    nmask_full[k] += ((mfield[ijk] & flag )>0);
-                    nmask_half[k] += ((mfield[ijk] & flagh)>0);
+                    nmask_full[k] += in_mask<int>(mfield[ijk], flag );
+                    nmask_half[k] += in_mask<int>(mfield[ijk], flagh);
                 }
         }
 
@@ -211,8 +211,8 @@ namespace
             {
                 const int ij      = i + j*icells;
                 const int ijk     = i + j*icells + kend*ijcells;
-                nmask_bottom     += ((mfield_bot[ij] & flag)>0);
-                nmask_half[kend] += ((mfield[ijk] & flagh)>0);
+                nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
+                nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
     }
 
@@ -278,7 +278,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
                     }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
@@ -304,7 +304,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += static_cast<TF>(mask[ijk] & flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
                     }
 
                 prof[k] /= static_cast<TF>(nmask[k]);
@@ -345,7 +345,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += static_cast<TF>((mask[ijk] & flag) > 0)*(fld[ijk] + offset > threshold);
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*(fld[ijk] + offset > threshold);
                     }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
@@ -367,7 +367,7 @@ namespace
                 for (int k=kstart; k<kend; ++k)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    if ((mask[ijk] & flag)>0)
+                    if (in_mask<bool>(mask[ijk], flag))
                     {
                         ++nmask_proj;
                         break;
@@ -410,7 +410,7 @@ namespace
                 for (int k=kstart; k<kend; ++k)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
-                    if ((mask[ijk] & flag) > 0)
+                    if (in_mask<bool>(mask[ijk], flag))
                     {
                         maskincolumn = 1.;
                         if (fld[ijk] + offset > threshold)
@@ -1035,13 +1035,17 @@ void Stats<TF>::calc_stats(
 
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
-                    calc_grad_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    calc_grad_2nd(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
-                    calc_grad_4th(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    calc_grad_4th(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
                 }
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1078,8 +1082,10 @@ void Stats<TF>::calc_stats(
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
 
-                calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                calc_frac(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 //set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
