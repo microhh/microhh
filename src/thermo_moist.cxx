@@ -209,7 +209,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
 
-                    bh[ijk] = buoyancy(exnh, thlh[ijk], qth[ijk], ql[ij], thvrefh[k]);
+                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
                 }
         }
    }
@@ -328,7 +328,7 @@ namespace
      {
            using Finite_difference::O2::interp2;
 
-           for (int k=kstart+1; k<kend; k++)
+           for (int k=kstart+1; k<kend+1; k++)
            {
                const TF exnh = exner(ph[k]);
                for (int j=jstart; j<jend; j++)
