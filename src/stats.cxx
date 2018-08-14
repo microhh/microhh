@@ -248,16 +248,16 @@ namespace
             TF& out, const TF* const restrict fld, const TF offset,
             const int istart, const int iend, const int jstart, const int jend, const int icells, const int itot, const int jtot)
     {
-                out = 0.;
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ij  = i + j*icells;
-                        out = fld[ij] + offset;
-                    }
+        out = 0.;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                out = fld[ij] + offset;
+            }
 
-                out /= static_cast<TF>(itot*jtot);
+        out /= static_cast<TF>(itot*jtot);
     }
 
     template<typename TF>
@@ -375,9 +375,9 @@ namespace
                 }
             }
 
+        path = 0.;
         if (nmask_proj > 0)
         {
-            path = 0.;
             for (int k=kstart; k<kend; ++k)
             {
                 if (nmask[k])
@@ -387,8 +387,6 @@ namespace
             }
             path /= static_cast<TF>(nmask_proj);
         }
-        else
-            path = netcdf_fp_fillvalue<TF>();
 
     }
 
@@ -426,7 +424,7 @@ namespace
         if (nmaskcover>0)
             cover /= nmaskcover;
         else
-            cover = netcdf_fp_fillvalue<TF>();
+            cover = 0;
     }
 
     bool has_only_digits(const std::string s)
@@ -1088,7 +1086,7 @@ void Stats<TF>::calc_stats(
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                //set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
         }
         else
