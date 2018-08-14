@@ -66,6 +66,31 @@ namespace
     template<typename TF>
     TF in_mask(const unsigned int mask, const unsigned int flag) { return static_cast<TF>( (mask & flag) != 0 ); }
 
+    template<typename TF>
+    void set_flag(unsigned int& flag, const int*& restrict nmask, const Mask<TF>& m, const int loc)
+    {
+        if (loc == 0)
+        {
+            flag = m.flag;
+            nmask = m.nmask.data();
+        }
+        else
+        {
+            flag = m.flagh;
+            nmask = m.nmaskh.data();
+        }
+    }
+
+    template<typename TF>
+    void set_fillvalue_prof(TF* const restrict data, const int* const restrict nmask, const int kstart, const int kcells)
+    {
+        for (int k=kstart; k<kcells; ++k)
+        {
+            if (nmask[k] == 0)
+                data[k] = netcdf_fp_fillvalue<TF>();
+        }
+    }
+
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres(
             unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
@@ -214,8 +239,6 @@ namespace
 
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
-            else
-                prof[k] = netcdf_fp_fillvalue<TF>();
         }
     }
 
@@ -259,8 +282,6 @@ namespace
                     }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
-            else
-                prof[k] = netcdf_fp_fillvalue<TF>();
         }
     }
 
@@ -288,8 +309,6 @@ namespace
 
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
-            else
-                prof[k] = netcdf_fp_fillvalue<TF>();
         }
     }
 
@@ -330,8 +349,6 @@ namespace
                     }
                 prof[k] /= static_cast<TF>(nmask[k]);
             }
-            else
-                prof[k] = netcdf_fp_fillvalue<TF>();
         }
     }
 
@@ -907,32 +924,20 @@ void Stats<TF>::calc_stats(
     auto it = std::find(operations.begin(), operations.end(), "mean");
     if (it != operations.end())
     {
-        // auto it1 = std::find(varlist.begin(), varlist.end(), varname);
-        // if (it1 != varlist.end())
-        // {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
-
+                set_flag(flag, nmask, m.second, fld.loc[2]);
                 calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+
+                set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
             }
 
             if (varname == "w")
                 wmean_set = true;
 
             operations.erase(it);
-        //}
     }
 
     // Loop over all other operations.
@@ -949,25 +954,15 @@ void Stats<TF>::calc_stats(
             int power = std::stoi(it);
             for (auto& m : masks)
             {
-
-                if (fld.loc[2] == 0)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
-
-
+                set_flag(flag, nmask, m.second, fld.loc[2]);
                 calc_moment(
                         m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
                         power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+
             }
         }
         else if (it == "w")
@@ -978,18 +973,7 @@ void Stats<TF>::calc_stats(
             auto tmp = fields.get_tmp();
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 1)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
-
-
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(
@@ -1008,6 +992,7 @@ void Stats<TF>::calc_stats(
                 }
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
 
             fields.release_tmp(tmp);
@@ -1019,24 +1004,14 @@ void Stats<TF>::calc_stats(
 
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 1)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
-
-
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
                 calc_mean(
                         m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
 
             fields.release_tmp(diffusion);
@@ -1048,23 +1023,15 @@ void Stats<TF>::calc_stats(
                 add_fluxes(m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
                         netcdf_fp_fillvalue<TF>(), gd.kstart, gd.kend);
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-            }
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
 
         }
         else if (it == "grad")
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 1)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
 
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
@@ -1078,22 +1045,14 @@ void Stats<TF>::calc_stats(
                 }
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-            }
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
         }
         else if (it == "path")
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
+                set_flag(flag, nmask, m.second, fld.loc[2]);
 
                 calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
                         mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
@@ -1105,43 +1064,26 @@ void Stats<TF>::calc_stats(
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
+                set_flag(flag, nmask, m.second, fld.loc[2]);
 
                 calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
                 master.sum(&m.second.tseries.at(name).data, 1);
-            }
+        }
         }
         else if (it == "frac")
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                {
-                    flag = m.second.flag;
-                    nmask = m.second.nmask.data();
-                }
-                else
-                {
-                    flag = m.second.flagh;
-                    nmask = m.second.nmaskh.data();
-                }
+                set_flag(flag, nmask, m.second, fld.loc[2]);
 
                 calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
-                master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
-            }
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                //set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
         }
         else
         {
@@ -1221,6 +1163,8 @@ void Stats<TF>::calc_covariance(
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+
             }
         }
         else
