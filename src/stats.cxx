@@ -178,12 +178,16 @@ namespace
                     nmask_half[k] += ((mfield[ijk] & flagh)>0);
                 }
         }
-        nmask_bottom = 0;
+
+        nmask_bottom     = 0;
+        nmask_half[kend] = 0;
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
-                const int ij = i + j*icells;
-                nmask_bottom += ((mfield_bot[ij] & flag)>0);
+                const int ij      = i + j*icells;
+                const int ijk     = i + j*icells + kend*ijcells;
+                nmask_bottom     += ((mfield_bot[ij] & flag)>0);
+        //        nmask_half[kend] += ((mfield[ijk] & flagh)>0);
             }
     }
 
@@ -894,6 +898,7 @@ void Stats<TF>::calc_stats(
     auto& gd = grid.get_grid_data();
 
     unsigned int flag;
+    const int* nmask;
     std::string name;
 
     sanitize_operations_vector(operations);
@@ -908,11 +913,17 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 if (fld.loc[2] == 0)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
                 else
+                {
                     flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
 
-                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
             }
@@ -940,12 +951,19 @@ void Stats<TF>::calc_stats(
             {
 
                 if (fld.loc[2] == 0)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
                 else
+                {
                     flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
+
 
                 calc_moment(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                        m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
                         power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
@@ -960,17 +978,24 @@ void Stats<TF>::calc_stats(
             auto tmp = fields.get_tmp();
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                    flag = m.second.flagh;
-                else
+                if (fld.loc[2] == 1)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
+
 
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(
                             m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
                             fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
@@ -978,7 +1003,7 @@ void Stats<TF>::calc_stats(
                     calc_flux_4th(
                             m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
                             fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, m.second.nmask.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
 
@@ -994,13 +1019,20 @@ void Stats<TF>::calc_stats(
 
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                    flag = m.second.flagh;
-                else
+                if (fld.loc[2] == 1)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
+
 
                 calc_mean(
-                        m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, m.second.nmask.data(),
+                        m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
@@ -1023,18 +1055,25 @@ void Stats<TF>::calc_stats(
         {
             for (auto& m : masks)
             {
-                if (fld.loc[2] == 0)
-                    flag = m.second.flagh;
-                else
+                if (fld.loc[2] == 1)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
+
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
-                    calc_grad_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, m.second.nmask.data(),
+                    calc_grad_2nd(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
                 else if (grid.get_spatial_order() == Grid_order::Fourth)
                 {
-                    calc_grad_4th(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, m.second.nmask.data(),
+                    calc_grad_4th(m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 }
 
@@ -1046,12 +1085,18 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 if (fld.loc[2] == 0)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
                 else
+                {
                     flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
 
                 calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
-                        mfield.data(), flag, m.second.nmask.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                        mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
                 master.sum(&m.second.tseries.at(name).data, 1);
             }
@@ -1061,11 +1106,17 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 if (fld.loc[2] == 0)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
                 else
+                {
                     flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
 
-                calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
+                calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
                 master.sum(&m.second.tseries.at(name).data, 1);
@@ -1076,11 +1127,17 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 if (fld.loc[2] == 0)
+                {
                     flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
                 else
+                {
                     flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
 
-                calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, m.second.nmask.data(),
+                calc_frac(m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
