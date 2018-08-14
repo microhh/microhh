@@ -187,7 +187,7 @@ namespace
                 const int ij      = i + j*icells;
                 const int ijk     = i + j*icells + kend*ijcells;
                 nmask_bottom     += ((mfield_bot[ij] & flag)>0);
-        //        nmask_half[kend] += ((mfield[ijk] & flagh)>0);
+                nmask_half[kend] += ((mfield[ijk] & flagh)>0);
             }
     }
 
@@ -832,7 +832,7 @@ void Stats<TF>::finalize_masks()
         calc_nmask<TF>(
                 it.second.nmask.data(), it.second.nmaskh.data(), it.second.nmask_bot,
                 mfield.data(), mfield_bot.data(), it.second.flag, it.second.flagh,
-                gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, gd.kcells);
 
         master.sum(it.second.nmask.data() , gd.kcells);
