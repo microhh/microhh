@@ -158,7 +158,7 @@ namespace
    }
 
   template<typename TF>
-  void calc_buoyancy_h(TF* restrict bh, TF* restrict thl,  TF* restrict qt,
+  void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
                        TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
                        const int istart, const int iend,
                        const int jstart, const int jend,
@@ -167,7 +167,7 @@ namespace
     {
         using Finite_difference::O2::interp2;
 
-        for (int k=kstart; k<kend; k++)
+        for (int k=kstart; k<kend+1; k++)
         {
             const TF exnh = exner(ph[k]);
 
@@ -246,7 +246,7 @@ namespace
    {
        using Finite_difference::O2::interp2;
 
-       for (int k=kstart+1; k<kend; k++)
+       for (int k=kstart+1; k<kend+1; k++)
        {
            const TF exnh = exner(ph[k]);
 
