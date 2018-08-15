@@ -314,16 +314,11 @@ namespace
 
     template<typename TF>
     void add_fluxes(
-            TF* const restrict flux, const TF* const restrict turb, const TF* const restrict diff, const TF fillvalue,
+            TF* const restrict flux, const TF* const restrict turb, const TF* const restrict diff,
             const int kstart, const int kend)
     {
         for (int k=kstart; k<kend+1; ++k)
-        {
-            if (turb[k] == fillvalue || diff[k] == fillvalue)
-                flux[k] = fillvalue;
-            else
-                flux[k] = turb[k] + diff[k];
-        }
+            flux[k] = turb[k] + diff[k];
     }
 
 
@@ -1018,8 +1013,10 @@ void Stats<TF>::calc_stats(
         {
             for (auto& m : masks)
             {
-                add_fluxes(m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
-                        netcdf_fp_fillvalue<TF>(), gd.kstart, gd.kend);
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+                add_fluxes(
+                        m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
+                        gd.kstart, gd.kend);
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
