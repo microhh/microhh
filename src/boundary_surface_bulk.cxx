@@ -68,8 +68,6 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart,
             const int jj, const int kk)
     {
-        const int ii = 1;
-
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -82,7 +80,6 @@ namespace
                 ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
                 vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
             }
-
     }
 
     template<typename TF>
@@ -92,8 +89,6 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart,
             const int jj, const int kk)
     {
-        const int ii = 1;
-
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -104,7 +99,6 @@ namespace
                 sfluxbot[ij] = -Cs * dutot[ij] * (s[ijk]-sbot[ij]);
                 sgradbot[ij] = (s[ijk]-sbot[ij])/zsl;
             }
-
     }
 
     template<typename TF>
@@ -179,8 +173,6 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    int nerror = 0;
-
     z0m = inputin.get_item<TF>("boundary", "z0m", "");
     z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
@@ -236,9 +228,6 @@ void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
 template<typename TF>
 void Boundary_surface_bulk<TF>::set_values()
 {
-    auto& gd = grid.get_grid_data();
-    const TF no_offset = 0.;
-
     // Call the base class function.
     Boundary<TF>::set_values();
 }

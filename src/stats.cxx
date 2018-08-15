@@ -668,8 +668,6 @@ const std::vector<std::string>& Stats<TF>::get_mask_list()
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
-    auto& gd = grid.get_grid_data();
-
     masks[maskname].name = maskname;
     masks[maskname].data_file = 0;
 
@@ -1265,7 +1263,6 @@ void Stats<TF>::calc_flux_4th(
 
     auto& gd = grid.get_grid_data();
 
-    const int jj  = 1*icells;
     const int kk1 = 1*ijcells;
     const int kk2 = 2*ijcells;
 
@@ -1339,8 +1336,6 @@ void Stats<TF>::calc_grad_4th(
         const int icells, const int ijcells)
 {
     using namespace Finite_difference::O4;
-
-    auto& gd = grid.get_grid_data();
 
     const int jj  = 1*icells;
     const int kk1 = 1*ijcells;
