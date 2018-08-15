@@ -492,8 +492,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
     const TF no_threshold = 0.;
     const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
     stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"}, diff);
-    stats.calc_stats("u", *mp["u"], no_offset, no_threshold, operators, diff);
-    stats.calc_stats("v", *mp["v"], no_offset, no_threshold, operators, diff);
+    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, operators, diff);
+    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, operators, diff);
 
     for (auto& it : sp)
     {
