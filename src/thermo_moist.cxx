@@ -151,7 +151,6 @@ namespace
                for (int i=istart; i<iend; i++)
                {
                    const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], thvref[k]);
                }
        }
