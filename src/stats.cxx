@@ -298,18 +298,21 @@ namespace
         #pragma omp parallel for
         for (int k=kstart; k<kend+1; ++k)
         {
-            if (nmask[k] && fld1_mean[k] != netcdf_fp_fillvalue<TF>() && fld2_mean[k] != netcdf_fp_fillvalue<TF>())
+            if (nmask[k])
             {
                 prof[k] = 0.;
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
-                    }
+                if ((fld1_mean[k] != netcdf_fp_fillvalue<TF>()) && (fld2_mean[k] != netcdf_fp_fillvalue<TF>()))
+                {
+                    for (int j=jstart; j<jend; ++j)
+                        #pragma ivdep
+                        for (int i=istart; i<iend; ++i)
+                        {
+                            const int ijk  = i + j*icells + k*ijcells;
+                            prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
+                        }
 
-                prof[k] /= static_cast<TF>(nmask[k]);
+                    prof[k] /= static_cast<TF>(nmask[k]);
+                }
             }
         }
     }
@@ -1232,18 +1235,21 @@ void Stats<TF>::calc_flux_2nd(
     for (int k=kstart; k<kend+1; ++k)
     {
         // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
-        if (nmask[k] && (fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
+        if (nmask[k])
         {
-            prof[k] = 0.;
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    prof[k] += in_mask<TF>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
-                }
+            prof[k] = 0;
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
+            {
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                    }
 
-            prof[k] /= static_cast<TF>(nmask[k]);
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
         }
     }
 }
@@ -1283,14 +1289,17 @@ void Stats<TF>::calc_flux_4th(
         if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
         {
             prof[k] = 0.;
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk  = i + j*icells + k*ijcells;
-                    prof[k] += in_mask<TF>(mask[ijk], flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
-                }
-            prof[k] /= static_cast<TF>(nmask[k]);
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()))
+            {
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        prof[k] += in_mask<TF>(mask[ijk], flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                    }
+                prof[k] /= static_cast<TF>(nmask[k]);
+            }
         }
     }
 }
