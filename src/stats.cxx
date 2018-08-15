@@ -1313,12 +1313,11 @@ void Stats<TF>::calc_grad_2nd(
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
+                    prof[k] += in_mask<TF>(mask[ijk], flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
                 }
+
             prof[k] /= static_cast<TF>(nmask[k]);
         }
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
 
     }
 }
@@ -1349,12 +1348,11 @@ void Stats<TF>::calc_grad_4th(
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    prof[k] += static_cast<TF>(mask[ijk] & flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                    prof[k] += in_mask<TF>(mask[ijk], flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
                 }
+
             prof[k] /= static_cast<TF>(nmask[k]);
         }
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 }
 
