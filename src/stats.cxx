@@ -84,7 +84,7 @@ namespace
     template<typename TF>
     void set_fillvalue_prof(TF* const restrict data, const int* const restrict nmask, const int kstart, const int kcells)
     {
-        for (int k=kstart; k<kcells; ++k)
+        for (int k=0; k<kcells; ++k)
         {
             if (nmask[k] == 0)
                 data[k] = netcdf_fp_fillvalue<TF>();
@@ -133,6 +133,7 @@ namespace
             }
     }
 
+    /*
     template<typename TF, Stats_mask_type mode>
     void calc_mask_thres_pert(
             unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
@@ -164,8 +165,8 @@ namespace
                 const int ij  = i + j*icells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
             }
-
     }
+    */
 
     template<typename TF>
     void calc_area(
@@ -181,13 +182,14 @@ namespace
         }
     }
 
-    // Sets all the mask values to one (non-masked field)
+    // Calculate the number of points contained in the mask.
     template<typename TF>
     void calc_nmask(
             int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
             const unsigned int* const mfield, const unsigned int* const mfield_bot, const unsigned int flag, const unsigned int flagh,
             const int istart, const int iend, const int jstart, const int jend,
-            const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
+            const int kstart, const int kend,
+            const int icells, const int ijcells, const int kcells)
     {
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
@@ -1229,7 +1231,8 @@ void Stats<TF>::calc_flux_2nd(
     #pragma omp parallel for
     for (int k=kstart; k<kend+1; ++k)
     {
-        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
+        if (nmask[k] && (fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
         {
             prof[k] = 0.;
             for (int j=jstart; j<jend; ++j)
@@ -1242,8 +1245,6 @@ void Stats<TF>::calc_flux_2nd(
 
             prof[k] /= static_cast<TF>(nmask[k]);
         }
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 }
 
@@ -1291,8 +1292,6 @@ void Stats<TF>::calc_flux_4th(
                 }
             prof[k] /= static_cast<TF>(nmask[k]);
         }
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 }
 
