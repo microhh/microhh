@@ -53,11 +53,11 @@ void Timedep<TF>::create_timedep_prof()
     // Sort the times
     headers.erase(headers.begin());
     std::sort(headers.begin(), headers.end());
-    std::vector<TF> tmp(gd.kcells);
+    std::vector<TF> tmp(gd.kmax);
     for (auto& it : headers)
     {
         time.push_back(std::stod(it));
-        data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
+        data_block.get_vector(tmp, it, gd.kmax, 0, 0);
         data.insert(data.end(),tmp.begin(),tmp.end());
     }
     #ifdef USECUDA
