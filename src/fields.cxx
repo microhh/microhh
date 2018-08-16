@@ -1071,10 +1071,11 @@ void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
         dump.save_dump(a.at(it)->fld.data(), a.at(it)->name, iotime);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
     column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
@@ -1087,6 +1088,7 @@ void Fields<TF>::exec_column(Column<TF>& column)
 
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }
+#endif
 
 template<typename TF>
 bool Fields<TF>::has_mask(std::string mask_name)

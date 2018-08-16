@@ -665,27 +665,19 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     fields.release_tmp(output);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    for (auto& it : dumplist)
-    {
-        if (it == "b")
-            get_thermo_field(*output, "b",false, true);
-        else if (it == "T")
-            get_thermo_field(*output, "T",false, true);
-        else
-        {
-            master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
-        }
-        column.calc_column(it, output->fld.data(), no_offset);
-    }
+    get_thermo_field(*output, "b",false, true);
+    column.calc_column("b", output->fld.data(), no_offset);
+
     fields.release_tmp(output);
 }
+#endif
 
 template<typename TF>
 void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)

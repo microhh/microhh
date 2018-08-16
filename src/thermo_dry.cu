@@ -27,6 +27,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
+#include "column.h"
 #include "tools.h"
 
 namespace
@@ -318,5 +319,18 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+void Thermo_dry<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp_g();
+
+    get_thermo_field_g(*output, "b", false);
+    column.calc_column("b", output->fld_g, no_offset);
+
+    fields.release_tmp(output);
+}
+#endif
 template class Thermo_dry<double>;
 template class Thermo_dry<float>;

@@ -29,6 +29,7 @@
 #include "finite_difference.h"
 #include "master.h"
 #include "tools.h"
+#include "column.h"
 #include "thermo_moist_functions.h"
 
 namespace
@@ -569,6 +570,24 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Thermo_moist<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp_g();
+
+    get_thermo_field_g(*output, "b", false);
+    column.calc_column("b", output->fld_g, no_offset);
+
+    get_thermo_field_g(*output, "ql", false);
+    column.calc_column("ql", output->fld_g, no_offset);
+
+
+    fields.release_tmp_g(output);
 }
 #endif
 

@@ -144,7 +144,7 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     {
         it.z_dim  = it.data_file->addDim("z" , gd.kmax);
         it.zh_dim = it.data_file->addDim("zh", gd.kmax+1);
-        it.t_dim  = it.data_file->addDim("t");
+        it.t_dim  = it.data_file->addDim("time");
 
         NcVar z_var;
         NcVar zh_var;
@@ -216,7 +216,7 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
 
     auto& gd = grid.get_grid_data();
     // write message in case column is triggered
-    master.print_message("Saving column for time %f\n", time);
+    // master.print_message("Saving column for time %f\n", time);
 
     // put the data into the NetCDF file
     for(auto& it: columns)
@@ -270,7 +270,7 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
     }
 
 }
-
+#ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(std::string profname, const TF* const restrict data,
                       const TF offset)
@@ -281,13 +281,14 @@ void Column<TF>::calc_column(std::string profname, const TF* const restrict data
 
     for(auto& it: columns)
     {
-        for (int k=1; k<gd.kcells; k++)
+        for (int k=0; k<gd.kcells; k++)
         {
             const int ijk  = it.coord[0] + it.coord[1]*jj + k*kk;
             it.profs.at(profname).data.data()[k] = (data[ijk] + offset);
         }
     }
 }
+#endif
 
 template class Column<double>;
 template class Column<float>;

@@ -752,34 +752,19 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
 
 }
 
-
+#ifndef USECUDA
 template<typename TF>
 void Thermo_vapor<TF>::exec_column(Column<TF>& column)
 {
-    auto& gd = grid.get_grid_data();
-
-    #ifndef USECUDA
-    bs_stats = bs;
-    #endif
-
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    for (auto& it : dumplist)
-    {
-        if (it == "b")
-            get_thermo_field(*output, "b", false, true);
-        else if (it == "T")
-            get_thermo_field(*output, "T", false, true);
-        else
-        {
-            master.print_error("Thermo dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
-        }
-        column.calc_column(it, output->fld.data(), no_offset);
-    }
+    get_thermo_field(*output, "b",false, true);
+    column.calc_column("b", output->fld.data(), no_offset);
+
     fields.release_tmp(output);
 }
+#endif
 
 
 template<typename TF>

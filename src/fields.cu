@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "grid.h"
 #include "master.h"
+#include "column.h"
 #include "constants.h"
 #include "tools.h"
 
@@ -366,6 +367,25 @@ void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
+
+#ifdef USECUDA
+template<typename TF>
+void Fields<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+
+    column.calc_column("u",mp["u"]->fld_g, grid.utrans);
+    column.calc_column("v",mp["v"]->fld_g, grid.vtrans);
+    column.calc_column("w",mp["w"]->fld_g, no_offset);
+
+    for (auto& it : sp)
+    {
+        column.calc_column(it.first, it.second->fld_g, no_offset);
+    }
+
+    column.calc_column("p", sd["p"]->fld_g, no_offset);
+}
+#endif
 
 template class Fields<double>;
 template class Fields<float>;

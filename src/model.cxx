@@ -344,7 +344,7 @@ void Model<TF>::exec()
                 if (timeloop->is_stats_step())
                 {
                     if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                        dump->do_dump(timeloop->get_itime()) || column->do_column(timeloop->get_itime()))
+                        dump->do_dump(timeloop->get_itime()))
                     {
                         #pragma omp taskwait
                         #ifdef USECUDA
@@ -357,6 +357,14 @@ void Model<TF>::exec()
                                 timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
                                 timeloop->get_iotime(), timeloop->get_dt());
                     }
+
+                    if (column->do_column(timeloop->get_itime()))
+                    {
+                        fields->exec_column(*column);
+                        thermo->exec_column(*column);
+                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                    }
+
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -526,13 +534,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
-    }
-
-    if (column->do_column(itime))
-    {
-        fields->exec_column(*column);
-        thermo->exec_column(*column);
-        column->exec(iteration, time, itime);
     }
 }
 
