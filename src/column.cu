@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,15 +26,14 @@
 #include "column.h"
 #include "tools.h"
 
-
 #ifdef USECUDA
 template<typename TF>
-void Column<TF>::calc_column(std::string profname, const TF* const restrict data,
-                      const TF offset)
+void Column<TF>::calc_column(
+        std::string profname, const TF* const restrict data, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
         const int kbeg = it.coord[0] + it.coord[1] * gd.icells + gd.ijcells * gd.kstart;
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -38,12 +38,12 @@
 
 #include <netcdf>       // C++
 #include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
-using namespace netCDF;
-using namespace netCDF::exceptions;
-
 
 namespace
 {
+    using namespace netCDF;
+    using namespace netCDF::exceptions;
+
     // Help functions to switch between the different NetCDF data types
     template<typename TF> NcType netcdf_fp_type();
     template<> NcType netcdf_fp_type<double>() { return ncDouble; }
@@ -54,14 +54,14 @@ namespace
     template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 }
 
-
 template<typename TF>
-Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
+Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
     auto& gd = grid.get_grid_data();
 
     swcolumn = inputin.get_item<bool>("column", "swcolumn", "", false);
+
     if (swcolumn)
     {
         sampletime = inputin.get_item<double>("column", "sampletime", "");
@@ -96,7 +96,7 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
 
     std::vector<TF> coordx = inputin.get_list<TF>("column", "coordinates", "x", std::vector<TF>());
     std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
-    if(coordx.size()!=coordy.size())
+    if (coordx.size()!=coordy.size())
     {
         master.print_error("Column error: X-coord array and Y-coord array do not match in size \n");
         throw 1;
@@ -115,7 +115,7 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     }
 
     // create a NetCDF file for the statistics
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
         std::stringstream filename;
         filename << sim_name << "." << "column" << "."
@@ -140,7 +140,7 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
         throw 1;
 
     // create dimensions
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
         it.z_dim  = it.data_file->addDim("z" , gd.kmax);
         it.zh_dim = it.data_file->addDim("zh", gd.kmax+1);
@@ -219,13 +219,13 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
     // master.print_message("Saving column for time %f\n", time);
 
     // put the data into the NetCDF file
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
-        const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
+        const std::vector<size_t> time_index = { static_cast<size_t>(statistics_counter) };
 
         it.t_var   .putVar(time_index, &time     );
         it.iter_var.putVar(time_index, &iteration);
-        const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
+        const std::vector<size_t> time_height_index = { static_cast<size_t>(statistics_counter), 0 };
         std::vector<size_t> time_height_size  = {1, 0};
         for (auto& p : it.profs)
         {
@@ -247,7 +247,7 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
 {
     auto& gd = grid.get_grid_data();
     // create the NetCDF variable
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
         std::vector<NcDim> dim_vector = {it.t_dim};
 
@@ -279,7 +279,7 @@ void Column<TF>::calc_column(std::string profname, const TF* const restrict data
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
-    for(auto& it: columns)
+    for (auto& it: columns)
     {
         for (int k=0; k<gd.kcells; k++)
         {
