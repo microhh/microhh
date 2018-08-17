@@ -48,9 +48,9 @@ class Microphys_disabled : public Microphys<TF>
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, const double) {};
-        void exec_stats(Stats<TF>&, Diff<TF>&, Thermo<TF>&, const double) {};
-        virtual void exec_dump(Dump<TF>&, unsigned long) {};
-        virtual void exec_cross(Cross<TF>&, unsigned long) {};
+        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&, Thermo<TF>&, const double) {};
+        void exec_dump(Dump<TF>&, unsigned long) {};
+        void exec_cross(Cross<TF>&, unsigned long) {};
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 

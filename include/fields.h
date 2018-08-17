@@ -33,8 +33,10 @@
 class Master;
 class Input;
 class Data_block;
+
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Column;
 template<typename> class Dump;
@@ -65,7 +67,7 @@ class Fields
 
         void exec();
         void get_mask(Stats<TF>&, std::string);
-        void exec_stats(Stats<TF>&, Diff<TF>&);   ///< Calculate the statistics
+        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
         void init_momentum_field  (std::string, std::string, std::string, const std::array<int,3>&);

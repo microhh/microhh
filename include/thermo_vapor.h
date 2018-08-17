@@ -60,7 +60,7 @@ class Thermo_vapor : public Thermo<TF>
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, Diff<TF>&);
+        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);

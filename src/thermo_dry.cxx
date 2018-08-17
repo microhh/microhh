@@ -618,7 +618,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 }
 
 template<typename TF>
-void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
+void Thermo_dry<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 

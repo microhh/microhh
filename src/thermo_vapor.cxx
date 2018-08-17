@@ -716,7 +716,7 @@ void Thermo_vapor<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
+void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff)
 {
     auto& gd = grid.get_grid_data();
 

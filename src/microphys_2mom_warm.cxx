@@ -724,7 +724,8 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 #endif
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff, Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec_stats(
+        Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff, Thermo<TF>& thermo, const double dt)
 {
     auto& gd = grid.get_grid_data();
 

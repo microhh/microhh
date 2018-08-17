@@ -98,12 +98,12 @@ struct Grid_data
     std::vector<TF> yh; // Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; // Grid coordinate of cell faces in x-direction.
 
-    const std::array<int,3> uloc  = {1,0,0}; // Location of the u-velocity on the staggered grid
-    const std::array<int,3> vloc  = {0,1,0}; // Location of the v-velocity on the staggered grid
-    const std::array<int,3> wloc  = {0,0,1}; // Location of the w-velocity on the staggered grid
-    const std::array<int,3> sloc  = {0,0,0}; // Location of the cell center on the staggered grid
-    const std::array<int,3> uwloc = {1,0,1}; // Location of the u-flux on the staggered grid
-    const std::array<int,3> vwloc = {0,1,1}; // Location of the v-flux on the staggered grid
+    const std::array<int,3> uloc  = {{1,0,0}}; // Location of the u-velocity on the staggered grid
+    const std::array<int,3> vloc  = {{0,1,0}}; // Location of the v-velocity on the staggered grid
+    const std::array<int,3> wloc  = {{0,0,1}}; // Location of the w-velocity on the staggered grid
+    const std::array<int,3> sloc  = {{0,0,0}}; // Location of the cell center on the staggered grid
+    const std::array<int,3> uwloc = {{1,0,1}}; // Location of the u-flux on the staggered grid
+    const std::array<int,3> vwloc = {{0,1,1}}; // Location of the v-flux on the staggered grid
 
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.

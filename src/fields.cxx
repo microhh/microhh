@@ -484,7 +484,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, Diff<TF>& diff)
+void Fields<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
