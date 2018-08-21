@@ -1001,9 +1001,8 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    Diff<TF>* diff = this;
 
-    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, {"mean"}, *diff);
+    stats.calc_stats_mean("evisc", *fields.sd["evisc"], no_offset, no_threshold);
 }
 
 template<typename TF>
