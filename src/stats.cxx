@@ -578,8 +578,8 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     }
 
     // For each mask, add the area as a variable.
-    add_prof("area" , "Fractional area contained in mask", "-", "z" );
-    add_prof("areah", "Fractional area contained in mask", "-", "zh");
+    add_prof("area" , "Fractional area contained in mask", "-", "z",  Stats_whitelist_type::White);
+    add_prof("areah", "Fractional area contained in mask", "-", "zh", Stats_whitelist_type::White);
 }
 
 template<typename TF>
