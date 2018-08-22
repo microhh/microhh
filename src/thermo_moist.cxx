@@ -961,7 +961,7 @@ void Thermo_moist<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff)
+void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -982,7 +982,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& 
     // calculate the mean
     std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
 
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators, diff);
+    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
 
     fields.release_tmp(b);
 
@@ -991,7 +991,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& 
     ql->loc = gd.sloc;
 
     get_thermo_field(*ql, "ql", true, true);
-    stats.calc_stats("ql", *ql, no_offset, no_threshold, {"mean","cover","frac","path"}, diff);
+    stats.calc_stats("ql", *ql, no_offset, no_threshold, {"mean","cover","frac","path"});
 
     fields.release_tmp(ql);
 

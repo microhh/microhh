@@ -434,8 +434,11 @@ namespace
 }
 
 template<typename TF>
-Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
-    master(masterin), grid(gridin), fields(fieldsin),  boundary_cyclic(master, grid)
+Stats<TF>::Stats(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
+        Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
+    master(masterin), grid(gridin), fields(fieldsin), advec(advecin), diff(diffin),
+    boundary_cyclic(master, grid)
 
 {
     swstats = inputin.get_item<bool>("stats", "swstats", "", false);
@@ -902,30 +905,9 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::calc_stats_mean(const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
-{
-    auto& gd = grid.get_grid_data();
-
-    for (auto& m : masks)
-    {
-        unsigned int flag;
-        const int* nmask;
-
-        set_flag(flag, nmask, m.second, fld.loc[2]);
-        calc_mean(
-                m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-        master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
-
-        set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
-    }
-}
-
-template<typename TF>
 void Stats<TF>::calc_stats(
         const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold,
-        std::vector<std::string> operations, Diff<TF>& diff)
+        std::vector<std::string> operations)
 {
     auto& gd = grid.get_grid_data();
 

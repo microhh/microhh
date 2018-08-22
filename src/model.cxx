@@ -125,7 +125,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
-        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *input);
+        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
         dump      = std::make_shared<Dump     <TF>>(master, *grid, *fields, *input);
         cross     = std::make_shared<Cross    <TF>>(master, *grid, *fields, *input);
@@ -508,9 +508,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         stats->finalize_masks();
 
         // Calculate statistics
-        fields   ->exec_stats(*stats, *advec, *diff);
-        thermo   ->exec_stats(*stats, *advec, *diff);
-        microphys->exec_stats(*stats, *advec, *diff, *thermo, dt);
+        fields   ->exec_stats(*stats);
+        thermo   ->exec_stats(*stats);
+        microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
         //budget  ->exec_stats(&stats->masks[maskname]);
         boundary ->exec_stats(*stats);

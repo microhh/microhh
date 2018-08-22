@@ -56,7 +56,7 @@ class Thermo_disabled : public Thermo<TF>
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(const double) {};
-        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};

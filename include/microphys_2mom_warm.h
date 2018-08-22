@@ -158,7 +158,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, const double);
 
-        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&, Thermo<TF>&, const double);
+        void exec_stats(Stats<TF>&, Thermo<TF>&, const double);
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_cross(Cross<TF>&, unsigned long);
 

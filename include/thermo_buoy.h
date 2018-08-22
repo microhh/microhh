@@ -70,7 +70,7 @@ class Thermo_buoy : public Thermo<TF>
         // Empty functions that are allowed to pass.
         void init() {}
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
-        void exec_stats(Stats<TF>&, Advec<TF>&, Diff<TF>&) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_column(Column<TF>&) {};

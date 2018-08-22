@@ -724,8 +724,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 #endif
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec_stats(
-        Stats<TF>& stats, Advec<TF>& advec, Diff<TF>& diff, Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -735,7 +734,7 @@ void Microphys_2mom_warm<TF>::exec_stats(
     const TF threshold_qr = 1.e-6;
 
     stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
-    stats.calc_stats("qr" , *fields.sp.at("qr"), no_offset, threshold_qr, {"path","frac","cover"}, diff);
+    stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr, {"path","frac","cover"});
 
     if (swmicrobudget)
     {
@@ -806,10 +805,10 @@ void Microphys_2mom_warm<TF>::exec_stats(
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
 
-        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -823,9 +822,9 @@ void Microphys_2mom_warm<TF>::exec_stats(
                         gd.iend,   gd.jend,   gd.kend,
                         gd.icells, gd.ijcells);
 
-        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Rest of the microphysics is handled per XZ slice
         // Evaporation; evaporation of rain drops in unsaturated environment
@@ -850,10 +849,10 @@ void Microphys_2mom_warm<TF>::exec_stats(
                               gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         // -------------------------
@@ -872,7 +871,7 @@ void Microphys_2mom_warm<TF>::exec_stats(
                                          gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold, {"mean"});
 
         // Sedimentation; sub-grid sedimentation of rain
         // -------------------------
@@ -894,8 +893,8 @@ void Microphys_2mom_warm<TF>::exec_stats(
                                      gd.icells, gd.kcells, gd.ijcells, j);
         }
 
-        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold, {"mean"}, diff);
-        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold, {"mean"}, diff);
+        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold, {"mean"});
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)

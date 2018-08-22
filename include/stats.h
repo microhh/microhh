@@ -33,6 +33,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Advec;
 template<typename> class Diff;
 
 // Struct for profiles
@@ -87,7 +88,7 @@ template<typename TF>
 class Stats
 {
     public:
-        Stats(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the statistics class
+        Stats(Master&, Grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
         void init(double);
@@ -112,8 +113,7 @@ class Stats
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
-        void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF, std::vector<std::string>, Diff<TF>&);
-        void calc_stats_mean(const std::string, const Field3d<TF>&, const TF, const TF);
+        void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF, std::vector<std::string>);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF, std::vector<std::string>);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
@@ -123,6 +123,8 @@ class Stats
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Advec<TF>& advec;
+        Diff<TF>& diff;
         Boundary_cyclic<TF> boundary_cyclic;
 
         bool swstats;           ///< Statistics on/off switch
