@@ -211,8 +211,8 @@ namespace
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
-                const int ij      = i + j*icells;
-                const int ijk     = i + j*icells + kend*ijcells;
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kend*ijcells;
                 nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
                 nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
@@ -244,11 +244,11 @@ namespace
         }
     }
 
-
     template<typename TF>
     void calc_mean_2d(
             TF& out, const TF* const restrict fld, const TF offset,
-            const int istart, const int iend, const int jstart, const int jend, const int icells, const int itot, const int jtot)
+            const int istart, const int iend, const int jstart, const int jend,
+            const int icells, const int itot, const int jtot)
     {
         out = 0.;
         for (int j=jstart; j<jend; ++j)
@@ -447,19 +447,22 @@ Stats<TF>::Stats(
     {
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
-        masklist.push_back("default");  // Add the default mask, which calculates the domain mean without sampling.
+        masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
+
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
-        //Anything without an underscore is mean value, so should be on the whitelist
-        //std::regex re("^[^_]*$");
-        //whitelist.push_back(re);
+        // Anything without an underscore is mean value, so should be on the whitelist
+        // std::regex re("^[^_]*$");
+        // whitelist.push_back(re);
 
         for (auto& it : whitelistin)
         {
             std::regex re(it);
             whitelist.push_back(re);
         }
+
         std::vector<std::string> blacklistin = inputin.get_list<std::string>("stats", "blacklist", "", std::vector<std::string>());
+
         for (auto& it : blacklistin)
         {
             std::regex re(it);
@@ -685,7 +688,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 {
     auto& gd = grid.get_grid_data();
 
-    // Check whether variable is part of whitelist/blacklist;
+    // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
     if (is_blacklisted(name, wltype))
         return;
 
@@ -703,13 +706,13 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
             {
                 dim_vector.push_back(m.z_dim);
                 m.profs[name].ncvar = m.data_file->addVar(name, netcdf_fp_type<TF>(), dim_vector);
-                //m.profs[name].data = NULL;
+                // m.profs[name].data = NULL;
             }
             else if (zloc == "zh")
             {
                 dim_vector.push_back(m.zh_dim);
                 m.profs[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
-                //m.profs[name].data = NULL;
+                // m.profs[name].data = NULL;
             }
 
             m.profs[name].ncvar.putAtt("units", unit.c_str());
@@ -743,6 +746,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
                 var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
             else if (zloc == "zh")
                 var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
+
             var.putAtt("units", unit.c_str());
             var.putAtt("long_name", longname.c_str());
             var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
@@ -761,7 +765,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
        }
    }
 }
-//
+
 template<typename TF>
 void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
 {
@@ -795,12 +799,14 @@ bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wlty
 {
     if (wltype == Stats_whitelist_type::White)
         return false;
+
     for (const auto& it : whitelist)
     {
         if (std::regex_match(name, it))
         {
             if (wltype == Stats_whitelist_type::Black)
-                master.print_message("DOING statistics for  %s\n", name.c_str());
+                master.print_message("DOING statistics for %s\n", name.c_str());
+
             return false;
         }
     }
@@ -812,7 +818,7 @@ bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wlty
     {
         if (std::regex_match(name, it))
         {
-            master.print_message("NOT doing statistics for  %s\n", name.c_str());
+            master.print_message("NOT DOING statistics for %s\n", name.c_str());
             return true;
         }
     }
@@ -824,13 +830,13 @@ void Stats<TF>::initialize_masks()
 {
     auto& gd = grid.get_grid_data();
     unsigned int flagmax = 0;
+
     for (auto& it : masks)
-    {
-        flagmax+=it.second.flag+it.second.flagh;
-    }
+        flagmax += it.second.flag + it.second.flagh;
 
     for (int n=0; n<gd.ncells; ++n)
         mfield[n] = flagmax;
+
     for (int n=0; n<gd.ijcells; ++n)
         mfield_bot[n] = flagmax;
 }
@@ -1022,8 +1028,7 @@ void Stats<TF>::calc_stats(
                         gd.kstart, gd.kend);
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-        }
-
+            }
         }
         else if (it == "grad")
         {
@@ -1048,7 +1053,7 @@ void Stats<TF>::calc_stats(
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-        }
+            }
         }
         else if (it == "path")
         {
@@ -1072,7 +1077,7 @@ void Stats<TF>::calc_stats(
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
                 master.sum(&m.second.tseries.at(name).data, 1);
-        }
+            }
         }
         else if (it == "frac")
         {
@@ -1087,7 +1092,7 @@ void Stats<TF>::calc_stats(
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-        }
+            }
         }
         else
         {
