@@ -58,8 +58,6 @@ template<typename TF>
 Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-    auto& gd = grid.get_grid_data();
-
     swcolumn = inputin.get_item<bool>("column", "swcolumn", "", false);
 
     if (swcolumn)

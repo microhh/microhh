@@ -81,7 +81,6 @@ namespace
    {
        for (int k=kstart+1; k<kend; k++)
        {
-           const TF exnh = exner(ph[k]);
            for (int j=jstart; j<jend; j++)
                #pragma ivdep
                for (int i=istart; i<iend; i++)
@@ -118,7 +117,6 @@ namespace
                for (int i=istart; i<iend; i++)
                {
                    const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
                    b[ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[k]);
                }
        }
@@ -151,8 +149,6 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
                     bh[ijk] = buoyancy_no_ql(thlh[ijk], qth[ijk], thvrefh[k]);
                 }
         }
@@ -770,10 +766,10 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
+
     auto output = fields.get_tmp();
 
     if(swcross_b)

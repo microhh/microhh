@@ -164,7 +164,6 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                     couvreux->fld[ijk] = fields.sp.at("couvreux")->fld[ijk] - mean - std;
                 }
             }
-            const int ijk = gd.istart + gd.jstart*gd.icells + k*gd.ijcells;
         }
         grid.interpolate_2nd(couvreuxh->fld.data(), couvreux->fld.data(), gd.sloc.data(), gd.wloc.data());
 

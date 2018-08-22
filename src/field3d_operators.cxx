@@ -69,7 +69,6 @@ template<typename TF>
 void Field3d_operators<TF>::subtract_mean_profile(TF* const restrict fld, const TF* const restrict prof)
 {
     const auto& gd = grid.get_grid_data();
-    const TF n = gd.itot * gd.jtot;
 
     #pragma omp parallel for
     for (int k=0; k<gd.kcells; ++k)
