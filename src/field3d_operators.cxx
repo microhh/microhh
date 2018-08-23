@@ -46,20 +46,20 @@ template<typename TF>
 void Field3d_operators<TF>::calc_mean_profile(TF* const restrict prof, const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
-    const TF n = gd.itot * gd.jtot;
+    const double n = gd.itot * gd.jtot;
 
     #pragma omp parallel for
     for (int k=0; k<gd.kcells; ++k)
     {
-        prof[k] = 0.;
+        double tmp = 0.;
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += fld[ijk];
+                tmp += fld[ijk];
             }
-        prof[k] /= n;
+        prof[k] = tmp / n;
     }
     master.sum(prof, gd.kcells);
 
@@ -90,7 +90,7 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
 
-    TF sum = 0;
+    double sum = 0;
 
     #pragma omp parallel for
     for (int k=gd.kstart; k<gd.kend; ++k)

@@ -230,16 +230,16 @@ namespace
         {
             if (nmask[k])
             {
-                prof[k] = 0.;
+                double tmp = 0.;
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*(fld[ijk] + offset);
+                        tmp += in_mask<double>(mask[ijk], flag) * fld[ijk];
                     }
 
-                prof[k] /= static_cast<TF>(nmask[k]);
+                prof[k] = tmp / static_cast<double>(nmask[k]) + offset;
             }
         }
     }
@@ -250,16 +250,16 @@ namespace
             const int istart, const int iend, const int jstart, const int jend,
             const int icells, const int itot, const int jtot)
     {
-        out = 0.;
+        double tmp = 0.;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                out = fld[ij] + offset;
+                tmp += fld[ij];
             }
 
-        out /= static_cast<TF>(itot*jtot);
+        out = tmp / static_cast<double>(itot*jtot) + offset;
     }
 
     template<typename TF>
@@ -274,15 +274,16 @@ namespace
         {
             if (nmask[k])
             {
-                prof[k] = 0.;
+                double tmp = 0.;
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
+                        tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
                     }
-                prof[k] /= static_cast<TF>(nmask[k]);
+
+                prof[k] = tmp / static_cast<double>(nmask[k]);
             }
         }
     }
@@ -300,7 +301,7 @@ namespace
         {
             if (nmask[k])
             {
-                prof[k] = 0.;
+                double tmp = 0.;
                 if ((fld1_mean[k] != netcdf_fp_fillvalue<TF>()) && (fld2_mean[k] != netcdf_fp_fillvalue<TF>()))
                 {
                     for (int j=jstart; j<jend; ++j)
@@ -308,10 +309,10 @@ namespace
                         for (int i=istart; i<iend; ++i)
                         {
                             const int ijk  = i + j*icells + k*ijcells;
-                            prof[k] += in_mask<TF>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
+                            tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
                         }
 
-                    prof[k] /= static_cast<TF>(nmask[k]);
+                    prof[k] = tmp / static_cast<double>(nmask[k]);
                 }
             }
         }
@@ -339,15 +340,15 @@ namespace
         {
             if (nmask[k])
             {
-                prof[k] = 0.;
+                double tmp = 0.;
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*(fld[ijk] + offset > threshold);
+                        tmp += in_mask<double>(mask[ijk], flag)*(fld[ijk] + offset > threshold);
                     }
-                prof[k] /= static_cast<TF>(nmask[k]);
+                prof[k] = tmp / static_cast<double>(nmask[k]);
             }
         }
     }
@@ -359,7 +360,7 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        TF nmask_proj = 0.;
+        int nmask_proj = 0.;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -375,17 +376,17 @@ namespace
                 }
             }
 
-        path = 0.;
+        double tmp = 0.;
         if (nmask_proj > 0)
         {
             for (int k=kstart; k<kend; ++k)
             {
                 if (nmask[k])
                 {
-                    path += data[k]*rho[k]*dz[k]*nmask[k];
+                    tmp += data[k]*rho[k]*dz[k]*nmask[k];
                 }
             }
-            path /= static_cast<TF>(nmask_proj);
+            path = tmp / static_cast<TF>(nmask_proj);
         }
 
     }
@@ -398,22 +399,23 @@ namespace
             const int icells, const int ijcells)
     {
         cover = 0.;
-        TF nmaskcover = 0.;
+        double tmp = 0;
+        double nmaskcover = 0.;
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                TF maskincolumn = 0;
+                double maskincolumn = 0;
                 for (int k=kstart; k<kend; ++k)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
                     if (in_mask<bool>(mask[ijk], flag))
                     {
-                        maskincolumn = 1.;
+                        maskincolumn = 1;
                         if (fld[ijk] + offset > threshold)
                         {
-                            ++cover;
+                            ++tmp;
                             break;
                         }
                     }
@@ -422,9 +424,7 @@ namespace
             }
 
         if (nmaskcover>0)
-            cover /= nmaskcover;
-        else
-            cover = 0;
+            cover = tmp / nmaskcover;
     }
 
     bool has_only_digits(const std::string s)
@@ -1251,7 +1251,7 @@ void Stats<TF>::calc_flux_2nd(
         // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
         if (nmask[k])
         {
-            prof[k] = 0;
+            double tmp = 0;
             if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
             {
                 for (int j=jstart; j<jend; ++j)
@@ -1259,10 +1259,10 @@ void Stats<TF>::calc_flux_2nd(
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                        tmp += in_mask<double>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
                     }
 
-                prof[k] /= static_cast<TF>(nmask[k]);
+                prof[k] = tmp / static_cast<double>(nmask[k]);
             }
         }
     }
@@ -1301,7 +1301,7 @@ void Stats<TF>::calc_flux_4th(
     {
         if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
         {
-            prof[k] = 0.;
+            double tmp = 0.;
             if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()))
             {
                 for (int j=jstart; j<jend; ++j)
@@ -1309,9 +1309,9 @@ void Stats<TF>::calc_flux_4th(
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        prof[k] += in_mask<TF>(mask[ijk], flag)*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                        tmp = in_mask<double>(mask[ijk], flag)*(ci0<double>*data[ijk-kk2] + ci1<double>*data[ijk-kk1] + ci2<double>*data[ijk] + ci3<double>*data[ijk+kk1])*calcw[ijk];
                     }
-                prof[k] /= static_cast<TF>(nmask[k]);
+                prof[k] = tmp / static_cast<double>(nmask[k]);
             }
         }
     }
@@ -1329,16 +1329,16 @@ void Stats<TF>::calc_grad_2nd(
     {
         if (nmask[k])
         {
-            prof[k] = 0.;
+            double tmp = 0.;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    prof[k] += in_mask<TF>(mask[ijk], flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
+                    tmp += in_mask<double>(mask[ijk], flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
                 }
 
-            prof[k] /= static_cast<TF>(nmask[k]);
+            prof[k] = tmp / static_cast<double>(nmask[k]);
         }
 
     }
@@ -1362,16 +1362,16 @@ void Stats<TF>::calc_grad_4th(
     {
         if (nmask[k])
         {
-            prof[k] = 0.;
+            double tmp = 0.;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk1;
-                    prof[k] += in_mask<TF>(mask[ijk], flag)*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
+                    tmp += in_mask<double>(mask[ijk], flag)*(cg0<double>*data[ijk-kk2] + cg1<double>*data[ijk-kk1] + cg2<double>*data[ijk] + cg3<double>*data[ijk+kk1])*dzhi4[k];
                 }
 
-            prof[k] /= static_cast<TF>(nmask[k]);
+            prof[k] = tmp / static_cast<double>(nmask[k]);
         }
     }
 }
