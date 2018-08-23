@@ -239,7 +239,7 @@ namespace
                         tmp += in_mask<double>(mask[ijk], flag) * fld[ijk];
                     }
 
-                prof[k] = tmp / static_cast<double>(nmask[k]) + offset;
+                prof[k] = tmp / nmask[k] + offset;
             }
         }
     }
@@ -259,7 +259,7 @@ namespace
                 tmp += fld[ij];
             }
 
-        out = tmp / static_cast<double>(itot*jtot) + offset;
+        out = tmp / (itot*jtot) + offset;
     }
 
     template<typename TF>
@@ -283,7 +283,7 @@ namespace
                         tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
                     }
 
-                prof[k] = tmp / static_cast<double>(nmask[k]);
+                prof[k] = tmp / nmask[k];
             }
         }
     }
@@ -312,7 +312,7 @@ namespace
                             tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
                         }
 
-                    prof[k] = tmp / static_cast<double>(nmask[k]);
+                    prof[k] = tmp / nmask[k];
                 }
             }
         }
@@ -346,9 +346,9 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk  = i + j*icells + k*ijcells;
-                        tmp += in_mask<double>(mask[ijk], flag)*(fld[ijk] + offset > threshold);
+                        tmp += in_mask<double>(mask[ijk], flag)*((fld[ijk] + offset) > threshold);
                     }
-                prof[k] = tmp / static_cast<double>(nmask[k]);
+                prof[k] = tmp / nmask[k];
             }
         }
     }
@@ -386,7 +386,7 @@ namespace
                     tmp += data[k]*rho[k]*dz[k]*nmask[k];
                 }
             }
-            path = tmp / static_cast<TF>(nmask_proj);
+            path = tmp / nmask_proj;
         }
 
     }
@@ -413,7 +413,7 @@ namespace
                     if (in_mask<bool>(mask[ijk], flag))
                     {
                         maskincolumn = 1;
-                        if (fld[ijk] + offset > threshold)
+                        if ((fld[ijk] + offset) > threshold)
                         {
                             ++tmp;
                             break;
@@ -1262,7 +1262,7 @@ void Stats<TF>::calc_flux_2nd(
                         tmp += in_mask<double>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
                     }
 
-                prof[k] = tmp / static_cast<double>(nmask[k]);
+                prof[k] = tmp / nmask[k];
             }
         }
     }
@@ -1311,7 +1311,7 @@ void Stats<TF>::calc_flux_4th(
                         const int ijk  = i + j*icells + k*ijcells;
                         tmp = in_mask<double>(mask[ijk], flag)*(ci0<double>*data[ijk-kk2] + ci1<double>*data[ijk-kk1] + ci2<double>*data[ijk] + ci3<double>*data[ijk+kk1])*calcw[ijk];
                     }
-                prof[k] = tmp / static_cast<double>(nmask[k]);
+                prof[k] = tmp / nmask[k];
             }
         }
     }
@@ -1338,7 +1338,7 @@ void Stats<TF>::calc_grad_2nd(
                     tmp += in_mask<double>(mask[ijk], flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
                 }
 
-            prof[k] = tmp / static_cast<double>(nmask[k]);
+            prof[k] = tmp / nmask[k];
         }
 
     }
@@ -1371,7 +1371,7 @@ void Stats<TF>::calc_grad_4th(
                     tmp += in_mask<double>(mask[ijk], flag)*(cg0<double>*data[ijk-kk2] + cg1<double>*data[ijk-kk1] + cg2<double>*data[ijk] + cg3<double>*data[ijk+kk1])*dzhi4[k];
                 }
 
-            prof[k] = tmp / static_cast<double>(nmask[k]);
+            prof[k] = tmp / nmask[k];
         }
     }
 }
