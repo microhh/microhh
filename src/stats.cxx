@@ -578,8 +578,8 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     }
 
     // For each mask, add the area as a variable.
-    add_prof("area" , "Fractional area contained in mask", "-", "z",  Stats_whitelist_type::White);
-    add_prof("areah", "Fractional area contained in mask", "-", "zh", Stats_whitelist_type::White);
+    add_prof("area" , "Fractional area contained in mask", "-", "z");
+    add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
 template<typename TF>
@@ -687,11 +687,9 @@ template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
-
     // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
     if (is_blacklisted(name, wltype))
         return;
-
     // Add profile to all the NetCDF files
     for (auto& mask : masks)
     {
@@ -860,8 +858,13 @@ void Stats<TF>::finalize_masks()
         master.sum(it.second.nmask.data() , gd.kcells);
         master.sum(it.second.nmaskh.data(), gd.kcells);
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
-        calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
-        calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+        auto it1 = std::find(varlist.begin(), varlist.end(), "area");
+        if (it1 != varlist.end())
+            calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+
+        it1 = std::find(varlist.begin(), varlist.end(), "areah");
+        if (it1 != varlist.end())
+            calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
 
@@ -906,8 +909,12 @@ void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<
 template<typename TF>
 void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 {
-    for (auto& it : masks)
-        it.second.profs.at(varname).data = prof;
+    auto it = std::find(varlist.begin(), varlist.end(), varname);
+    if (it != varlist.end())
+    {
+        for (auto& it : masks)
+            it.second.profs.at(varname).data = prof;
+    }
 }
 
 template<typename TF>
@@ -927,20 +934,24 @@ void Stats<TF>::calc_stats(
     auto it = std::find(operations.begin(), operations.end(), "mean");
     if (it != operations.end())
     {
-        for (auto& m : masks)
+        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
+        if (it1 != varlist.end())
         {
-            set_flag(flag, nmask, m.second, fld.loc[2]);
-            calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
-            set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+
+            if (varname == "w")
+                wmean_set = true;
+
+            operations.erase(it);
         }
-
-        if (varname == "w")
-            wmean_set = true;
-
-        operations.erase(it);
     }
 
     // Loop over all other operations.
