@@ -807,7 +807,7 @@ void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface")
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
         diff_u<TF, Surface_model::Enabled>(
                 fields.mt["u"]->fld.data(),
@@ -895,7 +895,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     auto& gd = grid.get_grid_data();
 
     // Calculate strain rate using MO for velocity gradients lowest level.
-    if (boundary.get_switch() == "surface")
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
@@ -920,7 +920,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
          // Calculate eddy viscosity using MO at lowest model level
-        if (boundary.get_switch() == "surface")
+        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
@@ -953,7 +953,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        if (boundary.get_switch() == "surface")
+        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
@@ -989,19 +989,14 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
 {
     // Add variables to the statistics
     if (stats.get_switch())
-    {
         stats.add_prof(fields.sd["evisc"]->name, fields.sd["evisc"]->longname, fields.sd["evisc"]->unit, "z");
-    }
 }
 
 template<typename TF>
 void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 {
-    auto& gd = grid.get_grid_data();
-
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-
     stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, {"mean"});
 }
 

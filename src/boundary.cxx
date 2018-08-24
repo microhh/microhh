@@ -742,8 +742,6 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // if (swboundary == "surface_bulk")
-    //     return new Boundary_surface_bulk(modelin, inputin);
     // else if (swboundary == "surface_patch")
     //     return new Boundary_surface_patch(modelin, inputin);
     // else if (swboundary == "patch")
@@ -751,10 +749,10 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
     // else if (swboundary == "default")
     if (swboundary == "default")
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
-        else if (swboundary == "surface")
-            return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
-        else if (swboundary == "surface_bulk")
-            return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
+    else if (swboundary == "surface")
+        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+    else if (swboundary == "surface_bulk")
+        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
     else
     {
         master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
