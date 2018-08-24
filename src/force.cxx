@@ -42,7 +42,8 @@ namespace
     void enforce_fixed_flux(
             TF* restrict ut,
             const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
-            const TF dt, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const TF dt,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
         const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
@@ -61,8 +62,9 @@ namespace
             TF* const restrict ut, TF* const restrict vt,
             const TF* const restrict u , const TF* const restrict v ,
             const TF* const restrict ug, const TF* const restrict vg, TF const fc,
-            const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
-            const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+            const TF ugrid, const TF vgrid,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int ii = 1;
         const int jj = icells;
@@ -88,11 +90,13 @@ namespace
     }
 
     template<typename TF>
-    void calc_coriolis_4th(TF* const restrict ut, TF* const restrict vt,
-                           const TF* const restrict u , const TF* const restrict v ,
-                           const TF* const restrict ug, const TF* const restrict vg, TF const fc,
-                           const TF ugrid, const TF vgrid, const int istart, const int iend, const int icells,
-                           const int jstart, const int jend, const int ijcells, const int kstart, const int kend)
+    void calc_coriolis_4th(
+            TF* const restrict ut, TF* const restrict vt,
+            const TF* const restrict u , const TF* const restrict v ,
+            const TF* const restrict ug, const TF* const restrict vg, TF const fc,
+            const TF ugrid, const TF vgrid,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         using namespace Finite_difference::O4;
 
@@ -132,8 +136,8 @@ namespace
     template<typename TF>
     void calc_large_scale_source(
             TF* const restrict st, const TF* const restrict sls,
-            const int istart, const int iend, const int icells, const int jstart, const int jend,
-            const int ijcells, const int kstart, const int kend)
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -151,8 +155,8 @@ namespace
     void calc_nudging_tendency(
             TF* const restrict fldtend, const TF* const restrict fldmean,
             const TF* const restrict ref, const TF* const restrict factor,
-            const int istart, const int iend, const int icells, const int jstart, const int jend,
-            const int ijcells, const int kstart, const int kend)
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -170,10 +174,11 @@ namespace
     }
 
     template<typename TF>
-    void advec_wls_2nd(TF* const restrict st, const TF* const restrict s,
-                       const TF* const restrict wls, const TF* const dzhi,
-                       const int istart, const int iend, const int icells, const int jstart, const int jend,
-                       const int ijcells, const int kstart, const int kend)
+    void advec_wls_2nd(
+            TF* const restrict st, const TF* const restrict s,
+            const TF* const restrict wls, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -201,7 +206,6 @@ namespace
             }
         }
     }
-
 }
 
 template<typename TF>
@@ -403,38 +407,44 @@ void Force<TF>::exec(double dt)
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
-            gd.ijcells, gd.kstart, gd.kend);
+            grid.utrans, grid.vtrans,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
         else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
-            gd.ijcells, gd.kstart, gd.kend);
+            grid.utrans, grid.vtrans,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : lslist)
-            calc_large_scale_source<TF>(fields.st.at(it)->fld.data(), lsprofs.at(it).data(),
-            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
-            gd.ijcells, gd.kstart, gd.kend);
+            calc_large_scale_source<TF>(
+                    fields.st.at(it)->fld.data(), lsprofs.at(it).data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         for (auto& it : fields.st)
-            advec_wls_2nd<TF>(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(), wls.data(), gd.dzhi.data(),
-            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
-            gd.ijcells, gd.kstart, gd.kend);
+            advec_wls_2nd<TF>(
+                    fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : nudgelist)
-            calc_nudging_tendency<TF>(fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
-            nudgeprofs.at(it).data(), nudge_factor.data(),
-            gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend,
-            gd.ijcells, gd.kstart, gd.kend);
+            calc_nudging_tendency<TF>(
+                    fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
+                    nudgeprofs.at(it).data(), nudge_factor.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
 }
 #endif
