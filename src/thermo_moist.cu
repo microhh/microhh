@@ -374,7 +374,6 @@ void Thermo_moist<TF>::exec(const double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-
     // Re-calculate hydrostatic pressure and exner
     if (bs.swupdatebasestate)
     {
@@ -391,7 +390,7 @@ void Thermo_moist<TF>::exec(const double dt)
         auto tmp = fields.get_tmp();
 
         calc_base_state(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.rhoref.data(), bs.rhorefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
                         bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
                         bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -403,11 +402,11 @@ void Thermo_moist<TF>::exec(const double dt)
     }
 
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
-        fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
-        fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
-        gd.istart,  gd.jstart, gd.kstart+1,
-        gd.iend,    gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);
+            fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart, gd.kstart+1,
+            gd.iend,    gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
     cuda_check_error();
 }
 #endif
