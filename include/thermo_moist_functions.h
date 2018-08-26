@@ -150,13 +150,13 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
-    void  calc_base_state(TF* restrict pref,    TF* restrict prefh,
-                          TF* restrict rho,     TF* restrict rhoh,
-                          TF* restrict thv,     TF* restrict thvh,
-                          TF* restrict ex,      TF* restrict exh,
-                          TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
-                          const int kstart, const int kend,
-                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
+    void calc_base_state(TF* restrict pref,    TF* restrict prefh,
+                         TF* restrict rho,     TF* restrict rhoh,
+                         TF* restrict thv,     TF* restrict thvh,
+                         TF* restrict ex,      TF* restrict exh,
+                         TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
+                         const int kstart, const int kend,
+                         const TF* restrict z, const TF* restrict dz, const TF* const dzh)
     {
         const TF thlsurf = TF(0.5)*(thlmean[kstart-1 ]+ thlmean[kstart]);
         const TF qtsurf  = TF(0.5)*(qtmean[kstart-1] +  qtmean[kstart]);
@@ -201,16 +201,16 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
-    void  calc_base_state_no_ql(TF* restrict pref,    TF* restrict prefh,
-                          TF* restrict rho,     TF* restrict rhoh,
-                          TF* restrict thv,     TF* restrict thvh,
-                          TF* restrict ex,      TF* restrict exh,
-                          TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
-                          const int kstart, const int kend,
-                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
+    void calc_base_state_no_ql(TF* restrict pref,    TF* restrict prefh,
+                               TF* restrict rho,     TF* restrict rhoh,
+                               TF* restrict thv,     TF* restrict thvh,
+                               TF* restrict ex,      TF* restrict exh,
+                               TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
+                               const int kstart, const int kend,
+                               const TF* restrict z, const TF* restrict dz, const TF* const dzh)
     {
-        const TF thlsurf = TF(0.5)*(thlmean[kstart-1 ]+ thlmean[kstart]);
-        const TF qtsurf  = TF(0.5)*(qtmean[kstart-1] +  qtmean[kstart]);
+        const TF thlsurf = TF(0.5)*(thlmean[kstart-1] + thlmean[kstart]);
+        const TF qtsurf  = TF(0.5)*(qtmean[kstart-1] + qtmean[kstart]);
 
         // Calculate the values at the surface (half level == kstart)
         prefh[kstart] = pbot;

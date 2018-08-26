@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -531,6 +531,8 @@ void Thermo_moist<TF>::init()
     bs.exnrefh.resize(gd.kcells);
     bs.pref.resize(gd.kcells);
     bs.prefh.resize(gd.kcells);
+    bs.rhoref.resize(gd.kcells);
+    bs.rhorefh.resize(gd.kcells);
 }
 
 template<typename TF>
@@ -550,7 +552,7 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(),
+    calc_base_state(bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
                     bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
                     gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -561,14 +563,19 @@ void Thermo_moist<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
         for (int k=0; k<gd.kcells; ++k)
         {
-            fields.rhoref[k]  = 1.;
-            fields.rhorefh[k] = 1.;
-            bs.thvref[k]      = bs.thvref0;
-            bs.thvrefh[k]     = bs.thvref0;
+            bs.rhoref[k]  = 1.;
+            bs.rhorefh[k] = 1.;
+            bs.thvref[k]  = bs.thvref0;
+            bs.thvrefh[k] = bs.thvref0;
         }
     }
 
-    // 6. Process the time dependent surface pressure
+    // 6. Copy the initial reference to the fields. This is the reference used in the dynamics.
+    //    This one is not updated throughout the simulation to be consistent with the anelastic approximation.
+    fields.rhoref = bs.rhoref;
+    fields.rhorefh = bs.rhorefh;
+
+    // 7. Process the time dependent surface pressure
     tdep_pbot->create_timedep();
 
 
@@ -588,18 +595,22 @@ void Thermo_moist<TF>::exec(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref, thvref to prevent overwriting base state
+    // Re-calculate hydrostatic pressure and exner, pass dummy as thvref to prevent overwriting base state
     auto tmp = fields.get_tmp();
     if (bs.swupdatebasestate)
+    {
         calc_base_state(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.rhoref.data(), bs.rhorefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
                         bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
                         bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+    }
 
     // extend later for gravity vector not normal to surface
     calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
                            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], bs.thvrefh.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                           &tmp->fld[2*gd.ijcells], bs.thvrefh.data(),
+                           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                           gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
 }
@@ -859,17 +870,17 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  bs.rhoref.data() );
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", bs.rhorefh.data());
         stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
         stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh.data());
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
-            stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
-            stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
+            stats.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z" );
+            stats.add_prof("phydroh","Half level hydrostatic pressure", "Pa", "zh");
+            stats.add_prof("rho",  "Full level density", "kg m-3", "z" );
+            stats.add_prof("rhoh", "Half level density", "kg m-3", "zh");
         }
         else
         {
@@ -995,15 +1006,13 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(ql);
 
-    // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
         stats.set_prof("phydro" , bs_stats.pref);
         stats.set_prof("phydroh", bs_stats.prefh);
-        stats.set_prof("rho"    , fields.rhoref);
-        stats.set_prof("rhoh"   , fields.rhorefh);
+        stats.set_prof("rho"    , bs_stats.rhoref);
+        stats.set_prof("rhoh"   , bs_stats.rhorefh);
     }
-
 }
 
 
