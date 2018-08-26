@@ -708,7 +708,7 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 {
     auto& gd = grid.get_grid_data();
 
-    background_state base;
+    Background_state base;
     if (is_stat)
         base = bs_stats;
     else
@@ -783,7 +783,7 @@ template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
-    background_state base;
+    Background_state base;
     if (is_stat)
         base = bs_stats;
     else
@@ -803,7 +803,7 @@ template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
-    background_state base;
+    Background_state base;
     if (is_stat)
         base = bs_stats;
     else
@@ -818,7 +818,7 @@ template<typename TF>
 void Thermo_moist<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
-    background_state base;
+    Background_state base;
     if (is_stat)
         base = bs_stats;
     else
