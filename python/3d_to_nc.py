@@ -4,11 +4,11 @@ import netCDF4 as nc4
 
 # Settings -------
 variable   = 'w'
-nx         = 32
-ny         = 32
-nz         = 32
+nx         = 1024
+ny         = 1024
+nz         = 256
 starttime  = 0
-sampletime = 1800
+sampletime = 600
 endtime    = 10800
 iotimeprec = -2
 nxsave     = nx
@@ -45,13 +45,13 @@ x   = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(nx*8)
 xh  = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(ny*8)
-y   = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
+#y   = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(ny*8)
-yh  = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
+#yh  = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(nz*8)
-z   = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
+#z   = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 raw = fin.read(nz*8)
-zh  = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
+#zh  = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 fin.close()
 
 # Create netCDF file
@@ -81,8 +81,8 @@ var_t.units = "time units since start"
 
 # Write grid properties to netCDF
 var_x[:] = x[:nxsave] if locx=='x' else xh[:nxsave]
-var_y[:] = y[:nysave] if locy=='y' else yh[:nysave]
-var_z[:] = z[:nzsave] if locz=='z' else zh[:nzsave]
+#var_y[:] = y[:nysave] if locy=='y' else yh[:nysave]
+#var_z[:] = z[:nzsave] if locz=='z' else zh[:nzsave]
 
 # Loop through the files and read 3d field
 for t in range(nt):
