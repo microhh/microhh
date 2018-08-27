@@ -358,6 +358,8 @@ void Thermo_moist<TF>::backward_device()
     cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice);
+
+    bs_stats = bs;
 }
 
 #ifdef USECUDA
