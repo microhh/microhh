@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -175,7 +175,7 @@ void Fields<TF>::exec()
     if (calc_mean_profs)
     {
         for (auto& it : ap)
-            field3d_operators.calc_mean_profile_g(it.second->fld_mean_g,it.second->fld_g);
+            field3d_operators.calc_mean_profile_g(it.second->fld_mean_g, it.second->fld_g);
     }
 }
 #endif

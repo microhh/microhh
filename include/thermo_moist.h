@@ -121,7 +121,7 @@ class Thermo_moist : public Thermo<TF>
 
         enum class Basestate_type {anelastic, boussinesq};
 
-        struct background_state
+        struct Background_state
         {
             Basestate_type swbasestate;
             bool swupdatebasestate;
@@ -150,11 +150,9 @@ class Thermo_moist : public Thermo<TF>
             TF* exnrefh_g;
         };
 
-        background_state bs;
-        background_state bs_stats;
+        Background_state bs;
+        Background_state bs_stats;
 
         std::unique_ptr<Timedep<TF>> tdep_pbot;
-
-
 };
 #endif
