@@ -1097,7 +1097,7 @@ void Stats<TF>::calc_stats(
                 master.sum(&cover.second, 1);
 
                 // Only assign if number of points in mask is positive.
-                m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0;
+                m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
             }
         }
         else if (it == "frac")
@@ -1259,12 +1259,15 @@ void Stats<TF>::calc_flux_2nd(
     #pragma omp parallel for
     for (int k=kstart; k<kend+1; ++k)
     {
-        // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
         if (nmask[k])
         {
-            double tmp = 0;
+            prof[k] = 0.; // This assignment is crucial to avoid unitialized values in case if below is false.
+
+            // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
             if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
             {
+                double tmp = 0;
+
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
