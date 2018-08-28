@@ -27,6 +27,7 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <utility>
 #include <netcdf>       // C++
 #include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
 #include "master.h"
@@ -392,21 +393,20 @@ namespace
     }
 
     template<typename TF>
-    void calc_cover(
-            TF& cover, const TF* const restrict fld, const TF offset, const TF threshold,
+    std::pair<int, int> calc_cover(
+            const TF* const restrict fld, const TF offset, const TF threshold,
             const unsigned int* const mask, const unsigned int flag, const int* const nmask,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        cover = 0.;
-        double tmp = 0;
-        double nmaskcover = 0.;
+        int cover = 0.;
+        int nmaskcover = 0;
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                double maskincolumn = 0;
+                int maskincolumn = 0;
                 for (int k=kstart; k<kend; ++k)
                 {
                     const int ijk  = i + j*icells + k*ijcells;
@@ -415,7 +415,7 @@ namespace
                         maskincolumn = 1;
                         if ((fld[ijk] + offset) > threshold)
                         {
-                            ++tmp;
+                            ++cover;
                             break;
                         }
                     }
@@ -423,8 +423,7 @@ namespace
                 nmaskcover += maskincolumn;
             }
 
-        if (nmaskcover>0)
-            cover = tmp / nmaskcover;
+        return std::make_pair(cover, nmaskcover);
     }
 
     bool has_only_digits(const std::string s)
@@ -1088,10 +1087,17 @@ void Stats<TF>::calc_stats(
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
 
-                calc_cover(m.second.tseries.at(name).data,fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
+                std::pair<int, int> cover = calc_cover(
+                        fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
 
-                master.sum(&m.second.tseries.at(name).data, 1);
+                master.sum(&cover.first, 1);
+                master.sum(&cover.second, 1);
+
+                // Only assign if number of points in mask is positive.
+                m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0;
             }
         }
         else if (it == "frac")
