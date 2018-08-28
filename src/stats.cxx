@@ -1033,11 +1033,11 @@ void Stats<TF>::calc_stats(
         {
             for (auto& m : masks)
             {
+                // No sum is required in this routine as values all.
                 set_flag(flag, nmask, m.second, !fld.loc[2]);
                 add_fluxes(
                         m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
                         gd.kstart, gd.kend);
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
         }
