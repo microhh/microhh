@@ -143,7 +143,7 @@ class Stats
         std::vector<unsigned int> mfield;
         std::vector<unsigned int> mfield_bot;
 
-        void calc_flux_2nd(TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
+        void calc_flux_2nd(TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
                           const int, const int, const int, const int, const int, const int, const int, const int);
         void calc_flux_4th(TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
                         const int, const int, const int, const int, const int, const int, const int, const int);

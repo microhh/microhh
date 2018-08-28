@@ -993,7 +993,7 @@ void Stats<TF>::calc_stats(
                 if (grid.get_spatial_order() == Grid_order::Second)
                 {
                     calc_flux_2nd(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
+                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset,
                             fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
                             tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
@@ -1234,7 +1234,7 @@ void Stats<TF>::calc_covariance(
 
 template<typename TF>
 void Stats<TF>::calc_flux_2nd(
-        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean,
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, const TF offset,
         TF* const restrict w, const TF* const restrict wmean,
         TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -1273,7 +1273,9 @@ void Stats<TF>::calc_flux_2nd(
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*icells + k*ijcells;
-                        tmp += in_mask<double>(mask[ijk], flag)*(0.5*(data[ijk-ijcells]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                        const TF data_prime = 0.5*(data[ijk-ijcells]+data[ijk]) + offset - 0.5*(fld_mean[k-1]+fld_mean[k]);
+                        const TF w_prime = calcw[ijk] - wmean[k];
+                        tmp += in_mask<double>(mask[ijk], flag) * data_prime * w_prime;
                     }
 
                 prof[k] = tmp / nmask[k];
@@ -1354,7 +1356,6 @@ void Stats<TF>::calc_grad_2nd(
 
             prof[k] = tmp / nmask[k];
         }
-
     }
 }
 
