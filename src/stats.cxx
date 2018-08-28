@@ -220,7 +220,7 @@ namespace
 
     template<typename TF>
     void calc_mean(
-            TF* const restrict prof, const TF* const restrict fld, const TF offset,
+            TF* const restrict prof, const TF* const restrict fld,
             const unsigned int* const mask, const unsigned int flag, const int* const nmask,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -239,14 +239,14 @@ namespace
                         tmp += in_mask<double>(mask[ijk], flag) * fld[ijk];
                     }
 
-                prof[k] = tmp / nmask[k] + offset;
+                prof[k] = tmp / nmask[k];
             }
         }
     }
 
     template<typename TF>
     void calc_mean_2d(
-            TF& out, const TF* const restrict fld, const TF offset,
+            TF& out, const TF* const restrict fld,
             const int istart, const int iend, const int jstart, const int jend,
             const int icells, const int itot, const int jtot)
     {
@@ -259,7 +259,7 @@ namespace
                 tmp += fld[ij];
             }
 
-        out = tmp / (itot*jtot) + offset;
+        out = tmp / (itot*jtot);
     }
 
     template<typename TF>
@@ -940,9 +940,13 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
-                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), offset, mfield.data(), flag, nmask,
+                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
                 master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+
+                // Add the offset.
+                for (auto& value : m.second.profs.at(varname).data)
+                    value += offset;
 
                 set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
             }
@@ -1019,7 +1023,7 @@ void Stats<TF>::calc_stats(
             {
                 set_flag(flag, nmask, m.second, !fld.loc[2]);
                 calc_mean(
-                        m.second.profs.at(name).data.data(), diffusion->fld.data(), offset, mfield.data(), flag, nmask,
+                        m.second.profs.at(name).data.data(), diffusion->fld.data(), mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
@@ -1127,9 +1131,10 @@ void Stats<TF>::calc_stats_2d(
         {
             for (auto& m : masks)
             {
-                calc_mean_2d(m.second.tseries.at(varname).data, fld.data(), offset,
+                calc_mean_2d(m.second.tseries.at(varname).data, fld.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
                 master.sum(&m.second.tseries.at(varname).data, 1);
+                m.second.tseries.at(varname).data += offset;
             }
         }
     }
