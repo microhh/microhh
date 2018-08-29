@@ -459,7 +459,7 @@ void Timeloop<TF>::step_post_proc_time()
 }
 
 template<typename TF>
-interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(std::vector<double> timevec)
+interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vector<double>& timevec)
 {
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());

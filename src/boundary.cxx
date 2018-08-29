@@ -236,27 +236,27 @@ void Boundary<TF>::process_time_dependent(Input& input)
 
     if (swtimedep)
     {
-        // create temporary list to check which entries are used
+        // Create temporary list to check which entries are used.
         std::vector<std::string> tmplist = timedeplist;
 
-        // see if there is data available for the surface boundary conditions
+        // See if there is data available for the surface boundary conditions.
         for (auto& it : fields.sp)
         {
             std::string name = it.first+"_sbot";
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
-                // Process the time dependent data
+                // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
                 tdep_bc.at(it.first)->create_timedep();
 
-                // remove the item from the tmplist
+                // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
                 if (ittmp != tmplist.end())
                     tmplist.erase(ittmp);
             }
         }
 
-        // display a warning for the non-supported
+        // Display a warning for the non-supported.
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }

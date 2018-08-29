@@ -268,8 +268,8 @@ void Model<TF>::exec()
 
     // Update the time dependent parameters.
     boundary->update_time_dependent(*timeloop);
-    force   ->update_time_dependent(*timeloop);
     thermo  ->update_time_dependent(*timeloop);
+    force   ->update_time_dependent(*timeloop);
 
     // Set the boundary conditions.
     boundary->exec(*thermo);
@@ -281,21 +281,21 @@ void Model<TF>::exec()
     diff->exec_viscosity(*boundary, *thermo);
 
     // Set the time step.
-    set_time_step();
+    // set_time_step();
 
     // Print the initial status information.
     print_status();
 
     #ifdef USECUDA
         #ifdef _OPENMP
-            omp_set_nested(1);
-            const int nthreads_out=2;
-            master.print_message("Running with %i OpenMP threads\n", omp_get_max_threads());
+        omp_set_nested(1);
+        const int nthreads_out=2;
+        master.print_message("Running with %i OpenMP threads\n", omp_get_max_threads());
         #endif
     #else
         #ifdef _OPENMP
-            omp_set_num_threads(1);
-            const int nthreads_out=1;
+        omp_set_num_threads(1);
+        const int nthreads_out=1;
         #endif
     #endif
 
