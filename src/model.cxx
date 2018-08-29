@@ -281,7 +281,7 @@ void Model<TF>::exec()
     diff->exec_viscosity(*boundary, *thermo);
 
     // Set the time step.
-    // set_time_step();
+    set_time_step();
 
     // Print the initial status information.
     print_status();
