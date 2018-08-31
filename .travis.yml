@@ -34,4 +34,4 @@ script:
 #  - python run_tests.py
 
 notifications:
-  - slack: microhh:MnnHkgLN7FeZFED03IsR6KCC
+  slack: microhh:hA8nIix9Z34cn6uG8xnz8Uiu
