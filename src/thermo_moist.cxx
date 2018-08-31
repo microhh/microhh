@@ -303,18 +303,20 @@ namespace
                const TF* const restrict pref, const TF* const restrict exnref,
                const int istart, const int iend,
                const int jstart, const int jend,
-               const int jj, const int kk, const int kcells)
+               const int kstart, const int kend,
+               const int jj, const int kk)
    {
        #pragma omp parallel for
-       for (int k=0; k<kcells; ++k)
+       for (int k=kstart; k<kend; ++k)
+       {
            for (int j=jstart; j<jend; ++j)
                #pragma ivdep
                for (int i=istart; i<iend; ++i)
                {
                    const int ijk = i + j*jj+ k*kk;
-
                    T[ijk] = sat_adjust(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
                }
+       }
    }
 
    template<typename TF>
@@ -760,7 +762,7 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     else if (name == "T")
     {
         calc_T(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), base.exnref.data(),
-               gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.ijcells, gd.kcells);
+               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells, gd.kcells);
     }
     else if (name == "T_h")
     {
