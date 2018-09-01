@@ -652,9 +652,9 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     for (auto& it : dumplist)
     {
         if (it == "b")
-            get_thermo_field(*output, "b",false, true);
+            get_thermo_field(*output, "b", false, true);
         else if (it == "T")
-            get_thermo_field(*output, "T",false, true);
+            get_thermo_field(*output, "T", false, true);
         else
         {
             master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
