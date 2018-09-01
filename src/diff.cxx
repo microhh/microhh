@@ -77,6 +77,12 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
         return new Diff_4(modelin, inputin);
     else if (swdiff == "smag2")
     {
+        // the subgrid model currently requires 2nd-order spatial discretization
+        if (swspatialorder == "4") {
+            masterin->print_error("swdiff=\"smag2\" requires 2nd-order spatial discretization (swspatialorder = \"2\")\n");
+            throw 1;
+        }
+        
         // the subgrid model requires a surface model because of the MO matching at first level
         if ((swboundary == "surface") || (swboundary == "surface_bulk") || (swboundary == "surface_patch"))
             return new Diff_smag_2(modelin, inputin);
