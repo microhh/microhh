@@ -207,6 +207,8 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
+        const int ii = 1;
+
         for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
