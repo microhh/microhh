@@ -517,5 +517,12 @@ void Advec_4m<TF>::exec()
 }
 #endif
 
+#ifndef USECUDA
+template<typename TF>
+void Advec_4m<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+}
+#endif
+
 template class Advec_4m<double>;
 template class Advec_4m<float>;

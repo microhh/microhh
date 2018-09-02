@@ -41,6 +41,8 @@ class Advec_disabled : public Advec<TF>
         unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
         double get_cfl(double); ///< Retrieve the CFL number.
 
+        void get_advec_flux(Field3d<TF>&, const Field3d<TF>&);
+
     private:
         using Advec<TF>::master;
         using Advec<TF>::grid;

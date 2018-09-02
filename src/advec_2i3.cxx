@@ -720,5 +720,12 @@ void Advec_2i3<TF>::exec()
 }
 #endif
 
+#ifndef USECUDA
+template<typename TF>
+void Advec_2i3<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+}
+#endif
+
 template class Advec_2i3<double>;
 template class Advec_2i3<float>;

@@ -38,6 +38,7 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "timeloop.h"
+#include "advec.h"
 #include "diff.h"
 
 namespace
@@ -986,6 +987,9 @@ void Stats<TF>::calc_stats(
             if (!wmean_set)
                 throw std::runtime_error("W mean not calculated in stat - needed for flux");
 
+            auto advec_flux = fields.get_tmp();
+            advec.get_advec_flux(*advec_flux, fld);
+
             auto tmp = fields.get_tmp();
             for (auto& m : masks)
             {
@@ -1010,8 +1014,9 @@ void Stats<TF>::calc_stats(
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
-
             fields.release_tmp(tmp);
+
+            fields.release_tmp(advec_flux);
         }
         else if (it == "diff")
         {
