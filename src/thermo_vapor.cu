@@ -102,8 +102,8 @@ namespace
 
     template<typename TF> __global__
     void calc_buoyancy_flux_bot_g(TF* __restrict__ bfluxbot,
-                                  TF* __restrict__ thbot, TF* __restrict__ thfluxbot,
-                                  TF* __restrict__ qtbot, TF* __restrict__ qtfluxbot,
+                                  TF* __restrict__ th, TF* __restrict__ thfluxbot,
+                                  TF* __restrict__ qt, TF* __restrict__ qtfluxbot,
                                   TF* __restrict__ thvrefh,
                                   int kstart, int icells, int jcells,
                                   int jj, int kk)
@@ -114,7 +114,8 @@ namespace
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = buoyancy_flux_no_ql(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+            const int ijk = i + j*jj + kstart*kk;
+            bfluxbot[ij] = buoyancy_flux_no_ql(th[ijk], thfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
         }
     }
 
@@ -363,8 +364,8 @@ void Thermo_vapor<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
@@ -395,8 +396,8 @@ void Thermo_vapor<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
