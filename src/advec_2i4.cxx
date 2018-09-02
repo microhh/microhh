@@ -43,7 +43,6 @@ Advec_2i4<TF>::Advec_2i4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 template<typename TF>
 Advec_2i4<TF>::~Advec_2i4() {}
 
-#ifndef USECUDA
 namespace
 {
     using namespace Finite_difference::O2;
@@ -638,6 +637,7 @@ namespace
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 double Advec_2i4<TF>::get_cfl(double dt)
 {
@@ -705,7 +705,6 @@ void Advec_2i4<TF>::exec()
 }
 #endif
 
-#ifndef USECUDA
 template<typename TF>
 void Advec_2i4<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
@@ -735,7 +734,6 @@ void Advec_2i4<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& f
     else
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
 }
-#endif
 
 template class Advec_2i4<double>;
 template class Advec_2i4<float>;

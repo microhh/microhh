@@ -44,7 +44,6 @@ Advec_2<TF>::Advec_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, I
 template<typename TF>
 Advec_2<TF>::~Advec_2() {}
 
-#ifndef USECUDA
 namespace
 {
     template<typename TF>
@@ -252,6 +251,7 @@ namespace
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {

@@ -45,7 +45,6 @@ Advec_4m<TF>::Advec_4m(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 template<typename TF>
 Advec_4m<TF>::~Advec_4m() {}
 
-#ifndef USECUDA
 namespace
 {
     template<typename TF>
@@ -478,6 +477,7 @@ namespace
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 double Advec_4m<TF>::get_cfl(double dt)
 {
@@ -578,7 +578,6 @@ void Advec_4m<TF>::exec()
 }
 #endif
 
-#ifndef USECUDA
 template<typename TF>
 void Advec_4m<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
@@ -608,7 +607,6 @@ void Advec_4m<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fl
     else
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
 }
-#endif
 
 template class Advec_4m<double>;
 template class Advec_4m<float>;
