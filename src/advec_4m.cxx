@@ -422,7 +422,10 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
 
         for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -430,7 +433,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    st[ijk] = interp2(w[ijk-ii], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] = (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+ii1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
                 }
     }
 
@@ -440,13 +443,18 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
         for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    st[ijk] = interp2(w[ijk-jj], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] = (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+jj1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
                 }
     }
 
@@ -456,13 +464,16 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
         for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    st[ijk] = w[ijk] * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] = w[ijk] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
                 }
     }
 }
