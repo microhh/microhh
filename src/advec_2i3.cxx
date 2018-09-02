@@ -669,6 +669,7 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
                 st[ijk] = interp2(w[ijk-ii1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
             }
 
@@ -689,6 +690,7 @@ namespace
             {
                 const int ijk = i + j*jj + k*kk;
                 st[ijk] = interp2(w[ijk-ii1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
 
@@ -709,6 +711,7 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
                 st[ijk] = interp2(w[ijk-jj1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
             }
 
@@ -729,6 +732,7 @@ namespace
             {
                 const int ijk = i + j*jj + k*kk;
                 st[ijk] = interp2(w[ijk-jj1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
 
@@ -747,6 +751,7 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
                 st[ijk] = w[ijk] * interp2(s[ijk-kk1], s[ijk]);
             }
 
@@ -767,6 +772,7 @@ namespace
             {
                 const int ijk = i + j*jj + k*kk;
                 st[ijk] = w[ijk] * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
 }
