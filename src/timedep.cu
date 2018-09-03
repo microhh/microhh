@@ -29,9 +29,9 @@ namespace
 
     template<typename TF> __global__
     void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
-                                    const double fac0, const double fac1,
-                                    const int index0,  const int index1,
-                                    const int kmax,    const int kgc)
+                                    const TF fac0, const TF fac1,
+                                    const int index0, const int index1,
+                                    const int kmax, const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -56,7 +56,7 @@ template<typename TF>
 void Timedep<TF>::prepare_device()
 {
     const int nmemsize = data.size()*sizeof(TF);
-    cuda_safe_call(cudaMalloc(&data_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&data_g, nmemsize));
     cuda_safe_call(cudaMemcpy(data_g, data.data(), nmemsize, cudaMemcpyHostToDevice));
 }
 #endif
@@ -73,11 +73,11 @@ void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
     const int gridk  = gd.kmax/blockk + (gd.kmax%blockk > 0);
 
     // Get/calculate the interpolation indexes/factors
-    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     // Calculate the new vertical profile
     calc_time_dependent_prof_g<<<gridk, blockk>>>(
-        prof, data_g, ifac.fac0, ifac.fac1, ifac.index0, ifac.index1, gd.kmax, gd.kgc);
+            prof, data_g, ifac.fac0, ifac.fac1, ifac.index0, ifac.index1, gd.kmax, gd.kgc);
     cuda_check_error();
 }
 #endif
