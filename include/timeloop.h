@@ -35,7 +35,7 @@ enum class Sim_mode;
 
 
 template<typename TF>
-struct interpolation_factors
+struct Interpolation_factors
 {
     int index0;
     int index1;
@@ -58,7 +58,7 @@ class Timeloop
         void set_time_step_limit(unsigned long);
         double get_sub_time_step();
 
-        interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
+        Interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
 
         void exec();
 
