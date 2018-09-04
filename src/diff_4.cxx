@@ -188,7 +188,7 @@ namespace
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
-                        const int ijk = i + j*icells + k*ijcells;
+                        const int ijk = i + j*jj + k*kk1;
                         out[ijk] = - visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi[k];
                     }
         }

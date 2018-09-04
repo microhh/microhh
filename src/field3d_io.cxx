@@ -474,7 +474,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         for (int j=gd.jstart; j<gd.jend; ++j)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            if( fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax)
+            if( fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != (unsigned)gd.imax)
                 return 1;
         }
 
@@ -503,7 +503,7 @@ int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         for (int j=gd.jstart; j<gd.jend; j++)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            if( fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax )
+            if( fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != (unsigned)gd.imax )
                 return 1;
         }
 

@@ -100,12 +100,12 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
         throw 1;
     }
 
-    for (int n=0; n<coordx.size(); ++n)
+    for (size_t n=0; n<coordx.size(); ++n)
     {
         int i = (int) floor(coordx[n]/gd.dx);
         int j = (int) floor(coordy[n]/gd.dy);
-        if (i >= (md.mpicoordx)*gd.imax & i < (md.mpicoordx+1)*gd.imax &
-            j >= (md.mpicoordy)*gd.jmax & j < (md.mpicoordy+1)*gd.jmax)
+        if ((i >= (md.mpicoordx)*gd.imax) & (i < (md.mpicoordx+1)*gd.imax) &
+            (j >= (md.mpicoordy)*gd.jmax) & (j < (md.mpicoordy+1)*gd.jmax))
         {
             columns.emplace(columns.end());
             columns.back().coord = {i,j};
