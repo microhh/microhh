@@ -476,7 +476,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
     const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
-    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 gridGPU (gridi, gridj, gd.kmax+1);
     dim3 blockGPU(blocki, blockj, 1);
 
     dim3 grid2dGPU (gridi, gridj);
