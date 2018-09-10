@@ -208,7 +208,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
     atmp_g.pop_back();
 
     // Assign to a huge negative number in case of debug mode.
-    #ifndef NDEBUG
+    #ifdef __CUDACC_DEBUG__
     auto& gd = grid.get_grid_data();
 
     const int nblock = 256;
