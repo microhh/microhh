@@ -352,6 +352,7 @@ void Model::exec()
                 fields  ->exec_cross();
                 thermo  ->exec_cross();
                 boundary->exec_cross();
+                immersed_boundary->exec_cross();
             }
 
             // Save the 3d dumps to disk

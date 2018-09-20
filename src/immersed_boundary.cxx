@@ -33,6 +33,7 @@
 #include "fields.h"
 #include "defines.h"
 #include "stats.h"
+#include "cross.h"
 #include "constants.h"
 #include "finite_difference.h"
 #include "immersed_boundary.h"
@@ -698,6 +699,88 @@ void Immersed_boundary::exec_stats(Mask *m)
         return;  // ...
 }
 
+namespace
+{
+    const unsigned west_flag   = 1 << 0;
+    const unsigned east_flag   = 1 << 1;
+    const unsigned south_flag  = 1 << 2;
+    const unsigned north_flag  = 1 << 3;
+    const unsigned bottom_flag = 1 << 4;
+
+    void find_k_dem(
+            int* restrict k_dem,
+            const double* const restrict dem,
+            const double* const restrict z,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                int k = -1;
+                for (k=kstart; k<kend; ++k)
+                {
+                    if (z[k] > dem[ij])
+                        break;
+                }
+                k_dem[ij] = k;
+                // std::cout << i << ", " << j << ", " << dem[ij] << ", " << z[k_dem[ij]] << ", " << z[k_dem[ij]-1] << std::endl;
+            }
+    }
+
+    void calc_fluxes(
+            double* restrict flux,
+            int* restrict k_dem,
+            const double* restrict s,
+            const double* restrict dzhi,
+            const double svisc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                // Add the vertical flux.
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k_dem[ij]*kk;
+                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]];
+            }
+    }
+}
+
+void Immersed_boundary::exec_cross()
+{
+    if (ib_type == None_type)
+        return;
+    else if (ib_type == Dem_type)
+    {
+        // Calculate which neighbors are DEM.
+        std::vector<int> k_dem(grid->ijcells);
+        find_k_dem(
+                k_dem.data(), dem.data(), grid->z,
+                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
+                grid->icells);
+
+        std::vector<double> flux_field(grid->ijcells);
+        calc_fluxes(
+                flux_field.data(),
+                k_dem.data(),
+                fields->sp["s"]->data,
+                grid->dzhi,
+                fields->sp["s"]->visc,
+                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
+                grid->icells, grid->ijcells);
+
+        // Calculate the scalar fluxes.
+        int nerror = 0;
+        nerror += model->cross->cross_plane(flux_field.data(), fields->atmp["tmp1"]->data, "s_ib_fluxbot");
+    }
+    else
+        return;  // ...
+}
+
+
 template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::calc_mask(double* const restrict mask, double* const restrict maskh, double* const restrict maskbot,
                                   int* const restrict nmask, int* const restrict nmaskh, int* const restrict nmaskbot,
@@ -883,6 +966,7 @@ void Immersed_boundary::exec_scalars()
         else
             set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
                             grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, false);
+
         grid->boundary_cyclic(fields->ap[it->first]->data);
     }
 
