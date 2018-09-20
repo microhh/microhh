@@ -208,21 +208,35 @@ namespace
 
                 // Add the vertical flux.
                 const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k_dem[ij]*kk;
-                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
+                {
+                    const int ijk = i + j*jj + k_dem[ij]*kk;
+                    flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
+                }
 
                 // West flux.
                 for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k_dem[ij]];
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k];
+                }
                 // East flux.
                 for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k_dem[ij]];
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k];
+                }
                 // South flux.
                 for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k_dem[ij]];
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k];
+                }
                 // North flux.
                 for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k_dem[ij]];
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k];
+                }
 
                 // Normalize the fluxes back to the correct units.
                 flux[ij] /= dx*dy;
