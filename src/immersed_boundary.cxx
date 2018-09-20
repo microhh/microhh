@@ -701,12 +701,6 @@ void Immersed_boundary::exec_stats(Mask *m)
 
 namespace
 {
-    const unsigned west_flag   = 1 << 0;
-    const unsigned east_flag   = 1 << 1;
-    const unsigned south_flag  = 1 << 2;
-    const unsigned north_flag  = 1 << 3;
-    const unsigned bottom_flag = 1 << 4;
-
     void find_k_dem(
             int* restrict k_dem,
             const double* const restrict dem,
@@ -725,7 +719,6 @@ namespace
                         break;
                 }
                 k_dem[ij] = k;
-                // std::cout << i << ", " << j << ", " << dem[ij] << ", " << z[k_dem[ij]] << ", " << z[k_dem[ij]-1] << std::endl;
             }
     }
 
@@ -734,10 +727,12 @@ namespace
             int* restrict k_dem,
             const double* restrict s,
             const double* restrict dzhi,
+            const double dxi, const double dyi,
             const double svisc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
+        const int ii = 1;
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
@@ -745,6 +740,19 @@ namespace
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + k_dem[ij]*kk;
                 flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]];
+
+                // West flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi;
+                // East flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
+                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi;
+                // South flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi;
+                // North flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
+                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi;
             }
     }
 }
@@ -768,6 +776,7 @@ void Immersed_boundary::exec_cross()
                 k_dem.data(),
                 fields->sp["s"]->data,
                 grid->dzhi,
+                grid->dxi, grid->dyi,
                 fields->sp["s"]->visc,
                 grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                 grid->icells, grid->ijcells);
