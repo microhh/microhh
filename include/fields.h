@@ -136,7 +136,7 @@ class Fields
         std::vector<std::string> crossfluxbot;
         std::vector<std::string> crossfluxtop;
 
-        void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
+        void check_added_cross(std::string, std::string, std::vector<std::string>&, std::vector<std::string>*);
 
         // masks
         void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);

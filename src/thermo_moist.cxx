@@ -2203,17 +2203,17 @@ void Thermo_moist::init_cross()
             allowedcrossvars.push_back("qrpath");
 
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
+        std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
 
         // Check input list of cross variables (crosslist)
-        std::vector<std::string>::iterator it=crosslist_global->begin();
-        while (it != crosslist_global->end())
+        std::vector<std::string>::iterator it=crosslist_global.begin();
+        while (it != crosslist_global.end())
         {
             if (std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
             {
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
-                crosslist_global->erase(it); // erase() returns iterator of next element..
+                crosslist_global.erase(it); // erase() returns iterator of next element..
             }
             else
                 ++it;

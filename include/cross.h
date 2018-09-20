@@ -39,7 +39,7 @@ class Cross
         void init(double);
         void create();
         std::string get_switch();
-        std::vector<std::string>* get_crosslist();
+        std::vector<std::string>& get_crosslist();
 
         unsigned long get_time_limit(unsigned long);
         //int exec(double, unsigned long, int);

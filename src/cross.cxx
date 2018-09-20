@@ -271,10 +271,11 @@ std::string Cross::get_switch()
     return swcross;
 }
 
-std::vector<std::string>* Cross::get_crosslist()
+std::vector<std::string>& Cross::get_crosslist()
 {
-    return &crosslist;
+    return crosslist;
 }
+
 
 bool Cross::do_cross()
 {

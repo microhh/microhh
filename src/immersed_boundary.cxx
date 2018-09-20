@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2015 Chiel van Heerwaarden
- * Copyright (c) 2011-2015 Thijs Heus
- * Copyright (c) 2014-2015 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -165,6 +165,69 @@ namespace
 
         return z;
     }
+
+    void find_k_dem(
+            int* const restrict k_dem,
+            const double* const restrict dem,
+            const double* const restrict z,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                int k = -1;
+                for (k=kstart; k<kend; ++k)
+                {
+                    if (z[k] > dem[ij])
+                        break;
+                }
+                k_dem[ij] = k;
+            }
+    }
+
+    void calc_fluxes(
+            double* const restrict flux,
+            const int* const restrict k_dem,
+            const double* restrict s,
+            const double dx, const double dy, const double* const restrict dz,
+            const double dxi, const double dyi, const double* const restrict dzhi,
+            const double svisc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii = 1;
+
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                // Weight all fluxes by the respective area of the face through which they go.
+                // Fluxes are only exchanged with neighbors that are a ghost cell. This requires
+                // a drawing...
+
+                // Add the vertical flux.
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k_dem[ij]*kk;
+                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
+
+                // West flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k_dem[ij]];
+                // East flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
+                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k_dem[ij]];
+                // South flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k_dem[ij]];
+                // North flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
+                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k_dem[ij]];
+
+                // Normalize the fluxes back to the correct units.
+                flux[ij] /= dx*dy;
+            }
+    }
 }
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
@@ -287,6 +350,7 @@ void Immersed_boundary::init()
     {
         // Resize the 2D DEM field
         dem.resize(grid->ijcells);
+        k_dem.resize(grid->ijcells);
     }
 }
 
@@ -342,7 +406,15 @@ void Immersed_boundary::create()
             find_ghost_cells<Dem_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
             if (fields->sp.size() > 0)
                 find_ghost_cells<Dem_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
+
+            // Create the array with vertical indices that give the first cell above the DEM.
+            // Calculate which neighbors are DEM.
+            find_k_dem(
+                    k_dem.data(), dem.data(), grid->z,
+                    grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
+                    grid->icells);
         }
+
         if (ib_type == Flat_type)
         {
             find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
@@ -699,93 +771,48 @@ void Immersed_boundary::exec_stats(Mask *m)
         return;  // ...
 }
 
-namespace
-{
-    void find_k_dem(
-            int* restrict k_dem,
-            const double* const restrict dem,
-            const double* const restrict z,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj)
-    {
-        for (int j=jstart; j<jend; ++j)
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jj;
-                int k = -1;
-                for (k=kstart; k<kend; ++k)
-                {
-                    if (z[k] > dem[ij])
-                        break;
-                }
-                k_dem[ij] = k;
-            }
-    }
-
-    void calc_fluxes(
-            double* restrict flux,
-            int* restrict k_dem,
-            const double* restrict s,
-            const double dx, const double dy, const double* restrict dz,
-            const double dxi, const double dyi, const double* restrict dzhi,
-            const double svisc,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-        for (int j=jstart; j<jend; ++j)
-            for (int i=istart; i<iend; ++i)
-            {
-                // Add the vertical flux.
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k_dem[ij]*kk;
-                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
-
-                // West flux.
-                for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k_dem[ij]];
-                // East flux.
-                for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k_dem[ij]];
-                // South flux.
-                for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k_dem[ij]];
-                // North flux.
-                for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k_dem[ij]];
-
-                flux[ij] /= dx*dy;
-            }
-    }
-}
-
 void Immersed_boundary::exec_cross()
 {
     if (ib_type == None_type)
         return;
+
     else if (ib_type == Dem_type)
     {
-        // Calculate which neighbors are DEM.
-        std::vector<int> k_dem(grid->ijcells);
-        find_k_dem(
-                k_dem.data(), dem.data(), grid->z,
-                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
-                grid->icells);
+        auto has_ending = [](const std::string& full_string, const std::string& ending)
+        {
+            if (full_string.length() >= ending.length())
+                return (0 == full_string.compare(full_string.length() - ending.length(), ending.length(), ending));
+            else
+                return false;
+        };
 
-        std::vector<double> flux_field(grid->ijcells);
-        calc_fluxes(
-                flux_field.data(),
-                k_dem.data(),
-                fields->sp["s"]->data,
-                grid->dx, grid->dy, grid->dz,
-                grid->dxi, grid->dyi, grid->dzhi,
-                fields->sp["s"]->visc,
-                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
-                grid->icells, grid->ijcells);
+        for (const auto& s : model->cross->get_crosslist())
+        {
+            const std::string fluxbot_ib_string = "fluxbot_ib";
+            if (has_ending(s, fluxbot_ib_string))
+            {
+                // Strip the scalar from the fluxbot_ib
+                std::string scalar = s;
+                scalar.erase(s.length() - fluxbot_ib_string.length());
 
-        // Calculate the scalar fluxes.
-        int nerror = 0;
-        nerror += model->cross->cross_plane(flux_field.data(), fields->atmp["tmp1"]->data, "s_ib_fluxbot");
+                calc_fluxes(
+                        fields->atmp["tmp1"]->datafluxbot,
+                        k_dem.data(),
+                        fields->sp[scalar]->data,
+                        grid->dx, grid->dy, grid->dz,
+                        grid->dxi, grid->dyi, grid->dzhi,
+                        fields->sp[scalar]->visc,
+                        grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
+                        grid->icells, grid->ijcells);
+
+                // Calculate the scalar fluxes.
+                int nerror = 0;
+                nerror += model->cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, scalar + "fluxbot_ib");
+
+                if (nerror > 0)
+                    throw 1;
+            }
+        }
     }
     else
         return;  // ...

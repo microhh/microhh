@@ -98,17 +98,17 @@ void Boundary_surface_bulk::init(Input *inputin)
     allowedcrossvars.push_back("obuk");
 
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
+    std::vector<std::string>& crosslist_global = model->cross->get_crosslist(); 
 
     // Check input list of cross variables (crosslist)
-    std::vector<std::string>::iterator it2=crosslist_global->begin();
-    while (it2 != crosslist_global->end())
+    std::vector<std::string>::iterator it2=crosslist_global.begin();
+    while (it2 != crosslist_global.end())
     {
         if (std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
         {
             // Remove variable from global list, put in local list
             crosslist.push_back(*it2);
-            crosslist_global->erase(it2); // erase() returns iterator of next element..
+            crosslist_global.erase(it2); // erase() returns iterator of next element..
         }
         else
             ++it2;

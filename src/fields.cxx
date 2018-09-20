@@ -204,7 +204,7 @@ void Fields::init()
     }
 
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
+    std::vector<std::string>& crosslist_global = model->cross->get_crosslist(); 
 
     // Check different type of crosses and put them in their respective lists 
     for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -241,18 +241,18 @@ void Fields::init()
     }
 }
 
-void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string>& crosslist, std::vector<std::string> *typelist)
 {
     std::vector<std::string>::iterator position;
 
-    position = std::find(crosslist->begin(), crosslist->end(), var + type);
-    if (position != crosslist->end()) 
+    position = std::find(crosslist.begin(), crosslist.end(), var + type);
+    if (position != crosslist.end()) 
     {
         // don't allow lngrad in 2nd order mode
         if (!(type == "lngrad" && grid->swspatialorder == "2"))
         {
             typelist->push_back(var);
-            crosslist->erase(position);
+            crosslist.erase(position);
         }
     }
 }
