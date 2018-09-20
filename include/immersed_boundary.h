@@ -90,6 +90,8 @@ class Immersed_boundary
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
 
+        std::vector<std::string> crosslist;
+
         ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_v;  ///< Vector holding info on all the ghost cells within the boundary

@@ -413,6 +413,9 @@ void Immersed_boundary::create()
                     k_dem.data(), dem.data(), grid->z,
                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                     grid->icells);
+
+            std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
+            crosslist = crosslist_global;
         }
 
         if (ib_type == Flat_type)
@@ -786,7 +789,7 @@ void Immersed_boundary::exec_cross()
                 return false;
         };
 
-        for (const auto& s : model->cross->get_crosslist())
+        for (const auto& s : crosslist)
         {
             const std::string fluxbot_ib_string = "fluxbot_ib";
             if (has_ending(s, fluxbot_ib_string))
