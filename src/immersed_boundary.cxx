@@ -228,6 +228,14 @@ namespace
                 flux[ij] /= dx*dy;
             }
     }
+
+    bool has_ending(const std::string& full_string, const std::string& ending)
+    {
+        if (full_string.length() >= ending.length())
+            return (0 == full_string.compare(full_string.length() - ending.length(), ending.length(), ending));
+        else
+            return false;
+    };
 }
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
@@ -351,6 +359,33 @@ void Immersed_boundary::init()
         // Resize the 2D DEM field
         dem.resize(grid->ijcells);
         k_dem.resize(grid->ijcells);
+
+        std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
+
+        // Check input list of cross variables (crosslist)
+        std::vector<std::string>::iterator it = crosslist_global.begin();
+        while (it != crosslist_global.end())
+        {
+            const std::string fluxbot_ib_string = "fluxbot_ib";
+            if (has_ending(*it, fluxbot_ib_string))
+            {
+                // Strip the ending.
+                std::string scalar = *it;
+                scalar.erase(it->length() - fluxbot_ib_string.length());
+
+                // Check if array is exists, else cycle.
+                if (fields->sp.find(scalar) != fields->sp.end())
+                {
+                    // Remove variable from global list, put in local list
+                    crosslist.push_back(*it);
+                    crosslist_global.erase(it); // erase() returns iterator of next element..
+                }
+                else
+                    ++it;
+            }
+            else
+                ++it;
+        }
     }
 }
 
@@ -413,9 +448,6 @@ void Immersed_boundary::create()
                     k_dem.data(), dem.data(), grid->z,
                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                     grid->icells);
-
-            std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
-            crosslist = crosslist_global;
         }
 
         if (ib_type == Flat_type)
@@ -781,14 +813,6 @@ void Immersed_boundary::exec_cross()
 
     else if (ib_type == Dem_type)
     {
-        auto has_ending = [](const std::string& full_string, const std::string& ending)
-        {
-            if (full_string.length() >= ending.length())
-                return (0 == full_string.compare(full_string.length() - ending.length(), ending.length(), ending));
-            else
-                return false;
-        };
-
         for (const auto& s : crosslist)
         {
             const std::string fluxbot_ib_string = "fluxbot_ib";
