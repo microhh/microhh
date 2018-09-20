@@ -726,8 +726,8 @@ namespace
             double* restrict flux,
             int* restrict k_dem,
             const double* restrict s,
-            const double* restrict dzhi,
-            const double dxi, const double dyi,
+            const double dx, const double dy, const double* restrict dz,
+            const double dxi, const double dyi, const double* restrict dzhi,
             const double svisc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -739,20 +739,22 @@ namespace
                 // Add the vertical flux.
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + k_dem[ij]*kk;
-                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]];
+                flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
 
                 // West flux.
                 for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k_dem[ij]];
                 // East flux.
                 for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
-                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi;
+                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k_dem[ij]];
                 // South flux.
                 for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k_dem[ij]];
                 // North flux.
                 for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
-                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi;
+                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k_dem[ij]];
+
+                flux[ij] /= dx*dy;
             }
     }
 }
@@ -775,8 +777,8 @@ void Immersed_boundary::exec_cross()
                 flux_field.data(),
                 k_dem.data(),
                 fields->sp["s"]->data,
-                grid->dzhi,
-                grid->dxi, grid->dyi,
+                grid->dx, grid->dy, grid->dz,
+                grid->dxi, grid->dyi, grid->dzhi,
                 fields->sp["s"]->visc,
                 grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                 grid->icells, grid->ijcells);
