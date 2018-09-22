@@ -223,7 +223,7 @@ namespace
                 for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    flux[ij] += -svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k];
+                    flux[ij] += svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k];
                 }
                 // South flux.
                 for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
@@ -235,7 +235,7 @@ namespace
                 for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    flux[ij] += -svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k];
+                    flux[ij] += svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k];
                 }
 
                 // Normalize the fluxes back to the correct units.
