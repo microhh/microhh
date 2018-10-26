@@ -356,7 +356,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     boundary_cyclic.init();
 
     // Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
+    tdep_pbot->create_timedep(input_nc);
 
 
     // Set up output classes

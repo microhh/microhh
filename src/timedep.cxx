@@ -29,7 +29,7 @@ template<typename TF>
 Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varnamein, const bool is_timedep) :
     master(masterin), grid(gridin), varname(varnamein)
 {
-    if(is_timedep)
+    if (is_timedep)
         sw = Timedep_switch::Enabled;
     else
         sw = Timedep_switch::Disabled;
@@ -41,7 +41,7 @@ Timedep<TF>::~Timedep()
 }
 
 template <typename TF>
-void Timedep<TF>::create_timedep_prof()
+void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc)
 {
     if (sw == Timedep_switch::Disabled)
         return;
@@ -58,7 +58,7 @@ void Timedep<TF>::create_timedep_prof()
     {
         time.push_back(std::stod(it));
         data_block.get_vector(tmp, it, gd.kmax, 0, 0);
-        data.insert(data.end(),tmp.begin(),tmp.end());
+        data.insert(data.end(), tmp.begin(), tmp.end());
     }
     #ifdef USECUDA
     prepare_device();
@@ -66,7 +66,7 @@ void Timedep<TF>::create_timedep_prof()
 }
 
 template <typename TF>
-void Timedep<TF>::create_timedep()
+void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
 {
     if (sw == Timedep_switch::Disabled)
         return;

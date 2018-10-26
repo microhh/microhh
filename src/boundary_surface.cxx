@@ -425,9 +425,9 @@ Boundary_surface<TF>::~Boundary_surface()
 }
 
 template<typename TF>
-void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
+void Boundary_surface<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
-    Boundary<TF>::process_time_dependent(input);
+    Boundary<TF>::process_time_dependent(input, input_nc);
 
     // add variables to the statistics
     if (stats.get_switch())
