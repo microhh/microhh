@@ -341,7 +341,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
 
         for (auto& it : tdep_geo)
-            it.second->create_timedep_prof();
+            it.second->create_timedep_prof(input_nc);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -363,7 +363,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
         // Process the time dependent data
         for (auto& it : tdep_ls)
-            it.second->create_timedep_prof();
+            it.second->create_timedep_prof(input_nc);
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -390,7 +390,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
         // Process the time dependent data
         for (auto& it : tdep_nudge)
-            it.second->create_timedep_prof();
+            it.second->create_timedep_prof(input_nc);
     }
 
     // Get the large scale vertical velocity from the input
@@ -399,7 +399,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         // profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
         input_nc.get_variable(wls, "wls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
-        tdep_wls->create_timedep_prof();
+        tdep_wls->create_timedep_prof(input_nc);
     }
 }
 

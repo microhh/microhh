@@ -27,6 +27,7 @@
 #include "boundary_cyclic.h"
 
 class Master;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Diff;
@@ -65,7 +66,7 @@ class Boundary
         static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
-        virtual void create(Input&, Stats<TF>&); ///< Create the fields.
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&); ///< Create the fields.
 
         virtual void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
@@ -121,7 +122,7 @@ class Boundary
 
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
-        void process_time_dependent(Input&); ///< Process the time dependent settings from the ini file.
+        void process_time_dependent(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
         #ifdef USECUDA
         void clear_device();
         #endif

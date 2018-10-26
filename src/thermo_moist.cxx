@@ -591,7 +591,7 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     fields.rhorefh = bs.rhorefh;
 
     // 7. Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
+    tdep_pbot->create_timedep(input_nc);
 
 
     // Init the toolbox classes.
