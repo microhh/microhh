@@ -28,6 +28,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "diff.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
@@ -203,7 +204,7 @@ namespace
             const TF z0m,
             const int istart, const int iend, const int jstart, const int jend, const int kstart,
             const int icells, const int jcells, const int kk,
-            Boundary_type mbcbot, Boundary_type thermobc,
+            Boundary_type mbcbot,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
@@ -231,7 +232,7 @@ namespace
 
         // set the Obukhov length to a very large negative number
         // case 1: fixed buoyancy flux and fixed ustar
-        if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
+        if (mbcbot == Boundary_type::Ustar_type)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -241,25 +242,14 @@ namespace
                     obuk[ij] = -Constants::dbig;
                 }
         }
-        // case 2: fixed buoyancy surface value and free ustar
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
+        // case 2: free ustar
+        else if (mbcbot == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij = i + j*jj;
-                    obuk [ij] = -Constants::dbig;
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-                }
-        }
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij  = i + j*jj;
                     obuk [ij] = -Constants::dbig;
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
@@ -437,7 +427,7 @@ Boundary_surface<TF>::~Boundary_surface()
 template<typename TF>
 void Boundary_surface<TF>::create(Input& input, Stats<TF>& stats)
 {
-    // process_time_dependent(input);
+    Boundary<TF>::process_time_dependent(input);
 
     // add variables to the statistics
     if (stats.get_switch())
@@ -508,6 +498,9 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     // save the bc of the first thermo field in case thermo is enabled
     if (it != thermolist.end())
         thermobc = sbc[*it].bcbot;
+    else
+        // Set the thermobc to Flux_type to avoid ininitialized errors.
+        thermobc = Boundary_type::Flux_type;
 
     while (it != thermolist.end())
     {
@@ -591,13 +584,11 @@ void Boundary_surface<TF>::exec_cross(int iotime)
 */
 
 template<typename TF>
-void Boundary_surface<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh)
+void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
 {
-    Mask<TF>& m = stats.masks[mask_name];
-
     const TF no_offset = 0.;
-    stats.calc_mean_2d(m.tseries["obuk" ].data, obuk.data() , no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-    stats.calc_mean_2d(m.tseries["ustar"].data, ustar.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    stats.calc_stats_2d("obuk", obuk, no_offset, {"mean"});
+    stats.calc_stats_2d("ustar", ustar, no_offset, {"mean"});
 }
 
 template<typename TF>
@@ -724,7 +715,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
                           z0m,
                           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                           gd.icells, gd.jcells, gd.ijcells,
-                          mbcbot, thermobc, boundary_cyclic);
+                          mbcbot, boundary_cyclic);
         fields.release_tmp(dutot);
     }
     else

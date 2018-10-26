@@ -31,6 +31,7 @@ class Data_block;
 
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Diff;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Thermo;
@@ -47,10 +48,10 @@ class Microphys_disabled : public Microphys<TF>
         void init() {};
         void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, const double) {};
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, Thermo<TF>&, const double) {};
-        virtual void exec_dump(Dump<TF>&, unsigned long) {};
-        virtual void exec_cross(Cross<TF>&, unsigned long) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void exec_stats(Stats<TF>&, Thermo<TF>&, const double) {};
+        void exec_dump(Dump<TF>&, unsigned long) {};
+        void exec_cross(Cross<TF>&, unsigned long) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
         unsigned long get_time_limit(unsigned long, double);

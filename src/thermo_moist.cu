@@ -29,6 +29,7 @@
 #include "finite_difference.h"
 #include "master.h"
 #include "tools.h"
+#include "column.h"
 #include "thermo_moist_functions.h"
 
 namespace
@@ -140,8 +141,8 @@ namespace
 
     template<typename TF> __global__
     void calc_buoyancy_flux_bot_g(TF* __restrict__ bfluxbot,
-                                  TF* __restrict__ thbot, TF* __restrict__ thfluxbot,
-                                  TF* __restrict__ qtbot, TF* __restrict__ qtfluxbot,
+                                  TF* __restrict__ th, TF* __restrict__ thfluxbot,
+                                  TF* __restrict__ qt, TF* __restrict__ qtfluxbot,
                                   TF* __restrict__ thvrefh,
                                   int kstart, int icells, int jcells,
                                   int jj, int kk)
@@ -149,10 +150,13 @@ namespace
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
+        // Calculate the surface buoyancy flux using the first model level temperature and humidity
+        // to ensure bitwise identical restarts.
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = buoyancy_flux_no_ql(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+            const int ijk = i + j*jj + kstart*kk;
+            bfluxbot[ij] = buoyancy_flux_no_ql(th[ijk], thfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
         }
     }
 
@@ -333,6 +337,7 @@ void Thermo_moist<TF>::clear_device()
     cuda_safe_call(cudaFree(bs.prefh_g  ));
     cuda_safe_call(cudaFree(bs.exnref_g ));
     cuda_safe_call(cudaFree(bs.exnrefh_g));
+    tdep_pbot->clear_device();
 }
 
 template<typename TF>
@@ -356,6 +361,8 @@ void Thermo_moist<TF>::backward_device()
     cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice);
+
+    bs_stats = bs;
 }
 
 #ifdef USECUDA
@@ -371,7 +378,6 @@ void Thermo_moist<TF>::exec(const double dt)
 
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
-
 
     // Re-calculate hydrostatic pressure and exner
     if (bs.swupdatebasestate)
@@ -389,7 +395,7 @@ void Thermo_moist<TF>::exec(const double dt)
         auto tmp = fields.get_tmp();
 
         calc_base_state(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
+                        bs.rhoref.data(), bs.rhorefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
                         bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
                         bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -401,11 +407,11 @@ void Thermo_moist<TF>::exec(const double dt)
     }
 
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
-        fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
-        fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
-        gd.istart,  gd.jstart, gd.kstart+1,
-        gd.iend,    gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);
+            fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart, gd.kstart+1,
+            gd.iend,    gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
     cuda_check_error();
 }
 #endif
@@ -496,6 +502,27 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
 
 #ifdef USECUDA
 template<typename TF>
+TF* Thermo_moist<TF>::get_basestate_fld_g(std::string name)
+{
+    // BvS TO-DO: change std::string to enum
+    if (name == "pref")
+        return bs.pref_g;
+    else if (name == "prefh")
+        return bs.prefh_g;
+    else if (name == "exner")
+        return bs.exnref_g;
+    else if (name == "exnerh")
+        return bs.exnrefh_g;
+    else
+    {
+        std::string error_message = "Can not get basestate field \"" + name + "\" from thermo_moist";
+        throw std::runtime_error(error_message);
+    }
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
 {
     auto& gd = grid.get_grid_data();
@@ -510,8 +537,8 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
@@ -542,11 +569,29 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Thermo_moist<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp_g();
+
+    get_thermo_field_g(*output, "b", false);
+    column.calc_column("b", output->fld_g, no_offset);
+
+    get_thermo_field_g(*output, "ql", false);
+    column.calc_column("ql", output->fld_g, no_offset);
+
+
+    fields.release_tmp_g(output);
 }
 #endif
 

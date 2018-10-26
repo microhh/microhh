@@ -25,7 +25,6 @@
 
 #include <string>
 #include <memory>
-#include <thread>
 
 class Master;
 class Input;
@@ -113,10 +112,6 @@ class Model
         void clear_gpu();
 
         void add_statistics_masks();
-
-        #ifdef USECUDA
-        std::thread t_stat;
-        #endif
 
 };
 #endif

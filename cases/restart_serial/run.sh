@@ -1,16 +1,28 @@
 #!/bin/bash
-python drycbl_flowprof.py
+
+error_exit()
+{
+	echo "Failed" 1>&2
+	exit 1
+}
+
+casename=${PWD##*/}
+errorfile=$casename.err
+
+echo "Case" $casename
+
+$PYTHON_EXEC drycbl_flowprof.py >> $errorfile ||error_exit
 
 rm -f *.000*
 rm -f *.out
-./microhh init drycbl_flow
-./microhh run drycbl_flow
+$MICROHH_EXEC init drycbl_flow >> $errorfile ||error_exit
+$MICROHH_EXEC run drycbl_flow >> $errorfile ||error_exit
 mv u.0000002 u.0000002ref
 mv v.0000002 v.0000002ref
 mv w.0000002 w.0000002ref
 mv b.0000002 b.0000002ref
 mv time.0000002 time.0000002ref
-./microhh run drycbl_flow_restart
+$MICROHH_EXEC run drycbl_flow_restart >> $errorfile ||error_exit
 cmp u.0000002 u.0000002ref
 diffu=$?
 cmp v.0000002 v.0000002ref

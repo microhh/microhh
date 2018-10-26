@@ -8,7 +8,7 @@ plotens = False
 
 def plotstats(name, line):
   stats = netCDF4.Dataset("bomex.{}.0000000.nc".format(name),"r")
-  t   = stats.variables["t"][:]
+  t   = stats.variables["time"][:]
   z   = stats.variables["z"][:]
   zh  = stats.variables["zh"][:]
 
@@ -21,7 +21,7 @@ def plotstats(name, line):
   ut  = stats.variables["u"][:,:]
   vt  = stats.variables["v"][:,:]
   qlt = stats.variables["ql"][:,:]*1000.
-  cft = stats.variables["cfrac"][:,:]
+  cft = stats.variables["qlfrac"][:,:]
   
   sfluxt = stats.variables["thlflux"][:,:]
   bfluxt = stats.variables["bflux"][:,:]

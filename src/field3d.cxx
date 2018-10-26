@@ -29,13 +29,14 @@
 #include "defines.h"
 
 template<typename TF>
-Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std::string longnamein, std::string unitin) :
+Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std::string longnamein, std::string unitin, const std::array<int,3>& locin) :
     master(masterin),
     grid(gridin)
 {
     name     = namein;
     longname = longnamein;
     unit     = unitin;
+    loc      = locin;
 }
 
 template<typename TF>

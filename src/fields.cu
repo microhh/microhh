@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "grid.h"
 #include "master.h"
+#include "column.h"
 #include "constants.h"
 #include "tools.h"
 
@@ -73,6 +74,15 @@ namespace
                        + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2))
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
+    }
+
+    template<typename TF> __global__
+    void set_to_huge(TF* __restrict__ a, int nsize)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] = -1e30;
     }
 }
 
@@ -174,11 +184,56 @@ void Fields<TF>::exec()
     if (calc_mean_profs)
     {
         for (auto& it : ap)
-            field3d_operators.calc_mean_profile_g(it.second->fld_mean_g,it.second->fld_g);
+            field3d_operators.calc_mean_profile_g(it.second->fld_mean_g, it.second->fld_g);
     }
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
+{
+    std::shared_ptr<Field3d<TF>> tmp;
+
+    // In case of insufficient tmp fields, allocate a new one.
+    if (atmp_g.empty())
+    {
+        init_tmp_field_g();
+        tmp = atmp_g.back();
+        tmp->init_device();
+    }
+    else
+        tmp = atmp_g.back();
+
+    atmp_g.pop_back();
+
+    // Assign to a huge negative number in case of debug mode.
+    #ifdef __CUDACC_DEBUG__
+    auto& gd = grid.get_grid_data();
+
+    const int nblock = 256;
+    const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
+
+    set_to_huge<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells);
+    set_to_huge<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells);
+    cuda_check_error();
+    #endif
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
+{
+    atmp_g.push_back(std::move(tmp));
+}
+#endif
 
 /**
  * This function allocates all field3d instances and fields at device
@@ -366,6 +421,25 @@ void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
+
+#ifdef USECUDA
+template<typename TF>
+void Fields<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+
+    column.calc_column("u",mp["u"]->fld_g, grid.utrans);
+    column.calc_column("v",mp["v"]->fld_g, grid.vtrans);
+    column.calc_column("w",mp["w"]->fld_g, no_offset);
+
+    for (auto& it : sp)
+    {
+        column.calc_column(it.first, it.second->fld_g, no_offset);
+    }
+
+    column.calc_column("p", sd["p"]->fld_g, no_offset);
+}
+#endif
 
 template class Fields<double>;
 template class Fields<float>;

@@ -27,6 +27,9 @@
 #include "boundary_cyclic.h"
 #include "field3d_operators.h"
 
+template<typename> class Stats;
+
+
 template<typename TF>
 class Diff_smag2 : public Diff<TF>
 {
@@ -38,13 +41,15 @@ class Diff_smag2 : public Diff<TF>
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
-        void set_values();
+        void create(Stats<TF>&);
         void init();
         void exec(Boundary<TF>&);
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&);
+        void diff_flux(Field3d<TF>&, const Field3d<TF>&);
+        void exec_stats(Stats<TF>&);
 
         #ifdef USECUDA
-        void prepare_device();
+        void prepare_device(Boundary<TF>&);
         void clear_device();
         #endif
 
@@ -58,6 +63,8 @@ class Diff_smag2 : public Diff<TF>
         using Diff<TF>::tPr;
 
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
+
+        void create_stats(Stats<TF>&);
 
         TF* mlen_g;
 

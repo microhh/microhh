@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -38,12 +38,12 @@
 
 #include <netcdf>       // C++
 #include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
-using namespace netCDF;
-using namespace netCDF::exceptions;
-
 
 namespace
 {
+    using namespace netCDF;
+    using namespace netCDF::exceptions;
+
     // Help functions to switch between the different NetCDF data types
     template<typename TF> NcType netcdf_fp_type();
     template<> NcType netcdf_fp_type<double>() { return ncDouble; }
@@ -54,9 +54,8 @@ namespace
     template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 }
 
-
 template<typename TF>
-Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
+Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
     swcolumn = inputin.get_item<bool>("column", "swcolumn", "", false);
@@ -83,7 +82,7 @@ void Column<TF>::init(double ifactor)
 }
 
 template<typename TF>
-void Column<TF>::create(int iotime, std::string sim_name)
+void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
 {
     // do not create file if column is disabled
     if (!swcolumn)
@@ -91,16 +90,40 @@ void Column<TF>::create(int iotime, std::string sim_name)
 
     int nerror = 0;
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    std::vector<TF> coordx = inputin.get_list<TF>("column", "coordinates", "x", std::vector<TF>());
+    std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
+    if (coordx.size()!=coordy.size())
+    {
+        master.print_error("Column error: X-coord array and Y-coord array do not match in size \n");
+        throw 1;
+    }
+
+    for (size_t n=0; n<coordx.size(); ++n)
+    {
+        int i = (int) floor(coordx[n]/gd.dx);
+        int j = (int) floor(coordy[n]/gd.dy);
+        if ((i >= (md.mpicoordx)*gd.imax) & (i < (md.mpicoordx+1)*gd.imax) &
+            (j >= (md.mpicoordy)*gd.jmax) & (j < (md.mpicoordy+1)*gd.jmax))
+        {
+            columns.emplace(columns.end());
+            columns.back().coord = {i,j};
+        }
+    }
 
     // create a NetCDF file for the statistics
-    if (master.get_mpiid() == 0)
+    for (auto& it: columns)
     {
         std::stringstream filename;
-        filename << sim_name << "." << "column" << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        filename << sim_name << "." << "column" << "."
+                << std::setfill('0') << std::setw(5) << it.coord[0] << "."
+                << std::setfill('0') << std::setw(5) << it.coord[1] << "."
+                << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
         try
         {
-            data_file = new NcFile(filename.str(), NcFile::newFile);
+            it.data_file = new NcFile(filename.str(), NcFile::newFile);
         }
         catch(NcException& e)
         {
@@ -115,29 +138,29 @@ void Column<TF>::create(int iotime, std::string sim_name)
         throw 1;
 
     // create dimensions
-    if (master.get_mpiid() == 0)
+    for (auto& it: columns)
     {
-        z_dim  = data_file->addDim("z" , gd.kmax);
-        zh_dim = data_file->addDim("zh", gd.kmax+1);
-        t_dim  = data_file->addDim("t");
+        it.z_dim  = it.data_file->addDim("z" , gd.kmax);
+        it.zh_dim = it.data_file->addDim("zh", gd.kmax+1);
+        it.t_dim  = it.data_file->addDim("time");
 
         NcVar z_var;
         NcVar zh_var;
 
         // create variables belonging to dimensions
-        iter_var = data_file->addVar("iter", ncInt, t_dim);
-        iter_var.putAtt("units", "-");
-        iter_var.putAtt("long_name", "Iteration number");
+        it.iter_var = it.data_file->addVar("iter", ncInt, it.t_dim);
+        it.iter_var.putAtt("units", "-");
+        it.iter_var.putAtt("long_name", "Iteration number");
 
-        t_var = data_file->addVar("t", ncDouble, t_dim);
-        t_var.putAtt("units", "s");
-        t_var.putAtt("long_name", "Time");
+        it.t_var = it.data_file->addVar("time", ncDouble, it.t_dim);
+        it.t_var.putAtt("units", "s");
+        it.t_var.putAtt("long_name", "Time");
 
-        z_var = data_file->addVar("z", ncDouble, z_dim);
+        z_var = it.data_file->addVar("z", ncDouble, it.z_dim);
         z_var.putAtt("units", "m");
         z_var.putAtt("long_name", "Full level height");
 
-        zh_var = data_file->addVar("zh", ncDouble, zh_dim);
+        zh_var = it.data_file->addVar("zh", ncDouble, it.zh_dim);
         zh_var.putAtt("units", "m");
         zh_var.putAtt("long_name", "Half level height");
 
@@ -148,8 +171,8 @@ void Column<TF>::create(int iotime, std::string sim_name)
         // Synchronize the NetCDF file
         // BvS: only the last netCDF4-c++ includes the NcFile->sync()
         //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-        //data_file->sync();
-        nc_sync(data_file->getId());
+        //it.data_file->sync();
+        nc_sync(it.data_file->getId());
     }
 }
 
@@ -191,18 +214,18 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
 
     auto& gd = grid.get_grid_data();
     // write message in case column is triggered
-    master.print_message("Saving column for time %f\n", time);
+    // master.print_message("Saving column for time %f\n", time);
 
     // put the data into the NetCDF file
-    if (master.get_mpiid() == 0)
+    for (auto& it: columns)
     {
-        const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
+        const std::vector<size_t> time_index = { static_cast<size_t>(statistics_counter) };
 
-        t_var   .putVar(time_index, &time     );
-        iter_var.putVar(time_index, &iteration);
-        const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
+        it.t_var   .putVar(time_index, &time     );
+        it.iter_var.putVar(time_index, &iteration);
+        const std::vector<size_t> time_height_index = { static_cast<size_t>(statistics_counter), 0 };
         std::vector<size_t> time_height_size  = {1, 0};
-        for (auto& p : profs)
+        for (auto& p : it.profs)
         {
             time_height_size[1] = p.second.ncvar.getDim(1).getSize();
             p.second.ncvar.putVar(time_height_index, time_height_size, &p.second.data.data()[gd.kstart]);
@@ -210,8 +233,8 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
         // Synchronize the NetCDF file
         // BvS: only the last netCDF4-c++ includes the NcFile->sync()
         //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-        //data_file->sync();
-        nc_sync(data_file->getId());
+        //it.data_file->sync();
+        nc_sync(it.data_file->getId());
     }
 
     ++statistics_counter;
@@ -222,30 +245,30 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
 {
     auto& gd = grid.get_grid_data();
     // create the NetCDF variable
-    if (master.get_mpiid() == 0)
+    for (auto& it: columns)
     {
-        std::vector<NcDim> dim_vector = {t_dim};
+        std::vector<NcDim> dim_vector = {it.t_dim};
 
         if (zloc == "z")
         {
-            dim_vector.push_back(z_dim);
-            profs[name].ncvar = data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
+            dim_vector.push_back(it.z_dim);
+            it.profs[name].ncvar = it.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
         }
         else if (zloc == "zh")
         {
-            dim_vector.push_back(zh_dim);
-            profs[name].ncvar = data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
+            dim_vector.push_back(it.zh_dim);
+            it.profs[name].ncvar = it.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
         }
-        profs.at(name).ncvar.putAtt("units", unit.c_str());
-        profs.at(name).ncvar.putAtt("long_name", longname.c_str());
-        profs.at(name).ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        it.profs.at(name).ncvar.putAtt("units", unit.c_str());
+        it.profs.at(name).ncvar.putAtt("long_name", longname.c_str());
+        it.profs.at(name).ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-        nc_sync(data_file->getId());
+        nc_sync(it.data_file->getId());
+        it.profs[name].data.resize(gd.kcells);
     }
-    profs[name].data.resize(gd.kcells);
 
 }
-
+#ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(std::string profname, const TF* const restrict data,
                       const TF offset)
@@ -254,14 +277,16 @@ void Column<TF>::calc_column(std::string profname, const TF* const restrict data
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
-    for (int k=1; k<gd.kcells; k++)
+    for (auto& it: columns)
     {
-        const int ijk  = gd.istart + gd.jstart*jj + k*kk;
-        profs.at(profname).data.data()[k] = (data[ijk] + offset);
+        for (int k=0; k<gd.kcells; k++)
+        {
+            const int ijk  = it.coord[0] + it.coord[1]*jj + k*kk;
+            it.profs.at(profname).data.data()[k] = (data[ijk] + offset);
+        }
     }
-
 }
+#endif
 
 template class Column<double>;
 template class Column<float>;
-

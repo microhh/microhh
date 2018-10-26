@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,28 +23,29 @@
 #include <cstdio>
 #include <cmath>
 #include <sstream>
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <utility>
 #include <netcdf>       // C++
 #include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
-
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
-//#include "thermo_moist.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-//#include "diff_smag2.h"
 #include "timeloop.h"
-
-using namespace netCDF;
-using namespace netCDF::exceptions;
-using namespace Constants;
+#include "diff.h"
 
 namespace
 {
+    using namespace netCDF;
+    using namespace netCDF::exceptions;
+    using namespace Constants;
+
     // Help functions to switch between the different NetCDF data types
     template<typename TF> NcType netcdf_fp_type();
     template<> NcType netcdf_fp_type<double>() { return ncDouble; }
@@ -54,137 +55,144 @@ namespace
     template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
     template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 
-    // Sets all the mask values to one (non-masked field)
-    template<typename TF>
-    void calc_mask(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom,
-                   int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-                   const int itot, const int jtot, const int kcells, const int ijcells, const int ncells)
-    {
-        const int ijtot = itot*jtot;
-        nmask_bottom = ijtot;
-
-        for (int n=0; n<ncells; ++n)
-        {
-            mask_full[n] = 1.;
-            mask_half[n] = 1.;
-        }
-
-        for (int n=0; n<ijcells; ++n)
-            mask_bottom[n] = 1.;
-
-        for (int k=0; k<kcells; ++k)
-        {
-            nmask_full[k] = ijtot;
-            nmask_half[k] = ijtot;
-        }
-    }
-
-    // Sets all the mask values to one (non-masked field)
-    template<typename TF>
-    void calc_mask_true(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom, const int ijcells, const int ncells)
-    {
-        for (int n=0; n<ncells; ++n)
-        {
-            mask_full[n] = 1.;
-            mask_half[n] = 1.;
-        }
-
-        for (int n=0; n<ijcells; ++n)
-            mask_bottom[n] = 1.;
-    }
-
     template<typename TF, Stats_mask_type mode>
-    TF compare(const TF value, const TF threshold)
+    TF is_false(const TF value, const TF threshold)
     {
         if (mode == Stats_mask_type::Plus)
-            return (value > threshold);
-        else if (mode == Stats_mask_type::Min)
             return (value <= threshold);
+        else if (mode == Stats_mask_type::Min)
+            return (value > threshold);
     }
 
-    template<typename TF, Stats_mask_type mode>
-    void calc_mask_thres(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
-                         const TF* const restrict fld, const TF* const restrict fldh, const TF* const restrict fldbot,
-                         const TF threshold,
-                         const int istart, const int jstart, const int kstart,
-                         const int iend,   const int jend,   const int kend,
-                         const int icells, const int ijcells)
-    {
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    mask[ijk] *= compare<TF, mode>(fld[ijk], threshold);
-                }
-
-        for (int k=kstart; k<kend+1; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    maskh[ijk] *= compare<TF, mode>(fldh[ijk], threshold);
-                }
-
-        // Set the mask for surface projected quantities
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-                maskbot[ijk] *= compare<TF, mode>(fldbot[ijk], threshold);
-            }
-    }
-
-    template<typename TF, Stats_mask_type mode>
-    void calc_mask_thres_pert(TF* const restrict mask, TF* const restrict maskh, TF* const restrict maskbot,
-                     const TF* const restrict fld, const TF* const restrict fld_mean, const TF* const restrict fldh, 
-                     const TF* const restrict fldh_mean, const TF* const restrict fldbot, const TF threshold,
-                     const int istart, const int jstart, const int kstart,
-                     const int iend,   const int jend,   const int kend,
-                     const int icells, const int ijcells)
-    {
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    mask[ijk] *= compare<TF, mode>((fld[ijk]-fld_mean[k]), threshold);
-                }
-
-        for (int k=kstart; k<kend+1; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    maskh[ijk] *= compare<TF, mode>((fldh[ijk]-fldh_mean[k]), threshold);
-                }
-
-        // Set the mask for surface projected quantities
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-                maskbot[ijk] *= compare<TF, mode>((fldbot[ijk]-fld_mean[kstart]), threshold);
-            }
-    }
-
-    // Sets all the mask values to one (non-masked field)
     template<typename TF>
-    void calc_nmask(TF* restrict mask_full, TF* restrict mask_half, TF* restrict mask_bottom,
-                   int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-                   const int istart, const int iend, const int jstart, const int jend, 
-                   const int kstart, const int kend, const int icells, const int ijcells, const int kcells)
+    TF in_mask(const unsigned int mask, const unsigned int flag) { return static_cast<TF>( (mask & flag) != 0 ); }
+
+    template<typename TF>
+    void set_flag(unsigned int& flag, const int*& restrict nmask, const Mask<TF>& m, const int loc)
     {
+        if (loc == 0)
+        {
+            flag = m.flag;
+            nmask = m.nmask.data();
+        }
+        else
+        {
+            flag = m.flagh;
+            nmask = m.nmaskh.data();
+        }
+    }
+
+    template<typename TF>
+    void set_fillvalue_prof(TF* const restrict data, const int* const restrict nmask, const int kstart, const int kcells)
+    {
+        for (int k=0; k<kcells; ++k)
+        {
+            if (nmask[k] == 0)
+                data[k] = netcdf_fp_fillvalue<TF>();
+        }
+    }
+
+    template<typename TF, Stats_mask_type mode>
+    void calc_mask_thres(
+            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
+            const unsigned int flag, const unsigned int flagh,
+            const TF* const restrict fld, const TF* const restrict fldh,
+            const TF* const restrict fld_bot, const TF threshold,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk], threshold);
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
+                }
+
+        // Set the top value for the flux level.
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*icells + kend*ijcells;
+                mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
+            }
+
+        // Set the mask for surface projected quantities
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij], threshold);
+            }
+    }
+
+    /*
+    template<typename TF, Stats_mask_type mode>
+    void calc_mask_thres_pert(
+            unsigned int* const restrict mfield, unsigned int* const restrict mfield_bot,
+            const unsigned int flag, const unsigned int flagh,
+            const TF* const restrict fld, const TF* const restrict fld_mean, const TF* const restrict fldh,
+            const TF* const restrict fldh_mean, const TF* const restrict fld_bot, const TF threshold,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int icells, const int ijcells)
+    {
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    mfield[ijk] -=  (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk]-fld_mean [k], threshold);
+                    mfield[ijk] -=  (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk]-fldh_mean[k], threshold);
+                }
+
+        // Set the mask for surface projected quantities
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij]-fld_mean[kstart], threshold);
+            }
+    }
+    */
+
+    template<typename TF>
+    void calc_area(
+            TF* const restrict area, const int loc[3], const int* const restrict nmask,
+            const int kstart, const int kend, const int ijtot)
+    {
+        for (int k=kstart; k<kend+loc[2]; ++k)
+        {
+            if (nmask[k])
+                area[k] = static_cast<TF>(nmask[k]) / static_cast<TF>(ijtot);
+            else
+                area[k] = 0.;
+        }
+    }
+
+    // Calculate the number of points contained in the mask.
+    template<typename TF>
+    void calc_nmask(
+            int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
+            const unsigned int* const mfield, const unsigned int* const mfield_bot, const unsigned int flag, const unsigned int flagh,
+            const int istart, const int iend, const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells, const int kcells)
+    {
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             nmask_full[k] = 0;
@@ -193,25 +201,244 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk  = i + j*icells + k*ijcells;
-                    nmask_full[k]+=mask_full[ijk];
-                    nmask_half[k]+=mask_half[ijk];
+                    const int ijk = i + j*icells + k*ijcells;
+                    nmask_full[k] += in_mask<int>(mfield[ijk], flag );
+                    nmask_half[k] += in_mask<int>(mfield[ijk], flagh);
                 }
         }
 
-        nmask_bottom = 0;
+        nmask_bottom     = 0;
+        nmask_half[kend] = 0;
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
-                const int ijk  = i + j*icells;
-                nmask_bottom+=mask_bottom[ijk];
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kend*ijcells;
+                nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
+                nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
+    }
+
+    template<typename TF>
+    void calc_mean(
+            TF* const restrict prof, const TF* const restrict fld,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (nmask[k])
+            {
+                double tmp = 0.;
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        tmp += in_mask<double>(mask[ijk], flag) * fld[ijk];
+                    }
+
+                prof[k] = tmp / nmask[k];
+            }
+        }
+    }
+
+    template<typename TF>
+    void calc_mean_2d(
+            TF& out, const TF* const restrict fld,
+            const int istart, const int iend, const int jstart, const int jend,
+            const int icells, const int itot, const int jtot)
+    {
+        double tmp = 0.;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                tmp += fld[ij];
+            }
+
+        out = tmp / (itot*jtot);
+    }
+
+    template<typename TF>
+    void calc_moment(
+            TF* const restrict prof, const TF* const restrict fld, const TF* const restrict fld_mean, const TF offset,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask, const int power,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (nmask[k])
+            {
+                double tmp = 0.;
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld[ijk] - fld_mean[k] + offset, power);
+                    }
+
+                prof[k] = tmp / nmask[k];
+            }
+        }
+    }
+
+    template<typename TF>
+    void calc_cov(
+            TF* const restrict prof, const TF* const restrict fld1, const TF* const restrict fld1_mean, const TF offset1, const int pow1,
+            const TF* const restrict fld2, const TF* const restrict fld2_mean, const TF offset2, const int pow2,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (nmask[k])
+            {
+                double tmp = 0.;
+                if ((fld1_mean[k] != netcdf_fp_fillvalue<TF>()) && (fld2_mean[k] != netcdf_fp_fillvalue<TF>()))
+                {
+                    for (int j=jstart; j<jend; ++j)
+                        #pragma ivdep
+                        for (int i=istart; i<iend; ++i)
+                        {
+                            const int ijk  = i + j*icells + k*ijcells;
+                            tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
+                        }
+
+                    prof[k] = tmp / nmask[k];
+                }
+            }
+        }
+    }
+
+    template<typename TF>
+    void add_fluxes(
+            TF* const restrict flux, const TF* const restrict turb, const TF* const restrict diff,
+            const int kstart, const int kend)
+    {
+        for (int k=kstart; k<kend+1; ++k)
+            flux[k] = turb[k] + diff[k];
+    }
+
+
+    template<typename TF>
+    void calc_frac(
+            TF* const restrict prof, const TF* const restrict fld, const TF offset, const TF threshold,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (nmask[k])
+            {
+                double tmp = 0.;
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        tmp += in_mask<double>(mask[ijk], flag)*((fld[ijk] + offset) > threshold);
+                    }
+                prof[k] = tmp / nmask[k];
+            }
+        }
+    }
+
+    template<typename TF>
+    void calc_path(
+            TF& path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        int nmask_proj = 0.;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                for (int k=kstart; k<kend; ++k)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    if (in_mask<bool>(mask[ijk], flag))
+                    {
+                        ++nmask_proj;
+                        break;
+                    }
+                }
+            }
+
+        double tmp = 0.;
+        if (nmask_proj > 0)
+        {
+            for (int k=kstart; k<kend; ++k)
+            {
+                if (nmask[k])
+                {
+                    tmp += data[k]*rho[k]*dz[k]*nmask[k];
+                }
+            }
+            path = tmp / nmask_proj;
+        }
+
+    }
+
+    template<typename TF>
+    std::pair<int, int> calc_cover(
+            const TF* const restrict fld, const TF offset, const TF threshold,
+            const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        int cover = 0.;
+        int nmaskcover = 0;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                int maskincolumn = 0;
+                for (int k=kstart; k<kend; ++k)
+                {
+                    const int ijk  = i + j*icells + k*ijcells;
+                    if (in_mask<bool>(mask[ijk], flag))
+                    {
+                        maskincolumn = 1;
+                        if ((fld[ijk] + offset) > threshold)
+                        {
+                            ++cover;
+                            break;
+                        }
+                    }
+                }
+                nmaskcover += maskincolumn;
+            }
+
+        return std::make_pair(cover, nmaskcover);
+    }
+
+    bool has_only_digits(const std::string s)
+    {
+        return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
 }
 
 template<typename TF>
-Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin):
-    master(masterin), grid(gridin), fields(fieldsin)
+Stats<TF>::Stats(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
+        Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
+    master(masterin), grid(gridin), fields(fieldsin), advec(advecin), diff(diffin),
+    boundary_cyclic(master, grid)
+
 {
     swstats = inputin.get_item<bool>("stats", "swstats", "", false);
 
@@ -219,7 +446,28 @@ Stats<TF>::Stats(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
-        masklist.push_back("default");  // Add the default mask, which calculates the domain mean without sampling.
+        masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
+
+        std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
+
+        // Anything without an underscore is mean value, so should be on the whitelist
+        // std::regex re("^[^_]*$");
+        // whitelist.push_back(re);
+
+        for (auto& it : whitelistin)
+        {
+            std::regex re(it);
+            whitelist.push_back(re);
+        }
+
+        std::vector<std::string> blacklistin = inputin.get_list<std::string>("stats", "blacklist", "", std::vector<std::string>());
+
+        for (auto& it : blacklistin)
+        {
+            std::regex re(it);
+            blacklist.push_back(re);
+        }
+
     }
 }
 
@@ -236,12 +484,14 @@ void Stats<TF>::init(double ifactor)
 
     auto& gd = grid.get_grid_data();
 
+    boundary_cyclic.init();
+
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
     statistics_counter = 0;
 
     // Vectors which hold the amount of grid points sampled on each model level.
-    nmask. resize(gd.kcells);
-    nmaskh.resize(gd.kcells);
+    mfield.resize(gd.ncells);
+    mfield_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -270,7 +520,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             {
                 m.data_file = new NcFile(filename.str(), NcFile::newFile);
             }
-            catch(NcException& e)
+            catch (NcException& e)
             {
                 master.print_error("NetCDF exception: %s\n",e.what());
                 ++nerror;
@@ -279,6 +529,8 @@ void Stats<TF>::create(int iotime, std::string sim_name)
 
         // Crash on all processes in case the file could not be written.
         master.broadcast(&nerror, 1);
+
+        // CvH: Do not throw 1, but the appropriate exception.
         if (nerror)
             throw 1;
 
@@ -287,7 +539,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
         {
             m.z_dim  = m.data_file->addDim("z" , gd.kmax);
             m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
-            m.t_dim  = m.data_file->addDim("t");
+            m.t_dim  = m.data_file->addDim("time");
 
             NcVar z_var;
             NcVar zh_var;
@@ -297,7 +549,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             m.iter_var.putAtt("units", "-");
             m.iter_var.putAtt("long_name", "Iteration number");
 
-            m.t_var = m.data_file->addVar("t", ncDouble, m.t_dim);
+            m.t_var = m.data_file->addVar("time", ncDouble, m.t_dim);
             m.t_var.putAtt("units", "s");
             m.t_var.putAtt("long_name", "Time");
 
@@ -319,10 +571,13 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             //m.data_file->sync();
             nc_sync(m.data_file->getId());
         }
+
+        m.nmask. resize(gd.kcells);
+        m.nmaskh.resize(gd.kcells);
     }
 
     // For each mask, add the area as a variable.
-    add_prof("area" , "Fractional area contained in mask", "-", "z" );
+    add_prof("area" , "Fractional area contained in mask", "-", "z");
     add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
@@ -401,6 +656,7 @@ void Stats<TF>::exec(int iteration, double time, unsigned long itime)
             nc_sync(m.data_file->getId());
         }
     }
+    wmean_set = false;
 
     // Increment the statistics index
     ++statistics_counter;
@@ -419,14 +675,20 @@ void Stats<TF>::add_mask(const std::string maskname)
 {
     masks[maskname].name = maskname;
     masks[maskname].data_file = 0;
+
+    int nmasks = masks.size();
+    masks[maskname].flag  = (1 << (2 * (nmasks-1)    ));
+    masks[maskname].flagh = (1 << (2 * (nmasks-1) + 1));
 }
 
 // Add a new profile to each of the NetCDF files
 template<typename TF>
-void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
+void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
-
+    // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
+    if (is_blacklisted(name, wltype))
+        return;
     // Add profile to all the NetCDF files
     for (auto& mask : masks)
     {
@@ -441,14 +703,15 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
             {
                 dim_vector.push_back(m.z_dim);
                 m.profs[name].ncvar = m.data_file->addVar(name, netcdf_fp_type<TF>(), dim_vector);
-                //m.profs[name].data = NULL;
+                // m.profs[name].data = NULL;
             }
             else if (zloc == "zh")
             {
                 dim_vector.push_back(m.zh_dim);
                 m.profs[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
-                //m.profs[name].data = NULL;
+                // m.profs[name].data = NULL;
             }
+
             m.profs[name].ncvar.putAtt("units", unit.c_str());
             m.profs[name].ncvar.putAtt("long_name", longname.c_str());
             m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
@@ -458,6 +721,8 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
         // Resize the vector holding the data at all processes
         m.profs[name].data.resize(gd.kcells);
+
+        varlist.push_back(name);
     }
 }
 
@@ -473,33 +738,38 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-           NcVar var;
-           if (zloc == "z")
-               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
-           else if (zloc == "zh")
-               var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
-           var.putAtt("units", unit.c_str());
-           var.putAtt("long_name", longname.c_str());
-           var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+            NcVar var;
+            if (zloc == "z")
+                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
+            else if (zloc == "zh")
+                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
 
-           const std::vector<size_t> index = {0};
-           if (zloc == "z")
-           {
-               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
-               var.putVar(index, size, &prof[gd.kstart]);
-           }
-           else if (zloc == "zh")
-           {
-               const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
-               var.putVar(index, size, &prof[gd.kstart]);
-           }
+            var.putAtt("units", unit.c_str());
+            var.putAtt("long_name", longname.c_str());
+            var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+            const std::vector<size_t> index = {0};
+            if (zloc == "z")
+            {
+                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
+                var.putVar(index, size, &prof[gd.kstart]);
+            }
+            else if (zloc == "zh")
+            {
+                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
+                var.putVar(index, size, &prof[gd.kstart]);
+            }
        }
    }
 }
-//
+
 template<typename TF>
-void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit)
+void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
 {
+    // Check whether variable is part of whitelist/blacklist.
+    if (is_blacklisted(name, wltype))
+        return;
+
     // add the series to all files
     for (auto& mask : masks)
     {
@@ -518,805 +788,646 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         // Initialize at zero
         m.tseries[name].data = 0.;
     }
+    varlist.push_back(name);
 }
 
 template<typename TF>
-void Stats<TF>::get_mask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
+bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wltype)
 {
-    auto& gd = grid.get_grid_data();
+    if (wltype == Stats_whitelist_type::White)
+        return false;
 
-    calc_mask<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-                  nmask.data(), nmaskh.data(), nmaskbot,
-                  gd.itot, gd.jtot, gd.kcells, gd.ijcells, gd.ncells);
+    for (const auto& it : whitelist)
+    {
+        if (std::regex_match(name, it))
+        {
+            if (wltype == Stats_whitelist_type::Black)
+                master.print_message("DOING statistics for %s\n", name.c_str());
+
+            return false;
+        }
+    }
+
+    if (wltype == Stats_whitelist_type::Black)
+        return true;
+
+    for (const auto& it : blacklist)
+    {
+        if (std::regex_match(name, it))
+        {
+            master.print_message("NOT DOING statistics for %s\n", name.c_str());
+            return true;
+        }
+    }
+    return false;
 }
 
 template<typename TF>
-void Stats<TF>::get_nmask(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
+void Stats<TF>::initialize_masks()
 {
     auto& gd = grid.get_grid_data();
-    calc_nmask<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-                   nmask.data(), nmaskh.data(), nmaskbot,
-                   gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
-                   gd.icells, gd.ijcells, gd.kcells);
+    unsigned int flagmax = 0;
 
-    master.sum(nmask.data(),  gd.kcells);
-    master.sum(nmaskh.data(), gd.kcells);
+    for (auto& it : masks)
+        flagmax += it.second.flag + it.second.flagh;
+
+    for (int n=0; n<gd.ncells; ++n)
+        mfield[n] = flagmax;
+
+    for (int n=0; n<gd.ijcells; ++n)
+        mfield_bot[n] = flagmax;
+}
+
+
+template<typename TF>
+void Stats<TF>::finalize_masks()
+{
+    auto& gd = grid.get_grid_data();
+
+    boundary_cyclic.exec(mfield.data());
+    boundary_cyclic.exec_2d(mfield_bot.data());
+    for (auto& it : masks)
+    {
+        calc_nmask<TF>(
+                it.second.nmask.data(), it.second.nmaskh.data(), it.second.nmask_bot,
+                mfield.data(), mfield_bot.data(), it.second.flag, it.second.flagh,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells, gd.kcells);
+
+        master.sum(it.second.nmask.data() , gd.kcells);
+        master.sum(it.second.nmaskh.data(), gd.kcells);
+        it.second.nmask_bot = it.second.nmaskh[gd.kstart];
+        auto it1 = std::find(varlist.begin(), varlist.end(), "area");
+        if (it1 != varlist.end())
+            calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+
+        it1 = std::find(varlist.begin(), varlist.end(), "areah");
+        if (it1 != varlist.end())
+            calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+    }
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_true(Field3d<TF>& mask_full, Field3d<TF>& mask_half)
+void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
-    calc_mask_true<TF>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(), gd.ijcells, gd.ncells);
-}
+    unsigned int flag, flagh;
+    bool found_mask = false;
 
-template<typename TF>
-void Stats<TF>::set_mask_thres(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
-{
-    auto& gd = grid.get_grid_data();
+    for (auto& it : masks)
+    {
+        if (it.second.name == mask_name)
+        {
+            found_mask = true;
+            flag = it.second.flag;
+            flagh = it.second.flagh;
+        }
+    }
+
+    if (!found_mask)
+        throw std::runtime_error("Invalid mask name in set_mask_thres()");
 
     if (mode == Stats_mask_type::Plus)
-        calc_mask_thres<TF, Stats_mask_type::Plus>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-            fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
+        calc_mask_thres<TF, Stats_mask_type::Plus>(
+                mfield.data(), mfield_bot.data(), flag, flagh,
+                fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
     else if (mode == Stats_mask_type::Min)
-        calc_mask_thres<TF, Stats_mask_type::Min>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-            fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
+        calc_mask_thres<TF, Stats_mask_type::Min>(
+                mfield.data(), mfield_bot.data(), flag, flagh,
+                fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
     else
         throw std::runtime_error("Invalid mask type in set_mask_thres()");
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_thres_pert(Field3d<TF>& mask_full, Field3d<TF>& mask_half, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
+void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 {
-    auto& gd = grid.get_grid_data();
-
-    if (mode == Stats_mask_type::Plus)
-        calc_mask_thres_pert<TF, Stats_mask_type::Plus>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-            fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-    else if (mode == Stats_mask_type::Min)
-        calc_mask_thres_pert<TF, Stats_mask_type::Min>(mask_full.fld.data(), mask_half.fld.data(), mask_half.fld_bot.data(),
-            fld.fld.data(), fld.fld_mean.data(), fldh.fld.data(), fldh.fld_mean.data(), fldh.fld_bot.data(), threshold,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-    else
-        throw std::runtime_error("Invalid mask type in set_mask_thres_pert()");
+    auto it = std::find(varlist.begin(), varlist.end(), varname);
+    if (it != varlist.end())
+    {
+        for (auto& it : masks)
+            it.second.profs.at(varname).data = prof;
+    }
 }
 
-
-//// COMPUTATIONAL KERNELS BELOW
-//void Stats::calc_mask(double* restrict mask, double* restrict maskh, double* restrict maskbot,
-//                      int* restrict nmask, int* restrict nmaskh, int* restrict nmaskbot)
-//{
-//    int ijtot = grid->itot*grid->jtot;
-//
-//    // set all the mask values to 1
-//    for (int n=0; n<grid->ncells; ++n)
-//        mask[n] = 1.;
-//
-//    for (int n=0; n<grid->ncells; ++n)
-//        maskh[n] = 1.;
-//
-//    for (int n=0; n<grid->ijcells; ++n)
-//        maskbot[n] = 1.;
-//
-//    for (int k=0; k<grid->kcells; ++k)
-//    {
-//        nmask [k] = ijtot;
-//        nmaskh[k] = ijtot;
-//    }
-//    *nmaskbot = ijtot;
-//}
-
-
 template<typename TF>
-void Stats<TF>::calc_area(TF* restrict area, const int loc[3], int* restrict nmask)
+void Stats<TF>::calc_stats(
+        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold,
+        std::vector<std::string> operations)
 {
     auto& gd = grid.get_grid_data();
-    const int ijtot = gd.itot*gd.jtot;
 
-    for (int k=gd.kstart; k<gd.kend+loc[2]; k++)
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+
+    sanitize_operations_vector(operations);
+
+    // Process mean first
+    auto it = std::find(operations.begin(), operations.end(), "mean");
+    if (it != operations.end())
     {
-        if (nmask[k] > nthres)
-            area[k] = static_cast<TF>(nmask[k]) / static_cast<TF>(ijtot);
+        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
+        if (it1 != varlist.end())
+        {
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+
+                // Add the offset.
+                for (auto& value : m.second.profs.at(varname).data)
+                    value += offset;
+
+                set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+
+            if (varname == "w")
+                wmean_set = true;
+
+            operations.erase(it);
+        }
+    }
+
+    // Loop over all other operations.
+    for (auto& it : operations)
+    {
+        name = varname+it;
+        auto it1 = std::find(varlist.begin(), varlist.end(), name);
+
+        if (it1 == varlist.end())
+        {
+        }
+        else if (has_only_digits(it))
+        {
+            int power = std::stoi(it);
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+                calc_moment(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
+                        power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+        }
+        else if (it == "w")
+        {
+            if (!wmean_set)
+                throw std::runtime_error("W mean not calculated in stat - needed for flux");
+
+            auto tmp = fields.get_tmp();
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+                if (grid.get_spatial_order() == Grid_order::Second)
+                {
+                    calc_flux_2nd(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset,
+                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+                else if (grid.get_spatial_order() == Grid_order::Fourth)
+                {
+                    calc_flux_4th(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
+                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
+                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                }
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+
+            fields.release_tmp(tmp);
+        }
+        else if (it == "diff")
+        {
+            auto diffusion = fields.get_tmp();
+            diff.diff_flux(*diffusion, fld);
+
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+                calc_mean(
+                        m.second.profs.at(name).data.data(), diffusion->fld.data(), mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+
+            fields.release_tmp(diffusion);
+        }
+        else if (it == "flux")
+        {
+            for (auto& m : masks)
+            {
+                // No sum is required in this routine as values all.
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+                add_fluxes(
+                        m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
+                        gd.kstart, gd.kend);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+        }
+        else if (it == "grad")
+        {
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+
+                if (grid.get_spatial_order() == Grid_order::Second)
+                {
+                    calc_grad_2nd(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+                }
+                else if (grid.get_spatial_order() == Grid_order::Fourth)
+                {
+                    calc_grad_4th(
+                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
+                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+                }
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+        }
+        else if (it == "path")
+        {
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+
+                calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
+                        mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+                master.sum(&m.second.tseries.at(name).data, 1);
+            }
+        }
+        else if (it == "cover")
+        {
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+
+                // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
+                std::pair<int, int> cover = calc_cover(
+                        fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(&cover.first, 1);
+                master.sum(&cover.second, 1);
+
+                // Only assign if number of points in mask is positive.
+                m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
+            }
+        }
+        else if (it == "frac")
+        {
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, fld.loc[2]);
+
+                calc_frac(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+        }
         else
-            area[k] = 0.;
+        {
+            throw std::runtime_error("Invalid operations in stat.");
+        }
     }
 }
 
-
 template<typename TF>
-void Stats<TF>::calc_mean(TF* const restrict prof, const TF* const restrict data,
-                          const TF offset, const TF* const restrict mask, const int * const restrict nmask)
+void Stats<TF>::calc_stats_2d(
+        const std::string varname, const std::vector<TF>& fld, const TF offset, std::vector<std::string> operations)
 {
     auto& gd = grid.get_grid_data();
 
-    for (int k=gd.kstart; k<gd.kend+1; k++)
+    // Process mean first
+    auto it = std::find(operations.begin(), operations.end(), "mean");
+    if (it != operations.end())
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; j++)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; i++)
+        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
+        if (it1 != varlist.end())
+        {
+            for (auto& m : masks)
             {
-                const int ijk  = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*(data[ijk] + offset);
+                calc_mean_2d(m.second.tseries.at(varname).data, fld.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
+                master.sum(&m.second.tseries.at(varname).data, 1);
+                m.second.tseries.at(varname).data += offset;
             }
+        }
     }
+}
 
-    master.sum(prof, gd.kcells);
+template<typename TF>
+void Stats<TF>::calc_covariance(
+        const std::string varname1, const Field3d<TF>& fld1, const TF offset1, const TF threshold1, const int power1,
+        const std::string varname2, const Field3d<TF>& fld2, const TF offset2, const TF threshold2, const int power2)
+{
+    auto& gd = grid.get_grid_data();
 
-    for (int k=gd.kstart; k<gd.kend+1; k++)
+    std::string name = varname1+std::to_string(power1)+varname2+std::to_string(power2);
+    unsigned int flag;
+    auto it1 = std::find(varlist.begin(), varlist.end(), name);
+    int* nmask;
+
+    if (it1 != varlist.end())
     {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
+        if (fld1.loc == fld2.loc)
+        {
+            TF fld1_mean[gd.kcells];
+            for (auto& m : masks)
+            {
+                if (fld2.loc[2] == 0)
+                {
+                    flag = m.second.flag;
+                    for (int k = gd.kstart; k<gd.kend+1; ++k)
+                    {
+                        fld1_mean[k] = m.second.profs.at(varname1).data[k];
+                    }
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    for (int k = gd.kstart; k<gd.kend+1; ++k)
+                    {
+                        if (fld1_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld1_mean[k] != netcdf_fp_fillvalue<TF>())
+                            fld1_mean[k] = 0.5*(m.second.profs.at(varname1).data[k]+m.second.profs.at(varname1).data[k-1]);
+                        else
+                            fld1_mean[k] = netcdf_fp_fillvalue<TF>();
+
+                    }
+                    nmask = m.second.nmaskh.data();
+                }
+                calc_cov(
+                        m.second.profs.at(name).data.data(), fld1.fld.data(), fld1_mean, offset1, power1,
+                        fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+
+            }
+        }
         else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
-}
+        {
+            auto tmp = fields.get_tmp();
 
-template<typename TF>
-void Stats<TF>::calc_mean_2d(TF& mean, const TF* const restrict data,
-                             const TF offset,
-                             const TF* const restrict mask, const int nmask)
-{
-    auto& gd = grid.get_grid_data();
-    const int jj = gd.icells;
-
-    if (nmask > nthres)
-    {
-        mean = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
+            grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
+            for (auto& m : masks)
             {
-                const int ij = i + j*jj;
-                mean += mask[ij]*(data[ij] + offset);
+                if (fld2.loc[2] == 0)
+                {
+                    flag = m.second.flag;
+                    nmask = m.second.nmask.data();
+                }
+                else
+                {
+                    flag = m.second.flagh;
+                    nmask = m.second.nmaskh.data();
+                }
+
+                calc_cov(
+                        m.second.profs.at(name).data.data(), tmp->fld.data(), m.second.profs.at(varname1).data.data(), offset1, power1,
+                        fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
             }
-        master.sum(&mean,1);
-        mean /= static_cast<TF>(nmask);
-    }
-    else
-        mean = netcdf_fp_fillvalue<TF>();
-}
 
-template<typename TF>
-void Stats<TF>::calc_max_2d(TF& max, const TF* const restrict data,
-                            const TF offset, const TF* const restrict mask, const int nmask)
-{
-    auto& gd = grid.get_grid_data();
-    const int jj = gd.icells;
-
-    if (nmask > nthres)
-    {
-        max = -dbig;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ij = i + j*jj;
-
-                if (mask[ij] == 1)
-                    max = std::max(max, (data[ij] + offset));
-            }
-        master.max(&max, 1);
-    }
-    else
-        max = netcdf_fp_fillvalue<TF>();
-}
-
-//
-//void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double* restrict prof)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//    const int kstart = grid->kstart;
-//    const int kend = grid->kend;
-//
-//    double minval =  Constants::dhuge;
-//    double maxval = -Constants::dhuge;
-//
-//    // first, get min and max
-//    for (int k=grid->kstart; k<grid->kend; ++k)
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                if (data[ijk] < minval)
-//                    minval = data[ijk];
-//                if (data[ijk] > maxval)
-//                    maxval = data[ijk];
-//            }
-//
-//    master->min(&minval, 1);
-//    master->max(&maxval, 1);
-//
-//    // make sure that the max ends up in the last bin (introduce 1E-9 error)
-//    maxval *= (1.+Constants::dsmall);
-//
-//    const double range = maxval-minval;
-//
-//    // In case the field is entirely uniform, dbin becomes zero. In that case we set the profile to the minval.
-//    if (range < 1.e-16)
-//    {
-//        for (int k=grid->kstart; k<grid->kend; ++k)
-//            prof[k] = minval;
-//    }
-//    else
-//    {
-//        // create bins, equal to the number of grid cells per proc
-//        // make sure that bins is not larger than the memory of one 3d field
-//        const int bins = grid->nmax;
-//
-//        // calculate bin width, subtract one to make the minimum and maximum
-//        // are in the middle of the bin range and add half a bin size on both sides
-//        // |----x----|----x----|----x----|
-//        const double dbin = range / (double)(bins-1);
-//
-//        minval -= 0.5*dbin;
-//        maxval += 0.5*dbin;
-//
-//        // set the bin array to zero
-//        for (int n=0; n<bins; ++n)
-//            bin[n] = 0;
-//
-//        // calculate the division factor of one equivalent height unit
-//        // (the total volume saved is itot*jtot*zsize)
-//        const double nslice = (double)(grid->itot*grid->jtot);
-//
-//        // check in which bin each value falls and increment the bin count
-//        for (int k=grid->kstart; k<grid->kend; ++k)
-//        {
-//            const double dzslice = grid->dz[k] / nslice;
-//            for (int j=grid->jstart; j<grid->jend; ++j)
-//                // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
-//                for (int i=grid->istart; i<grid->iend; ++i)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    const int index = (int)((data[ijk] - minval) / dbin);
-//                    bin[index] += dzslice;
-//                }
-//        }
-//
-//        // get the bin count
-//        master->sum(bin, bins);
-//
-//        // set the starting values of the loop
-//        int index = 0;
-//        double zbin = 0.5*bin[index];
-//        double profval = minval + 0.5*dbin;
-//
-//        for (int k=grid->kstart; k<grid->kend; ++k)
-//        {
-//            // Integrate the profile up to the bin count.
-//            // Escape the while loop when the integrated profile
-//            // exceeds the next grid point.
-//            while (zbin < grid->z[k])
-//            {
-//                zbin += 0.5*(bin[index]+bin[index+1]);
-//                profval += dbin;
-//                ++index;
-//            }
-//
-//            // In case the first bin is larger than the grid spacing, which can happen
-//            // in the inital phase of an MPI run, make sure that no out-of-bounds reads
-//            // happen.
-//            if (index == 0)
-//                prof[k] = profval;
-//            else
-//            {
-//                const double dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
-//                prof[k] = profval - dzfrac*dbin;
-//            }
-//        }
-//    }
-//
-//    // now calculate the ghost cells
-//    // \TODO this might not be accurate enough, extrapolate properly
-//    double profbot = minval;
-//    double proftop = maxval;
-//
-//    if (grid->swspatialorder == "2")
-//    {
-//        prof[kstart-1] = 2.*profbot - prof[kstart];
-//        prof[kend]     = 2.*proftop - prof[kend-1];
-//    }
-//    else if (grid->swspatialorder == "4")
-//    {
-//        prof[kstart-1] = (8./3.)*profbot - 2.*prof[kstart] + (1./3.)*prof[kstart+1];
-//        prof[kstart-2] = 8.*profbot      - 9.*prof[kstart] + 2.*prof[kstart+1];
-//        prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
-//        prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
-//    }
-//}
-//
-//// \TODO the count function assumes that the variable to count is at the mask location
-//void Stats::calc_count(double* restrict data, double* restrict prof, double threshold,
-//                       double* restrict mask, int* restrict nmask)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//
-//    for (int k=0; k<grid->kcells; ++k)
-//    {
-//        prof[k] = 0.;
-//        for (int j=grid->jstart; j<grid->jend; ++j)
-//#pragma ivdep
-//            for (int i=grid->istart; i<grid->iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                if (data[ijk] > threshold)
-//                    prof[k] += mask[ijk]*1.;
-//            }
-//    }
-//
-//    master->sum(prof, grid->kcells);
-//
-//    for (int k=0; k<grid->kcells; k++)
-//    {
-//        if (nmask[k] > nthres)
-//            prof[k] /= (double)(nmask[k]);
-//        else
-//            prof[k] = NC_FILL_DOUBLE;
-//    }
-//}
-
-template<typename TF>
-void Stats<TF>::calc_moment(TF* restrict data, TF* restrict fld_mean, TF* restrict prof, TF power,
-                            TF* restrict mask, int* restrict nmask)
-{
-    auto& gd = grid.get_grid_data();
-
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
-    {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*std::pow(data[ijk]-fld_mean[k], power);
-            }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
+            fields.release_tmp(tmp);
+        }
     }
 }
 
 template<typename TF>
-void Stats<TF>::calc_flux_2nd(TF* restrict data, TF* restrict fld_mean, TF* restrict w, TF* restrict wmean,
-                              TF* restrict prof, TF* restrict tmp1, const int loc[3],
-                              TF* restrict mask, int* restrict nmask)
+void Stats<TF>::calc_flux_2nd(
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, const TF offset,
+        TF* const restrict w, const TF* const restrict wmean,
+        TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        const int icells, const int ijcells)
 {
     auto& gd = grid.get_grid_data();
-    const int kk = gd.ijcells;
 
     // set a pointer to the field that contains w, either interpolated or the original
     TF* restrict calcw = w;
 
-    // define the locations
-    const int wloc [3] = {0,0,1};
-    const int uwloc[3] = {1,0,1};
-    const int vwloc[3] = {0,1,1};
-
     if (loc[0] == 1)
     {
-        grid.interpolate_2nd(tmp1, w, wloc, uwloc);
+        grid.interpolate_2nd(tmp1, w, gd.wloc.data(), gd.uwloc.data());
         calcw = tmp1;
     }
     else if (loc[1] == 1)
     {
-        grid.interpolate_2nd(tmp1, w, wloc, vwloc);
+        grid.interpolate_2nd(tmp1, w, gd.wloc.data(), gd.vwloc.data());
         calcw = tmp1;
     }
 
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
+        if (nmask[k])
+        {
+            prof[k] = 0.; // This assignment is crucial to avoid unitialized values in case if below is false.
+
+            // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
             {
-                const int ijk  = i + j*gd.icells + k*kk;
-                prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(fld_mean[k-1]+fld_mean[k]))*(calcw[ijk]-wmean[k]);
+                double tmp = 0;
+
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        const TF data_prime = 0.5*(data[ijk-ijcells]+data[ijk]) + offset - 0.5*(fld_mean[k-1]+fld_mean[k]);
+                        const TF w_prime = calcw[ijk] - wmean[k];
+                        tmp += in_mask<double>(mask[ijk], flag) * data_prime * w_prime;
+                    }
+
+                prof[k] = tmp / nmask[k];
             }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; ++k)
-    {
-        if (nmask[k] > nthres && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
+        }
     }
 }
 
 template<typename TF>
 void Stats<TF>::calc_flux_4th(
-        TF* restrict data, TF* restrict w, TF* restrict prof, TF* restrict tmp1, const int loc[3],
-        TF* restrict mask, int* restrict nmask)
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict fld_mean, TF* const restrict w, const TF* const restrict wmean,
+        TF* restrict tmp1, const int loc[3], const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        const int icells, const int ijcells)
 {
     using namespace Finite_difference::O4;
 
     auto& gd = grid.get_grid_data();
 
-    const int jj  = 1*gd.icells;
-    const int kk1 = 1*gd.ijcells;
-    const int kk2 = 2*gd.ijcells;
+    const int kk1 = 1*ijcells;
+    const int kk2 = 2*ijcells;
 
     // set a pointer to the field that contains w, either interpolated or the original
     TF* restrict calcw = w;
 
-    // define the locations
-    const int wloc [3] = {0,0,1};
-    const int uwloc[3] = {1,0,1};
-    const int vwloc[3] = {0,1,1};
-
     if (loc[0] == 1)
     {
-        grid.interpolate_4th(tmp1, w, wloc, uwloc);
+        grid.interpolate_4th(tmp1, w, gd.wloc.data(), gd.uwloc.data());
         calcw = tmp1;
     }
     else if (loc[1] == 1)
     {
-        grid.interpolate_4th(tmp1, w, wloc, vwloc);
+        grid.interpolate_4th(tmp1, w, gd.wloc.data(), gd.vwloc.data());
         calcw = tmp1;
     }
 
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
+        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        {
+            double tmp = 0.;
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()))
             {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(ci0<TF>*data[ijk-kk2] + ci1<TF>*data[ijk-kk1] + ci2<TF>*data[ijk] + ci3<TF>*data[ijk+kk1])*calcw[ijk];
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        tmp = in_mask<double>(mask[ijk], flag)*(ci0<double>*data[ijk-kk2] + ci1<double>*data[ijk-kk1] + ci2<double>*data[ijk] + ci3<double>*data[ijk+kk1])*calcw[ijk];
+                    }
+                prof[k] = tmp / nmask[k];
             }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
+        }
     }
 }
 
 template<typename TF>
-void Stats<TF>::calc_grad_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi,
-                              TF* restrict mask, int* restrict nmask)
+void Stats<TF>::calc_grad_2nd(
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict dzhi,
+        const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        const int icells, const int ijcells)
 {
-    auto& gd = grid.get_grid_data();
-
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                prof[k] += mask[ijk]*(data[ijk]-data[ijk-gd.ijcells])*dzhi[k];
-            }
-    }
+        if (nmask[k])
+        {
+            double tmp = 0.;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    tmp += in_mask<double>(mask[ijk], flag)*(data[ijk]-data[ijk-ijcells])*dzhi[k];
+                }
 
-    master.sum(prof, gd.kcells);
-
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
+            prof[k] = tmp / nmask[k];
+        }
     }
 }
 
 template<typename TF>
 void Stats<TF>::calc_grad_4th(
-        TF* restrict data, TF* restrict prof, const TF* restrict dzhi4, const int loc[3],
-        TF* restrict mask, int* restrict nmask)
+        TF* const restrict prof, const TF* const restrict data, const TF* const restrict dzhi4,
+        const unsigned int* const mask, const unsigned int flag, const int* const nmask,
+        const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        const int icells, const int ijcells)
 {
     using namespace Finite_difference::O4;
 
-    auto& gd = grid.get_grid_data();
+    const int jj  = 1*icells;
+    const int kk1 = 1*ijcells;
+    const int kk2 = 2*ijcells;
 
-    const int jj  = 1*gd.icells;
-    const int kk1 = 1*gd.ijcells;
-    const int kk2 = 2*gd.ijcells;
-
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    #pragma omp parallel for
+    for (int k=kstart; k<kend+1; ++k)
     {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] += mask[ijk]*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
-            }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
-}
-
-template<typename TF>
-void Stats<TF>::calc_diff_4th(
-        TF* restrict data, TF* restrict prof, const TF* restrict dzhi4,
-        const TF visc, const int loc[3],
-        TF* restrict mask, int* restrict nmask)
-{
-    using namespace Finite_difference::O4;
-
-    auto& gd = grid.get_grid_data();
-
-    const int jj  = 1*gd.icells;
-    const int kk1 = 1*gd.ijcells;
-    const int kk2 = 2*gd.ijcells;
-
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
-    {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                prof[k] -= mask[ijk]*visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi4[k];
-            }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
-}
-
-template<typename TF>
-void Stats<TF>::calc_diff_2nd(TF* restrict data, TF* restrict prof, const TF* restrict dzhi, TF visc, const int loc[3],
-                              TF* restrict mask, int* restrict nmask)
-{
-    auto& gd = grid.get_grid_data();
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
-
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
-    {
-        prof[k] = 0.;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
-            }
-    }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=gd.kstart; k<gd.kend+1; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
-    }
-}
-
-template<typename TF>
-void Stats<TF>::calc_diff_2nd(
-        TF* restrict data, TF* restrict w, TF* restrict evisc,
-        TF* restrict prof, const TF* restrict dzhi,
-        TF* restrict fluxbot, TF* restrict fluxtop, const TF tPr, const int loc[3],
-        TF* restrict mask, int* restrict nmask)
-{
-    auto& gd = grid.get_grid_data();
-    const int ii = 1;
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
-    const int kstart = gd.kstart;
-    const int kend = gd.kend;
-
-    const TF dxi = 1./gd.dx;
-    const TF dyi = 1./gd.dy;
-
-    // bottom boundary
-    prof[kstart] = 0.;
-    for (int j=gd.jstart; j<gd.jend; ++j)
-        #pragma ivdep
-        for (int i=gd.istart; i<gd.iend; ++i)
+        if (nmask[k])
         {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            prof[kstart] += mask[ijk]*fluxbot[ij];
-        }
-
-    // calculate the interior
-    if (loc[0] == 1)
-    {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
-        {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
+            double tmp = 0.;
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk  = i + j*jj + k*kk;
-                    // evisc * (du/dz + dw/dx)
-                    const TF eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
-                    prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                    const int ijk = i + j*jj + k*kk1;
+                    tmp += in_mask<double>(mask[ijk], flag)*(cg0<double>*data[ijk-kk2] + cg1<double>*data[ijk-kk1] + cg2<double>*data[ijk] + cg3<double>*data[ijk+kk1])*dzhi4[k];
                 }
-        }
-    }
-    else if (loc[1] == 1)
-    {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
-        {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    // evisc * (dv/dz + dw/dy)
-                    const TF eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
-                    prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
-                }
-        }
-    }
-    else
-    {
-        for (int k=gd.kstart+1; k<gd.kend; ++k)
-        {
-            prof[k] = 0.;
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const TF eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
-                    prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
-                }
-        }
-    }
 
-    // top boundary
-    prof[kend] = 0.;
-    for (int j=gd.jstart; j<gd.jend; ++j)
-        #pragma ivdep
-        for (int i=gd.istart; i<gd.iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kend*kk;
-            prof[kend] += mask[ijk]*fluxtop[ij];
+            prof[k] = tmp / nmask[k];
         }
-
-    master.sum(prof, gd.kcells);
-
-    for (int k=1; k<gd.kcells; k++)
-    {
-        if (nmask[k] > nthres)
-            prof[k] /= static_cast<TF>(nmask[k]);
-        else
-            prof[k] = netcdf_fp_fillvalue<TF>();
     }
 }
 
 template<typename TF>
-void Stats<TF>::add_fluxes(TF* restrict flux, TF* restrict turb, TF* restrict diff)
+void Stats<TF>::sanitize_operations_vector(std::vector<std::string> operations)
 {
-    auto& gd = grid.get_grid_data();
+    // Sanitize the operations vector:
+    // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
 
-    for (int k=gd.kstart; k<gd.kend+1; ++k)
+    std::vector<std::string> tmpvec = operations;
+    for (auto it : tmpvec)
     {
-        if (turb[k] == netcdf_fp_fillvalue<TF>() || diff[k] == netcdf_fp_fillvalue<TF>())
-            flux[k] = netcdf_fp_fillvalue<TF>();
-        else
-            flux[k] = turb[k] + diff[k];
+        if (it == "flux")
+        {
+            operations.push_back("diff");
+            operations.push_back("w");
+        }
+    }
+    for (auto it : tmpvec)
+    {
+        if (has_only_digits(it) || (it == "w") || (it == "path"))
+        {
+            operations.push_back("mean");
+        }
+    }
+
+    // Check for duplicates
+    std::sort( operations.begin(), operations.end() );
+    operations.erase( unique( operations.begin(), operations.end() ), operations.end() );
+
+    // Make sure that flux goes at the end
+    for (auto& it : operations)
+    {
+        if (it == "flux" )
+        {
+            std::swap(it, operations.back());
+            break;
+        }
     }
 }
-
-///**
-// * This function calculates the total domain integrated path of variable data over maskbot
-// */
-//void Stats::calc_path(double* restrict data, double* restrict maskbot, int* restrict nmaskbot, double* restrict path)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//    const int kstart = grid->kstart;
-//
-//    *path = 0.;
-//
-//    if (*nmaskbot > nthres)
-//    {
-//        // Integrate liquid water
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ij = i + j*jj;
-//                if (maskbot[ij] == 1)
-//                    for (int k=kstart; k<grid->kend; k++)
-//                    {
-//                        const int ijk = i + j*jj + k*kk;
-//                        *path += fields->rhoref[k] * data[ijk] * grid->dz[k];
-//                    }
-//            }
-//        *path /= (double)*nmaskbot;
-//        master->sum(path, 1);
-//    }
-//    else
-//        *path = NC_FILL_DOUBLE;
-//}
-//
-///**
-// * This function calculates the vertical projected cover of variable data over maskbot
-// */
-//void Stats::calc_cover(double* restrict data, double* restrict maskbot, int* restrict nmaskbot, double* restrict cover, double threshold)
-//{
-//    const int jj = grid->icells;
-//    const int kk = grid->ijcells;
-//    const int kstart = grid->kstart;
-//
-//    *cover = 0.;
-//
-//    if (*nmaskbot > nthres)
-//    {
-//        // Per column, check if cloud present
-//        for (int j=grid->jstart; j<grid->jend; j++)
-//            for (int i=grid->istart; i<grid->iend; i++)
-//            {
-//                const int ij = i + j*jj;
-//                if (maskbot[ij] == 1)
-//                    for (int k=kstart; k<grid->kend; k++)
-//                    {
-//                        const int ijk = i + j*jj + k*kk;
-//                        if (data[ijk]>threshold)
-//                        {
-//                            *cover += 1.;
-//                            break;
-//                        }
-//                    }
-//            }
-//        *cover /= (double)*nmaskbot;
-//        master->sum(cover,1);
-//    }
-//    else
-//        *cover = NC_FILL_DOUBLE;
-//}
 
 template class Stats<double>;
 template class Stats<float>;

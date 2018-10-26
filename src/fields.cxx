@@ -199,10 +199,10 @@ template<typename TF>
 Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
-    boundary_cyclic(master, grid),
     field3d_io(master, grid),
     field3d_operators(master, grid, *this)
 {
+    auto& gd = grid.get_grid_data();
     calc_mean_profs = false;
 
     // Initialize GPU pointers
@@ -216,22 +216,27 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
-        init_prognostic_field(s, s, "-");
+        init_prognostic_field(s, s, "-", gd.sloc);
         sp.at(s)->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
-    // initialize the basic set of fields
-    init_momentum_field("u", "U velocity", "m s-1");
-    init_momentum_field("v", "V velocity", "m s-1");
-    init_momentum_field("w", "Vertical velocity", "m s-1");
-    init_diagnostic_field("p", "Pressure", "Pa");
+    // Initialize the basic set of fields.
+    init_momentum_field("u", "U velocity", "m s-1", gd.uloc);
+    init_momentum_field("v", "V velocity", "m s-1", gd.vloc);
+    init_momentum_field("w", "Vertical velocity", "m s-1", gd.wloc);
+
+    mp.at("u")->visc = visc;
+    mp.at("v")->visc = visc;
+    mp.at("w")->visc = visc;
+
+    init_diagnostic_field("p", "Pressure", "Pa", gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
     // before the init phase, where they are initialized in Fields::init()
     n_tmp_fields = 4;
 
     // Specify the masks that fields can provide / calculate
-    available_masks.insert(available_masks.end(), {"wplus", "wmin"});
+    available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
 
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     /*
@@ -306,7 +311,6 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     vmodel.resize(gd.kcells);
 
     // Init the toolbox classes.
-    boundary_cyclic.init();
     field3d_io.init();
 
     // Set up output classes
@@ -323,7 +327,7 @@ void Fields<TF>::exec()
     if (calc_mean_profs)
     {
         for (auto& it : ap)
-            field3d_operators.calc_mean_profile(it.second->fld_mean.data(),it.second->fld.data());
+            field3d_operators.calc_mean_profile(it.second->fld_mean.data(), it.second->fld.data());
     }
 }
 #endif
@@ -339,7 +343,7 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
         std::vector<std::string> *dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+        std::vector<std::string>::iterator dumpvar = dumplist_global->begin();
         while (dumpvar != dumplist_global->end())
         {
             if (a.count(*dumpvar))
@@ -405,21 +409,22 @@ void Fields<TF>::check_added_cross(std::string var, std::string type, std::vecto
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 {
-    std::lock_guard<std::mutex> lock(tmp_fld_mutex);
     std::shared_ptr<Field3d<TF>> tmp;
 
-    // In case of insufficient tmp fields, allocate a new one.
-    if (atmp.empty())
+    #pragma omp critical
     {
-        init_tmp_field();
-        tmp = atmp.back();
-        tmp->init();
+        // In case of insufficient tmp fields, allocate a new one.
+        if (atmp.empty())
+        {
+            init_tmp_field();
+            tmp = atmp.back();
+            tmp->init();
+        }
+        else
+            tmp = atmp.back();
+
+        atmp.pop_back();
     }
-    else
-        tmp = atmp.back();
-
-    atmp.pop_back();
-
     return tmp;
 }
 
@@ -429,255 +434,61 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
     atmp.push_back(std::move(tmp));
 }
 
-#ifdef USECUDA
 template<typename TF>
-std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
+void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    std::shared_ptr<Field3d<TF>> tmp;
+    //We don't have to do anything for the default mask
+    if (mask_name == "default")
+        return;
 
-    // In case of insufficient tmp fields, allocate a new one.
-    if (atmp_g.empty())
-    {
-        init_tmp_field_g();
-        tmp = atmp_g.back();
-        tmp->init_device();
-    }
-    else
-        tmp = atmp_g.back();
-
-    atmp_g.pop_back();
-    return tmp;
-}
-
-template<typename TF>
-void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
-{
-    atmp_g.push_back(std::move(tmp));
-}
-#endif
-
-template<typename TF>
-void Fields<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
-{
     auto& gd = grid.get_grid_data();
 
+    // Interpolate w to half level:
+    auto wf = get_tmp();
+    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+
+    // Calculate masks
+    TF threshold = 0;
     if (mask_name == "wplus")
-        calc_mask_w<TF, Mask_type::Wplus>(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
-                                          stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
-                                          gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
     else if (mask_name == "wmin")
-        calc_mask_w<TF, Mask_type::Wmin >(mfield.fld.data(), mfieldh.fld.data(), mfieldh.fld_bot.data(),
-                                          stats.nmask.data(), stats.nmaskh.data(), mp["w"]->fld.data(),
-                                          gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
+        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
 
-    boundary_cyclic.exec(mfield.fld.data());
-    boundary_cyclic.exec(mfieldh.fld.data());
-    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
-
-    master.sum(stats.nmask.data() , gd.kcells);
-    master.sum(stats.nmaskh.data(), gd.kcells);
-    stats.nmaskbot = stats.nmaskh[gd.kstart];
+    release_tmp(wf);
 }
 
 template<typename TF>
-void Fields<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff)
+void Fields<TF>::exec_stats(Stats<TF>& stats)
 {
-    auto& gd = grid.get_grid_data();
-
-    Mask<TF>& m = stats.masks[mask_name];
-
-    // Define locations
-    const int uloc[] = {1,0,0};
-    const int vloc[] = {0,1,0};
-    const int wloc[] = {0,0,1};
-    const int sloc[] = {0,0,0};
-
-    const int uwloc[] = {1,0,1};
-    const int vwloc[] = {0,1,1};
-
     const TF no_offset = 0.;
+    const TF no_threshold = 0.;
 
-    // Save the area coverage of the mask
-    stats.calc_area(m.profs["area" ].data.data(), sloc, stats.nmask .data());
-    stats.calc_area(m.profs["areah"].data.data(), wloc, stats.nmaskh.data());
+    const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
+    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"});
+    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, operators);
+    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, operators);
 
-    // Start with the stats on the w location, to make the wmean known for the flux calculations
-    stats.calc_mean(m.profs["w"].data.data(), mp["w"]->fld.data(), no_offset, mask_fieldh.fld.data(), stats.nmaskh.data());
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["w"]->fld.data(), m.profs["w"].data.data(), m.profs["w"+sn].data.data(), n, mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-
-    // Calculate the stats on the u location
-    // Interpolate the mask horizontally onto the u coordinate.
-    auto mask_on_u = get_tmp();
-    grid.interpolate_2nd(mask_on_u->fld.data(), mask_field.fld.data(), sloc, uloc);
-
-    stats.calc_mean(m.profs["u"].data.data(), mp["u"]->fld.data(), grid.utrans, mask_on_u->fld.data(), stats.nmask.data());
-    stats.calc_mean(umodel.data(), mp["u"]->fld.data(), no_offset, mask_on_u->fld.data(), stats.nmask.data());
-
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["u"]->fld.data(), umodel.data(), m.profs["u"+sn].data.data(), n, mask_on_u->fld.data(), stats.nmask.data());
-    }
-    release_tmp(mask_on_u);
-
-    // Interpolate the mask on half level horizontally onto the u coordinate
-    auto maskh_on_u = get_tmp();
-    auto tmp = get_tmp();
-    grid.interpolate_2nd(maskh_on_u->fld.data(), mask_fieldh.fld.data(), wloc, uwloc);
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi.data(), maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(mp["u"]->fld.data(), umodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["uw"].data.data(), tmp->fld.data(), uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
-
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            stats.calc_diff_2nd(mp["u"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                m.profs["udiff"].data.data(), gd.dzhi.data(),
-                                mp["u"]->flux_bot.data(), mp["u"]->flux_top.data(), 1., uloc,
-                                maskh_on_u->fld.data(), stats.nmaskh.data());
-        }
-        else
-        {
-            stats.calc_diff_2nd(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi.data(), visc, uloc, maskh_on_u->fld.data(), stats.nmaskh.data());
-        }
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(mp["u"]->fld.data(), m.profs["ugrad"].data.data(), gd.dzhi4.data(), uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(mp["u"]->fld.data(), mp["w"]->fld.data(), m.profs["uw"].data.data(), tmp->fld.data(), uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-        stats.calc_diff_4th(mp["u"]->fld.data(), m.profs["udiff"].data.data(), gd.dzhi4.data(), visc, uloc,
-                            maskh_on_u->fld.data(), stats.nmaskh.data());
-    }
-    release_tmp(maskh_on_u);
-
-    // Calculate the statistics on the v location
-    auto mask_on_v = get_tmp();
-
-    grid.interpolate_2nd(mask_on_v->fld.data(), mask_field.fld.data(), sloc, vloc);
-    stats.calc_mean(m.profs["v"].data.data(), mp["v"]->fld.data(), grid.vtrans, mask_on_v->fld.data(), stats.nmask.data());
-    stats.calc_mean(vmodel.data(), mp["v"]->fld.data(), no_offset, mask_on_v->fld.data(), stats.nmask.data());
-
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(mp["v"]->fld.data(), vmodel.data(), m.profs["v"+sn].data.data(), n, mask_on_v->fld.data(), stats.nmask.data());
-    }
-    release_tmp(mask_on_v);
-
-
-    // interpolate the mask on half level horizontally onto the u coordinate
-    auto maskh_on_v = get_tmp();
-    grid.interpolate_2nd(maskh_on_v->fld.data(), mask_fieldh.fld.data(), wloc, vwloc);
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi.data(), maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(mp["v"]->fld.data(), vmodel.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["vw"].data.data(), tmp->fld.data(), vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
-
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            stats.calc_diff_2nd(mp["v"]->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                m.profs["vdiff"].data.data(), gd.dzhi.data(),
-                                mp["v"]->flux_bot.data(), mp["v"]->flux_top.data(), 1., vloc,
-                                maskh_on_v->fld.data(), stats.nmaskh.data());
-        }
-        else
-        {
-            stats.calc_diff_2nd(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi.data(), visc, vloc, maskh_on_v->fld.data(), stats.nmaskh.data());
-        }
-
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(mp["v"]->fld.data(), m.profs["vgrad"].data.data(), gd.dzhi4.data(), vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(mp["v"]->fld.data(), mp["w"]->fld.data(), m.profs["vw"].data.data(), tmp->fld.data(), vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-        stats.calc_diff_4th(mp["v"]->fld.data(), m.profs["vdiff"].data.data(), gd.dzhi4.data(), visc, vloc,
-                            maskh_on_v->fld.data(), stats.nmaskh.data());
-    }
-    release_tmp(maskh_on_v);
-
-    // calculate stats for the prognostic scalars
-    //Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
     for (auto& it : sp)
     {
-        stats.calc_mean(m.profs[it.first].data.data(), it.second->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators);
+    }
+    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, {"mean","2","w","grad"});
 
-        for (int n=2; n<5; ++n)
+    // Calculate covariances
+    for (auto& it1 : ap)
+    {
+        for (auto& it2 : ap)
         {
-            std::string sn = std::to_string(n);
-            stats.calc_moment(it.second->fld.data(), m.profs[it.first].data.data(), m.profs[it.first+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
-        }
-
-        if (grid.get_spatial_order() == Grid_order::Second)
-        {
-            stats.calc_grad_2nd(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_flux_2nd(it.second->fld.data(), m.profs[it.first].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                                m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-
-            if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            for (int pow1 = 1; pow1<5; ++pow1)
             {
-                stats.calc_diff_2nd(it.second->fld.data(), mp["w"]->fld.data(), sd["evisc"]->fld.data(),
-                                    m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
-                                    it.second->flux_bot.data(), it.second->flux_top.data(), diff.tPr, sloc,
-                                    mask_fieldh.fld.data(), stats.nmaskh.data());
-            }
-            else
-            {
-                stats.calc_diff_2nd(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi.data(),
-                                    it.second->visc, sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
+                for (int pow2 = 1; pow2<5; ++pow2)
+                {
+                    stats.calc_covariance(it1.first, *it1.second, no_offset, no_threshold, pow1,
+                                          it2.first, *it2.second, no_offset, no_threshold, pow2);
+                }
             }
         }
-        else if (grid.get_spatial_order() == Grid_order::Fourth)
-        {
-            stats.calc_grad_4th(it.second->fld.data(), m.profs[it.first+"grad"].data.data(), gd.dzhi4.data(), sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_flux_4th(it.second->fld.data(), mp["w"]->fld.data(), m.profs[it.first+"w"].data.data(), tmp->fld.data(), sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-            stats.calc_diff_4th(it.second->fld.data(), m.profs[it.first+"diff"].data.data(), gd.dzhi4.data(), visc, sloc,
-                                mask_fieldh.fld.data(), stats.nmaskh.data());
-        }
     }
-
-    // Calculate pressure statistics.
-    stats.calc_mean(m.profs["p"].data.data(), sd["p"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-    stats.calc_moment(sd["p"]->fld.data(), m.profs["p"].data.data(), m.profs["p2"].data.data(), 2, mask_field.fld.data(), stats.nmask.data());
-
-    if (grid.get_spatial_order() == Grid_order::Second)
-    {
-        stats.calc_grad_2nd(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-        stats.calc_flux_2nd(sd["p"]->fld.data(), m.profs["p"].data.data(), mp["w"]->fld.data(), m.profs["w"].data.data(),
-                            m.profs["pw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-    else if (grid.get_spatial_order() == Grid_order::Fourth)
-    {
-        stats.calc_grad_4th(sd["p"]->fld.data(), m.profs["pgrad"].data.data(), gd.dzhi4.data(), sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-        stats.calc_flux_4th(sd["p"]->fld.data(), mp["w"]->fld.data(), m.profs["pw"].data.data(), tmp->fld.data(), sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-
-    // Calculate the total fluxes.
-    stats.add_fluxes(m.profs["uflux"].data.data(), m.profs["uw"].data.data(), m.profs["udiff"].data.data());
-    stats.add_fluxes(m.profs["vflux"].data.data(), m.profs["vw"].data.data(), m.profs["vdiff"].data.data());
-    for (auto& it : sp)
-        stats.add_fluxes(m.profs[it.first+"flux"].data.data(), m.profs[it.first+"w"].data.data(), m.profs[it.first+"diff"].data.data());
-
-    if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        stats.calc_mean(m.profs["evisc"].data.data(), sd["evisc"]->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
-    release_tmp(tmp);
 }
 
 template<typename TF>
@@ -685,15 +496,9 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 {
     calc_mean_profs = sw;
 }
-/*
-void Fields::set_minimum_tmp_fields(int n)
-{
-    n_tmp_fields = std::max(n_tmp_fields, n);
-}
-*/
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -702,13 +507,13 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
     }
 
     // Add a new prognostic momentum variable.
-    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
     std::string tunit     = unit + "s-1";
     std::string tlongname = "Tendency of " + longname;
-    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
+    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // Add the prognostic variable and its tendency to the collection
     // of all fields and tendencies.
@@ -718,7 +523,7 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 }
 
 template<typename TF>
-void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit)
+void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -727,13 +532,13 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
     }
 
     // add a new scalar variable
-    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
 
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = unit + "s-1";
-    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit);
+    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // add the prognostic variable and its tendency to the collection
     // of all fields and tendencies
@@ -743,7 +548,7 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 }
 
 template<typename TF>
-void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit)
+void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit, const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -751,7 +556,7 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
         throw 1;
     }
 
-    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit);
+    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
     a [fldname] = sd[fldname];
 }
 
@@ -763,10 +568,11 @@ void Fields<TF>::init_tmp_field()
     std::string fldname = "tmp" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
+    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
 }
 
 #ifdef USECUDA
@@ -778,10 +584,11 @@ void Fields<TF>::init_tmp_field_g()
     std::string fldname = "tmp_gpu" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit));
+    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
 }
 #endif
 
@@ -989,30 +796,26 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 //}
 
 template <typename TF>
-void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
+void Fields<TF>::create_stats(Stats<TF>& stats)
 {
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
         // Mean velocity compontents
-        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z",  Stats_whitelist_type::White );
+        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z",  Stats_whitelist_type::White );
+        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh", Stats_whitelist_type::White);
 
         // Mean prognostic scalars
         for (auto& it : sp)
-            stats.add_prof(it.first, it.second->longname, it.second->unit, "z");
+            stats.add_prof(it.first, it.second->longname, it.second->unit, "z", Stats_whitelist_type::White);
 
         // Pressure with its variance, fluxes and gradients
-        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z", Stats_whitelist_type::White);
         std::string sn("2");
         stats.add_prof(sd["p"]->name + sn,    "Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
         stats.add_prof(sd["p"]->name +"w",    "Turbulent flux of the "   + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
         stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
-
-//        // CvH, shouldn't this call be in the diffusion class? BvS: yes ;-)
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
-            stats.add_prof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
 
         // Add the second up to fourth moments of the velocity and scalars
         for (int n=2; n<5; ++n)
@@ -1051,20 +854,46 @@ void Fields<TF>::create_stats(Stats<TF>& stats, const Diff<TF>& diff)
         stats.add_prof("vflux", "Total flux of the " + ap["v"]->longname, "m2 s-2", "zh");
         for (auto& it : sp)
             stats.add_prof(it.first+"flux", "Total flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
+
+        // Covariances
+        for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+        {
+            for (typename Field_map<TF>::iterator it2=it1; it2!=ap.end(); ++it2)
+            {
+                std::string locstring;
+                if(it2->first == "w")
+                    locstring = "zh";
+                else
+                    locstring = "z";
+
+                for (int pow1 = 1; pow1<5; ++pow1)
+                {
+                    for (int pow2 = 1; pow2<5; ++pow2)
+                    {
+                        std::string spow1 = std::to_string(pow1);
+                        std::string spow2 = std::to_string(pow2);
+
+                        std::string name = it1->first + spow1 + it2->first +spow2;
+                        std::string longname = "Covariance of " + it1->first +spow1 + " and " + it2->first +spow2;
+                        std::string unit = "(" + it1->second->unit + ")" + spow1 + "(" + it2->second->unit + ")" + spow2;
+                        stats.add_prof(name, longname, unit, locstring, Stats_whitelist_type::Black);
+                    }
+                }
+            }
+        }
     }
 }
 
 template<typename TF>
 void Fields<TF>::create_column(Column<TF>& column)
 {
-
     // add the profiles to the columns
     if (column.get_switch())
     {
         // add variables to the statistics
         column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
         column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh" );
+        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
 
         for (auto& it : sp)
             column.add_prof(it.first,it.second->longname, it.second->unit, "z");
@@ -1223,20 +1052,24 @@ void Fields<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
         dump.save_dump(a.at(it)->fld.data(), a.at(it)->name, iotime);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
-    const double no_offset = 0.;
+    const TF no_offset = 0.;
 
     column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
     column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
     column.calc_column("w",mp["w"]->fld.data(), no_offset);
+
     for (auto& it : sp)
     {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
     }
+
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }
+#endif
 
 template<typename TF>
 bool Fields<TF>::has_mask(std::string mask_name)

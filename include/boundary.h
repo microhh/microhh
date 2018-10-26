@@ -23,12 +23,16 @@
 #ifndef BOUNDARY_H
 #define BOUNDARY_H
 
+#include "timedep.h"
 #include "boundary_cyclic.h"
 
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Diff;
 template<typename> class Thermo;
+template<typename> class Timedep;
+
 class Input;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
@@ -63,14 +67,14 @@ class Boundary
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
         virtual void create(Input&, Stats<TF>&); ///< Create the fields.
 
-        // virtual void update_time_dependent(); ///< Update the time dependent parameters.
+        virtual void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
         virtual void exec(Thermo<TF>&); ///< Update the boundary conditions.
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
-        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&); ///< Execute statistics of surface
+        virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         // virtual void exec_cross();       ///< Execute cross sections of surface
 
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
@@ -112,15 +116,16 @@ class Boundary
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         BcMap sbc;
 
-        // Variables to handle time dependency.
-        std::string swtimedep;
-        // std::vector<double> timedeptime;
-        std::vector<std::string> timedeplist;
-        // std::map<std::string, double*> timedepdata;
+        std::map<std::string, Timedep<TF>*> tdep_bc;
+
 
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
-        // void process_time_dependent(Input *); ///< Process the time dependent settings from the ini file.
+        void process_time_dependent(Input&); ///< Process the time dependent settings from the ini file.
+        #ifdef USECUDA
+        void clear_device();
+        #endif
+
         // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables

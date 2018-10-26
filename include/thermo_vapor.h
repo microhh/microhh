@@ -23,6 +23,8 @@
 #ifndef THERMO_VAPOR
 #define THERMO_VAPOR
 
+#include "boundary_cyclic.h"
+#include "timedep.h"
 #include "thermo.h"
 
 class Master;
@@ -34,6 +36,8 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timeloop;
+
 class Data_block;
 
 
@@ -56,7 +60,7 @@ class Thermo_vapor : public Thermo<TF>
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
+        void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
@@ -82,13 +86,14 @@ class Thermo_vapor : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string);
         #endif
 
         // Empty functions that are allowed to pass.
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
+        void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
-        void update_time_dependent();
+        void update_time_dependent(Timeloop<TF>&);
 
     private:
         using Thermo<TF>::swthermo;
@@ -143,9 +148,7 @@ class Thermo_vapor : public Thermo<TF>
         background_state bs;
         background_state bs_stats;
 
-        bool swtimedep_pbot;
-        std::vector<double> timedeptime;
-        std::vector<TF> timedeppbot;
+        std::unique_ptr<Timedep<TF>> tdep_pbot;
 
 };
 #endif

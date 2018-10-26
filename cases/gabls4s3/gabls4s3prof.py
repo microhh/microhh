@@ -97,8 +97,8 @@ for k in range(g.kmax):
 proffile.close()
 
 # write surface temperature
-timefile = open(outname+'.time','w')
-timefile.write('{0:^20s} {1:^20s} \n'.format('t','sbot[th]'))
+timefile = open('th_sbot.time','w')
+timefile.write('{0:^20s} {1:^20s} \n'.format('time','th_sbot'))
 for t in range(s3.t.size):
     timefile.write('{0:1.14E} {1:1.14E} \n'.format(s3.t[t], s3.ths[t]))
 timefile.close()

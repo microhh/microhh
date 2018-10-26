@@ -27,11 +27,13 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Stats;
+template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timeloop;
 
 class Data_block;
 /**
@@ -54,12 +56,12 @@ class Thermo
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(const double) = 0;
-        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) = 0;   ///< Calculate the statistics
+        virtual void exec_stats(Stats<TF>&) = 0;   ///< Calculate the statistics
         virtual void exec_column(Column<TF>&) = 0;   ///< Output the column
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 
-        virtual void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) = 0;
+        virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;
 
         // Interfacing functions to get buoyancy properties from other classes.
@@ -75,7 +77,7 @@ class Thermo
 
         virtual TF get_buoyancy_diffusivity() = 0;
 
-        virtual void update_time_dependent() = 0;
+        virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         #ifdef USECUDA
         // GPU functions and variables.
@@ -86,7 +88,7 @@ class Thermo
         virtual void get_thermo_field_g(Field3d<TF>&, std::string, bool) = 0;
         virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
         virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
-
+        virtual TF* get_basestate_fld_g(std::string) = 0;
         #endif
 
     protected:

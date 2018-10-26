@@ -32,6 +32,7 @@
 #include "monin_obukhov.h"
 #include "thermo.h"
 #include "boundary.h"
+#include "stats.h"
 #include "fast_math.h"
 
 #include "diff_smag2.h"
@@ -540,7 +541,7 @@ namespace
         TF evisce, eviscw, eviscn, eviscs, evisct, eviscb;
 
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-    
+
         if (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
@@ -605,7 +606,7 @@ namespace
 
                     at[ijk] +=
                              + ( evisce*(a[ijk+ii]-a[ijk   ])
-                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
                              + ( eviscn*(a[ijk+jj]-a[ijk   ])
                                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
                              + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
@@ -636,6 +637,88 @@ namespace
 
         return dnmul;
     }
+
+    template<typename TF>
+    void calc_diff_flux_c(
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict evisc,
+            const TF tPr, const TF* const restrict dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        #pragma omp parallel for
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const TF eviscc = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+
+                    out[ijk] = - eviscc*(data[ijk] - data[ijk-kk])*dzhi[k];
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_diff_flux_u(
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            const TF dxi, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        #pragma omp parallel for
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const TF eviscu = 0.25*(evisc[ijk-ii-ijcells]+evisc[ijk-ii]+evisc[ijk-ijcells]+evisc[ijk]);
+                    out[ijk] = - eviscu*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_diff_flux_v(
+            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            const TF dyi, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart+1; k<kend; ++k)
+        {
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*icells + k*ijcells;
+                        const TF eviscv = 0.25*(evisc[ijk-icells-ijcells]+evisc[ijk-icells]+evisc[ijk-ijcells]+evisc[ijk]);
+                        out[ijk] = - eviscv*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-icells])*dyi );
+                    }
+        }
+    }
+
+    template<typename TF>
+    void calc_diff_flux_bc(
+            TF* const restrict out, const TF* const restrict data,
+            const int istart, const int iend, const int jstart, const int jend, const int k,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + k*ijcells;
+                out[ijk] = data[ij];
+            }
+    }
+
 } // End namespace.
 
 template<typename TF>
@@ -644,11 +727,15 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     boundary_cyclic(master, grid),
     field3d_operators(master, grid, fields)
 {
+    auto& gd = grid.get_grid_data();
     dnmax = inputin.get_item<TF>("diff", "dnmax", "", 0.4  );
     cs    = inputin.get_item<TF>("diff", "cs"   , "", 0.23 );
     tPr   = inputin.get_item<TF>("diff", "tPr"  , "", 1./3.);
 
-    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
+    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", gd.sloc);
+
+    if (grid.get_spatial_order() != Grid_order::Second)
+        throw std::runtime_error("Diff_smag2 only runs with second order grids");
 }
 
 template<typename TF>
@@ -668,6 +755,7 @@ Diffusion_type Diff_smag2<TF>::get_switch() const
     return swdiff;
 }
 
+#ifndef USECUDA
 template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
@@ -682,7 +770,9 @@ unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const doub
 
     return idt * dnmax / (dt * dnmul);
 }
+#endif
 
+#ifndef USECUDA
 template<typename TF>
 double Diff_smag2<TF>::get_dn(const double dt)
 {
@@ -694,9 +784,10 @@ double Diff_smag2<TF>::get_dn(const double dt)
 
     return dnmul*dt;
 }
+#endif
 
 template<typename TF>
-void Diff_smag2<TF>::set_values()
+void Diff_smag2<TF>::create(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -709,6 +800,8 @@ void Diff_smag2<TF>::set_values()
     dnmul = 0;
     for (int k=gd.kstart; k<gd.kend; ++k)
         dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
+
+    create_stats(stats);
 }
 
 #ifndef USECUDA
@@ -717,7 +810,7 @@ void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface")
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
         diff_u<TF, Surface_model::Enabled>(
                 fields.mt["u"]->fld.data(),
@@ -805,7 +898,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     auto& gd = grid.get_grid_data();
 
     // Calculate strain rate using MO for velocity gradients lowest level.
-    if (boundary.get_switch() == "surface")
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
@@ -830,7 +923,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
          // Calculate eddy viscosity using MO at lowest model level
-        if (boundary.get_switch() == "surface")
+        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
@@ -863,7 +956,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        if (boundary.get_switch() == "surface")
+        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(), buoy_tmp->fld.data(),
@@ -893,6 +986,53 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     }
 }
 #endif
+
+template<typename TF>
+void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
+{
+    // Add variables to the statistics
+    if (stats.get_switch())
+        stats.add_prof(fields.sd["evisc"]->name, fields.sd["evisc"]->longname, fields.sd["evisc"]->unit, "z");
+}
+
+template<typename TF>
+void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
+{
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, {"mean"});
+}
+
+template<typename TF>
+void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Calculate the boundary fluxes.
+    // CvH: Is this OK for wall-resolved LES?
+    calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
+
+    // Calculate the interior.
+    if (fld_in.loc[0] == 1)
+        calc_diff_flux_u(
+                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                gd.dxi, gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else if (fld_in.loc[1] == 1)
+        calc_diff_flux_v(
+                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                gd.dyi, gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else
+        calc_diff_flux_c(
+                out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+}
 
 template class Diff_smag2<double>;
 template class Diff_smag2<float>;

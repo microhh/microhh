@@ -16,7 +16,7 @@ r   = 1.01
 for t in range(0,50):
 	r = ( 1 - (zmax/dz1)*(1-r) )**(1.0/kmax)
 
-print r
+print(r)
 
 # create array of dz values
 dz = numpy.zeros(kmax)

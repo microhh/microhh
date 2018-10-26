@@ -34,6 +34,8 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Timeloop;
+
 class Data_block;
 
 
@@ -68,14 +70,14 @@ class Thermo_buoy : public Thermo<TF>
         // Empty functions that are allowed to pass.
         void init() {}
         void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_column(Column<TF>&) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
-        void update_time_dependent() {}
+        void update_time_dependent(Timeloop<TF>&) {};
 
         #ifdef USECUDA
         void prepare_device() {};
@@ -85,7 +87,7 @@ class Thermo_buoy : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
-
+        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
 
     private:

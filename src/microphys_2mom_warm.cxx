@@ -28,10 +28,10 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "diff.h"
 #include "stats.h"
 #include "cross.h"
 #include "thermo.h"
-#include "boundary_cyclic.h"
 #include "thermo_moist_functions.h"
 
 #include "constants.h"
@@ -41,6 +41,7 @@
 using namespace Constants;
 using namespace Thermo_moist_functions;
 using namespace Micro_2mom_warm_constants;
+using namespace Micro_2mom_warm_functions;
 
 namespace
 {
@@ -80,63 +81,6 @@ namespace
         return &(tmp_fields[tmp_index]->fld[slice_start]);
     }
 
-    // Rational tanh approximation
-    template<typename TF>
-    inline TF tanh2(const TF x)
-    {
-        return x * (TF(27) + x * x) / (TF(27) + TF(9) * x * x);
-    }
-
-    // Given rain water content (qr), number density (nr) and density (rho)
-    // calculate mean mass of rain drop
-    template<typename TF>
-    inline TF calc_rain_mass(const TF qr, const TF nr, const TF rho)
-    {
-        //TF mr = rho * qr / (nr + dsmall);
-        TF mr = rho * qr / std::max(nr, TF(1.));
-        return std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
-    }
-
-    // Given mean mass rain drop, calculate mean diameter
-    template<typename TF>
-    inline TF calc_rain_diameter(const TF mr)
-    {
-        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
-    }
-
-    // Shape parameter mu_r
-    template<typename TF>
-    inline TF calc_mu_r(const TF dr)
-    {
-        //return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return TF(10) * (TF(1) + tanh2(TF(1200) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-    }
-
-    // Slope parameter lambda_r
-    template<typename TF>
-    inline TF calc_lambda_r(const TF mur, const TF dr)
-    {
-        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
-    }
-
-    template<typename TF>
-    inline TF minmod(const TF a, const TF b)
-    {
-        return copysign(TF(1.), a) * std::max(TF(0.), std::min(std::abs(a), TF(copysign(TF(1.), a))*b));
-    }
-
-    template<typename TF>
-    inline TF min3(const TF a, const TF b, const TF c)
-    {
-        return std::min(a, std::min(b, c));
-    }
-
-    template<typename TF>
-    inline TF max3(const TF a, const TF b, const TF c)
-    {
-        return std::max(a, std::max(b, c));
-    }
 }
 
 // Microphysics calculated over entire 3D field
@@ -589,22 +533,18 @@ namespace mp2d
 
 template<typename TF>
 Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Microphys<TF>(masterin, gridin, fieldsin, inputin),
-    boundary_cyclic(masterin, gridin)
+    Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
+    auto& gd = grid.get_grid_data();
     swmicrophys = Microphys_type::Warm_2mom;
-
-    #ifdef USECUDA
-    throw std::runtime_error("swmicro = \"2mom_warm\" not (yet) implemented in CUDA\n");
-    #endif
 
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1");
-    fields.init_prognostic_field("nr", "Number density rain", "m-3");
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
+    fields.init_prognostic_field("nr", "Number density rain", "m-3", gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -634,8 +574,10 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     if (stats.get_switch())
     {
         // Time series
-        stats.add_time_series("rr_mean", "Mean surface rain rate", "kg m-2 s-1");
-        stats.add_time_series("rr_max",  "Max surface rain rate", "kg m-2 s-1");
+        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1");
+        stats.add_time_series("qrpath", "Rain water path", "kg m-2");
+        stats.add_time_series("qrcover", "Rain water cover", "-");
+        stats.add_prof("qrfrac", "Rain water fraction", "-", "z");
 
         if (swmicrobudget)
         {
@@ -668,6 +610,7 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 {
@@ -778,26 +721,27 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 
     fields.release_tmp(ql);
 }
+#endif
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name,
-                                         Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-                                         Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    Mask<TF>& m = stats.masks[mask_name];
-
     // Time series
     const TF no_offset = 0.;
-    stats.calc_mean_2d(m.tseries["rr_mean"].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
-    stats.calc_max_2d (m.tseries["rr_max" ].data, rr_bot.data(), no_offset, mask_fieldh.fld_bot.data(), stats.nmaskbot);
+    const TF no_threshold = 0.;
+    const TF threshold_qr = 1.e-6;
+
+    stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
+    stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr, {"path","frac","cover"});
 
     if (swmicrobudget)
     {
         // Vertical profiles. The statistics of qr & nr are handled by fields.cxx
         // Get cloud liquid water specific humidity from thermodynamics
         auto ql = fields.get_tmp();
+        ql->loc = gd.sloc;
         thermo.get_thermo_field(*ql, "ql", false, false);
 
         // Get pressure and exner function from thermodynamics
@@ -842,6 +786,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
         auto nrt  = fields.get_tmp();
         auto thlt = fields.get_tmp();
         auto qtt  = fields.get_tmp();
+        qrt->loc  = gd.sloc;
+        nrt->loc  = gd.sloc;
+        thlt->loc = gd.sloc;
+        qtt->loc  = gd.sloc;
 
         // Calculate tendencies
         // Autoconversion; formation of rain drop by coagulating cloud droplets
@@ -857,10 +805,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
 
-        stats.calc_mean(m.profs["auto_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["auto_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -874,9 +822,9 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                         gd.iend,   gd.jend,   gd.kend,
                         gd.icells, gd.ijcells);
 
-        stats.calc_mean(m.profs["accr_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["accr_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Rest of the microphysics is handled per XZ slice
         // Evaporation; evaporation of rain drops in unsaturated environment
@@ -901,10 +849,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                               gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["evap_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_thlt"].data.data(), thlt->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["evap_qtt" ].data.data(), qtt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold, {"mean"});
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         // -------------------------
@@ -923,7 +871,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                                          gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["scbr_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold, {"mean"});
 
         // Sedimentation; sub-grid sedimentation of rain
         // -------------------------
@@ -945,8 +893,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, std::string mask_name
                                      gd.icells, gd.kcells, gd.ijcells, j);
         }
 
-        stats.calc_mean(m.profs["sed_qrt" ].data.data(), qrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-        stats.calc_mean(m.profs["sed_nrt" ].data.data(), nrt ->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
+        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold, {"mean"});
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)
@@ -973,6 +921,7 @@ void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const double dt)
 {
@@ -992,6 +941,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 
     return idt * cflmax / cfl;
 }
+#endif
 
 template<typename TF>
 bool Microphys_2mom_warm<TF>::has_mask(std::string name)
@@ -1003,34 +953,28 @@ bool Microphys_2mom_warm<TF>::has_mask(std::string name)
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string name)
+void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    if (name == "qr")
+    auto& gd = grid.get_grid_data();
+
+    if (mask_name == "qr")
     {
-        TF threshold = 1e-8;
-        const int wloc[] = {0,0,1};
-        const int sloc[] = {0,0,0};
+        TF threshold = 1e-6;
 
         // Interpolate qr to half level:
         auto qrh = fields.get_tmp();
-        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), sloc, wloc);
+        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), gd.sloc.data(), gd.wloc.data());
 
         // Calculate masks
-        stats.set_mask_true(mfield, mfieldh);
-        stats.set_mask_thres(mfield, mfieldh, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
-        stats.get_nmask(mfield, mfieldh);
+        stats.set_mask_thres(mask_name, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
 
         fields.release_tmp(qrh);
     }
     else
     {
-        std::string message = "Double moment warm microphysics can not provide mask: \"" + name +"\"";
+        std::string message = "Double moment warm microphysics can not provide mask: \"" + mask_name +"\"";
         throw std::runtime_error(message);
     }
-
-    boundary_cyclic.exec(mfield.fld.data());
-    boundary_cyclic.exec(mfieldh.fld.data());
-    boundary_cyclic.exec_2d(mfieldh.fld_bot.data());
 }
 
 template class Microphys_2mom_warm<double>;

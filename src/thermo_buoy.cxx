@@ -45,8 +45,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_bot(TF* restrict b  , TF* restrict bbot,
-                                        TF* restrict bin, TF* restrict binbot, const int icells, const int jcells, const int ijcells, const int kstart)
+    void calc_buoyancy_bot(
+            TF* restrict b  , TF* restrict bbot,
+            TF* restrict bin, TF* restrict binbot,
+            const int icells, const int jcells, const int ijcells, const int kstart)
     {
         for (int j=0; j<jcells; ++j)
             #pragma ivdep
@@ -60,9 +62,9 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict binfluxbot, const int icells, const int jcells)
+    void calc_buoyancy_fluxbot(
+            TF* restrict bfluxbot, TF* restrict binfluxbot, const int icells, const int jcells)
     {
-
         for (int j=0; j<jcells; ++j)
             #pragma ivdep
             for (int i=0; i<icells; ++i)
@@ -73,7 +75,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict b, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_2nd(
+            TF* restrict wt, TF* restrict b,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
 
         for (int k=kstart+1; k<kend; ++k)
@@ -87,7 +92,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_u_2nd(TF* restrict ut, TF* restrict b, const TF alpha, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_u_2nd(
+            TF* restrict ut, TF* restrict b, const TF alpha,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const TF sinalpha = std::sin(alpha);
 
@@ -102,7 +110,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_w_2nd(TF* restrict wt, TF* restrict b, const TF alpha, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_w_2nd(
+            TF* restrict wt, TF* restrict b, const TF alpha,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const TF cosalpha = std::cos(alpha);
 
@@ -117,7 +128,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_b_2nd(TF* restrict bt, TF* restrict u, TF* restrict w, const TF alpha, const TF n2, const TF utrans, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_b_2nd(
+            TF* restrict bt, TF* restrict u, TF* restrict w, const TF alpha, const TF n2, const TF utrans,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const TF sinalpha = std::sin(alpha);
         const TF cosalpha = std::cos(alpha);
@@ -134,7 +148,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict b, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int ijcells)
+    void calc_buoyancy_tend_4th(
+            TF* restrict wt, TF* restrict b,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int ijcells)
     {
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
@@ -150,9 +167,11 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_u_4th(TF* restrict ut, TF* restrict b, const TF alpha, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_u_4th(
+            TF* restrict ut, TF* restrict b, const TF alpha,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
-
         const TF sinalpha = std::sin(alpha);
 
         for (int k=kstart; k<kend; ++k)
@@ -166,7 +185,10 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_w_4th(TF* restrict wt, TF* restrict b, const TF alpha, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_w_4th(
+            TF* restrict wt, TF* restrict b, const TF alpha,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int jj  = icells;
         const int kk1 = 1*ijcells;
@@ -184,7 +206,10 @@ namespace
                 }
     }
     template<typename TF>
-    void calc_buoyancy_tend_b_4th(TF* restrict bt, TF* restrict u, TF* restrict w, const TF alpha, const TF n2, const TF utrans, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells)
+    void calc_buoyancy_tend_b_4th(
+            TF* restrict bt, TF* restrict u, TF* restrict w, const TF alpha, const TF n2, const TF utrans,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
         const int ii1 = 1;
         const int ii2 = 2;
@@ -207,10 +232,11 @@ namespace
     }
 
     template<typename TF>
-    void calc_baroclinic(TF* const restrict bt, const TF* const restrict v,
-                         const TF dbdy_ls,
-                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                         const int jj, const int kk)
+    void calc_baroclinic(
+            TF* const restrict bt, const TF* const restrict v,
+            const TF dbdy_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -223,17 +249,16 @@ namespace
                     bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
                 }
     }
-
-
 }
 
 template<typename TF>
 Thermo_buoy<TF>::Thermo_buoy(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
 Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
+    auto& gd = grid.get_grid_data();
     swthermo = "buoy";
 
-    fields.init_prognostic_field("b", "Buoyancy", "m s-2");
+    fields.init_prognostic_field("b", "Buoyancy", "m s-2", gd.sloc);
 
     bs.alpha = inputin.get_item<TF>("thermo", "alpha", "", 0.);
     bs.n2 = inputin.get_item<TF>("thermo", "N2"   , "", 0.);

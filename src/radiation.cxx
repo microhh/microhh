@@ -68,7 +68,7 @@ Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
     else
         throw std::runtime_error("Invalid option for \"swradiation\"");
 
-    double cp = 1004.;
+    // double cp = 1004.;
     // c_rrtmg_lw_init(&cp);
     ncol = 1;
     nlay = 60;
@@ -198,7 +198,7 @@ void Radiation<TF>::exec(Thermo<TF>& thermo)
     if (swradiation == Radiation_type::Disabled)
         return;
 
-    auto& gd = grid.get_grid_data();
+    // auto& gd = grid.get_grid_data();
 
     // For now...
     inflglw = 0;

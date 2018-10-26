@@ -37,14 +37,17 @@ class Diff_disabled : public Diff<TF>
         double get_dn(double);
 
         // Empty functions which simply pass for disabled diffusion
-        void set_values() {}
+        void create(Stats<TF>&) {}
         void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
         void init() {}
         void exec(Boundary<TF>&) {}
+        void diff_flux(Field3d<TF>&, const Field3d<TF>&) {}
+        void exec_stats(Stats<TF>&) {};
+
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device() {}
+        void prepare_device(Boundary<TF>&) {}
         #endif
     private:
 

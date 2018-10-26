@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,6 +25,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 class Master;
 template<typename> class Grid;
@@ -34,7 +35,7 @@ class Field3d
 {
     public:
         // Functions
-        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string);
+        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string, const std::array<int,3>&);
         ~Field3d();
 
         int init();
@@ -52,12 +53,13 @@ class Field3d
         std::string name;
         std::string unit;
         std::string longname;
+        std::array<int,3> loc;
 
         TF visc;
 
         // Device functions and variables
-        void init_device();  ///< Allocate Field3D fields at device
-        void clear_device(); ///< Deallocate Field3D fields at device
+        void init_device();  // Allocate Field3D fields at device
+        void clear_device(); // Deallocate Field3D fields at device
 
         TF* fld_g;
         TF* fld_bot_g;
@@ -68,10 +70,8 @@ class Field3d
         TF* flux_bot_g;
         TF* flux_top_g;
 
-
     private:
         Master& master;
         Grid<TF>& grid;
 };
 #endif
-

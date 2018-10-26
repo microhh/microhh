@@ -7,7 +7,7 @@ else()
   set(ENV{CXX} g++) # C++ compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "-std=c++11")
+set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -mtune=native -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 

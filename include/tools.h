@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+ #include <stdio.h>
+
 #ifndef TOOLS
 #define TOOLS
 

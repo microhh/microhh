@@ -8,7 +8,7 @@ dz = zsize / kmax
 # set the height
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
 b = numpy.zeros(numpy.size(z))
-b[0:kmax/2] = 1.
+b[0:int(kmax/2)] = 1.
 
 # write the data to a file
 proffile = open('rayleightaylor.prof','w')

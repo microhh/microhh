@@ -71,7 +71,7 @@ Data_block::Data_block(Master& master, const std::string& file_name) : master(ma
     std::string line;
 
     // First, read the header.
-    int number_of_vectors;
+    size_t number_of_vectors;
     int line_number = 0;
 
     while (get_line_from_input(infile, line, master))
