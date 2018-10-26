@@ -711,8 +711,8 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     const Grid_data<TF>& gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
-    const std::vector<size_t> start = {0};
-    const std::vector<size_t> count = {static_cast<size_t>(gd.ktot)};
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
 
     // profs.get_vector(prof, "u", gd.ktot, 0, 0);
     input_nc.get_variable(prof, "u", start, count);

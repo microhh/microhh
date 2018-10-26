@@ -15,23 +15,23 @@ class Netcdf_group;
 class Netcdf_variable
 {
     public:
-        Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<size_t>&);
-        void insert(const std::vector<double>&, const std::vector<size_t>);
-        void insert(const std::vector<double>&, const std::vector<size_t>, const std::vector<size_t>);
-        void insert(const double, const std::vector<size_t>);
+        Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<int>&);
+        void insert(const std::vector<double>&, const std::vector<int>);
+        void insert(const std::vector<double>&, const std::vector<int>, const std::vector<int>);
+        void insert(const double, const std::vector<int>);
 
     private:
         Master& master;
         Netcdf_handle& nc_file;
         const int var_id;
-        const std::vector<size_t> dim_sizes;
+        const std::vector<int> dim_sizes;
 };
 
 class Netcdf_handle
 {
     public:
         Netcdf_handle(Master&);
-        void add_dimension(const std::string&, const size_t dim_size = NC_UNLIMITED);
+        void add_dimension(const std::string&, const int dim_size = NC_UNLIMITED);
 
         Netcdf_group add_group(const std::string&);
         Netcdf_group get_group(const std::string&);
@@ -44,20 +44,20 @@ class Netcdf_handle
         void get_variable(
                 std::vector<T>&,
                 const std::string&,
-                const std::vector<size_t>&,
-                const std::vector<size_t>&);
+                const std::vector<int>&,
+                const std::vector<int>&);
 
         void insert(
                 const std::vector<double>&,
                 const int var_id,
-                const std::vector<size_t>&,
-                const std::vector<size_t>&);
+                const std::vector<int>&,
+                const std::vector<int>&);
 
         void insert(
                 const double,
                 const int var_id,
-                const std::vector<size_t>&,
-                const std::vector<size_t>&);
+                const std::vector<int>&,
+                const std::vector<int>&);
 
     protected:
         Master& master;
