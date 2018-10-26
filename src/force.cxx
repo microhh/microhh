@@ -21,7 +21,8 @@
  */
 
 #include <cstdio>
-#include <math.h>
+#include <algorithm>
+// #include <math.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -32,7 +33,7 @@
 #include "finite_difference.h"
 #include "timeloop.h"
 #include "boundary.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 
 using namespace Finite_difference::O2;
 
@@ -329,13 +330,15 @@ void Force<TF>::init()
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin, Data_block& profs)
+void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        profs.get_vector(ug, "ug", gd.kmax, 0, gd.kstart);
-        profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
+        input_nc.get_variable(ug, "ug", {0}, {gd.ktot});
+        input_nc.get_variable(vg, "vg", {0}, {gd.ktot});
+        std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
+        std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
 
         for (auto& it : tdep_geo)
             it.second->create_timedep_prof();
@@ -352,7 +355,11 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 
         // read the large scale sources, which are the variable names with a "ls" suffix
         for (auto & it : lslist)
-            profs.get_vector(lsprofs[it],it+"ls", gd.kmax, 0, gd.kstart);
+        {
+            input_nc.get_variable(lsprofs[it], it+"ls", {0}, {gd.ktot});
+            std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+            // profs.get_vector(lsprofs[it],it+"ls", gd.kmax, 0, gd.kstart);
+        }
 
         // Process the time dependent data
         for (auto& it : tdep_ls)
@@ -362,7 +369,9 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
     if (swnudge == Nudging_type::enabled)
     {
         // Get profile with nudging factor as function of height
-        profs.get_vector(nudge_factor,"nudgefac", gd.kmax, 0, gd.kstart);
+        // profs.get_vector(nudge_factor,"nudgefac", gd.kmax, 0, gd.kstart);
+        input_nc.get_variable(nudge_factor, "nudgefac", {0}, {gd.ktot});
+        std::rotate(nudge_factor.rbegin(), nudge_factor.rbegin() + gd.kstart, nudge_factor.rend());
 
         // check whether the fields in the list exist in the prognostic fields
         for (auto & it : nudgelist)
@@ -373,7 +382,11 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
 
         // read the large scale sources, which are the variable names with a "nudge" suffix
         for (auto & it : nudgelist)
-            profs.get_vector(nudgeprofs[it],it+"nudge", gd.kmax, 0, gd.kstart);
+        {
+            // profs.get_vector(nudgeprofs[it],it+"nudge", gd.kmax, 0, gd.kstart);
+            input_nc.get_variable(nudgeprofs[it], it+"nudge", {0}, {gd.ktot});
+            std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
+        }
 
         // Process the time dependent data
         for (auto& it : tdep_nudge)
@@ -383,7 +396,9 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
-        profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
+        // profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
+        input_nc.get_variable(wls, "wls", {0}, {gd.ktot});
+        std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
         tdep_wls->create_timedep_prof();
     }
 }

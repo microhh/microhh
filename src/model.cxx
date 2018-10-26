@@ -228,7 +228,7 @@ void Model<TF>::load()
 
     boundary->create(*input, *stats);
     buffer->create(*input, *input_nc);
-    force->create(*input, *profs);
+    force->create(*input, *input_nc);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *profs, *stats, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
@@ -246,7 +246,7 @@ template<typename TF>
 void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
-    grid->create(*profs);
+    grid->create(*input_nc);
     fields->create(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.

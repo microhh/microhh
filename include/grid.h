@@ -35,7 +35,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 
 enum class Grid_order { Second, Fourth };
 
@@ -133,7 +133,7 @@ class Grid
         ~Grid();               // Destructor of the grid class.
 
         void init();              // Initialization of the grid arrays.
-        void create(Data_block&); // Creation of the grid data.
+        void create(Netcdf_handle&); // Creation of the grid data.
         void save();              // Saves grid data to file.
         void load();              // Loads grid data to file.
 
