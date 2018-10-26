@@ -29,7 +29,7 @@
 
 class Master;
 class Input;
-
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
@@ -56,7 +56,7 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Data_block&);   ///< Read the profiles of the forces from the input.
+        void create(Input&, Netcdf_handle&);   ///< Read the profiles of the forces from the input.
         void exec(double);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
