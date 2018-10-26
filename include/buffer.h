@@ -25,9 +25,9 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
-
 
 /**
  * Class for the buffer layer in the top of the domain.
@@ -42,7 +42,7 @@ class Buffer
         ~Buffer();              ///< Destructor of the buffer class.
 
         void init();         ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Data_block&); ///< Read the profiles of the forces from the input.
+        void create(Input&, Netcdf_handle&); ///< Read the profiles of the forces from the input.
         void exec();         ///< Add the tendencies created by the damping.
 
         // GPU functions and variables
