@@ -32,7 +32,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -367,10 +367,8 @@ void Thermo_vapor<TF>::init()
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
-
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
@@ -379,8 +377,17 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
-    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    // data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
+    input_nc.get_variable(bs.thl0, "thl", start, count);
+    // data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
+    input_nc.get_variable(bs.qt0, "qt", start, count);
+
+    // Shift the vector
+    std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
+    std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 

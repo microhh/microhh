@@ -229,7 +229,7 @@ void Model<TF>::load()
     boundary->create(*input, *stats);
     buffer->create(*input, *profs);
     force->create(*input, *profs);
-    thermo->create(*input, *profs, *stats, *column, *cross, *dump);
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *profs, *stats, *cross, *dump);
     radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);

@@ -29,7 +29,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "stats.h"
 #include "diff.h"
 
@@ -314,7 +314,7 @@ void Thermo_dry<TF>::init()
 }
 
 template<typename TF>
-void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
     /* Setup base state:
@@ -325,8 +325,15 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
 
+
         // Read the reference profile, and start writing it at index kstart as thref is kcells long.
-        data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
+        const std::vector<int> start = {0};
+        const std::vector<int> count = {gd.ktot};
+
+        // data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
+        input_nc.get_variable(bs.thref, "th", start, count);
+        // Shift the vector to take into account the ghost cells;
+        std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());
 
         calc_base_state(
                 fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
