@@ -27,7 +27,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 
 template<typename> class Grid;
 template<typename> class Stats;
@@ -46,7 +46,7 @@ class Microphys_disabled : public Microphys<TF>
         virtual ~Microphys_disabled();
 
         void init() {};
-        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, const double) {};
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double) {};
         void exec_dump(Dump<TF>&, unsigned long) {};

@@ -25,7 +25,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 
 template<typename> class Grid;
 template<typename> class Stats;
@@ -53,7 +53,7 @@ class Microphys
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(Thermo<TF>&, const double) = 0;
