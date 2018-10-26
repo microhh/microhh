@@ -27,7 +27,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -54,7 +54,7 @@ class Thermo_disabled : public Thermo<TF>
 
         // Interfacing functions to get buoyancy properties from other classes.
         void init() {};
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(const double) {};
         void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};

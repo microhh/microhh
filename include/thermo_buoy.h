@@ -27,6 +27,7 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -35,10 +36,6 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
-
-class Data_block;
-
-
 
 /**
  * Class for the dry thermodynamics.
@@ -51,7 +48,7 @@ class Thermo_buoy : public Thermo<TF>
 {
     public:
         Thermo_buoy(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_buoy();        ///< Destructor of the dry thermodynamics class.
+        virtual ~Thermo_buoy(); ///< Destructor of the dry thermodynamics class.
 
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
@@ -69,7 +66,7 @@ class Thermo_buoy : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
         void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
