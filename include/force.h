@@ -47,6 +47,7 @@ enum class Large_scale_pressure_type {disabled, fixed_flux, geo_wind};
 enum class Large_scale_tendency_type {disabled, enabled};
 enum class Large_scale_subsidence_type {disabled, enabled};
 enum class Nudging_type {disabled, enabled};
+enum class Mesoscale_BC_type {disabled, enabled};
 
 template<typename TF>
 class Force
@@ -90,6 +91,7 @@ class Force
         Large_scale_tendency_type swls;
         Large_scale_subsidence_type swwls;
         Nudging_type swnudge;
+        Mesoscale_BC_type mesoscalebc;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF fc;    ///< Coriolis parameter.

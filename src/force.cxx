@@ -206,6 +206,159 @@ namespace
             }
         }
     }
+
+    template<typename TF> //EW: enforce B.C. to be from a mesoscale model, input format is pending
+    void enforce_BC_from_mesoscale_model(
+    		TF* const restrict data, const int fixed_value,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int jcells, const int kcells, const int igc, const int jgc, const int jtot,
+			Edge edge)
+    {
+        const int jj = icells;
+        const int kk = icells*jcells;
+        if (edge == Edge::East_west_edge || edge == Edge::Both_edges)
+        {
+            // first, east west boundaries
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma ivdep
+                    for (int i=0; i<igc+1; ++i)
+                    {
+                        const int ijk0 = i          + j*jj + k*kk;
+                        data[ijk0] = fixed_value;
+                    }
+
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma ivdep
+                    for (int i=0; i<igc+1; ++i)
+                    {
+                        const int ijk0 = i+iend   + j*jj + k*kk;
+                        data[ijk0] = fixed_value;
+                    }
+        }
+        if (edge == Edge::North_south_edge || edge == Edge::Both_edges)
+        {
+            // if the run is 3D, apply the BCs
+            if (jtot > 1)
+            {
+                // second, send and receive the ghost cells in the north-south direction
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc+1; ++j)
+                        #pragma ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk0 = i + j                 *jj + k*kk;
+                            data[ijk0] = fixed_value;
+                        }
+
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc+1; ++j)
+                        #pragma ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk0 = i + (j+jend  )*jj + k*kk;
+                            data[ijk0] = fixed_value;
+                        }
+            }
+            // in case of 2D, fill all the ghost cells with the current value
+            else
+            {
+                for (int k=kstart; k<kend; ++k)
+                    for (int j=0; j<jgc+1; ++j)
+                        #pragma ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijknorth = i + j*jj           + k*kk;
+                            const int ijksouth = i + (jend+j)*jj + k*kk;
+                            data[ijknorth] = fixed_value;
+                            data[ijksouth] = fixed_value;
+                        }
+            }
+        }
+    }
+    //ToDo: initialize 1d, 2d, 3d arrays properly
+    //sunray for tau and swn
+    //zenith for mu
+    template<typename TF> //EW: simplified radiative parameterization for LW and SW fluxes for DYCOMS
+    void gcss_rad(TF* const restrict st, const TF* const restrict s,
+            const TF* const restrict wls, const TF* const dzi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells){
+    	
+        const int jj = icells;
+        const int kk = ijcells;
+        const float xka = 85.;
+        const float fr0 = 70.;
+        const float fr1 = 22.;
+        const float rho_l = 1000.;
+        const float reff = 1.E-5;
+        const float cp = 1005; //can read this from constant.h
+        const float div = 3.75E-6; //fix divergence for now
+        float tauc; //single or double precision??
+        float fact;
+        int ki; //PBLH index
+        auto lwp = fields.get_tmp(); //how do I set lwp = 0?
+        auto flx = fields.get_tmp();
+        auto tau = fields.get_tmp();
+        const float mu = 0.05;//zenith(32.5,time); //zenith
+		for (int j=jstart; j<jend; ++j){
+			for (int i=istart; i<iend; ++i){
+				ki = kend; //set to top of domain
+				for (int k=kstart; k<kend; ++k)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+                    const int km1 = std::max(1,k-1);
+                    lwp[ij] = lwp[ij]+std::max(0.,ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1]));
+                    flx[ijk] = fr1*std::exp(-1.*xka*lwp[ij]);
+                    if ((ql[ijk]>0.01E-3)&&(qt[ijk]>=0.008)) ki = k; //this is the PBLH index
+                }
+				
+				if (mu>0.035){
+					tauc = 0.0;
+					for k=kstart;k<kend;++k{
+						const int ij   = i + j*jj;
+						const int ijk  = i + j*jj + k*kk;
+						const int km1 = std::max(1,k-1);
+						tau[k] = 0.0;
+						if (ql[ijk]>1.E-5){
+							tau[k] = std::max(0.,1.5*ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1])/reff/rho_l);
+							tauc = tauc + tau[k];
+						}
+					}
+					//sunray
+					swn = 1.0; //SW
+				}
+				fact = div*cp*fields.rhoref[ki];
+				flx[i+j*jj+kstart*kk] = flx[i+j*jj+kstart*kk]+fr0*std::exp(-1.*xka*lwp[ij]);
+				for (int k=kstart+1;k<kend;++k){
+					const int ij   = i + j*jj;
+					const int ijk  = i + j*jj + k*kk;
+					const int km1 = std::max(kstart+1,k-1);
+					const int ijkm = i + j*jj + km1*kk;
+					lwp[ij] = lwp[ij]-std::max(0.,ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1]));
+					flx[ijk] = flx[ijk]+fr0*std::exp(-1.*xka*lwp[ij]);
+					if ((k>ki)&&(ki>1)&&(fact>0.)){ //above PBLH
+						flx[ijk] = flx[ijk] + fact*(0.25*std::pow(z[k]-z[km],1.333)+z[km]*std::pow(z[k]-z[ki],0.33333))
+					}
+					tt[ijk] = tt[ijk]-(flx[ijk]-flx[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
+					tt[ijk] = tt[ijk]+(swn[ijk]-swn[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
+				}
+				//subsidence part
+				if (div!=0.){
+					for (int k=kstart+1;k<kend-2,++k){
+						const int ijk  = i + j*jj + k*kk;
+						const int kp1 = k+1;
+						const int ijkp1 = i + j*jj + kp1*kk;
+						tt[ijk] = tt[ijk] + div*z[k]*(tl[ijkp1]-tl[ijk])*dzi[k];
+						qtt[ijk] = qtt[ijk] + div*z[k]*(qt[ijkp1]-qt[ijk])*dzi[k];
+					}
+				}
+				
+			} // end of i
+		} // end of j
+    } // end of gcss_rad
 }
 
 template<typename TF>
@@ -216,6 +369,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swls_in     = inputin.get_item<std::string>("force", "swls", "", "0");
     std::string swwls_in    = inputin.get_item<std::string>("force", "swwls", "", "0");
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge", "", "0");
+    std::string mesoscalebc_in = inputin.get_item<std::string>("force", "mesoscalebc", "", "0");
 
     // Set the internal switches and read other required input
 
@@ -295,6 +449,18 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         throw std::runtime_error("Invalid option for \"swnduge\"");
     }
+    // Enforce BC from some mesoscale model
+    if (mesoscalebc_in == "0")
+    	mesoscalebc = Mesoscale_BC_type::disabled;
+    else if (mesoscalebc_in == "1")
+    {
+    	mesoscalebc = Mesoscale_BC_type::enabled;
+    }
+    else
+    {
+    	throw std::runtime_error("Invalid option for \"mesoscalebc\"");
+    }
+
 }
 
 template <typename TF>
@@ -445,6 +611,14 @@ void Force<TF>::exec(double dt)
                     nudgeprofs.at(it).data(), nudge_factor.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+    }
+
+    if (mesoscalebc == Mesoscale_BC_type::enabled)
+    {   //hard-coding a fixed u value at the BC for testing purposes
+    	enforce_BC_from_mesoscale_model(fields.sp.at("th")->fld.data(), 285,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+				gd.icells, gd.jcells, gd.kcells, gd.igc, gd.jgc, gd.jtot,
+				Edge::Both_edges);
     }
 }
 #endif
