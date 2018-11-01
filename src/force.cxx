@@ -288,24 +288,24 @@ namespace
     	
         const int jj = icells;
         const int kk = ijcells;
-        const float xka = 85.;
-        const float fr0 = 70.;
-        const float fr1 = 22.;
-        const float rho_l = 1000.;
-        const float reff = 1.E-5;
-        const float cp = 1005; //can read this from constant.h
-        const float div = 3.75E-6; //fix divergence for now
-        float tauc; //single or double precision??
-        float fact;
+        const TF xka = 85.;
+        const TF fr0 = 70.;
+        const TF fr1 = 22.;
+        const TF rho_l = 1000.;
+        const TF reff = 1.E-5;
+        const TF cp = 1005; //can read this from constant.h
+        const TF div = 3.75E-6; //fix divergence for now
+        TF tauc; //single or double precision??
+        TF fact;
         int ki; //PBLH index
         auto lwp = fields.get_tmp(); //how do I set lwp = 0?
         auto flx = fields.get_tmp();
         auto tau = fields.get_tmp();
-        const float mu = 0.05;//zenith(32.5,time); //zenith
-		for (int j=jstart; j<jend; ++j){
-			for (int i=istart; i<iend; ++i){
-				ki = kend; //set to top of domain
-				for (int k=kstart; k<kend; ++k)
+        const TF mu = 0.05;//zenith(32.5,time); //zenith
+        for (int j=jstart; j<jend; ++j){
+            for (int i=istart; i<iend; ++i){
+                ki = kend; //set to top of domain
+                for (int k=kstart; k<kend; ++k)
                 {
                     const int ij   = i + j*jj;
                     const int ijk  = i + j*jj + k*kk;
@@ -315,49 +315,49 @@ namespace
                     if ((ql[ijk]>0.01E-3)&&(qt[ijk]>=0.008)) ki = k; //this is the PBLH index
                 }
 				
-				if (mu>0.035){
-					tauc = 0.0;
-					for k=kstart;k<kend;++k{
-						const int ij   = i + j*jj;
-						const int ijk  = i + j*jj + k*kk;
-						const int km1 = std::max(1,k-1);
-						tau[k] = 0.0;
-						if (ql[ijk]>1.E-5){
-							tau[k] = std::max(0.,1.5*ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1])/reff/rho_l);
-							tauc = tauc + tau[k];
-						}
-					}
-					//sunray
-					swn = 1.0; //SW
-				}
-				fact = div*cp*fields.rhoref[ki];
-				flx[i+j*jj+kstart*kk] = flx[i+j*jj+kstart*kk]+fr0*std::exp(-1.*xka*lwp[ij]);
-				for (int k=kstart+1;k<kend;++k){
-					const int ij   = i + j*jj;
-					const int ijk  = i + j*jj + k*kk;
-					const int km1 = std::max(kstart+1,k-1);
-					const int ijkm = i + j*jj + km1*kk;
-					lwp[ij] = lwp[ij]-std::max(0.,ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1]));
-					flx[ijk] = flx[ijk]+fr0*std::exp(-1.*xka*lwp[ij]);
-					if ((k>ki)&&(ki>1)&&(fact>0.)){ //above PBLH
-						flx[ijk] = flx[ijk] + fact*(0.25*std::pow(z[k]-z[km],1.333)+z[km]*std::pow(z[k]-z[ki],0.33333))
-					}
-					tt[ijk] = tt[ijk]-(flx[ijk]-flx[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
-					tt[ijk] = tt[ijk]+(swn[ijk]-swn[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
-				}
-				//subsidence part
-				if (div!=0.){
-					for (int k=kstart+1;k<kend-2,++k){
-						const int ijk  = i + j*jj + k*kk;
-						const int kp1 = k+1;
-						const int ijkp1 = i + j*jj + kp1*kk;
-						tt[ijk] = tt[ijk] + div*z[k]*(tl[ijkp1]-tl[ijk])*dzi[k];
-						qtt[ijk] = qtt[ijk] + div*z[k]*(qt[ijkp1]-qt[ijk])*dzi[k];
-					}
-				}
+                if (mu>0.035){
+                    tauc = 0.0;
+                    for (k=kstart;k<kend;++k){
+                        const int ij   = i + j*jj;
+                        const int ijk  = i + j*jj + k*kk;
+                        const int km1 = std::max(1,k-1);
+                        tau[k] = 0.0;
+                        if (ql[ijk]>1.E-5){
+                            tau[k] = std::max(0.,1.5*ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1])/reff/rho_l);
+                            tauc = tauc + tau[k];
+                        }
+                    }
+                    //sunray
+                    swn = 1.0; //SW
+                }
+                fact = div*cp*fields.rhoref[ki];
+                flx[i+j*jj+kstart*kk] = flx[i+j*jj+kstart*kk]+fr0*std::exp(-1.*xka*lwp[ij]);
+                for (int k=kstart+1;k<kend;++k){
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+                    const int km1 = std::max(kstart+1,k-1);
+                    const int ijkm = i + j*jj + km1*kk;
+                    lwp[ij] = lwp[ij]-std::max(0.,ql[ijk]*fields.rhoref[k]*(dzi[k]-dzi[km1]));
+                    flx[ijk] = flx[ijk]+fr0*std::exp(-1.*xka*lwp[ij]);
+                    if ((k>ki)&&(ki>1)&&(fact>0.)){ //above PBLH
+                        flx[ijk] = flx[ijk] + fact*(0.25*std::pow(z[k]-z[km],1.333)+z[km]*std::pow(z[k]-z[ki],0.33333))
+                    }
+                    tt[ijk] = tt[ijk]-(flx[ijk]-flx[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
+                    tt[ijk] = tt[ijk]+(swn[ijk]-swn[ijkm])*dzh[k]/(fields.rhoref[k]*cp);
+                }
+                //subsidence part
+                if (div!=0.){
+                    for (int k=kstart+1;k<kend-2,++k){
+                        const int ijk  = i + j*jj + k*kk;
+                        const int kp1 = k+1;
+                        const int ijkp1 = i + j*jj + kp1*kk;
+                        tt[ijk] = tt[ijk] + div*z[k]*(tl[ijkp1]-tl[ijk])*dzi[k];
+                        qtt[ijk] = qtt[ijk] + div*z[k]*(qt[ijkp1]-qt[ijk])*dzi[k];
+                    }
+                }
 				
-			} // end of i
-		} // end of j
+            } // end of i
+        } // end of j
     } // end of gcss_rad
 }
 
