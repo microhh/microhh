@@ -300,7 +300,7 @@ namespace
         int ki; //PBLH index
         auto lwp = fields.get_tmp(); //how do I set lwp = 0?
         auto flx = fields.get_tmp();
-        auto tau = fields.get_tmp();
+        auto tau = fields.get_tmp(); //this should just be defined as a vector?
         const TF mu = 0.05;//zenith(32.5,time); //zenith
         for (int j=jstart; j<jend; ++j){
             for (int i=istart; i<iend; ++i){
@@ -358,6 +358,8 @@ namespace
 				
             } // end of i
         } // end of j
+        fields.release_tmp(lwp);
+        fields.release_tmp(flux);
     } // end of gcss_rad
 }
 
