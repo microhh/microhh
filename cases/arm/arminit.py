@@ -97,13 +97,16 @@ sbotqt  = LE/(rho*Lv)
 # Save all the input data to NetCDF
 nc_file = nc.Dataset("arm.nc", mode="w", datamodel="NETCDF4", clobber=False)
 
-nc_file.createDimension("z", kmax)
+# Create a group called "init" for the initial profiles.
+nc_group_init = nc_file.createGroup("init")
 
-nc_z   = nc_file.createVariable("z"  , float_type, ("z"))
-nc_thl = nc_file.createVariable("thl", float_type, ("z"))
-nc_qt  = nc_file.createVariable("qt" , float_type, ("z"))
-nc_u   = nc_file.createVariable("u"  , float_type, ("z"))
-nc_ug  = nc_file.createVariable("ug" , float_type, ("z"))
+nc_group_init.createDimension("z", kmax)
+
+nc_z   = nc_group_init.createVariable("z"  , float_type, ("z"))
+nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
+nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
+nc_u   = nc_group_init.createVariable("u"  , float_type, ("z"))
+nc_ug  = nc_group_init.createVariable("ug" , float_type, ("z"))
 
 nc_z  [:] = z  [:]
 nc_thl[:] = thl[:]
@@ -111,21 +114,29 @@ nc_qt [:] = qt [:]
 nc_u  [:] = u  [:]
 nc_ug [:] = ug [:]
 
+# Create a group called "timedep" for the timedep.
+nc_group_timedep = nc_file.createGroup("timedep")
 
-nc_file.createDimension("time_h", time_h.size)
-nc_time_h   = nc_file.createVariable("time_h"  , float_type, ("time_h"))
-nc_thl_sbot = nc_file.createVariable("thl_sbot", float_type, ("time_h"))
-nc_qt_sbot  = nc_file.createVariable("qt_sbot" , float_type, ("time_h"))
+nc_group_timedep_surface = nc_group_timedep.createGroup("surface")
+
+nc_group_timedep_surface.createDimension("time", time_h.size)
+nc_time_h   = nc_group_timedep_surface.createVariable("time"    , float_type, ("time"))
+nc_thl_sbot = nc_group_timedep_surface.createVariable("thl_sbot", float_type, ("time"))
+nc_qt_sbot  = nc_group_timedep_surface.createVariable("qt_sbot" , float_type, ("time"))
 nc_time_h  [:] = time_h [:]
 nc_thl_sbot[:] = sbotthl[:]
 nc_qt_sbot [:] = sbotqt [:]
 
-nc_file.createDimension("time_ls", time_ls.size)
-nc_time_ls = nc_file.createVariable("time_ls", float_type, ("time_ls"))
-nc_thl_ls  = nc_file.createVariable("thl_ls" , float_type, ("time_ls", "z"))
-nc_qt_ls   = nc_file.createVariable("qt_ls"  , float_type, ("time_ls", "z"))
-nc_time_ls[:] = time_ls[:]
-nc_thl_ls[:,:] = thlls[:,:]
-nc_qt_ls [:,:] = qtls [: :]
+nc_group_timedep_ls = nc_group_timedep.createGroup("ls")
+nc_group_timedep_ls.createDimension("time", time_ls.size)
+nc_group_timedep_ls.createDimension("z", kmax)
+nc_z       = nc_group_timedep_ls.createVariable("z"      , float_type, ("z"))
+nc_time_ls = nc_group_timedep_ls.createVariable("time"   , float_type, ("time"))
+nc_thl_ls  = nc_group_timedep_ls.createVariable("thl_ls" , float_type, ("time", "z"))
+nc_qt_ls   = nc_group_timedep_ls.createVariable("qt_ls"  , float_type, ("time", "z"))
+nc_z      [:]   = z      [:]
+nc_time_ls[:]   = time_ls[:]
+nc_thl_ls [:,:] = thlls  [:,:]
+nc_qt_ls  [:,:] = qtls   [:,:]
 
 nc_file.close()
