@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include "data_block.h"
+#include "netcdf_interface.h"
 #include "timedep.h"
 
 template<typename TF>
@@ -71,6 +72,17 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
     if (sw == Timedep_switch::Disabled)
         return;
 
+    Netcdf_handle group_nc = input_nc.get_group("timedep");
+
+    std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
+
+    master.print_message("%s\n", varname.c_str());
+    for (auto i : dims)
+        std::cout << i.first << ", " << i.second << std::endl;
+
+    // input_nc.get_variable(data, varname, start, count);
+
+    /*
     Data_block data_block(master, varname+".time");
 
     int length = data_block.get_vector_length("time");
@@ -78,6 +90,8 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
     data.resize(length);
     data_block.get_vector(time, "time", length, 0, 0);
     data_block.get_vector(data, varname, length, 0, 0);
+    */
+
     #ifdef USECUDA
     prepare_device();
     #endif
