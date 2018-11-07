@@ -36,6 +36,8 @@ class Netcdf_handle
         Netcdf_group add_group(const std::string&);
         Netcdf_group get_group(const std::string&);
 
+        std::map<std::string, int> get_variable_dimensions(const std::string&);
+
         Netcdf_variable add_variable(
                 const std::string&,
                 const std::vector<std::string>);

@@ -227,6 +227,38 @@ Netcdf_group::Netcdf_group(Master& master, int ncid_in, int root_ncid_in) :
     root_ncid = root_ncid_in;
 }
 
+std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::string& name)
+{
+    int nc_check_code;
+    int var_id;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+    nc_check(master, nc_check_code);
+
+    int ndims;
+    int dimids[NC_MAX_VAR_DIMS];
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_inq_var(ncid, var_id, NULL, NULL, &ndims, dimids, NULL);
+    nc_check(master, nc_check_code);
+
+    std::map<std::string, int> dims;
+
+    for (int n=0; n<ndims; ++n)
+    {
+        char dim_name[NC_MAX_NAME+1];
+        size_t dim_length;
+
+        nc_check_code = nc_inq_dim(ncid, dimids[n], dim_name, &dim_length);
+        nc_check(master, nc_check_code);
+
+        dims.emplace(dim_name, dim_length);
+    }
+
+    return dims;
+}
+
 template<>
 void Netcdf_handle::get_variable(
         std::vector<double>& values,
@@ -235,6 +267,9 @@ void Netcdf_handle::get_variable(
         const std::vector<int>& i_start,
         const std::vector<int>& i_count)
 {
+    std::string message = "Retrieving from NetCDF: " + name;
+    master.print_message(message);
+
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
@@ -263,6 +298,9 @@ void Netcdf_handle::get_variable(
         const std::vector<int>& i_start,
         const std::vector<int>& i_count)
 {
+    std::string message = "Retrieving from NetCDF: " + name;
+    master.print_message(message);
+
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
