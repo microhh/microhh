@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 #include "master.h"
 #include "grid.h"
