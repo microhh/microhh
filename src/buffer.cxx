@@ -22,8 +22,8 @@
 
 #include <cstdio>
 #include <cmath>
-#include <stdlib.h>
 #include <iostream>
+#include <algorithm>
 
 #include "master.h"
 #include "input.h"
