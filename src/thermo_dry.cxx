@@ -325,7 +325,6 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
 
-
         // Read the reference profile, and start writing it at index kstart as thref is kcells long.
         const std::vector<int> start = {0};
         const std::vector<int> count = {gd.ktot};
