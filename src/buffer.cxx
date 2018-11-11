@@ -142,12 +142,11 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
             const std::vector<int> start = {0};
             const std::vector<int> count = {gd.ktot};
 
-            input_nc.get_variable(bufferprofs["u"], "u", start, count);
-            input_nc.get_variable(bufferprofs["v"], "v", start, count);
+            Netcdf_group group_nc = input_nc.get_group("init");
+            group_nc.get_variable(bufferprofs["u"], "u", start, count);
+            group_nc.get_variable(bufferprofs["v"], "v", start, count);
             std::rotate(bufferprofs["u"].rbegin(), bufferprofs["u"].rbegin() + gd.kstart, bufferprofs["u"].rend());
             std::rotate(bufferprofs["v"].rbegin(), bufferprofs["v"].rbegin() + gd.kstart, bufferprofs["v"].rend());
-            // profs.get_vector(bufferprofs["u"], "u", gd.kmax, 0, gd.kstart);
-            // profs.get_vector(bufferprofs["v"], "v", gd.kmax, 0, gd.kstart);
 
             // In case of u and v, subtract the grid velocity.
             for (int k=gd.kstart; k<gd.kend; ++k)
@@ -158,8 +157,7 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
             for (auto& it : fields.sp)
             {
-                // profs.get_vector(bufferprofs[it.first], it.first, gd.kmax, 0, gd.kstart);
-                input_nc.get_variable(bufferprofs[it.first], it.first, start, count);
+                group_nc.get_variable(bufferprofs[it.first], it.first, start, count);
                 std::rotate(bufferprofs[it.first].rbegin(), bufferprofs[it.first].rbegin() + gd.kstart, bufferprofs[it.first].rend());
             }
         }

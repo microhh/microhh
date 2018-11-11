@@ -556,10 +556,9 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    // data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
-    input_nc.get_variable(bs.thl0, "thl", start, count);
-    // data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
-    input_nc.get_variable(bs.qt0, "qt", start, count);
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(bs.thl0, "thl", start, count);
+    group_nc.get_variable(bs.qt0, "qt", start, count);
 
     // Shift the vector
     std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
