@@ -268,10 +268,30 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
     return dims;
 }
 
-template<>
-void Netcdf_handle::get_variable(
-        std::vector<double>& values,
+namespace
+{
+    template<typename TF>
+    int nc_get_vara_wrapper(
+            int, int, const std::vector<size_t>&, const std::vector<size_t>&, std::vector<TF>&);
 
+    template<>
+    int nc_get_vara_wrapper(
+            int ncid, int var_id, const std::vector<size_t>& start, const std::vector<size_t>& count, std::vector<double>& values)
+    {
+        return nc_get_vara_double(ncid, var_id, start.data(), count.data(), values.data());
+    }
+
+    template<>
+    int nc_get_vara_wrapper(
+            int ncid, int var_id, const std::vector<size_t>& start, const std::vector<size_t>& count, std::vector<float>& values)
+    {
+        return nc_get_vara_float(ncid, var_id, start.data(), count.data(), values.data());
+    }
+}
+
+template<typename TF>
+void Netcdf_handle::get_variable(
+        std::vector<TF>& values,
         const std::string& name,
         const std::vector<int>& i_start,
         const std::vector<int>& i_count)
@@ -299,7 +319,8 @@ void Netcdf_handle::get_variable(
 
     // CvH: Add check if the vector is large enough.
     if (master.get_mpiid() == 0)
-        nc_check_code = nc_get_vara_double(ncid, var_id, i_start_size_t.data(), i_count_size_t.data(), values.data());
+        nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values); 
+        // nc_check_code = nc_get_vara_double(ncid, var_id, i_start_size_t.data(), i_count_size_t.data(), values.data());
     nc_check(master, nc_check_code);
 
     // If the vector is long enough, it can be copied. We assume that this routine does NOT resize vectors.
@@ -308,7 +329,7 @@ void Netcdf_handle::get_variable(
     master.broadcast(values.data(), total_count);
 }
 
-template<>
+/*
 void Netcdf_handle::get_variable(
         std::vector<float>& values,
         const std::string& name,
@@ -342,6 +363,7 @@ void Netcdf_handle::get_variable(
     if (master.get_mpiid() == 0)
         std::copy(values_double.begin(), values_double.end(), values.begin());
 }
+*/
 
 // Variable does not communicate with NetCDF library directly.
 Netcdf_variable::Netcdf_variable(Master& master, Netcdf_handle& nc_file, const int var_id, const std::vector<int>& dim_sizes) :
@@ -366,5 +388,5 @@ void Netcdf_variable::insert(const double value, const std::vector<int> i_start)
     nc_file.insert(value, var_id, i_start, dim_sizes);
 }
 
-// template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
-// template void Netcdf_handle::get_variable<float> (std::vector<float> &, const std::string&, const std::vector<int>&, const std::vector<int>&);
+template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
+template void Netcdf_handle::get_variable<float> (std::vector<float> &, const std::string&, const std::vector<int>&, const std::vector<int>&);
