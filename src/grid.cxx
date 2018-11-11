@@ -189,9 +189,8 @@ void Grid<TF>::init()
 template<typename TF>
 void Grid<TF>::create(Netcdf_handle& input_nc)
 {
-    // Get the grid coordinates from the input.
-    Netcdf_group group_nc = input_nc.get_group("init");
-    group_nc.get_variable(gd.z, "z", {0}, {gd.ktot});
+    // Get the grid coordinates from the input. This one is read from the global scope.
+    input_nc.get_variable(gd.z, "z", {0}, {gd.ktot});
     std::rotate(gd.z.rbegin(), gd.z.rbegin() + gd.kstart, gd.z.rend());
 
     if (gd.z[gd.kend-1] > gd.zsize)
