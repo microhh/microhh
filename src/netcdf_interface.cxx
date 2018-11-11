@@ -26,7 +26,7 @@ namespace
 Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mode) :
     Netcdf_handle(master)
 {
-    int nc_check_code;
+    int nc_check_code = 0;
 
     if (master.get_mpiid() == 0)
     {
@@ -53,7 +53,7 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
 
 Netcdf_file::~Netcdf_file()
 {
-    int nc_check_code;
+    int nc_check_code = 0;
 
     if (master.get_mpiid() == 0)
         nc_check_code = nc_close(ncid);
@@ -62,7 +62,7 @@ Netcdf_file::~Netcdf_file()
 
 void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_size)
 {
-    int nc_check_code;
+    int nc_check_code = 0;
 
     if (master.get_mpiid() == 0)
         nc_check_code = nc_redef(root_ncid);
@@ -95,7 +95,7 @@ Netcdf_variable Netcdf_handle::add_variable(
         const std::string& var_name,
         const std::vector<std::string> dim_names)
 {
-    int nc_check_code;
+    int nc_check_code = 0;
 
     int var_id = -1;
     std::vector<int> dim_sizes;
@@ -126,7 +126,7 @@ Netcdf_variable Netcdf_handle::add_variable(
     {
         const int dim_id = dim_ids.at(i);
 
-        size_t dim_len;
+        size_t dim_len = 0;
 
         if (master.get_mpiid() == 0)
             nc_check_code = nc_inq_dimlen(ncid, dim_id, &dim_len);
@@ -162,7 +162,7 @@ void Netcdf_handle::insert(
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
-    int nc_check_code;
+    int nc_check_code = 0;
 
     // CvH: Add proper size checking.
     if (master.get_mpiid() == 0)
@@ -179,7 +179,7 @@ void Netcdf_handle::insert(
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
-    int nc_check_code;
+    int nc_check_code = 0;
 
     // CvH: Add proper size checking.
     if (master.get_mpiid() == 0)
@@ -190,7 +190,7 @@ void Netcdf_handle::insert(
 Netcdf_group Netcdf_handle::add_group(const std::string& name)
 {
     int group_ncid = -1;
-    int nc_check_code;
+    int nc_check_code = 0;
 
     if (master.get_mpiid() == 0)
         nc_check_code = nc_redef(root_ncid);
@@ -210,7 +210,7 @@ Netcdf_group Netcdf_handle::add_group(const std::string& name)
 Netcdf_group Netcdf_handle::get_group(const std::string& name)
 {
     int group_ncid = -1;
-    int nc_check_code;
+    int nc_check_code = 0;
 
     if (master.get_mpiid() == 0)
         nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
@@ -229,7 +229,7 @@ Netcdf_group::Netcdf_group(Master& master, int ncid_in, int root_ncid_in) :
 
 std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::string& name)
 {
-    int nc_check_code;
+    int nc_check_code = 0;
     int var_id;
 
     if (master.get_mpiid() == 0)
@@ -302,9 +302,10 @@ void Netcdf_handle::get_variable(
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
-    int nc_check_code;
+    int nc_check_code = 0;
     int var_id;
 
+    bool zero_fill = false;
     try
     {
         if (master.get_mpiid() == 0)
@@ -315,55 +316,26 @@ void Netcdf_handle::get_variable(
     {
         std::string warning = "Netcdf variable " + name + " not found, filling with zeros";
         master.print_warning(warning);
+        zero_fill = true;
     }
 
     // CvH: Add check if the vector is large enough.
-    if (master.get_mpiid() == 0)
-        nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values); 
-        // nc_check_code = nc_get_vara_double(ncid, var_id, i_start_size_t.data(), i_count_size_t.data(), values.data());
-    nc_check(master, nc_check_code);
-
-    // If the vector is long enough, it can be copied. We assume that this routine does NOT resize vectors.
     int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
+    // If the vector is long enough, it can be copied. We assume that this routine does NOT resize vectors.
     master.broadcast(&total_count, 1);
-    master.broadcast(values.data(), total_count);
-}
 
-/*
-void Netcdf_handle::get_variable(
-        std::vector<float>& values,
-        const std::string& name,
-        const std::vector<int>& i_start,
-        const std::vector<int>& i_count)
-{
-    std::string message = "Retrieving from NetCDF: " + name;
-    master.print_message(message);
-
-    const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
-    const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
-
-    int nc_check_code;
-
-    int var_id;
-    if (master.get_mpiid() == 0)
-        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-    nc_check(master, nc_check_code);
-
-    // CvH: This needs to be removed once the stats is properly templated.
-    std::vector<double>values_double(values.size());
-
-    // CvH: Add check if the vector is large enough.
-    if (master.get_mpiid() == 0)
+    if (zero_fill)
     {
-        std::vector<double>values_double(values.size());
-        nc_check_code = nc_get_vara_double(ncid, var_id, i_start_size_t.data(), i_count_size_t.data(), values_double.data());
+        std::fill(values.begin(), values.begin() + total_count, 0);
     }
-    nc_check(master, nc_check_code);
-
-    if (master.get_mpiid() == 0)
-        std::copy(values_double.begin(), values_double.end(), values.begin());
+    else
+    {
+        if (master.get_mpiid() == 0)
+            nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values);
+        nc_check(master, nc_check_code);
+        master.broadcast(values.data(), total_count);
+    }
 }
-*/
 
 // Variable does not communicate with NetCDF library directly.
 Netcdf_variable::Netcdf_variable(Master& master, Netcdf_handle& nc_file, const int var_id, const std::vector<int>& dim_sizes) :
