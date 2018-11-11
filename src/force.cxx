@@ -359,7 +359,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         // read the large scale sources, which are the variable names with a "ls" suffix
         for (auto & it : lslist)
         {
-            group_nc.get_variable(lsprofs[it], it+"ls", {0}, {gd.ktot});
+            group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
             std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
         }
 
@@ -384,7 +384,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         // read the large scale sources, which are the variable names with a "nudge" suffix
         for (auto & it : nudgelist)
         {
-            group_nc.get_variable(nudgeprofs[it], it+"nudge", {0}, {gd.ktot});
+            group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
             std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
         }
 
@@ -396,7 +396,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
-        group_nc.get_variable(wls, "wls", {0}, {gd.ktot});
+        group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
         tdep_wls->create_timedep_prof(input_nc);
     }
