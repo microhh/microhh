@@ -82,7 +82,7 @@ qtls *= 1.e-8
 
 nc_file = nc.Dataset("bomex.nc", mode="w", datamodel="NETCDF4", clobber=False)
 nc_file.createDimension("z", kmax)
-nc_z     = nc_file.createVariable("z"    , float_type, ("z"))
+nc_z = nc_file.createVariable("z", float_type, ("z"))
 
 nc_group_init = nc_file.createGroup("init");
 nc_thl   = nc_group_init.createVariable("thl"   , float_type, ("z"))

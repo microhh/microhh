@@ -25,7 +25,6 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
