@@ -714,29 +714,26 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    // profs.get_vector(prof, "u", gd.ktot, 0, 0);
-    input_nc.get_variable(prof, "u", start, count);
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(prof, "u", start, count);
 
     add_mean_prof_to_field<TF>(mp["u"]->fld.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    //profs.get_vector(prof, "v", gd.ktot, 0, 0);
-    input_nc.get_variable(prof, "v", start, count);
+    group_nc.get_variable(prof, "v", start, count);
     add_mean_prof_to_field<TF>(mp["v"]->fld.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        // profs.get_vector(prof, f.first, gd.ktot, 0, 0);
-        input_nc.get_variable(prof, f.first, start, count);
+        group_nc.get_variable(prof, f.first, start, count);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
 }
-
 
 template<typename TF>
 void Fields<TF>::add_vortex_pair(Input& inputin)

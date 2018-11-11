@@ -330,8 +330,8 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
         const std::vector<int> start = {0};
         const std::vector<int> count = {gd.ktot};
 
-        // data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
-        input_nc.get_variable(bs.thref, "th", start, count);
+        Netcdf_group group_nc = input_nc.get_group("init");
+        group_nc.get_variable(bs.thref, "th", start, count);
         // Shift the vector to take into account the ghost cells;
         std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());
 
@@ -357,7 +357,6 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
     // Process the time dependent surface pressure
     tdep_pbot->create_timedep(input_nc);
-
 
     // Set up output classes
     create_stats(stats);
