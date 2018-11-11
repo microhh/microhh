@@ -82,17 +82,18 @@ qtls *= 1.e-8
 
 nc_file = nc.Dataset("bomex.nc", mode="w", datamodel="NETCDF4", clobber=False)
 nc_file.createDimension("z", kmax)
-
 nc_z     = nc_file.createVariable("z"    , float_type, ("z"))
-nc_thl   = nc_file.createVariable("thl"  , float_type, ("z"))
-nc_qt    = nc_file.createVariable("qt"   , float_type, ("z"))
-nc_u     = nc_file.createVariable("u"    , float_type, ("z"))
-nc_ug    = nc_file.createVariable("ug"   , float_type, ("z"))
-nc_v     = nc_file.createVariable("v"    , float_type, ("z"))
-nc_vg    = nc_file.createVariable("vg"   , float_type, ("z"))
-nc_wls   = nc_file.createVariable("wls"  , float_type, ("z"))
-nc_thlls = nc_file.createVariable("thlls", float_type, ("z"))
-nc_qtls  = nc_file.createVariable("qtls" , float_type, ("z"))
+
+nc_group_init = nc_file.createGroup("init");
+nc_thl   = nc_group_init.createVariable("thl"   , float_type, ("z"))
+nc_qt    = nc_group_init.createVariable("qt"    , float_type, ("z"))
+nc_u     = nc_group_init.createVariable("u"     , float_type, ("z"))
+nc_ug    = nc_group_init.createVariable("ug"    , float_type, ("z"))
+nc_v     = nc_group_init.createVariable("v"     , float_type, ("z"))
+nc_vg    = nc_group_init.createVariable("vg"    , float_type, ("z"))
+nc_wls   = nc_group_init.createVariable("w_ls"  , float_type, ("z"))
+nc_thlls = nc_group_init.createVariable("thl_ls", float_type, ("z"))
+nc_qtls  = nc_group_init.createVariable("qt_ls" , float_type, ("z"))
 
 nc_z    [:] = z    [:]
 nc_thl  [:] = thl  [:]
@@ -106,12 +107,3 @@ nc_thlls[:] = thlls[:]
 nc_qtls [:] = qtls [:]
 
 nc_file.close()
-
-"""
-# write the data to a file
-proffile = open('bomex.prof','w')
-proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s} {5:^20s} {6:^20s} {7:^20s}\n'.format('z','thl','qt','u','ug','wls','thlls','qtls'))
-for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E} {7:1.14E}\n'.format(z[k], thl[k], qt[k], u[k], ug[k], wls[k], thlls[k], qtls[k]))
-proffile.close()
-"""
