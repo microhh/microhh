@@ -54,7 +54,7 @@ for k in range(kmax):
 qt /= 1000.  # g to kg
 
 # set the time series
-time_h = np.array([  0.,   4.,  6.5,  7.5,  10., 12.5, 14.5])
+time_surface = np.array([  0.,   4.,  6.5,  7.5,  10., 12.5, 14.5])
 
 H  = np.array([-30.,  90., 140., 140., 100., -10.,  -10])
 LE = np.array([  5., 250., 450., 500., 420., 180.,    0])
@@ -90,7 +90,7 @@ cp  = 1005.
 Lv  = 2.5e6
 p0  = 97000.
 rho = p0/(Rd*thl[0]*(1. + 0.61*qt[0]))
-time_h *= 3600. # h to s
+time_surface *= 3600. # h to s
 sbotthl = H/(rho*cp)
 sbotqt  = LE/(rho*Lv)
 
@@ -99,16 +99,15 @@ nc_file = nc.Dataset("arm.nc", mode="w", datamodel="NETCDF4", clobber=False)
 
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
+nc_z[:] = z[:]
 
 # Create a group called "init" for the initial profiles.
 nc_group_init = nc_file.createGroup("init")
-nc_z[:] = z[:]
 
 nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
 nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
 nc_u   = nc_group_init.createVariable("u"  , float_type, ("z"))
 nc_ug  = nc_group_init.createVariable("ug" , float_type, ("z"))
-
 nc_thl[:] = thl[:]
 nc_qt [:] = qt [:]
 nc_u  [:] = u  [:]
@@ -116,22 +115,19 @@ nc_ug [:] = ug [:]
 
 # Create a group called "timedep" for the timedep.
 nc_group_timedep = nc_file.createGroup("timedep")
+nc_group_timedep.createDimension("time_surface", time_surface.size)
+nc_group_timedep.createDimension("time_ls", time_ls.size)
 
-nc_group_timedep_surface = nc_group_timedep.createGroup("surface")
+nc_time_surface = nc_group_timedep.createVariable("time_surface", float_type, ("time_surface"))
+nc_thl_sbot = nc_group_timedep.createVariable("thl_sbot", float_type, ("time_surface"))
+nc_qt_sbot  = nc_group_timedep.createVariable("qt_sbot" , float_type, ("time_surface"))
+nc_time_surface[:] = time_surface[:]
+nc_thl_sbot    [:] = sbotthl     [:]
+nc_qt_sbot     [:] = sbotqt      [:]
 
-nc_group_timedep_surface.createDimension("time", time_h.size)
-nc_time_h   = nc_group_timedep_surface.createVariable("time"    , float_type, ("time"))
-nc_thl_sbot = nc_group_timedep_surface.createVariable("thl_sbot", float_type, ("time"))
-nc_qt_sbot  = nc_group_timedep_surface.createVariable("qt_sbot" , float_type, ("time"))
-nc_time_h  [:] = time_h [:]
-nc_thl_sbot[:] = sbotthl[:]
-nc_qt_sbot [:] = sbotqt [:]
-
-nc_group_timedep_ls = nc_group_timedep.createGroup("ls")
-nc_group_timedep_ls.createDimension("time", time_ls.size)
-nc_time_ls = nc_group_timedep_ls.createVariable("time"   , float_type, ("time"))
-nc_thl_ls  = nc_group_timedep_ls.createVariable("thl_ls" , float_type, ("time", "z"))
-nc_qt_ls   = nc_group_timedep_ls.createVariable("qt_ls"  , float_type, ("time", "z"))
+nc_time_ls = nc_group_timedep.createVariable("time_ls", float_type, ("time_ls"))
+nc_thl_ls  = nc_group_timedep.createVariable("thl_ls" , float_type, ("time_ls", "z"))
+nc_qt_ls   = nc_group_timedep.createVariable("qt_ls"  , float_type, ("time_ls", "z"))
 nc_time_ls[:]   = time_ls[:]
 nc_thl_ls [:,:] = thlls  [:,:]
 nc_qt_ls  [:,:] = qtls   [:,:]
