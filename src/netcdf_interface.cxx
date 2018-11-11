@@ -243,17 +243,26 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
         nc_check_code = nc_inq_var(ncid, var_id, NULL, NULL, &ndims, dimids, NULL);
     nc_check(master, nc_check_code);
 
+    // Broadcast ndims
+    master.broadcast(&ndims, 1);
+
     std::map<std::string, int> dims;
 
     for (int n=0; n<ndims; ++n)
     {
         char dim_name[NC_MAX_NAME+1];
-        size_t dim_length;
+        size_t dim_length_size_t;
 
-        nc_check_code = nc_inq_dim(ncid, dimids[n], dim_name, &dim_length);
+        nc_check_code = nc_inq_dim(ncid, dimids[n], dim_name, &dim_length_size_t);
         nc_check(master, nc_check_code);
 
-        dims.emplace(dim_name, dim_length);
+        int dim_length = dim_length_size_t;
+        master.broadcast(&dim_length, 1);
+
+        // Broadcast the entire buffer to avoid broadcasting of length.
+        master.broadcast(dim_name, NC_MAX_NAME+1);
+
+        dims.emplace(std::string(dim_name), dim_length);
     }
 
     return dims;
