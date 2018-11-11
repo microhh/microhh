@@ -285,9 +285,17 @@ void Netcdf_handle::get_variable(
     int nc_check_code;
     int var_id;
 
-    if (master.get_mpiid() == 0)
-        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-    nc_check(master, nc_check_code);
+    try
+    {
+        if (master.get_mpiid() == 0)
+            nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+        nc_check(master, nc_check_code);
+    }
+    catch (std::runtime_error& e)
+    {
+        std::string warning = "Netcdf variable " + name + " not found, filling with zeros";
+        master.print_warning(warning);
+    }
 
     // CvH: Add check if the vector is large enough.
     if (master.get_mpiid() == 0)
