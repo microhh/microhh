@@ -76,21 +76,34 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
 
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 
-    master.print_message("%s\n", varname.c_str());
+    // Check for the existence of a unique time dimension.
+    bool only_one_time_dim = false;
+    std::string time_dim;
+    int time_dim_length = 0;
+
     for (auto i : dims)
-        std::cout << i.first << ", " << i.second << std::endl;
+    {
+        if (i.first.substr(0, 4) == "time")
+        {
+            if (only_one_time_dim)
+                throw std::runtime_error("More than one time dimensions in input");
+            else
+            {
+                only_one_time_dim = true;
+                time_dim = i.first;
+                time_dim_length = i.second;
+            }
+        }
+    }
 
-    // input_nc.get_variable(data, varname, start, count);
+    std::vector<int> start = {0};
+    std::vector<int> count = {time_dim_length};
 
-    /*
-    Data_block data_block(master, varname+".time");
+    time.resize(time_dim_length);
+    data.resize(time_dim_length);
 
-    int length = data_block.get_vector_length("time");
-    time.resize(length);
-    data.resize(length);
-    data_block.get_vector(time, "time", length, 0, 0);
-    data_block.get_vector(data, varname, length, 0, 0);
-    */
+    group_nc.get_variable(time, time_dim, start, count);
+    group_nc.get_variable(data, varname, start, count);
 
     #ifdef USECUDA
     prepare_device();
