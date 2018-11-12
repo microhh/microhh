@@ -214,9 +214,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
-    std::string swls_in     = inputin.get_item<std::string>("force", "swls", "", "0");
-    std::string swwls_in    = inputin.get_item<std::string>("force", "swwls", "", "0");
-    std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge", "", "0");
+    std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
+    std::string swwls_in    = inputin.get_item<std::string>("force", "swwls"   , "", "0");
+    std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
 
     // Set the internal switches and read other required input
 
@@ -253,7 +253,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
-            for(auto& it : tdepvars)
+            for (auto& it : tdepvars)
                 tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_ls", true));
         }
     }
@@ -349,15 +349,15 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
     if (swls == Large_scale_tendency_type::enabled)
     {
-        // check whether the fields in the list exist in the prognostic fields
-        for (auto & it : lslist)
+        // Check whether the fields in the list exist in the prognostic fields.
+        for (std::string& it : lslist)
             if (!fields.ap.count(it))
             {
                 throw std::runtime_error("field %s in [force][lslist] is illegal\n");
             }
 
-        // read the large scale sources, which are the variable names with a "ls" suffix
-        for (auto & it : lslist)
+        // Read the large scale sources, which are the variable names with a "_ls" suffix.
+        for (std::string& it : lslist)
         {
             group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
             std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());

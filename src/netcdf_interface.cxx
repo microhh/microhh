@@ -219,7 +219,6 @@ Netcdf_group Netcdf_handle::get_group(const std::string& name)
     return Netcdf_group(master, group_ncid, root_ncid);
 }
 
-
 Netcdf_group::Netcdf_group(Master& master, int ncid_in, int root_ncid_in) :
     Netcdf_handle(master)
 {
