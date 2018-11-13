@@ -22,6 +22,8 @@
 
 #include <cstdio>
 #include <math.h>
+#include <algorithm>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -174,6 +176,34 @@ namespace
     }
 
     template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
+
+    template<typename TF>
+    void rescale_nudgeprof(TF* const restrict fldmean, const int kinv, const int kstart, const int kend)
+    {
+        for (int k=kstart+1; k<kinv; ++k)
+            fldmean[k] = fldmean[kstart];
+
+        for (int k=kinv+1; k<kend-2; ++k)
+            fldmean[k] = fldmean[kend-1];
+    }
+
+    template<typename TF>
     void advec_wls_2nd(
             TF* const restrict st, const TF* const restrict s,
             const TF* const restrict wls, const TF* const dzhi,
@@ -281,7 +311,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        nudgelist = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+        nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+        scalednudgelist = inputin.get_list<std::string>("force", "scalednudgelist", "", std::vector<std::string>());
 
         if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
         {
@@ -323,8 +354,10 @@ void Force<TF>::init()
 
     if (swnudge == Nudging_type::enabled)
     {
-        for (auto& it : nudgeprofs)
-            it.second.resize(gd.kcells);
+        nudge_factor.resize(gd.kcells);
+        for (auto& it : nudgelist)
+            nudgeprofs[it] = std::vector<TF>(gd.kcells);
+
     }
 }
 
@@ -347,7 +380,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : lslist)
             if (!fields.ap.count(it))
             {
-                throw std::runtime_error("field %s in [force][lslist] is illegal\n");
+                master.print_error("field %s in [force][lslist] is illegal\n", it.c_str());
             }
 
         // read the large scale sources, which are the variable names with a "ls" suffix
@@ -368,7 +401,7 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : nudgelist)
             if (!fields.ap.count(it))
             {
-                throw std::runtime_error("field %s in [force][nudgelist] is illegal\n");
+                master.print_error("field %s in [force][nudgelist] is illegal\n", it.c_str());
             }
 
         // read the large scale sources, which are the variable names with a "nudge" suffix
@@ -440,11 +473,19 @@ void Force<TF>::exec(double dt)
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : nudgelist)
+        {
+            auto it1 = std::find(scalednudgelist.begin(), scalednudgelist.end(), it);
+            if (it1 != scalednudgelist.end())
+            {
+                const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+                rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
+            }
             calc_nudging_tendency<TF>(
                     fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
                     nudgeprofs.at(it).data(), nudge_factor.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+        }
     }
 }
 #endif
