@@ -24,11 +24,17 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Set the precision of the build.
-if(FLOAT_SINGLE)
-  add_definitions("-DFLOAT_SINGLE")
-  message(STATUS "Precision: Single (32-bits floats)")
-else()
+if(NOT FLOAT_TYPE)
   message(STATUS "Precision: Double (64-bits floats)")
+else()
+  if(FLOAT_TYPE STREQUAL "float")
+    add_definitions("-DFLOAT_SINGLE")
+    message(STATUS "Precision: Single (32-bits floats)")
+  elseif(FLOAT_TYPE STREQUAL "double")
+    message(STATUS "Precision: Double (64-bits floats)")
+  else()
+    message(FATAL_ERROR "Illegal FLOAT_TYPE specified.")
+  endif()
 endif()
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
