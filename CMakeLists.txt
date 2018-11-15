@@ -145,5 +145,6 @@ if(USECUDA)
 endif()
 
 add_subdirectory(src)
-add_subdirectory(src_rrtmgp)
+#add_subdirectory(src_rrtmg)
+#add_subdirectory(src_rrtmgp)
 add_subdirectory(main)
