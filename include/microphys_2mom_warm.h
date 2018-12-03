@@ -52,7 +52,7 @@ template<typename> class Microphys;
 namespace Micro_2mom_warm_constants
 {
     template<typename TF> constexpr TF pi       = 3.14159265359;
-    template<typename TF> constexpr TF Nc0      = 70e6;                // Fixed cloud droplet number
+    template<typename TF> TF Nc0;                                      // Fixed cloud droplet number
     template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
     template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
     template<typename TF> constexpr TF rho_w    = 1.e3;                // Density water

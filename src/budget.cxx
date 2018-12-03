@@ -35,9 +35,9 @@
 
 
 template<typename TF>
-Budget<TF>::Budget(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin, 
+Budget<TF>::Budget(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin,
     Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin), diff(diffin), advec(advecin), force(forcein), stats(statsin) 
+    master(masterin), grid(gridin), fields(fieldsin), diff(diffin), advec(advecin), force(forcein), stats(statsin)
 {
 }
 
@@ -47,7 +47,7 @@ Budget<TF>::~Budget()
 }
 
 template<typename TF>
-std::shared_ptr<Budget<TF>> Budget<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin, 
+std::shared_ptr<Budget<TF>> Budget<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin,
     Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin)
 {
     std::string swbudgetin = inputin.get_item<std::string>("budget", "swbudget", "", "0");
@@ -67,6 +67,7 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(Master& masterin, Grid<TF>& grid
 //        masterin->print_error("\"%s\" is an illegal value for swbudget\n", swbudget.c_str());
 //        throw 1;
 //    }
+    return NULL; // Temporary return value, to ensure no warning at compile time
 }
 
 template class Budget<double>;

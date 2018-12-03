@@ -35,10 +35,12 @@ namespace
 
     /* Calculate absolute wind speed */
     template<typename TF> __global__
-    void calculate_du_g(TF* __restrict__ dutot,
-                  TF* __restrict__ u,    TF* __restrict__ v,
-                  TF* __restrict__ ubot, TF* __restrict__ vbot,
-                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void calculate_du_g(
+            TF* __restrict__ dutot,
+            TF* __restrict__ u,    TF* __restrict__ v,
+            TF* __restrict__ ubot, TF* __restrict__ vbot,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -58,12 +60,14 @@ namespace
     }
 
     template<typename TF> __global__
-    void momentum_fluxgrad_g(TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-                      TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
-                      TF* __restrict__ u,        TF* __restrict__ v,
-                      TF* __restrict__ ubot,     TF* __restrict__ vbot,
-                      TF* __restrict__ dutot,    TF Cm, TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void momentum_fluxgrad_g(
+            TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
+            TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
+            TF* __restrict__ u,        TF* __restrict__ v,
+            TF* __restrict__ ubot,     TF* __restrict__ vbot,
+            TF* __restrict__ dutot,    TF Cm, TF zsl,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -82,12 +86,14 @@ namespace
     }
 
     template<typename TF> __global__
-    void scalar_fluxgrad_g(TF* __restrict__ sfluxbot,
-                      TF* __restrict__ sgradbot,
-                      TF* __restrict__ s,
-                      TF* __restrict__ sbot,
-                      TF* __restrict__ dutot,    TF Cs, TF zsl,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int jj, const int kk)
+    void scalar_fluxgrad_g(
+            TF* __restrict__ sfluxbot,
+            TF* __restrict__ sgradbot,
+            TF* __restrict__ s,
+            TF* __restrict__ sbot,
+            TF* __restrict__ dutot,    TF Cs, TF zsl,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -104,12 +110,14 @@ namespace
     }
 
     template<typename TF> __global__
-    void surface_scaling_g(TF* __restrict__ ustar,
-                      TF* __restrict__ obuk,
-                      TF* __restrict__ dutot,
-                      TF* __restrict__ bfluxbot,
-                      TF Cm,
-                      const int istart, const int iend, const int jstart, const int jend, const int jj)
+    void surface_scaling_g(
+            TF* __restrict__ ustar,
+            TF* __restrict__ obuk,
+            TF* __restrict__ dutot,
+            TF* __restrict__ bfluxbot,
+            TF Cm,
+            const int istart, const int iend, const int jstart, const int jend,
+            const int jj)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -117,8 +125,8 @@ namespace
 
         if (i < iend && j < jend)
         {
-            const int ij  = i + j*jj;
-            const double sqrt_Cm = sqrt(Cm);
+            const int ij = i + j*jj;
+            const TF sqrt_Cm = sqrt(Cm);
 
             ustar[ij] = sqrt_Cm * dutot[ij];
             obuk[ij] = - fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);

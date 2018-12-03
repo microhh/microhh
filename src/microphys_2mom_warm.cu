@@ -64,7 +64,7 @@ namespace micro
     void autoconversion_g(TF* const __restrict__ qrt, TF* const __restrict__ nrt,
                           TF* const __restrict__ qtt, TF* const __restrict__ thlt,
                           const TF* const __restrict__ qr,  const TF* const __restrict__ ql,
-                          const TF* const __restrict__ rho, const TF* const __restrict__ exner,
+                          const TF* const __restrict__ rho, const TF* const __restrict__ exner, const TF nc,
                           const int istart, const int jstart, const int kstart,
                           const int iend,   const int jend,   const int kend,
                           const int jj, const int kk)
@@ -84,7 +84,7 @@ namespace micro
             const int ijk = i + j*jj + k*kk;
             if (ql[ijk] > ql_min<TF>)
             {
-                const TF xc      = rho[k] * ql[ijk] / Nc0<TF>;    // Mean mass of cloud drops [kg]
+                const TF xc      = rho[k] * ql[ijk] / nc;    // Mean mass of cloud drops [kg]
                 const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                 const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), TF(3));    // UCLA-LES
                 //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
@@ -476,7 +476,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
     const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
-    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 gridGPU (gridi, gridj, gd.kmax+1);
     dim3 blockGPU(blocki, blockj, 1);
 
     dim3 grid2dGPU (gridi, gridj);
@@ -508,7 +508,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     micro::autoconversion_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,
         fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
-        fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner,
+        fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner, Nc0<TF>,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
