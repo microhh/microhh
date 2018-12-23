@@ -36,6 +36,7 @@
 #include "timeloop.h"
 #include "fft.h"
 #include "boundary.h"
+#include "immersed_boundary.h"
 #include "advec.h"
 #include "diff.h"
 #include "pres.h"
@@ -121,14 +122,15 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
 
-        radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
-        force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
-        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *advec, *diff, *input);
-        column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
-        dump      = std::make_shared<Dump     <TF>>(master, *grid, *fields, *input);
-        cross     = std::make_shared<Cross    <TF>>(master, *grid, *fields, *input);
+        radiation = std::make_shared<Radiation        <TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force            <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer           <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay            <TF>>(master, *grid, *fields, *input);
+        stats     = std::make_shared<Stats            <TF>>(master, *grid, *fields, *advec, *diff, *input);
+        column    = std::make_shared<Column           <TF>>(master, *grid, *fields, *input);
+        dump      = std::make_shared<Dump             <TF>>(master, *grid, *fields, *input);
+        cross     = std::make_shared<Cross            <TF>>(master, *grid, *fields, *input);
+        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -167,6 +169,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    ib->init(*input);
     buffer->init();
     diff->init();
     pres->init();
