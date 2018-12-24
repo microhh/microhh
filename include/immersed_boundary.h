@@ -23,12 +23,15 @@
 #ifndef IMMERSED_BOUNDARY
 #define IMMERSED_BOUNDARY
 
+#include "boundary_cyclic.h"
+
 class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 
-enum class IB_type {disabled, dem, user};
+enum class IB_type {Disabled, DEM, User};
+
 
 template<typename TF>
 class Immersed_boundary
@@ -38,13 +41,54 @@ class Immersed_boundary
         ~Immersed_boundary();
 
         void init(Input&);
+        void create();
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_io<TF> field3d_io;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         IB_type sw_ib;
+
+        int n_idw_points;    // Number of interpolation points in IDW interpolation
+
+        // IB input from DEM
+        std::vector<TF> dem;
+
+        // Ghost cell info on staggered grid
+        struct Ghost_cells
+        {
+            // Indices of IB ghost cells:
+            std::vector<int> i;
+            std::vector<int> j;
+            std::vector<int> k;
+
+            // Nearest location of IB to ghost cell:
+            std::vector<TF> xb;
+            std::vector<TF> yb;
+            std::vector<TF> zb;
+
+            // Location of interpolation point outside IB:
+            std::vector<TF> xi;
+            std::vector<TF> yi;
+            std::vector<TF> zi;
+
+            std::vector<TF> di; // Distance ghost cell to interpolation point
+            std::vector<TF> idw_sum;  // Sum IDW coefficients
+
+            // Points outside IB used for IDW interpolation:
+            std::vector<int> ip_i;
+            std::vector<int> ip_j;
+            std::vector<int> ip_k;
+            std::vector<int> ip_d;  // Distance to interpolation point
+        };
+
+        Ghost_cells ghost_u;
+        Ghost_cells ghost_v;
+        Ghost_cells ghost_w;
+        Ghost_cells ghost_s;
 };
 
 #endif

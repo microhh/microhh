@@ -228,6 +228,7 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *stats);
+    ib->create();
     buffer->create(*input, *profs);
     force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
