@@ -31,6 +31,36 @@
 
 namespace
 {
+    /* Bi-linear interpolation of the 2D IB DEM
+     * onto the requested (`x_req`, `y_req`) location */
+    template<typename TF>
+    TF interp2_dem(const TF x_req, const TF y_req,
+            const TF* const restrict x, const TF* const restrict y,
+            const TF* const restrict dem,
+            const TF dx, const TF dy,
+            const int igc, const int jgc, const int icells,
+            const int imax, const int jmax,
+            const int mpicoordx, const int mpicoordy)
+    {
+        const int ii = 1;
+        const int jj = icells;
+
+        const int i0 = (x_req - TF(0.5)*dx) / dx - mpicoordx*imax + igc;
+        const int j0 = (y_req - TF(0.5)*dy) / dy - mpicoordy*jmax + jgc;
+        const int ij = i0 + j0*jj;
+
+        const TF f1x = (x_req - x[i0]) / dx;
+        const TF f1y = (y_req - y[j0]) / dy;
+        const TF f0x = TF(1) - f1x;
+        const TF f0y = TF(1) - f1y;
+
+        const TF z = f0y * (f0x * dem[ij   ] + f1x * dem[ij+ii   ]) +
+                     f1y * (f0x * dem[ij+jj] + f1x * dem[ij+ii+jj]);
+
+        return z;
+    }
+
+
     template<typename TF>
     bool is_ghost_cell(std::vector<TF>& dem, std::vector<TF>& z,
             const int i, const int j, const int k, const int icells)
@@ -52,13 +82,15 @@ namespace
         return false;
     }
 
+
     template<typename TF>
-    void find_ghost_cells(std::vector<int>& ghost_i, std::vector<int>& ghost_j, std::vector<int>& ghost_k,
+    void calc_ghost_cells(std::vector<int>& ghost_i, std::vector<int>& ghost_j, std::vector<int>& ghost_k,
             std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
             const int icells)
     {
+        // 1. Find the IB ghost cells
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                     for (int i=istart; i<iend; ++i)
@@ -68,6 +100,13 @@ namespace
                             ghost_j.push_back(j);
                             ghost_k.push_back(k);
                         }
+
+        // 2. Find nearest location on IB
+        //for (int i=0; i<ghost_i.size(); ++i)
+        //{
+        //
+        //
+        //}
     }
 
     void print_statistics(std::vector<int>& ghost_i, std::string name, Master& master)
@@ -102,9 +141,13 @@ Immersed_boundary<TF>::Immersed_boundary(Master& masterin, Grid<TF>& gridin, Fie
         throw std::runtime_error(error);
     }
 
-    // Read additional input
     if (sw_ib != IB_type::Disabled)
     {
+        // Set a minimum of 2 ghost cells in the horizontal
+        const int ijgc = 2;
+        grid.set_minimum_ghost_cells(ijgc, ijgc, 0);
+
+        // Read additional settings
         n_idw_points = inputin.get_item<int>("IB", "n_idw_points", "");
     }
 }
@@ -158,15 +201,15 @@ void Immersed_boundary<TF>::create()
         // Find ghost cells (grid points inside IB, which have at least one
         // neighbouring grid point outside of IB). Different for each
         // location on staggered grid.
-        find_ghost_cells(ghost_u.i, ghost_u.j, ghost_u.k, dem, gd.xh, gd.y, gd.z,
+        calc_ghost_cells(ghost_u.i, ghost_u.j, ghost_u.k, dem, gd.xh, gd.y, gd.z,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend, gd.icells);
 
-        find_ghost_cells(ghost_v.i, ghost_v.j, ghost_v.k, dem, gd.x, gd.yh, gd.z,
+        calc_ghost_cells(ghost_v.i, ghost_v.j, ghost_v.k, dem, gd.x, gd.yh, gd.z,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend, gd.icells);
 
-        find_ghost_cells(ghost_w.i, ghost_w.j, ghost_w.k, dem, gd.x, gd.y, gd.zh,
+        calc_ghost_cells(ghost_w.i, ghost_w.j, ghost_w.k, dem, gd.x, gd.y, gd.zh,
                 gd.istart, gd.jstart, gd.kstart+1,
                 gd.iend,   gd.jend,   gd.kend, gd.icells);
 
@@ -176,7 +219,7 @@ void Immersed_boundary<TF>::create()
         print_statistics(ghost_w.i, std::string("w"), master);
 
         if (fields.sp.size() > 0) {
-            find_ghost_cells(ghost_s.i, ghost_s.j, ghost_s.k, dem, gd.x, gd.y, gd.z,
+            calc_ghost_cells(ghost_s.i, ghost_s.j, ghost_s.k, dem, gd.x, gd.y, gd.z,
                              gd.istart, gd.jstart, gd.kstart,
                              gd.iend, gd.jend, gd.kend, gd.icells);
             print_statistics(ghost_s.i, std::string("s"), master);
