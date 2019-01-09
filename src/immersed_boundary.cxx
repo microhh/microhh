@@ -42,6 +42,10 @@
 
 namespace
 {
+    // CvH TEMPORARY UGLINESS NEEDS PERMANENT SOLUTION
+    std::vector<double> sbot_ib;
+    // CvH END
+
     // Overloaded method to calculate the absolute distance in 3D
     inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
     {
@@ -374,6 +378,10 @@ void Immersed_boundary::init()
         dem.resize(grid->ijcells);
         k_dem.resize(grid->ijcells);
 
+        // CvH TEMPORARY
+        sbot_ib.resize(grid->ijcells);
+        // CvH
+
         std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
 
         // Check input list of cross variables (crosslist)
@@ -453,6 +461,7 @@ void Immersed_boundary::create()
             find_ghost_cells<Dem_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
             find_ghost_cells<Dem_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
             find_ghost_cells<Dem_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
+
             if (fields->sp.size() > 0)
                 find_ghost_cells<Dem_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
 
@@ -462,6 +471,17 @@ void Immersed_boundary::create()
                     k_dem.data(), dem.data(), grid->z,
                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                     grid->icells);
+
+            char filename2[256] = "sbot_ib.0000000";
+            model->master->print_message("Loading \"%s\" ... ", filename2);
+            if (grid->load_xy_slice(sbot_ib.data(), fields->atmp["tmp1"]->data, filename2))
+            {
+                model->master->print_message("FAILED\n");
+                throw 1;
+            }
+            else
+                model->master->print_message("OK\n");
+            grid->boundary_cyclic_2d(sbot_ib.data());
         }
 
         if (ib_type == Flat_type)
@@ -469,6 +489,7 @@ void Immersed_boundary::create()
             find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  grid->kstart,   Dirichlet_type);
             find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  grid->kstart,   Dirichlet_type);
             find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, grid->kstart+1, Dirichlet_type);
+
             if (fields->sp.size() > 0)
                 find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z, grid->kstart,  bc);
         }
