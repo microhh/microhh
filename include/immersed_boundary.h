@@ -64,6 +64,10 @@ struct Ghost_cell
 
     std::vector<double> c_idw; ///< Weights for inverse distance weighted interpolation
     double c_idw_sum;          ///< Sum inverse distance weights
+
+    // CvH TEMPORARY
+    double sbot_ib;
+    // CvH
 };
 
 class Immersed_boundary

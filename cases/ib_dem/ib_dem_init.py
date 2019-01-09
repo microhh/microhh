@@ -121,10 +121,7 @@ if __name__ == "__main__":
 
     sbot_ib = zIB - zIB.min()
     sbot_ib /= sbot_ib.max()
-
-    pl.pcolormesh(sbot_ib)
-    pl.colorbar()
-    pl.show()
+    sbot_ib = 1. - sbot_ib
 
     write_restart_file('sbot_ib.0000000', sbot_ib[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1)
 

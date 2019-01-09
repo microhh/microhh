@@ -482,6 +482,15 @@ void Immersed_boundary::create()
             else
                 model->master->print_message("OK\n");
             grid->boundary_cyclic_2d(sbot_ib.data());
+
+            // CvH TEMPORARY UGLINESS
+            // Interpolate the sbot_ib field to the ghost cells.
+            for (std::vector<Ghost_cell>::iterator it=ghost_cells_s.begin(); it<ghost_cells_s.end(); ++it)
+                it->sbot_ib = interp2_dem(
+                        it->xB, it->yB, grid->x, grid->y, sbot_ib.data(), grid->dx, grid->dy,
+                        grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
+                        model->master->mpicoordx, model->master->mpicoordy);
+            // CvH
         }
 
         if (ib_type == Flat_type)
