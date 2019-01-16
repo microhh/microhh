@@ -1119,7 +1119,7 @@ void Immersed_boundary::exec_scalars()
             set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
                             grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, visc_wall, false);
         else
-            set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
+            set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, it->first,
                             grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc, false);
 
         grid->boundary_cyclic(fields->ap[it->first]->data);
