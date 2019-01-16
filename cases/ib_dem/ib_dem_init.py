@@ -126,10 +126,10 @@ if __name__ == "__main__":
     tanh_x = np.tanh( (x - ini['grid']['xsize']/2.) / 0.01 )
     sbot_ib = np.ones(zIB.shape) * tanh_x[None,:]
 
-    pl.figure()
-    pl.pcolormesh(x,y,sbot_ib)
-    pl.colorbar()
-    pl.show()
+    # pl.figure()
+    # pl.pcolormesh(x,y,sbot_ib)
+    # pl.colorbar()
+    # pl.show()
 
     write_restart_file('sbot_ib.0000000', sbot_ib[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1)
 
