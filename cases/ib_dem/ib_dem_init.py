@@ -119,9 +119,17 @@ if __name__ == "__main__":
     # Write to input file for MicroHH
     write_restart_file('dem.0000000', zIB[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1)
 
-    sbot_ib = zIB - zIB.min()
-    sbot_ib /= sbot_ib.max()
-    sbot_ib = 1. - sbot_ib
+    #sbot_ib = zIB - zIB.min()
+    #sbot_ib /= sbot_ib.max()
+    #sbot_ib = 1. - sbot_ib
+
+    tanh_x = np.tanh( (x - ini['grid']['xsize']/2.) / 0.01 )
+    sbot_ib = np.ones(zIB.shape) * tanh_x[None,:]
+
+    pl.figure()
+    pl.pcolormesh(x,y,sbot_ib)
+    pl.colorbar()
+    pl.show()
 
     write_restart_file('sbot_ib.0000000', sbot_ib[np.newaxis,:,:], ini['grid']['itot'], ini['grid']['jtot'], 1)
 

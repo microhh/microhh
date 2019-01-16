@@ -65,9 +65,7 @@ struct Ghost_cell
     std::vector<double> c_idw; ///< Weights for inverse distance weighted interpolation
     double c_idw_sum;          ///< Sum inverse distance weights
 
-    // CvH TEMPORARY
-    double sbot_ib;
-    // CvH
+    std::map<std::string, double> sbot;
 };
 
 class Immersed_boundary
@@ -95,6 +93,8 @@ class Immersed_boundary
         Stats*  stats;  ///< Pointer to grid class.
 
         std::vector<std::string> crosslist;
+
+        std::vector<std::string> sbot_spatial_list;
 
         ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary

@@ -42,10 +42,6 @@
 
 namespace
 {
-    // CvH TEMPORARY UGLINESS NEEDS PERMANENT SOLUTION
-    std::vector<double> sbot_ib;
-    // CvH END
-
     // Overloaded method to calculate the absolute distance in 3D
     inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
     {
@@ -102,7 +98,43 @@ namespace
     }
 
     // Set the ghost cells according to the chosen boundary conditions
-    void set_ghost_cells(std::vector<Ghost_cell> const &ghost_cells, double* const restrict field, const double boundary_value,
+    void set_ghost_cells(std::vector<Ghost_cell>& ghost_cells, double* const restrict field, const std::string& scalar_name,
+                         const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                         const int n_idw, const int ii, const int jj, const int kk,
+                         Immersed_boundary::Boundary_type bc, const double visc, bool print=false)
+    {
+        const int n = (bc == Immersed_boundary::Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
+
+        for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+        {
+            const double boundary_value = it->sbot.at(scalar_name);
+
+            // Sum the IDW coefficient times the value at the neighbouring grid points
+            double vI = 0;
+            for (int i=0; i<n; ++i)
+                vI += it->c_idw[i] * field[it->neighbours[i].ijk];
+
+            // For Dirichlet BCs, add the boundary value
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                vI += it->c_idw[n] * boundary_value;
+
+            vI /= it->c_idw_sum;
+
+            // Set the correct BC in the ghost cell
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                field[it->ijk] = 2*boundary_value - vI;         // Image value reflected across IB
+            else if (bc == Immersed_boundary::Boundary_type::Neumann_type)
+                field[it->ijk] = vI - boundary_value * it->dI;  // Image value minus gradient times distance
+            else if (bc == Immersed_boundary::Boundary_type::Flux_type)
+            {
+                const double grad = -boundary_value / visc;
+                field[it->ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
+            }
+        }
+    }
+
+    // Set the ghost cells according to the chosen boundary conditions
+    void set_ghost_cells(std::vector<Ghost_cell>& ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
                          const int n_idw, const int ii, const int jj, const int kk,
                          Immersed_boundary::Boundary_type bc, const double visc, bool print=false)
@@ -138,7 +170,6 @@ namespace
     // Set the tendencies in the ghost cells to zero
     void zero_ghost_tendency(std::vector<Ghost_cell> const &ghost_cells, double* const restrict ft)
     {
-
         for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
             ft[it->ijk] = 0;
     }
@@ -310,8 +341,9 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     if (ib_type != None_type)
     {
-        nerror += inputin->get_item(&n_idw,           "IB", "n_idw",           "");          // Number of grid points used in interpolation
-        nerror += inputin->get_item(&zero_ghost_tend, "IB", "zero_ghost_tend", "", false);   // Zero tendencies in ghost cells
+        nerror += inputin->get_item(&n_idw, "IB", "n_idw", ""); // Number of grid points used in interpolation
+        nerror += inputin->get_item(&zero_ghost_tend, "IB", "zero_ghost_tend", "", false); // Zero tendencies in ghost cells
+        nerror += inputin->get_list(&sbot_spatial_list, "IB", "sbot_spatial", "");
 
         // Fixed viscosity at the wall, in case of LES
         if (model->diff->get_switch() == "smag2")
@@ -377,10 +409,6 @@ void Immersed_boundary::init()
         // Resize the 2D DEM field
         dem.resize(grid->ijcells);
         k_dem.resize(grid->ijcells);
-
-        // CvH TEMPORARY
-        sbot_ib.resize(grid->ijcells);
-        // CvH
 
         std::vector<std::string>& crosslist_global = model->cross->get_crosslist();
 
@@ -472,25 +500,43 @@ void Immersed_boundary::create()
                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                     grid->icells);
 
-            char filename2[256] = "sbot_ib.0000000";
-            model->master->print_message("Loading \"%s\" ... ", filename2);
-            if (grid->load_xy_slice(sbot_ib.data(), fields->atmp["tmp1"]->data, filename2))
+            // Read out 2D fields for scalars in case desired.
+            for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
             {
-                model->master->print_message("FAILED\n");
-                throw 1;
-            }
-            else
-                model->master->print_message("OK\n");
-            grid->boundary_cyclic_2d(sbot_ib.data());
+                // Check whether spatial pattern is desired.
+                if (std::find(sbot_spatial_list.begin(), sbot_spatial_list.end(), it->first) != sbot_spatial_list.end())
+                {
+                    // Set up the file name
+                    std::string sbot_file = it->first + "bot_ib.0000000";
+                    model->master->print_message("Loading \"%s\" ... ", sbot_file.c_str());
+                    
+                    // Create a temporary vector for loading the data.
+                    std::vector<double> sbot_spatial(grid->ijcells);
 
-            // CvH TEMPORARY UGLINESS
-            // Interpolate the sbot_ib field to the ghost cells.
-            for (std::vector<Ghost_cell>::iterator it=ghost_cells_s.begin(); it<ghost_cells_s.end(); ++it)
-                it->sbot_ib = interp2_dem(
-                        it->xB, it->yB, grid->x, grid->y, sbot_ib.data(), grid->dx, grid->dy,
-                        grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
-                        model->master->mpicoordx, model->master->mpicoordy);
-            // CvH
+                    // Read the data from disk.
+                    if (grid->load_xy_slice(sbot_spatial.data(), fields->atmp["tmp1"]->data, sbot_file.c_str()))
+                    {
+                        model->master->print_message("FAILED\n");
+                        throw 1;
+                    }
+                    else
+                        model->master->print_message("OK\n");
+                    grid->boundary_cyclic_2d(sbot_spatial.data());
+
+                    // Interpolate the sbot_ib field to the ghost cells.
+                    for (auto& gc : ghost_cells_s)
+                        gc.sbot[it->first] = interp2_dem(
+                                gc.xB, gc.yB, grid->x, grid->y, sbot_spatial.data(), grid->dx, grid->dy,
+                                grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
+                                model->master->mpicoordx, model->master->mpicoordy);
+                }
+                else
+                {
+                    // Interpolate the sbot_ib field to the ghost cells.
+                    for (auto& gc : ghost_cells_s)
+                        gc.sbot[it->first] = sbc[it->first]->bot;
+                }
+            }
         }
 
         if (ib_type == Flat_type)
