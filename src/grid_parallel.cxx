@@ -863,7 +863,7 @@ void Grid::fft_backward(double* restrict data,   double* restrict tmp1,
     transpose_xz(tmp1, data);
 }
 
-int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
+int Grid::save_xz_slice(double* restrict data, double* restrict tmp, const char* filename, int jslice)
 {
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
@@ -919,7 +919,7 @@ int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filen
     return nerror;
 }
 
-int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
+int Grid::save_yz_slice(double* restrict data, double* restrict tmp, const char* filename, int islice)
 {
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
@@ -977,7 +977,7 @@ int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filen
     return nerror;
 }
 
-int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+int Grid::save_xy_slice(double* restrict data, double* restrict tmp, const char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;
@@ -1025,7 +1025,7 @@ int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filen
     return 0;
 }
 
-int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+int Grid::load_xy_slice(double* restrict data, double* restrict tmp, const char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;

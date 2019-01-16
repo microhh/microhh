@@ -136,10 +136,10 @@ class Grid
         int save_field3d(double*, double*, double*, char*, double); ///< Saves a full 3d field.
         int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
 
-        int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
-        int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
-        int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
-        int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
+        int save_xz_slice(double*, double*, const char*, int);           ///< Saves a xz-slice from a 3d field.
+        int save_yz_slice(double*, double*, const char*, int);           ///< Saves a yz-slice from a 3d field.
+        int save_xy_slice(double*, double*, const char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
+        int load_xy_slice(double*, double*, const char*, int kslice=-1); ///< Loads a xy-slice.
 
         // Fourier tranforms
         double*fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
