@@ -95,7 +95,10 @@ void Fields::exec()
     if (calc_mean_profs)
     {
         for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-        grid->calc_mean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
+            grid->calc_mean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
+        
+        for (FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
+	        grid->calc_mean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
     }
 }
 #endif

@@ -61,21 +61,29 @@ namespace
 
 void Buffer::prepare_device()
 {
-    if (swbuffer == "1")
+    const int nmemsize = grid->kcells*sizeof(double);
+    
+    if (swbuffer == "1") 
     {
-        const int nmemsize = grid->kcells*sizeof(double);
-
-        // Allocate the buffer arrays at GPU.
-        for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
-
-        // Copy buffers to GPU.
-        for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
+        if (swupdate == "1") 
+        {
+            // Allocate the buffer arrays at GPU.
+            cuda_safe_call(cudaMalloc(&bufferprofs_g["w"], nmemsize));
+            cuda_safe_call(cudaMemcpy(bufferprofs_g["w"], bufferprofs["w"], nmemsize, cudaMemcpyHostToDevice));
+        } 
+        else 
+        {
+            // Allocate the buffer arrays at GPU.
+            for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+                cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
+            // Copy buffers to GPU.
+            for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+                cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
+        }
     }
 }
 
@@ -100,49 +108,92 @@ void Buffer::exec()
         const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
         const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
         const int gridk  = grid->kmax - bufferkstart + 1;
-
+        
         dim3 gridGPU (gridi, gridj, gridk);
         dim3 blockGPU(blocki, blockj, 1);
-
+        
         const int offs = grid->memoffset;
         const double zsizebufi = 1./(grid->zsize-zstart);
-
-        buffer_g<<<gridGPU, blockGPU>>>(
-            &fields->mt["u"]->data_g[offs], &fields->mp["u"]->data_g[offs],
-            bufferprofs_g["u"], grid->z_g, 
-            zstart, zsizebufi, sigma, beta, 
-            grid->istart,  grid->jstart, bufferkstart,
-            grid->iend,    grid->jend,   grid->kend,
-            grid->icellsp, grid->ijcellsp);
-        cuda_check_error();
-
-        buffer_g<<<gridGPU, blockGPU>>>(
-            &fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
-            bufferprofs_g["v"], grid->z_g, 
-            zstart, zsizebufi, sigma, beta, 
-            grid->istart,  grid->jstart, bufferkstart,
-            grid->iend,    grid->jend,   grid->kend,
-            grid->icellsp, grid->ijcellsp);
-        cuda_check_error();
-
-        buffer_g<<<gridGPU, blockGPU>>>(
-            &fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
-            bufferprofs_g["w"], grid->zh_g, 
-            zstart, zsizebufi, sigma, beta, 
-            grid->istart,  grid->jstart, bufferkstart,
-            grid->iend,    grid->jend,   grid->kend,
-            grid->icellsp, grid->ijcellsp);
-        cuda_check_error();
-
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        
+        if (swupdate=="1") 
+        {
             buffer_g<<<gridGPU, blockGPU>>>(
-                &fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
-                bufferprofs_g[it->first], grid->z_g, 
+                &fields->mt["u"]->data_g[offs], &fields->mp["u"]->data_g[offs],
+                fields->mp["u"]->datamean_g, grid->z_g, 
                 zstart, zsizebufi, sigma, beta, 
                 grid->istart,  grid->jstart, bufferkstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
-        cuda_check_error();
+            cuda_check_error();
+            
+            buffer_g<<<gridGPU, blockGPU>>>(
+                &fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
+                fields->mp["v"]->datamean_g, grid->z_g, 
+                zstart, zsizebufi, sigma, beta, 
+                grid->istart,  grid->jstart, bufferkstart,
+                grid->iend,    grid->jend,   grid->kend,
+                grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+            
+            buffer_g<<<gridGPU, blockGPU>>>(
+                &fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
+                bufferprofs_g["w"], grid->zh_g, 
+                zstart, zsizebufi, sigma, beta, 
+                grid->istart,  grid->jstart, bufferkstart,
+                grid->iend,    grid->jend,   grid->kend,
+                grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+            
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                buffer_g<<<gridGPU, blockGPU>>>(
+                    &fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
+                    it->second->datamean_g, grid->z_g, 
+                    zstart, zsizebufi, sigma, beta, 
+                    grid->istart,  grid->jstart, bufferkstart,
+                    grid->iend,    grid->jend,   grid->kend,
+                    grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+            
+        } 
+        else 
+        {
+            buffer_g<<<gridGPU, blockGPU>>>(
+                &fields->mt["u"]->data_g[offs], &fields->mp["u"]->data_g[offs],
+                bufferprofs_g["u"], grid->z_g, 
+                zstart, zsizebufi, sigma, beta, 
+                grid->istart,  grid->jstart, bufferkstart,
+                grid->iend,    grid->jend,   grid->kend,
+                grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+            
+            buffer_g<<<gridGPU, blockGPU>>>(
+                &fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
+                bufferprofs_g["v"], grid->z_g, 
+                zstart, zsizebufi, sigma, beta, 
+                grid->istart,  grid->jstart, bufferkstart,
+                grid->iend,    grid->jend,   grid->kend,
+                grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+            
+            buffer_g<<<gridGPU, blockGPU>>>(
+                &fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
+                bufferprofs_g["w"], grid->zh_g, 
+                zstart, zsizebufi, sigma, beta, 
+                grid->istart,  grid->jstart, bufferkstart,
+                grid->iend,    grid->jend,   grid->kend,
+                grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+             
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                buffer_g<<<gridGPU, blockGPU>>>(
+                    &fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
+                    bufferprofs_g[it->first], grid->z_g, 
+                    zstart, zsizebufi, sigma, beta, 
+                    grid->istart,  grid->jstart, bufferkstart,
+                    grid->iend,    grid->jend,   grid->kend,
+                    grid->icellsp, grid->ijcellsp);
+            cuda_check_error();
+        }
     }
 }
 #endif
