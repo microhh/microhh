@@ -81,6 +81,7 @@ class Force
         std::string swnudge;  ///< Switch for nudging to reference profiles
 
         double uflux; ///< Mean velocity used to enforce constant flux.
+        double dpdxls;///< Constant large scale pressure force
         double fc;    ///< Coriolis parameter.
 
         double* ug;  ///< Pointer to array u-component geostrophic wind.
@@ -122,6 +123,8 @@ class Force
         void calc_flux(double* const, const double* const,
                        const double* const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
 
+        void calc_dpdx(double* const); ///< Applies prescribed large scale pressure force
+        
         void calc_coriolis_2nd(double* const, double* const,
                                const double* const, const double* const,
                                const double* const, const double* const); ///< Calculates Coriolis force with 2nd-order accuracy.

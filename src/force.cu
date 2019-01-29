@@ -371,6 +371,16 @@ void Force::exec(double dt)
             grid->iend,    grid->jend,   grid->kend);
         cuda_check_error();
     }
+    else if (swlspres == "dpdxls")
+    {
+        flux_step_2_g<<<gridGPU, blockGPU>>>(
+            &fields->ut->data_g[offs],
+            dpdxls,
+            grid->icellsp, grid->ijcellsp,
+            grid->istart,  grid->jstart, grid->kstart,
+            grid->iend,    grid->jend,   grid->kend);
+        cuda_check_error();
+    }
     else if (swlspres == "geo")
     {
         if (grid->swspatialorder == "2")

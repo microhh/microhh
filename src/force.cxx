@@ -70,6 +70,10 @@ Force::Force(Model* modelin, Input* inputin)
             nerror += inputin->get_item(&fc, "force", "fc", "");
             nerror += inputin->get_item(&swtimedep_geo, "force", "swtimedep_geo", "", "0");
         }
+        else if (swlspres == "dpdxls")
+        {
+            nerror += inputin->get_item(&dpdxls, "force", "dpdxls", "");
+        }
         else
         {
             ++nerror;
@@ -290,15 +294,20 @@ int Force::create_timedep(std::map<std::string, double*>& data, std::map<std::st
 #ifndef USECUDA
 void Force::exec(double dt)
 {
-    if (swlspres == "uflux")
+    if (swlspres == "uflux") 
+    {
         calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
-
+    }
     else if (swlspres == "geo")
     {
         if (grid->swspatialorder == "2")
             calc_coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
         else if (grid->swspatialorder == "4")
             calc_coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+    }
+    else if (swlspres == "dpdxls")
+    {
+        calc_dpdx(fields->ut->data);
     }
 
     if (swls == "1")
@@ -439,6 +448,15 @@ void Force::calc_flux(double* const restrict ut, const double* const restrict u,
 
     for (int n=0; n<grid->ncells; n++)
         ut[n] += fbody;
+}
+
+void Force::calc_dpdx(double* const restrict ut)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    for (int n=0; n<grid->ncells; n++)
+        ut[n] += dpdxls;
 }
 
 void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict vt,
