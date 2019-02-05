@@ -61,6 +61,20 @@ void Grid::init_mpi()
     MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &northsouthedge2d);
     MPI_Type_commit(&northsouthedge2d);
 
+    // east west 2d for int
+    datacount  = jcells;
+    datablock  = igc;
+    datastride = icells;
+    MPI_Type_vector(datacount, datablock, datastride, MPI_INT, &eastwestedge2d_int);
+    MPI_Type_commit(&eastwestedge2d_int);
+
+    // north south 2d for int
+    datacount  = 1;
+    datablock  = icells*jgc;
+    datastride = icells*jcells;
+    MPI_Type_vector(datacount, datablock, datastride, MPI_INT, &northsouthedge2d_int);
+    MPI_Type_commit(&northsouthedge2d_int);
+
     // transposez
     datacount = imax*jmax*kblock;
     MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
@@ -157,6 +171,8 @@ void Grid::exit_mpi()
         MPI_Type_free(&northsouthedge);
         MPI_Type_free(&eastwestedge2d);
         MPI_Type_free(&northsouthedge2d);
+        MPI_Type_free(&eastwestedge2d_int);
+        MPI_Type_free(&northsouthedge2d_int);
         MPI_Type_free(&transposez);
         MPI_Type_free(&transposez2);
         MPI_Type_free(&transposex);
@@ -239,6 +255,67 @@ void Grid::boundary_cyclic(double* restrict data, Edge edge)
                         data[ijksouth] = data[ijkref];
                     }
         }
+    }
+}
+
+void Grid::boundary_cyclic_2d(int* restrict data)
+{
+    int ncount = 1;
+
+    // communicate east-west edges
+    int eastout = iend-igc;
+    int westin  = 0;
+    int westout = istart;
+    int eastin  = iend;
+
+    // communicate north-south edges
+    int northout = (jend-jgc)*icells;
+    int southin  = 0;
+    int southout = jstart*icells;
+    int northin  = jend  *icells;
+
+    // first, send and receive the ghost cells in east-west direction
+    MPI_Isend(&data[eastout], ncount, eastwestedge2d_int, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
+    master->reqsn++;
+    MPI_Irecv(&data[westin], ncount, eastwestedge2d_int, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
+    master->reqsn++;
+    MPI_Isend(&data[westout], ncount, eastwestedge2d_int, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
+    master->reqsn++;
+    MPI_Irecv(&data[eastin], ncount, eastwestedge2d_int, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
+    master->reqsn++;
+    // wait here for the mpi to have correct values in the corners of the cells
+    master->wait_all();
+
+    // if the run is 3D, apply the BCs
+    if (jtot > 1)
+    {
+        // second, send and receive the ghost cells in the north-south direction
+        MPI_Isend(&data[northout], ncount, northsouthedge2d_int, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
+        master->reqsn++;
+        MPI_Irecv(&data[southin], ncount, northsouthedge2d_int, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
+        master->reqsn++;
+        MPI_Isend(&data[southout], ncount, northsouthedge2d_int, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
+        master->reqsn++;
+        MPI_Irecv(&data[northin], ncount, northsouthedge2d_int, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
+        master->reqsn++;
+        master->wait_all();
+    }
+    // in case of 2D, fill all the ghost cells with the current value
+    else
+    {
+        // 2d essential variables
+        const int jj = icells;
+
+        for (int j=0; j<jgc; j++)
+#pragma ivdep
+            for (int i=0; i<icells; i++)
+            {
+                const int ijref   = i + jstart*jj;
+                const int ijnorth = i + j*jj;
+                const int ijsouth = i + (jend+j)*jj;
+                data[ijnorth] = data[ijref];
+                data[ijsouth] = data[ijref];
+            }
     }
 }
 

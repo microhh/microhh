@@ -499,6 +499,7 @@ void Immersed_boundary::create()
                     k_dem.data(), dem.data(), grid->z,
                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend,
                     grid->icells);
+            grid->boundary_cyclic_2d(k_dem.data());
 
             // Read out 2D fields for scalars in case desired.
             for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
