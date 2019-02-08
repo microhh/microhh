@@ -10,12 +10,10 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
-
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -43,9 +41,21 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 
     // obligatory parameters
     if (sim_mode == Sim_mode::Init)
+    {
         starttime = 0.;
+        phystarttime = input.get_item<double>("time", "phystarttime"  , "", 0.);
+   }
     else
+    {
         starttime = input.get_item<double>("time", "starttime", "");
+        phystarttime = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
+    }
+
+    datetime.tm_sec  = phystarttime;
+    datetime.tm_year = 2018 - 1900;
+    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
+    datetime.tm_isdst = -1;
+    mktime ( &datetime );
 
     endtime  = input.get_item<double>("time", "endtime" , "");
     savetime = input.get_item<double>("time", "savetime", "");
@@ -141,6 +151,7 @@ void Timeloop<TF>::step_time()
     time  += dt;
     itime += idt;
     iotime = (int)(itime/iiotimeprec);
+    datetime.tm_sec = int(time + starttime);
 
     ++iteration;
 
@@ -463,7 +474,7 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
 {
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());
-    for (size_t t=0; t<timevec.size(); ++t)
+    for (int t=0; t<timevec.size(); ++t)
         itimevec[t] = static_cast<unsigned long>(ifactor * timevec[t] + 0.5);
 
     Interpolation_factors<TF> ifac;

@@ -10,12 +10,10 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
-
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -120,8 +118,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
+        radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        radiation = std::make_shared<Radiation<TF>>(master, *grid, *fields, *input);
         force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
@@ -229,7 +227,7 @@ void Model<TF>::load()
     force->create(*input, *profs);
     thermo->create(*input, *profs, *stats, *column, *cross, *dump);
     microphys->create(*input, *profs, *stats, *cross, *dump);
-    radiation->create(*thermo); // Radiation needs to be created after thermo as it needs base profiles.
+    radiation->create(*thermo,*stats, *column, *cross, *dump); // Radiation needs to be created after thermo as it needs base profiles.
     decay->create(*input);
 
     cross->create();    // Cross needs to be called at the end!
@@ -324,7 +322,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_sub_time_step());
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo);
+                radiation->exec(*thermo,timeloop->get_time(),*timeloop);
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec();
@@ -333,7 +331,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step());
+                force->exec(timeloop->get_sub_time_step()); //adding thermo and time because of gcssrad
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
@@ -343,13 +341,8 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    unsigned long itime = timeloop->get_itime();
-                    int iteration = timeloop->get_iteration();
-                    int iotime    = timeloop->get_iotime();
-                    double time = timeloop->get_time();
-                    double dt   = timeloop->get_dt();
-
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
+                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
+                        dump->do_dump(timeloop->get_itime()))
                     {
                         #pragma omp taskwait
                         #ifdef USECUDA
@@ -358,15 +351,19 @@ void Model<TF>::exec()
                         thermo  ->backward_device();
                         #endif
                         #pragma omp task default(shared)
-                        calculate_statistics(iteration, time, itime, iotime, dt);
+                        calculate_statistics(
+                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
+                                timeloop->get_iotime(), timeloop->get_dt());
                     }
 
-                    if (column->do_column(itime))
+                    if (column->do_column(timeloop->get_itime()))
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
-                        column->exec(iteration, time, itime);
+                        radiation->exec_column(*column,*thermo,*timeloop);
+                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
                     }
+
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -516,7 +513,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         //budget  ->exec_stats(&stats->masks[maskname]);
         boundary ->exec_stats(*stats);
-
+        radiation->exec_stats(*stats,*thermo,*timeloop);
         // Store the statistics data.
         stats->exec(iteration, time, itime);
     }
@@ -527,6 +524,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
+        radiation->exec_cross(*cross, iotime,*thermo,*timeloop);
         // boundary->exec_cross(iotime);
     }
 
@@ -536,6 +534,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
+        radiation->exec_dump(*dump, iotime,*thermo,*timeloop);
     }
 }
 
