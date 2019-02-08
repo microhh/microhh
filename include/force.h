@@ -10,12 +10,10 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
-
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -47,7 +45,6 @@ enum class Large_scale_pressure_type {disabled, fixed_flux, geo_wind};
 enum class Large_scale_tendency_type {disabled, enabled};
 enum class Large_scale_subsidence_type {disabled, enabled};
 enum class Nudging_type {disabled, enabled};
-enum class Mesoscale_BC_type {disabled, enabled};
 
 template<typename TF>
 class Force
@@ -91,7 +88,6 @@ class Force
         Large_scale_tendency_type swls;
         Large_scale_subsidence_type swwls;
         Nudging_type swnudge;
-        Mesoscale_BC_type mesoscalebc;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF fc;    ///< Coriolis parameter.
