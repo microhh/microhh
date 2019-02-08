@@ -476,7 +476,7 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
 {
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());
-    for (int t=0; t<timevec.size(); ++t)
+    for (size_t t=0; t<timevec.size(); ++t)
         itimevec[t] = static_cast<unsigned long>(ifactor * timevec[t] + 0.5);
 
     Interpolation_factors<TF> ifac;

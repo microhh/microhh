@@ -39,8 +39,8 @@ enum class Sim_mode;
 template<typename TF>
 struct Interpolation_factors
 {
-    int index0;
-    int index1;
+    unsigned int index0;
+    unsigned int index1;
     TF fac0;
     TF fac1;
 };
