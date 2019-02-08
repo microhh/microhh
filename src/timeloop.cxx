@@ -10,10 +10,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -52,7 +54,7 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     }
 
     datetime.tm_sec  = phystarttime;
-    datetime.tm_year = 2018 - 1900;
+    datetime.tm_year = 0; //default is 1900
     datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
     datetime.tm_isdst = -1;
     mktime ( &datetime );
