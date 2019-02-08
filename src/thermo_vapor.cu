@@ -414,7 +414,7 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
     get_thermo_field_g(*output, "b", false);
     column.calc_column("b", output->fld_g, no_offset);
 
-    fields.release_tmp(output);
+    fields.release_tmp_g(output);
 }
 #endif
 template class Thermo_vapor<double>;

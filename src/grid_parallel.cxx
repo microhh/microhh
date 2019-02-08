@@ -128,7 +128,7 @@ void Grid<TF>::save_grid()
 template<typename TF>
 void Grid<TF>::load_grid()
 {
-    auto& md = master.get_MPI_data();
+    // auto& md = master.get_MPI_data();
 
     int nerror = 0;
 

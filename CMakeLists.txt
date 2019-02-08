@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2017 Chiel van Heerwaarden
-#  Copyright (c) 2011-2017 Thijs Heus
-#  Copyright (c) 2014-2017 Bart van Stratum
+#  Copyright (c) 2011-2018 Chiel van Heerwaarden
+#  Copyright (c) 2011-2018 Thijs Heus
+#  Copyright (c) 2014-2018 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -22,6 +22,22 @@
 cmake_minimum_required (VERSION 2.8.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# Set the precision of the build.
+if(NOT FLOAT_TYPE)
+  message(STATUS "Precision: Double (64-bits floats)")
+else()
+  string(STRIP ${FLOAT_TYPE} FLOAT_TYPE)
+  string(TOLOWER ${FLOAT_TYPE} FLOAT_TYPE)
+  if(FLOAT_TYPE STREQUAL "float")
+    add_definitions("-DFLOAT_SINGLE")
+    message(STATUS "Precision: Single (32-bits floats)")
+  elseif(FLOAT_TYPE STREQUAL "double")
+    message(STATUS "Precision: Double (64-bits floats)")
+  else()
+    message(FATAL_ERROR "Illegal FLOAT_TYPE specified.")
+  endif()
+endif()
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
 if(NOT USEMPI)
@@ -130,4 +146,5 @@ endif()
 
 add_subdirectory(src)
 #add_subdirectory(src_rrtmg)
+#add_subdirectory(src_rrtmgp)
 add_subdirectory(main)

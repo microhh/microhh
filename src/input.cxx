@@ -304,7 +304,7 @@ namespace
             items << "EMPTY LIST";
         else
         {
-            for (int i=0; i<list.size()-1; ++i)
+            for (size_t i=0; i<list.size()-1; ++i)
                 items << list[i] << ",";
             items << list.back();
         }

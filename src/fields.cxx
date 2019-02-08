@@ -433,33 +433,6 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
     atmp.push_back(std::move(tmp));
 }
 
-#ifdef USECUDA
-template<typename TF>
-std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
-{
-    std::shared_ptr<Field3d<TF>> tmp;
-
-    // In case of insufficient tmp fields, allocate a new one.
-    if (atmp_g.empty())
-    {
-        init_tmp_field_g();
-        tmp = atmp_g.back();
-        tmp->init_device();
-    }
-    else
-        tmp = atmp_g.back();
-
-    atmp_g.pop_back();
-    return tmp;
-}
-
-template<typename TF>
-void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
-{
-    atmp_g.push_back(std::move(tmp));
-}
-#endif
-
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
