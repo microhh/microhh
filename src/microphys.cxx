@@ -58,8 +58,8 @@ std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>
         return std::make_shared<Microphys_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for \"swmicro\"\n", swmicro.c_str());
-        throw std::runtime_error("Illegal options \"swmicro\"");
+        std::string msg = swmicro + " is an illegal value for swmicro";
+        throw std::runtime_error(msg);
     }
 }
 

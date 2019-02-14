@@ -57,7 +57,7 @@ void Master::start()
     // initialize the MPI
     int n = MPI_Init(NULL, NULL);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     wall_clock_start = get_wall_clock_time();
 
@@ -66,17 +66,17 @@ void Master::start()
     // get the rank of the current process
     n = MPI_Comm_rank(MPI_COMM_WORLD, &md.mpiid);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // get the total number of processors
     n = MPI_Comm_size(MPI_COMM_WORLD, &md.nprocs);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     // store a temporary copy of COMM_WORLD in commxy
     n = MPI_Comm_dup(MPI_COMM_WORLD, &md.commxy);
     if (check_error(n))
-        throw 1;
+        throw std::runtime_error("MPI init error");
 
     print_message("Starting run on %d processes\n", md.nprocs);
 }
@@ -93,8 +93,8 @@ void Master::init(Input& input)
 
     if (md.nprocs != md.npx*md.npy)
     {
-        print_error("nprocs = %d does not equal npx*npy = %d*%d\n", md.nprocs, md.npx, md.npy);
-        throw std::runtime_error("nprocs does not equal npx*npy");
+        std::string msg = "nprocs = " + std::to_string(md.nprocs) + " does not equal npx*npy = " + std::to_string(md.npy) + "*" + std::to_string(md.npy);
+        throw std::runtime_error(msg);
     }
 
     int n;
@@ -175,7 +175,7 @@ int Master::check_error(int n)
     if (n != MPI_SUCCESS)
     {
         MPI_Error_string(n, errbuffer, &errlen);
-        print_error("MPI: %s\n", errbuffer);
+        print_message("MPI: %s\n", errbuffer);
         return 1;
     }
 

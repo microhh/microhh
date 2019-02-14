@@ -217,7 +217,7 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
@@ -277,7 +277,7 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj = gd.icells;
     const int kk = gd.ijcells;

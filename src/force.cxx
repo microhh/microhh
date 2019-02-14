@@ -380,7 +380,8 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : lslist)
             if (!fields.ap.count(it))
             {
-                master.print_error("field %s in [force][lslist] is illegal\n", it.c_str());
+                std::string msg = "field " + it + " in [force][lslist] is illegal";
+                throw std::runtime_error(msg);
             }
 
         // read the large scale sources, which are the variable names with a "ls" suffix
@@ -401,7 +402,8 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : nudgelist)
             if (!fields.ap.count(it))
             {
-                master.print_error("field %s in [force][nudgelist] is illegal\n", it.c_str());
+                std::string msg = "field " + it + " in [force][nudgelist] is illegal";
+                throw std::runtime_error(msg);
             }
 
         // read the large scale sources, which are the variable names with a "nudge" suffix
