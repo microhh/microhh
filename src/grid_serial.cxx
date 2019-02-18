@@ -52,6 +52,7 @@ void Grid<TF>::save_grid()
     int nerror = 0;
     if (pFile == NULL)
     {
+        master.print_message("FAILED\n");
         nerror++;
     }
     else
@@ -59,7 +60,7 @@ void Grid<TF>::save_grid()
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Grid save FAILED");
+        throw std::runtime_error("Error in grid");
 
     fwrite(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fwrite(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
@@ -83,7 +84,8 @@ void Grid<TF>::load_grid()
     int nerror = 0;
     if (pFile == NULL)
     {
-            nerror++;
+        master.print_message("FAILED\n");
+        nerror++;
     }
     else
         master.print_message("OK\n");
@@ -91,7 +93,7 @@ void Grid<TF>::load_grid()
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Grid load FAILED");
+        throw std::runtime_error("Error in grid");
 
     fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);

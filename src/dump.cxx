@@ -135,7 +135,8 @@ void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
 
         if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
         {
-            throw std::runtime_error("Save Dump file FAILED");
+            master.print_message("FAILED\n");
+            throw std::runtime_error("In Dump");
         }
         else
         {

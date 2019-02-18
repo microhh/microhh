@@ -117,7 +117,7 @@ void FFT<double>::load()
     if (n == 0)
     {
         master.print_message("FAILED\n");
-        throw std::runtime_error("Error loading FFTW Plan");;
+        throw std::runtime_error("Error loading FFTW Plan");
     }
     else
         master.print_message("OK\n");
@@ -162,8 +162,7 @@ void FFT<float>::load()
     if (n == 0)
     {
         master.print_message("FAILED\n");
-
-            throw std::runtime_error("Error loading FFTW Plan");
+        throw std::runtime_error("Error loading FFTW Plan");
     }
     else
         master.print_message("OK\n");
@@ -231,6 +230,7 @@ void FFT<double>::save()
         int n = fftw_export_wisdom_to_filename(filename);
         if (n == 0)
         {
+            master.print_message("FAILED\n");
             nerror++;
         }
         else
@@ -281,6 +281,7 @@ void FFT<float>::save()
         int n = fftwf_export_wisdom_to_filename(filename);
         if (n == 0)
         {
+            master.print_message("FAILED\n");
             nerror++;
         }
         else

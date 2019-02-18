@@ -77,13 +77,14 @@ void Grid<TF>::save_grid()
     MPI_File fh;
     if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     {
+        master.print_message("FAILED\n");
         nerror++;
     }
 
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Grid save FAILED");
+        throw std::runtime_error("Error in grid");
 
     // select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
@@ -153,6 +154,7 @@ void Grid<TF>::load_grid()
         pFile = fopen(filename, "rb");
         if (pFile == NULL)
         {
+            master.print_message("FAILED\n");
             ++nerror;
         }
         else
@@ -170,7 +172,7 @@ void Grid<TF>::load_grid()
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Grid save FAILED");
+        throw std::runtime_error("Error in grid");
     else
         master.print_message("OK\n");
 
