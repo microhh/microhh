@@ -318,8 +318,8 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+            std::string msg = "get_thermo_field \"" + name + "\" not supported";
+            throw std::runtime_error(msg);
     }
 
     if (cyclic)

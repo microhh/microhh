@@ -64,8 +64,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
         spatial_order = Grid_order::Fourth;
     else
     {
-        master.print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-        throw std::runtime_error("Illegal value for swspatialorder");
+            std::string msg = swspatialorder + " is an illegal value for swspatialorder";
+            throw std::runtime_error(msg);
     }
 
     // 2nd order scheme requires only 1 ghost cell
@@ -102,29 +102,29 @@ void Grid<TF>::init()
     // Check whether the grid fits the processor configuration.
     if (gd.itot % md.npx != 0)
     {
-        master.print_error("itot = %d is not a multiple of npx = %d\n", gd.itot, md.npx);
-        throw 1;
+        std::string msg = "itot = " + std::to_string(gd.itot) +  " is not a multiple of npx = " + std::to_string(md.npx);
+        throw std::runtime_error(msg);
     }
     if (gd.itot % md.npy != 0)
     {
-        master.print_error("itot = %d is not a multiple of npy = %d\n", gd.itot, md.npy);
-        throw 1;
+        std::string msg = "itot = " + std::to_string(gd.itot) +  " is not a multiple of npy = " + std::to_string(md.npy);
+        throw std::runtime_error(msg);
     }
     // Check this one only when npy > 1, since the transpose in that direction only happens then.
     if (gd.jtot % md.npx != 0)
     {
-        master.print_error("jtot = %d is not a multiple of npx = %d\n", gd.jtot, md.npx);
-        throw 1;
+        std::string msg = "jtot = " + std::to_string(gd.jtot) +  " is not a multiple of npx = " + std::to_string(md.npx);
+        throw std::runtime_error(msg);
     }
     if (gd.jtot % md.npy != 0)
     {
-        master.print_error("jtot = %d is not a multiple of npy = %d\n", gd.jtot, md.npy);
-        throw 1;
+        std::string msg = "jtot = " + std::to_string(gd.jtot) +  " is not a multiple of npy = " + std::to_string(md.npy);
+        throw std::runtime_error(msg);
     }
     if (gd.ktot % md.npx != 0)
     {
-        master.print_error("ERROR ktot = %d is not a multiple of npx = %d\n", gd.ktot, md.npx);
-        throw 1;
+        std::string msg = "ktot = " + std::to_string(gd.ktot) +  " is not a multiple of npx = " + std::to_string(md.npx);
+        throw std::runtime_error(msg);
     }
 
     // Calculate the total number of grid cells.
@@ -193,8 +193,8 @@ void Grid<TF>::create(Data_block& profs)
 
     if (gd.z[gd.kend-1] > gd.zsize)
     {
-        master.print_error("Highest grid point is above prescribed zsize\n");
-        throw 1;
+        std::string msg = "Highest grid point is above prescribed zsize";
+        throw std::runtime_error(msg);
     }
 
     // calculate the grid
@@ -366,17 +366,17 @@ void Grid<TF>::check_ghost_cells()
     // Check whether the size per patch is larger than number of ghost cells for 3D runs.
     if (gd.imax < gd.igc)
     {
-	    master.print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
-	    master.print_error("Either increase itot or decrease npx.\n");
-        throw 1;
+	    master.print_message("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
+        std::string msg = "Either increase itot or decrease npx";
+        throw std::runtime_error(msg);
     }
 
     // Check the jtot > 1 condition, to still allow for 2d runs.
     if (gd.jtot > 1 && gd.jmax < gd.jgc)
     {
-	    master.print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
-	    master.print_error("Either increase jtot or decrease npy.\n");
-        throw 1;
+	    master.print_message("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
+        std::string msg = "Either increase jtot or decrease npy";
+        throw std::runtime_error(msg);
     }
 }
 

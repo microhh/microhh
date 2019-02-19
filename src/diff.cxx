@@ -69,8 +69,8 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
         return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        throw std::runtime_error("Illegal options swdiff");
+        std::string msg = swdiff + " is an illegal value for swdiff";
+        throw std::runtime_error(msg);
     }
 }
 

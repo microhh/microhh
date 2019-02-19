@@ -118,8 +118,6 @@ std::string Boundary<TF>::get_switch()
 template<typename TF>
 void Boundary<TF>::process_bcs(Input& input)
 {
-    int nerror = 0;
-
     std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
     std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
@@ -139,8 +137,8 @@ void Boundary<TF>::process_bcs(Input& input)
         mbcbot = Boundary_type::Ustar_type;
     else
     {
-        master.print_error("%s is illegal value for mbcbot\n", swbot.c_str());
-        nerror++;
+        std::string msg = swbot + " is an illegal value for mbcbot";
+        throw std::runtime_error(msg);
     }
 
     // set the top bc
@@ -154,8 +152,8 @@ void Boundary<TF>::process_bcs(Input& input)
         mbctop = Boundary_type::Ustar_type;
     else
     {
-        master.print_error("%s is illegal value for mbctop\n", swtop.c_str());
-        nerror++;
+        std::string msg = swtop + " is an illegal value for mbctop";
+        throw std::runtime_error(msg);
     }
 
     // read the boundaries per field
@@ -176,8 +174,8 @@ void Boundary<TF>::process_bcs(Input& input)
             sbc.at(it.first).bcbot = Boundary_type::Flux_type;
         else
         {
-            master.print_error("%s is illegal value for sbcbot\n", swbot.c_str());
-            nerror++;
+            std::string msg = swbot + " is an illegal value for sbcbot";
+            throw std::runtime_error(msg);
         }
 
         // set the top bc
@@ -189,13 +187,11 @@ void Boundary<TF>::process_bcs(Input& input)
             sbc.at(it.first).bctop = Boundary_type::Flux_type;
         else
         {
-            master.print_error("%s is illegal value for sbctop\n", swtop.c_str());
-            nerror++;
+            std::string msg = swbot + " is an illegal value for sbctop";
+            throw std::runtime_error(msg);
         }
     }
 
-    if (nerror)
-        throw 1;
 }
 
 template<typename TF>
@@ -204,17 +200,11 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
 
-    int nerror = 0;
-
     // there is no option (yet) for prescribing ustar without surface model
     if (mbcbot == Boundary_type::Ustar_type || mbctop == Boundary_type::Ustar_type)
     {
-        master.print_error("ustar bc is not supported for default boundary\n");
-        ++nerror;
-    }
-
-    if (nerror)
         throw std::runtime_error("Cannot use ustar bc for default boundary");
+    }
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
@@ -755,8 +745,8 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
         return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
     else
     {
-        master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
-        throw std::runtime_error("Illegal value for swboundary");
+        std::string msg = swboundary + " is an illegal value for swboundary";
+        throw std::runtime_error(msg);
     }
 }
 /*
