@@ -20,12 +20,14 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #ifndef TIMELOOP
 #define TIMELOOP
 
 #include <sys/time.h>
 #include <string>
 #include <vector>
+#include <time.h>
 
 class Master;
 template<typename> class Grid;
@@ -82,6 +84,7 @@ class Timeloop
         unsigned long get_idt()   { return idt;   }
         int get_iotime()    { return iotime;    }
         int get_iteration() { return iteration; }
+        struct tm get_phytime() { return datetime; }
 
     private:
         Master& master;
@@ -108,6 +111,8 @@ class Timeloop
         double endtime;
         double savetime;
         double postproctime;
+        struct tm datetime = {0};
+        double phystarttime; // seconds since midnight
 
         int iteration;
         int iotime;
