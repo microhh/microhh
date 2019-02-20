@@ -56,14 +56,14 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
 	std::string swradiation = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
     if (swradiation == "0")
         return std::make_shared<Radiation_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swradiation == "1") //rrtmg - call fortran
+    else if (swradiation == "rrtmg") //rrtmg - call fortran
         return std::make_shared<Radiation_rrtmg<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swradiation == "2") //gcss - for Sc clouds
+    else if (swradiation == "gcss") //gcss - for Sc clouds
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swradiation\n", swradiation.c_str());
-        throw std::runtime_error("Illegal options swradiation");
+        std::string error_message = swradiation + " is an illegal value for swradiation";
+        throw std::runtime_error(error_message);
     }
 }
 

@@ -22,32 +22,34 @@
 
  namespace
  {
-	 double calc_zenith(struct tm datetime, double lat)
+     template<typename TF>
+	 TF calc_zenith(struct tm datetime, TF lat, TF lon)
      {
-         const double pi        = M_PI;
-         const double year2days = 365.;
-         const double piAngle   = 180.;
-         const double day2secs  = 86400.;
-         const double z1        = 279.934;
-         const double z2        = 1.914827;
-         const double z3        = 0.7952;
-         const double z4        = 0.019938;
-         const double z5        = 0.00162;
-         const double z6        = 23.4439;
-         double time2sec = (datetime.tm_yday + 1) +
+         const TF pi        = M_PI;
+         const TF year2days = 365.;
+         const TF piAngle   = 180.;
+         const TF day2secs  = 86400.;
+         const TF z1        = 279.934;
+         const TF z2        = 1.914827;
+         const TF z3        = 0.7952;
+         const TF z4        = 0.019938;
+         const TF z5        = 0.00162;
+         const TF z6        = 23.4439;
+         TF time2sec = (datetime.tm_yday + 1) +
+                            lon / 360. +
                            (datetime.tm_hour * 3600. +
                             datetime.tm_min * 60. +
                             datetime.tm_sec) / day2secs;
-         double day    = floor(time2sec);
-         double lamda  = lat * pi / piAngle;
-         double d      = 2. * pi * int(time2sec) / year2days;
-         double sig    = d + pi/piAngle * (z1 + z2*std::sin(d)
+         TF day    = floor(time2sec);
+         TF lamda  = lat * pi / piAngle;
+         TF d      = 2. * pi * int(time2sec) / year2days;
+         TF sig    = d + pi/piAngle * (z1 + z2*std::sin(d)
                                                    - z3*std::cos(d)
                                                    + z4*std::sin(2.*d)
                                                    - z5*std::cos(2.*d));
-         double del     = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
-         double h       = 2. * pi * ((time2sec - day) - 0.5);
-         double mu      = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
+         TF del     = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
+         TF h       = 2. * pi * ((time2sec - day) - 0.5);
+         TF mu      = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
          return mu;
      }
 
@@ -114,7 +116,7 @@
      void calc_gcss_rad_SW(TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
          const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
          const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-         const int icells, const int ijcells, const int ncells, double mu)
+         const int icells, const int ijcells, const int ncells, TF mu)
      {
          const int jj = icells;
          const int kk = ijcells;
@@ -153,17 +155,13 @@
      template<typename TF>
      void calc_gcss_rad_LW(const TF* const restrict ql, const TF* const restrict qt,
      TF* const restrict lwp, TF* const restrict flx, const TF* const restrict rhoref,
+     const TF fr0, const TF fr1, const TF xka, const TF div,
      const TF* const z, const TF* const dzi,
      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
      const int icells, const int ijcells)
      {
          const int jj = icells;
          const int kk = ijcells;
-         const TF xka = 85.;
-         const TF fr0 = 70.;
-         const TF fr1 = 22.;
-         const TF cp = Constants::cp<TF>;
-         const TF div = 3.75E-6; //fix divergence for now
          int ki; //pblh index
          TF fact;
          for (int j=jstart; j<jend; ++j)
@@ -181,7 +179,7 @@
                      flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
                      if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) ) ki = k; //this is the PBLH index
                  }
-                 fact = div * cp * rhoref[ki];
+                 fact = div * Constants::cp<TF> * rhoref[ki];
                  const int ij   = i + j*jj;
                  flx[ij + kstart*kk] = flx[ij + kstart*kk] + fr0 * std::exp(TF(-1.0) * xka *lwp[ij]);
                  for (int k=kstart+1; k<kend; ++k)
@@ -204,16 +202,16 @@
      void exec_gcss_rad(
              TF* const restrict tt, const TF* const restrict ql, const TF* const restrict qt,
              TF* const restrict lwp, TF* const restrict flx, TF* const restrict swn, const TF* const restrict rhoref,
+             const TF mu, const TF mu_min, const TF fr0, const TF fr1, const TF xka, const TF div,
              const TF* const z, const TF* const dzi,
              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int icells, const int ijcells, const int ncells, double mu)
+             const int icells, const int ijcells, const int ncells)
      {
          const int jj = icells;
          const int kk = ijcells;
-         const TF cp = Constants::cp<TF>;
          //call LW
          calc_gcss_rad_LW<TF>(ql,qt,
-         lwp,flx,rhoref,
+         lwp,flx,rhoref, fr0, fr1, xka, div,
          z,dzi,
          istart,iend,jstart,jend,kstart,kend,
          icells,ijcells);
@@ -227,11 +225,11 @@
                      const int ijk  = i + j*jj + k*kk;
                      const int km1 = std::max(kstart+1,k-1);
                      const int ijkm = i + j*jj + km1*kk;
-                     tt[ijk] = tt[ijk] - (flx[ijk] - flx[ijkm]) * dzi[k] / (rhoref[k] * cp);
+                     tt[ijk] = tt[ijk] - (flx[ijk] - flx[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
                  }
              } // end of i
          } // end of j
-         if (mu>0.035) //if daytime, call SW
+         if (mu>mu_min) //if daytime, call SW
          {
              calc_gcss_rad_SW<TF>(swn, ql, qt,
                  rhoref, z, dzi,
@@ -247,7 +245,7 @@
                          const int ijk  = i + j*jj + k*kk;
                          const int km1 = std::max(kstart+1,k-1);
                          const int ijkm = i + j*jj + km1*kk;
-                         tt[ijk] = tt[ijk] + (swn[ijk] - swn[ijkm]) * dzi[k] / (rhoref[k] * cp);
+                         tt[ijk] = tt[ijk] + (swn[ijk] - swn[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
                      }
                  }
              }
@@ -259,7 +257,13 @@ template<typename TF>
 Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
 	Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "2"; //2 for gcss
+	swradiation = "gcss"; //2 for gcss
+    lat = inputin.get_item<TF>("radiation", "lat", "");
+    lon = inputin.get_item<TF>("radiation", "lon", "");
+    xka = inputin.get_item<TF>("radiation", "xka", "");
+    fr0 = inputin.get_item<TF>("radiation", "fr0", "");
+    fr1 = inputin.get_item<TF>("radiation", "fr1", "");
+    div = inputin.get_item<TF>("radiation", "div", "");
 }
 
 template<typename TF>
@@ -277,7 +281,7 @@ void Radiation_gcss<TF>::init()
 template<typename TF>
 void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-	// Set up output classes
+    // Set up output classes
 	create_stats(stats);
 	create_column(column);
 	create_dump(dump);
@@ -294,16 +298,15 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	auto ql  = fields.get_tmp();
 	thermo.get_thermo_field(*ql,"ql",false,false);
 	struct tm current_datetime;
-	double lat = 32.5;
 	current_datetime = timeloop.get_phytime();
-	mktime ( &current_datetime ); //refresh time
-	double mu = calc_zenith(current_datetime, lat);
+	TF mu = calc_zenith(current_datetime, lat, lon);
 	exec_gcss_rad<TF>(
 		fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
 		lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
+        mu, mu_min, fr0, fr1, xka, div,
 		gd.z.data(), gd.dzhi.data(),
 		gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-		gd.icells, gd.ijcells, gd.ncells, mu);
+		gd.icells, gd.ijcells, gd.ncells);
 	fields.release_tmp(lwp);
 	fields.release_tmp(flx);
 	fields.release_tmp(swn);
@@ -329,7 +332,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         auto ql  = fields.get_tmp();
         thermo.get_thermo_field(*ql,"ql",false,false);
         calc_gcss_rad_LW(ql->fld.data(), fields.ap.at("qt")->fld.data(),
-        lwp->fld.data(), fld.fld.data(), fields.rhoref.data(),
+        lwp->fld.data(), fld.fld.data(), fields.rhoref.data(), fr0, fr1, xka, div,
         gd.z.data(), gd.dzi.data(),
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
@@ -340,12 +343,10 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
     else if (name == "sflx")
     {
         struct tm current_datetime;
-        double lat = 32.5;
         current_datetime = timeloop.get_phytime();
-        mktime ( &current_datetime ); //refresh time
-        double mu = calc_zenith(current_datetime, lat);
+        TF mu = calc_zenith(current_datetime, lat, lon);
         auto& gd = grid.get_grid_data();
-        if (mu > 0.035) //if daytime, call SW (make a function for day/night determination)
+        if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
         {
             auto lwp = fields.get_tmp();
             auto ql  = fields.get_tmp();
@@ -396,15 +397,10 @@ void Radiation_gcss<TF>::create_cross(Cross<TF>& cross)
 {
     if (cross.get_switch())
     {
-        swcross_rflx = false;
-
         // Vectors with allowed cross variables for radiative flux
         std::vector<std::string> allowed_crossvars_rflx = {"sflx","lflx"};
 
-        std::vector<std::string> rflxvars  = cross.get_enabled_variables(allowed_crossvars_rflx);
-        if (rflxvars.size() > 0)
-            swcross_rflx  = true;
-        crosslist = rflxvars;
+        crosslist  = cross.get_enabled_variables(allowed_crossvars_rflx);
     }
 }
 
@@ -439,24 +435,18 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-
-    auto lflx = fields.get_tmp();
-    lflx->loc = gd.sloc;
-    get_radiation_field(*lflx,"lflx",thermo, timeloop);
-
-    auto sflx = fields.get_tmp();
-    sflx->loc = gd.sloc;
-    get_radiation_field(*sflx,"sflx",thermo, timeloop);
-
-
-    //if daytime, rflx = LW + SW
     // calculate the mean
-    std::vector<std::string> operators = {"mean"}; //add 2nd moment, if needed
-    stats.calc_stats("lflx", *lflx, no_offset, no_threshold, operators);
-    stats.calc_stats("sflx", *sflx, no_offset, no_threshold, operators);
+    std::vector<std::string> operators = {"mean", "2"}; //add 2nd moment, if needed
 
-    fields.release_tmp(lflx);
-    fields.release_tmp(sflx);
+    auto tmp = fields.get_tmp();
+
+    get_radiation_field(*tmp,"lflx",thermo, timeloop);
+    stats.calc_stats("lflx", *tmp, no_offset, no_threshold, operators);
+
+    get_radiation_field(*tmp,"sflx",thermo, timeloop);
+    stats.calc_stats("sflx", *tmp, no_offset, no_threshold, operators);
+
+    fields.release_tmp(tmp);
 }
 
 template<typename TF>
@@ -466,7 +456,6 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
     const TF no_offset = 0.;
 
     auto flx = fields.get_tmp();
-    flx->loc = gd.sloc;
     get_radiation_field(*flx,"lflx",thermo,timeloop);
     column.calc_column("lflx", flx->fld.data(), no_offset);
 
@@ -480,25 +469,14 @@ template<typename TF>
 void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
-    auto lflx = fields.get_tmp();
-    auto sflx = fields.get_tmp();
+    auto tmp = fields.get_tmp();
 
-    lflx->loc = gd.sloc;
-    sflx->loc = gd.sloc;
-    if(swcross_rflx)
-    {
-        get_radiation_field(*lflx,"lflx",thermo,timeloop);
-        get_radiation_field(*sflx,"sflx",thermo,timeloop);
-    }
     for (auto& it : crosslist)
     {
-        if (it == "lflx")
-            cross.cross_simple(lflx->fld.data(), "lflx", iotime);
-        else if (it == "sflx")
-            cross.cross_simple(sflx->fld.data(), "sflx", iotime);
+        get_radiation_field(*tmp, it, thermo, timeloop);
+        cross.cross_simple(tmp->fld.data(), it, iotime);
     }
-    fields.release_tmp(lflx);
-    fields.release_tmp(sflx);
+    fields.release_tmp(tmp);
 }
 
 template<typename TF>
@@ -509,19 +487,7 @@ void Radiation_gcss<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, Thermo<
 
     for (auto& it : dumplist)
     {
-        if (it == "lflx")
-        {
-            get_radiation_field(*output,"lflx",thermo,timeloop);
-        }
-        else if (it == "sflx")
-        {
-            get_radiation_field(*output,"sflx",thermo,timeloop);
-        }
-        else
-        {
-            master.print_error("Radiation dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Radiation Dump");
-        }
+        get_radiation_field(*output, it, thermo, timeloop);
         dump.save_dump(output->fld.data(), it, iotime);
     }
     fields.release_tmp(output);

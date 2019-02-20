@@ -88,5 +88,15 @@ class Radiation_gcss : public Radiation<TF>
 		using Radiation<TF>::grid;
 		using Radiation<TF>::fields;
 		using Radiation<TF>::field3d_operators;
+
+        TF lat;
+        TF lon;
+        TF xka;
+        TF fr0;
+        TF fr1;
+        TF div;
+
+        const TF mu_min = 0.035;
+
 };
 #endif

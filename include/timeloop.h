@@ -111,8 +111,7 @@ class Timeloop
         double endtime;
         double savetime;
         double postproctime;
-        struct tm datetime = {0};
-        double phystarttime; // seconds since midnight
+        struct tm datetime;
 
         int iteration;
         int iotime;
