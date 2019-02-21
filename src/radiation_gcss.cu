@@ -18,13 +18,13 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
- #include "radiation_gcss.h"
- #include <math.h>
+#include "tools.h"
+#include "radiation_gcss.h"
 
- namespace
- {
+namespace
+{
      template<typename TF>
-	 TF calc_zenith(struct tm datetime, TF lat, TF lon)
+     TF calc_zenith(struct tm datetime, TF lat, TF lon)
      {
          const TF pi        = M_PI;
          const TF year2days = 365.;
@@ -200,12 +200,12 @@
              tt[ijk] += - (flx[ijk+kk] - flx[ijk]) * dzi[k] / (rhoref[k] * cp);
          }
      }
- }
+    }
 
-#ifdef USECUDA
-template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
-{
+    #ifdef USECUDA
+    template<typename TF>
+    void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
+    {
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -216,11 +216,11 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
     dim3 gridGPU (gridi,  gridj,  1);
     dim3 blockGPU(blocki, blockj, 1);
 
-	auto tmp = fields.get_tmp_g();
-	auto flx = fields.get_tmp_g();
-	auto ql  = fields.get_tmp_g();
+    auto tmp = fields.get_tmp_g();
+    auto flx = fields.get_tmp_g();
+    auto ql  = fields.get_tmp_g();
 
-	thermo.get_thermo_field_g(*ql,"ql",false);
+    thermo.get_thermo_field_g(*ql,"ql",false);
 
     calc_gcss_rad_LW_g<<<gridGPU, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
         tmp->fld_g,fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
@@ -257,14 +257,15 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 template<typename TF>
 void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    const TF no_offset = 0.;
     auto flx = fields.get_tmp_g();
-    get_radiation_field_g(*flx,"lflx",thermo, timeloop);
-/*    column.calc_column("lflx", flx->fld_g, no_offset);
 
-   get_radiation_field_g(*flx,"sflx",thermo,timeloop);
+    get_radiation_field_g(*flx,"lflx",thermo, timeloop);
+    column.calc_column("lflx", flx->fld_g, no_offset);
+    get_radiation_field_g(*flx,"sflx",thermo,timeloop);
     column.calc_column("sflx", flx->fld_g, no_offset);
 
-*/    fields.release_tmp_g(flx);
+    fields.release_tmp_g(flx);
 }
 #endif
 
@@ -273,6 +274,7 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 template<typename TF>
 void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string name, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -288,6 +290,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
         auto lwp = fields.get_tmp_g();
         auto ql  = fields.get_tmp_g();
         thermo.get_thermo_field_g(*ql,"ql",false);
+
         calc_gcss_rad_LW_g<<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g,fields.sp.at("qt")->fld_g, lwp->fld_g,
             fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -313,6 +316,12 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
 
             fields.release_tmp_g(ql);
             fields.release_tmp_g(tau);
+        }
+        else
+        {
+            const int nblock = 256;
+            const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
+            set_to_val<<<ngrid, nblock>>>(fld.fld_g, gd.ncells, TF(0.));
         }
     }
     else

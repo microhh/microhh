@@ -75,15 +75,6 @@ namespace
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
-
-    template<typename TF> __global__
-    void set_to_huge(TF* __restrict__ a, int nsize)
-    {
-        const int n = blockIdx.x*blockDim.x + threadIdx.x;
-
-        if (n < nsize)
-            a[n] = -1e30;
-    }
 }
 
 #ifdef USECUDA
@@ -213,15 +204,15 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 
     const int nblock = 256;
     const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells);
+    const TF  huge   = -1e30;
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
     cuda_check_error();
     #endif
 
