@@ -288,6 +288,7 @@ void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>&
 	create_cross(cross);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
 {
@@ -313,6 +314,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	fields.release_tmp(ql);
 }
 
+#endif
 template<typename TF>
 bool Radiation_gcss<TF>::check_field_exists(const std::string name)
 {
@@ -348,14 +350,12 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         auto& gd = grid.get_grid_data();
         if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
         {
-            auto lwp = fields.get_tmp();
             auto ql  = fields.get_tmp();
             thermo.get_thermo_field(*ql,"ql",false,false);
             calc_gcss_rad_SW(fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
                 fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, gd.ncells, mu);
-            fields.release_tmp(lwp);
             fields.release_tmp(ql);
         }
 
@@ -436,7 +436,7 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     // calculate the mean
-    std::vector<std::string> operators = {"mean", "2"}; //add 2nd moment, if needed
+    std::vector<std::string> operators = {"mean"}; //add 2nd moment, if needed
 
     auto tmp = fields.get_tmp();
 
@@ -449,6 +449,7 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
     fields.release_tmp(tmp);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
@@ -464,6 +465,7 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 
     fields.release_tmp(flx);
 }
+#endif
 
 template<typename TF>
 void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)

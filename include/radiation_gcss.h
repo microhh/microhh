@@ -98,5 +98,11 @@ class Radiation_gcss : public Radiation<TF>
 
         const TF mu_min = 0.035;
 
+
+        #ifdef USECUDA
+        // GPU functions and variables
+        void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        #endif
+
 };
 #endif
