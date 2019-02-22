@@ -38,8 +38,10 @@ int main(int argc, char *argv[])
 
         // Initialize the model in precision.
         #ifdef FLOAT_SINGLE
+        master.print_message("Precision: Single (32-bits floats)\n");
         Model<float> model(master, argc, argv);
         #else
+        master.print_message("Precision: Double (64-bits floats)\n");
         Model<double> model(master, argc, argv);
         #endif
 
