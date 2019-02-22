@@ -42,6 +42,8 @@ namespace Tools_g
     void reduce_all(const TF *, TF *, int, int, int, Reduce_type, TF);
     template<typename TF> __global__
     void set_to_val(TF* __restrict__, int, TF);
+    template<typename TF> __global__
+    void mult_by_val(TF* __restrict__, int, TF);
 
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)

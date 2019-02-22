@@ -152,6 +152,15 @@ namespace Tools_g
             a[n] = val;
     }
 
+    template<typename TF> __global__
+    void mult_by_val(TF* __restrict__ a, int nsize, TF val)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] *= val;
+    }
+
     int next_pow_of_2(unsigned int x)
     {
         return (int)pow(2,ceil(log(x)/log(2)));
@@ -264,3 +273,5 @@ template void Tools_g::reduce_all<double>(const double*, double*, int, int, int,
 template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);
 template  __global__ void Tools_g::set_to_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
+template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
+template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);
