@@ -301,6 +301,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	struct tm current_datetime;
 	current_datetime = timeloop.get_phytime();
 	TF mu = calc_zenith(current_datetime, lat, lon);
+
 	exec_gcss_rad<TF>(
 		fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
 		lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),

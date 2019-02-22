@@ -197,12 +197,13 @@ namespace
              tt[ijk] += - (flx[ijk+kk] - flx[ijk]) * dzi[k] / (rhoref[k] * cp);
          }
      }
-    }
+}
 
-    #ifdef USECUDA
-    template<typename TF>
-    void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
-    {
+#ifdef USECUDA
+template<typename TF>
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
+{
+    using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -234,12 +235,17 @@ namespace
     struct tm current_datetime;
     current_datetime = timeloop.get_phytime();
     TF mu = calc_zenith(current_datetime, lat, lon);
+
     if (mu > mu_min)
     {
         calc_gcss_rad_SW_g<<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
             tmp->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells, gd.ncells);
+
+        const int nblock = 256;
+        const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
+        mult_by_val<<<ngrid, nblock>>>(flx->fld_g, gd.ncells, TF(-1.));
 
         update_temperature<<<gridGPU3D, blockGPU>>>(
             fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
