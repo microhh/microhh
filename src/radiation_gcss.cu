@@ -56,12 +56,10 @@ namespace
 
      template<typename TF> __device__
      void sunray(const TF mu, const int i, const int j,
-         const int kstart, const int kend, const int icells, const int ijcells,
+         const int kstart, const int kend, const int jj, const int kk,
          TF* __restrict__  tau, const TF tauc,
          TF* __restrict__  swn)
      {
-         const int jj = icells;
-         const int kk = ijcells;
          TF o_c1 = TF(0.9);
          TF o_c2 = TF(2.75);
          TF o_c3 = TF(0.09);
@@ -98,7 +96,6 @@ namespace
          TF c2 = (xp23p*t3*exmu0 - t1*ap23b*exmk) / (xp23p*t2*expk - xm23p*t1*exmk);
          TF c1 = (ap23b - c2*xm23p)/xp23p;
 
-
          for (int k=kend-1;k>=kstart;--k)
          {
              const int ijk  = i + j*jj + k*kk;
@@ -131,7 +128,7 @@ namespace
              {
                  const int ijk  = i + j*jj + k*kk;
                  tau[ijk] = TF(1.5) * ql[ijk] * rhoref[k] * dz[k] / reff / rho_l;
-                 tauc = tauc + tau[ijk];
+                 tauc += tau[ijk];
              }
              sunray<TF>(mu, i, j,
                  kstart, kend, icells, ijcells,
@@ -192,9 +189,9 @@ namespace
      {
          const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
          const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-         const int k = blockIdx.z + kstart + 1;
+         const int k = blockIdx.z + kstart;
 
-         if (i < iend && j < jend && k < kend)
+         if (i < iend && j < jend && k < kend-1)
          {
              const int ijk = i + j*jj + k*kk;
              tt[ijk] += - (flx[ijk+kk] - flx[ijk]) * dzi[k] / (rhoref[k] * cp);
@@ -213,8 +210,10 @@ namespace
 
     int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
     int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    dim3 gridGPU (gridi,  gridj,  1);
-    dim3 blockGPU(blocki, blockj, 1);
+    dim3 gridGPU3D (gridi, gridj, gd.kcells);
+    dim3 gridGPU2D (gridi,  gridj,  1);
+    dim3 blockGPU (blocki, blockj, 1);
+
 
     auto tmp = fields.get_tmp_g();
     auto flx = fields.get_tmp_g();
@@ -222,27 +221,27 @@ namespace
 
     thermo.get_thermo_field_g(*ql,"ql",false);
 
-    calc_gcss_rad_LW_g<<<gridGPU, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+    calc_gcss_rad_LW_g<<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
         tmp->fld_g,fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
 
-    update_temperature<<<gridGPU, blockGPU>>>(
-            fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
-            gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
-            gd.iend,  gd.jend,   gd.kend, gd.icells, gd.ijcells);
+    update_temperature<<<gridGPU3D, blockGPU>>>(
+        fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
+        gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
+        gd.iend,  gd.jend,   gd.kend-1, gd.icells, gd.ijcells);
 
     struct tm current_datetime;
     current_datetime = timeloop.get_phytime();
     TF mu = calc_zenith(current_datetime, lat, lon);
     if (mu > mu_min)
     {
-        calc_gcss_rad_SW_g<<<gridGPU, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+        calc_gcss_rad_SW_g<<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
             tmp->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells, gd.ncells);
 
-        update_temperature<<<gridGPU, blockGPU>>>(
+        update_temperature<<<gridGPU3D, blockGPU>>>(
             fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
             gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
             gd.iend,  gd.jend,   gd.kend, gd.icells, gd.ijcells);
