@@ -81,12 +81,12 @@ struct Grid_data
     TF dxi;   // Reciprocal of dx.
     TF dyi;   // Reciprocal of dy.
 
-    std::vector<TF> dz;    // Distance between the center of two grid cell in the z-direction.
-    std::vector<TF> dzh;   // Distance between the two grid cell faces in the z-direction.
+    std::vector<TF> dz;    // Distance between the faces of two grid cells in the z-direction.
+    std::vector<TF> dzh;   // Distance between the centers of two grid cells in the z-direction.
     std::vector<TF> dzi;   // Reciprocal of dz.
     std::vector<TF> dzhi;  // Reciprocal of dzh.
-    std::vector<TF> dzi4;  // Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
-    std::vector<TF> dzhi4; // Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+    std::vector<TF> dzi4;  // Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+    std::vector<TF> dzhi4; // Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
 
     TF dzhi4bot;
     TF dzhi4top;

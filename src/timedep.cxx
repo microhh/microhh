@@ -94,7 +94,7 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>
     const int kgc = gd.kgc;
 
     // Get/calculate the interpolation indexes/factors
-    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     // Calculate the new vertical profile
     for (int k=0; k<gd.kmax; ++k)
@@ -108,7 +108,7 @@ void Timedep<TF>::update_time_dependent(TF& val, Timeloop<TF>& timeloop)
         return;
 
     // Get/calculate the interpolation indexes/factors
-    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
     val = ifac.fac0 * data[ifac.index0] + ifac.fac1 * data[ifac.index1];
     return;
 }

@@ -216,8 +216,8 @@ void Thermo_dry<TF>::exec(const double dt)
     }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        master.print_error("4th order thermo_dry not (yet) implemented\n");
-        throw std::runtime_error("Illegal options 4th order thermo");
+        std::string msg = "4th order thermo_dry not (yet) implemented";
+        throw std::runtime_error(msg);
     }
 }
 #endif
@@ -259,8 +259,8 @@ void Thermo_dry<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+        std::string msg = "get_thermo_field \"" + name + "\" not supported";
+        throw std::runtime_error(msg);
     }
 
     if (cyclic)
@@ -329,7 +329,7 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     get_thermo_field_g(*output, "b", false);
     column.calc_column("b", output->fld_g, no_offset);
 
-    fields.release_tmp(output);
+    fields.release_tmp_g(output);
 }
 #endif
 template class Thermo_dry<double>;

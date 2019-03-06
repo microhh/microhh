@@ -19,7 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <algorithm>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -187,6 +188,34 @@ namespace
             st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k]);
 
         }
+    }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
+
+    template<typename TF>
+    void rescale_nudgeprof(TF* const restrict fldmean, const int kinv, const int kstart, const int kend)
+    {
+        for (int k=kstart+1; k<kinv; ++k)
+            fldmean[k] = fldmean[kstart];
+
+        for (int k=kinv+1; k<kend-2; ++k)
+            fldmean[k] = fldmean[kend-1];
     }
 
     template<typename TF> __global__
@@ -357,6 +386,15 @@ void Force<TF>::exec(double dt)
     {
         for (auto& it : nudgelist)
         {
+            auto it1 = std::find(scalednudgelist.begin(), scalednudgelist.end(), it);
+            if (it1 != scalednudgelist.end())
+            {
+                cudaMemcpy(fields.sp.at(it)->fld_mean.data(), fields.sp.at(it)->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+                const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+                rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
+                cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+            }
+
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
                 fields.st.at(it)->fld_g, fields.sp.at(it)->fld_mean_g,
                 nudgeprofs_g.at(it), nudge_factor_g,

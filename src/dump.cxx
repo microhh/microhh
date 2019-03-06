@@ -50,8 +50,8 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
         // Crash on empty list.
         if (dumplist.empty())
         {
-            master.print_error("empty dump list\n");
-            throw 1;
+            std::string msg = "Empty Dump list";
+            throw std::runtime_error(msg);
         }
     }
 }
@@ -136,7 +136,7 @@ void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
         if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
         {
             master.print_message("FAILED\n");
-            throw 1;
+            throw std::runtime_error("In Dump");
         }
         else
         {

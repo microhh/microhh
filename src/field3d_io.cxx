@@ -217,7 +217,7 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
@@ -277,7 +277,7 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj = gd.icells;
     const int kk = gd.ijcells;
@@ -474,7 +474,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         for (int j=gd.jstart; j<gd.jend; ++j)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            if( fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax)
+            if( fwrite(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != (unsigned)gd.imax)
                 return 1;
         }
 
@@ -503,7 +503,7 @@ int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
         for (int j=gd.jstart; j<gd.jend; j++)
         {
             const int ijk = gd.istart + j*jj + k*kk;
-            if( fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != gd.imax )
+            if( fread(&tmp1[ijk], sizeof(TF), gd.imax, pFile) != (unsigned)gd.imax )
                 return 1;
         }
 

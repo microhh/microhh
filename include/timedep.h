@@ -61,6 +61,5 @@ class Timedep
 
         std::vector<double> time;
         std::vector<TF> data;
-
 };
 #endif

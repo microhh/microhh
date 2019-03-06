@@ -291,8 +291,10 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     for (auto& tmp : atmp)
         nerror += tmp->init();
 
-    if (nerror > 0)
-        throw 1;
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error allocating fields");
 
     // Get the grid data.
     const Grid_data<TF>& gd = grid.get_grid_data();
@@ -433,33 +435,6 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
     atmp.push_back(std::move(tmp));
 }
 
-#ifdef USECUDA
-template<typename TF>
-std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
-{
-    std::shared_ptr<Field3d<TF>> tmp;
-
-    // In case of insufficient tmp fields, allocate a new one.
-    if (atmp_g.empty())
-    {
-        init_tmp_field_g();
-        tmp = atmp_g.back();
-        tmp->init_device();
-    }
-    else
-        tmp = atmp_g.back();
-
-    atmp_g.pop_back();
-    return tmp;
-}
-
-template<typename TF>
-void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
-{
-    atmp_g.push_back(std::move(tmp));
-}
-#endif
-
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -528,8 +503,8 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 {
     if (mp.find(fldname) != mp.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     // Add a new prognostic momentum variable.
@@ -553,8 +528,8 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 {
     if (sp.find(fldname)!=sp.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     // add a new scalar variable
@@ -578,8 +553,8 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
 {
     if (sd.find(fldname)!=sd.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
@@ -685,8 +660,8 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
 
     if (rndz > gd.zsize)
     {
-        master.print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, gd.zsize);
-        throw std::runtime_error("Randomizer error");
+        std::string msg = "randomizer height rndz (" + std::to_string(rndz) + ") higher than domain top (" + std::to_string(gd.zsize) +")";
+        throw std::runtime_error(msg);
     }
 
     // Find the location of the randomizer height.
@@ -952,8 +927,10 @@ void Fields<TF>::save(int n)
     release_tmp(tmp1);
     release_tmp(tmp2);
 
+    master.sum(&nerror, 1);
+
     if (nerror)
-        throw 1;
+        throw std::runtime_error("Error allocating fields");
 }
 
 template<typename TF>
@@ -988,8 +965,10 @@ void Fields<TF>::load(int n)
     release_tmp(tmp1);
     release_tmp(tmp2);
 
+    master.sum(&nerror, 1);
+
     if (nerror)
-        throw 1;
+        throw std::runtime_error("Error loading fields");
 }
 
 #ifndef USECUDA

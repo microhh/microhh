@@ -64,8 +64,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     // 3 and 4 are the only valid values for the rkorder
     if (!(rkorder == 3 || rkorder == 4))
     {
-        master.print_error("\"%d\" is an illegal value for rkorder\n", rkorder);
-        throw std::runtime_error("Illegal RK order value chosen");
+        std::string msg = std::to_string(rkorder) + " is an illegal value for rkorder";
+        throw std::runtime_error(msg);
     }
 
     // initializations
@@ -93,8 +93,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     // check whether starttime and savetime are an exact multiple of iotimeprec
     if ((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
     {
-        master.print_error("starttime or savetime is not an exact multiple of iotimeprec\n");
-        throw 1;
+        std::string msg = " Starttime or savetime is not an exact multiple of iotimeprec";
+        throw std::runtime_error(msg);
     }
 
     iotime = (int)(istarttime / iiotimeprec);
@@ -207,8 +207,8 @@ void Timeloop<TF>::set_time_step()
     {
         if (idt == 0)
         {
-            master.print_error("Required time step less than precision %E of the time stepping\n", 1./ifactor);
-            throw 1;
+            std::string msg = "Required time step less than precision " + std::to_string(1./ifactor) + " of the time stepping";
+            throw std::runtime_error(msg);
         }
         idt = idtlim;
         dt  = (double)idt / ifactor;
@@ -399,9 +399,10 @@ void Timeloop<TF>::save(int starttime)
     }
 
     // Broadcast the error code to prevent deadlocks in case of error.
-    master.broadcast(&nerror, 1);
+    master.sum(&nerror, 1);
+
     if (nerror)
-        throw 1;
+        throw std::runtime_error("In Timeloop::save");
 }
 
 template<typename TF>
@@ -421,8 +422,8 @@ void Timeloop<TF>::load(int starttime)
 
         if (pFile == NULL)
         {
-            master.print_error("\"%s\" does not exist\n", filename);
-            ++nerror;
+            std::string msg = std::string(filename) + " does not exist";
+            master.print_message(msg);
         }
         else
         {
@@ -434,10 +435,11 @@ void Timeloop<TF>::load(int starttime)
         }
         master.print_message("OK\n");
     }
+    // Broadcast the error code to prevent deadlocks in case of error.
+    master.sum(&nerror, 1);
 
-    master.broadcast(&nerror, 1);
     if (nerror)
-        throw 1;
+        throw std::runtime_error("In Timeloop::load");
 
     master.broadcast(&itime    , 1);
     master.broadcast(&idt      , 1);
@@ -459,14 +461,14 @@ void Timeloop<TF>::step_post_proc_time()
 }
 
 template<typename TF>
-interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vector<double>& timevec)
+Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vector<double>& timevec)
 {
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());
-    for (int t=0; t<timevec.size(); ++t)
+    for (size_t t=0; t<timevec.size(); ++t)
         itimevec[t] = static_cast<unsigned long>(ifactor * timevec[t] + 0.5);
 
-    interpolation_factors<TF> ifac;
+    Interpolation_factors<TF> ifac;
     ifac.index1 = 0;
     for (auto& t : itimevec)
     {
@@ -482,13 +484,13 @@ interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
     // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
     if (ifac.index1 == 0)
     {
-        master.print_error("Interpolation time is out of range; t0 = %g; current time is %g \n", timevec[0], time);
-        throw std::runtime_error("Interpolation time out of range");
+        std::string msg = " Interpolation time is out of range; t0 = " + std::to_string(timevec[0]) + "; current time is %g" + std::to_string(time);
+        throw std::runtime_error(msg);
     }
     else if (ifac.index1 == timevec.size())
     {
-        master.print_error("Interpolation time is out of range; t1 = %g; current time is %g \n", timevec[timevec.size()-1], time);
-        throw std::runtime_error("Interpolation time out of range");
+        std::string msg = " Interpolation time is out of range; t1 = " + std::to_string(timevec[timevec.size()-1]) + "; current time is %g" + std::to_string(time);
+        throw std::runtime_error(msg);
     }
     else
     {

@@ -88,7 +88,6 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     if (!swcolumn)
         return;
 
-    int nerror = 0;
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
@@ -96,16 +95,16 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
     if (coordx.size()!=coordy.size())
     {
-        master.print_error("Column error: X-coord array and Y-coord array do not match in size \n");
-        throw 1;
+        std::string msg = "Column error: X-coord array and Y-coord array do not match in size";
+        throw std::runtime_error(msg);
     }
 
-    for (int n=0; n<coordx.size(); ++n)
+    for (size_t n=0; n<coordx.size(); ++n)
     {
         int i = (int) floor(coordx[n]/gd.dx);
         int j = (int) floor(coordy[n]/gd.dy);
-        if (i >= (md.mpicoordx)*gd.imax & i < (md.mpicoordx+1)*gd.imax &
-            j >= (md.mpicoordy)*gd.jmax & j < (md.mpicoordy+1)*gd.jmax)
+        if ((i >= (md.mpicoordx)*gd.imax) & (i < (md.mpicoordx+1)*gd.imax) &
+            (j >= (md.mpicoordy)*gd.jmax) & (j < (md.mpicoordy+1)*gd.jmax))
         {
             columns.emplace(columns.end());
             columns.back().coord = {i,j};
@@ -113,6 +112,7 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     }
 
     // create a NetCDF file for the statistics
+    int nerror = 0;
     for (auto& it: columns)
     {
         std::stringstream filename;
@@ -127,15 +127,14 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
         }
         catch(NcException& e)
         {
-            master.print_error("NetCDF exception: %s\n",e.what());
+            master.print_message("NetCDF exception: %s\n",e.what());
             ++nerror;
         }
     }
+    master.sum(&nerror, 1);
 
-    // Crash on all processes in case the file could not be written
-    master.broadcast(&nerror, 1);
     if (nerror)
-        throw 1;
+        throw std::runtime_error("In Column");
 
     // create dimensions
     for (auto& it: columns)

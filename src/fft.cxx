@@ -117,7 +117,7 @@ void FFT<double>::load()
     if (n == 0)
     {
         master.print_message("FAILED\n");
-        throw 1;
+        throw std::runtime_error("Error loading FFTW Plan");
     }
     else
         master.print_message("OK\n");
@@ -162,7 +162,7 @@ void FFT<float>::load()
     if (n == 0)
     {
         master.print_message("FAILED\n");
-        throw 1;
+        throw std::runtime_error("Error loading FFTW Plan");
     }
     else
         master.print_message("OK\n");
@@ -219,6 +219,7 @@ void FFT<double>::save()
 
     has_fftw_plan = true;
 
+    int nerror = 0;
     if (master.get_mpiid() == 0)
     {
         char filename[256];
@@ -230,11 +231,16 @@ void FFT<double>::save()
         if (n == 0)
         {
             master.print_message("FAILED\n");
-            throw 1;
+            nerror++;
         }
         else
             master.print_message("OK\n");
     }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error saving FFTW plan");
 }
 
 template<>
@@ -264,6 +270,7 @@ void FFT<float>::save()
 
     has_fftw_plan = true;
 
+    int nerror = 0;
     if (master.get_mpiid() == 0)
     {
         char filename[256];
@@ -275,11 +282,16 @@ void FFT<float>::save()
         if (n == 0)
         {
             master.print_message("FAILED\n");
-            throw 1;
+            nerror++;
         }
         else
             master.print_message("OK\n");
     }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error saving FFTW plan");
 }
 
 namespace

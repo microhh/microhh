@@ -63,8 +63,7 @@ namespace
         // Process the command line options.
         if (argc <= 1)
         {
-            master.print_error("Specify init, run or post mode\n");
-            throw std::runtime_error("No run mode specified");
+            throw std::runtime_error("Specify init, run or post mode\n No run mode specified");
         }
         else
         {
@@ -72,8 +71,8 @@ namespace
             std::string sim_mode_str = argv[1];
             if (sim_mode_str != "init" && sim_mode_str != "run" && sim_mode_str != "post")
             {
-                master.print_error("Specify init, run or post mode\n");
-                throw std::runtime_error("Illegal run mode specified");
+                throw std::runtime_error("Specify init, run or post mode\n Illegal run mode specified");
+
             }
             else
             {
@@ -343,8 +342,13 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                        dump->do_dump(timeloop->get_itime()))
+                    unsigned long itime = timeloop->get_itime();
+                    int iteration = timeloop->get_iteration();
+                    int iotime    = timeloop->get_iotime();
+                    double time = timeloop->get_time();
+                    double dt   = timeloop->get_dt();
+
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #pragma omp taskwait
                         #ifdef USECUDA
@@ -353,18 +357,15 @@ void Model<TF>::exec()
                         thermo  ->backward_device();
                         #endif
                         #pragma omp task default(shared)
-                        calculate_statistics(
-                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
-                                timeloop->get_iotime(), timeloop->get_dt());
+                        calculate_statistics(iteration, time, itime, iotime, dt);
                     }
 
-                    if (column->do_column(timeloop->get_itime()))
+                    if (column->do_column(itime))
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
-                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                        column->exec(iteration, time, itime);
                     }
-
                 }
 
                 // Exit the simulation when the runtime has been hit.

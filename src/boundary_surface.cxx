@@ -204,7 +204,7 @@ namespace
             const TF z0m,
             const int istart, const int iend, const int jstart, const int jend, const int kstart,
             const int icells, const int jcells, const int kk,
-            Boundary_type mbcbot, Boundary_type thermobc,
+            Boundary_type mbcbot,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
@@ -232,7 +232,7 @@ namespace
 
         // set the Obukhov length to a very large negative number
         // case 1: fixed buoyancy flux and fixed ustar
-        if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
+        if (mbcbot == Boundary_type::Ustar_type)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -242,25 +242,14 @@ namespace
                     obuk[ij] = -Constants::dbig;
                 }
         }
-        // case 2: fixed buoyancy surface value and free ustar
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
+        // case 2: free ustar
+        else if (mbcbot == Boundary_type::Dirichlet_type)
         {
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij = i + j*jj;
-                    obuk [ij] = -Constants::dbig;
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-                }
-        }
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij  = i + j*jj;
                     obuk [ij] = -Constants::dbig;
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
@@ -467,16 +456,14 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    int nerror = 0;
-
     z0m = inputin.get_item<TF>("boundary", "z0m", "");
     z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
     {
-        master.print_error("Neumann bc is not supported in surface model\n");
-        ++nerror;
+        std::string msg = "Neumann bc is not supported in surface model";
+        throw std::runtime_error(msg);
     }
     // read the ustar value only if fixed fluxes are prescribed
     else if (mbcbot == Boundary_type::Ustar_type)
@@ -488,15 +475,15 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
         // crash in case fixed gradient is prescribed
         if (it.second.bcbot == Boundary_type::Neumann_type)
         {
-            master.print_error("fixed gradient bc is not supported in surface model\n");
-            ++nerror;
+            std::string msg = "Fixed Gradient bc is not supported in surface model";
+            throw std::runtime_error(msg);
         }
 
         // crash in case of fixed momentum flux and dirichlet bc for scalar
         if (it.second.bcbot == Boundary_type::Dirichlet_type && mbcbot == Boundary_type::Ustar_type)
         {
-            master.print_error("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
-            ++nerror;
+            std::string msg = "Fixed Ustar bc in combination with Dirichlet bc for scalars is not supported";
+            throw std::runtime_error(msg);
         }
     }
 
@@ -509,19 +496,21 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     // save the bc of the first thermo field in case thermo is enabled
     if (it != thermolist.end())
         thermobc = sbc[*it].bcbot;
+    else
+        // Set the thermobc to Flux_type to avoid ininitialized errors.
+        thermobc = Boundary_type::Flux_type;
 
     while (it != thermolist.end())
     {
         if (sbc[*it].bcbot != thermobc)
         {
-            ++nerror;
-            master.print_error("all thermo variables need to have the same bc type\n");
+
+            std::string msg = "All thermo variables need to have the same bc type";
+            throw std::runtime_error(msg);
         }
         ++it;
     }
 
-    if (nerror)
-        throw 1;
 
     /*
     // Cross sections
@@ -723,7 +712,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
                           z0m,
                           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                           gd.icells, gd.jcells, gd.ijcells,
-                          mbcbot, thermobc, boundary_cyclic);
+                          mbcbot, boundary_cyclic);
         fields.release_tmp(dutot);
     }
     else

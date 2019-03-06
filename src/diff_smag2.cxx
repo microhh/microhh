@@ -140,8 +140,8 @@ namespace
                                    + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
                                    + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
-                           // Add a small number to avoid zero divisions.
-                           strain2[ijk] += Constants::dsmall;
+                    // Add a small number to avoid zero divisions.
+                    strain2[ijk] += Constants::dsmall;
                 }
     }
 
@@ -175,11 +175,8 @@ namespace
                     }
             }
 
-            boundary_cyclic.exec(evisc);
-
-            /*
             // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
-            // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
+            // is mirrored around the surface.
             const int kb = kstart;
             const int kt = kend-1;
             for (int j=0; j<jcells; ++j)
@@ -188,10 +185,9 @@ namespace
                 {
                     const int ijkb = i + j*jj + kb*kk;
                     const int ijkt = i + j*jj + kt*kk;
-                    evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
-                    evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
+                    evisc[ijkb-kk] = evisc[ijkb];
+                    evisc[ijkt+kk] = evisc[ijkt];
                 }
-                */
         }
         else
         {
@@ -210,9 +206,9 @@ namespace
                         evisc[ijk] = fac * std::sqrt(evisc[ijk]) + mvisc;
                     }
             }
-
-            boundary_cyclic.exec(evisc);
         }
+
+        boundary_cyclic.exec(evisc);
     }
 
     template<typename TF, Surface_model surface_model>
@@ -251,7 +247,7 @@ namespace
             }
 
             // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
-            // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
+            // is mirrored over the surface.
             const int kb = kstart;
             const int kt = kend-1;
             for (int j=0; j<jcells; ++j)
@@ -934,7 +930,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
 
-         // Calculate eddy viscosity assuming resolved walls
+        // Calculate eddy viscosity assuming resolved walls
         else
             calc_evisc_neutral<TF, Surface_model::Disabled>(
                     fields.sd["evisc"]->fld.data(),
