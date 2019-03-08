@@ -70,6 +70,7 @@ class Thermo_buoy : public Thermo
 
 private:
         void calc_buoyancy(double*, double*);              ///< Calculation of the buoyancy.
+        void calc_N2(double *, double *, double *);        ///< Calculation of the Brunt-Vaissala frequency.
         void calc_buoyancy_bot(double*, double*,
                                double*, double*);          ///< Calculation of the near-surface and surface buoyancy.
         void calc_buoyancy_fluxbot(double*, double*);      ///< Calculation of the buoyancy flux at the bottom.

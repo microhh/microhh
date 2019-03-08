@@ -98,29 +98,40 @@ unsigned long Thermo_buoy::get_time_limit(unsigned long idt, const double dt)
     return Constants::ulhuge;
 }
 
+#ifndef USECUDA
 void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name, bool cyclic)
-{
-    calc_buoyancy(field->data, fields->sp["b"]->data);
-
+{    
+    if (name == "b")
+        calc_buoyancy(field->data, fields->sp["b"]->data);
+    else if (name == "N2")
+        calc_N2(field->data, fields->sp["b"]->data, grid->dzi);
+    else
+        throw 1;
+       
     // Note: calc_buoyancy already handles the lateral ghost cells
 }
+#endif
 
 void Thermo_buoy::get_prog_vars(std::vector<std::string>* list)
 {
     list->push_back("b");
 }
 
+#ifndef USECUDA
 void Thermo_buoy::get_buoyancy_fluxbot(Field3d* bfield)
 {
     calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
+#endif
 
+#ifndef USECUDA
 void Thermo_buoy::get_buoyancy_surf(Field3d *bfield)
 {
     calc_buoyancy_bot(bfield->data         , bfield->databot,
                       fields->sp["b"]->data, fields->sp["b"]->databot);
     calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
+#endif
 
 double Thermo_buoy::get_buoyancy_diffusivity()
 {
@@ -139,6 +150,21 @@ void Thermo_buoy::calc_buoyancy(double* restrict b, double* restrict bin)
 {
     for (int n=0; n<grid->ncells; ++n)
         b[n] = bin[n];
+}
+
+void Thermo_buoy::calc_N2(double* restrict N2, double* restrict b, double* restrict dzi)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k];
+            }
 }
 
 void Thermo_buoy::calc_buoyancy_bot(double* restrict b  , double* restrict bbot,
