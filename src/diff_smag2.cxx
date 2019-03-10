@@ -55,7 +55,7 @@ namespace
                       const int jj, const int kk)
     {
         const int ii = 1;
-        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
 
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
         if (surface_model == Surface_model::Enabled)
@@ -634,15 +634,17 @@ namespace
         return dnmul;
     }
 
-    template<typename TF>
+    template <typename TF, Surface_model surface_model>
     void calc_diff_flux_c(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict evisc,
             const TF tPr, const TF* const restrict dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
+        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+
         #pragma omp parallel for
-        for (int k=kstart; k<kend+1; ++k)
+        for (int k=kstart+k_offset; k<(kend+1-k_offset); ++k)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -656,16 +658,18 @@ namespace
         }
     }
 
-    template<typename TF>
+    template <typename TF, Surface_model surface_model>
     void calc_diff_flux_u(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
             const TF dxi, const TF* const dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
+        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+
         const int ii = 1;
         #pragma omp parallel for
-        for (int k=kstart; k<kend+1; ++k)
+        for (int k=kstart+k_offset; k<(kend+1-k_offset); ++k)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -678,15 +682,17 @@ namespace
         }
     }
 
-    template<typename TF>
+    template <typename TF, Surface_model surface_model>
     void calc_diff_flux_v(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
             const TF dyi, const TF* const dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
+        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+
         #pragma omp parallel for
-        for (int k=kstart; k<kend+1; ++k)
+        for (int k=kstart+k_offset; k<(kend+1-k_offset); ++k)
         {
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -1004,29 +1010,54 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
-    // Calculate the boundary fluxes.
-    calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-    calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    {
+        // Calculate the boundary fluxes.
+        calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+        calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
 
-    // Calculate the interior.
-    if (fld_in.loc[0] == 1)
-        calc_diff_flux_u(
-                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-                gd.dxi, gd.dzhi.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    else if (fld_in.loc[1] == 1)
-        calc_diff_flux_v(
-                out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-                gd.dyi, gd.dzhi.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        // Calculate the interior.
+        if (fld_in.loc[0] == 1)
+            calc_diff_flux_u<TF, Surface_model::Enabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                    gd.dxi, gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else if (fld_in.loc[1] == 1)
+            calc_diff_flux_v<TF, Surface_model::Enabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                    gd.dyi, gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            calc_diff_flux_c<TF, Surface_model::Enabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                    gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
     else
-        calc_diff_flux_c(
-                out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
-                gd.dzhi.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+    {
+        // Include the wall.
+        if (fld_in.loc[0] == 1)
+            calc_diff_flux_u<TF, Surface_model::Disabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                    gd.dxi, gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else if (fld_in.loc[1] == 1)
+            calc_diff_flux_v<TF, Surface_model::Disabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
+                    gd.dyi, gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            calc_diff_flux_c<TF, Surface_model::Disabled>(
+                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                    gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
 }
 
 template class Diff_smag2<double>;
