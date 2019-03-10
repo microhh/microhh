@@ -316,6 +316,7 @@ namespace
                 const TF* restrict evisc,
                 const TF* restrict fluxbot, const TF* restrict fluxtop,
                 const TF* restrict rhoref, const TF* restrict rhorefh,
+                const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                 const int jj, const int kk)
     {
@@ -409,6 +410,7 @@ namespace
                 const TF* restrict evisc,
                 TF* restrict fluxbot, TF* restrict fluxtop,
                 TF* restrict rhoref, TF* restrict rhorefh,
+                const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                 const int jj, const int kk)
 
@@ -501,6 +503,7 @@ namespace
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
                 const TF* restrict evisc,
                 const TF* restrict rhoref, const TF* restrict rhorefh,
+                const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                 const int jj, const int kk)
     {
@@ -536,7 +539,8 @@ namespace
                 const TF* restrict dzi, const TF* restrict dzhi, const TF dxidxi, const TF dyidyi,
                 const TF* restrict evisc,
                 const TF* restrict fluxbot, const TF* restrict fluxtop,
-                const TF* restrict rhoref, const TF* restrict rhorefh, const TF tPr,
+                const TF* restrict rhoref, const TF* restrict rhorefh,
+                const TF tPr, const TF visc,
                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                 const int jj, const int kk)
     {
@@ -643,7 +647,8 @@ namespace
     template <typename TF, Surface_model surface_model>
     void calc_diff_flux_c(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict evisc,
-            const TF tPr, const TF* const restrict dzhi,
+            const TF* const restrict dzhi,
+            const TF tPr, const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
@@ -668,6 +673,7 @@ namespace
     void calc_diff_flux_u(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
             const TF dxi, const TF* const dzhi,
+            const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
@@ -692,6 +698,7 @@ namespace
     void calc_diff_flux_v(
             TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
             const TF dyi, const TF* const dzhi,
+            const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
@@ -827,6 +834,7 @@ void Diff_smag2<TF>::exec()
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
                 fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -837,16 +845,19 @@ void Diff_smag2<TF>::exec()
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
                 fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        diff_w<TF>(fields.mt["w"]->fld.data(),
-                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                   fields.sd["evisc"]->fld.data(),
-                   fields.rhoref.data(), fields.rhorefh.data(),
-                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                   gd.icells, gd.ijcells);
+        diff_w<TF>(
+                fields.mt["w"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
         for (auto it : fields.st)
             diff_c<TF, Surface_model::Enabled>(
@@ -855,6 +866,7 @@ void Diff_smag2<TF>::exec()
                     fields.sd["evisc"]->fld.data(),
                     fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
                     fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    fields.sp[it.first]->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
@@ -867,6 +879,7 @@ void Diff_smag2<TF>::exec()
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["u"]->flux_bot.data(), fields.mp["u"]->flux_top.data(),
                 fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -877,16 +890,19 @@ void Diff_smag2<TF>::exec()
                 fields.sd["evisc"]->fld.data(),
                 fields.mp["v"]->flux_bot.data(), fields.mp["v"]->flux_top.data(),
                 fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        diff_w<TF>(fields.mt["w"]->fld.data(),
-                   fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
-                   gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                   fields.sd["evisc"]->fld.data(),
-                   fields.rhoref.data(), fields.rhorefh.data(),
-                   gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                   gd.icells, gd.ijcells);
+        diff_w<TF>(
+                fields.mt["w"]->fld.data(),
+                fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
+                fields.sd["evisc"]->fld.data(),
+                fields.rhoref.data(), fields.rhorefh.data(),
+                fields.visc,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
         for (auto it : fields.st)
             diff_c<TF, Surface_model::Disabled>(
@@ -895,6 +911,7 @@ void Diff_smag2<TF>::exec()
                     fields.sd["evisc"]->fld.data(),
                     fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
                     fields.rhoref.data(), fields.rhorefh.data(), tPr,
+                    fields.sp[it.first]->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
@@ -1027,18 +1044,21 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
             calc_diff_flux_u<TF, Surface_model::Enabled>(
                     out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dxi, gd.dzhi.data(),
+                    fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         else if (fld_in.loc[1] == 1)
             calc_diff_flux_v<TF, Surface_model::Enabled>(
                     out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dyi, gd.dzhi.data(),
+                    fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         else
             calc_diff_flux_c<TF, Surface_model::Enabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dzhi.data(),
+                    tPr, fld_in.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
@@ -1049,18 +1069,21 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
             calc_diff_flux_u<TF, Surface_model::Disabled>(
                     out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dxi, gd.dzhi.data(),
+                    fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         else if (fld_in.loc[1] == 1)
             calc_diff_flux_v<TF, Surface_model::Disabled>(
                     out.fld.data(), fld_in.fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dyi, gd.dzhi.data(),
+                    fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         else
             calc_diff_flux_c<TF, Surface_model::Disabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(), tPr,
+                    out.fld.data(), fld_in.fld.data(), fields.sd["evisc"]->fld.data(),
                     gd.dzhi.data(),
+                    tPr, fld_in.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
