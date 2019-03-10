@@ -150,7 +150,7 @@ namespace
                             TF* restrict u, TF* restrict v, TF* restrict w,
                             TF* restrict ufluxbot, TF* restrict vfluxbot,
                             const TF* restrict z, const TF* restrict dz, const TF* restrict dzhi, const TF z0m,
-                            const TF dx, const TF dy, const TF cs, const TF visc,
+                            const TF dx, const TF dy, const TF zsize, const TF cs, const TF visc,
                             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                             const int icells, const int jcells, const int ijcells,
                             Boundary_cyclic<TF>& boundary_cyclic)
@@ -167,18 +167,22 @@ namespace
             for (int k=kstart; k<kend; ++k)
             {
                 const TF mlen0 = fm::pow2(
-                        std::min(cs*std::pow(dx*dy*dz[k], TF(1./3.)), Constants::kappa<TF>*z[k])
-                        );
+                        std::min(cs*std::pow(dx*dy*dz[k], TF(1./3.)), Constants::kappa<TF>*std::min(z[k], zsize-z[k]) ) );
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk_bot = i + j*jj + kstart*kk;
-                        const TF u_tau = std::sqrt(
+                        const int ijk_top = i + j*jj + kend*kk;
+                        const TF u_tau_bot = std::sqrt(
                                 fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
-                              + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] )
-                            );
-                        const TF fac = 1. - std::exp( -(z[k]*u_tau) / (A_vandriest*visc) );
+                              + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ) );
+                        const TF u_tau_top = std::sqrt(
+                                fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
+                              + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ) );
+                        const TF fac_bot = 1. - std::exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
+                        const TF fac_top = 1. - std::exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
+                        const TF fac = std::min( fac_bot, fac_top );
 
                         const int ijk = i + j*jj + k*kk;
                         evisc[ijk] = fac * mlen0 * std::sqrt(evisc[ijk]);
@@ -964,7 +968,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
                     gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
-                    gd.dx, gd.dy, this->cs, fields.visc,
+                    gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
@@ -976,7 +980,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
                     gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
-                    gd.dx, gd.dy, this->cs, fields.visc,
+                    gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
