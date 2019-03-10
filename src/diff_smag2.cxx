@@ -149,7 +149,7 @@ namespace
     void calc_evisc_neutral(TF* restrict evisc,
                             TF* restrict u, TF* restrict v, TF* restrict w,
                             TF* restrict ufluxbot, TF* restrict vfluxbot,
-                            const TF* restrict z, const TF* restrict dz, const TF z0m, const TF mvisc,
+                            const TF* restrict z, const TF* restrict dz, const TF z0m,
                             const TF dx, const TF dy, const TF cs,
                             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                             const int icells, const int jcells, const int ijcells,
@@ -171,7 +171,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = mlen * std::sqrt(evisc[ijk]) + mvisc;
+                        evisc[ijk] = mlen * std::sqrt(evisc[ijk]);
                     }
             }
 
@@ -203,7 +203,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = fac * std::sqrt(evisc[ijk]) + mvisc;
+                        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
                     }
             }
         }
@@ -218,7 +218,7 @@ namespace
                     TF* restrict ustar, TF* restrict obuk,
                     const TF* restrict z, const TF* restrict dz, const TF* restrict dzi,
                     const TF dx, const TF dy,
-                    const TF z0m, const TF mvisc, const TF cs, const TF tPr,
+                    const TF z0m, const TF cs, const TF tPr,
                     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                     const int icells, const int jcells, const int ijcells,
                     Boundary_cyclic<TF>& boundary_cyclic)
@@ -936,7 +936,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
+                    gd.z.data(), gd.dz.data(), boundary.z0m,
                     gd.dx, gd.dy, this->cs,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
@@ -948,7 +948,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), boundary.z0m, fields.visc,
+                    gd.z.data(), gd.dz.data(), boundary.z0m,
                     gd.dx, gd.dy, this->cs,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
@@ -972,7 +972,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     boundary.ustar.data(), boundary.obuk.data(),
                     gd.z.data(), gd.dz.data(), gd.dzi.data(),
                     gd.dx, gd.dy,
-                    boundary.z0m, fields.visc, this->cs, this->tPr,
+                    boundary.z0m, this->cs, this->tPr,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
@@ -984,7 +984,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     nullptr, nullptr,
                     gd.z.data(), gd.dz.data(), gd.dzi.data(),
                     gd.dx, gd.dy,
-                    boundary.z0m, fields.visc, this->cs, this->tPr,
+                    boundary.z0m, this->cs, this->tPr,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
