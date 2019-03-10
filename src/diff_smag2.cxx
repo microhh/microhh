@@ -149,8 +149,8 @@ namespace
     void calc_evisc_neutral(TF* restrict evisc,
                             TF* restrict u, TF* restrict v, TF* restrict w,
                             TF* restrict ufluxbot, TF* restrict vfluxbot,
-                            const TF* restrict z, const TF* restrict dz, const TF z0m,
-                            const TF dx, const TF dy, const TF cs,
+                            const TF* restrict z, const TF* restrict dz, const TF* restrict dzhi, const TF z0m,
+                            const TF dx, const TF dy, const TF cs, const TF visc,
                             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                             const int icells, const int jcells, const int ijcells,
                             Boundary_cyclic<TF>& boundary_cyclic)
@@ -159,19 +159,29 @@ namespace
         const int kk = ijcells;
 
         // Wall damping constant.
-        const TF n = TF(2.);
+        constexpr TF n_mason = TF(2.);
+        constexpr TF A_vandriest = 26.;
 
         if (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
             {
-                const TF mlen = fm::pow2(cs*std::pow(dx*dy*dz[k], TF(1./3.)));
+                const TF mlen0 = fm::pow2(
+                        std::min(cs*std::pow(dx*dy*dz[k], TF(1./3.)), Constants::kappa<TF>*z[k])
+                        );
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
+                        const int ijk_bot = i + j*jj + kstart*kk;
+                        const TF u_tau = std::sqrt(
+                                fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
+                              + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] )
+                            );
+                        const TF fac = 1. - std::exp( -(z[k]*u_tau) / (A_vandriest*visc) );
+
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = mlen * std::sqrt(evisc[ijk]);
+                        evisc[ijk] = fac * mlen0 * std::sqrt(evisc[ijk]);
                     }
             }
 
@@ -195,8 +205,8 @@ namespace
             {
                 // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], TF(1./3.));
-                const TF mlen  = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), TF(1.)/n);
-                const TF fac   = fm::pow2(mlen);
+                const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n_mason))), TF(1.)/n_mason);
+                const TF fac  = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -953,8 +963,8 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), boundary.z0m,
-                    gd.dx, gd.dy, this->cs,
+                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
+                    gd.dx, gd.dy, this->cs, fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
@@ -965,8 +975,8 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.sd["evisc"]->fld.data(),
                     fields.mp["u"]->fld.data(), fields.mp["v"]->fld.data(), fields.mp["w"]->fld.data(),
                     fields.mp["u"]->flux_bot.data(), fields.mp["v"]->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), boundary.z0m,
-                    gd.dx, gd.dy, this->cs,
+                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
+                    gd.dx, gd.dy, this->cs, fields.visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
