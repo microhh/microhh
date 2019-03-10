@@ -105,8 +105,8 @@ namespace
 }
 
 template<typename TF>
-Diff_2<TF>::Diff_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin)
+Diff_2<TF>::Diff_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin)
 {
     dnmax = inputin.get_item<double>("diff", "dnmax", "", 0.4);
 }
@@ -152,7 +152,7 @@ void Diff_2<TF>::create(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_2<TF>::exec(Boundary<TF>& boundary)
+void Diff_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 

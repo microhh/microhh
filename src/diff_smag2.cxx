@@ -642,7 +642,7 @@ namespace
             const int jj, const int kk)
     {
         #pragma omp parallel for
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -665,7 +665,7 @@ namespace
     {
         const int ii = 1;
         #pragma omp parallel for
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -686,7 +686,7 @@ namespace
             const int icells, const int ijcells)
     {
         #pragma omp parallel for
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
         {
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -718,8 +718,8 @@ namespace
 } // End namespace.
 
 template<typename TF>
-Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin),
+Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin),
     boundary_cyclic(master, grid),
     field3d_operators(master, grid, fields)
 {
@@ -802,7 +802,7 @@ void Diff_smag2<TF>::create(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
+void Diff_smag2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
@@ -889,7 +889,7 @@ void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1005,7 +1005,6 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
     auto& gd = grid.get_grid_data();
 
     // Calculate the boundary fluxes.
-    // CvH: Is this OK for wall-resolved LES?
     calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
     calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
 
