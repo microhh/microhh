@@ -160,32 +160,33 @@ namespace
 
         // Wall damping constant.
         constexpr TF n_mason = TF(2.);
-        constexpr TF A_vandriest = 26.;
+        constexpr TF A_vandriest = TF(26.);
 
         if (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
             {
-                const TF mlen0 = fm::pow2(
-                        std::min(cs*std::pow(dx*dy*dz[k], TF(1./3.)), Constants::kappa<TF>*std::min(z[k], zsize-z[k]) ) );
+                // const TF mlen_wall = Constants::kappa<TF>*std::min(z[k], zsize-z[k]);
+                const TF mlen_smag = cs*std::pow(dx*dy*dz[k], TF(1./3.));
+
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk_bot = i + j*jj + kstart*kk;
                         const int ijk_top = i + j*jj + kend*kk;
-                        const TF u_tau_bot = std::sqrt(
+                        const TF u_tau_bot = std::pow(
                                 fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
-                              + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ) );
-                        const TF u_tau_top = std::sqrt(
+                              + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ), TF(0.25) );
+                        const TF u_tau_top = std::pow(
                                 fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
-                              + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ) );
-                        const TF fac_bot = 1. - std::exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
-                        const TF fac_top = 1. - std::exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
+                              + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ), TF(0.25) );
+                        const TF fac_bot = TF(1.) - std::exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
+                        const TF fac_top = TF(1.) - std::exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
                         const TF fac = std::min( fac_bot, fac_top );
 
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = fac * mlen0 * std::sqrt(evisc[ijk]);
+                        evisc[ijk] = fm::pow2(fac * mlen_smag) * std::sqrt(evisc[ijk]);
                     }
             }
 
