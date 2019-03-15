@@ -265,7 +265,7 @@ namespace
 
     __global__ 
     void calc_N2_g(double* __restrict__ N2,    double* __restrict__ b,
-                   double* __restrict__ dzi, 
+                   const double n2, double* __restrict__ dzi, 
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -277,7 +277,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k];
+            N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + n2;
         }
     }
 
@@ -390,7 +390,8 @@ void Thermo_buoy::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name,
     const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
+    const double n2 = this->n2;
+    
     dim3 gridGPU (gridi, gridj, grid->kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
@@ -411,7 +412,7 @@ void Thermo_buoy::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name,
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
-            &fld->data_g[offs], &fields->sp["b"]->data_g[offs], grid->dzi_g, 
+            &fld->data_g[offs], &fields->sp["b"]->data_g[offs], n2, grid->dzi_g, 
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);

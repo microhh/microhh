@@ -156,6 +156,7 @@ void Thermo_buoy::calc_N2(double* restrict N2, double* restrict b, double* restr
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
+    const double n2 = this->n2;
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
@@ -163,7 +164,7 @@ void Thermo_buoy::calc_N2(double* restrict N2, double* restrict b, double* restr
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k];
+                N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + n2;
             }
 }
 
