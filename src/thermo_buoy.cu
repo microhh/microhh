@@ -265,7 +265,7 @@ namespace
 
     __global__ 
     void calc_N2_g(double* __restrict__ N2,    double* __restrict__ b,
-                   const double n2, double* __restrict__ dzi, 
+                   const double bg_n2, double* __restrict__ dzi, 
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -277,7 +277,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + n2;
+            N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + bg_n2;
         }
     }
 

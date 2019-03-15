@@ -100,7 +100,7 @@ unsigned long Thermo_buoy::get_time_limit(unsigned long idt, const double dt)
 
 #ifndef USECUDA
 void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name, bool cyclic)
-{    
+{   
     if (name == "b")
         calc_buoyancy(field->data, fields->sp["b"]->data);
     else if (name == "N2")
@@ -156,15 +156,15 @@ void Thermo_buoy::calc_N2(double* restrict N2, double* restrict b, double* restr
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
-    const double n2 = this->n2;
-
+    const double bg_n2 = this->n2;
+    
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + n2;
+                N2[ijk] = 0.5*(b[ijk+kk] - b[ijk-kk])*dzi[k] + bg_n2;
             }
 }
 
