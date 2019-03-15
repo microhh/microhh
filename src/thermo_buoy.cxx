@@ -45,7 +45,7 @@ namespace
     }
     
     template<typename TF>
-    void calc_N2(TF* const restrict N2, const TF* const restrict b, const TF* const bg_n2, const TF* const restrict dzi,
+    void calc_N2(TF* const restrict N2, const TF* const restrict b, const TF const bg_n2, const TF* const restrict dzi,
                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                  const int icells, const int ijcells, const int kcells)
     {
