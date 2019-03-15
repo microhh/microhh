@@ -73,7 +73,7 @@ namespace
     
     template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2,    TF* __restrict__ b,
-                   TF* __restrict__ dzi,
+                   const TF bg_n2, TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -85,7 +85,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = static_cast<TF>(0.5)*(b[ijk+kk] - b[ijk-kk])*dzi[k];
+            N2[ijk] = static_cast<TF>(0.5)*(b[ijk+kk] - b[ijk-kk])*dzi[k] + bg_n2;
         }
     }
 
@@ -399,7 +399,7 @@ void Thermo_buoy<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, boo
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU, blockGPU>>>(
-            fld.fld_g, fields.sp.at("b")->fld_g, gd.dzi_g,
+            fld.fld_g, fields.sp.at("b")->fld_g, bs.n2, gd.dzi_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);

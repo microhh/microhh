@@ -49,13 +49,14 @@ namespace
                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                  const int icells, const int ijcells, const int kcells)
     {
+        const TF bg_n2 = bs.n2;
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*icells + k*ijcells;
-                    N2[ijk] = TF(0.5)*(b[ijk+ijcells] - b[ijk-ijcells])*dzi[k];
+                    N2[ijk] = TF(0.5)*(b[ijk+ijcells] - b[ijk-ijcells])*dzi[k] + bg_n2;
                 }
     }
 
