@@ -318,8 +318,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
             for(auto& it : tdepvars)
-                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
+                tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
         }
+
         fields.set_calc_mean_profs(true);
     }
     else
@@ -482,6 +483,7 @@ void Force<TF>::exec(double dt)
                 const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
                 rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
             }
+
             calc_nudging_tendency<TF>(
                     fields.at.at(it)->fld.data(), fields.ap.at(it)->fld_mean.data(),
                     nudgeprofs.at(it).data(), nudge_factor.data(),
