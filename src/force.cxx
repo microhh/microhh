@@ -458,7 +458,7 @@ void Force<TF>::exec(double dt)
     {
         for (auto& it : lslist)
             calc_large_scale_source<TF>(
-                    fields.st.at(it)->fld.data(), lsprofs.at(it).data(),
+                    fields.at.at(it)->fld.data(), lsprofs.at(it).data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
@@ -483,7 +483,7 @@ void Force<TF>::exec(double dt)
                 rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
             }
             calc_nudging_tendency<TF>(
-                    fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
+                    fields.at.at(it)->fld.data(), fields.ap.at(it)->fld_mean.data(),
                     nudgeprofs.at(it).data(), nudge_factor.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
