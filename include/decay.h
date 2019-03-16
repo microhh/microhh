@@ -69,7 +69,7 @@ class Decay
         Decay_map dmap;
 
         std::vector<std::string> available_masks = {"couvreux"};   // Vector with the masks that fields can provide
-
+        TF nstd_couvreux;
 
 };
 #endif

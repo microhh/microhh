@@ -128,8 +128,8 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         // Check whether the lowest of the two levels is contained in the buffer layer.
         if (bufferkstarth == gd.kend)
         {
-            master.print_error("buffer is too close to the model top\n");
-            throw std::runtime_error("Buffer is too close to the model top\n");
+            std::string msg = "Buffer is too close to the model top";
+            throw std::runtime_error(msg);
         }
 
         // Allocate the buffer for w on 0.

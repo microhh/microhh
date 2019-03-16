@@ -65,6 +65,7 @@ class Force
         std::map<std::string, std::vector<TF>> lsprofs; ///< Map of profiles with forcings stored by its name.
 
         std::vector<std::string> nudgelist;        ///< List of variables that are nudged to a provided profile
+        std::vector<std::string> scalednudgelist;        ///< List of variables that are nudged to a provided profile
         std::map<std::string, std::vector<TF>> nudgeprofs; ///< Map of nudge profiles stored by its name.
 
         // GPU functions and variables

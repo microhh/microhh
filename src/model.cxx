@@ -64,8 +64,7 @@ namespace
         // Process the command line options.
         if (argc <= 1)
         {
-            master.print_error("Specify init, run or post mode\n");
-            throw std::runtime_error("No run mode specified");
+            throw std::runtime_error("Specify init, run or post mode\n No run mode specified");
         }
         else
         {
@@ -73,8 +72,8 @@ namespace
             std::string sim_mode_str = argv[1];
             if (sim_mode_str != "init" && sim_mode_str != "run" && sim_mode_str != "post")
             {
-                master.print_error("Specify init, run or post mode\n");
-                throw std::runtime_error("Illegal run mode specified");
+                throw std::runtime_error("Specify init, run or post mode\n Illegal run mode specified");
+
             }
             else
             {
@@ -116,8 +115,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         fft       = std::make_shared<FFT<TF>>(master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
+
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
-        diff      = Diff<TF>     ::factory(master, *grid, *fields, *input);
+        diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
         pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
@@ -279,7 +279,7 @@ void Model<TF>::exec()
     fields->exec();
 
     // Get the viscosity to be used in diffusion.
-    diff->exec_viscosity(*boundary, *thermo);
+    diff->exec_viscosity(*thermo);
 
     // Set the time step.
     set_time_step();
@@ -316,7 +316,7 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Calculate the diffusion tendency.
-                diff->exec(*boundary);
+                diff->exec();
 
                 // Calculate the thermodynamics and the buoyancy tendency.
                 thermo->exec(timeloop->get_sub_time_step());
@@ -426,7 +426,7 @@ void Model<TF>::exec()
                 fields->exec();
 
                 // Get the viscosity to be used in diffusion.
-                diff->exec_viscosity(*boundary, *thermo);
+                diff->exec_viscosity(*thermo);
 
                 // Write status information to disk.
                 print_status();

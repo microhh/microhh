@@ -74,8 +74,8 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(
         return std::make_shared<Pres_4<TF>>(masterin, gridin, fieldsin, fftin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swpres\n", swpres.c_str());
-        throw 1;
+        std::string msg = swpres + " is an illegal value for swpres";
+        throw std::runtime_error(msg);
     }
 }
 

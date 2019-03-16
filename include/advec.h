@@ -49,6 +49,8 @@ class Advec
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
 
+        virtual void get_advec_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
+
     protected:
         Master& master; ///< Pointer to master class.
         Grid<TF>& grid; ///< Pointer to grid class.

@@ -456,16 +456,14 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    int nerror = 0;
-
     z0m = inputin.get_item<TF>("boundary", "z0m", "");
     z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
     {
-        master.print_error("Neumann bc is not supported in surface model\n");
-        ++nerror;
+        std::string msg = "Neumann bc is not supported in surface model";
+        throw std::runtime_error(msg);
     }
     // read the ustar value only if fixed fluxes are prescribed
     else if (mbcbot == Boundary_type::Ustar_type)
@@ -477,15 +475,15 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
         // crash in case fixed gradient is prescribed
         if (it.second.bcbot == Boundary_type::Neumann_type)
         {
-            master.print_error("fixed gradient bc is not supported in surface model\n");
-            ++nerror;
+            std::string msg = "Fixed Gradient bc is not supported in surface model";
+            throw std::runtime_error(msg);
         }
 
         // crash in case of fixed momentum flux and dirichlet bc for scalar
         if (it.second.bcbot == Boundary_type::Dirichlet_type && mbcbot == Boundary_type::Ustar_type)
         {
-            master.print_error("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
-            ++nerror;
+            std::string msg = "Fixed Ustar bc in combination with Dirichlet bc for scalars is not supported";
+            throw std::runtime_error(msg);
         }
     }
 
@@ -506,14 +504,13 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     {
         if (sbc[*it].bcbot != thermobc)
         {
-            ++nerror;
-            master.print_error("all thermo variables need to have the same bc type\n");
+
+            std::string msg = "All thermo variables need to have the same bc type";
+            throw std::runtime_error(msg);
         }
         ++it;
     }
 
-    if (nerror)
-        throw 1;
 
     /*
     // Cross sections

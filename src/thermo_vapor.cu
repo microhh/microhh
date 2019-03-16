@@ -318,8 +318,8 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+            std::string msg = "get_thermo_field \"" + name + "\" not supported";
+            throw std::runtime_error(msg);
     }
 
     if (cyclic)
@@ -414,7 +414,7 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
     get_thermo_field_g(*output, "b", false);
     column.calc_column("b", output->fld_g, no_offset);
 
-    fields.release_tmp(output);
+    fields.release_tmp_g(output);
 }
 #endif
 template class Thermo_vapor<double>;

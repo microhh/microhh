@@ -179,8 +179,8 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
     // crash in case fixed gradient is prescribed
     if (mbcbot != Boundary_type::Dirichlet_type)
     {
-        master.print_error("Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"\n");
-        throw 1;
+        std::string msg = "Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"";
+        throw std::runtime_error(msg);
     }
 
     bulk_cm = inputin.get_item<TF>("boundary", "bulk_cm", "");
@@ -190,8 +190,8 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
     {
         if (it.second.bcbot != Boundary_type::Dirichlet_type)
         {
-            master.print_error("Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"\n");
-            throw 1;
+            std::string msg = "Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"";
+            throw std::runtime_error(msg);
         }
         bulk_cs[it.first] = inputin.get_item<TF>("boundary", "bulk_cs", it.first);
     }

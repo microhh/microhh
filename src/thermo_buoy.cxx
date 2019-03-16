@@ -43,6 +43,21 @@ namespace
         for (int n=0; n<ncells; ++n)
             b[n] = bin[n];
     }
+    
+    template<typename TF>
+    void calc_N2(TF* const restrict N2, const TF* const restrict b, const TF bg_n2, const TF* const restrict dzi,
+                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                 const int icells, const int ijcells, const int kcells)
+    {
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    N2[ijk] = TF(0.5)*(b[ijk+ijcells] - b[ijk-ijcells])*dzi[k] + bg_n2;
+                }
+    }
 
     template<typename TF>
     void calc_buoyancy_bot(
@@ -330,7 +345,14 @@ template<typename TF>
 void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
-    calc_buoyancy(b.fld.data(), fields.sp.at("b")->fld.data(), gd.ncells);
+    
+    if (name == "b")
+        calc_buoyancy(b.fld.data(), fields.sp.at("b")->fld.data(),gd.ncells);
+    else if (name == "N2")
+        calc_N2(b.fld.data(), fields.sp.at("b")->fld.data(), bs.n2, gd.dzi.data(),gd.istart, gd.iend, 
+                gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells, gd.kcells);
+    else
+        throw 1;
 
     // Note: calc_buoyancy already handles the lateral ghost cells
 }

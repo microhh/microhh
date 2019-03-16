@@ -4,9 +4,10 @@ import netCDF4
 
 from pylab import *
 
-start = 0
-end   = 60
+start = 11
+end   = 13
 plotens = False
+visc = 1e-5
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -53,8 +54,9 @@ uw_viscMoser  = Moseruw[:,7]
 uw_dissMoser  = Moseruw[:,2]
 uw_rdstrMoser = Moseruw[:,4]
 
-stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
-t  = stats.variables["t"] [start:end]
+#stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
+stats = netCDF4.Dataset("oink.nc","r")
+t  = stats.variables["time"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]
 uavgt = stats.variables["u"] [start:end,:]
@@ -67,6 +69,7 @@ uwt    = stats.variables["uw"]   [start:end,:]
 udifft = stats.variables["udiff"][start:end,:]
 ufluxt = stats.variables["uflux"][start:end,:]
 
+"""
 # variance budgets
 u2_sheart = stats.variables["u2_shear"][start:end,:]
 u2_turbt  = stats.variables["u2_turb"] [start:end,:]
@@ -99,9 +102,9 @@ uw_turbt  = stats.variables["uw_turb"] [start:end,:]
 uw_disst  = stats.variables["uw_diss"] [start:end,:]
 uw_prest  = stats.variables["uw_pres"] [start:end,:]
 uw_rdstrt = stats.variables["uw_rdstr"][start:end,:]
+"""
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
-visc   = 1.0e-5
 #ustart = (visc * utotavgt[:,0] / z[0])**0.5
 ustart = (ufluxt[:,0]**2.)**.25
 
@@ -115,6 +118,7 @@ uw    = numpy.mean(uwt,0)
 udiff = numpy.mean(udifft,0)
 uflux = numpy.mean(ufluxt,0)
 
+"""
 u2_shear = numpy.mean(u2_sheart,0)
 u2_turb  = numpy.mean(u2_turbt ,0)
 u2_visc  = numpy.mean(u2_visct ,0)
@@ -149,6 +153,7 @@ uw_diss  = numpy.mean(uw_disst ,0)
 uw_pres  = numpy.mean(uw_prest ,0)
 uw_rdstr = numpy.mean(uw_rdstrt,0)
 uw_resid = uw_shear + uw_turb + uw_visc + uw_diss + uw_pres + uw_rdstr
+"""
 
 utotavg = numpy.mean(utotavgt,0)
 ustar   = numpy.mean(ustart)
@@ -165,14 +170,14 @@ yplus  = z  * ustar / visc
 yplush = zh * ustar / visc
 
 starty = 0
-endy   = z.size / 2
+endy   = z.size // 2
 
 close('all')
 figure()
 if(plotens):
  for n in range(end-start):
    semilogx(yplus[starty:endy], utotavgt[n,starty:endy] / ustar, color='#cccccc')
-semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-', label='u')
+semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'bo-', label='u')
 semilogx(yplusMoser, uavgMoser, 'k--', label="Moser")
 semilogx(ypluslin, ulin, 'k:')
 semilogx(ypluslog, ulog, 'k:')
@@ -180,7 +185,7 @@ xlabel('y+')
 ylabel('u+')
 legend(loc=2, frameon=False)
 grid()
-axis([0.1, 200, 0, 20])
+axis([0.1, 800, 0, 25])
 
 figure()
 if(plotens):
@@ -198,8 +203,9 @@ xlabel('y+')
 ylabel('rms')
 legend(loc=0, frameon=False)
 grid()
-axis([0, 200, 0, 3.5])
+axis([0, 120, 0, 4.0])
 
+"""
 figure()
 if(plotens):
   for n in range(end-start):
@@ -324,6 +330,7 @@ ylabel('Rxz')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 200, -0.1, 0.1])
+"""
 
 figure()
 if(plotens):

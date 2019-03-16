@@ -93,8 +93,6 @@ class Master
         void print_warning(const std::ostringstream&);
         void print_warning(const std::string&);
 
-        void print_error  (const char *format, ...);
-
         int get_mpiid() const { return md.mpiid; }
         const MPI_data& get_MPI_data() const { return md; }
 

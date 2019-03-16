@@ -282,8 +282,8 @@ boundary_cyclic(masterin, gridin)
 
     if (grid.get_spatial_order() == Grid_order::Fourth && bs.swbasestate == Basestate_type::anelastic)
     {
-        master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
-        throw std::runtime_error("Illegal options swbasestate");
+        std::string msg ="Anelastic mode is not supported for swspatialorder=4";
+        throw std::runtime_error(msg);
     }
 
     swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
@@ -662,8 +662,8 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             get_thermo_field(*output, "T", false, true);
         else
         {
-            master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
+            std::string msg = "Thermo dump of field \"" + it + "\" not supported";
+            throw std::runtime_error(msg);
         }
         dump.save_dump(output->fld.data(), it, iotime);
     }

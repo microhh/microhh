@@ -77,22 +77,6 @@ void Master::print_warning(const std::string& s)
         std::cout << "WARNING: " << s << std::endl;
 }
 
-void Master::print_error(const char *format, ...)
-{
-    std::string errorstr("ERROR: ");
-    errorstr += std::string(format);
-
-    const char *errorformat = errorstr.c_str();
-
-    if (md.mpiid == 0)
-    {
-        va_list args;
-        va_start(args, format);
-        std::vfprintf(stdout, errorformat, args);
-        va_end(args);
-    }
-}
-
 bool Master::at_wall_clock_limit()
 {
     const double wall_clock_time_left = wall_clock_end - get_wall_clock_time();
