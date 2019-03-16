@@ -434,7 +434,9 @@ void Force<TF>::exec(double dt)
         const TF u_mean  = field3d_operators.calc_mean(fields.ap.at("u")->fld.data());
         const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
 
-        enforce_fixed_flux<TF>(fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        enforce_fixed_flux<TF>(
+                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
 
     else if (swlspres == Large_scale_pressure_type::geo_wind)
@@ -499,13 +501,13 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : tdep_ls)
-            it.second->update_time_dependent_prof(lsprofs[it.first],timeloop);
+            it.second->update_time_dependent_prof(lsprofs.at(it.first),timeloop);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : tdep_nudge)
-            it.second->update_time_dependent_prof(nudgeprofs[it.first],timeloop);
+            it.second->update_time_dependent_prof(nudgeprofs.at(it.first),timeloop);
     }
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
