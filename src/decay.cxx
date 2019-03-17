@@ -79,6 +79,9 @@ void Decay<TF>::init(Input& inputin)
         }
         else
             throw std::runtime_error("Invalid option for \"decay type\"");
+
+        nstd_couvreux = inputin.get_item<TF>("decay", "nstd_couvreux", "", 1.);
+
     }
 
 }
@@ -161,7 +164,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                 for (int i=gd.istart; i<gd.iend; ++i)
                 {
                     const int ijk = i + j*gd.icells + k*gd.ijcells;
-                    couvreux->fld[ijk] = fields.sp.at("couvreux")->fld[ijk] - mean - std;
+                    couvreux->fld[ijk] = fields.sp.at("couvreux")->fld[ijk] - mean - nstd_couvreux * std;
                 }
             }
         }

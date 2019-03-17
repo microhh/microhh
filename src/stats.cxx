@@ -522,17 +522,16 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             }
             catch (NcException& e)
             {
-                master.print_error("NetCDF exception: %s\n",e.what());
+                master.print_message("NetCDF exception: %s\n",e.what());
                 ++nerror;
             }
         }
 
         // Crash on all processes in case the file could not be written.
-        master.broadcast(&nerror, 1);
+        master.sum(&nerror, 1);
 
-        // CvH: Do not throw 1, but the appropriate exception.
         if (nerror)
-            throw 1;
+            throw std::runtime_error("In stats");
 
         // Create dimensions.
         if (master.get_mpiid() == 0)

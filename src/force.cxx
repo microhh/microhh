@@ -22,6 +22,8 @@
 
 #include <cstdio>
 #include <math.h>
+#include <algorithm>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -174,6 +176,34 @@ namespace
     }
 
     template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
+
+    template<typename TF>
+    void rescale_nudgeprof(TF* const restrict fldmean, const int kinv, const int kstart, const int kend)
+    {
+        for (int k=kstart+1; k<kinv; ++k)
+            fldmean[k] = fldmean[kstart];
+
+        for (int k=kinv+1; k<kend-2; ++k)
+            fldmean[k] = fldmean[kend-1];
+    }
+
+    template<typename TF>
     void advec_wls_2nd(
             TF* const restrict st, const TF* const restrict s,
             const TF* const restrict wls, const TF* const dzhi,
@@ -205,6 +235,13 @@ namespace
                     }
             }
         }
+    }
+
+    template<typename TF>
+    void add_offset(TF* const restrict prof, const TF offset, const int kstart, const int kend)
+    {
+        for (int k=kstart; k<kend; ++k)
+            prof[k] += offset;
     }
 }
 
@@ -281,13 +318,14 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swnudge_in == "1")
     {
         swnudge = Nudging_type::enabled;
-        nudgelist = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+        nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
+        scalednudgelist = inputin.get_list<std::string>("force", "scalednudgelist", "", std::vector<std::string>());
 
         if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
             for(auto& it : tdepvars)
-                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
+                tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
         }
         fields.set_calc_mean_profs(true);
     }
@@ -323,8 +361,10 @@ void Force<TF>::init()
 
     if (swnudge == Nudging_type::enabled)
     {
-        for (auto& it : nudgeprofs)
-            it.second.resize(gd.kcells);
+        nudge_factor.resize(gd.kcells);
+        for (auto& it : nudgelist)
+            nudgeprofs[it] = std::vector<TF>(gd.kcells);
+
     }
 }
 
@@ -337,8 +377,9 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         profs.get_vector(ug, "ug", gd.kmax, 0, gd.kstart);
         profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
 
+        const TF offset = 0;
         for (auto& it : tdep_geo)
-            it.second->create_timedep_prof();
+            it.second->create_timedep_prof(offset);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -347,44 +388,68 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
         for (auto & it : lslist)
             if (!fields.ap.count(it))
             {
-                throw std::runtime_error("field %s in [force][lslist] is illegal\n");
+                std::string msg = "field " + it + " in [force][lslist] is illegal";
+                throw std::runtime_error(msg);
             }
 
-        // read the large scale sources, which are the variable names with a "ls" suffix
+        // Read the large scale sources, which are the variable names with a "ls" suffix
         for (auto & it : lslist)
-            profs.get_vector(lsprofs[it],it+"ls", gd.kmax, 0, gd.kstart);
+            profs.get_vector(lsprofs[it], it+"ls", gd.kmax, 0, gd.kstart);
 
         // Process the time dependent data
+        const TF offset = 0;
         for (auto& it : tdep_ls)
-            it.second->create_timedep_prof();
+            it.second->create_timedep_prof(offset);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         // Get profile with nudging factor as function of height
-        profs.get_vector(nudge_factor,"nudgefac", gd.kmax, 0, gd.kstart);
+        profs.get_vector(nudge_factor, "nudgefac", gd.kmax, 0, gd.kstart);
 
         // check whether the fields in the list exist in the prognostic fields
         for (auto & it : nudgelist)
             if (!fields.ap.count(it))
             {
-                throw std::runtime_error("field %s in [force][nudgelist] is illegal\n");
+                std::string msg = "field " + it + " in [force][nudgelist] is illegal";
+                throw std::runtime_error(msg);
             }
 
-        // read the large scale sources, which are the variable names with a "nudge" suffix
+        // Read the nudging profiles, which are the variable names with a "nudge" suffix
         for (auto & it : nudgelist)
-            profs.get_vector(nudgeprofs[it],it+"nudge", gd.kmax, 0, gd.kstart);
+        {
+            profs.get_vector(nudgeprofs[it], it+"nudge", gd.kmax, 0, gd.kstart);
+
+            // Account for the Galilean transformation
+            if (it == "u")
+                add_offset(nudgeprofs[it].data(), -grid.utrans, gd.kstart, gd.kend);
+            else if (it == "v")
+                add_offset(nudgeprofs[it].data(), -grid.vtrans, gd.kstart, gd.kend);
+        }
 
         // Process the time dependent data
         for (auto& it : tdep_nudge)
-            it.second->create_timedep_prof();
+        {
+            // Account for the Galilean transformation
+            TF offset;
+            if (it.first == "u")
+                offset = -grid.utrans;
+            else if (it.first == "v")
+                offset = -grid.vtrans;
+            else
+                offset = 0;
+
+            it.second->create_timedep_prof(offset);
+        }
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
-        tdep_wls->create_timedep_prof();
+
+        const TF offset = 0;
+        tdep_wls->create_timedep_prof(offset);
     }
 }
 
@@ -423,7 +488,7 @@ void Force<TF>::exec(double dt)
     {
         for (auto& it : lslist)
             calc_large_scale_source<TF>(
-                    fields.st.at(it)->fld.data(), lsprofs.at(it).data(),
+                    fields.at.at(it)->fld.data(), lsprofs.at(it).data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
@@ -440,11 +505,20 @@ void Force<TF>::exec(double dt)
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : nudgelist)
+        {
+            auto it1 = std::find(scalednudgelist.begin(), scalednudgelist.end(), it);
+            if (it1 != scalednudgelist.end())
+            {
+                const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+                rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
+            }
+
             calc_nudging_tendency<TF>(
-                    fields.st.at(it)->fld.data(), fields.sp.at(it)->fld_mean.data(),
+                    fields.at.at(it)->fld.data(), fields.ap.at(it)->fld_mean.data(),
                     nudgeprofs.at(it).data(), nudge_factor.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+        }
     }
 }
 #endif

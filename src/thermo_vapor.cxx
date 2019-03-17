@@ -810,8 +810,8 @@ void Thermo_vapor<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             get_thermo_field(*output, "T", false, true);
         else
         {
-            master.print_error("Thermo dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
+            std::string msg = "Thermo dump of field \"" + it + "\" not supported";
+            throw std::runtime_error(msg);
         }
         dump.save_dump(output->fld.data(), it, iotime);
     }

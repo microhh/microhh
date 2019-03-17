@@ -68,8 +68,8 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(Master& masterin, Grid<TF>& grid
         return std::make_shared<Thermo_buoy<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
-        throw std::runtime_error("Illegal options swthermo");
+        std::string msg = swthermo + " is an illegal value for swthermo";
+        throw std::runtime_error(msg);
     }
 }
 

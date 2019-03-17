@@ -63,8 +63,7 @@ namespace
         // Process the command line options.
         if (argc <= 1)
         {
-            master.print_error("Specify init, run or post mode\n");
-            throw std::runtime_error("No run mode specified");
+            throw std::runtime_error("Specify init, run or post mode\n No run mode specified");
         }
         else
         {
@@ -72,8 +71,8 @@ namespace
             std::string sim_mode_str = argv[1];
             if (sim_mode_str != "init" && sim_mode_str != "run" && sim_mode_str != "post")
             {
-                master.print_error("Specify init, run or post mode\n");
-                throw std::runtime_error("Illegal run mode specified");
+                throw std::runtime_error("Specify init, run or post mode\n Illegal run mode specified");
+
             }
             else
             {

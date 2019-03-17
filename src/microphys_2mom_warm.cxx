@@ -91,7 +91,7 @@ namespace mp3d
     void autoconversion(TF* const restrict qrt, TF* const restrict nrt,
                         TF* const restrict qtt, TF* const restrict thlt,
                         const TF* const restrict qr,  const TF* const restrict ql,
-                        const TF* const restrict rho, const TF* const restrict exner,
+                        const TF* const restrict rho, const TF* const restrict exner, const TF nc,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend,
                         const int jj, const int kk)
@@ -109,7 +109,7 @@ namespace mp3d
                     const int ijk = i + j*jj + k*kk;
                     if(ql[ijk] > ql_min<TF>)
                     {
-                        const TF xc      = rho[k] * ql[ijk] / Nc0<TF>;    // Mean mass of cloud drops [kg]
+                        const TF xc      = rho[k] * ql[ijk] / nc;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                         const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
                         //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
@@ -541,6 +541,7 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "", 70e6);
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
@@ -669,7 +670,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets
     mp3d::autoconversion(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
+                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
                          gd.istart, gd.jstart, gd.kstart,
                          gd.iend,   gd.jend,   gd.kend,
                          gd.icells, gd.ijcells);
@@ -800,7 +801,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         zero_field(qtt->fld.data(),  gd.ncells);
 
         mp3d::autoconversion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
-                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(),
+                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
                              gd.istart, gd.jstart, gd.kstart,
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);

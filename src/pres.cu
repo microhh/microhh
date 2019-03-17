@@ -59,19 +59,19 @@ namespace
                 printf("cuFFT plan error: INVALID SIZE\n");
             else if (err == CUFFT_UNALIGNED_DATA)
                 printf("cuFFT plan error: UNALIGNED DATA\n");
-            else 
+            else
                 printf("cuFFT plan error: OTHER\n");
 
-            return 1; 
+            return 1;
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void transpose_g(TF* fieldOut, const TF* fieldIn, const int itot, const int jtot, const int ktot)
     {
         __shared__ TF tile[TILE_DIM][TILE_DIM+1];
 
-        // Index in fieldIn 
+        // Index in fieldIn
         int i = blockIdx.x * TILE_DIM + threadIdx.x;
         int j = blockIdx.y * TILE_DIM + threadIdx.y;
         int k = blockIdx.z;
@@ -88,12 +88,12 @@ namespace
         j = blockIdx.x * TILE_DIM + threadIdx.y;
         ijk = i + j*jtot + k*itot*jtot;
 
-        // Write transposed field back from shared to global memory 
-        if (i < jtot && j < itot) 
+        // Write transposed field back from shared to global memory
+        if (i < jtot && j < itot)
             fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
     }
 
-    template<typename TF, typename cTF> __global__ 
+    template<typename TF, typename cTF> __global__
     void complex_TF_x_g(cTF* __restrict__ cdata, TF* __restrict__ ddata,
                         const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
     {
@@ -123,8 +123,8 @@ namespace
         }
     }
 
-    template<typename TF, typename cTF> __global__ 
-    void complex_TF_y_g(cTF* __restrict__ cdata, TF* __restrict__ ddata, 
+    template<typename TF, typename cTF> __global__
+    void complex_TF_y_g(cTF* __restrict__ cdata, TF* __restrict__ ddata,
                         const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -153,7 +153,7 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     __global__ void normalize_g(TF* const __restrict__ data, const int itot, const int jtot, const int ktot, const TF in)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -169,35 +169,35 @@ namespace
     template<typename TF> cufftType cufft_to_complex();
     template<> cufftType cufft_to_complex<double>() { return CUFFT_D2Z; }
     template<> cufftType cufft_to_complex<float>()  { return CUFFT_R2C; }
-    
+
     template<typename TF> cufftType cufft_from_complex();
     template<> cufftType cufft_from_complex<double>() { return CUFFT_Z2D; }
     template<> cufftType cufft_from_complex<float>()  { return CUFFT_C2R; }
 
     // Wrapper for the forward FFTs
     template<typename TF> void cufft_forward_wrapper(cufftHandle, TF*, TF*);
-    template<> void cufft_forward_wrapper<double>(cufftHandle plan, double* p, double* tmp) 
-    { 
+    template<> void cufft_forward_wrapper<double>(cufftHandle plan, double* p, double* tmp)
+    {
         if( check_cufft(cufftExecD2Z(plan, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp)) )
-            throw 1;
+            throw std::runtime_error("FFT error");
     }
-    template<> void cufft_forward_wrapper<float>(cufftHandle plan, float* p, float* tmp) 
-    { 
+    template<> void cufft_forward_wrapper<float>(cufftHandle plan, float* p, float* tmp)
+    {
         if(  check_cufft(cufftExecR2C(plan, (cufftReal*)p, (cufftComplex*)tmp)) )
-            throw 1;
+            throw std::runtime_error("FFT error");
     }
 
     // Wrapper for the backward FFTs
     template<typename TF> void cufft_backward_wrapper(cufftHandle, TF*, TF*);
-    template<> void cufft_backward_wrapper<double>(cufftHandle plan, double* tmp, double* p) 
-    { 
+    template<> void cufft_backward_wrapper<double>(cufftHandle plan, double* tmp, double* p)
+    {
         if( check_cufft(cufftExecZ2D(plan, (cufftDoubleComplex*)tmp, (cufftDoubleReal*)p)) )
-            throw 1;
+            throw std::runtime_error("FFT error");
     }
-    template<> void cufft_backward_wrapper<float>(cufftHandle plan, float* tmp, float* p) 
-    { 
+    template<> void cufft_backward_wrapper<float>(cufftHandle plan, float* tmp, float* p)
+    {
         if( check_cufft(cufftExecC2R(plan, (cufftComplex*)tmp, (cufftReal*)p)) )
-            throw 1;
+            throw std::runtime_error("FFT error");
     }
 }
 
@@ -245,24 +245,24 @@ void Pres<TF>::make_cufft_plan()
     if (free_mem < total_work_size) // Put margin here?
     {
         FFT_per_slice = true;
-        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot));
         nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot));
-        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot));
         nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,     i_nj, i_jstride, i_jdist,     cufft_from_complex<TF>(), gd.itot));
         master.print_message("cuFFT strategy: batched per 2D slice\n");
     }
     else
     {
         FFT_per_slice = false;
-        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot)); 
-        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot)); 
-        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot)); 
-        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot));
+        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot));
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot));
+        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot));
         master.print_message("cuFFT strategy: batched over entire 3D field\n");
     }
 
     if (nerror > 0)
-        throw 1;
+        throw std::runtime_error("FFT error");
 }
 
 template<typename TF>
@@ -279,7 +279,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
     dim3 gridGPU (gridi,  gridj,  gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    // Square grid for transposes 
+    // Square grid for transposes
     const int gridiT = gd.imax/TILE_DIM + (gd.imax%TILE_DIM > 0);
     const int gridjT = gd.jmax/TILE_DIM + (gd.jmax%TILE_DIM > 0);
     dim3 gridGPUTf(gridiT, gridjT, gd.ktot);
@@ -347,7 +347,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
-            transpose_g<TF><<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot); 
+            transpose_g<TF><<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot);
             cuda_check_error();
 
             cufft_forward_wrapper<TF>(jplanf, tmp2, tmp1);
@@ -359,7 +359,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
                 complex_TF_x_g<TF, cufftComplex      ><<<gridGPUji,blockGPU>>>((cufftComplex*)tmp1,       p, gd.jtot, gd.itot, kk, kkj,  true);
             cuda_check_error();
 
-            transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
+            transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot);
 
             cuda_safe_call(cudaMemcpy(p, tmp1, gd.itot*gd.jtot*gd.ktot*sizeof(TF), cudaMemcpyDeviceToDevice));
             cuda_check_error();
@@ -381,11 +381,11 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
     dim3 gridGPU (gridi,  gridj,  gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    // Square grid for transposes 
+    // Square grid for transposes
     const int gridiT = gd.imax/TILE_DIM + (gd.imax%TILE_DIM > 0);
     const int gridjT = gd.jmax/TILE_DIM + (gd.jmax%TILE_DIM > 0);
-    dim3 gridGPUTf(gridiT, gridjT, gd.ktot); 
-    dim3 gridGPUTb(gridjT, gridiT, gd.ktot); 
+    dim3 gridGPUTf(gridiT, gridjT, gd.ktot);
+    dim3 gridGPUTb(gridjT, gridiT, gd.ktot);
     dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
 
     // Transposed grid
@@ -423,7 +423,7 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
-            transpose_g<TF><<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot); 
+            transpose_g<TF><<<gridGPUTf, blockGPUT>>>(tmp2, p, gd.itot, gd.jtot, gd.ktot);
             cuda_check_error();
 
             if (TF_is_double)
@@ -436,8 +436,8 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
             cudaThreadSynchronize();
             cuda_check_error();
 
-            transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot); 
-            
+            transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot);
+
             cuda_safe_call(cudaMemcpy(p, tmp1, gd.itot*gd.jtot*gd.ktot*sizeof(TF), cudaMemcpyDeviceToDevice));
             cuda_check_error();
         }
