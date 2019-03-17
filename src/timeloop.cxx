@@ -484,12 +484,12 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
     // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
     if (ifac.index1 == 0)
     {
-        std::string msg = " Interpolation time is out of range; t0 = " + std::to_string(timevec[0]) + "; current time is %g" + std::to_string(time);
+        std::string msg = " Interpolation time is out of range; t0 = " + std::to_string(timevec[0]) + "; current time is " + std::to_string(time);
         throw std::runtime_error(msg);
     }
     else if (ifac.index1 == timevec.size())
     {
-        std::string msg = " Interpolation time is out of range; t1 = " + std::to_string(timevec[timevec.size()-1]) + "; current time is %g" + std::to_string(time);
+        std::string msg = " Interpolation time is out of range; t1 = " + std::to_string(timevec[timevec.size()-1]) + "; current time is " + std::to_string(time);
         throw std::runtime_error(msg);
     }
     else
