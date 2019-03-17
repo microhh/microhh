@@ -21,10 +21,35 @@
  */
 
 #include <algorithm>
+#include <iostream>
 
 #include "data_block.h"
 #include "netcdf_interface.h"
 #include "timedep.h"
+
+namespace
+{
+    template<typename TF> TF to_numeric(const std::string& str);
+    template<> float  to_numeric(const std::string& str) { return std::stof(str); };
+    template<> double to_numeric(const std::string& str) { return std::stod(str); };
+
+    template<typename TF>
+    bool is_not_sorted(const std::vector<std::string>& values)
+    {
+        if (values.size() == 1)
+            return false;
+
+        TF prev_number = to_numeric<TF>(values[0]);
+        for (int i=1; i<values.size(); ++i)
+        {
+            TF next_number = to_numeric<TF>(values[i]);
+            if (next_number < prev_number)
+                return true;
+            prev_number = next_number;
+        }
+        return false;
+    }
+}
 
 template<typename TF>
 Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varnamein, const bool is_timedep) :
@@ -79,9 +104,13 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
     Data_block data_block(master, varname+".time");
     std::vector<std::string> headers = data_block.get_headers();
 
-    // Sort the times
+    // Remove first column (height)
     headers.erase(headers.begin());
-    std::sort(headers.begin(), headers.end());
+
+    // Check if input times are sorted
+    if (is_not_sorted<TF>(headers))
+        throw std::runtime_error("Time dependent input profiles are not time sorted!");
+
     std::vector<TF> tmp(gd.kmax);
     for (auto& it : headers)
     {
@@ -134,6 +163,7 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
 
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(data, varname,  {0}, {time_dim_length});
+
 
     #ifdef USECUDA
     prepare_device();
