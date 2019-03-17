@@ -42,7 +42,7 @@ class Timedep
         void create_timedep(Netcdf_handle&);
         void update_time_dependent(TF&, Timeloop<TF>&);
 
-        void create_timedep_prof(Netcdf_handle&);
+        void create_timedep_prof(Netcdf_handle&, const TF);
         void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&);
 
         #ifdef USECUDA

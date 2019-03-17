@@ -236,6 +236,13 @@ namespace
             }
         }
     }
+
+    template<typename TF>
+    void add_offset(TF* const restrict prof, const TF offset, const int kstart, const int kend)
+    {
+        for (int k=kstart; k<kend; ++k)
+            prof[k] += offset;
+    }
 }
 
 template<typename TF>
@@ -318,7 +325,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
             for(auto& it : tdepvars)
-                tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
+                tdep_nudge.emplace(it, new Timedep<TF>(master, grid, it+"_nudge", true));
         }
         fields.set_calc_mean_profs(true);
     }
@@ -375,8 +382,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
         std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
 
+        const TF offset = 0;
         for (auto& it : tdep_geo)
-            it.second->create_timedep_prof(input_nc);
+            it.second->create_timedep_prof(input_nc, offset);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -397,8 +405,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         }
 
         // Process the time dependent data
+        const TF offset = 0;
         for (auto& it : tdep_ls)
-            it.second->create_timedep_prof(input_nc);
+            it.second->create_timedep_prof(input_nc, offset);
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -408,23 +417,40 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         std::rotate(nudge_factor.rbegin(), nudge_factor.rbegin() + gd.kstart, nudge_factor.rend());
 
         // check whether the fields in the list exist in the prognostic fields
-        for (auto & it : nudgelist)
+        for (auto& it : nudgelist)
             if (!fields.ap.count(it))
             {
                 std::string msg = "field " + it + " in [force][nudgelist] is illegal";
                 throw std::runtime_error(msg);
             }
 
-        // read the large scale sources, which are the variable names with a "nudge" suffix
-        for (auto & it : nudgelist)
+        // Read the nudging profiles, which are the variable names with a "nudge" suffix
+        for (auto& it : nudgelist)
         {
             group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
             std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
+
+            // Account for the Galilean transformation
+            if (it == "u")
+                add_offset(nudgeprofs[it].data(), -grid.utrans, gd.kstart, gd.kend);
+            else if (it == "v")
+                add_offset(nudgeprofs[it].data(), -grid.vtrans, gd.kstart, gd.kend);
         }
 
         // Process the time dependent data
         for (auto& it : tdep_nudge)
-            it.second->create_timedep_prof(input_nc);
+        {
+            // Account for the Galilean transformation
+            TF offset;
+            if (it.first == "u")
+                offset = -grid.utrans;
+            else if (it.first == "v")
+                offset = -grid.vtrans;
+            else
+                offset = 0;
+
+            it.second->create_timedep_prof(input_nc, offset);
+        }
     }
 
     // Get the large scale vertical velocity from the input
@@ -432,7 +458,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
     {
         group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
-        tdep_wls->create_timedep_prof(input_nc);
+
+        const TF offset = 0;
+        tdep_wls->create_timedep_prof(input_nc, offset);
     }
 }
 
@@ -497,6 +525,7 @@ void Force<TF>::exec(double dt)
                 const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
                 rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
             }
+
             calc_nudging_tendency<TF>(
                     fields.at.at(it)->fld.data(), fields.ap.at(it)->fld_mean.data(),
                     nudgeprofs.at(it).data(), nudge_factor.data(),
