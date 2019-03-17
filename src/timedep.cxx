@@ -41,7 +41,7 @@ Timedep<TF>::~Timedep()
 }
 
 template <typename TF>
-void Timedep<TF>::create_timedep_prof()
+void Timedep<TF>::create_timedep_prof(const TF offset)
 {
     if (sw == Timedep_switch::Disabled)
         return;
@@ -60,6 +60,11 @@ void Timedep<TF>::create_timedep_prof()
         data_block.get_vector(tmp, it, gd.kmax, 0, 0);
         data.insert(data.end(),tmp.begin(),tmp.end());
     }
+
+    // Add offset
+    for (int i=0; i<data.size(); ++i)
+        data[i] += offset;
+
     #ifdef USECUDA
     prepare_device();
     #endif
