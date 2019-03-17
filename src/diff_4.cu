@@ -159,7 +159,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec(Boundary<TF>& boundary)
+void Diff_4<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 

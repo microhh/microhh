@@ -438,7 +438,7 @@ void Diff_smag2<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -503,7 +503,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
+void Diff_smag2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
