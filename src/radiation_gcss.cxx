@@ -4,6 +4,7 @@
  * Copyright (c) 2011-2018 Thijs Heus
  * Copyright (c) 2014-2018 Bart van Stratum
  * Copyright (c) 2018-2019 Elynn Wu
+ *
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
