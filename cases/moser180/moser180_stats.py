@@ -4,12 +4,21 @@ import netCDF4
 
 from pylab import *
 
-start = 11
-end   = 13
+sample_size = 60
 plotens = False
-visc = 1e-5
 
-# read Moser's data
+stats = netCDF4.Dataset("moser180_default_0000000.nc","r")
+end = len(stats.variables["time"][:])
+stats.close()
+start = max(0, end - sample_size)
+
+# Read the viscosity.
+with open('moser180.ini') as f:
+    for line in f:
+        if line.split('=')[0]=='visc':
+            visc = float(line.split('=')[1])
+
+# Read Moser's data.
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
 Moserrey  = numpy.loadtxt("chan180.reystress", skiprows=25)
 Moseru2   = numpy.loadtxt("chan180.uubal", skiprows=25)
@@ -54,8 +63,7 @@ uw_viscMoser  = Moseruw[:,7]
 uw_dissMoser  = Moseruw[:,2]
 uw_rdstrMoser = Moseruw[:,4]
 
-#stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
-stats = netCDF4.Dataset("oink.nc","r")
+stats = netCDF4.Dataset("moser180_default_0000000.nc","r")
 t  = stats.variables["time"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]

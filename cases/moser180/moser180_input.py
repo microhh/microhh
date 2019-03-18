@@ -6,9 +6,9 @@ float_type = 'f8'
 # Get number of vertical levels and size from .ini file
 with open('moser180.ini') as f:
     for line in f:
-        if(line.split('=')[0]=='ktot'):
+        if (line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
-        if(line.split('=')[0]=='zsize'):
+        if (line.split('=')[0]=='zsize'):
             zsize = float(line.split('=')[1])
 
 # define the variables
