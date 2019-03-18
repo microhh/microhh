@@ -46,6 +46,13 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         starttime = 0.;
     else
         starttime = input.get_item<double>("time", "starttime", "");
+    datetime={0};
+    datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
+    datetime.tm_year = 0; //default is 1900
+    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
+    datetime.tm_isdst = -1;
+
+    mktime ( &datetime );
 
     endtime  = input.get_item<double>("time", "endtime" , "");
     savetime = input.get_item<double>("time", "savetime", "");
@@ -141,6 +148,8 @@ void Timeloop<TF>::step_time()
     time  += dt;
     itime += idt;
     iotime = (int)(itime/iiotimeprec);
+    datetime.tm_sec += dt;
+    mktime ( &datetime );
 
     ++iteration;
 
