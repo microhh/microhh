@@ -8,8 +8,8 @@ start = 0
 end   = 19
 step  = 2
 
-stats = netCDF4.Dataset("drycblles.default.0000000.nc","r")
-t  = stats.variables["t"][start:end]
+stats = netCDF4.Dataset("drycblles_default_0000000.nc","r")
+t  = stats.variables["time"][start:end]
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]
 st  = stats.variables["th"][start:end,:]
@@ -42,9 +42,11 @@ for n in range(t.size):
   ht[n]     = z[hindex[0]]
   wstart[n] = ((9.81/300.)*sfluxt[n,0]*ht[n])**(1./3.)
 
+"""
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
 rc('text', usetex=True)
+"""
 
 close('all')
 figure()
