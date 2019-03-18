@@ -2,7 +2,7 @@ import numpy as np
 import netCDF4 as nc
 
 float_type = "f8"
-float_type = "f4"
+# float_type = "f4"
 
 # Get number of vertical levels and size from .ini file
 with open('drycblles.ini') as f:
@@ -41,22 +41,17 @@ for k in range(kmax):
         th[k] = 300. + dth + dthetadz*(z[k]-(h+0.5*dthz))
     thls[k] = 2.*(z[k]/zsize - 0.5) / 3600.
     wls [k] = -0.01*(z[k]/zsize)
-
-# write the data to a file
-proffile = open('drycblles.prof','w')
-proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s}\n'.format('z','th','thls', 'wls'))
-for k in range(kmax):
-    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E}\n'.format(z[k], th[k], thls[k], wls[k]))
-proffile.close()
 """
 
-nc_file = nc.Dataset("drycblles.nc", mode="w", datamodel="NETCDF4", clobber=False)
-nc_file.createDimension("z", kmax)
+nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
 
+nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))
-nc_u  = nc_file.createVariable("u" , float_type, ("z"))
-nc_v  = nc_file.createVariable("v" , float_type, ("z"))
-nc_th = nc_file.createVariable("th", float_type, ("z"))
+
+nc_group_init = nc_file.createGroup("init");
+nc_u  = nc_group_init.createVariable("u" , float_type, ("z"))
+nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
+nc_th = nc_group_init.createVariable("th", float_type, ("z"))
 
 nc_z [:] = z [:]
 nc_u [:] = u [:]
