@@ -105,7 +105,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     process_command_line_options(sim_mode, sim_name, argc, argv, master);
 
     input = std::make_shared<Input>(master, sim_name + ".ini");
-    input_nc = std::make_shared<Netcdf_file>(master, sim_name + ".nc", Netcdf_mode::Read);
+    input_nc = std::make_shared<Netcdf_file>(master, sim_name + "_input.nc", Netcdf_mode::Read);
 
     try
     {

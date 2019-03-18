@@ -513,7 +513,7 @@ void Stats<TF>::create(int iotime, std::string sim_name)
         if (master.get_mpiid() == 0)
         {
             std::stringstream filename;
-            filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+            filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
             // Create new NetCDF file, and catch any exceptions locally, to be able
             // to communicate them to the other processes.

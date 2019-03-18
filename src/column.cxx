@@ -116,9 +116,9 @@ void Column<TF>::create(Input& inputin, int iotime, std::string sim_name)
     for (auto& it: columns)
     {
         std::stringstream filename;
-        filename << sim_name << "." << "column" << "."
-                << std::setfill('0') << std::setw(5) << it.coord[0] - gd.istart << "."
-                << std::setfill('0') << std::setw(5) << it.coord[1] - gd.jstart << "."
+        filename << sim_name << "." << "column" << "_"
+                << std::setfill('0') << std::setw(5) << it.coord[0] - gd.istart << "_"
+                << std::setfill('0') << std::setw(5) << it.coord[1] - gd.jstart << "_"
                 << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
         try
