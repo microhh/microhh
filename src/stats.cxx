@@ -38,6 +38,7 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "timeloop.h"
+#include "advec.h"
 #include "diff.h"
 
 namespace
@@ -985,43 +986,14 @@ void Stats<TF>::calc_stats(
             if (!wmean_set)
                 throw std::runtime_error("W mean not calculated in stat - needed for flux");
 
-            auto tmp = fields.get_tmp();
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, !fld.loc[2]);
-                if (grid.get_spatial_order() == Grid_order::Second)
-                {
-                    calc_flux_2nd(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset,
-                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                }
-                else if (grid.get_spatial_order() == Grid_order::Fourth)
-                {
-                    calc_flux_4th(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
-                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                }
-
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-            }
-
-            fields.release_tmp(tmp);
-        }
-        else if (it == "diff")
-        {
-            auto diffusion = fields.get_tmp();
-            diff.diff_flux(*diffusion, fld);
+            auto advec_flux = fields.get_tmp();
+            advec.get_advec_flux(*advec_flux, fld);
 
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, !fld.loc[2]);
                 calc_mean(
-                        m.second.profs.at(name).data.data(), diffusion->fld.data(), mfield.data(), flag, nmask,
+                        m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
@@ -1029,7 +1001,26 @@ void Stats<TF>::calc_stats(
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
 
-            fields.release_tmp(diffusion);
+            fields.release_tmp(advec_flux);
+        }
+        else if (it == "diff")
+        {
+            auto diff_flux = fields.get_tmp();
+            diff.diff_flux(*diff_flux, fld);
+
+            for (auto& m : masks)
+            {
+                set_flag(flag, nmask, m.second, !fld.loc[2]);
+                calc_mean(
+                        m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+            }
+
+            fields.release_tmp(diff_flux);
         }
         else if (it == "flux")
         {

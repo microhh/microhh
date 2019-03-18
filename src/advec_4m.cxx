@@ -45,7 +45,6 @@ Advec_4m<TF>::Advec_4m(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 template<typename TF>
 Advec_4m<TF>::~Advec_4m() {}
 
-#ifndef USECUDA
 namespace
 {
     template<typename TF>
@@ -415,8 +414,70 @@ namespace
                            * dzi4[kend-1];
             }
     }
+
+    template<typename TF>
+    void advec_flux_u(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+ii1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+                }
+    }
+
+    template<typename TF>
+    void advec_flux_v(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+jj1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+                }
+    }
+
+    template<typename TF>
+    void advec_flux_s(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = w[ijk] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+                }
+    }
 }
 
+#ifndef USECUDA
 template<typename TF>
 double Advec_4m<TF>::get_cfl(double dt)
 {
@@ -516,6 +577,36 @@ void Advec_4m<TF>::exec()
     }
 }
 #endif
+
+template<typename TF>
+void Advec_4m<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    if (fld.loc == gd.uloc)
+    {
+        advec_flux_u(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.vloc)
+    {
+        advec_flux_v(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.sloc)
+    {
+        advec_flux_s(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else
+        throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
+}
 
 template class Advec_4m<double>;
 template class Advec_4m<float>;
