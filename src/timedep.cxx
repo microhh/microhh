@@ -123,9 +123,6 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
     Netcdf_handle group_nc = input_nc.get_group("timedep");
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 
-    // Add offset
-    for (int i=0; i<data.size(); ++i)
-        data[i] += offset;
 
     std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
     std::string time_dim = unique_time.first;
@@ -138,6 +135,10 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
     data.resize(time_dim_length*gd.ktot);
 
     group_nc.get_variable(data, varname, {0, 0}, {time_dim_length, gd.ktot});
+
+    // Add offset
+    for (int i=0; i<data.size(); ++i)
+        data[i] += offset;
 
     #ifdef USECUDA
     prepare_device();
