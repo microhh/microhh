@@ -125,10 +125,6 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
             throw std::runtime_error(msg);
         }
 
-        // Allocate the buffer for w on 0.
-        for (int k=0; k<gd.kcells; ++k)
-             bufferprofs.at("w")[k] = 0.;
-
         if (!swupdate)
         {
             // Set the buffers according to the initial profiles of the variables.
