@@ -457,15 +457,15 @@ void Timeloop<TF>::load(int starttime)
     master.broadcast(&iteration, 1);
 
     // calculate the double precision time from the integer time
-    time = (double)itime / ifactor;
-    dt   = (double)idt   / ifactor;
+    time = static_cast<double>(itime) / ifactor;
+    dt   = static_cast<double>(idt)   / ifactor;
 }
 
 template<typename TF>
 void Timeloop<TF>::step_post_proc_time()
 {
     itime += ipostproctime;
-    iotime = (int)(itime/iiotimeprec);
+    iotime = static_cast<int>(itime/iiotimeprec);
 
     if (itime > iendtime)
         loop = false;
