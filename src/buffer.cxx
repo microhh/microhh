@@ -91,16 +91,9 @@ void Buffer<TF>::init()
 
     if (swbuffer)
     {
-        if (swupdate)
-        {
-            bufferprofs["w"].resize(gd.kcells);
-        }
-        else
-        {
-            // Allocate the buffer arrays.
-            for (auto& it : fields.ap)
-                bufferprofs[it.first].resize(gd.kcells);
-        }
+        // Create vectors of zero for buffer.
+        for (auto& it : fields.ap)
+            bufferprofs.emplace(it.first, gd.kcells);
     }
 }
 
@@ -134,7 +127,7 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
         // Allocate the buffer for w on 0.
         for (int k=0; k<gd.kcells; ++k)
-             bufferprofs["w"][k] = 0.;
+             bufferprofs.at("w")[k] = 0.;
 
         if (!swupdate)
         {
@@ -143,22 +136,22 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
             const std::vector<int> count = {gd.ktot};
 
             Netcdf_group group_nc = input_nc.get_group("init");
-            group_nc.get_variable(bufferprofs["u"], "u", start, count);
-            group_nc.get_variable(bufferprofs["v"], "v", start, count);
-            std::rotate(bufferprofs["u"].rbegin(), bufferprofs["u"].rbegin() + gd.kstart, bufferprofs["u"].rend());
-            std::rotate(bufferprofs["v"].rbegin(), bufferprofs["v"].rbegin() + gd.kstart, bufferprofs["v"].rend());
+            group_nc.get_variable(bufferprofs.at("u"), "u", start, count);
+            group_nc.get_variable(bufferprofs.at("v"), "v", start, count);
+            std::rotate(bufferprofs.at("u").rbegin(), bufferprofs.at("u").rbegin() + gd.kstart, bufferprofs.at("u").rend());
+            std::rotate(bufferprofs.at("v").rbegin(), bufferprofs.at("v").rbegin() + gd.kstart, bufferprofs.at("v").rend());
 
             // In case of u and v, subtract the grid velocity.
             for (int k=gd.kstart; k<gd.kend; ++k)
             {
-                bufferprofs["u"][k] -= grid.utrans;
-                bufferprofs["v"][k] -= grid.vtrans;
+                bufferprofs.at("u")[k] -= grid.utrans;
+                bufferprofs.at("v")[k] -= grid.vtrans;
             }
 
             for (auto& it : fields.sp)
             {
-                group_nc.get_variable(bufferprofs[it.first], it.first, start, count);
-                std::rotate(bufferprofs[it.first].rbegin(), bufferprofs[it.first].rbegin() + gd.kstart, bufferprofs[it.first].rend());
+                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count);
+                std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
             }
         }
     }
