@@ -148,7 +148,7 @@ void Timeloop<TF>::step_time()
 
     time  += dt;
     itime += idt;
-    iotime = (int)(itime/iiotimeprec);
+    iotime = static_cast<int>(itime/iiotimeprec);
 
     datetime.tm_sec += dt;
     mktime ( &datetime );
