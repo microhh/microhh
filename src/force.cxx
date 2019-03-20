@@ -270,8 +270,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
-        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
     else
     {
@@ -377,8 +377,8 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
 
-        group_nc.get_variable(ug, "ug", {0}, {gd.ktot});
-        group_nc.get_variable(vg, "vg", {0}, {gd.ktot});
+        group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
+        group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
         std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
         std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
 
@@ -554,8 +554,8 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
-        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
+        tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)

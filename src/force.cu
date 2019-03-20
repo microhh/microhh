@@ -239,7 +239,7 @@ void Force<TF>::prepare_device()
 
     const int nmemsize  = gd.kcells*sizeof(TF);
 
-    if (swlspres== Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::geo_wind)
     {
         cuda_safe_call(cudaMalloc(&ug_g, nmemsize));
         cuda_safe_call(cudaMalloc(&vg_g, nmemsize));
@@ -427,19 +427,19 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : tdep_ls)
-            it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+            it.second->update_time_dependent_prof_g(lsprofs_g.at(it.first), timeloop);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : tdep_nudge)
-            it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+            it.second->update_time_dependent_prof_g(nudgeprofs_g.at(it.first), timeloop);
     }
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
-        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
+        tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
