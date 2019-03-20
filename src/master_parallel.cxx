@@ -93,7 +93,7 @@ void Master::init(Input& input)
 
     if (md.nprocs != md.npx*md.npy)
     {
-        std::string msg = "nprocs = " + std::to_string(md.nprocs) + " does not equal npx*npy = " + std::to_string(md.npy) + "*" + std::to_string(md.npy);
+        std::string msg = "nprocs = " + std::to_string(md.nprocs) + " does not equal npx*npy = " + std::to_string(md.npx) + "*" + std::to_string(md.npy);
         throw std::runtime_error(msg);
     }
 
