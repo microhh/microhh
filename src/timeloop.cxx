@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -82,21 +82,21 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     iteration = 0;
 
     // set or calculate all the integer times
-    itime         = (unsigned long) 0;
+    itime      = static_cast<unsigned long>(0);
 
     // add 0.5 to prevent roundoff errors
-    iendtime      = (unsigned long)(ifactor * endtime + 0.5);
-    istarttime    = (unsigned long)(ifactor * starttime + 0.5);
-    idt           = (unsigned long)(ifactor * dt + 0.5);
-    idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
-    isavetime     = (unsigned long)(ifactor * savetime + 0.5);
+    iendtime   = static_cast<unsigned long>(ifactor * endtime + 0.5);
+    istarttime = static_cast<unsigned long>(ifactor * starttime + 0.5);
+    idt        = static_cast<unsigned long>(ifactor * dt + 0.5);
+    idtmax     = static_cast<unsigned long>(ifactor * dtmax + 0.5);
+    isavetime  = static_cast<unsigned long>(ifactor * savetime + 0.5);
     if (sim_mode == Sim_mode::Post)
-        ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
+        ipostproctime = static_cast<unsigned long>(ifactor * postproctime + 0.5);
 
     idtlim = idt;
 
     // take the proper precision for the output files into account
-    iiotimeprec = (unsigned long)(ifactor * std::pow(10., iotimeprec) + 0.5);
+    iiotimeprec = static_cast<unsigned long>(ifactor * std::pow(10., iotimeprec) + 0.5);
 
     // check whether starttime and savetime are an exact multiple of iotimeprec
     if ((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
@@ -149,6 +149,7 @@ void Timeloop<TF>::step_time()
     time  += dt;
     itime += idt;
     iotime = (int)(itime/iiotimeprec);
+
     datetime.tm_sec += dt;
     mktime ( &datetime );
 
@@ -200,7 +201,7 @@ double Timeloop<TF>::check()
 {
     gettimeofday(&end, NULL);
 
-    double timeelapsed = (double)(end.tv_sec-start.tv_sec) + (double)(end.tv_usec-start.tv_usec) * 1.e-6;
+    double timeelapsed = static_cast<double>(end.tv_sec-start.tv_sec) + static_cast<double>(end.tv_usec-start.tv_usec) * 1.e-6;
     start = end;
 
     return timeelapsed;
@@ -221,7 +222,7 @@ void Timeloop<TF>::set_time_step()
             throw std::runtime_error(msg);
         }
         idt = idtlim;
-        dt  = (double)idt / ifactor;
+        dt  = static_cast<double>(idt) / ifactor;
     }
 }
 
