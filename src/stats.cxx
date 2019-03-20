@@ -608,38 +608,36 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 }
 
 template<typename TF>
-void Stats<TF>::exec(int iteration, double time, unsigned long itime)
+void Stats<TF>::exec(const Timeloop<TF>& timeloop)
 {
     if (!swstats)
         return;
 
+    const int iteration = timeloop.get_iteration();
+    const double time = timeloop.get_time();
+    const unsigned long itime = timeloop.get_itime();
+
     auto& gd = grid.get_grid_data();
 
-    // check if time for execution
-    // BvS: why was this used? This function is only called after a stats->do_statistics(), which already checks the sampletime...
-    //if (itime % isampletime != 0)
-    //    return;
-
-    // Write message in case stats is triggered
+    // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
 
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
 
-        // Put the data into the NetCDF file
+        // Put the data into the NetCDF file.
         if (master.get_mpiid() == 0)
         {
             const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
 
-            // Write the time and iteration number
+            // Write the time and iteration number.
             m.t_var   .putVar(time_index, &time     );
             m.iter_var.putVar(time_index, &iteration);
 
             const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
             std::vector<size_t> time_height_size  = {1, 0};
 
-            //for (Prof_map::const_iterator it=m.profs.begin(); it!=m.profs.end(); ++it)
             for (auto& p : m.profs)
             {
                 time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
@@ -656,6 +654,7 @@ void Stats<TF>::exec(int iteration, double time, unsigned long itime)
             nc_sync(m.data_file->getId());
         }
     }
+
     wmean_set = false;
 
     // Increment the statistics index

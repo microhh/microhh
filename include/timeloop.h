@@ -58,7 +58,7 @@ class Timeloop
         void set_time_step();
         void set_time_step_limit();
         void set_time_step_limit(unsigned long);
-        double get_sub_time_step();
+        double get_sub_time_step() const;
 
         Interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
 
@@ -77,14 +77,14 @@ class Timeloop
         bool is_finished();
 
         // Accessors for other classes
-        double get_time()   { return time;    }
-        double get_dt()     { return dt;      }
-        double get_ifactor(){ return ifactor; }
-        unsigned long get_itime() { return itime; }
-        unsigned long get_idt()   { return idt;   }
-        int get_iotime()    { return iotime;    }
-        int get_iteration() { return iteration; }
-        struct tm get_phytime() { return datetime; }
+        double get_time() const { return time;    }
+        double get_dt() const { return dt;      }
+        double get_ifactor() const { return ifactor; }
+        unsigned long get_itime() const { return itime; }
+        unsigned long get_idt() const { return idt;   }
+        int get_iotime() const { return iotime;    }
+        int get_iteration() const { return iteration; }
+        struct tm get_phytime() const { return datetime; }
 
     private:
         Master& master;

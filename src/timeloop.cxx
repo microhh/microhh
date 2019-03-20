@@ -37,33 +37,34 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     master(masterin),
     grid(gridin),
     fields(fieldsin),
-    ifactor(1e9)
+    ifactor(1e9),
+    datetime({0})
 {
     substep = 0;
 
-    // obligatory parameters
+    // Obligatory parameters.
     if (sim_mode == Sim_mode::Init)
         starttime = 0.;
     else
         starttime = input.get_item<double>("time", "starttime", "");
-    datetime={0};
-    datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
-    datetime.tm_year = 0; //default is 1900
-    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
-    datetime.tm_isdst = -1;
-
-    mktime ( &datetime );
 
     endtime  = input.get_item<double>("time", "endtime" , "");
     savetime = input.get_item<double>("time", "savetime", "");
 
-    // optional parameters
+    // Optional parameters.
     adaptivestep = input.get_item<bool>  ("time", "adaptivestep", "", true           );
     dtmax        = input.get_item<double>("time", "dtmax"       , "", Constants::dbig);
     dt           = input.get_item<double>("time", "dt"          , "", dtmax          );
     rkorder      = input.get_item<int>   ("time", "rkorder"     , "", 3              );
     outputiter   = input.get_item<int>   ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int>   ("time", "iotimeprec"  , "", 0              );
+
+    // Set the date and UTC time.
+    datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
+    datetime.tm_year = 0; //default is 1900
+    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
+    datetime.tm_isdst = -1;
+    mktime(&datetime);
 
     if (sim_mode == Sim_mode::Post)
         postproctime = input.get_item<double>("time", "postproctime", "");
@@ -347,7 +348,7 @@ void Timeloop<TF>::exec()
 #endif
 
 template<typename TF>
-double Timeloop<TF>::get_sub_time_step()
+double Timeloop<TF>::get_sub_time_step() const
 {
     // Value rkorder is 3 or 4, because it is checked in the constructor.
     if (rkorder == 3)
