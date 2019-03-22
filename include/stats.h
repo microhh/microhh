@@ -35,6 +35,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Advec;
 template<typename> class Diff;
+template<typename> class Timeloop;
 
 // Struct for profiles
 template<typename TF>
@@ -55,6 +56,7 @@ struct Time_series_var
 // Typedefs for containers of profiles and time series
 template<typename TF>
 using Prof_map = std::map<std::string, Prof_var<TF>>;
+
 template<typename TF>
 using Time_series_map = std::map<std::string, Time_series_var<TF>>;
 
@@ -104,7 +106,7 @@ class Stats
         const std::vector<std::string>& get_mask_list();
         void set_mask_thres(std::string, Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type );
 
-        void exec(int, double, unsigned long);
+        void exec(const Timeloop<TF>&);
 
         // Interface functions.
         void add_mask(const std::string);

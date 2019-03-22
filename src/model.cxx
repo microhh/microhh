@@ -518,7 +518,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         boundary ->exec_stats(*stats);
         radiation->exec_stats(*stats,*thermo,*timeloop);
         // Store the statistics data.
-        stats->exec(iteration, time, itime);
+        stats->exec(*timeloop);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
