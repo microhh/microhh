@@ -91,7 +91,7 @@ class Timeloop
         {
             if (!flag_utc_time)
                 throw std::runtime_error("No datetime in UTC specified");
-            return datetime_utc_start + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(starttime));
+            return datetime_utc_start + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(time));
         }
 
         std::string get_datetime_utc_start_string() const
@@ -102,6 +102,13 @@ class Timeloop
         }
 
         bool has_utc_time() const { return flag_utc_time; }
+        double seconds_since_midnight()
+        {
+            if (!flag_utc_time)
+                throw std::runtime_error("No datetime in UTC specified");
+            auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
+            return 1e-6*microseconds.count();
+        }
 
     private:
         Master& master;

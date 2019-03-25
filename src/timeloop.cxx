@@ -256,7 +256,6 @@ void Timeloop<TF>::set_time_step()
     }
 }
 
-
 namespace
 {
     template<typename TF>
