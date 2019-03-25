@@ -496,11 +496,13 @@ void Stats<TF>::init(double ifactor)
 }
 
 template<typename TF>
-void Stats<TF>::create(int iotime, std::string sim_name)
+void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
 {
     // Do not create statistics file if stats is disabled.
     if (!swstats)
         return;
+
+    int iotime = timeloop.get_iotime();
 
     int nerror = 0;
     auto& gd = grid.get_grid_data();
@@ -550,7 +552,10 @@ void Stats<TF>::create(int iotime, std::string sim_name)
             m.iter_var.putAtt("long_name", "Iteration number");
 
             m.t_var = m.data_file->addVar("time", ncDouble, m.t_dim);
-            m.t_var.putAtt("units", "s");
+            if (timeloop.has_utc_time())
+                m.t_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+            else
+                m.t_var.putAtt("units", "seconds since start");
             m.t_var.putAtt("long_name", "Time");
 
             z_var = m.data_file->addVar("z", netcdf_fp_type<TF>(), m.z_dim);

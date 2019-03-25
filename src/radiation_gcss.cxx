@@ -36,6 +36,7 @@
          const TF z4        = 0.019938;
          const TF z5        = 0.00162;
          const TF z6        = 23.4439;
+
          TF time2sec = (datetime.tm_yday + 1) +
                             lon / 360. +
                            (datetime.tm_hour * 3600. +

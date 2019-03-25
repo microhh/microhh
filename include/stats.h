@@ -94,7 +94,7 @@ class Stats
         ~Stats();
 
         void init(double);
-        void create(int, std::string);
+        void create(const Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swstats; }

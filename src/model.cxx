@@ -216,7 +216,7 @@ void Model<TF>::load()
     timeloop->load(timeloop->get_iotime());
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
-    stats->create(timeloop->get_iotime(), sim_name);
+    stats->create(*timeloop, sim_name);
     column->create(*input, timeloop->get_iotime(), sim_name);
     dump->create();
 

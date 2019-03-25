@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include "date.h"
 
 class Master;
 template<typename> class Grid;
@@ -86,6 +87,22 @@ class Timeloop
         int get_iteration() const { return iteration; }
         struct tm get_phytime() const { return datetime; }
 
+        date::sys_time<std::chrono::milliseconds> get_datetime_utc() const
+        {
+            if (!flag_utc_time)
+                throw std::runtime_error("No datetime in UTC specified");
+            return datetime_utc_start + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(starttime));
+        }
+
+        std::string get_datetime_utc_start_string() const
+        {
+            if (!flag_utc_time)
+                throw std::runtime_error("No datetime in UTC specified");
+            return date::format("%F %T", datetime_utc_start);
+        }
+
+        bool has_utc_time() const { return flag_utc_time; }
+
     private:
         Master& master;
         Grid<TF>& grid;
@@ -112,6 +129,9 @@ class Timeloop
         double savetime;
         double postproctime;
         struct tm datetime;
+
+        bool flag_utc_time;
+        date::sys_seconds datetime_utc_start;
 
         int iteration;
         int iotime;

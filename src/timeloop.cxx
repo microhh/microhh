@@ -23,6 +23,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cmath>
+
 #include "input.h"
 #include "master.h"
 #include "grid.h"
@@ -31,6 +32,26 @@
 #include "defines.h"
 #include "constants.h"
 
+namespace
+{
+    date::sys_seconds parse_datetime_string(const std::string s)
+    {
+        date::sys_seconds tp;
+        std::istringstream in{s};
+        in >> date::parse("%F %T", tp);
+
+        // Check if the date has been parsed correctly.
+        const std::string error_string("Illegal datetime string: " + s);
+        if (in.fail())
+            throw std::runtime_error(error_string);
+        std::string empty;
+        if (in >> empty)
+            throw std::runtime_error(error_string);
+
+        return tp;
+    }
+}
+
 template<typename TF>
 Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Input& input, const Sim_mode sim_mode) :
@@ -38,7 +59,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     grid(gridin),
     fields(fieldsin),
     ifactor(1e9),
-    datetime({0})
+    datetime({0}),
+    flag_utc_time(false)
 {
     substep = 0;
 
@@ -58,6 +80,14 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     rkorder      = input.get_item<int>   ("time", "rkorder"     , "", 3              );
     outputiter   = input.get_item<int>   ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int>   ("time", "iotimeprec"  , "", 0              );
+
+    // Get a datetime in UTC.
+    std::string datetime_utc_string = input.get_item<std::string>("time", "datetime_utc", "", "");
+    if (datetime_utc_string != "")
+    {
+        flag_utc_time = true;
+        datetime_utc_start = parse_datetime_string(datetime_utc_string);
+    }
 
     // Set the date and UTC time.
     datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
