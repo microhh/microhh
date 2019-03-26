@@ -501,6 +501,31 @@ void Timeloop<TF>::step_post_proc_time()
 }
 
 template<typename TF>
+date::sys_time<std::chrono::milliseconds> Timeloop<TF>::get_datetime_utc() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+    return datetime_utc_start + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(time));
+}
+
+template<typename TF>
+std::string Timeloop<TF>::get_datetime_utc_start_string() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+    return date::format("%F %T", datetime_utc_start);
+}
+
+template<typename TF>
+double Timeloop<TF>::seconds_since_midnight() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
+    return 1e-6*microseconds.count();
+}
+
+template<typename TF>
 Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vector<double>& timevec)
 {
     // 1. Get the indexes and factors for the interpolation in time
