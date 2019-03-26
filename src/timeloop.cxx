@@ -521,7 +521,7 @@ double Timeloop<TF>::seconds_since_midnight() const
 {
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
-    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
+    auto microseconds = std::chrono::microseconds(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
     return 1e-6*microseconds.count();
 }
 
