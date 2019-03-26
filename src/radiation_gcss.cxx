@@ -28,8 +28,9 @@
      {
          const TF pi        = TF(M_PI);
          const TF year2days = TF(365.);
-         const TF piAngle   = TF(180.);
+         const TF pi_angle  = TF(180.);
          const TF day2secs  = TF(86400.);
+
          const TF z1 = TF(279.934);
          const TF z2 = TF(1.914827);
          const TF z3 = TF(0.7952);
@@ -43,17 +44,17 @@
                             datetime.tm_min * 60. +
                             datetime.tm_sec) / day2secs;
 
-         const TF day   = floor(time2sec);
-         const TF lamda = lat * pi / piAngle;
-         const TF d     = 2. * pi * int(time2sec) / year2days;
-         const TF sig   = d + pi/piAngle * (z1 + z2*std::sin(d)
-                                               - z3*std::cos(d)
-                                               + z4*std::sin(2.*d)
-                                               - z5*std::cos(2.*d));
+         const TF day = floor(time2sec);
+         const TF lambda = lat * pi / pi_angle;
+         const TF d = 2. * pi * int(time2sec) / year2days;
+         const TF sig = d + pi/pi_angle * (z1 + z2*std::sin(d)
+                                              - z3*std::cos(d)
+                                              + z4*std::sin(TF(2.)*d)
+                                              - z5*std::cos(TF(2.)*d));
 
-         const TF del = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
-         const TF h   = 2. * pi * ((time2sec - day) - 0.5);
-         const TF mu  = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
+         const TF del = std::asin(std::sin(z6*pi / pi_angle)*std::sin(sig));
+         const TF h = TF(2.) * pi * ((time2sec - day) - TF(0.5));
+         const TF mu = std::sin(lambda) * std::sin(del) + std::cos(lambda) * std::cos(del) * std::cos(h);
 
          return mu;
      }
