@@ -24,42 +24,46 @@
  namespace
  {
      template<typename TF>
-	 TF calc_zenith(struct tm datetime, TF lat, TF lon)
+	 TF calc_zenith(struct tm datetime, const TF lat, const TF lon)
      {
-         const TF pi        = M_PI;
-         const TF year2days = 365.;
-         const TF piAngle   = 180.;
-         const TF day2secs  = 86400.;
-         const TF z1        = 279.934;
-         const TF z2        = 1.914827;
-         const TF z3        = 0.7952;
-         const TF z4        = 0.019938;
-         const TF z5        = 0.00162;
-         const TF z6        = 23.4439;
+         const TF pi        = TF(M_PI);
+         const TF year2days = TF(365.);
+         const TF piAngle   = TF(180.);
+         const TF day2secs  = TF(86400.);
+         const TF z1 = TF(279.934);
+         const TF z2 = TF(1.914827);
+         const TF z3 = TF(0.7952);
+         const TF z4 = TF(0.019938);
+         const TF z5 = TF(0.00162);
+         const TF z6 = TF(23.4439);
 
-         TF time2sec = (datetime.tm_yday + 1) +
+         const TF time2sec = (datetime.tm_yday + 1) +
                             lon / 360. +
                            (datetime.tm_hour * 3600. +
                             datetime.tm_min * 60. +
                             datetime.tm_sec) / day2secs;
-         TF day    = floor(time2sec);
-         TF lamda  = lat * pi / piAngle;
-         TF d      = 2. * pi * int(time2sec) / year2days;
-         TF sig    = d + pi/piAngle * (z1 + z2*std::sin(d)
-                                                   - z3*std::cos(d)
-                                                   + z4*std::sin(2.*d)
-                                                   - z5*std::cos(2.*d));
-         TF del     = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
-         TF h       = 2. * pi * ((time2sec - day) - 0.5);
-         TF mu      = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
+
+         const TF day   = floor(time2sec);
+         const TF lamda = lat * pi / piAngle;
+         const TF d     = 2. * pi * int(time2sec) / year2days;
+         const TF sig   = d + pi/piAngle * (z1 + z2*std::sin(d)
+                                               - z3*std::cos(d)
+                                               + z4*std::sin(2.*d)
+                                               - z5*std::cos(2.*d));
+
+         const TF del = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
+         const TF h   = 2. * pi * ((time2sec - day) - 0.5);
+         const TF mu  = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
+
          return mu;
      }
 
      template<typename TF>
-     void sunray(const TF mu, const int i, const int j,
-         const int kstart, const int kend, const int icells, const int ijcells,
-         std::vector<TF> tau, const TF tauc,
-         TF* const restrict swn)
+     void sunray(
+             const TF mu, const int i, const int j,
+             const int kstart, const int kend, const int icells, const int ijcells,
+             std::vector<TF> tau, const TF tauc,
+             TF* const restrict swn)
      {
          const int jj = icells;
          const int kk = ijcells;
@@ -104,21 +108,22 @@
          TF c2 = (xp23p*t3*exmu0 - t1*ap23b*exmk) / (xp23p*t2*expk - xm23p*t1*exmk);
          TF c1 = (ap23b - c2*xm23p)/xp23p;
 
-         for (int k=kend-1;k>=kstart;--k)
+         for (int k=kend-1; k>=kstart; --k)
          {
              const int ijk  = i + j*jj + k*kk;
              taupath = taupath + taude[k];
              swn[ijk] = sw0 * TF(4./3.) * (rp * (c1*std::exp(-rk*taupath)
-             - c2 * std::exp(rk*taupath)) - beta * std::exp(-taupath/mu))
-             + mu * sw0 * std::exp(-taupath / mu);
+                 - c2 * std::exp(rk*taupath)) - beta * std::exp(-taupath/mu))
+                 + mu * sw0 * std::exp(-taupath / mu);
          }
      }
 
      template<typename TF>
-     void calc_gcss_rad_SW(TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
-         const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
-         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-         const int icells, const int ijcells, const int ncells, TF mu)
+     void calc_gcss_rad_SW(
+             TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
+             const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
+             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+             const int icells, const int ijcells, const int ncells, TF mu)
      {
          const int jj = icells;
          const int kk = ijcells;
@@ -127,9 +132,11 @@
          TF tauc;
          TF fact;
          int ki; //PBLH index
+
          std::vector<TF> tau(kend,TF(0.));
          for (int n=0; n<ncells; ++n)
              swn[n] = TF(0.); //initialize as 0 otherwise weird things might be stored
+
          for (int j=jstart; j<jend; ++j)
          {
              for (int i=istart; i<iend; ++i)
@@ -147,9 +154,10 @@
                          tauc = tauc + tau[k];
                      }
                  }
-                 sunray<TF>(TF(mu), i, j,
-                     kstart, kend, icells, ijcells,
-                     tau, tauc, swn);
+                 sunray<TF>(
+                         TF(mu), i, j,
+                         kstart, kend, icells, ijcells,
+                         tau, tauc, swn);
              }
          }
      }
@@ -172,6 +180,7 @@
              {
                  lwp[i+j*jj] = TF(0.0);
                  ki = kend; //set to top of domain
+
                  for (int k=kstart; k<kend; ++k)
                  {
                      const int ij   = i + j*jj;
@@ -179,11 +188,14 @@
                      const int km1 = std::max(1,k-1);
                      lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[km1]));
                      flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
-                     if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) ) ki = k; //this is the PBLH index
+                     if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) )
+                         ki = k; //this is the PBLH index
                  }
+
                  fact = div * Constants::cp<TF> * rhoref[ki];
-                 const int ij   = i + j*jj;
-                 flx[ij + kstart*kk] = flx[ij + kstart*kk] + fr0 * std::exp(TF(-1.0) * xka *lwp[ij]);
+                 const int ij = i + j*jj;
+                 flx[ij + kstart*kk] = flx[ij + kstart*kk] + fr0 * std::exp(TF(-1.0) * xka * lwp[ij]);
+
                  for (int k=kstart+1; k<kend; ++k)
                  {
                      const int ij   = i + j*jj;
@@ -192,15 +204,16 @@
                      const int ijkm = i + j*jj + km1*kk;
                      lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
                      flx[ijk] = flx[ijk] + fr0 * std::exp(-1.0 * xka * lwp[ij]);
+
                      if ((k>ki) && (ki>1) && (fact>0.))
-                     { //above PBLH
+                     { // above PBLH
                          flx[ijk] = flx[ijk] + fact * ( TF(0.25) * std::pow(z[k]-z[ki],TF(1.333)) + z[ki] * std::pow(z[k]-z[ki],TF(0.33333)) );
                      }
                  }
              } // end of i
          } // end of j
      }
-     template<typename TF> //EW: simplified radiative parameterization for LW and SW fluxes for DYCOMS
+     template<typename TF> // EW: simplified radiative parameterization for LW and SW fluxes for DYCOMS
      void exec_gcss_rad(
              TF* const restrict tt, const TF* const restrict ql, const TF* const restrict qt,
              TF* const restrict lwp, TF* const restrict flx, TF* const restrict swn, const TF* const restrict rhoref,
@@ -211,12 +224,15 @@
      {
          const int jj = icells;
          const int kk = ijcells;
-         //call LW
-         calc_gcss_rad_LW<TF>(ql,qt,
-         lwp,flx,rhoref, fr0, fr1, xka, div,
-         z,dzi,
-         istart,iend,jstart,jend,kstart,kend,
-         icells,ijcells);
+
+         // call LW.
+         calc_gcss_rad_LW<TF>(
+                 ql,qt,
+                 lwp, flx, rhoref, fr0, fr1, xka, div,
+                 z, dzi,
+                 istart, iend, jstart, jend, kstart, kend,
+                 icells, ijcells);
+
          for (int j=jstart; j<jend; ++j)
          {
              for (int i=istart; i<iend; ++i)
@@ -231,12 +247,15 @@
                  }
              } // end of i
          } // end of j
-         if (mu>mu_min) //if daytime, call SW
+
+         if (mu>mu_min) // if daytime, call SW.
          {
-             calc_gcss_rad_SW<TF>(swn, ql, qt,
-                 rhoref, z, dzi,
-                 istart, iend, jstart, jend, kstart, kend,
-                 icells, ijcells, ncells, mu);
+             calc_gcss_rad_SW<TF>(
+                     swn, ql, qt,
+                     rhoref, z, dzi,
+                     istart, iend, jstart, jend, kstart, kend,
+                     icells, ijcells, ncells, mu);
+
              for (int j=jstart; j<jend; ++j)
              {
                  for (int i=istart; i<iend; ++i)
@@ -271,13 +290,11 @@ Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF
 template<typename TF>
 Radiation_gcss<TF>::~Radiation_gcss()
 {
-
 }
 
 template<typename TF>
 void Radiation_gcss<TF>::init()
 {
-	auto& gd = grid.get_grid_data();
 }
 
 template<typename TF>
@@ -299,25 +316,26 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	auto flx = fields.get_tmp();
 	auto swn = fields.get_tmp();
 	auto ql  = fields.get_tmp();
-	thermo.get_thermo_field(*ql,"ql",false,false);
+	thermo.get_thermo_field(*ql, "ql", false, false);
+
 	struct tm current_datetime;
 	current_datetime = timeloop.get_phytime();
 	TF mu = calc_zenith(current_datetime, lat, lon);
 
 	exec_gcss_rad<TF>(
-		fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
-		lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
-        mu, mu_min, fr0, fr1, xka, div,
-		gd.z.data(), gd.dzhi.data(),
-		gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-		gd.icells, gd.ijcells, gd.ncells);
+		    fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
+		    lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
+            mu, mu_min, fr0, fr1, xka, div,
+		    gd.z.data(), gd.dzhi.data(),
+		    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+		    gd.icells, gd.ijcells, gd.ncells);
 	fields.release_tmp(lwp);
 	fields.release_tmp(flx);
 	fields.release_tmp(swn);
 	fields.release_tmp(ql);
 }
-
 #endif
+
 template<typename TF>
 bool Radiation_gcss<TF>::check_field_exists(const std::string name)
 {
@@ -336,11 +354,14 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         auto lwp = fields.get_tmp();
         auto ql  = fields.get_tmp();
         thermo.get_thermo_field(*ql,"ql",false,false);
-        calc_gcss_rad_LW(ql->fld.data(), fields.ap.at("qt")->fld.data(),
-        lwp->fld.data(), fld.fld.data(), fields.rhoref.data(), fr0, fr1, xka, div,
-        gd.z.data(), gd.dzi.data(),
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+
+        calc_gcss_rad_LW(
+                ql->fld.data(), fields.ap.at("qt")->fld.data(),
+                lwp->fld.data(), fld.fld.data(), fields.rhoref.data(), fr0, fr1, xka, div,
+                gd.z.data(), gd.dzi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
         fields.release_tmp(lwp);
         fields.release_tmp(ql);
     }
@@ -351,26 +372,23 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         current_datetime = timeloop.get_phytime();
         TF mu = calc_zenith(current_datetime, lat, lon);
         auto& gd = grid.get_grid_data();
-        if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
+        if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp();
             thermo.get_thermo_field(*ql,"ql",false,false);
-            calc_gcss_rad_SW(fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
-                fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells, gd.ncells, mu);
+            calc_gcss_rad_SW(
+                    fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
+                    fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells, gd.ncells, mu);
             fields.release_tmp(ql);
         }
 
-        else //night time, set SW to 0
+        else // night time, set SW to 0
         {
             for (int n=0; n<gd.ncells; ++n)
-            {
                 fld.fld[n] = TF(0.);
-            }
-
         }
-
     }
 }
 
@@ -438,6 +456,7 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
+
     // calculate the mean
     std::vector<std::string> operators = {"mean"}; //add 2nd moment, if needed
 
