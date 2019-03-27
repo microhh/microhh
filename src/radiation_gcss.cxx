@@ -26,8 +26,9 @@ namespace
     template<typename TF>
     TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
     {
-        const TF pi        = TF(M_PI);
-        const TF twopi     = TF(2.*M_PI);
+        const TF pi    = TF(M_PI);
+        const TF twopi = TF(2.*M_PI);
+
         const TF year2days = TF(365.);
         const TF pi_angle  = TF(180.);
         const TF day2secs  = TF(86400.);
@@ -61,6 +62,29 @@ namespace
 
         return mu;
     }
+
+    /*
+    template<typename TF> TF deg2rad(const TF deg) { return TF(2.*M_PI/360. * deg); }
+
+    template<typename TF>
+    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    {
+        constexpr TF pi = TF(M_PI);
+        constexpr TF twopi = TF(2.*M_PI);
+
+        const TF radlon = deg2rad(lon);
+        const TF radlat = deg2rad(lat);
+
+        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (days_since_year - 173.) / 365.25);
+
+        TF hour_angle = twopi * seconds_since_midnight/TF(86400.) + radlon - pi;
+
+        TF cos_zenith = std::sin(radlat)*std::sin(declination_angle)
+                      + std::cos(radlat)*std::cos(declination_angle)*std::cos(hour_angle);
+
+        return cos_zenith;
+    }
+    */
 
     template<typename TF>
     void sunray(
