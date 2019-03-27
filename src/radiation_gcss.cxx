@@ -19,261 +19,264 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
- #include "radiation_gcss.h"
+#include "radiation_gcss.h"
 
- namespace
- {
-     template<typename TF>
-	 TF calc_zenith(struct tm datetime, const TF lat, const TF lon)
-     {
-         const TF pi        = TF(M_PI);
-         const TF year2days = TF(365.);
-         const TF pi_angle  = TF(180.);
-         const TF day2secs  = TF(86400.);
+namespace
+{
+    template<typename TF>
+    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    {
+        const TF pi        = TF(M_PI);
+        const TF twopi     = TF(2.*M_PI);
+        const TF year2days = TF(365.);
+        const TF pi_angle  = TF(180.);
+        const TF day2secs  = TF(86400.);
 
-         const TF z1 = TF(279.934);
-         const TF z2 = TF(1.914827);
-         const TF z3 = TF(0.7952);
-         const TF z4 = TF(0.019938);
-         const TF z5 = TF(0.00162);
-         const TF z6 = TF(23.4439);
+        const TF z1 = TF(279.934);
+        const TF z2 = TF(1.914827);
+        const TF z3 = TF(0.7952);
+        const TF z4 = TF(0.019938);
+        const TF z5 = TF(0.00162);
+        const TF z6 = TF(23.4439);
 
-         const TF time2sec = (datetime.tm_yday + 1) +
-                            lon / 360. +
-                           (datetime.tm_hour * 3600. +
-                            datetime.tm_min * 60. +
-                            datetime.tm_sec) / day2secs;
+        // const TF time2sec_ref = (datetime.tm_yday + 1) +
+        //                          lon / 360. +
+        //                         (datetime.tm_hour * 3600. +
+        //                          datetime.tm_min * 60. +
+        //                          datetime.tm_sec) / day2secs;
 
-         const TF day = floor(time2sec);
-         const TF lambda = lat * pi / pi_angle;
-         const TF d = 2. * pi * int(time2sec) / year2days;
-         const TF sig = d + pi/pi_angle * (z1 + z2*std::sin(d)
-                                              - z3*std::cos(d)
-                                              + z4*std::sin(TF(2.)*d)
-                                              - z5*std::cos(TF(2.)*d));
+        const TF time2sec = days_since_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
 
-         const TF del = std::asin(std::sin(z6*pi / pi_angle)*std::sin(sig));
-         const TF h = TF(2.) * pi * ((time2sec - day) - TF(0.5));
-         const TF mu = std::sin(lambda) * std::sin(del) + std::cos(lambda) * std::cos(del) * std::cos(h);
+        const TF day = std::floor(time2sec);
+        const TF lambda = lat * pi / pi_angle;
+        const TF d = twopi * std::round(time2sec) / year2days;
+        const TF sig = d + pi/pi_angle * (z1 + z2*std::sin(d)
+                                             - z3*std::cos(d)
+                                             + z4*std::sin(TF(2.)*d)
+                                             - z5*std::cos(TF(2.)*d));
 
-         return mu;
-     }
+        const TF del = std::asin(std::sin(z6*pi / pi_angle)*std::sin(sig));
+        const TF h = twopi * ((time2sec - day) - TF(0.5));
+        const TF mu = std::sin(lambda) * std::sin(del) + std::cos(lambda) * std::cos(del) * std::cos(h);
 
-     template<typename TF>
-     void sunray(
-             const TF mu, const int i, const int j,
-             const int kstart, const int kend, const int icells, const int ijcells,
-             std::vector<TF> tau, const TF tauc,
-             TF* const restrict swn)
-     {
-         const int jj = icells;
-         const int kk = ijcells;
-         TF o_c1 = TF(0.9);
-         TF o_c2 = TF(2.75);
-         TF o_c3 = TF(0.09);
-         TF sw0 = TF(1100.);
-         TF gc  = TF(0.85);
-         TF sfc_albedo = TF(0.05);
-         TF taucde = TF(0.);
-         TF taupath = TF(0.);
-         std::vector<TF> taude(kend , TF(0.));
-         TF omega  = TF(1.) - TF(1.e-3) * (o_c1 + o_c2 * (mu+TF(1.)) * std::exp(-o_c3 * tauc)); //fouquart
-         TF ff     = gc * gc;
-         TF gcde   = gc / (TF(1.) + gc);
-         taucde = ( TF(1.0) - omega*ff) * tauc;
-         for (int k=kstart; k<kend; ++k)
-         {
-             taude[k] = ( TF(1.) - omega*ff ) * tau[k];
-         }
-         TF omegade = (TF(1.)-ff) * omega/(TF(1.) - omega*ff);
-         TF x1  = TF(1.) - omegade * gcde;
-         TF x2  = TF(1.) - omegade;
-         TF rk  = std::sqrt(TF(3.) * x2 * x1);
-         TF mu2 = mu * mu;
-         TF x3  = TF(4.) * (TF(1.) - rk*rk*mu2);
-         TF rp  = std::sqrt(TF(3.) * x2/x1);
-         TF alpha = TF(3.) * omegade * mu2 * (TF(1.) + gcde*x2) / x3;
-         TF beta  = TF(3.) * omegade * mu * (TF(1.) + TF(3.)*gcde*mu2*x2) / x3;
+        return mu;
+    }
 
-         TF rtt = TF(2.0/3.0);
-         TF exmu0 = std::exp(-taucde / mu);
-         TF expk  = std::exp(rk * taucde);
-         TF exmk  = TF(1.) / expk;
-         TF xp23p = TF(1.) + rtt*rp;
-         TF xm23p = TF(1.) - rtt*rp;
-         TF ap23b = alpha + rtt*beta;
+    template<typename TF>
+    void sunray(
+            const TF mu, const int i, const int j,
+            const int kstart, const int kend, const int icells, const int ijcells,
+            std::vector<TF> tau, const TF tauc,
+            TF* const restrict swn)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+        TF o_c1 = TF(0.9);
+        TF o_c2 = TF(2.75);
+        TF o_c3 = TF(0.09);
+        TF sw0 = TF(1100.);
+        TF gc  = TF(0.85);
+        TF sfc_albedo = TF(0.05);
+        TF taucde = TF(0.);
+        TF taupath = TF(0.);
+        std::vector<TF> taude(kend , TF(0.));
+        TF omega  = TF(1.) - TF(1.e-3) * (o_c1 + o_c2 * (mu+TF(1.)) * std::exp(-o_c3 * tauc)); //fouquart
+        TF ff     = gc * gc;
+        TF gcde   = gc / (TF(1.) + gc);
+        taucde = ( TF(1.0) - omega*ff) * tauc;
+        for (int k=kstart; k<kend; ++k)
+        {
+            taude[k] = ( TF(1.) - omega*ff ) * tau[k];
+        }
+        TF omegade = (TF(1.)-ff) * omega/(TF(1.) - omega*ff);
+        TF x1  = TF(1.) - omegade * gcde;
+        TF x2  = TF(1.) - omegade;
+        TF rk  = std::sqrt(TF(3.) * x2 * x1);
+        TF mu2 = mu * mu;
+        TF x3  = TF(4.) * (TF(1.) - rk*rk*mu2);
+        TF rp  = std::sqrt(TF(3.) * x2/x1);
+        TF alpha = TF(3.) * omegade * mu2 * (TF(1.) + gcde*x2) / x3;
+        TF beta  = TF(3.) * omegade * mu * (TF(1.) + TF(3.)*gcde*mu2*x2) / x3;
 
-         TF t1 = TF(1.) - sfc_albedo - rtt * (TF(1.) + sfc_albedo) * rp;
-         TF t2 = TF(1.) - sfc_albedo + rtt * (TF(1.) + sfc_albedo) * rp;
-         TF t3 = (TF(1.) - sfc_albedo) * alpha - rtt * (TF(1.) + sfc_albedo) * beta + sfc_albedo*mu;
-         TF c2 = (xp23p*t3*exmu0 - t1*ap23b*exmk) / (xp23p*t2*expk - xm23p*t1*exmk);
-         TF c1 = (ap23b - c2*xm23p)/xp23p;
+        TF rtt = TF(2.0/3.0);
+        TF exmu0 = std::exp(-taucde / mu);
+        TF expk  = std::exp(rk * taucde);
+        TF exmk  = TF(1.) / expk;
+        TF xp23p = TF(1.) + rtt*rp;
+        TF xm23p = TF(1.) - rtt*rp;
+        TF ap23b = alpha + rtt*beta;
 
-         for (int k=kend-1; k>=kstart; --k)
-         {
-             const int ijk  = i + j*jj + k*kk;
-             taupath = taupath + taude[k];
-             swn[ijk] = sw0 * TF(4./3.) * (rp * (c1*std::exp(-rk*taupath)
-                 - c2 * std::exp(rk*taupath)) - beta * std::exp(-taupath/mu))
-                 + mu * sw0 * std::exp(-taupath / mu);
-         }
-     }
+        TF t1 = TF(1.) - sfc_albedo - rtt * (TF(1.) + sfc_albedo) * rp;
+        TF t2 = TF(1.) - sfc_albedo + rtt * (TF(1.) + sfc_albedo) * rp;
+        TF t3 = (TF(1.) - sfc_albedo) * alpha - rtt * (TF(1.) + sfc_albedo) * beta + sfc_albedo*mu;
+        TF c2 = (xp23p*t3*exmu0 - t1*ap23b*exmk) / (xp23p*t2*expk - xm23p*t1*exmk);
+        TF c1 = (ap23b - c2*xm23p)/xp23p;
 
-     template<typename TF>
-     void calc_gcss_rad_SW(
-             TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
-             const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
-             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int icells, const int ijcells, const int ncells, TF mu)
-     {
-         const int jj = icells;
-         const int kk = ijcells;
-         const TF rho_l = 1000.;
-         const TF reff = 1.E-5;
-         TF tauc;
-         TF fact;
-         int ki; //PBLH index
+        for (int k=kend-1; k>=kstart; --k)
+        {
+            const int ijk  = i + j*jj + k*kk;
+            taupath = taupath + taude[k];
+            swn[ijk] = sw0 * TF(4./3.) * (rp * (c1*std::exp(-rk*taupath)
+                - c2 * std::exp(rk*taupath)) - beta * std::exp(-taupath/mu))
+                + mu * sw0 * std::exp(-taupath / mu);
+        }
+    }
 
-         std::vector<TF> tau(kend,TF(0.));
-         for (int n=0; n<ncells; ++n)
-             swn[n] = TF(0.); //initialize as 0 otherwise weird things might be stored
+    template<typename TF>
+    void calc_gcss_rad_SW(
+            TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
+            const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells, const int ncells, TF mu)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+        const TF rho_l = 1000.;
+        const TF reff = 1.E-5;
+        TF tauc;
+        TF fact;
+        int ki; //PBLH index
 
-         for (int j=jstart; j<jend; ++j)
-         {
-             for (int i=istart; i<iend; ++i)
-             {
-                 tauc = TF(0.0);
-                 for (int k=kstart;k<kend;++k)
-                 {
-                     const int ij   = i + j*jj;
-                     const int ijk  = i + j*jj + k*kk;
-                     const int km1 = std::max(1,k-1);
-                     tau[k] = TF(0.0);
-                     if (ql[ijk]>1.E-5)
-                     {
-                         tau[k] = std::max(TF(0.0) , TF(1.5) * ql[ijk] * rhoref[k] * (z[k]-z[km1]) / reff / rho_l);
-                         tauc = tauc + tau[k];
-                     }
-                 }
-                 sunray<TF>(
-                         TF(mu), i, j,
-                         kstart, kend, icells, ijcells,
-                         tau, tauc, swn);
-             }
-         }
-     }
+        std::vector<TF> tau(kend,TF(0.));
+        for (int n=0; n<ncells; ++n)
+            swn[n] = TF(0.); //initialize as 0 otherwise weird things might be stored
 
-     template<typename TF>
-     void calc_gcss_rad_LW(const TF* const restrict ql, const TF* const restrict qt,
-     TF* const restrict lwp, TF* const restrict flx, const TF* const restrict rhoref,
-     const TF fr0, const TF fr1, const TF xka, const TF div,
-     const TF* const z, const TF* const dzi,
-     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-     const int icells, const int ijcells)
-     {
-         const int jj = icells;
-         const int kk = ijcells;
-         int ki; //pblh index
-         TF fact;
-         for (int j=jstart; j<jend; ++j)
-         {
-             for (int i=istart; i<iend; ++i)
-             {
-                 lwp[i+j*jj] = TF(0.0);
-                 ki = kend; //set to top of domain
+        for (int j=jstart; j<jend; ++j)
+        {
+            for (int i=istart; i<iend; ++i)
+            {
+                tauc = TF(0.0);
+                for (int k=kstart;k<kend;++k)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    const int km1 = std::max(1,k-1);
+                    tau[k] = TF(0.0);
+                    if (ql[ijk]>1.E-5)
+                    {
+                        tau[k] = std::max(TF(0.0) , TF(1.5) * ql[ijk] * rhoref[k] * (z[k]-z[km1]) / reff / rho_l);
+                        tauc = tauc + tau[k];
+                    }
+                }
+                sunray<TF>(
+                        TF(mu), i, j,
+                        kstart, kend, icells, ijcells,
+                        tau, tauc, swn);
+            }
+        }
+    }
 
-                 for (int k=kstart; k<kend; ++k)
-                 {
-                     const int ij   = i + j*jj;
-                     const int ijk  = i + j*jj + k*kk;
-                     const int km1 = std::max(1,k-1);
-                     lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[km1]));
-                     flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
-                     if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) )
-                         ki = k; //this is the PBLH index
-                 }
+    template<typename TF>
+    void calc_gcss_rad_LW(const TF* const restrict ql, const TF* const restrict qt,
+    TF* const restrict lwp, TF* const restrict flx, const TF* const restrict rhoref,
+    const TF fr0, const TF fr1, const TF xka, const TF div,
+    const TF* const z, const TF* const dzi,
+    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+    const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+        int ki; //pblh index
+        TF fact;
+        for (int j=jstart; j<jend; ++j)
+        {
+            for (int i=istart; i<iend; ++i)
+            {
+                lwp[i+j*jj] = TF(0.0);
+                ki = kend; //set to top of domain
 
-                 fact = div * Constants::cp<TF> * rhoref[ki];
-                 const int ij = i + j*jj;
-                 flx[ij + kstart*kk] = flx[ij + kstart*kk] + fr0 * std::exp(TF(-1.0) * xka * lwp[ij]);
+                for (int k=kstart; k<kend; ++k)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+                    const int km1 = std::max(1,k-1);
+                    lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[km1]));
+                    flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
+                    if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) )
+                        ki = k; //this is the PBLH index
+                }
 
-                 for (int k=kstart+1; k<kend; ++k)
-                 {
-                     const int ij   = i + j*jj;
-                     const int ijk  = i + j*jj + k*kk;
-                     const int km1 = std::max(kstart+1,k-1);
-                     const int ijkm = i + j*jj + km1*kk;
-                     lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
-                     flx[ijk] = flx[ijk] + fr0 * std::exp(-1.0 * xka * lwp[ij]);
+                fact = div * Constants::cp<TF> * rhoref[ki];
+                const int ij = i + j*jj;
+                flx[ij + kstart*kk] = flx[ij + kstart*kk] + fr0 * std::exp(TF(-1.0) * xka * lwp[ij]);
 
-                     if ((k>ki) && (ki>1) && (fact>0.))
-                     { // above PBLH
-                         flx[ijk] = flx[ijk] + fact * ( TF(0.25) * std::pow(z[k]-z[ki],TF(1.333)) + z[ki] * std::pow(z[k]-z[ki],TF(0.33333)) );
-                     }
-                 }
-             } // end of i
-         } // end of j
-     }
-     template<typename TF> // EW: simplified radiative parameterization for LW and SW fluxes for DYCOMS
-     void exec_gcss_rad(
-             TF* const restrict tt, const TF* const restrict ql, const TF* const restrict qt,
-             TF* const restrict lwp, TF* const restrict flx, TF* const restrict swn, const TF* const restrict rhoref,
-             const TF mu, const TF mu_min, const TF fr0, const TF fr1, const TF xka, const TF div,
-             const TF* const z, const TF* const dzi,
-             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int icells, const int ijcells, const int ncells)
-     {
-         const int jj = icells;
-         const int kk = ijcells;
+                for (int k=kstart+1; k<kend; ++k)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+                    const int km1 = std::max(kstart+1,k-1);
+                    const int ijkm = i + j*jj + km1*kk;
+                    lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
+                    flx[ijk] = flx[ijk] + fr0 * std::exp(-1.0 * xka * lwp[ij]);
 
-         // call LW.
-         calc_gcss_rad_LW<TF>(
-                 ql,qt,
-                 lwp, flx, rhoref, fr0, fr1, xka, div,
-                 z, dzi,
-                 istart, iend, jstart, jend, kstart, kend,
-                 icells, ijcells);
+                    if ((k>ki) && (ki>1) && (fact>0.))
+                    { // above PBLH
+                        flx[ijk] = flx[ijk] + fact * ( TF(0.25) * std::pow(z[k]-z[ki],TF(1.333)) + z[ki] * std::pow(z[k]-z[ki],TF(0.33333)) );
+                    }
+                }
+            } // end of i
+        } // end of j
+    }
+    template<typename TF> // EW: simplified radiative parameterization for LW and SW fluxes for DYCOMS
+    void exec_gcss_rad(
+            TF* const restrict tt, const TF* const restrict ql, const TF* const restrict qt,
+            TF* const restrict lwp, TF* const restrict flx, TF* const restrict swn, const TF* const restrict rhoref,
+            const TF mu, const TF mu_min, const TF fr0, const TF fr1, const TF xka, const TF div,
+            const TF* const z, const TF* const dzi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells, const int ncells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
 
-         for (int j=jstart; j<jend; ++j)
-         {
-             for (int i=istart; i<iend; ++i)
-             {
-                 for (int k=kstart+1;k<kend;++k)
-                 {
-                     const int ij   = i + j*jj;
-                     const int ijk  = i + j*jj + k*kk;
-                     const int km1 = std::max(kstart+1,k-1);
-                     const int ijkm = i + j*jj + km1*kk;
-                     tt[ijk] = tt[ijk] - (flx[ijk] - flx[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
-                 }
-             } // end of i
-         } // end of j
+        // call LW.
+        calc_gcss_rad_LW<TF>(
+                ql,qt,
+                lwp, flx, rhoref, fr0, fr1, xka, div,
+                z, dzi,
+                istart, iend, jstart, jend, kstart, kend,
+                icells, ijcells);
 
-         if (mu>mu_min) // if daytime, call SW.
-         {
-             calc_gcss_rad_SW<TF>(
-                     swn, ql, qt,
-                     rhoref, z, dzi,
-                     istart, iend, jstart, jend, kstart, kend,
-                     icells, ijcells, ncells, mu);
+        for (int j=jstart; j<jend; ++j)
+        {
+            for (int i=istart; i<iend; ++i)
+            {
+                for (int k=kstart+1;k<kend;++k)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+                    const int km1 = std::max(kstart+1,k-1);
+                    const int ijkm = i + j*jj + km1*kk;
+                    tt[ijk] = tt[ijk] - (flx[ijk] - flx[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
+                }
+            } // end of i
+        } // end of j
 
-             for (int j=jstart; j<jend; ++j)
-             {
-                 for (int i=istart; i<iend; ++i)
-                 {
-                     for (int k=kstart+1;k<kend;++k)
-                     {
-                         const int ij   = i + j*jj;
-                         const int ijk  = i + j*jj + k*kk;
-                         const int km1 = std::max(kstart+1,k-1);
-                         const int ijkm = i + j*jj + km1*kk;
-                         tt[ijk] = tt[ijk] + (swn[ijk] - swn[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
-                     }
-                 }
-             }
-         } //end if mu
-     } // end of calc_gcss_rad
- }
+        if (mu>mu_min) // if daytime, call SW.
+        {
+            calc_gcss_rad_SW<TF>(
+                    swn, ql, qt,
+                    rhoref, z, dzi,
+                    istart, iend, jstart, jend, kstart, kend,
+                    icells, ijcells, ncells, mu);
+
+            for (int j=jstart; j<jend; ++j)
+            {
+                for (int i=istart; i<iend; ++i)
+                {
+                    for (int k=kstart+1;k<kend;++k)
+                    {
+                        const int ij   = i + j*jj;
+                        const int ijk  = i + j*jj + k*kk;
+                        const int km1 = std::max(kstart+1,k-1);
+                        const int ijkm = i + j*jj + km1*kk;
+                        tt[ijk] = tt[ijk] + (swn[ijk] - swn[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
+                    }
+                }
+            }
+        } //end if mu
+    } // end of calc_gcss_rad
+}
 
 template<typename TF>
 Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -317,11 +320,10 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	auto flx = fields.get_tmp();
 	auto swn = fields.get_tmp();
 	auto ql  = fields.get_tmp();
+
 	thermo.get_thermo_field(*ql, "ql", false, false);
 
-	struct tm current_datetime;
-	current_datetime = timeloop.get_phytime();
-	TF mu = calc_zenith(current_datetime, lat, lon);
+	TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
 
 	exec_gcss_rad<TF>(
 		    fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
@@ -330,6 +332,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 		    gd.z.data(), gd.dzhi.data(),
 		    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
 		    gd.icells, gd.ijcells, gd.ncells);
+
 	fields.release_tmp(lwp);
 	fields.release_tmp(flx);
 	fields.release_tmp(swn);
@@ -369,9 +372,8 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
 
     else if (name == "sflx")
     {
-        struct tm current_datetime;
-        current_datetime = timeloop.get_phytime();
-        TF mu = calc_zenith(current_datetime, lat, lon);
+        TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+
         auto& gd = grid.get_grid_data();
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {

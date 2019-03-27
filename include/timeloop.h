@@ -85,9 +85,9 @@ class Timeloop
         unsigned long get_idt() const { return idt;   }
         int get_iotime() const { return iotime;    }
         int get_iteration() const { return iteration; }
-        struct tm get_phytime() const { return datetime; }
-        bool has_utc_time() const { return flag_utc_time; }
 
+        // Functions for UTC time support.
+        bool has_utc_time() const { return flag_utc_time; }
         date::sys_time<std::chrono::microseconds> get_datetime_utc() const;
         std::string get_datetime_utc_start_string() const;
         double seconds_since_midnight() const;
@@ -118,8 +118,6 @@ class Timeloop
         double endtime;
         double savetime;
         double postproctime;
-        struct tm datetime;
-
         bool flag_utc_time;
         date::sys_seconds datetime_utc_start;
 

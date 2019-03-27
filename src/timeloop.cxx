@@ -60,7 +60,6 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     grid(gridin),
     fields(fieldsin),
     ifactor(1e9),
-    datetime({0}),
     flag_utc_time(false)
 {
     substep = 0;
@@ -89,13 +88,6 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         flag_utc_time = true;
         datetime_utc_start = parse_datetime_string(datetime_utc_string);
     }
-
-    // Set the date and UTC time.
-    datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
-    datetime.tm_year = 0; //default is 1900
-    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
-    datetime.tm_isdst = -1;
-    mktime(&datetime);
 
     if (sim_mode == Sim_mode::Post)
         postproctime = input.get_item<double>("time", "postproctime", "");
@@ -180,9 +172,6 @@ void Timeloop<TF>::step_time()
     time  += dt;
     itime += idt;
     iotime = static_cast<int>(itime/iiotimeprec);
-
-    datetime.tm_sec += dt;
-    mktime ( &datetime );
 
     ++iteration;
 
