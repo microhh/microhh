@@ -172,6 +172,9 @@ void Timeloop<TF>::set_time_step_limit(unsigned long idtlimin)
 template<typename TF>
 void Timeloop<TF>::step_time()
 {
+    std::cout << "CvH: " << seconds_since_midnight() << std::endl;
+    std::cout << "CvH: " << days_since_year()        << std::endl;
+
     // Only step forward in time if we are not in a substep
     if (in_substep())
         return;
@@ -523,6 +526,19 @@ double Timeloop<TF>::seconds_since_midnight() const
         throw std::runtime_error("No datetime in UTC specified");
     auto microseconds = std::chrono::microseconds(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
     return 1e-6*microseconds.count();
+}
+
+template<typename TF>
+double Timeloop<TF>::days_since_year() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    auto now = get_datetime_utc();
+    std::chrono::duration<double, date::days::period> double_date =
+        now - date::sys_days{date::year_month_day{date::floor<date::days>(now)}.year()/1/1};
+
+    return double_date.count();
 }
 
 template<typename TF>

@@ -91,6 +91,7 @@ class Timeloop
         date::sys_time<std::chrono::milliseconds> get_datetime_utc() const;
         std::string get_datetime_utc_start_string() const;
         double seconds_since_midnight() const;
+        double days_since_year() const;
 
     private:
         Master& master;
