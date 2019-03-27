@@ -21,6 +21,7 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <cstdio>
 #include <cmath>
 
@@ -172,9 +173,6 @@ void Timeloop<TF>::set_time_step_limit(unsigned long idtlimin)
 template<typename TF>
 void Timeloop<TF>::step_time()
 {
-    std::cout << "CvH: " << seconds_since_midnight() << std::endl;
-    std::cout << "CvH: " << days_since_year()        << std::endl;
-
     // Only step forward in time if we are not in a substep
     if (in_substep())
         return;
@@ -504,11 +502,12 @@ void Timeloop<TF>::step_post_proc_time()
 }
 
 template<typename TF>
-date::sys_time<std::chrono::milliseconds> Timeloop<TF>::get_datetime_utc() const
+date::sys_time<std::chrono::microseconds> Timeloop<TF>::get_datetime_utc() const
 {
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
-    return datetime_utc_start + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(time));
+
+    return datetime_utc_start + std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(time));
 }
 
 template<typename TF>
@@ -516,6 +515,7 @@ std::string Timeloop<TF>::get_datetime_utc_start_string() const
 {
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
+
     return date::format("%F %T", datetime_utc_start);
 }
 
@@ -524,8 +524,12 @@ double Timeloop<TF>::seconds_since_midnight() const
 {
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
-    auto microseconds = std::chrono::microseconds(get_datetime_utc() - date::floor<date::days>(get_datetime_utc()));
-    return 1e-6*microseconds.count();
+
+    auto now = get_datetime_utc();
+    std::chrono::duration<double, std::chrono::seconds::period> double_seconds =
+        now - date::floor<date::days>(now);
+
+    return double_seconds.count();
 }
 
 template<typename TF>

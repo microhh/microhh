@@ -88,7 +88,7 @@ class Timeloop
         struct tm get_phytime() const { return datetime; }
         bool has_utc_time() const { return flag_utc_time; }
 
-        date::sys_time<std::chrono::milliseconds> get_datetime_utc() const;
+        date::sys_time<std::chrono::microseconds> get_datetime_utc() const;
         std::string get_datetime_utc_start_string() const;
         double seconds_since_midnight() const;
         double days_since_year() const;
