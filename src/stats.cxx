@@ -28,8 +28,6 @@
 #include <iomanip>
 #include <vector>
 #include <utility>
-#include <netcdf>       // C++
-#include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -41,17 +39,16 @@
 #include "advec.h"
 #include "diff.h"
 
+#include <netcdf.h>
+#include "netcdf_interface.h"
+
 namespace
 {
-    using namespace netCDF;
-    using namespace netCDF::exceptions;
+    //using namespace netCDF;
+    //using namespace netCDF::exceptions;
     using namespace Constants;
 
-    // Help functions to switch between the different NetCDF data types
-    template<typename TF> NcType netcdf_fp_type();
-    template<> NcType netcdf_fp_type<double>() { return ncDouble; }
-    template<> NcType netcdf_fp_type<float>()  { return ncFloat; }
-
+    // Help function(s) to switch between the different NetCDF data types
     template<typename TF> TF netcdf_fp_fillvalue();
     template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
     template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
@@ -517,64 +514,44 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             std::stringstream filename;
             filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
-            // Create new NetCDF file, and catch any exceptions locally, to be able
-            // to communicate them to the other processes.
-            try
-            {
-                m.data_file = new NcFile(filename.str(), NcFile::newFile);
-            }
-            catch (NcException& e)
-            {
-                master.print_message("NetCDF exception: %s\n",e.what());
-                ++nerror;
-            }
-        }
-
-        // Crash on all processes in case the file could not be written.
-        master.sum(&nerror, 1);
-
-        if (nerror)
-            throw std::runtime_error("In stats");
-
-        // Create dimensions.
-        if (master.get_mpiid() == 0)
-        {
-            m.z_dim  = m.data_file->addDim("z" , gd.kmax);
-            m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
-            m.t_dim  = m.data_file->addDim("time");
-
-            NcVar z_var;
-            NcVar zh_var;
+            // Create new NetCDF file
+            m.data_file = std::make_shared<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
+            //m.data_file = Netcdf_file(master, filename.str(), Netcdf_mode::Create);
+            
+            // Create dimensions.
+            m.data_file->add_dimension("z",  gd.kmax);
+            m.data_file->add_dimension("zh", gd.kmax+1);
+            m.data_file->add_dimension("time");
 
             // Create variables belonging to dimensions.
-            m.iter_var = m.data_file->addVar("iter", ncInt, m.t_dim);
-            m.iter_var.putAtt("units", "-");
-            m.iter_var.putAtt("long_name", "Iteration number");
+            m.data_file->template add_variable<int>("iter", {"time"});
+            //m.iter_var.putAtt("units", "-");
+            //m.iter_var.putAtt("long_name", "Iteration number");
 
-            m.t_var = m.data_file->addVar("time", ncDouble, m.t_dim);
-            if (timeloop.has_utc_time())
-                m.t_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
-            else
-                m.t_var.putAtt("units", "seconds since start");
-            m.t_var.putAtt("long_name", "Time");
+            m.data_file->template add_variable<double>("time", {"time"});
+            //if (timeloop.has_utc_time())
+            //    m.time_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+            //else
+            //    m.time_var.putAtt("units", "seconds since start");
+            //m.time_var.putAtt("long_name", "Time");
 
-            z_var = m.data_file->addVar("z", netcdf_fp_type<TF>(), m.z_dim);
-            z_var.putAtt("units", "m");
-            z_var.putAtt("long_name", "Full level height");
+            Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
+            //z_var.putAtt("units", "m");
+            //z_var.putAtt("long_name", "Full level height");
 
-            zh_var = m.data_file->addVar("zh", netcdf_fp_type<TF>(), m.zh_dim);
-            zh_var.putAtt("units", "m");
-            zh_var.putAtt("long_name", "Half level height");
+            Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
+            //zh_var.putAtt("units", "m");
+            //zh_var.putAtt("long_name", "Half level height");
 
             // Save the grid variables.
-            z_var .putVar(&gd.z [gd.kstart]);
-            zh_var.putVar(&gd.zh[gd.kstart]);
+            z_var .insert(gd.z [gd.kstart], {0});
+            zh_var.insert(gd.zh[gd.kstart], {0});
 
             // Synchronize the NetCDF file.
             // BvS: only the last netCDF4-c++ includes the NcFile->sync()
             //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
             //m.data_file->sync();
-            nc_sync(m.data_file->getId());
+            //nc_sync(m.data_file->getId());
         }
 
         m.nmask. resize(gd.kcells);
@@ -618,52 +595,52 @@ void Stats<TF>::exec(const Timeloop<TF>& timeloop)
     if (!swstats)
         return;
 
-    const int iteration = timeloop.get_iteration();
-    const double time = timeloop.get_time();
-    const unsigned long itime = timeloop.get_itime();
-
-    auto& gd = grid.get_grid_data();
-
-    // Write message in case stats is triggered.
-    master.print_message("Saving statistics for time %f\n", time);
-
-    for (auto& mask : masks)
-    {
-        Mask<TF>& m = mask.second;
-
-        // Put the data into the NetCDF file.
-        if (master.get_mpiid() == 0)
-        {
-            const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
-
-            // Write the time and iteration number.
-            m.t_var   .putVar(time_index, &time     );
-            m.iter_var.putVar(time_index, &iteration);
-
-            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
-            std::vector<size_t> time_height_size  = {1, 0};
-
-            for (auto& p : m.profs)
-            {
-                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
-                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
-            }
-
-            for (auto& ts: m.tseries)
-                m.tseries[ts.first].ncvar.putVar(time_index, &m.tseries[ts.first].data);
-
-            // Synchronize the NetCDF file
-            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-            //m.dataFile->sync();
-            nc_sync(m.data_file->getId());
-        }
-    }
-
-    wmean_set = false;
-
-    // Increment the statistics index
-    ++statistics_counter;
+//    const int iteration = timeloop.get_iteration();
+//    const double time = timeloop.get_time();
+//    const unsigned long itime = timeloop.get_itime();
+//
+//    auto& gd = grid.get_grid_data();
+//
+//    // Write message in case stats is triggered.
+//    master.print_message("Saving statistics for time %f\n", time);
+//
+//    for (auto& mask : masks)
+//    {
+//        Mask<TF>& m = mask.second;
+//
+//        // Put the data into the NetCDF file.
+//        if (master.get_mpiid() == 0)
+//        {
+//            const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
+//
+//            // Write the time and iteration number.
+//            m.time_var.putVar(time_index, &time     );
+//            m.iter_var.putVar(time_index, &iteration);
+//
+//            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
+//            std::vector<size_t> time_height_size  = {1, 0};
+//
+//            for (auto& p : m.profs)
+//            {
+//                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
+//                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
+//            }
+//
+//            for (auto& ts: m.tseries)
+//                m.tseries[ts.first].ncvar.putVar(time_index, &m.tseries[ts.first].data);
+//
+//            // Synchronize the NetCDF file
+//            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+//            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+//            //m.dataFile->sync();
+//            nc_sync(m.data_file->getId());
+//        }
+//    }
+//
+//    wmean_set = false;
+//
+//    // Increment the statistics index
+//    ++statistics_counter;
 }
 
 // Retrieve the user input list of requested masks
@@ -690,9 +667,11 @@ template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
+
     // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
     if (is_blacklisted(name, wltype))
         return;
+
     // Add profile to all the NetCDF files
     for (auto& mask : masks)
     {
@@ -701,26 +680,13 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            std::vector<NcDim> dim_vector = {m.t_dim};
+            m.profs[name].ncvar = m.data_file->template add_variable<TF>(name, {"time", zloc});
 
-            if (zloc == "z")
-            {
-                dim_vector.push_back(m.z_dim);
-                m.profs[name].ncvar = m.data_file->addVar(name, netcdf_fp_type<TF>(), dim_vector);
-                // m.profs[name].data = NULL;
-            }
-            else if (zloc == "zh")
-            {
-                dim_vector.push_back(m.zh_dim);
-                m.profs[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
-                // m.profs[name].data = NULL;
-            }
+            //m.profs[name].ncvar.putAtt("units", unit.c_str());
+            //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
+            //m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-            m.profs[name].ncvar.putAtt("units", unit.c_str());
-            m.profs[name].ncvar.putAtt("long_name", longname.c_str());
-            m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
-
-            nc_sync(m.data_file->getId());
+            //nc_sync(m.data_file->getId());
         }
 
         // Resize the vector holding the data at all processes
@@ -731,7 +697,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 }
 
 template<typename TF>
-void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, TF* restrict prof)
+void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, std::vector<TF>& prof)
 {
     auto& gd = grid.get_grid_data();
 
@@ -742,26 +708,27 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            NcVar var;
-            if (zloc == "z")
-                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
-            else if (zloc == "zh")
-                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
+            Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {"time", zloc});
 
-            var.putAtt("units", unit.c_str());
-            var.putAtt("long_name", longname.c_str());
-            var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-            const std::vector<size_t> index = {0};
+            //var.putAtt("units", unit.c_str());
+            //var.putAtt("long_name", longname.c_str());
+            //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+            //const std::vector<size_t> index = {0};
             if (zloc == "z")
             {
-                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
-                var.putVar(index, size, &prof[gd.kstart]);
+                var.insert(prof[gd.kstart], {0}, {gd.kmax});
+
+                //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
+                //var.putVar(index, size, &prof[gd.kstart]);
             }
             else if (zloc == "zh")
             {
-                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
-                var.putVar(index, size, &prof[gd.kstart]);
+                var.insert(prof[gd.kstart], {0}, {gd.kmax+1});
+
+                //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
+                //var.putVar(index, size, &prof[gd.kstart]);
             }
        }
    }
@@ -783,10 +750,10 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         // create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), m.t_dim);
-            m.tseries[name].ncvar.putAtt("units", unit.c_str());
-            m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
-            m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+            m.tseries[name].ncvar = m.data_file->template add_variable<TF>(name, {"t"});
+            //m.tseries[name].ncvar.putAtt("units", unit.c_str());
+            //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
+            //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
         }
 
         // Initialize at zero

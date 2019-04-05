@@ -633,10 +633,10 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
@@ -647,8 +647,8 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);

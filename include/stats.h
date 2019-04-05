@@ -24,24 +24,23 @@
 #define STATS
 
 #include <regex>
-#include <netcdf>
-using namespace netCDF;
-
 #include "boundary_cyclic.h"
 
 class Master;
 class Input;
+class Netcdf_file;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Timeloop;
+template<typename> class Netcdf_variable;
 
 // Struct for profiles
 template<typename TF>
 struct Prof_var
 {
-    NcVar ncvar;
+    Netcdf_variable<TF> ncvar;
     std::vector<TF> data;
 };
 
@@ -49,7 +48,7 @@ struct Prof_var
 template<typename TF>
 struct Time_series_var
 {
-    NcVar ncvar;
+    Netcdf_variable<TF> ncvar;
     TF data;
 };
 
@@ -70,12 +69,10 @@ struct Mask
     std::vector<int> nmask;
     std::vector<int> nmaskh;
     int nmask_bot;
-    NcFile* data_file;
-    NcDim z_dim;
-    NcDim zh_dim;
-    NcDim t_dim;
-    NcVar iter_var;
-    NcVar t_var;
+
+    std::shared_ptr<Netcdf_file> data_file;
+    Netcdf_variable<TF> iter_var;
+    Netcdf_variable<TF> time_var;
     Prof_map<TF> profs;
     Time_series_map<TF> tseries;
 };
@@ -112,7 +109,7 @@ class Stats
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
-        void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
+        void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
         void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF, std::vector<std::string>);
