@@ -106,7 +106,7 @@ class Stats
         const std::vector<std::string>& get_mask_list();
         void set_mask_thres(std::string, Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type );
 
-        void exec(const Timeloop<TF>&);
+        void exec(const int, const double, const unsigned long);
 
         // Interface functions.
         void add_mask(const std::string);
