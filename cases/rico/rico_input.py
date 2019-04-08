@@ -1,4 +1,7 @@
 import numpy as np
+import netCDF4 as nc
+
+float_type = 'f8'
 
 case = 'gcss' # Original RICO
 #case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
