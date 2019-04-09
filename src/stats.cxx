@@ -590,15 +590,11 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 }
 
 template<typename TF>
-void Stats<TF>::exec(const Timeloop<TF>& timeloop)
+void Stats<TF>::exec(const int iteration, const double time, const unsigned long itime)
 {
     if (!swstats)
         return;
 
-//    const int iteration = timeloop.get_iteration();
-//    const double time = timeloop.get_time();
-//    const unsigned long itime = timeloop.get_itime();
-//
 //    auto& gd = grid.get_grid_data();
 //
 //    // Write message in case stats is triggered.

@@ -160,16 +160,16 @@ namespace date
 // durations
 
 using days = std::chrono::duration
-    <int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
-
+    <int, std::ratio<86400>>;
 using weeks = std::chrono::duration
-    <int, std::ratio_multiply<std::ratio<7>, days::period>>;
-
+    <int, std::ratio<7*86400>>;
 using years = std::chrono::duration
-    <int, std::ratio_multiply<std::ratio<146097, 400>, days::period>>;
-
+    <int, std::ratio<365*86400>>;
 using months = std::chrono::duration
-    <int, std::ratio_divide<years::period, std::ratio<12>>>;
+    <int, std::ratio<365*86400/12>>;
+
+//    using days = std::chrono::duration
+//        <int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
 // time_point
 

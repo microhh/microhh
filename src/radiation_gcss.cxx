@@ -31,7 +31,6 @@ namespace
 
         const TF year2days = TF(365.);
         const TF pi_angle  = TF(180.);
-        const TF day2secs  = TF(86400.);
 
         const TF z1 = TF(279.934);
         const TF z2 = TF(1.914827);
