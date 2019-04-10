@@ -465,16 +465,15 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"});
-    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, operators);
-    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, operators);
+    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, stat_op_w);
+    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, stat_op_def);
+    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, stat_op_def);
 
     for (auto& it : sp)
     {
-        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators);
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, stat_op_def);
     }
-    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, {"mean","2","w","grad"});
+    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, stat_op_p);
 
     // Calculate covariances
     for (auto& it1 : ap)
@@ -800,6 +799,15 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
+        for (auto& it : ap)
+        {
+            if(it.first=="w")
+                stats.add_prof(*it.second, "zh", stat_op_w);
+            else
+                stats.add_prof(*it.second, "z", stat_op_def);
+        }
+        stats.add_prof(*sd["p"], "z", stat_op_p);
+/*
         // Mean velocity compontents
         stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z",  Stats_whitelist_type::White );
         stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z",  Stats_whitelist_type::White );
@@ -853,7 +861,7 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("vflux", "Total flux of the " + ap["v"]->longname, "m2 s-2", "zh");
         for (auto& it : sp)
             stats.add_prof(it.first+"flux", "Total flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
-
+*/
         // Covariances
         for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
         {

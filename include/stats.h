@@ -111,6 +111,7 @@ class Stats
         // Interface functions.
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
+        void add_prof(const Field3d<TF>&, std::string, const std::vector<std::string>&);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
         void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);

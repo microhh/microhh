@@ -683,6 +683,64 @@ void Stats<TF>::add_mask(const std::string maskname)
 
 // Add a new profile to each of the NetCDF files
 template<typename TF>
+void Stats<TF>::add_prof(const Field3d<TF>& var, std::string zloc, const std::vector<std::string>& operations)
+{
+    std::string zloc_alt;
+    if (zloc == "z")
+        zloc_alt = "zh";
+    else if (zloc == "zh")
+        zloc_alt = "z";
+    else
+        throw std::runtime_error("Invalid height in add_prof");
+
+    for (auto& it : operations)
+    {
+        if (it == "mean")
+        {
+            add_prof(var.name, var.longname, var.unit, zloc,  Stats_whitelist_type::White );
+        }
+        if (has_only_digits(it))
+        {
+            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,"(" +var.unit + ")"+it, zloc);
+        }
+        else if (it == "w")
+        {
+            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, var.unit + " m s-1", zloc_alt);
+
+        }
+        else if (it == "grad")
+        {
+            add_prof(var.name+"grad", "Gradient of the " + var.longname, var.unit + " m-1", zloc_alt);
+
+        }
+        else if (it == "flux")
+        {
+            add_prof(var.name+"flux", "Total flux of the " + var.longname, var.unit + " m s-1", zloc_alt);
+        }
+        else if (it == "diff")
+        {
+            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, var.unit + " m s-1", zloc_alt);
+        }
+        else if (it == "path")
+        {
+
+        }
+        else if (it == "cover")
+        {
+
+        }
+        else if (it == "frac")
+        {
+
+        }
+        else
+        {
+            throw std::runtime_error("Invalid operator name to add prof");
+        }
+    }
+}
+// Add a new profile to each of the NetCDF files
+template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
