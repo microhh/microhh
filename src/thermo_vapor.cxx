@@ -651,19 +651,12 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);
-        for (int n=2; n<5; ++n)
-        {
-            std::stringstream ss;
-            ss << n;
-            std::string sn = ss.str();
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn, "z");
-        }
-
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", stat_op_b);
+        fields.release_tmp(b);
     }
 }
 
@@ -737,10 +730,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // calculate the mean
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
 
     fields.release_tmp(b);
 

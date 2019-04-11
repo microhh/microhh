@@ -108,6 +108,7 @@ class Thermo_vapor : public Thermo<TF>
         bool swcross_b;
         bool swcross_ql;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        const std::vector<std::string> stat_op_b   = {"mean","2","3","4","w","grad","diff","flux"};
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.
