@@ -35,6 +35,7 @@
 #include "timeloop.h"
 #include "boundary.h"
 #include "netcdf_interface.h"
+#include "thermo.h"
 
 using namespace Finite_difference::O2;
 
@@ -173,24 +174,6 @@ namespace
                     fldtend[ijk] += tend;
                 }
         }
-    }
-
-    template<typename TF>
-    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
-    {
-        TF maxgrad = 0.;
-        TF grad = 0.;
-        int kinv = kstart;
-        for (int k=kstart+1; k<kend; ++k)
-        {
-            grad = plusminus * (fldmean[k] - fldmean[k-1]);
-            if (grad > maxgrad)
-            {
-                maxgrad = grad;
-                kinv = k;
-            }
-        }
-        return kinv;
     }
 
     template<typename TF>
@@ -466,7 +449,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
 #ifndef USECUDA
 template <typename TF>
-void Force<TF>::exec(double dt)
+void Force<TF>::exec(double dt, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -522,7 +505,7 @@ void Force<TF>::exec(double dt)
             auto it1 = std::find(scalednudgelist.begin(), scalednudgelist.end(), it);
             if (it1 != scalednudgelist.end())
             {
-                const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+                const int kinv = thermo.get_bl_depth();
                 rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
             }
 

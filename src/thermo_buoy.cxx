@@ -43,7 +43,7 @@ namespace
         for (int n=0; n<ncells; ++n)
             b[n] = bin[n];
     }
-    
+
     template<typename TF>
     void calc_N2(TF* const restrict N2, const TF* const restrict b, const TF bg_n2, const TF* const restrict dzi,
                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -264,6 +264,24 @@ namespace
                     bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
                 }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 template<typename TF>
@@ -345,11 +363,11 @@ template<typename TF>
 void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
-    
+
     if (name == "b")
         calc_buoyancy(b.fld.data(), fields.sp.at("b")->fld.data(),gd.ncells);
     else if (name == "N2")
-        calc_N2(b.fld.data(), fields.sp.at("b")->fld.data(), bs.n2, gd.dzi.data(),gd.istart, gd.iend, 
+        calc_N2(b.fld.data(), fields.sp.at("b")->fld.data(), bs.n2, gd.dzi.data(),gd.istart, gd.iend,
                 gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells, gd.kcells);
     else
         throw 1;
@@ -383,6 +401,14 @@ template<typename TF>
 TF Thermo_buoy<TF>::get_buoyancy_diffusivity()
 {
     return fields.sp["b"]->visc;
+}
+
+template<typename TF>
+int Thermo_buoy<TF>::get_bl_depth()
+{
+    // Use the buoyancy gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("b")->fld_mean.data(), gd.kstart, gd.kend, 1);
 }
 
 template<typename TF>

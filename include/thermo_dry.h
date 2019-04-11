@@ -74,9 +74,10 @@ class Thermo_dry : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
 
         #ifdef USECUDA
         // GPU functions and variables

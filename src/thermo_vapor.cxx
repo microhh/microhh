@@ -296,6 +296,24 @@ namespace
                }
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 
@@ -624,6 +642,14 @@ TF Thermo_vapor<TF>::get_buoyancy_diffusivity()
 }
 
 template<typename TF>
+int Thermo_vapor<TF>::get_bl_depth()
+{
+    // Use the liquid water potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
+template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
     bs_stats = bs;
@@ -657,6 +683,8 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         b->unit = "m s-2";
         stats.add_profs(*b, "z", stat_op_b);
         fields.release_tmp(b);
+
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
     }
 }
 
@@ -742,7 +770,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof("rho"    , fields.rhoref);
         stats.set_prof("rhoh"   , fields.rhorefh);
     }
-
+    stats.set_timeserie("zi", gd.z[get_bl_depth()]);
 }
 
 #ifndef USECUDA

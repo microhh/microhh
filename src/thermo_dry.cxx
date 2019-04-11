@@ -257,6 +257,24 @@ namespace
             rhorefh[k] = prefh[k] / (Rd<TF> * threfh[k] * exnrefh[k]);
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 template<typename TF>
@@ -518,6 +536,14 @@ TF Thermo_dry<TF>::get_buoyancy_diffusivity()
     return fields.sp.at("th")->visc;
 }
 
+template<typename TF>
+int Thermo_dry<TF>::get_bl_depth()
+{
+    // Use the potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("th")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
 template <typename TF>
 void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
 {
@@ -543,6 +569,9 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         b->unit = "m s-2";
         stats.add_profs(*b, "z", stat_op_b);
         fields.release_tmp(b);
+
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
+
     }
 }
 
@@ -637,6 +666,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
 
     fields.release_tmp(b);
+    stats.set_timeserie("zi", gd.z[get_bl_depth()]);
 }
 
 template<typename TF>

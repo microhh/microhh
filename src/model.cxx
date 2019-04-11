@@ -334,7 +334,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step()); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step(), *thermo); //adding thermo and time because of gcssrad
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);

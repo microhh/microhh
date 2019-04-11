@@ -74,7 +74,7 @@ class Thermo
         virtual const std::vector<TF>& get_p_vector() const = 0;
         virtual const std::vector<TF>& get_ph_vector() const = 0;
         virtual const std::vector<TF>& get_exner_vector() const = 0;
-
+        virtual int get_bl_depth() = 0;
         virtual TF get_buoyancy_diffusivity() = 0;
 
         virtual void update_time_dependent(Timeloop<TF>&) = 0;

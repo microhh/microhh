@@ -1100,6 +1100,17 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
+void Stats<TF>::set_timeserie(const std::string varname, const TF val)
+{
+    auto it = std::find(varlist.begin(), varlist.end(), varname);
+    if (it != varlist.end())
+    {
+        for (auto& it : masks)
+            it.second.tseries.at(varname).data = val;
+    }
+}
+
+template<typename TF>
 void Stats<TF>::calc_stats(
         const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold,
         std::vector<std::string> operations)
