@@ -806,7 +806,7 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, const std::v
         }
         else if (has_only_digits(it))
         {
-            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,"(" +var.unit + ")"+it, zloc);
+            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,simplify_unit(var.unit, "",2), zloc);
         }
         else if (it == "w")
         {
