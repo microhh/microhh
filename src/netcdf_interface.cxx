@@ -289,6 +289,27 @@ void Netcdf_handle::insert(
     nc_check(master, nc_check_code);
 }
 
+void Netcdf_handle::add_attribute(
+        const std::string& name,
+        const std::string& value,
+        const int var_id)
+{
+    int nc_check_code = 0;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_redef(root_ncid);
+    nc_check(master, nc_check_code);
+
+    // CvH what if string is too long?
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_put_att_text(ncid, var_id, name.c_str(), value.size(), value.c_str());
+    nc_check(master, nc_check_code);
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_enddef(root_ncid);
+    nc_check(master, nc_check_code);
+}
+
 Netcdf_group Netcdf_handle::add_group(const std::string& name)
 {
     int group_ncid = -1;
@@ -443,6 +464,13 @@ void Netcdf_variable<T>::insert(const T value, const std::vector<int> i_start)
 {
     nc_file.insert(value, var_id, i_start, dim_sizes);
 }
+
+template<typename T>
+void Netcdf_variable<T>::add_attribute(const std::string& name, const std::string& value)
+{
+    nc_file.add_attribute(name, value, var_id);
+}
+
 
 
 template class Netcdf_variable<double>;

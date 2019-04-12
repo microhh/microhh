@@ -518,23 +518,23 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
 
         // Create variables belonging to dimensions.
         m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
-        //m.iter_var.putAtt("units", "-");
-        //m.iter_var.putAtt("long_name", "Iteration number");
+        m.iter_var->add_attribute("units", "-");
+        m.iter_var->add_attribute("long_name", "Iteration number");
 
         m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
-        //if (timeloop.has_utc_time())
-        //    m.time_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
-        //else
-        //    m.time_var.putAtt("units", "seconds since start");
-        //m.time_var.putAtt("long_name", "Time");
+        if (timeloop.has_utc_time())
+            m.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+        else
+            m.time_var->add_attribute("units", "seconds since start");
+        m.time_var->add_attribute("long_name", "Time");
 
         Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
-        //z_var.putAtt("units", "m");
-        //z_var.putAtt("long_name", "Full level height");
+        z_var.add_attribute("units", "m");
+        z_var.add_attribute("long_name", "Full level height");
 
         Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
-        //zh_var.putAtt("units", "m");
-        //zh_var.putAtt("long_name", "Half level height");
+        zh_var.add_attribute("units", "m");
+        zh_var.add_attribute("long_name", "Half level height");
 
         // Save the grid variables.
         std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
@@ -669,9 +669,9 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
         m.profs.emplace(name, tmp);
 
-        //m.profs[name].ncvar.putAtt("units", unit.c_str());
-        //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
-        //m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        m.profs.at(name).ncvar.add_attribute("units", unit);
+        m.profs.at(name).ncvar.add_attribute("long_name", longname);
+        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
         m.data_file->sync();
 
@@ -691,8 +691,8 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         // Create the NetCDF variable.
         Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
 
-        //var.putAtt("units", unit.c_str());
-        //var.putAtt("long_name", longname.c_str());
+        var.add_attribute("units", unit.c_str());
+        var.add_attribute("long_name", longname.c_str());
         //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
         if (zloc == "z")
@@ -727,10 +727,11 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
         m.tseries.emplace(name, tmp);
 
-        //m.tseries[name].ncvar.putAtt("units", unit.c_str());
-        //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
+        m.tseries.at(name).ncvar.add_attribute("units", unit);
+        m.tseries.at(name).ncvar.add_attribute("long_name", longname);
         //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
     }
+
     varlist.push_back(name);
 }
 
