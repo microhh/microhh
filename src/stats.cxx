@@ -514,7 +514,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
             // Create new NetCDF file
-            m.data_file = std::make_shared<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
+            m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
             //m.data_file = Netcdf_file(master, filename.str(), Netcdf_mode::Create);
             
             // Create dimensions.
@@ -523,11 +523,11 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             m.data_file->add_dimension("time");
 
             // Create variables belonging to dimensions.
-            m.data_file->template add_variable<int>("iter", {"time"});
+            m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
             //m.iter_var.putAtt("units", "-");
             //m.iter_var.putAtt("long_name", "Iteration number");
 
-            m.data_file->template add_variable<double>("time", {"time"});
+            m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
             //if (timeloop.has_utc_time())
             //    m.time_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
             //else
@@ -714,14 +714,14 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
             //const std::vector<size_t> index = {0};
             if (zloc == "z")
             {
-                var.insert(prof, {gd.kstart}, {gd.ktot});
+                var.insert(prof, {0}, {gd.ktot});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
                 //var.putVar(index, size, &prof[gd.kstart]);
             }
             else if (zloc == "zh")
             {
-                var.insert(prof, {gd.kstart}, {gd.ktot+1});
+                var.insert(prof, {0}, {gd.ktot+1});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
                 //var.putVar(index, size, &prof[gd.kstart]);
@@ -746,8 +746,7 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         // create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            // m.tseries[name].ncvar = m.data_file->template add_variable<TF>(name, {"t"});
-            Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"t"}), 0.};
+            Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
             m.tseries.emplace(name, tmp);
             //m.tseries[name].ncvar.putAtt("units", unit.c_str());
             //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
