@@ -542,17 +542,13 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             //zh_var.putAtt("long_name", "Half level height");
 
             // Save the grid variables.
-
             std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
             std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
             z_var .insert( z_nogc, {0});
             zh_var.insert(zh_nogc, {0});
 
             // Synchronize the NetCDF file.
-            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-            //m.data_file->sync();
-            //nc_sync(m.data_file->getId());
+            m.data_file->sync();
         }
 
         m.nmask. resize(gd.kcells);
@@ -614,14 +610,16 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
             m.time_var->insert(time     , time_index);
             m.iter_var->insert(iteration, time_index);
 
-//            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
-//            std::vector<size_t> time_height_size  = {1, 0};
-//
-//            for (auto& p : m.profs)
-//            {
-//                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
-//                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
-//            }
+            const std::vector<int> time_height_index = {statistics_counter, 0};
+
+            for (auto& p : m.profs)
+            {
+                const int ksize = p.second.ncvar.get_dim_sizes()[1];
+                std::vector<int> time_height_size  = {1, ksize};
+
+                std::vector<TF> prof_nogc(p.second.data.begin() + gd.kstart, p.second.data.begin() + gd.kstart + ksize);
+                m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+            }
 
             for (auto& ts : m.tseries)
                 m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
@@ -675,7 +673,6 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            // m.profs[name].ncvar = m.data_file->template add_variable<TF>(name, {"time", zloc});
             // Create the profile variable and the vector at the appropriate size.
             Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
             m.profs.emplace(name, tmp);
@@ -684,7 +681,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
             //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
             //m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-            //nc_sync(m.data_file->getId());
+            m.data_file->sync();
         }
 
         varlist.push_back(name);
@@ -709,23 +706,18 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
             //var.putAtt("long_name", longname.c_str());
             //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-            //const std::vector<size_t> index = {0};
             if (zloc == "z")
             {
                 std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend);
                 var.insert(prof_nogc, {0}, {gd.ktot});
-
-                //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
-                //var.putVar(index, size, &prof[gd.kstart]);
             }
             else if (zloc == "zh")
             {
                 std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
                 var.insert(prof_nogc, {0}, {gd.ktot+1});
-
-                //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
-                //var.putVar(index, size, &prof[gd.kstart]);
             }
+
+            m.data_file->sync();
        }
    }
 }
