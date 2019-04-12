@@ -1385,8 +1385,11 @@ void Stats<TF>::calc_covariance(
         else
         {
             auto tmp = fields.get_tmp();
+            if (grid.get_spatial_order() == Grid_order::Second)
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
+            else if (grid.get_spatial_order() == Grid_order::Fourth)
+                grid.interpolate_4th(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
 
-            grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
             for (auto& m : masks)
             {
                 if (fld2.loc[2] == 0)
