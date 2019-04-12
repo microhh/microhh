@@ -505,48 +505,45 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
     {
         Mask<TF>& m = mask.second;
 
-        if (master.get_mpiid() == 0)
-        {
-            std::stringstream filename;
-            filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        std::stringstream filename;
+        filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
-            // Create new NetCDF file
-            m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
+        // Create new NetCDF file
+        m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
 
-            // Create dimensions.
-            m.data_file->add_dimension("z",  gd.kmax);
-            m.data_file->add_dimension("zh", gd.kmax+1);
-            m.data_file->add_dimension("time");
+        // Create dimensions.
+        m.data_file->add_dimension("z",  gd.kmax);
+        m.data_file->add_dimension("zh", gd.kmax+1);
+        m.data_file->add_dimension("time");
 
-            // Create variables belonging to dimensions.
-            m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
-            //m.iter_var.putAtt("units", "-");
-            //m.iter_var.putAtt("long_name", "Iteration number");
+        // Create variables belonging to dimensions.
+        m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
+        //m.iter_var.putAtt("units", "-");
+        //m.iter_var.putAtt("long_name", "Iteration number");
 
-            m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
-            //if (timeloop.has_utc_time())
-            //    m.time_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
-            //else
-            //    m.time_var.putAtt("units", "seconds since start");
-            //m.time_var.putAtt("long_name", "Time");
+        m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
+        //if (timeloop.has_utc_time())
+        //    m.time_var.putAtt("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+        //else
+        //    m.time_var.putAtt("units", "seconds since start");
+        //m.time_var.putAtt("long_name", "Time");
 
-            Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
-            //z_var.putAtt("units", "m");
-            //z_var.putAtt("long_name", "Full level height");
+        Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
+        //z_var.putAtt("units", "m");
+        //z_var.putAtt("long_name", "Full level height");
 
-            Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
-            //zh_var.putAtt("units", "m");
-            //zh_var.putAtt("long_name", "Half level height");
+        Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
+        //zh_var.putAtt("units", "m");
+        //zh_var.putAtt("long_name", "Half level height");
 
-            // Save the grid variables.
-            std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
-            std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
-            z_var .insert( z_nogc, {0});
-            zh_var.insert(zh_nogc, {0});
+        // Save the grid variables.
+        std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
+        std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
+        z_var .insert( z_nogc, {0});
+        zh_var.insert(zh_nogc, {0});
 
-            // Synchronize the NetCDF file.
-            m.data_file->sync();
-        }
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
 
         m.nmask. resize(gd.kcells);
         m.nmaskh.resize(gd.kcells);
@@ -599,34 +596,31 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
         Mask<TF>& m = mask.second;
 
         // Put the data into the NetCDF file.
-        if (master.get_mpiid() == 0)
+        const std::vector<int> time_index{statistics_counter};
+
+        // Write the time and iteration number.
+        m.time_var->insert(time     , time_index);
+        m.iter_var->insert(iteration, time_index);
+
+        const std::vector<int> time_height_index = {statistics_counter, 0};
+
+        for (auto& p : m.profs)
         {
-            const std::vector<int> time_index{statistics_counter};
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
 
-            // Write the time and iteration number.
-            m.time_var->insert(time     , time_index);
-            m.iter_var->insert(iteration, time_index);
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + gd.kstart,
+                    p.second.data.begin() + gd.kstart + ksize);
 
-            const std::vector<int> time_height_index = {statistics_counter, 0};
-
-            for (auto& p : m.profs)
-            {
-                const int ksize = p.second.ncvar.get_dim_sizes()[1];
-                std::vector<int> time_height_size  = {1, ksize};
-
-                std::vector<TF> prof_nogc(
-                        p.second.data.begin() + gd.kstart,
-                        p.second.data.begin() + gd.kstart + ksize);
-
-                m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
-            }
-
-            for (auto& ts : m.tseries)
-                m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
-
-            // Synchronize the NetCDF file.
-            m.data_file->sync();
+            m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
         }
+
+        for (auto& ts : m.tseries)
+            m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
+
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
     }
 
     wmean_set = false;
@@ -671,18 +665,15 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         Mask<TF>& m = mask.second;
 
         // Create the NetCDF variable.
-        if (master.get_mpiid() == 0)
-        {
-            // Create the profile variable and the vector at the appropriate size.
-            Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
-            m.profs.emplace(name, tmp);
+        // Create the profile variable and the vector at the appropriate size.
+        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
+        m.profs.emplace(name, tmp);
 
-            //m.profs[name].ncvar.putAtt("units", unit.c_str());
-            //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
-            //m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        //m.profs[name].ncvar.putAtt("units", unit.c_str());
+        //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
+        //m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
 
-            m.data_file->sync();
-        }
+        m.data_file->sync();
 
         varlist.push_back(name);
     }
@@ -698,28 +689,25 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         Mask<TF>& m = mask.second;
 
         // Create the NetCDF variable.
-        if (master.get_mpiid() == 0)
+        Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
+
+        //var.putAtt("units", unit.c_str());
+        //var.putAtt("long_name", longname.c_str());
+        //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+
+        if (zloc == "z")
         {
-            Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
+            std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend);
+            var.insert(prof_nogc, {0}, {gd.ktot});
+        }
+        else if (zloc == "zh")
+        {
+            std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
+            var.insert(prof_nogc, {0}, {gd.ktot+1});
+        }
 
-            //var.putAtt("units", unit.c_str());
-            //var.putAtt("long_name", longname.c_str());
-            //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
-
-            if (zloc == "z")
-            {
-                std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend);
-                var.insert(prof_nogc, {0}, {gd.ktot});
-            }
-            else if (zloc == "zh")
-            {
-                std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
-                var.insert(prof_nogc, {0}, {gd.ktot+1});
-            }
-
-            m.data_file->sync();
-       }
-   }
+        m.data_file->sync();
+    }
 }
 
 template<typename TF>
@@ -736,14 +724,12 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         Mask<TF>& m = mask.second;
 
         // Create the NetCDF variable
-        if (master.get_mpiid() == 0)
-        {
-            Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
-            m.tseries.emplace(name, tmp);
-            //m.tseries[name].ncvar.putAtt("units", unit.c_str());
-            //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
-            //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
-        }
+        Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
+        m.tseries.emplace(name, tmp);
+
+        //m.tseries[name].ncvar.putAtt("units", unit.c_str());
+        //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
+        //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
     }
     varlist.push_back(name);
 }
