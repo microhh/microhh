@@ -32,11 +32,10 @@
 namespace
 {
     /* Bi-linear interpolation of the 2D IB DEM
-     * onto the requested (`x_req`, `y_req`) location */
+     * onto the requested (`x_goal`, `y_goal`) location */
     template<typename TF>
-    TF interp2_dem(const TF x_req, const TF y_req,
-            const TF* const restrict x, const TF* const restrict y,
-            const TF* const restrict dem,
+    TF interp2_dem(const TF x_goal, const TF y_goal,
+            std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& dem,
             const TF dx, const TF dy,
             const int igc, const int jgc, const int icells,
             const int imax, const int jmax,
@@ -45,12 +44,12 @@ namespace
         const int ii = 1;
         const int jj = icells;
 
-        const int i0 = (x_req - TF(0.5)*dx) / dx - mpicoordx*imax + igc;
-        const int j0 = (y_req - TF(0.5)*dy) / dy - mpicoordy*jmax + jgc;
+        const int i0 = (x_goal - TF(0.5)*dx) / dx - mpicoordx*imax + igc;
+        const int j0 = (y_goal - TF(0.5)*dy) / dy - mpicoordy*jmax + jgc;
         const int ij = i0 + j0*jj;
 
-        const TF f1x = (x_req - x[i0]) / dx;
-        const TF f1y = (y_req - y[j0]) / dy;
+        const TF f1x = (x_goal - x[i0]) / dx;
+        const TF f1y = (y_goal - y[j0]) / dy;
         const TF f0x = TF(1) - f1x;
         const TF f0y = TF(1) - f1y;
 
@@ -62,21 +61,30 @@ namespace
 
 
     template<typename TF>
-    bool is_ghost_cell(std::vector<TF>& dem, std::vector<TF>& z,
+    bool is_ghost_cell(std::vector<TF>& dem,
+            std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
+            const TF dx, const TF dy,
+            const int igc, const int jgc, const int imax, const int jmax,
+            const int mpicoordx, const int mpicoordy,
             const int i, const int j, const int k, const int icells)
     {
         const int ij = i + j*icells;
 
+        // Check if grid point is below IB. If so; check if
+        // one of the neighbouring grid points is outside.
         if (z[k] <= dem[ij])
         {
-            for (int dk = -1; dk <= 1; ++dk)
-                for (int dj = -1; dj <= 1; ++dj)
-                    for (int di = -1; di <= 1; ++di)
-                    {
-                        const int ij2 = (i + di) + (j + dj)*icells;
-                        if (z[k + dk] > dem[ij2])
+            for (int dj = -1; dj <= 1; ++dj)
+                for (int di = -1; di <= 1; ++di)
+                {
+                    // Interpolate DEM to account for half-level locations x,y
+                    const TF zdem = interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, igc, jgc,
+                                                icells, imax, jmax, mpicoordx, mpicoordy);
+
+                    for (int dk = -1; dk <= 1; ++dk)
+                        if (z[k + dk] > zdem)
                             return true;
-                    }
+                }
         }
 
         return false;
@@ -84,29 +92,25 @@ namespace
 
 
     template<typename TF>
-    void calc_ghost_cells(std::vector<int>& ghost_i, std::vector<int>& ghost_j, std::vector<int>& ghost_k,
-            std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int icells)
+    void calc_ghost_cells(Ghost_cells<TF>& ghost,
+                          std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
+                          const TF dx, const TF dy,
+                          const int istart, const int jstart, const int kstart,
+                          const int iend,   const int jend,   const int kend,
+                          const int icells, const int igc, const int jgc, const int imax, const int jmax,
+                          const int mpicoordx, const int mpicoordy)
     {
         // 1. Find the IB ghost cells
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-                    for (int i=istart; i<iend; ++i)
-                        if (is_ghost_cell(dem, z, i, j, k, icells))
-                        {
-                            ghost_i.push_back(i);
-                            ghost_j.push_back(j);
-                            ghost_k.push_back(k);
-                        }
-
-        // 2. Find nearest location on IB
-        //for (int i=0; i<ghost_i.size(); ++i)
-        //{
-        //
-        //
-        //}
+                for (int i=istart; i<iend; ++i)
+                    if (is_ghost_cell(dem, x, y, z, dx, dy, igc, jgc, imax, jmax,
+                                      mpicoordx, mpicoordy, i, j, k, icells))
+                    {
+                        ghost.i.push_back(i);
+                        ghost.j.push_back(j);
+                        ghost.k.push_back(k);
+                    }
     }
 
     void print_statistics(std::vector<int>& ghost_i, std::string name, Master& master)
@@ -175,8 +179,9 @@ void Immersed_boundary<TF>::create()
     // Init the toolbox classes.
     boundary_cyclic.init();
 
-    // Get grid information
-    auto& gd = grid.get_grid_data();
+    // Get grid and MPI information
+    auto& gd  = grid.get_grid_data();
+    auto& mpi = master.get_MPI_data();
 
     if (sw_ib == IB_type::DEM)
     {
@@ -201,31 +206,40 @@ void Immersed_boundary<TF>::create()
         // Find ghost cells (grid points inside IB, which have at least one
         // neighbouring grid point outside of IB). Different for each
         // location on staggered grid.
-        calc_ghost_cells(ghost_u.i, ghost_u.j, ghost_u.k, dem, gd.xh, gd.y, gd.z,
+        calc_ghost_cells(ghost_u, dem, gd.xh, gd.y, gd.z, gd.dx, gd.dy,
                 gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend, gd.icells);
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
+                mpi.mpicoordx, mpi.mpicoordy);
 
-        calc_ghost_cells(ghost_v.i, ghost_v.j, ghost_v.k, dem, gd.x, gd.yh, gd.z,
+        calc_ghost_cells(ghost_v, dem, gd.x, gd.yh, gd.z, gd.dx, gd.dy,
                 gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend, gd.icells);
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
+                mpi.mpicoordx, mpi.mpicoordy);
 
-        calc_ghost_cells(ghost_w.i, ghost_w.j, ghost_w.k, dem, gd.x, gd.y, gd.zh,
-                gd.istart, gd.jstart, gd.kstart+1,
-                gd.iend,   gd.jend,   gd.kend, gd.icells);
+        calc_ghost_cells(ghost_w, dem, gd.x, gd.y, gd.zh, gd.dx, gd.dy,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
+                mpi.mpicoordx, mpi.mpicoordy);
 
         // Print some statistics (number of ghost cells)
         print_statistics(ghost_u.i, std::string("u"), master);
         print_statistics(ghost_v.i, std::string("v"), master);
         print_statistics(ghost_w.i, std::string("w"), master);
 
-        if (fields.sp.size() > 0) {
-            calc_ghost_cells(ghost_s.i, ghost_s.j, ghost_s.k, dem, gd.x, gd.y, gd.z,
-                             gd.istart, gd.jstart, gd.kstart,
-                             gd.iend, gd.jend, gd.kend, gd.icells);
+        if (fields.sp.size() > 0)
+        {
+            calc_ghost_cells(ghost_s, dem, gd.x, gd.y, gd.z, gd.dx, gd.dy,
+                    gd.istart, gd.jstart, gd.kstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
+                    mpi.mpicoordx, mpi.mpicoordy);
             print_statistics(ghost_s.i, std::string("s"), master);
         }
 
-
+        throw 1;
     }
 }
 
