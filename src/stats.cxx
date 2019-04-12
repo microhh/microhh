@@ -704,7 +704,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {"time", zloc});
+            Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
 
 
             //var.putAtt("units", unit.c_str());
