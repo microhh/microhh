@@ -31,6 +31,7 @@
 #include "tools.h"
 #include "boundary.h"
 #include "data_block.h"
+#include "thermo.h"
 #include "force.h"
 
 using namespace Finite_difference::O2;
@@ -314,7 +315,7 @@ void Force<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Force<TF>::exec(double dt)
+void Force<TF>::exec(double dt, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -391,7 +392,7 @@ void Force<TF>::exec(double dt)
             if (it1 != scalednudgelist.end())
             {
                 cudaMemcpy(fields.ap.at(it)->fld_mean.data(), fields.ap.at(it)->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-                const int kinv = calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+                const int kinv = thermo.get_bl_depth();
                 rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
                 cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
             }
