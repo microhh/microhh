@@ -543,8 +543,11 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             //zh_var.putAtt("long_name", "Half level height");
 
             // Save the grid variables.
-            z_var .insert(gd.z [gd.kstart], {0});
-            zh_var.insert(gd.zh[gd.kstart], {0});
+
+            std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
+            std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
+            z_var .insert( z_nogc, {0});
+            zh_var.insert(zh_nogc, {0});
 
             // Synchronize the NetCDF file.
             // BvS: only the last netCDF4-c++ includes the NcFile->sync()
@@ -706,7 +709,6 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
         {
             Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
 
-
             //var.putAtt("units", unit.c_str());
             //var.putAtt("long_name", longname.c_str());
             //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
@@ -714,14 +716,16 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
             //const std::vector<size_t> index = {0};
             if (zloc == "z")
             {
-                var.insert(prof, {0}, {gd.ktot});
+                std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend);
+                var.insert(prof_nogc, {0}, {gd.ktot});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
                 //var.putVar(index, size, &prof[gd.kstart]);
             }
             else if (zloc == "zh")
             {
-                var.insert(prof, {0}, {gd.ktot+1});
+                std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
+                var.insert(prof_nogc, {0}, {gd.ktot+1});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
                 //var.putVar(index, size, &prof[gd.kstart]);
