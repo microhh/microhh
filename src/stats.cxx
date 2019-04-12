@@ -600,7 +600,7 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 
     // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
-//
+
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
@@ -609,13 +609,11 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
         if (master.get_mpiid() == 0)
         {
             const std::vector<int> time_index{statistics_counter};
-//
+
             // Write the time and iteration number.
-            // m.time_var.putVar(time_index, &time     );
-            //  m.iter_var.putVar(time_index, &iteration);
             m.time_var->insert(time     , time_index);
             m.iter_var->insert(iteration, time_index);
-//
+
 //            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
 //            std::vector<size_t> time_height_size  = {1, 0};
 //
@@ -624,15 +622,11 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 //                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
 //                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
 //            }
-//
-//            for (auto& ts: m.tseries)
-//                m.tseries[ts.first].ncvar.putVar(time_index, &m.tseries[ts.first].data);
-//
-//            // Synchronize the NetCDF file
-//            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-//            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-//            //m.dataFile->sync();
-//            nc_sync(m.data_file->getId());
+
+            for (auto& ts : m.tseries)
+                m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
+
+            // Synchronize the NetCDF file
             m.data_file->sync();
         }
     }
