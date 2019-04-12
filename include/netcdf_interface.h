@@ -79,6 +79,8 @@ class Netcdf_file : public Netcdf_handle
     public:
         Netcdf_file(Master&, const std::string&, Netcdf_mode);
         ~Netcdf_file();
+
+        void sync();
 };
 
 class Netcdf_group : public Netcdf_handle

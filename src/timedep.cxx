@@ -120,7 +120,7 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
     }
     */
 
-    Netcdf_handle group_nc = input_nc.get_group("timedep");
+    Netcdf_group group_nc = input_nc.get_group("timedep");
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 
 
@@ -151,7 +151,7 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
     if (sw == Timedep_switch::Disabled)
         return;
 
-    Netcdf_handle group_nc = input_nc.get_group("timedep");
+    Netcdf_group group_nc = input_nc.get_group("timedep");
 
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 

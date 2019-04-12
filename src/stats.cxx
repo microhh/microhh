@@ -515,8 +515,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
 
             // Create new NetCDF file
             m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
-            //m.data_file = Netcdf_file(master, filename.str(), Netcdf_mode::Create);
-            
+
             // Create dimensions.
             m.data_file->add_dimension("z",  gd.kmax);
             m.data_file->add_dimension("zh", gd.kmax+1);
@@ -597,23 +596,25 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
     if (!swstats)
         return;
 
-//    auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
+
+    // Write message in case stats is triggered.
+    master.print_message("Saving statistics for time %f\n", time);
 //
-//    // Write message in case stats is triggered.
-//    master.print_message("Saving statistics for time %f\n", time);
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Put the data into the NetCDF file.
+        if (master.get_mpiid() == 0)
+        {
+            const std::vector<int> time_index{statistics_counter};
 //
-//    for (auto& mask : masks)
-//    {
-//        Mask<TF>& m = mask.second;
-//
-//        // Put the data into the NetCDF file.
-//        if (master.get_mpiid() == 0)
-//        {
-//            const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
-//
-//            // Write the time and iteration number.
-//            m.time_var.putVar(time_index, &time     );
-//            m.iter_var.putVar(time_index, &iteration);
+            // Write the time and iteration number.
+            // m.time_var.putVar(time_index, &time     );
+            //  m.iter_var.putVar(time_index, &iteration);
+            m.time_var->insert(time     , time_index);
+            m.iter_var->insert(iteration, time_index);
 //
 //            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
 //            std::vector<size_t> time_height_size  = {1, 0};
@@ -632,13 +633,14 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 //            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
 //            //m.dataFile->sync();
 //            nc_sync(m.data_file->getId());
-//        }
-//    }
-//
-//    wmean_set = false;
-//
-//    // Increment the statistics index
-//    ++statistics_counter;
+            m.data_file->sync();
+        }
+    }
+
+    wmean_set = false;
+
+    // Increment the statistics index
+    ++statistics_counter;
 }
 
 // Retrieve the user input list of requested masks

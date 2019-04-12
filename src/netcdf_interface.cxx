@@ -150,6 +150,15 @@ Netcdf_file::~Netcdf_file()
     nc_check(master, nc_check_code);
 }
 
+void Netcdf_file::sync()
+{
+    int nc_check_code = 0;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_sync(ncid);
+    nc_check(master, nc_check_code);
+}
+
 void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_size)
 {
     int nc_check_code = 0;
