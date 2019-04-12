@@ -71,8 +71,8 @@ struct Mask
     int nmask_bot;
 
     std::shared_ptr<Netcdf_file> data_file;
-    Netcdf_variable<TF> iter_var;
-    Netcdf_variable<TF> time_var;
+    // Netcdf_variable<TF> iter_var;
+    // Netcdf_variable<TF> time_var;
     Prof_map<TF> profs;
     Time_series_map<TF> tseries;
 };

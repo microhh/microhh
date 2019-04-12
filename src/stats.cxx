@@ -501,7 +501,6 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
 
     int iotime = timeloop.get_iotime();
 
-    int nerror = 0;
     auto& gd = grid.get_grid_data();
 
     // Create a NetCDF file for each of the masks.
@@ -650,12 +649,13 @@ const std::vector<std::string>& Stats<TF>::get_mask_list()
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
-    masks[maskname].name = maskname;
-    masks[maskname].data_file = 0;
+    masks.emplace(maskname, Mask<TF>{});
+    masks.at(maskname).name = maskname;
+    masks.at(maskname).data_file = 0;
 
     int nmasks = masks.size();
-    masks[maskname].flag  = (1 << (2 * (nmasks-1)    ));
-    masks[maskname].flagh = (1 << (2 * (nmasks-1) + 1));
+    masks.at(maskname).flag  = (1 << (2 * (nmasks-1)    ));
+    masks.at(maskname).flagh = (1 << (2 * (nmasks-1) + 1));
 }
 
 // Add a new profile to each of the NetCDF files
@@ -676,7 +676,10 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            m.profs[name].ncvar = m.data_file->template add_variable<TF>(name, {"time", zloc});
+            // m.profs[name].ncvar = m.data_file->template add_variable<TF>(name, {"time", zloc});
+            // Create the profile variable and the vector at the appropriate size.
+            Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
+            m.profs.emplace(name, tmp);
 
             //m.profs[name].ncvar.putAtt("units", unit.c_str());
             //m.profs[name].ncvar.putAtt("long_name", longname.c_str());
@@ -684,9 +687,6 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
             //nc_sync(m.data_file->getId());
         }
-
-        // Resize the vector holding the data at all processes
-        m.profs[name].data.resize(gd.kcells);
 
         varlist.push_back(name);
     }
@@ -714,14 +714,14 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
             //const std::vector<size_t> index = {0};
             if (zloc == "z")
             {
-                var.insert(prof[gd.kstart], {0}, {gd.kmax});
+                var.insert(prof, {gd.kstart}, {gd.ktot});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
                 //var.putVar(index, size, &prof[gd.kstart]);
             }
             else if (zloc == "zh")
             {
-                var.insert(prof[gd.kstart], {0}, {gd.kmax+1});
+                var.insert(prof, {gd.kstart}, {gd.ktot+1});
 
                 //const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
                 //var.putVar(index, size, &prof[gd.kstart]);
@@ -746,14 +746,13 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
         // create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
-            m.tseries[name].ncvar = m.data_file->template add_variable<TF>(name, {"t"});
+            // m.tseries[name].ncvar = m.data_file->template add_variable<TF>(name, {"t"});
+            Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"t"}), 0.};
+            m.tseries.emplace(name, tmp);
             //m.tseries[name].ncvar.putAtt("units", unit.c_str());
             //m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
             //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
         }
-
-        // Initialize at zero
-        m.tseries[name].data = 0.;
     }
     varlist.push_back(name);
 }
@@ -826,11 +825,11 @@ void Stats<TF>::finalize_masks()
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
-            calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
 
         it1 = std::find(varlist.begin(), varlist.end(), "areah");
         if (it1 != varlist.end())
-            calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("areah").data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
 
