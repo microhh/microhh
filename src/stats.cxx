@@ -44,8 +44,6 @@
 
 namespace
 {
-    //using namespace netCDF;
-    //using namespace netCDF::exceptions;
     using namespace Constants;
 
     // Help function(s) to switch between the different NetCDF data types
@@ -465,7 +463,6 @@ Stats<TF>::Stats(
             std::regex re(it);
             blacklist.push_back(re);
         }
-
     }
 }
 
@@ -617,32 +614,35 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
                 const int ksize = p.second.ncvar.get_dim_sizes()[1];
                 std::vector<int> time_height_size  = {1, ksize};
 
-                std::vector<TF> prof_nogc(p.second.data.begin() + gd.kstart, p.second.data.begin() + gd.kstart + ksize);
+                std::vector<TF> prof_nogc(
+                        p.second.data.begin() + gd.kstart,
+                        p.second.data.begin() + gd.kstart + ksize);
+
                 m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
             }
 
             for (auto& ts : m.tseries)
                 m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
 
-            // Synchronize the NetCDF file
+            // Synchronize the NetCDF file.
             m.data_file->sync();
         }
     }
 
     wmean_set = false;
 
-    // Increment the statistics index
+    // Increment the statistics index.
     ++statistics_counter;
 }
 
-// Retrieve the user input list of requested masks
+// Retrieve the user input list of requested masks.
 template<typename TF>
 const std::vector<std::string>& Stats<TF>::get_mask_list()
 {
     return masklist;
 }
 
-// Add a new mask to the mask map
+// Add a new mask to the mask map.
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
@@ -655,7 +655,7 @@ void Stats<TF>::add_mask(const std::string maskname)
     masks.at(maskname).flagh = (1 << (2 * (nmasks-1) + 1));
 }
 
-// Add a new profile to each of the NetCDF files
+// Add a new profile to each of the NetCDF files.
 template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
@@ -665,12 +665,12 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     if (is_blacklisted(name, wltype))
         return;
 
-    // Add profile to all the NetCDF files
+    // Add profile to all the NetCDF files.
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
 
-        // Create the NetCDF variable
+        // Create the NetCDF variable.
         if (master.get_mpiid() == 0)
         {
             // Create the profile variable and the vector at the appropriate size.
@@ -697,7 +697,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
     {
         Mask<TF>& m = mask.second;
 
-        // Create the NetCDF variable
+        // Create the NetCDF variable.
         if (master.get_mpiid() == 0)
         {
             Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
@@ -729,13 +729,13 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
     if (is_blacklisted(name, wltype))
         return;
 
-    // add the series to all files
+    // Add the series to all files.
     for (auto& mask : masks)
     {
-        // shortcut
+        // Shortcut
         Mask<TF>& m = mask.second;
 
-        // create the NetCDF variable
+        // Create the NetCDF variable
         if (master.get_mpiid() == 0)
         {
             Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
@@ -816,16 +816,19 @@ void Stats<TF>::finalize_masks()
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
-            calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(),
+                    gd.kstart, gd.kend, gd.itot*gd.jtot);
 
         it1 = std::find(varlist.begin(), varlist.end(), "areah");
         if (it1 != varlist.end())
-            calc_area(it.second.profs.at("areah").data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("areah").data.data(), gd.wloc.data(), it.second.nmaskh.data(),
+                    gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
+void Stats<TF>::set_mask_thres(
+        std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
     unsigned int flag, flagh;
