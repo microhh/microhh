@@ -21,6 +21,7 @@
  */
 
 #include <iostream>
+#include <cmath>
 
 #include "master.h"
 #include "grid.h"
@@ -28,26 +29,36 @@
 #include "input.h"
 
 #include "immersed_boundary.h"
+#include "fast_math.h"
 
 namespace
 {
+    template<typename TF>
+    TF absolute_distance(
+            const TF x1, const TF y1, const TF z1,
+            const TF x2, const TF y2, const TF z2)
+    {
+        return std::pow(Fast_math::pow2(x2-x1) + Fast_math::pow2(y2-y1) + Fast_math::pow2(z2-z1), TF(0.5));
+    }
+
     /* Bi-linear interpolation of the 2D IB DEM
      * onto the requested (`x_goal`, `y_goal`) location */
     template<typename TF>
-    TF interp2_dem(const TF x_goal, const TF y_goal,
+    TF interp2_dem(
+            const TF x_goal, const TF y_goal,
             std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& dem,
-            const TF dx, const TF dy,
-            const int igc, const int jgc, const int icells,
-            const int imax, const int jmax,
-            const int mpicoordx, const int mpicoordy)
+            const TF dx, const TF dy, const int icells,
+            const int mpi_offset_x, const int mpi_offset_y)
     {
         const int ii = 1;
         const int jj = icells;
 
-        const int i0 = (x_goal - TF(0.5)*dx) / dx - mpicoordx*imax + igc;
-        const int j0 = (y_goal - TF(0.5)*dy) / dy - mpicoordy*jmax + jgc;
+        // Indices west and south of `x_goal`, `y_goal`
+        const int i0 = (x_goal - TF(0.5)*dx) / dx + mpi_offset_x;
+        const int j0 = (y_goal - TF(0.5)*dy) / dy + mpi_offset_y;
         const int ij = i0 + j0*jj;
 
+        // Interpolation factors
         const TF f1x = (x_goal - x[i0]) / dx;
         const TF f1y = (y_goal - y[j0]) / dy;
         const TF f0x = TF(1) - f1x;
@@ -61,12 +72,12 @@ namespace
 
 
     template<typename TF>
-    bool is_ghost_cell(std::vector<TF>& dem,
+    bool is_ghost_cell(
+            std::vector<TF>& dem,
             std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
             const TF dx, const TF dy,
-            const int igc, const int jgc, const int imax, const int jmax,
-            const int mpicoordx, const int mpicoordy,
-            const int i, const int j, const int k, const int icells)
+            const int i, const int j, const int k, const int icells,
+            const int mpi_offset_x, const int mpi_offset_y)
     {
         const int ij = i + j*icells;
 
@@ -78,8 +89,8 @@ namespace
                 for (int di = -1; di <= 1; ++di)
                 {
                     // Interpolate DEM to account for half-level locations x,y
-                    const TF zdem = interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, igc, jgc,
-                                                icells, imax, jmax, mpicoordx, mpicoordy);
+                    const TF zdem = interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy,
+                                                icells, mpi_offset_x, mpi_offset_y);
 
                     for (int dk = -1; dk <= 1; ++dk)
                         if (z[k + dk] > zdem)
@@ -90,27 +101,98 @@ namespace
         return false;
     }
 
+    template<typename TF>
+    void find_nearest_location_wall(
+            TF& xb, TF& yb, TF& zb,
+            std::vector<TF> x, std::vector<TF> y, std::vector<TF> dem,
+            const TF x_ghost, const TF y_ghost, const TF z_ghost,
+            const TF dx, const TF dy, const int icells,
+            const int mpi_offset_x, const int mpi_offset_y)
+    {
+        TF d_min = 1e12;
+        TF x_min, y_min, z_min;
+        const int n = 40;
+
+        for (int ii = -n/2; ii < n/2+1; ++ii)
+            for (int jj = -n/2; jj < n/2+1; ++jj)
+            {
+                const TF xc = x_ghost + 2 * ii / (double) n * dx;
+                const TF yc = y_ghost + 2 * jj / (double) n * dy;
+                const TF zc = interp2_dem(xc, yc, x, y, dem, dx, dy, icells, mpi_offset_x, mpi_offset_y);
+                const TF d  = absolute_distance(x_ghost, y_ghost, z_ghost, xc, yc, zc);
+
+                if (d < d_min)
+                {
+                    d_min = d;
+                    x_min = xc;
+                    y_min = yc;
+                    z_min = zc;
+                }
+            }
+
+        xb = x_min;
+        yb = y_min;
+        zb = z_min;
+    }
+
 
     template<typename TF>
-    void calc_ghost_cells(Ghost_cells<TF>& ghost,
-                          std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
-                          const TF dx, const TF dy,
-                          const int istart, const int jstart, const int kstart,
-                          const int iend,   const int jend,   const int kend,
-                          const int icells, const int igc, const int jgc, const int imax, const int jmax,
-                          const int mpicoordx, const int mpicoordy)
+    void calc_ghost_cells(
+            Ghost_cells<TF>& ghost,
+            std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
+            const TF dx, const TF dy,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int icells, const int mpi_offset_x, const int mpi_offset_y)
     {
         // 1. Find the IB ghost cells
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
-                    if (is_ghost_cell(dem, x, y, z, dx, dy, igc, jgc, imax, jmax,
-                                      mpicoordx, mpicoordy, i, j, k, icells))
+                    if (is_ghost_cell(dem, x, y, z, dx, dy, i, j, k,
+                                      icells, mpi_offset_x, mpi_offset_y))
                     {
                         ghost.i.push_back(i);
                         ghost.j.push_back(j);
                         ghost.k.push_back(k);
                     }
+
+        const int nghost = ghost.i.size();
+
+        // 2. For each ghost cell, find the nearest location on the wall,
+        // the image point (interpolation point mirrored across the IB),
+        // and distance between image point and ghost cell.
+        ghost.xb.resize(nghost);
+        ghost.yb.resize(nghost);
+        ghost.zb.resize(nghost);
+
+        ghost.xi.resize(nghost);
+        ghost.yi.resize(nghost);
+        ghost.zi.resize(nghost);
+
+        ghost.di.resize(nghost);
+
+        for (int n=0; n<ghost.i.size(); ++n)
+        {
+            // Indices ghost cell in 3D field
+            const int i = ghost.i[n];
+            const int j = ghost.j[n];
+            const int k = ghost.k[n];
+
+            find_nearest_location_wall(
+                    ghost.xb[n], ghost.yb[n], ghost.zb[n],
+                    x, y, dem, x[i], y[j], z[k],
+                    dx, dy, icells, mpi_offset_x, mpi_offset_y);
+
+            // Image point
+            ghost.xi[n] = 2*ghost.xb[n] - x[i];
+            ghost.yi[n] = 2*ghost.yb[n] - y[j];
+            ghost.zi[n] = 2*ghost.zb[n] - z[k];
+
+            // Distance image point -> ghost cell
+            ghost.di[n] = absolute_distance(ghost.xi[n], ghost.yi[n], ghost.zi[n], x[i], y[j], z[k]);
+        }
+
     }
 
     void print_statistics(std::vector<int>& ghost_i, std::string name, Master& master)
@@ -185,6 +267,10 @@ void Immersed_boundary<TF>::create()
 
     if (sw_ib == IB_type::DEM)
     {
+        // Offsets used in the 2D DEM interpolation
+        const int mpi_offset_x = -mpi.mpicoordx * gd.imax + gd.igc;
+        const int mpi_offset_y = -mpi.mpicoordy * gd.jmax + gd.jgc;
+
         // Read the IB height (DEM) map
         char filename[256] = "dem.0000000";
         auto tmp = fields.get_tmp();
@@ -209,20 +295,17 @@ void Immersed_boundary<TF>::create()
         calc_ghost_cells(ghost_u, dem, gd.xh, gd.y, gd.z, gd.dx, gd.dy,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
-                mpi.mpicoordx, mpi.mpicoordy);
+                gd.icells, mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(ghost_v, dem, gd.x, gd.yh, gd.z, gd.dx, gd.dy,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
-                mpi.mpicoordx, mpi.mpicoordy);
+                gd.icells, mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(ghost_w, dem, gd.x, gd.y, gd.zh, gd.dx, gd.dy,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
-                mpi.mpicoordx, mpi.mpicoordy);
+                gd.icells, mpi_offset_x, mpi_offset_y);
 
         // Print some statistics (number of ghost cells)
         print_statistics(ghost_u.i, std::string("u"), master);
@@ -234,8 +317,7 @@ void Immersed_boundary<TF>::create()
             calc_ghost_cells(ghost_s, dem, gd.x, gd.y, gd.z, gd.dx, gd.dy,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, gd.igc, gd.jgc, gd.imax, gd.jmax,
-                    mpi.mpicoordx, mpi.mpicoordy);
+                    gd.icells, mpi_offset_x, mpi_offset_y);
             print_statistics(ghost_s.i, std::string("s"), master);
         }
 
