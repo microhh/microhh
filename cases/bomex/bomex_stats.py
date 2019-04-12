@@ -7,7 +7,7 @@ nt = 12
 plotens = False
 
 def plotstats(name, line):
-  stats = netCDF4.Dataset("bomex.{}.0000000.nc".format(name),"r")
+  stats = netCDF4.Dataset("bomex_{}_0000000.nc".format(name),"r")
   t   = stats.variables["time"][:]
   z   = stats.variables["z"][:]
   zh  = stats.variables["zh"][:]

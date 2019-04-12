@@ -47,9 +47,9 @@ namespace
     using namespace Constants;
 
     // Help function(s) to switch between the different NetCDF data types
-    template<typename TF> TF netcdf_fp_fillvalue();
-    template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
-    template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
+    template<typename TF> constexpr TF netcdf_fp_fillvalue;
+    template<> constexpr double netcdf_fp_fillvalue<double> = NC_FILL_DOUBLE;
+    template<> constexpr float  netcdf_fp_fillvalue<float>  = NC_FILL_FLOAT;
 
     template<typename TF, Stats_mask_type mode>
     TF is_false(const TF value, const TF threshold)
@@ -84,7 +84,7 @@ namespace
         for (int k=0; k<kcells; ++k)
         {
             if (nmask[k] == 0)
-                data[k] = netcdf_fp_fillvalue<TF>();
+                data[k] = netcdf_fp_fillvalue<TF>;
         }
     }
 
@@ -299,7 +299,7 @@ namespace
             if (nmask[k])
             {
                 double tmp = 0.;
-                if ((fld1_mean[k] != netcdf_fp_fillvalue<TF>()) && (fld2_mean[k] != netcdf_fp_fillvalue<TF>()))
+                if ((fld1_mean[k] != netcdf_fp_fillvalue<TF>) && (fld2_mean[k] != netcdf_fp_fillvalue<TF>))
                 {
                     for (int j=jstart; j<jend; ++j)
                         #pragma ivdep
@@ -543,7 +543,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         zh_var.insert(zh_nogc, {0});
 
         // Synchronize the NetCDF file.
-        m.data_file->sync();
+        // m.data_file->sync();
 
         m.nmask. resize(gd.kcells);
         m.nmaskh.resize(gd.kcells);
@@ -671,7 +671,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
         m.profs.at(name).ncvar.add_attribute("units", unit);
         m.profs.at(name).ncvar.add_attribute("long_name", longname);
-        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>);
 
         m.data_file->sync();
 
@@ -693,7 +693,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
 
         var.add_attribute("units", unit.c_str());
         var.add_attribute("long_name", longname.c_str());
-        //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // var.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>);
 
         if (zloc == "z")
         {
@@ -729,7 +729,7 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
 
         m.tseries.at(name).ncvar.add_attribute("units", unit);
         m.tseries.at(name).ncvar.add_attribute("long_name", longname);
-        //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // m.tseries.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>);
     }
 
     varlist.push_back(name);
@@ -1116,10 +1116,10 @@ void Stats<TF>::calc_covariance(
                     flag = m.second.flagh;
                     for (int k = gd.kstart; k<gd.kend+1; ++k)
                     {
-                        if (fld1_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld1_mean[k] != netcdf_fp_fillvalue<TF>())
+                        if (fld1_mean[k-1] != netcdf_fp_fillvalue<TF> && fld1_mean[k] != netcdf_fp_fillvalue<TF>)
                             fld1_mean[k] = 0.5*(m.second.profs.at(varname1).data[k]+m.second.profs.at(varname1).data[k-1]);
                         else
-                            fld1_mean[k] = netcdf_fp_fillvalue<TF>();
+                            fld1_mean[k] = netcdf_fp_fillvalue<TF>;
 
                     }
                     nmask = m.second.nmaskh.data();
@@ -1201,7 +1201,7 @@ void Stats<TF>::calc_flux_2nd(
             prof[k] = 0.; // This assignment is crucial to avoid unitialized values in case if below is false.
 
             // Check whether mean is contained in the mask as well. It cannot do this check at the top point, which exceptionally could lead to problems.
-            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()) && (k != kend))
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>) && (fld_mean[k] != netcdf_fp_fillvalue<TF>) && (k != kend))
             {
                 double tmp = 0;
 
@@ -1252,10 +1252,10 @@ void Stats<TF>::calc_flux_4th(
     #pragma omp parallel for
     for (int k=kstart; k<kend+1; ++k)
     {
-        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF>() && fld_mean[k] != netcdf_fp_fillvalue<TF>())
+        if (nmask[k] && fld_mean[k-1] != netcdf_fp_fillvalue<TF> && fld_mean[k] != netcdf_fp_fillvalue<TF>)
         {
             double tmp = 0.;
-            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>()) && (fld_mean[k] != netcdf_fp_fillvalue<TF>()))
+            if ((fld_mean[k-1] != netcdf_fp_fillvalue<TF>) && (fld_mean[k] != netcdf_fp_fillvalue<TF>))
             {
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep

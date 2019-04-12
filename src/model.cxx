@@ -123,13 +123,13 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force    <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer   <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay    <TF>>(master, *grid, *fields, *input);
-        stats     = std::make_shared<Stats    <TF>>(master, *grid, *fields, *advec, *diff, *input);
-        column    = std::make_shared<Column   <TF>>(master, *grid, *fields, *input);
-        dump      = std::make_shared<Dump     <TF>>(master, *grid, *fields, *input);
-        cross     = std::make_shared<Cross    <TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer<TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay <TF>>(master, *grid, *fields, *input);
+        stats     = std::make_shared<Stats <TF>>(master, *grid, *fields, *advec, *diff, *input);
+        column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross     = std::make_shared<Cross <TF>>(master, *grid, *fields, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -230,7 +230,9 @@ void Model<TF>::load()
     force->create(*input, *input_nc);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
-    radiation->create(*thermo,*stats, *column, *cross, *dump); // Radiation needs to be created after thermo as it needs base profiles.
+
+    // Radiation needs to be created after thermo as it needs base profiles.
+    radiation->create(*thermo, *stats, *column, *cross, *dump);
     decay->create(*input);
 
     cross->create();    // Cross needs to be called at the end!
@@ -325,7 +327,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_sub_time_step());
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo,timeloop->get_time(),*timeloop);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop);
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec();
@@ -334,7 +336,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step()); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step());
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
@@ -363,7 +365,7 @@ void Model<TF>::exec()
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
-                        radiation->exec_column(*column,*thermo,*timeloop);
+                        radiation->exec_column(*column, *thermo, *timeloop);
                         column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
                     }
 
@@ -516,7 +518,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         //budget  ->exec_stats(&stats->masks[maskname]);
         boundary ->exec_stats(*stats);
-        radiation->exec_stats(*stats,*thermo,*timeloop);
+        radiation->exec_stats(*stats, *thermo, *timeloop);
         // Store the statistics data.
         stats->exec(iteration, time, itime);
     }
@@ -527,7 +529,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
-        radiation->exec_cross(*cross, iotime,*thermo,*timeloop);
+        radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
         // boundary->exec_cross(iotime);
     }
 
@@ -537,7 +539,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
-        radiation->exec_dump(*dump, iotime,*thermo,*timeloop);
+        radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
     }
 }
 

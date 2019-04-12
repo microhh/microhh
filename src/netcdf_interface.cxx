@@ -310,6 +310,48 @@ void Netcdf_handle::add_attribute(
     nc_check(master, nc_check_code);
 }
 
+void Netcdf_handle::add_attribute(
+        const std::string& name,
+        const double value,
+        const int var_id)
+{
+    int nc_check_code = 0;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_redef(root_ncid);
+    nc_check(master, nc_check_code);
+
+    // CvH what if string is too long?
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_put_att_double(ncid, var_id, name.c_str(), NC_DOUBLE, 1, &value);
+    nc_check(master, nc_check_code);
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_enddef(root_ncid);
+    nc_check(master, nc_check_code);
+}
+
+void Netcdf_handle::add_attribute(
+        const std::string& name,
+        const float value,
+        const int var_id)
+{
+    int nc_check_code = 0;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_redef(root_ncid);
+    nc_check(master, nc_check_code);
+
+    // CvH what if string is too long?
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_put_att_float(ncid, var_id, name.c_str(), NC_FLOAT, 1, &value);
+    nc_check(master, nc_check_code);
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_enddef(root_ncid);
+    nc_check(master, nc_check_code);
+}
+
 Netcdf_group Netcdf_handle::add_group(const std::string& name)
 {
     int group_ncid = -1;
@@ -471,7 +513,17 @@ void Netcdf_variable<T>::add_attribute(const std::string& name, const std::strin
     nc_file.add_attribute(name, value, var_id);
 }
 
+template<typename T>
+void Netcdf_variable<T>::add_attribute(const std::string& name, const double value)
+{
+    nc_file.add_attribute(name, value, var_id);
+}
 
+template<typename T>
+void Netcdf_variable<T>::add_attribute(const std::string& name, const float value)
+{
+    nc_file.add_attribute(name, value, var_id);
+}
 
 template class Netcdf_variable<double>;
 template class Netcdf_variable<float>;

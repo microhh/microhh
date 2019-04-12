@@ -23,6 +23,8 @@ class Netcdf_variable
         void insert(const T, const std::vector<int>);
         const std::vector<int> get_dim_sizes() { return dim_sizes; }
         void add_attribute(const std::string&, const std::string&);
+        void add_attribute(const std::string&, const double);
+        void add_attribute(const std::string&, const float);
 
     private:
         Master& master;
@@ -71,6 +73,16 @@ class Netcdf_handle
         void add_attribute(
                 const std::string&,
                 const std::string&,
+                const int);
+
+        void add_attribute(
+                const std::string&,
+                const double,
+                const int);
+
+        void add_attribute(
+                const std::string&,
+                const float,
                 const int);
 
     protected:
