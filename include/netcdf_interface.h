@@ -12,13 +12,17 @@ class Master;
 class Netcdf_handle;
 class Netcdf_group;
 
+template<typename T>
 class Netcdf_variable
 {
     public:
         Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<int>&);
-        void insert(const std::vector<double>&, const std::vector<int>);
-        void insert(const std::vector<double>&, const std::vector<int>, const std::vector<int>);
-        void insert(const double, const std::vector<int>);
+        Netcdf_variable(const Netcdf_variable&) = default;
+        void insert(const std::vector<T>&, const std::vector<int>);
+        void insert(const std::vector<T>&, const std::vector<int>, const std::vector<int>);
+        void insert(const T, const std::vector<int>);
+        const std::vector<int> get_dim_sizes() { return dim_sizes; }
+        void add_attribute(const std::string&, const std::string&);
 
     private:
         Master& master;
@@ -38,7 +42,8 @@ class Netcdf_handle
 
         std::map<std::string, int> get_variable_dimensions(const std::string&);
 
-        Netcdf_variable add_variable(
+        template<typename T>
+        Netcdf_variable<T> add_variable(
                 const std::string&,
                 const std::vector<std::string>);
 
@@ -49,17 +54,24 @@ class Netcdf_handle
                 const std::vector<int>&,
                 const std::vector<int>&);
 
+        template<typename T>
         void insert(
-                const std::vector<double>&,
+                const std::vector<T>&,
                 const int var_id,
                 const std::vector<int>&,
                 const std::vector<int>&);
 
+        template<typename T>
         void insert(
-                const double,
+                const T,
                 const int var_id,
                 const std::vector<int>&,
                 const std::vector<int>&);
+
+        void add_attribute(
+                const std::string&,
+                const std::string&,
+                const int);
 
     protected:
         Master& master;
@@ -74,6 +86,8 @@ class Netcdf_file : public Netcdf_handle
     public:
         Netcdf_file(Master&, const std::string&, Netcdf_mode);
         ~Netcdf_file();
+
+        void sync();
 };
 
 class Netcdf_group : public Netcdf_handle

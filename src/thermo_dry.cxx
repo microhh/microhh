@@ -552,14 +552,14 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
     {
         bs_stats = bs;
         // Add base state profiles to statistics
-        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields.rhoref.data());
-        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", bs_stats.thref.data());
-        stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", bs_stats.thref);
+        stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref);
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
-            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh);
             stats.add_prof("T", "Absolute temperature", "K", "z");
         }
 
