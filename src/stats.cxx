@@ -543,7 +543,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         zh_var.insert(zh_nogc, {0});
 
         // Synchronize the NetCDF file.
-        // m.data_file->sync();
+        m.data_file->sync();
 
         m.nmask. resize(gd.kcells);
         m.nmaskh.resize(gd.kcells);
