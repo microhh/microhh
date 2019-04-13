@@ -35,16 +35,6 @@
 #include "timeloop.h"
 #include "netcdf_interface.h"
 
-#include <netcdf.h>
-
-namespace
-{
-    // Help functions to switch between the different NetCDF data types
-    template<typename TF> TF netcdf_fp_fillvalue();
-    template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
-    template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
-}
-
 template<typename TF>
 Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
@@ -78,7 +68,6 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         return;
 
     auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
 
     std::vector<TF> coordx = inputin.get_list<TF>("column", "coordinates", "x", std::vector<TF>());
     std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
