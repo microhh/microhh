@@ -1061,14 +1061,12 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
-    column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), no_offset);
+    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
-    {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
-    }
 
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }

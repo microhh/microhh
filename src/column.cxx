@@ -52,9 +52,7 @@ Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
     swcolumn = inputin.get_item<bool>("column", "swcolumn", "", false);
 
     if (swcolumn)
-    {
         sampletime = inputin.get_item<double>("column", "sampletime", "");
-    }
 }
 
 template<typename TF>
@@ -93,14 +91,12 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
 
     for (size_t n=0; n<coordx.size(); ++n)
     {
-        int i = (int) floor(coordx[n]/gd.dx);
-        int j = (int) floor(coordy[n]/gd.dy);
-        if ((i >= (md.mpicoordx)*gd.imax) & (i < (md.mpicoordx+1)*gd.imax) &
-            (j >= (md.mpicoordy)*gd.jmax) & (j < (md.mpicoordy+1)*gd.jmax))
-        {
-            columns.emplace(columns.end());
-            columns.back().coord = {i+gd.istart,j+gd.jstart};
-        }
+        // CvH: Why floor?
+        const int i = static_cast<int>(std::floor(coordx[n]/gd.dx));
+        const int j = static_cast<int>(std::floor(coordy[n]/gd.dy));
+
+        columns.emplace_back(Column_struct{});
+        columns.back().coord = {i, j};
     }
 
     // Create a NetCDF file for the statistics.
@@ -108,9 +104,9 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
     {
         std::stringstream filename;
         filename << sim_name << "_" << "column" << "_"
-                << std::setfill('0') << std::setw(5) << col.coord[0] - gd.istart << "_"
-                << std::setfill('0') << std::setw(5) << col.coord[1] - gd.jstart << "_"
-                << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
+                 << std::setfill('0') << std::setw(5) << col.coord[0] << "_"
+                 << std::setfill('0') << std::setw(5) << col.coord[1] << "_"
+                 << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
 
         // Create new NetCDF file
         col.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
@@ -173,6 +169,7 @@ bool Column<TF>::do_column(unsigned long itime)
     // check if column are enabled
     if (!swcolumn)
         return false;
+
     // If sampletime is negative, output column every timestep
     if (isampletime == 0)
         return true;
@@ -188,7 +185,6 @@ bool Column<TF>::do_column(unsigned long itime)
 template<typename TF>
 void Column<TF>::exec(int iteration, double time, unsigned long itime)
 {
-
     // Write message in case stats is triggered.
     master.print_message("Saving columns for time %f\n", time);
 
@@ -246,19 +242,29 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
 
 #ifndef USECUDA
 template<typename TF>
-void Column<TF>::calc_column(std::string profname, const TF* const restrict data,
-                      const TF offset)
+void Column<TF>::calc_column(
+        std::string profname, const TF* const restrict data,
+        const TF offset)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
-    for (auto& it: columns)
+    for (auto& col : columns)
     {
-        for (int k=0; k<gd.kcells; k++)
+        // Check if coordinate is in range.
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
         {
-            const int ijk  = it.coord[0] + it.coord[1]*jj + k*kk;
-            it.profs.at(profname).data.data()[k] = (data[ijk] + offset);
+            const int i_col = col.coord[0] % gd.imax + gd.istart;
+            const int j_col = col.coord[1] % gd.jmax + gd.jstart;
+
+            for (int k=0; k<gd.kcells; k++)
+            {
+                const int ijk  = i_col + j_col*jj + k*kk;
+                col.profs.at(profname).data.data()[k] = (data[ijk] + offset);
+            }
         }
     }
 }
