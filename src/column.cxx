@@ -68,6 +68,7 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         return;
 
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     std::vector<TF> coordx = inputin.get_list<TF>("column", "coordinates", "x", std::vector<TF>());
     std::vector<TF> coordy = inputin.get_list<TF>("column", "coordinates", "y", std::vector<TF>());
@@ -97,8 +98,16 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
                  << std::setfill('0') << std::setw(5) << col.coord[1] << "_"
                  << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
 
-        // Create new NetCDF file
-        col.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
+        // Create new NetCDF file.
+        // 1. Find the mpiid of the column.
+        int mpiid_column = 0;
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+            mpiid_column = master.get_mpiid();
+        master.sum(&mpiid_column, 1);
+
+        // 2. Make the NetCDF file.
+        col.data_file = std::make_unique<Netcdf_file>(
+                master, filename.str(), Netcdf_mode::Create, mpiid_column);
     }
 
     // Create dimensions.

@@ -238,7 +238,7 @@ Netcdf_variable<T> Netcdf_handle::add_variable(
 
         if (dim_len_int == NC_UNLIMITED)
         {
-            if (i == mpiid_to_write)
+            if (i == 0)
                 dim_sizes.push_back(1);
             else
                 throw std::runtime_error("Only the leftmost dimension is allowed to be an NC_UNLIMITED dimension");
