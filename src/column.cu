@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "column.h"
 #include "tools.h"
+#include "netcdf_interface.h"
 
 #ifdef USECUDA
 template<typename TF>
@@ -33,14 +34,17 @@ void Column<TF>::calc_column(
 {
     auto& gd = grid.get_grid_data();
 
-    for (auto& it: columns)
+    // CvH : This does not work in case CUDA is combined with MPI.
+    for (auto& col : columns)
     {
-        const int kbeg = it.coord[0] + it.coord[1] * gd.icells + gd.ijcells * gd.kstart;
+        const int kbeg = col.coord[0] + col.coord[1]*gd.icells;
 
-        cuda_safe_call(cudaMemcpy2D(&it.profs.at(profname).data.data()[gd.kstart], sizeof(TF),&data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kmax, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy2D(
+                    col.profs.at(profname).data.data(),
+                    sizeof(TF), &data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kcells, cudaMemcpyDeviceToHost));
 
-        for (int k=gd.kstart; k<gd.kend; k++)
-            it.profs.at(profname).data.data()[k] += offset;
+        for (int k=0; k<gd.kcells; ++k)
+            col.profs.at(profname).data[k] += offset;
     }
 }
 #endif

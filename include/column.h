@@ -54,7 +54,6 @@ class Column
 
 
     private:
-
         // Struct for profiles.
         struct Prof_var
         {

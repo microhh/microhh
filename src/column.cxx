@@ -259,8 +259,8 @@ void Column<TF>::calc_column(
 
             for (int k=0; k<gd.kcells; k++)
             {
-                const int ijk  = i_col + j_col*jj + k*kk;
-                col.profs.at(profname).data.data()[k] = (data[ijk] + offset);
+                const int ijk = i_col + j_col*jj + k*kk;
+                col.profs.at(profname).data[k] = (data[ijk] + offset);
             }
         }
     }
