@@ -104,10 +104,10 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
     }
 
     // Create a NetCDF file for the statistics.
-    for (auto& col: columns)
+    for (auto& col : columns)
     {
         std::stringstream filename;
-        filename << sim_name << "." << "column" << "_"
+        filename << sim_name << "_" << "column" << "_"
                 << std::setfill('0') << std::setw(5) << col.coord[0] - gd.istart << "_"
                 << std::setfill('0') << std::setw(5) << col.coord[1] - gd.jstart << "_"
                 << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
@@ -189,9 +189,10 @@ template<typename TF>
 void Column<TF>::exec(int iteration, double time, unsigned long itime)
 {
 
+    // Write message in case stats is triggered.
+    master.print_message("Saving columns for time %f\n", time);
+
     auto& gd = grid.get_grid_data();
-    // write message in case column is triggered
-    // master.print_message("Saving column for time %f\n", time);
 
     // Put the data into the NetCDF file.
     for (auto& col : columns)
@@ -236,24 +237,13 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
         var.ncvar.add_attribute("units", unit);
         var.ncvar.add_attribute("long_name", longname);
 
-        if (zloc == "z")
-        {
-            std::vector<TF> prof_nogc(var.data.begin() + gd.kstart, var.data.begin() + gd.kend);
-            var.ncvar.insert(prof_nogc, {0}, {gd.ktot});
-        }
-        else if (zloc == "zh")
-        {
-            std::vector<TF> prof_nogc(var.data.begin() + gd.kstart, var.data.begin() + gd.kend+1);
-            var.ncvar.insert(prof_nogc, {0}, {gd.ktot+1});
-        }
-
         // Insert the variable into the container.
         col.profs.emplace(name, var);
 
         col.data_file->sync();
     }
-
 }
+
 #ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(std::string profname, const TF* const restrict data,

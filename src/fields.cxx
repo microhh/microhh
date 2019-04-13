@@ -890,14 +890,14 @@ void Fields<TF>::create_column(Column<TF>& column)
     if (column.get_switch())
     {
         // add variables to the statistics
-        column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        column.add_prof(mp.at("u")->name, mp.at("u")->longname, mp.at("u")->unit, "z" );
+        column.add_prof(mp.at("v")->name, mp.at("v")->longname, mp.at("v")->unit, "z" );
+        column.add_prof(mp.at("w")->name, mp.at("w")->longname, mp.at("w")->unit, "zh");
 
         for (auto& it : sp)
-            column.add_prof(it.first,it.second->longname, it.second->unit, "z");
+            column.add_prof(it.first, it.second->longname, it.second->unit, "z");
 
-        column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
 }
 
