@@ -522,7 +522,6 @@ namespace
             const int jj, const int kk)
     {
         const int ii1 = 1;
-        const int jj1 = 1*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
 
@@ -562,7 +561,6 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii1 = 1;
         const int jj1 = 1*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
