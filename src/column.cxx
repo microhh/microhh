@@ -81,7 +81,6 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
 
     for (size_t n=0; n<coordx.size(); ++n)
     {
-        // CvH: Why floor?
         const int i = static_cast<int>(std::floor(coordx[n]/gd.dx));
         const int j = static_cast<int>(std::floor(coordy[n]/gd.dy));
 
