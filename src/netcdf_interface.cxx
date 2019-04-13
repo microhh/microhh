@@ -15,9 +15,9 @@ namespace
         throw std::runtime_error(error);
     }
 
-    void nc_check(Master& master, int return_value)
+    void nc_check(Master& master, int return_value, const int mpiid_to_write)
     {
-        master.broadcast(&return_value, 1);
+        master.broadcast(&return_value, 1, mpiid_to_write);
         if (return_value != NC_NOERR)
             nc_throw(return_value);
     }
@@ -113,12 +113,13 @@ namespace
     }
 }
 
-Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mode) :
+Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mode, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
+    mpiid_to_write = mpiid_to_write_in;
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
     {
         if (mode == Netcdf_mode::Create)
             nc_check_code = nc_create(name.c_str(), NC_NOCLOBBER | NC_NETCDF4, &ncid);
@@ -128,52 +129,52 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
             nc_check_code = nc_open(name.c_str(), NC_NOWRITE | NC_NETCDF4, &ncid);
     }
 
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     root_ncid = ncid;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
     {
         if (mode == Netcdf_mode::Create)
             nc_check_code =  nc_enddef(root_ncid);
     }
 
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 Netcdf_file::~Netcdf_file()
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_close(ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 void Netcdf_file::sync()
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_sync(ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_size)
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     int dim_id;
     int def_out;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         def_out = nc_def_dim(ncid, dim_name.c_str(), dim_size, &dim_id);
 
-    master.broadcast(&def_out, 1);
+    master.broadcast(&def_out, 1, mpiid_to_write);
 
     // Dimension is written or already exists.
     if (def_out == NC_NOERR)
@@ -184,10 +185,10 @@ void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_siz
     else
         nc_throw(def_out);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
 
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 template<typename T>
@@ -200,9 +201,9 @@ Netcdf_variable<T> Netcdf_handle::add_variable(
     int var_id = -1;
     std::vector<int> dim_sizes;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     int ndims = dim_names.size();
     std::vector<int> dim_ids;
@@ -210,17 +211,17 @@ Netcdf_variable<T> Netcdf_handle::add_variable(
     for (const std::string& dim_name : dim_names)
         dim_ids.push_back(dims.at(dim_name));
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_def_var(ncid, var_name.c_str(), netcdf_dtype<T>(), ndims, dim_ids.data(), &var_id);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     // Broadcast the dim_ids size of the main process to run the for loop on all processes.
     int dim_ids_size = dim_ids.size();
-    master.broadcast(&dim_ids_size, 1);
+    master.broadcast(&dim_ids_size, 1, mpiid_to_write);
 
     for (int i=0; i<dim_ids_size; ++i)
     {
@@ -228,16 +229,16 @@ Netcdf_variable<T> Netcdf_handle::add_variable(
 
         size_t dim_len = 0;
 
-        if (master.get_mpiid() == 0)
+        if (master.get_mpiid() == mpiid_to_write)
             nc_check_code = nc_inq_dimlen(ncid, dim_id, &dim_len);
-        nc_check(master, nc_check_code);
+        nc_check(master, nc_check_code, mpiid_to_write);
 
         int dim_len_int = static_cast<int>(dim_len);
-        master.broadcast(&dim_len_int, 1);
+        master.broadcast(&dim_len_int, 1, mpiid_to_write);
 
         if (dim_len_int == NC_UNLIMITED)
         {
-            if (i == 0)
+            if (i == mpiid_to_write)
                 dim_sizes.push_back(1);
             else
                 throw std::runtime_error("Only the leftmost dimension is allowed to be an NC_UNLIMITED dimension");
@@ -266,9 +267,9 @@ void Netcdf_handle::insert(
     int nc_check_code = 0;
 
     // CvH: Add proper size checking.
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_put_vara_wrapper<T>(ncid, var_id, i_start_size_t, i_count_size_t, values);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 template<typename T>
@@ -284,9 +285,9 @@ void Netcdf_handle::insert(
     int nc_check_code = 0;
 
     // CvH: Add proper size checking.
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_put_vara_wrapper<T>(ncid, var_id, i_start_size_t, i_count_size_t, value);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 void Netcdf_handle::add_attribute(
@@ -296,18 +297,18 @@ void Netcdf_handle::add_attribute(
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     // CvH what if string is too long?
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_put_att_text(ncid, var_id, name.c_str(), value.size(), value.c_str());
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 void Netcdf_handle::add_attribute(
@@ -317,18 +318,18 @@ void Netcdf_handle::add_attribute(
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     // CvH what if string is too long?
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_put_att_double(ncid, var_id, name.c_str(), NC_DOUBLE, 1, &value);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 void Netcdf_handle::add_attribute(
@@ -338,18 +339,18 @@ void Netcdf_handle::add_attribute(
 {
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     // CvH what if string is too long?
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_put_att_float(ncid, var_id, name.c_str(), NC_FLOAT, 1, &value);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 }
 
 Netcdf_group Netcdf_handle::add_group(const std::string& name)
@@ -357,19 +358,19 @@ Netcdf_group Netcdf_handle::add_group(const std::string& name)
     int group_ncid = -1;
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_redef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_def_grp(ncid, name.c_str(), &group_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_enddef(root_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid);
+    return Netcdf_group(master, group_ncid, root_ncid, mpiid_to_write);
 }
 
 Netcdf_group Netcdf_handle::get_group(const std::string& name)
@@ -377,16 +378,17 @@ Netcdf_group Netcdf_handle::get_group(const std::string& name)
     int group_ncid = -1;
     int nc_check_code = 0;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid);
+    return Netcdf_group(master, group_ncid, root_ncid, mpiid_to_write);
 }
 
-Netcdf_group::Netcdf_group(Master& master, int ncid_in, int root_ncid_in) :
+Netcdf_group::Netcdf_group(Master& master, const int ncid_in, const int root_ncid_in, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
+    mpiid_to_write = mpiid_to_write_in;
     ncid = ncid_in;
     root_ncid = root_ncid_in;
 }
@@ -396,19 +398,19 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
     int nc_check_code = 0;
     int var_id;
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     int ndims;
     int dimids[NC_MAX_VAR_DIMS];
 
-    if (master.get_mpiid() == 0)
+    if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_inq_var(ncid, var_id, NULL, NULL, &ndims, dimids, NULL);
-    nc_check(master, nc_check_code);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
     // Broadcast ndims
-    master.broadcast(&ndims, 1);
+    master.broadcast(&ndims, 1, mpiid_to_write);
 
     std::map<std::string, int> dims;
 
@@ -418,13 +420,13 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
         size_t dim_length_size_t;
 
         nc_check_code = nc_inq_dim(ncid, dimids[n], dim_name, &dim_length_size_t);
-        nc_check(master, nc_check_code);
+        nc_check(master, nc_check_code, mpiid_to_write);
 
         int dim_length = dim_length_size_t;
-        master.broadcast(&dim_length, 1);
+        master.broadcast(&dim_length, 1, mpiid_to_write);
 
         // Broadcast the entire buffer to avoid broadcasting of length.
-        master.broadcast(dim_name, NC_MAX_NAME+1);
+        master.broadcast(dim_name, NC_MAX_NAME+1, mpiid_to_write);
 
         dims.emplace(std::string(dim_name), dim_length);
     }
@@ -451,9 +453,9 @@ void Netcdf_handle::get_variable(
     bool zero_fill = false;
     try
     {
-        if (master.get_mpiid() == 0)
+        if (master.get_mpiid() == mpiid_to_write)
             nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-        nc_check(master, nc_check_code);
+        nc_check(master, nc_check_code, mpiid_to_write);
     }
     catch (std::runtime_error& e)
     {
@@ -465,7 +467,7 @@ void Netcdf_handle::get_variable(
     // CvH: Add check if the vector is large enough.
     int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
     // If the vector is long enough, it can be copied. We assume that this routine does NOT resize vectors.
-    master.broadcast(&total_count, 1);
+    master.broadcast(&total_count, 1, mpiid_to_write);
 
     if (zero_fill)
     {
@@ -473,10 +475,10 @@ void Netcdf_handle::get_variable(
     }
     else
     {
-        if (master.get_mpiid() == 0)
+        if (master.get_mpiid() == mpiid_to_write)
             nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values);
-        nc_check(master, nc_check_code);
-        master.broadcast(values.data(), total_count);
+        nc_check(master, nc_check_code, mpiid_to_write);
+        master.broadcast(values.data(), total_count, mpiid_to_write);
     }
 }
 
