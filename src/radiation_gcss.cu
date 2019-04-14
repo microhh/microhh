@@ -18,8 +18,20 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tools.h"
 #include "radiation_gcss.h"
+#include "defines.h"
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "thermo.h"
+#include "timeloop.h"
+#include "input.h"
+#include "stats.h"
+#include "cross.h"
+#include "dump.h"
+#include "column.h"
+#include "constants.h"
+#include "tools.h"
 
 namespace
 {

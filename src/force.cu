@@ -19,6 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <algorithm>
 #include "master.h"
 #include "grid.h"
@@ -30,7 +31,6 @@
 #include "constants.h"
 #include "tools.h"
 #include "boundary.h"
-#include "data_block.h"
 #include "force.h"
 
 using namespace Finite_difference::O2;
