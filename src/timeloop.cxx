@@ -25,6 +25,7 @@
 #include <sstream>
 #include <cmath>
 #include <ctime>
+#include <sys/time.h>
 
 #include "input.h"
 #include "master.h"

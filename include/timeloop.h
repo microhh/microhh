@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,13 +21,12 @@
  */
 
 
-#ifndef TIMELOOP
-#define TIMELOOP
+#ifndef TIMELOOP_H
+#define TIMELOOP_H
 
-#include <sys/time.h>
 #include <string>
 #include <vector>
-#include <time.h>
+#include <ctime>
 
 class Master;
 template<typename> class Grid;
