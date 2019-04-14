@@ -22,8 +22,10 @@
 
 #include <iostream>
 #include <iomanip>
-#include <cstdio>
+#include <sstream>
 #include <cmath>
+#include <ctime>
+#include <sys/time.h>
 
 #include "input.h"
 #include "master.h"
@@ -33,34 +35,14 @@
 #include "defines.h"
 #include "constants.h"
 
-namespace
-{
-    date::sys_seconds parse_datetime_string(const std::string s)
-    {
-        date::sys_seconds tp;
-        std::istringstream in{s};
-        in >> date::parse("%F %T", tp);
-
-        // Check if the date has been parsed correctly.
-        const std::string error_string("Illegal datetime string: " + s);
-        if (in.fail())
-            throw std::runtime_error(error_string);
-        std::string empty;
-        if (in >> empty)
-            throw std::runtime_error(error_string);
-
-        return tp;
-    }
-}
-
 template<typename TF>
 Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
     fields(fieldsin),
-    ifactor(1e9),
-    flag_utc_time(false)
+    flag_utc_time(false),
+    ifactor(1e9)
 {
     substep = 0;
 
@@ -86,7 +68,7 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     if (datetime_utc_string != "")
     {
         flag_utc_time = true;
-        datetime_utc_start = parse_datetime_string(datetime_utc_string);
+        strptime(datetime_utc_string.c_str(), "%Y-%m-%d %H:%M:%S", &tm_utc_start);
     }
 
     if (sim_mode == Sim_mode::Post)
@@ -490,13 +472,40 @@ void Timeloop<TF>::step_post_proc_time()
         loop = false;
 }
 
+namespace
+{
+    std::tm calc_tm_actual(const std::tm& tm_start, const double time)
+    {
+        std::tm tm_actual = tm_start;
+        tm_actual.tm_sec += static_cast<int>(time);
+        std::mktime(&tm_actual);
+        return tm_actual;
+    }
+}
+
 template<typename TF>
-date::sys_time<std::chrono::microseconds> Timeloop<TF>::get_datetime_utc() const
+double Timeloop<TF>::calc_hour_of_day() const
 {
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
 
-    return datetime_utc_start + std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(time));
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    const double frac_hour = ( tm_actual.tm_min*60
+                             + tm_actual.tm_sec + std::fmod(time, 1.) ) / 3600.;
+    return tm_actual.tm_hour + frac_hour; // Counting starts at 0 in std::tm, thus add 1.
+}
+
+template<typename TF>
+double Timeloop<TF>::calc_day_of_year() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    const double frac_day = ( tm_actual.tm_hour*3600.
+                            + tm_actual.tm_min*60.
+                            + tm_actual.tm_sec + std::fmod(time, 1.) ) / 86400.;
+    return tm_actual.tm_yday+1. + frac_day; // Counting starts at 0 in std::tm, thus add 1.
 }
 
 template<typename TF>
@@ -505,33 +514,17 @@ std::string Timeloop<TF>::get_datetime_utc_start_string() const
     if (!flag_utc_time)
         throw std::runtime_error("No datetime in UTC specified");
 
-    return date::format("%F %T", datetime_utc_start);
-}
+    std::ostringstream ss;
 
-template<typename TF>
-double Timeloop<TF>::seconds_since_midnight() const
-{
-    if (!flag_utc_time)
-        throw std::runtime_error("No datetime in UTC specified");
+    // Year is relative to 1900, month count starts at 0.
+    ss << std::setfill('0') << std::setw(4) << tm_utc_start.tm_year+1900 << "-";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_mon+1     << "-";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_mday      << " ";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_hour      << ":";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_min       << ":";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_sec;
 
-    auto now = get_datetime_utc();
-    std::chrono::duration<double, std::chrono::seconds::period> double_seconds =
-        now - date::floor<date::days>(now);
-
-    return double_seconds.count();
-}
-
-template<typename TF>
-double Timeloop<TF>::days_since_year() const
-{
-    if (!flag_utc_time)
-        throw std::runtime_error("No datetime in UTC specified");
-
-    auto now = get_datetime_utc();
-    std::chrono::duration<double, date::days::period> double_date =
-        now - date::sys_days{date::year_month_day{date::floor<date::days>(now)}.year()/1/1};
-
-    return double_date.count();
+    return ss.str();
 }
 
 template<typename TF>

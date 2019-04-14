@@ -3,7 +3,6 @@
  * Copyright (c) 2011-2019 Chiel van Heerwaarden
  * Copyright (c) 2011-2019 Thijs Heus
  * Copyright (c) 2014-2019 Bart van Stratum
- * Copyright (c) 2018-2019 Elynn Wu
  *
  * This file is part of MicroHH
  *
@@ -18,39 +17,34 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <vector>
-#include <string>
-#include <iostream>
-#include <algorithm>
+
 #include "radiation.h"
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "input.h"
-#include "data_block.h"
-#include "field3d_operators.h"
 #include "radiation_rrtmg.h"
 
 namespace
 {
- /*
- // Wrapper functions to the RRTMG long wave kernels.
- extern "C"
- {
-     void c_rrtmg_lw_init(double *cpdair);
-     void c_rrtmg_lw (
-             int *ncol    ,int *nlay    ,int *icld    ,int *idrv    ,
-             double *play    ,double *plev    ,double *tlay    ,double *tlev    ,double *tsfc    ,
-             double *h2ovmr  ,double *o3vmr   ,double *co2vmr  ,double *ch4vmr  ,double *n2ovmr  ,double *o2vmr,
-             double *cfc11vmr,double *cfc12vmr,double *cfc22vmr,double *ccl4vmr ,double *emis    ,
-             int *inflglw ,int *iceflglw,int *liqflglw,double *cldfr   ,
-             double *taucld  ,double *cicewp  ,double *cliqwp  ,double *reice   ,double *reliq   ,
-             double *tauaer  ,
-             double *uflx    ,double *dflx    ,double *hr      ,double *uflxc   ,double *dflxc,  double *hrc,
-             double *duflx_dt,double *duflxc_dt );
- }
- */
+    /*
+    // Wrapper functions to the RRTMG long wave kernels.
+    extern "C"
+    {
+        void c_rrtmg_lw_init(double *cpdair);
+        void c_rrtmg_lw (
+                int *ncol    ,int *nlay    ,int *icld    ,int *idrv    ,
+                double *play    ,double *plev    ,double *tlay    ,double *tlev    ,double *tsfc    ,
+                double *h2ovmr  ,double *o3vmr   ,double *co2vmr  ,double *ch4vmr  ,double *n2ovmr  ,double *o2vmr,
+                double *cfc11vmr,double *cfc12vmr,double *cfc22vmr,double *ccl4vmr ,double *emis    ,
+                int *inflglw ,int *iceflglw,int *liqflglw,double *cldfr   ,
+                double *taucld  ,double *cicewp  ,double *cliqwp  ,double *reice   ,double *reliq   ,
+                double *tauaer  ,
+                double *uflx    ,double *dflx    ,double *hr      ,double *uflxc   ,double *dflxc,  double *hrc,
+                double *duflx_dt,double *duflxc_dt );
+    }
+    */
 }
 
 template<typename TF>
@@ -59,11 +53,11 @@ Radiation_rrtmg<TF>::Radiation_rrtmg(Master& masterin, Grid<TF>& gridin, Fields<
 {
 	swradiation = "1";
 
-// double cp = 1004.;
-// c_rrtmg_lw_init(&cp);
-ncol = 1;
-nlay = 60;
-nbndlw = 16;
+    // double cp = 1004.;
+    // c_rrtmg_lw_init(&cp);
+    // ncol = 1;
+    // nlay = 60;
+    // nbndlw = 16;
 }
 
 template<typename TF>
@@ -74,6 +68,7 @@ Radiation_rrtmg<TF>::~Radiation_rrtmg()
 template<typename TF>
 void Radiation_rrtmg<TF>::init()
 {
+    /*
     play.resize(ncol*nlay);     // (ncol, nlay)
     plev.resize(ncol*(nlay+1)); // (ncol, nlay+1)
     tlay.resize(ncol*nlay);     // (ncol, nlay)
@@ -111,12 +106,13 @@ void Radiation_rrtmg<TF>::init()
     hrc.resize(ncol*nlay);           // (ncol, nlay)
     duflx_dt.resize(ncol*(nlay+1));  // (ncol, nlay+1)
     duflxc_dt.resize(ncol*(nlay+1)); // (ncol, nlay+1)
+    */
 }
 
 template<typename TF>
 void Radiation_rrtmg<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
+    /*
     std::string block_name = "radiation.prof";
     Data_block data_block(master, block_name);
 
@@ -176,11 +172,13 @@ void Radiation_rrtmg<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>
     data_block.get_vector(n2ovmr, "wkl4", nlay, 0, 0);
     data_block.get_vector(ch4vmr, "wkl6", nlay, 0, 0);
     data_block.get_vector(o2vmr, "wkl7", nlay, 0, 0);
+    */
 }
 
 template<typename TF>
 void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
 {
+    /*
     // auto& gd = grid.get_grid_data();
 
     // For now...
@@ -204,7 +202,6 @@ void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& ti
     // Get absolute atmospheric and surface temperature.
     tsfc[0] = 300.;
 
-    /*
     c_rrtmg_lw(
             &ncol    ,&nlay    ,&icld    ,&idrv    ,
             play.data()    ,plev.data()    ,tlay.data()    ,tlev.data()    ,tsfc.data()    ,
@@ -215,7 +212,6 @@ void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& ti
             tauaer.data()  ,
             uflx.data()    ,dflx.data()    ,hr.data()      ,uflxc.data()   ,dflxc.data(),  hrc.data(),
             duflx_dt.data(),duflxc_dt.data());
-            */
 
     fields.release_tmp(T);
 
@@ -233,12 +229,13 @@ void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& ti
             << uflx[i] << ", "
             << dflx[i] << ", "
             << std::endl;
+    */
 }
 
 template<typename TF>
 bool Radiation_rrtmg<TF>::check_field_exists(std::string name)
 {
-return false;  // always returns error
+    return false;
 }
 
 template class Radiation_rrtmg<double>;

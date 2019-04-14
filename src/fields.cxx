@@ -32,7 +32,6 @@
 #include "fields.h"
 #include "field3d.h"
 #include "input.h"
-// #include "data_block.h"
 #include "netcdf_interface.h"
 #include "defines.h"
 #include "finite_difference.h"
@@ -831,14 +830,14 @@ void Fields<TF>::create_column(Column<TF>& column)
     if (column.get_switch())
     {
         // add variables to the statistics
-        column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        column.add_prof(mp.at("u")->name, mp.at("u")->longname, mp.at("u")->unit, "z" );
+        column.add_prof(mp.at("v")->name, mp.at("v")->longname, mp.at("v")->unit, "z" );
+        column.add_prof(mp.at("w")->name, mp.at("w")->longname, mp.at("w")->unit, "zh");
 
         for (auto& it : sp)
-            column.add_prof(it.first,it.second->longname, it.second->unit, "z");
+            column.add_prof(it.first, it.second->longname, it.second->unit, "z");
 
-        column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
 }
 
@@ -1002,14 +1001,12 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
-    column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), no_offset);
+    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
-    {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
-    }
 
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }

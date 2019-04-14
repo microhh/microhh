@@ -86,11 +86,11 @@ double Master::get_wall_clock_time()
 // void Master::wait_all() {}
 
 // All broadcasts return directly, because there is nothing to broadcast.
-void Master::broadcast(char* data, int datasize) {}
-void Master::broadcast(int* data, int datasize) {}
-void Master::broadcast(unsigned long* data, int datasize) {}
-void Master::broadcast(double* data, int datasize) {}
-void Master::broadcast(float* data, int datasize) {}
+void Master::broadcast(char* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(int* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(unsigned long* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(double* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(float* data, int datasize, int mpiid_to_send) {}
 void Master::sum(int* var, int datasize) {}
 void Master::sum(double* var, int datasize) {}
 void Master::sum(float* var, int datasize) {}

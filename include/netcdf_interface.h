@@ -23,6 +23,8 @@ class Netcdf_variable
         void insert(const T, const std::vector<int>);
         const std::vector<int> get_dim_sizes() { return dim_sizes; }
         void add_attribute(const std::string&, const std::string&);
+        void add_attribute(const std::string&, const double);
+        void add_attribute(const std::string&, const float);
 
     private:
         Master& master;
@@ -73,8 +75,19 @@ class Netcdf_handle
                 const std::string&,
                 const int);
 
+        void add_attribute(
+                const std::string&,
+                const double,
+                const int);
+
+        void add_attribute(
+                const std::string&,
+                const float,
+                const int);
+
     protected:
         Master& master;
+        int mpiid_to_write;
         int ncid;
         int root_ncid;
         std::map<std::string, int> dims;
@@ -84,7 +97,7 @@ class Netcdf_handle
 class Netcdf_file : public Netcdf_handle
 {
     public:
-        Netcdf_file(Master&, const std::string&, Netcdf_mode);
+        Netcdf_file(Master&, const std::string&, Netcdf_mode, const int mpiid_to_write_int=0);
         ~Netcdf_file();
 
         void sync();
@@ -93,6 +106,6 @@ class Netcdf_file : public Netcdf_handle
 class Netcdf_group : public Netcdf_handle
 {
     public:
-        Netcdf_group(Master&, const int, const int);
+        Netcdf_group(Master&, const int, const int, const int);
 };
 #endif

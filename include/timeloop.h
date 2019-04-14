@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,14 +21,12 @@
  */
 
 
-#ifndef TIMELOOP
-#define TIMELOOP
+#ifndef TIMELOOP_H
+#define TIMELOOP_H
 
-#include <sys/time.h>
 #include <string>
 #include <vector>
-#include <time.h>
-#include "date.h"
+#include <ctime>
 
 class Master;
 template<typename> class Grid;
@@ -88,10 +86,9 @@ class Timeloop
 
         // Functions for UTC time support.
         bool has_utc_time() const { return flag_utc_time; }
-        date::sys_time<std::chrono::microseconds> get_datetime_utc() const;
         std::string get_datetime_utc_start_string() const;
-        double seconds_since_midnight() const;
-        double days_since_year() const;
+        double calc_day_of_year() const;
+        double calc_hour_of_day() const;
 
     private:
         Master& master;
@@ -119,7 +116,7 @@ class Timeloop
         double savetime;
         double postproctime;
         bool flag_utc_time;
-        date::sys_seconds datetime_utc_start;
+        std::tm tm_utc_start;
 
         int iteration;
         int iotime;

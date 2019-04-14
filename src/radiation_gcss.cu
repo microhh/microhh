@@ -18,13 +18,25 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tools.h"
 #include "radiation_gcss.h"
+#include "defines.h"
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "thermo.h"
+#include "timeloop.h"
+#include "input.h"
+#include "stats.h"
+#include "cross.h"
+#include "dump.h"
+#include "column.h"
+#include "constants.h"
+#include "tools.h"
 
 namespace
 {
     template<typename TF>
-    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year)
     {
         const TF pi    = TF(M_PI);
         const TF twopi = TF(2.*M_PI);
@@ -45,7 +57,7 @@ namespace
         //                          datetime.tm_min * 60. +
         //                          datetime.tm_sec) / day2secs;
 
-        const TF time2sec = days_since_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
+        const TF time2sec = day_of_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
 
         const TF day = std::floor(time2sec);
         const TF lambda = lat * pi / pi_angle;
@@ -240,7 +252,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
         gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
         gd.iend,  gd.jend,   gd.kend-1, gd.icells, gd.ijcells);
 
-    TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+    TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
     if (mu > mu_min)
     {
@@ -312,7 +324,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
         if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp_g();

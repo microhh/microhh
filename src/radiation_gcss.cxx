@@ -21,10 +21,23 @@
 
 #include "radiation_gcss.h"
 
+#include "defines.h"
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "thermo.h"
+#include "input.h"
+#include "stats.h"
+#include "cross.h"
+#include "dump.h"
+#include "column.h"
+#include "constants.h"
+#include "timeloop.h"
+
 namespace
 {
     template<typename TF>
-    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year)
     {
         const TF pi    = TF(M_PI);
         const TF twopi = TF(2.*M_PI);
@@ -45,7 +58,7 @@ namespace
         //                          datetime.tm_min * 60. +
         //                          datetime.tm_sec) / day2secs;
 
-        const TF time2sec = days_since_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
+        const TF time2sec = day_of_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
 
         const TF day = std::floor(time2sec);
         const TF lambda = lat * pi / pi_angle;
@@ -66,7 +79,7 @@ namespace
     template<typename TF> TF deg2rad(const TF deg) { return TF(2.*M_PI/360. * deg); }
 
     template<typename TF>
-    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year, const double seconds_since_midnight)
     {
         constexpr TF pi = TF(M_PI);
         constexpr TF twopi = TF(2.*M_PI);
@@ -74,7 +87,7 @@ namespace
         const TF radlon = deg2rad(lon);
         const TF radlat = deg2rad(lat);
 
-        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (days_since_year - 173.) / 365.25);
+        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (day_of_year - 173.) / 365.25);
 
         TF hour_angle = twopi * seconds_since_midnight/TF(86400.) + radlon - pi;
 
@@ -157,8 +170,6 @@ namespace
         const TF rho_l = 1000.;
         const TF reff = 1.E-5;
         TF tauc;
-        TF fact;
-        int ki; //PBLH index
 
         std::vector<TF> tau(kend,TF(0.));
         for (int n=0; n<ncells; ++n)
@@ -171,7 +182,6 @@ namespace
                 tauc = TF(0.0);
                 for (int k=kstart;k<kend;++k)
                 {
-                    const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
                     const int km1 = std::max(1,k-1);
                     tau[k] = TF(0.0);
@@ -200,6 +210,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
         int ki; //pblh index
+
         TF fact;
         for (int j=jstart; j<jend; ++j)
         {
@@ -210,8 +221,8 @@ namespace
 
                 for (int k=kstart; k<kend; ++k)
                 {
-                    const int ij   = i + j*jj;
-                    const int ijk  = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
                     const int km1 = std::max(1,k-1);
                     lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[km1]));
                     flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
@@ -225,11 +236,10 @@ namespace
 
                 for (int k=kstart+1; k<kend; ++k)
                 {
-                    const int ij   = i + j*jj;
-                    const int ijk  = i + j*jj + k*kk;
-                    const int km1 = std::max(kstart+1,k-1);
-                    const int ijkm = i + j*jj + km1*kk;
-                    lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    // const int km1 = std::max(kstart+1,k-1);
+                    // lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
                     flx[ijk] = flx[ijk] + fr0 * std::exp(-1.0 * xka * lwp[ij]);
 
                     if ((k>ki) && (ki>1) && (fact>0.))
@@ -266,7 +276,6 @@ namespace
             {
                 for (int k=kstart+1;k<kend;++k)
                 {
-                    const int ij   = i + j*jj;
                     const int ijk  = i + j*jj + k*kk;
                     const int km1 = std::max(kstart+1,k-1);
                     const int ijkm = i + j*jj + km1*kk;
@@ -289,7 +298,6 @@ namespace
                 {
                     for (int k=kstart+1;k<kend;++k)
                     {
-                        const int ij   = i + j*jj;
                         const int ijk  = i + j*jj + k*kk;
                         const int km1 = std::max(kstart+1,k-1);
                         const int ijkm = i + j*jj + km1*kk;
@@ -346,7 +354,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 
 	thermo.get_thermo_field(*ql, "ql", false, false);
 
-	TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+	TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
 	exec_gcss_rad<TF>(
 		    fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
@@ -395,7 +403,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
         auto& gd = grid.get_grid_data();
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
@@ -478,8 +486,6 @@ void Radiation_gcss<TF>::create_dump(Dump<TF>& dump)
 template<typename TF>
 void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
-    auto& gd = grid.get_grid_data();
-
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
@@ -501,7 +507,6 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
 template<typename TF>
 void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
-    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto flx = fields.get_tmp();
@@ -518,7 +523,6 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 template<typename TF>
 void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
-    auto& gd = grid.get_grid_data();
     auto tmp = fields.get_tmp();
 
     for (auto& it : crosslist)
@@ -532,7 +536,6 @@ void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Ther
 template<typename TF>
 void Radiation_gcss<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
-    auto& gd = grid.get_grid_data();
     auto output = fields.get_tmp();
 
     for (auto& it : dumplist)

@@ -23,12 +23,12 @@
 #include <algorithm>
 #include <iostream>
 
-#include "data_block.h"
 #include "netcdf_interface.h"
 #include "timedep.h"
 
 namespace
 {
+    /*
     template<typename TF> TF to_numeric(const std::string& str);
     template<> float  to_numeric(const std::string& str) { return std::stof(str); };
     template<> double to_numeric(const std::string& str) { return std::stod(str); };
@@ -49,6 +49,7 @@ namespace
         }
         return false;
     }
+    */
 }
 
 template<typename TF>

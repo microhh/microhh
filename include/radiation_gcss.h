@@ -18,30 +18,18 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef RADIATION_GCSS
-#define RADIATION_GCSS
+
+#ifndef RADIATION_GCSS_H
+#define RADIATION_GCSS_H
+
 #include <string>
 #include <iostream>
 #include <algorithm>
 #include <cmath>
-#include <math.h> /* floor */
-#include <time.h>
 #include <vector>
 
-#include "field3d_operators.h"
+// #include "field3d_operators.h"
 #include "radiation.h"
-#include "master.h"
-#include "grid.h"
-#include "fields.h"
-#include "thermo.h"
-#include "input.h"
-#include "data_block.h"
-#include "stats.h"
-#include "cross.h"
-#include "dump.h"
-#include "column.h"
-#include "constants.h"
-#include "timeloop.h"
 
 class Master;
 class Input;

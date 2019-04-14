@@ -854,7 +854,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
         m.profs.at(name).ncvar.add_attribute("units", unit);
         m.profs.at(name).ncvar.add_attribute("long_name", longname);
-        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
 
         m.data_file->sync();
 
@@ -876,7 +876,7 @@ void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::stri
 
         var.add_attribute("units", unit.c_str());
         var.add_attribute("long_name", longname.c_str());
-        //var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // var.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
 
         if (zloc == "z")
         {
@@ -912,7 +912,7 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
 
         m.tseries.at(name).ncvar.add_attribute("units", unit);
         m.tseries.at(name).ncvar.add_attribute("long_name", longname);
-        //m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+        // m.tseries.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
     }
 
     varlist.push_back(name);

@@ -65,12 +65,12 @@ class Master
         bool at_wall_clock_limit();
 
         // Overload the broadcast function.
-        void broadcast(char*, int);
-        void broadcast(int*, int);
-        void broadcast(bool*, int);
-        void broadcast(double*, int);
-        void broadcast(float*, int);
-        void broadcast(unsigned long*, int);
+        void broadcast(char*, int, int mpiid_to_send=0);
+        void broadcast(int*, int, int mpiid_to_send=0);
+        void broadcast(bool*, int, int mpiid_to_send=0);
+        void broadcast(double*, int, int mpiid_to_send=0);
+        void broadcast(float*, int, int mpiid_to_send=0);
+        void broadcast(unsigned long*, int, int mpiid_to_send=0);
 
         // Overload the sum function.
         void sum(int*, int);
