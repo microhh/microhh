@@ -22,7 +22,6 @@
 
 #include <cmath>
 #include <algorithm>
-#include <utility>
 
 #include "master.h"
 #include "input.h"
@@ -92,7 +91,7 @@ void Buffer<TF>::init()
     {
         // Create vectors of zero for buffer.
         for (auto& it : fields.ap)
-            bufferprofs.emplace(it.first, gd.kcells);
+            bufferprofs.emplace(it.first, std::vector<TF>(gd.kcells));
     }
 }
 
