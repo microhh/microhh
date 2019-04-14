@@ -20,10 +20,9 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <cmath>
-#include <iostream>
 #include <algorithm>
+#include <utility>
 
 #include "master.h"
 #include "input.h"
