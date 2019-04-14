@@ -28,7 +28,6 @@
 #include <string>
 #include <vector>
 #include <time.h>
-#include "date.h"
 
 class Master;
 template<typename> class Grid;
@@ -88,10 +87,9 @@ class Timeloop
 
         // Functions for UTC time support.
         bool has_utc_time() const { return flag_utc_time; }
-        date::sys_time<std::chrono::microseconds> get_datetime_utc() const;
         std::string get_datetime_utc_start_string() const;
-        double seconds_since_midnight() const;
-        double days_since_year() const;
+        double calc_day_of_year() const;
+        double calc_hour_of_day() const;
 
     private:
         Master& master;
@@ -119,7 +117,7 @@ class Timeloop
         double savetime;
         double postproctime;
         bool flag_utc_time;
-        date::sys_seconds datetime_utc_start;
+        std::tm tm_utc_start;
 
         int iteration;
         int iotime;

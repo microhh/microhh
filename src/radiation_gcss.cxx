@@ -24,7 +24,7 @@
 namespace
 {
     template<typename TF>
-    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year)
     {
         const TF pi    = TF(M_PI);
         const TF twopi = TF(2.*M_PI);
@@ -45,7 +45,7 @@ namespace
         //                          datetime.tm_min * 60. +
         //                          datetime.tm_sec) / day2secs;
 
-        const TF time2sec = days_since_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
+        const TF time2sec = day_of_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
 
         const TF day = std::floor(time2sec);
         const TF lambda = lat * pi / pi_angle;
@@ -66,7 +66,7 @@ namespace
     template<typename TF> TF deg2rad(const TF deg) { return TF(2.*M_PI/360. * deg); }
 
     template<typename TF>
-    TF calc_zenith(const TF lat, const TF lon, const double days_since_year, const double seconds_since_midnight)
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year, const double seconds_since_midnight)
     {
         constexpr TF pi = TF(M_PI);
         constexpr TF twopi = TF(2.*M_PI);
@@ -74,7 +74,7 @@ namespace
         const TF radlon = deg2rad(lon);
         const TF radlat = deg2rad(lat);
 
-        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (days_since_year - 173.) / 365.25);
+        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (day_of_year - 173.) / 365.25);
 
         TF hour_angle = twopi * seconds_since_midnight/TF(86400.) + radlon - pi;
 
@@ -346,7 +346,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 
 	thermo.get_thermo_field(*ql, "ql", false, false);
 
-	TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+	TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
 	exec_gcss_rad<TF>(
 		    fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
@@ -395,7 +395,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(lat, lon, timeloop.days_since_year(), timeloop.seconds_since_midnight());
+        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
         auto& gd = grid.get_grid_data();
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
