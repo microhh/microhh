@@ -211,14 +211,14 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input& input, Stats<TF>& stats)
+void Boundary<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
-    process_time_dependent(input);
+    process_time_dependent(input, input_nc);
 }
 
 
 template<typename TF>
-void Boundary<TF>::process_time_dependent(Input& input)
+void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
 {
     // get the list of time varying variables
     bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
@@ -237,7 +237,7 @@ void Boundary<TF>::process_time_dependent(Input& input)
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep();
+                tdep_bc.at(it.first)->create_timedep(input_nc);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);

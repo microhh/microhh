@@ -19,13 +19,13 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
 #include <sstream>
 #include <iostream>
-#include "data_block.h"
 #include "fields.h"
 #include "grid.h"
 #include "master.h"

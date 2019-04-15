@@ -20,10 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <cmath>
-#include <stdlib.h>
-#include <iostream>
+#include <algorithm>
 
 #include "master.h"
 #include "input.h"
@@ -31,7 +29,7 @@
 #include "fields.h"
 #include "buffer.h"
 #include "defines.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 
 namespace
 {
@@ -91,21 +89,14 @@ void Buffer<TF>::init()
 
     if (swbuffer)
     {
-        if (swupdate)
-        {
-            bufferprofs["w"].resize(gd.kcells);
-        }
-        else
-        {
-            // Allocate the buffer arrays.
-            for (auto& it : fields.ap)
-                bufferprofs[it.first].resize(gd.kcells);
-        }
+        // Create vectors of zero for buffer.
+        for (auto& it : fields.ap)
+            bufferprofs.emplace(it.first, std::vector<TF>(gd.kcells));
     }
 }
 
 template<typename TF>
-void Buffer<TF>::create(Input& inputin, Data_block& profs)
+void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 {
     if (swbuffer)
     {
@@ -132,25 +123,30 @@ void Buffer<TF>::create(Input& inputin, Data_block& profs)
             throw std::runtime_error(msg);
         }
 
-        // Allocate the buffer for w on 0.
-        for (int k=0; k<gd.kcells; ++k)
-             bufferprofs["w"][k] = 0.;
-
         if (!swupdate)
         {
             // Set the buffers according to the initial profiles of the variables.
-            profs.get_vector(bufferprofs["u"], "u", gd.kmax, 0, gd.kstart);
-            profs.get_vector(bufferprofs["v"], "v", gd.kmax, 0, gd.kstart);
+            const std::vector<int> start = {0};
+            const std::vector<int> count = {gd.ktot};
+
+            Netcdf_group group_nc = input_nc.get_group("init");
+            group_nc.get_variable(bufferprofs.at("u"), "u", start, count);
+            group_nc.get_variable(bufferprofs.at("v"), "v", start, count);
+            std::rotate(bufferprofs.at("u").rbegin(), bufferprofs.at("u").rbegin() + gd.kstart, bufferprofs.at("u").rend());
+            std::rotate(bufferprofs.at("v").rbegin(), bufferprofs.at("v").rbegin() + gd.kstart, bufferprofs.at("v").rend());
 
             // In case of u and v, subtract the grid velocity.
             for (int k=gd.kstart; k<gd.kend; ++k)
             {
-                bufferprofs["u"][k] -= grid.utrans;
-                bufferprofs["v"][k] -= grid.vtrans;
+                bufferprofs.at("u")[k] -= grid.utrans;
+                bufferprofs.at("v")[k] -= grid.vtrans;
             }
 
             for (auto& it : fields.sp)
-                profs.get_vector(bufferprofs[it.first], it.first, gd.kmax, 0, gd.kstart);
+            {
+                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count);
+                std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
+            }
         }
     }
 }

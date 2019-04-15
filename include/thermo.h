@@ -25,6 +25,7 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Advec;
@@ -35,7 +36,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
 
-class Data_block;
 /**
  * Base class for the thermo scheme. This class is abstract and only
  * derived classes can be instantiated. Derived classes are
@@ -52,7 +52,7 @@ class Thermo
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(const double) = 0;

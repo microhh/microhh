@@ -93,7 +93,7 @@ void Master::init(Input& input)
 
     if (md.nprocs != md.npx*md.npy)
     {
-        std::string msg = "nprocs = " + std::to_string(md.nprocs) + " does not equal npx*npy = " + std::to_string(md.npy) + "*" + std::to_string(md.npy);
+        std::string msg = "nprocs = " + std::to_string(md.nprocs) + " does not equal npx*npy = " + std::to_string(md.npx) + "*" + std::to_string(md.npy);
         throw std::runtime_error(msg);
     }
 
@@ -198,30 +198,30 @@ void Master::wait_all()
 }
 
 // do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
-void Master::broadcast(char *data, int datasize)
+void Master::broadcast(char *data, int datasize, int mpiid_to_send)
 {
-    MPI_Bcast(data, datasize, MPI_CHAR, 0, md.commxy);
+    MPI_Bcast(data, datasize, MPI_CHAR, mpiid_to_send, md.commxy);
 }
 
 // overloaded broadcast functions
-void Master::broadcast(int* data, int datasize)
+void Master::broadcast(int* data, int datasize, int mpiid_to_send)
 {
-    MPI_Bcast(data, datasize, MPI_INT, 0, md.commxy);
+    MPI_Bcast(data, datasize, MPI_INT, mpiid_to_send, md.commxy);
 }
 
-void Master::broadcast(unsigned long* data, int datasize)
+void Master::broadcast(unsigned long* data, int datasize, int mpiid_to_send)
 {
-    MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, md.commxy);
+    MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, mpiid_to_send, md.commxy);
 }
 
-void Master::broadcast(double* data, int datasize)
+void Master::broadcast(double* data, int datasize, int mpiid_to_send)
 {
-    MPI_Bcast(data, datasize, MPI_DOUBLE, 0, md.commxy);
+    MPI_Bcast(data, datasize, MPI_DOUBLE, mpiid_to_send, md.commxy);
 }
 
-void Master::broadcast(float* data, int datasize)
+void Master::broadcast(float* data, int datasize, int mpiid_to_send)
 {
-    MPI_Bcast(data, datasize, MPI_FLOAT, 0, md.commxy);
+    MPI_Bcast(data, datasize, MPI_FLOAT, mpiid_to_send, md.commxy);
 }
 
 void Master::sum(int* var, int datasize)

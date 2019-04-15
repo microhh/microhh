@@ -21,8 +21,8 @@
  */
 
 #include <cstdio>
-#include <math.h>
 #include <algorithm>
+// #include <math.h>
 #include <iostream>
 #include "master.h"
 #include "grid.h"
@@ -34,7 +34,7 @@
 #include "finite_difference.h"
 #include "timeloop.h"
 #include "boundary.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 
 using namespace Finite_difference::O2;
 
@@ -250,9 +250,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
-    std::string swls_in     = inputin.get_item<std::string>("force", "swls", "", "0");
-    std::string swwls_in    = inputin.get_item<std::string>("force", "swwls", "", "0");
-    std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge", "", "0");
+    std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
+    std::string swwls_in    = inputin.get_item<std::string>("force", "swwls"   , "", "0");
+    std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
 
     // Set the internal switches and read other required input
 
@@ -270,8 +270,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.emplace("ug", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
-        tdep_geo.emplace("vg", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
     else
     {
@@ -289,7 +289,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
-            for(auto& it : tdepvars)
+            for (auto& it : tdepvars)
                 tdep_ls.emplace(it, new Timedep<TF>(master, grid, it+"_ls", true));
         }
     }
@@ -369,46 +369,55 @@ void Force<TF>::init()
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin, Data_block& profs)
+void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
+    Netcdf_group group_nc = input_nc.get_group("init");
+
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        profs.get_vector(ug, "ug", gd.kmax, 0, gd.kstart);
-        profs.get_vector(vg, "vg", gd.kmax, 0, gd.kstart);
+
+        group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
+        group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
+        std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
+        std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
 
         const TF offset = 0;
         for (auto& it : tdep_geo)
-            it.second->create_timedep_prof(offset);
+            it.second->create_timedep_prof(input_nc, offset);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
-        // check whether the fields in the list exist in the prognostic fields
-        for (auto & it : lslist)
+        // Check whether the fields in the list exist in the prognostic fields.
+        for (std::string& it : lslist)
             if (!fields.ap.count(it))
             {
                 std::string msg = "field " + it + " in [force][lslist] is illegal";
                 throw std::runtime_error(msg);
             }
 
-        // Read the large scale sources, which are the variable names with a "ls" suffix
-        for (auto & it : lslist)
-            profs.get_vector(lsprofs[it], it+"ls", gd.kmax, 0, gd.kstart);
+        // Read the large scale sources, which are the variable names with a "_ls" suffix.
+        for (std::string& it : lslist)
+        {
+            group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
+            std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+        }
 
         // Process the time dependent data
         const TF offset = 0;
         for (auto& it : tdep_ls)
-            it.second->create_timedep_prof(offset);
+            it.second->create_timedep_prof(input_nc, offset);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         // Get profile with nudging factor as function of height
-        profs.get_vector(nudge_factor, "nudgefac", gd.kmax, 0, gd.kstart);
+        group_nc.get_variable(nudge_factor, "nudgefac", {0}, {gd.ktot});
+        std::rotate(nudge_factor.rbegin(), nudge_factor.rbegin() + gd.kstart, nudge_factor.rend());
 
         // check whether the fields in the list exist in the prognostic fields
-        for (auto & it : nudgelist)
+        for (auto& it : nudgelist)
             if (!fields.ap.count(it))
             {
                 std::string msg = "field " + it + " in [force][nudgelist] is illegal";
@@ -416,9 +425,10 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
             }
 
         // Read the nudging profiles, which are the variable names with a "nudge" suffix
-        for (auto & it : nudgelist)
+        for (auto& it : nudgelist)
         {
-            profs.get_vector(nudgeprofs[it], it+"nudge", gd.kmax, 0, gd.kstart);
+            group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
+            std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
 
             // Account for the Galilean transformation
             if (it == "u")
@@ -439,17 +449,18 @@ void Force<TF>::create(Input& inputin, Data_block& profs)
             else
                 offset = 0;
 
-            it.second->create_timedep_prof(offset);
+            it.second->create_timedep_prof(input_nc, offset);
         }
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::enabled)
     {
-        profs.get_vector(wls,"wls", gd.kmax, 0, gd.kstart);
+        group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
+        std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
 
         const TF offset = 0;
-        tdep_wls->create_timedep_prof(offset);
+        tdep_wls->create_timedep_prof(input_nc, offset);
     }
 }
 
@@ -532,19 +543,19 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : tdep_ls)
-            it.second->update_time_dependent_prof(lsprofs.at(it.first),timeloop);
+            it.second->update_time_dependent_prof(lsprofs.at(it.first), timeloop);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : tdep_nudge)
-            it.second->update_time_dependent_prof(nudgeprofs.at(it.first),timeloop);
+            it.second->update_time_dependent_prof(nudgeprofs.at(it.first), timeloop);
     }
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
-        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
+        tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)

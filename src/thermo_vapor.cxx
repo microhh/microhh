@@ -25,7 +25,6 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_vapor.h"
@@ -33,7 +32,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -368,10 +367,8 @@ void Thermo_vapor<TF>::init()
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
-
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
@@ -380,8 +377,16 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
-    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(bs.thl0, "thl", start, count);
+    group_nc.get_variable(bs.qt0, "qt", start, count);
+
+    // Shift the vector
+    std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
+    std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
@@ -405,7 +410,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
+    tdep_pbot->create_timedep(input_nc);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -628,10 +633,10 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
@@ -642,8 +647,8 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
         stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);

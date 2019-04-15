@@ -32,7 +32,7 @@
 #include "fields.h"
 #include "field3d.h"
 #include "input.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "stats.h"
@@ -595,26 +595,26 @@ void Fields<TF>::init_tmp_field_g()
 
 
 template<typename TF>
-void Fields<TF>::create(Input& inputin, Data_block& profs)
+void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
 {
     // Randomize the momentum
-    randomize(inputin, "u", mp.at("u")->fld.data());
-    randomize(inputin, "w", mp.at("w")->fld.data());
+    randomize(input, "u", mp.at("u")->fld.data());
+    randomize(input, "w", mp.at("w")->fld.data());
 
     // Only add perturbation to v in case of a 3d run.
     const Grid_data<TF>& gd = grid.get_grid_data();
     if (gd.jtot > 1)
-        randomize(inputin, "v", mp.at("v")->fld.data());
+        randomize(input, "v", mp.at("v")->fld.data());
 
     // Randomize the scalars
     for (auto& it : sp)
-        randomize(inputin, it.first, it.second->fld.data());
+        randomize(input, it.first, it.second->fld.data());
 
     // Add Vortices
-    add_vortex_pair(inputin);
+    add_vortex_pair(input);
 
     // Add the mean profiles to the fields
-    add_mean_profs(profs);
+    add_mean_profs(input_nc);
 
     /*
     nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid.utrans);
@@ -707,30 +707,34 @@ namespace
 }
 
 template<typename TF>
-void Fields<TF>::add_mean_profs(Data_block& profs)
+void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
-    profs.get_vector(prof, "u", gd.ktot, 0, 0);
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(prof, "u", start, count);
+
     add_mean_prof_to_field<TF>(mp["u"]->fld.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    profs.get_vector(prof, "v", gd.ktot, 0, 0);
+    group_nc.get_variable(prof, "v", start, count);
     add_mean_prof_to_field<TF>(mp["v"]->fld.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        profs.get_vector(prof, f.first, gd.ktot, 0, 0);
+        group_nc.get_variable(prof, f.first, start, count);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
 }
-
 
 template<typename TF>
 void Fields<TF>::add_vortex_pair(Input& inputin)
@@ -885,14 +889,14 @@ void Fields<TF>::create_column(Column<TF>& column)
     if (column.get_switch())
     {
         // add variables to the statistics
-        column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        column.add_prof(mp.at("u")->name, mp.at("u")->longname, mp.at("u")->unit, "z" );
+        column.add_prof(mp.at("v")->name, mp.at("v")->longname, mp.at("v")->unit, "z" );
+        column.add_prof(mp.at("w")->name, mp.at("w")->longname, mp.at("w")->unit, "zh");
 
         for (auto& it : sp)
-            column.add_prof(it.first,it.second->longname, it.second->unit, "z");
+            column.add_prof(it.first, it.second->longname, it.second->unit, "z");
 
-        column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
 }
 
@@ -1056,14 +1060,12 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
-    column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), no_offset);
+    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
-    {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
-    }
 
     column.calc_column("p", sd["p"]->fld.data(), no_offset);
 }

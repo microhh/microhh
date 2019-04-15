@@ -566,7 +566,7 @@ void Microphys_2mom_warm<TF>::init()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
     // BvS: for now I have left the init of statistics and cross-sections here
     // If this gets out of hand, move initialisation to separate function like in e.g. thermo_moist

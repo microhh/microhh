@@ -24,11 +24,12 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 #include "master.h"
 #include "grid.h"
 #include "input.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -186,10 +187,11 @@ void Grid<TF>::init()
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-void Grid<TF>::create(Data_block& profs)
+void Grid<TF>::create(Netcdf_handle& input_nc)
 {
-    // Get the grid coordinates from the input.
-    profs.get_vector(gd.z, "z", gd.kmax, 0, gd.kstart);
+    // Get the grid coordinates from the input. This one is read from the global scope.
+    input_nc.get_variable(gd.z, "z", {0}, {gd.ktot});
+    std::rotate(gd.z.rbegin(), gd.z.rbegin() + gd.kstart, gd.z.rend());
 
     if (gd.z[gd.kend-1] > gd.zsize)
     {

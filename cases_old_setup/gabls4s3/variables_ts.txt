@@ -1,0 +1,78 @@
+lwdw,    long wave downward radiation at surface, W/m2 
+lwup,    long wave upward radiation at surface, W/m2 
+swdw,    short wave downward radiation at surface, W/m2 
+swup,    short wave upward radiation at surface, W/m2 
+shf,     sensible heat flux, W/m2
+lhf,     latent heat flux, W/m2
+evap,    evaporation+sublimation flux, mm/day
+ustar,   friction velocity, m/s
+rain,    precipitation (liq+sol) rate, mm/day
+psurf,   surface pressure, Pa
+hpbl,    boundary layer height, full height where Rib>0.25, m
+thsurf,  surface potential temperature, K
+trad,    radiative temperature, K
+alb,     surface albedo, 0-1
+z0m,     momentum roughness length, m
+z0h,     heat roughness length, m
+emis,    surface emissivity, 0-1
+lwp,     mean liquid water path, g/m2
+th2m,    2m potential temperature, K
+q2m,     2m specific humidity, kg/kg
+rh2m,    2m relative humidity, 0-100
+u10m,    10m u-component wind, m/s
+v10m,    10m v-component wind, m/s
+th3m,    potential temperature at 3.30 meter above the surface, K
+q3m,     specific humidity at 3.30 meter above the surface, kg/kg
+rh3m,    relative humidity at 3.30 meter above the surface, 0-100
+u3m,     u-component wind at 3.30 meter above the surface, m/s
+v3m,     v-component wind at 3.30 meter above the surface, m/s
+th9m,    potential temperature at 8.80 meter above the surface, K
+q9m,     specific humidity at 8.80 meter above the surface, kg/kg
+rh9m,    relative humidity at 8.80 meter above the surface, 0-100
+u9m,     u-component wind at 8.80 meter above the surface, m/s
+v9m,     v-component wind at 8.80 meter above the surface, m/s
+th18m,   potential temperature at 17.90 meter above the surface, K
+q18m,    specific humidity at 17.90 meter above the surface, kg/kg
+rh18m,   relative humidity at 17.90 meter above the surface, 0-100
+u18m,    u-component wind at 17.90 meter above the surface, m/s
+v18m,    v-component wind at 17.90 meter above the surface, m/s
+th25m,   potential temperature at 25.30 meter above the surface, K
+q25m,    specific humidity at 25.30 meter above the surface, kg/kg
+rh25m,   relative humidity at 25.30 meter above the surface, 0-100
+u25m,    u-component wind at 25.30 meter above the surface, m/s
+v25m,    v-component wind at 25.30 meter above the surface, m/s
+th33m,   potential temperature at 32.70 meter above the surface, K
+q33m,    specific humidity at 32.70 meter above the surface, kg/kg
+rh33m,   relative humidity at 32.70 meter above the surface, 0-100
+u33m,    u-component wind at 32.70 meter above the surface, m/s
+v33m,    v-component wind at 32.70 meter above the surface, m/s
+th42m,   potential temperature at 41.90 meter above the surface, K
+q42m,    specific humidity at 41.90 meter above the surface, kg/kg
+rh42m,   relative humidity at 41.90 meter above the surface, 0-100
+u42m,    u-component wind at 41.90 meter above the surface, m/s
+v42m,    v-component wind at 41.90 meter above the surface, m/s
+cc,      total cloudcover fraction, 0-1
+uw_3m,   total vertical flux u-component momentum at 3.30 meter above the surface, m2/s2 
+vw_3m,   total vertical flux v-component momentum at 3.30 meter above the surface, m2/s2 
+wth_3m,  total vertical potential temperature flux at 3.30 meter above the surface, Km/s
+TKE_3m,  resolved turbulent kinetic energy at 3.30 meter above the surface, m2/s2
+uw_7m,   total vertical flux u-component momentum at 7.03 meter above the surface, m2/s2 
+vw_7m,   total vertical flux v-component momentum at 7.03 meter above the surface, m2/s2 
+wth_7m,  total vertical potential temperature flux at 7.03 meter above the surface, Km/s
+TKE_7m,  resolved turbulent kinetic energy at 7.03 meter above the surface, m2/s2
+uw_15m,  total vertical flux u-component momentum at 15.43 meter above the surface, m2/s2
+vw_15m,  total vertical flux v-component momentum at 15.43 meter above the surface, m2/s2 
+wth_15m, total vertical potential temperature flux at 15.43 meter above the surface, Km/s
+TKE_15m, resolved turbulent kinetic energy at 15.43 meter above the surface, m2/s2
+uw_23m,  total vertical flux u-component momentum at 22.79 meter above the surface, m2/s2 
+vw_23m,  total vertical flux v-component momentum at 22.79 meter above the surface, m2/s2 
+wth_23m, total vertical potential temperature flux at 22.79 meter above the surface, Km/s
+TKE_23m, resolved turbulent kinetic energy at 22.79 meter above the surface, m2/s2
+uw_30m,  total vertical flux u-component momentum at 30.15 meter above the surface, m2/s2 
+vw_30m,  total vertical flux v-component momentum at 30.15 meter above the surface, m2/s2 
+wth_30m, total vertical potential temperature flux at 30.15 meter above the surface, Km/s
+TKE_30m, resolved turbulent kinetic energy at 30.15 meter above the surface, m2/s2
+uw_38m,  total vertical flux u-component momentum at 37.51 meter above the surface, m2/s2 
+vw_38m,  total vertical flux v-component momentum at 37.51 meter above the surface, m2/s2 
+wth_38m, total vertical potential temperature flux at 37.51 meter above the surface, Km/s
+TKE_38m, resolved turbulent kinetic energy at 37.51 meter above the surface, m2/s2

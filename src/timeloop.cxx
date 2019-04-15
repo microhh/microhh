@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,8 +21,12 @@
  */
 
 #include <iostream>
-#include <cstdio>
+#include <iomanip>
+#include <sstream>
 #include <cmath>
+#include <ctime>
+#include <sys/time.h>
+
 #include "input.h"
 #include "master.h"
 #include "grid.h"
@@ -37,33 +41,35 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     master(masterin),
     grid(gridin),
     fields(fieldsin),
+    flag_utc_time(false),
     ifactor(1e9)
 {
     substep = 0;
 
-    // obligatory parameters
+    // Obligatory parameters.
     if (sim_mode == Sim_mode::Init)
         starttime = 0.;
     else
         starttime = input.get_item<double>("time", "starttime", "");
-    datetime={0};
-    datetime.tm_sec  = starttime + input.get_item<double>("time", "phystarttime"  , "", 0.);
-    datetime.tm_year = 0; //default is 1900
-    datetime.tm_mday = input.get_item<int>("time", "jday"  , "", 1);
-    datetime.tm_isdst = -1;
-
-    mktime ( &datetime );
 
     endtime  = input.get_item<double>("time", "endtime" , "");
     savetime = input.get_item<double>("time", "savetime", "");
 
-    // optional parameters
+    // Optional parameters.
     adaptivestep = input.get_item<bool>  ("time", "adaptivestep", "", true           );
     dtmax        = input.get_item<double>("time", "dtmax"       , "", Constants::dbig);
     dt           = input.get_item<double>("time", "dt"          , "", dtmax          );
     rkorder      = input.get_item<int>   ("time", "rkorder"     , "", 3              );
     outputiter   = input.get_item<int>   ("time", "outputiter"  , "", 20             );
     iotimeprec   = input.get_item<int>   ("time", "iotimeprec"  , "", 0              );
+
+    // Get a datetime in UTC.
+    std::string datetime_utc_string = input.get_item<std::string>("time", "datetime_utc", "", "");
+    if (datetime_utc_string != "")
+    {
+        flag_utc_time = true;
+        strptime(datetime_utc_string.c_str(), "%Y-%m-%d %H:%M:%S", &tm_utc_start);
+    }
 
     if (sim_mode == Sim_mode::Post)
         postproctime = input.get_item<double>("time", "postproctime", "");
@@ -81,21 +87,21 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     iteration = 0;
 
     // set or calculate all the integer times
-    itime         = (unsigned long) 0;
+    itime      = static_cast<unsigned long>(0);
 
     // add 0.5 to prevent roundoff errors
-    iendtime      = (unsigned long)(ifactor * endtime + 0.5);
-    istarttime    = (unsigned long)(ifactor * starttime + 0.5);
-    idt           = (unsigned long)(ifactor * dt + 0.5);
-    idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
-    isavetime     = (unsigned long)(ifactor * savetime + 0.5);
+    iendtime   = static_cast<unsigned long>(ifactor * endtime + 0.5);
+    istarttime = static_cast<unsigned long>(ifactor * starttime + 0.5);
+    idt        = static_cast<unsigned long>(ifactor * dt + 0.5);
+    idtmax     = static_cast<unsigned long>(ifactor * dtmax + 0.5);
+    isavetime  = static_cast<unsigned long>(ifactor * savetime + 0.5);
     if (sim_mode == Sim_mode::Post)
-        ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
+        ipostproctime = static_cast<unsigned long>(ifactor * postproctime + 0.5);
 
     idtlim = idt;
 
     // take the proper precision for the output files into account
-    iiotimeprec = (unsigned long)(ifactor * std::pow(10., iotimeprec) + 0.5);
+    iiotimeprec = static_cast<unsigned long>(ifactor * std::pow(10., iotimeprec) + 0.5);
 
     // check whether starttime and savetime are an exact multiple of iotimeprec
     if ((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
@@ -147,9 +153,7 @@ void Timeloop<TF>::step_time()
 
     time  += dt;
     itime += idt;
-    iotime = (int)(itime/iiotimeprec);
-    datetime.tm_sec += dt;
-    mktime ( &datetime );
+    iotime = static_cast<int>(itime/iiotimeprec);
 
     ++iteration;
 
@@ -199,7 +203,7 @@ double Timeloop<TF>::check()
 {
     gettimeofday(&end, NULL);
 
-    double timeelapsed = (double)(end.tv_sec-start.tv_sec) + (double)(end.tv_usec-start.tv_usec) * 1.e-6;
+    double timeelapsed = static_cast<double>(end.tv_sec-start.tv_sec) + static_cast<double>(end.tv_usec-start.tv_usec) * 1.e-6;
     start = end;
 
     return timeelapsed;
@@ -220,10 +224,9 @@ void Timeloop<TF>::set_time_step()
             throw std::runtime_error(msg);
         }
         idt = idtlim;
-        dt  = (double)idt / ifactor;
+        dt  = static_cast<double>(idt) / ifactor;
     }
 }
-
 
 namespace
 {
@@ -347,7 +350,7 @@ void Timeloop<TF>::exec()
 #endif
 
 template<typename TF>
-double Timeloop<TF>::get_sub_time_step()
+double Timeloop<TF>::get_sub_time_step() const
 {
     // Value rkorder is 3 or 4, because it is checked in the constructor.
     if (rkorder == 3)
@@ -455,18 +458,73 @@ void Timeloop<TF>::load(int starttime)
     master.broadcast(&iteration, 1);
 
     // calculate the double precision time from the integer time
-    time = (double)itime / ifactor;
-    dt   = (double)idt   / ifactor;
+    time = static_cast<double>(itime) / ifactor;
+    dt   = static_cast<double>(idt)   / ifactor;
 }
 
 template<typename TF>
 void Timeloop<TF>::step_post_proc_time()
 {
     itime += ipostproctime;
-    iotime = (int)(itime/iiotimeprec);
+    iotime = static_cast<int>(itime/iiotimeprec);
 
     if (itime > iendtime)
         loop = false;
+}
+
+namespace
+{
+    std::tm calc_tm_actual(const std::tm& tm_start, const double time)
+    {
+        std::tm tm_actual = tm_start;
+        tm_actual.tm_sec += static_cast<int>(time);
+        std::mktime(&tm_actual);
+        return tm_actual;
+    }
+}
+
+template<typename TF>
+double Timeloop<TF>::calc_hour_of_day() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    const double frac_hour = ( tm_actual.tm_min*60
+                             + tm_actual.tm_sec + std::fmod(time, 1.) ) / 3600.;
+    return tm_actual.tm_hour + frac_hour; // Counting starts at 0 in std::tm, thus add 1.
+}
+
+template<typename TF>
+double Timeloop<TF>::calc_day_of_year() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    const double frac_day = ( tm_actual.tm_hour*3600.
+                            + tm_actual.tm_min*60.
+                            + tm_actual.tm_sec + std::fmod(time, 1.) ) / 86400.;
+    return tm_actual.tm_yday+1. + frac_day; // Counting starts at 0 in std::tm, thus add 1.
+}
+
+template<typename TF>
+std::string Timeloop<TF>::get_datetime_utc_start_string() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::ostringstream ss;
+
+    // Year is relative to 1900, month count starts at 0.
+    ss << std::setfill('0') << std::setw(4) << tm_utc_start.tm_year+1900 << "-";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_mon+1     << "-";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_mday      << " ";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_hour      << ":";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_min       << ":";
+    ss << std::setfill('0') << std::setw(2) << tm_utc_start.tm_sec;
+
+    return ss.str();
 }
 
 template<typename TF>

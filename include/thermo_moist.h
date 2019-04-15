@@ -29,6 +29,7 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -38,8 +39,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
-
-class Data_block;
 
 
 /**
@@ -59,7 +58,7 @@ class Thermo_moist : public Thermo<TF>
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 

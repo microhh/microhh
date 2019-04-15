@@ -25,9 +25,9 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
-
 
 /**
  * Class for the buffer layer in the top of the domain.
@@ -39,11 +39,11 @@ class Buffer
 {
     public:
         Buffer(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the buffer class.
-        ~Buffer();              ///< Destructor of the buffer class.
+        ~Buffer(); ///< Destructor of the buffer class.
 
-        void init();         ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Data_block&); ///< Read the profiles of the forces from the input.
-        void exec();         ///< Add the tendencies created by the damping.
+        void init(); ///< Initialize the arrays that contain the profiles.
+        void create(Input&, Netcdf_handle&); ///< Read the profiles of the forces from the input.
+        void exec(); ///< Add the tendencies created by the damping.
 
         // GPU functions and variables
         void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU
@@ -61,7 +61,7 @@ class Buffer
         int bufferkstart;  ///< Grid point at cell center at which damping starts.
         int bufferkstarth; ///< Grid point at cell face at which damping starts.
 
-        std::map<std::string, std::vector<TF>> bufferprofs;   ///< Map containing the buffer profiles.
+        std::map<std::string, std::vector<TF>> bufferprofs; ///< Map containing the buffer profiles.
 
         bool swbuffer; ///< Switch for buffer.
         bool swupdate; ///< Switch for enabling runtime updating of buffer profile.

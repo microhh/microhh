@@ -18,41 +18,61 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tools.h"
 #include "radiation_gcss.h"
+#include "defines.h"
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "thermo.h"
+#include "timeloop.h"
+#include "input.h"
+#include "stats.h"
+#include "cross.h"
+#include "dump.h"
+#include "column.h"
+#include "constants.h"
+#include "tools.h"
 
 namespace
 {
-     template<typename TF>
-     TF calc_zenith(struct tm datetime, TF lat, TF lon)
-     {
-         const TF pi        = M_PI;
-         const TF year2days = 365.;
-         const TF piAngle   = 180.;
-         const TF day2secs  = 86400.;
-         const TF z1        = 279.934;
-         const TF z2        = 1.914827;
-         const TF z3        = 0.7952;
-         const TF z4        = 0.019938;
-         const TF z5        = 0.00162;
-         const TF z6        = 23.4439;
-         TF time2sec = (datetime.tm_yday + 1) +
-                            lon / 360. +
-                           (datetime.tm_hour * 3600. +
-                            datetime.tm_min * 60. +
-                            datetime.tm_sec) / day2secs;
-         TF day    = floor(time2sec);
-         TF lamda  = lat * pi / piAngle;
-         TF d      = 2. * pi * int(time2sec) / year2days;
-         TF sig    = d + pi/piAngle * (z1 + z2*std::sin(d)
-                                                   - z3*std::cos(d)
-                                                   + z4*std::sin(2.*d)
-                                                   - z5*std::cos(2.*d));
-         TF del     = std::asin(std::sin(z6*pi / piAngle)*std::sin(sig));
-         TF h       = 2. * pi * ((time2sec - day) - 0.5);
-         TF mu      = std::sin(lamda) * std::sin(del) + std::cos(lamda) * std::cos(del) * std::cos(h);
-         return mu;
-     }
+    template<typename TF>
+    TF calc_zenith(const TF lat, const TF lon, const double day_of_year)
+    {
+        const TF pi    = TF(M_PI);
+        const TF twopi = TF(2.*M_PI);
+
+        const TF year2days = TF(365.);
+        const TF pi_angle  = TF(180.);
+
+        const TF z1 = TF(279.934);
+        const TF z2 = TF(1.914827);
+        const TF z3 = TF(0.7952);
+        const TF z4 = TF(0.019938);
+        const TF z5 = TF(0.00162);
+        const TF z6 = TF(23.4439);
+
+        // const TF time2sec_ref = (datetime.tm_yday + 1) +
+        //                          lon / 360. +
+        //                         (datetime.tm_hour * 3600. +
+        //                          datetime.tm_min * 60. +
+        //                          datetime.tm_sec) / day2secs;
+
+        const TF time2sec = day_of_year + 1 + lon/360.;  // CvH: why adding 1 in the reference code?
+
+        const TF day = std::floor(time2sec);
+        const TF lambda = lat * pi / pi_angle;
+        const TF d = twopi * std::round(time2sec) / year2days;
+        const TF sig = d + pi/pi_angle * (z1 + z2*std::sin(d)
+                                             - z3*std::cos(d)
+                                             + z4*std::sin(TF(2.)*d)
+                                             - z5*std::cos(TF(2.)*d));
+
+        const TF del = std::asin(std::sin(z6*pi / pi_angle)*std::sin(sig));
+        const TF h = twopi * ((time2sec - day) - TF(0.5));
+        const TF mu = std::sin(lambda) * std::sin(del) + std::cos(lambda) * std::cos(del) * std::cos(h);
+
+        return mu;
+    }
 
      template<typename TF> __device__
      void sunray(const TF mu, const int i, const int j,
@@ -232,9 +252,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
         gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
         gd.iend,  gd.jend,   gd.kend-1, gd.icells, gd.ijcells);
 
-    struct tm current_datetime;
-    current_datetime = timeloop.get_phytime();
-    TF mu = calc_zenith(current_datetime, lat, lon);
+    TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
     if (mu > mu_min)
     {
@@ -306,9 +324,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
 
     else if (name == "sflx")
     {
-        struct tm current_datetime;
-        current_datetime = timeloop.get_phytime();
-        TF mu = calc_zenith(current_datetime, lat, lon);
+        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
         if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp_g();

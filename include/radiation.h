@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RADIATION
-#define RADIATION
+#ifndef RADIATION_H
+#define RADIATION_H
 
 #include <memory>
 #include <vector>
