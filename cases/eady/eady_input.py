@@ -1,4 +1,8 @@
-import numpy
+import numpy as np
+import netCDF4 as nc
+
+float_type = "f8"
+# float_type = "f4"
 
 # Get number of vertical levels and size from .ini file
 with open('eady.ini') as f:
@@ -13,20 +17,31 @@ dz = zsize / kmax
 dthetadz = 0.006
 
 # set the height
-z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
+z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 
 fc = 1.e-2
 dudz = 1e-2
 
-# linearly stratified profile
+# Linearly stratified profile.
 th = 300. + dthetadz*z
 u = dudz*z
-ug = u.copy()
+u_geo = u.copy()
 print("dthetady_ls = {0}".format(-dudz*fc))
 
-# write the data to a file
-proffile = open('eady.prof','w')
-proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s}\n'.format('z','th','u','ug'))
-for k in range(kmax):
-    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E}\n'.format(z[k], th[k], u[k], ug[k]))
-proffile.close()
+# Write the data to a file.
+nc_file = nc.Dataset("eady_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+
+nc_file.createDimension("z", kmax)
+nc_z  = nc_file.createVariable("z" , float_type, ("z"))
+
+nc_group_init = nc_file.createGroup("init");
+nc_u     = nc_group_init.createVariable("u"    , float_type, ("z"))
+nc_u_geo = nc_group_init.createVariable("u_geo", float_type, ("z"))
+nc_th    = nc_group_init.createVariable("th"   , float_type, ("z"))
+
+nc_z    [:] = z    [:]
+nc_u    [:] = u    [:]
+nc_u_geo[:] = u_geo[:]
+nc_th   [:] = th   [:]
+
+nc_file.close()
