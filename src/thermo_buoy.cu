@@ -273,6 +273,49 @@ namespace
                             + cosalpha * (  ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) );
         }
     }
+
+    template<typename TF> __global__
+    void calc_baroclinic_2nd_g(TF* __restrict__ bt, const TF* __restrict__ v,
+                               const TF dbdy_ls,
+                               int istart, int jstart, int kstart,
+                               int iend,   int jend,   int kend,
+                               int jj, int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_baroclinic_4th_g(TF* __restrict__ bt, const TF* __restrict__ v,
+                               const TF dbdy_ls,
+                               int istart, int jstart, int kstart,
+                               int iend,   int jend,   int kend,
+                               int jj, int kk)
+    {
+        using Finite_difference::O4::interp4c;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            bt[ijk] -= dbdy_ls * interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]);
+        }
+    }
 } // End namespace.
 
 #ifdef USECUDA
@@ -298,16 +341,16 @@ void Thermo_buoy<TF>::exec(const double dt)
             calc_buoyancy_tend_u_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.sp.at("b")->fld_g,
                 sinalpha,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
             calc_buoyancy_tend_w_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
                 cosalpha,
-                gd.istart,  gd.jstart, gd.kstart+1,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart+1,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
@@ -315,8 +358,8 @@ void Thermo_buoy<TF>::exec(const double dt)
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
                 grid.utrans, bs.n2, sinalpha, cosalpha,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
@@ -324,9 +367,20 @@ void Thermo_buoy<TF>::exec(const double dt)
         {
 	        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
-            gd.istart,  gd.jstart, gd.kstart+1,
-            gd.iend,    gd.jend,   gd.kend,
+            gd.istart, gd.jstart, gd.kstart+1,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
+            cuda_check_error();
+        }
+
+        if (swbaroclinic)
+        {
+            calc_baroclinic_2nd_g<<<gridGPU, blockGPU>>>(
+                fields.st.at("th")->fld_g, fields.mp.at("v")->fld_g,
+                dbdy_ls,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
@@ -339,16 +393,16 @@ void Thermo_buoy<TF>::exec(const double dt)
             calc_buoyancy_tend_u_4th_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.sp.at("b")->fld_g,
                 sinalpha,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
             calc_buoyancy_tend_w_4th_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
                 cosalpha,
-                gd.istart,  gd.jstart, gd.kstart+1,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart+1,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
@@ -356,8 +410,8 @@ void Thermo_buoy<TF>::exec(const double dt)
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
                 grid.utrans, bs.n2, sinalpha, cosalpha,
-                gd.istart,  gd.jstart, gd.kstart,
-                gd.iend,    gd.jend,   gd.kend,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
@@ -365,9 +419,20 @@ void Thermo_buoy<TF>::exec(const double dt)
         {
 	        calc_buoyancy_tend_4th_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
-            gd.istart,  gd.jstart, gd.kstart+1,
-            gd.iend,    gd.jend,   gd.kend,
+            gd.istart, gd.jstart, gd.kstart+1,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
+            cuda_check_error();
+        }
+
+        if (swbaroclinic)
+        {
+            calc_baroclinic_4th_g<<<gridGPU, blockGPU>>>(
+                fields.st.at("b")->fld_g, fields.mp.at("v")->fld_g,
+                dbdy_ls,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
             cuda_check_error();
         }
     }
