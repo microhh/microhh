@@ -20,9 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
 #include <cmath>
-#include <iostream>
 #include <algorithm>
 
 #include "master.h"
@@ -93,7 +91,7 @@ void Buffer<TF>::init()
     {
         // Create vectors of zero for buffer.
         for (auto& it : fields.ap)
-            bufferprofs.emplace(it.first, gd.kcells);
+            bufferprofs.emplace(it.first, std::vector<TF>(gd.kcells));
     }
 }
 
