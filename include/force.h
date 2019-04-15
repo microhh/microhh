@@ -34,6 +34,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
 template<typename> class Timedep;
+template<typename> class Thermo;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -57,7 +58,7 @@ class Force
 
         void init();           ///< Initialize the arrays that contain the profiles.
         void create(Input&, Netcdf_handle&);   ///< Read the profiles of the forces from the input.
-        void exec(double);     ///< Add the tendencies belonging to the large-scale processes.
+        void exec(double, Thermo<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 

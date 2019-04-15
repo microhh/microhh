@@ -74,9 +74,10 @@ class Thermo_dry : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -109,6 +110,7 @@ class Thermo_dry : public Thermo<TF>
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
         bool swcross_b;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        const std::vector<std::string> stat_op_b   = {"mean","2","3","4","w","grad","diff","flux"};
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.

@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <boost/algorithm/string.hpp>
 #include <cstdio>
 #include <cmath>
 #include <sstream>
@@ -426,6 +427,110 @@ namespace
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
+
+    std::pair<std::string, int> split_unit(const std::string s, const int pow)
+    {
+        std::string unit;
+        int power;
+
+        int delim = s.find_first_of("-123456789");
+        if(delim == std::string::npos)
+        {
+            unit  = s;
+            power = pow;
+        }
+        else
+        {
+            unit  = s.substr(0,delim);
+            power = pow * std::stoi(s.substr(delim));
+        }
+        return std::make_pair(unit, power);
+    }
+
+    std::vector<std::pair<std::string, int>> get_units_vector(const std::string str, const int pow)
+    {
+        std::vector<std::string> fields;
+        std::vector<std::pair<std::string, int>> unit;
+
+        boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
+        for (auto& field : fields)
+        {
+            unit.push_back(split_unit(field, pow));
+        }
+
+        return unit;
+    }
+
+    std::string simplify_unit(const std::string str1, const std::string str2, const int pow1  = 1, const int pow2 = 1)
+    {
+        std::vector<std::pair<std::string, int>> unit1, unit2;
+
+        //Split each string in separate unit strings; split those in pairs of unit and power
+        unit1 = get_units_vector(str1, pow1);
+        unit2 = get_units_vector(str2, pow2);
+
+        //Loop through units to find matches; in which case add the powers
+        int unit1_size = unit1.size();
+        for (auto& u2 : unit2)
+        {
+            int i;
+            for (i = 0 ; i < unit1_size; i++)
+            {
+                if (u2.first == unit1[i].first)
+                {
+                    if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
+                    {
+                        int j;
+                        for (j = i++ ; j < unit1_size; j++)
+                        {
+                            if (u2.first == unit1[j].first)
+                                break;
+                        }
+                        if (j == unit1_size)
+                            unit1[i].second += u2.second;
+                        else if (u2.second * unit1[j].second < 0)
+                            unit1[j].second += u2.second;
+                        else
+                            unit1[i].second += u2.second;
+                        break;
+                    }
+                    else
+                    {
+                        unit1[i].second += u2.second;
+                        break;
+                    }
+                }
+            }
+            if (i == unit1_size)
+                unit1.push_back(u2);
+        }
+
+        //Convert pairs back into strings
+        std::string output;
+        if (unit1.size() == 0)
+        {
+            output = "[-]";
+        }
+        else
+        {
+            std::ostringstream ostream;
+            for (auto& u1 : unit1)
+            {
+                if (u1.second == 1)
+                {
+                    ostream << u1.first << " ";
+                }
+                else if (u1.second != 0)
+                {
+                    ostream << u1.first << u1.second << " ";
+                }
+            }
+            output = ostream.str();
+            output.erase(output.end()-1); //remove final space
+        }
+
+        return output;
+    }
 }
 
 template<typename TF>
@@ -651,6 +756,84 @@ void Stats<TF>::add_mask(const std::string maskname)
 
 // Add a new profile to each of the NetCDF files.
 template<typename TF>
+void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, const std::vector<std::string>& operations)
+{
+    std::string zloc_alt;
+    if (zloc == "z")
+        zloc_alt = "zh";
+    else if (zloc == "zh")
+        zloc_alt = "z";
+    else
+        throw std::runtime_error(zloc + " is an invalid height in add_profs");
+
+    for (auto& it : operations)
+    {
+        if (it == "mean")
+        {
+            add_prof(var.name, var.longname, var.unit, zloc,  Stats_whitelist_type::White );
+        }
+        else if (has_only_digits(it))
+        {
+            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,simplify_unit(var.unit, "",2), zloc);
+        }
+        else if (it == "w")
+        {
+            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+
+        }
+        else if (it == "grad")
+        {
+            add_prof(var.name+"grad", "Gradient of the " + var.longname, simplify_unit(var.unit, "m-1"), zloc_alt);
+
+        }
+        else if (it == "flux")
+        {
+            add_prof(var.name+"flux", "Total flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+        }
+        else if (it == "diff")
+        {
+            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+        }
+        else if (it == "frac")
+        {
+            add_prof(var.name+"frac", var.longname + " fraction", "[-]", zloc);
+        }
+        else if (it == "path")
+        {
+            add_time_series(var.name+"path", var.longname + " path", simplify_unit(var.unit, "kg m-2"));
+        }
+        else if (it == "cover")
+        {
+            add_time_series(var.name+"cover", var.longname + " cover", "[-]");
+        }
+        else
+        {
+            throw std::runtime_error(it + "is an invalid operator name to add profs");
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2, std::string zloc)
+{
+    for (int pow1 = 1; pow1<5; ++pow1)
+    {
+        for (int pow2 = 1; pow2<5; ++pow2)
+        {
+            std::string spow1 = std::to_string(pow1);
+            std::string spow2 = std::to_string(pow2);
+
+            std::string name = var1.name + spow1 + var2.name +spow2;
+            std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
+            add_prof(name, longname, simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
+        }
+    }
+
+}
+
+
+// Add a new profile to each of the NetCDF files
+template<typename TF>
 void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
@@ -860,6 +1043,17 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
     {
         for (auto& it : masks)
             it.second.profs.at(varname).data = prof;
+    }
+}
+
+template<typename TF>
+void Stats<TF>::set_timeserie(const std::string varname, const TF val)
+{
+    auto it = std::find(varlist.begin(), varlist.end(), varname);
+    if (it != varlist.end())
+    {
+        for (auto& it : masks)
+            it.second.tseries.at(varname).data = val;
     }
 }
 
@@ -1138,8 +1332,11 @@ void Stats<TF>::calc_covariance(
         else
         {
             auto tmp = fields.get_tmp();
+            if (grid.get_spatial_order() == Grid_order::Second)
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
+            else if (grid.get_spatial_order() == Grid_order::Fourth)
+                grid.interpolate_4th(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
 
-            grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
             for (auto& m : masks)
             {
                 if (fld2.loc[2] == 0)

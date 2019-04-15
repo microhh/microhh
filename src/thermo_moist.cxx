@@ -466,6 +466,24 @@ namespace
                }
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 
@@ -875,6 +893,14 @@ TF Thermo_moist<TF>::get_buoyancy_diffusivity()
 }
 
 template<typename TF>
+int Thermo_moist<TF>::get_bl_depth()
+{
+    // Use the liquid water potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 {
     bs_stats = bs;
@@ -902,25 +928,21 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);
-        for (int n=2; n<5; ++n)
-        {
-            std::stringstream ss;
-            ss << n;
-            std::string sn = ss.str();
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn, "z");
-        }
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", stat_op_b);
+        fields.release_tmp(b);
 
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        auto ql = fields.get_tmp();
+        ql->name = "ql";
+        ql->longname = "Liquid water";
+        ql->unit = "kg kg-1";
+        stats.add_profs(*ql, "z", stat_op_ql);
+        fields.release_tmp(ql);
 
-        stats.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z", Stats_whitelist_type::White);
-        stats.add_prof("qlfrac", "Cloud fraction", "-", "z");
-
-        stats.add_time_series("qlpath", "Liquid water path", "kg m-2");
-        stats.add_time_series("qlcover", "Projected cloud cover", "-");
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
     }
 }
 
@@ -1004,10 +1026,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // calculate the mean
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
 
     fields.release_tmp(b);
 
@@ -1016,8 +1035,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     ql->loc = gd.sloc;
 
     get_thermo_field(*ql, "ql", true, true);
-    stats.calc_stats("ql", *ql, no_offset, no_threshold, {"mean","cover","frac","path"});
-
+    stats.calc_stats("ql", *ql, no_offset, no_threshold, stat_op_ql);
 
     fields.release_tmp(ql);
 
@@ -1028,6 +1046,8 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof("rho"    , bs_stats.rhoref);
         stats.set_prof("rhoh"   , bs_stats.rhorefh);
     }
+
+    stats.set_timeserie("zi", gd.z[get_bl_depth()]);
 
 }
 

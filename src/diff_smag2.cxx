@@ -1030,10 +1030,7 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_prof(fields.sd["evisc"]->name, fields.sd["evisc"]->longname, fields.sd["evisc"]->unit, "z");
-        const std::string sn("2");
-        stats.add_prof(fields.sd["evisc"]->name + sn,
-                "Moment "+ sn + " of the " + fields.sd["evisc"]->longname,"(" + fields.sd["evisc"]->unit + ")" + sn, "z");
+        stats.add_profs(*fields.sd["evisc"], "z", stat_op_evisc);
     }
 }
 
@@ -1042,7 +1039,7 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, {"mean", "2"});
+    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, stat_op_evisc);
 }
 
 template<typename TF>

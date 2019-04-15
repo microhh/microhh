@@ -108,6 +108,8 @@ class Stats
         // Interface functions.
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
+        void add_profs(const Field3d<TF>&, std::string, const std::vector<std::string>&);
+        void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
         void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
@@ -117,6 +119,7 @@ class Stats
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
         void set_prof(const std::string, const std::vector<TF>);
+        void set_timeserie(const std::string, const TF);
 
     private:
         Master& master;

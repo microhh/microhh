@@ -464,16 +464,15 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"});
-    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, operators);
-    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, operators);
+    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, stat_op_w);
+    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, stat_op_def);
+    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, stat_op_def);
 
     for (auto& it : sp)
     {
-        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators);
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, stat_op_def);
     }
-    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, {"mean","2","w","grad"});
+    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, stat_op_p);
 
     // Calculate covariances
     for (auto& it1 : ap)
@@ -799,84 +798,26 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
-        // Mean velocity compontents
-        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z",  Stats_whitelist_type::White );
-        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z",  Stats_whitelist_type::White );
-        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh", Stats_whitelist_type::White);
-
-        // Mean prognostic scalars
-        for (auto& it : sp)
-            stats.add_prof(it.first, it.second->longname, it.second->unit, "z", Stats_whitelist_type::White);
-
-        // Pressure with its variance, fluxes and gradients
-        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z", Stats_whitelist_type::White);
-        std::string sn("2");
-        stats.add_prof(sd["p"]->name + sn,    "Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
-        stats.add_prof(sd["p"]->name +"w",    "Turbulent flux of the "   + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
-        stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
-
-        // Add the second up to fourth moments of the velocity and scalars
-        for (int n=2; n<5; ++n)
+        for (auto& it : ap)
         {
-            std::string sn = std::to_string(n);
-            //std::stringstream ss;
-            //ss << n;
-            //std::string sn = ss.str();
-            stats.add_prof(ap["u"]->name + sn, "Moment "+ sn + " of the " + ap["u"]->longname,"(" + ap["u"]->unit + ")"+sn, "z" );
-            stats.add_prof(ap["v"]->name + sn, "Moment "+ sn + " of the " + ap["v"]->longname,"(" + ap["v"]->unit + ")"+sn, "z" );
-            stats.add_prof(ap["w"]->name + sn, "Moment "+ sn + " of the " + ap["w"]->longname,"(" + ap["w"]->unit + ")"+sn, "zh" );
-            for (auto& it : sp)
-                stats.add_prof(it.first + sn, "Moment "+ sn + " of the " + it.second->longname,"(" + it.second->unit + ")"+sn, "z" );
+            if(it.first=="w")
+                stats.add_profs(*it.second, "zh", stat_op_w);
+            else
+                stats.add_profs(*it.second, "z", stat_op_def);
         }
-
-        // Gradients
-        stats.add_prof("ugrad", "Gradient of the " + ap["u"]->longname, "s-1", "zh");
-        stats.add_prof("vgrad", "Gradient of the " + ap["v"]->longname, "s-1", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"grad", "Gradient of the " + it.second->longname, it.second->unit + " m-1", "zh");
-
-        // Turbulent fluxes
-        stats.add_prof("uw", "Turbulent flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vw", "Turbulent flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"w", "Turbulent flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
-
-        // Diffusive fluxes
-        stats.add_prof("udiff", "Diffusive flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vdiff", "Diffusive flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"diff", "Diffusive flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
-
-        // Total fluxes
-        stats.add_prof("uflux", "Total flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vflux", "Total flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"flux", "Total flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
+        stats.add_profs(*sd.at("p"), "z", stat_op_p);
 
         // Covariances
-        for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+        for (auto& it1 : ap)
         {
-            for (typename Field_map<TF>::iterator it2=it1; it2!=ap.end(); ++it2)
+            for (auto& it2 : ap)
             {
                 std::string locstring;
-                if(it2->first == "w")
+                if(it2.first == "w")
                     locstring = "zh";
                 else
                     locstring = "z";
-
-                for (int pow1 = 1; pow1<5; ++pow1)
-                {
-                    for (int pow2 = 1; pow2<5; ++pow2)
-                    {
-                        std::string spow1 = std::to_string(pow1);
-                        std::string spow2 = std::to_string(pow2);
-
-                        std::string name = it1->first + spow1 + it2->first +spow2;
-                        std::string longname = "Covariance of " + it1->first +spow1 + " and " + it2->first +spow2;
-                        std::string unit = "(" + it1->second->unit + ")" + spow1 + "(" + it2->second->unit + ")" + spow2;
-                        stats.add_prof(name, longname, unit, locstring, Stats_whitelist_type::Black);
-                    }
-                }
+                stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
     }

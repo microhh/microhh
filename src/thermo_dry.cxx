@@ -257,6 +257,24 @@ namespace
             rhorefh[k] = prefh[k] / (Rd<TF> * threfh[k] * exnrefh[k]);
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 template<typename TF>
@@ -518,6 +536,14 @@ TF Thermo_dry<TF>::get_buoyancy_diffusivity()
     return fields.sp.at("th")->visc;
 }
 
+template<typename TF>
+int Thermo_dry<TF>::get_bl_depth()
+{
+    // Use the potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("th")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
 template <typename TF>
 void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
 {
@@ -537,19 +563,15 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
             stats.add_prof("T", "Absolute temperature", "K", "z");
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z");
-        for (int n=2; n<5; ++n)
-        {
-            std::string sn = std::to_string(n);
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-        }
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", stat_op_b);
+        fields.release_tmp(b);
 
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "s-2", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
 
-        // stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
     }
 }
 
@@ -641,12 +663,10 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // calculate the mean
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
 
     fields.release_tmp(b);
+    stats.set_timeserie("zi", gd.z[get_bl_depth()]);
 }
 
 template<typename TF>

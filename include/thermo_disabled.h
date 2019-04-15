@@ -64,6 +64,8 @@ class Thermo_disabled : public Thermo<TF>
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};
+        int get_bl_depth() { throw std::runtime_error("Function get_bl_depth not implemented"); };
+
         TF get_buoyancy_diffusivity();
 
         unsigned long get_time_limit(unsigned long, double);
