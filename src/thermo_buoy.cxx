@@ -31,12 +31,12 @@
 #include "finite_difference.h"
 #include "master.h"
 
-using Finite_difference::O2::interp2;
-using Finite_difference::O4::interp4c;
-
 
 namespace
 {
+    using Finite_difference::O2::interp2;
+    using Finite_difference::O4::interp4c;
+
     template<typename TF>
     void calc_buoyancy(TF* restrict b, TF* restrict bin, const int ncells)
     {
@@ -247,14 +247,12 @@ namespace
     }
 
     template<typename TF>
-    void calc_baroclinic(
+    void calc_baroclinic_2nd(
             TF* const restrict bt, const TF* const restrict v,
             const TF dbdy_ls,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        using Finite_difference::O2::interp2;
-
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -262,6 +260,26 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     bt[ijk] -= dbdy_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
+    template<typename TF>
+    void calc_baroclinic_4th(
+            TF* const restrict bt, const TF* const restrict v,
+            const TF dbdy_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    bt[ijk] -= dbdy_ls * interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]);
                 }
     }
 
@@ -332,10 +350,11 @@ void Thermo_buoy<TF>::exec(const double dt)
         }
 
         if (swbaroclinic)
-            calc_baroclinic(fields.st.at("b")->fld.data(), fields.mp.at("v")->fld.data(),
-                            dbdy_ls,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                            gd.icells, gd.ijcells);
+            calc_baroclinic_2nd(
+                    fields.st.at("b")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dbdy_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
@@ -349,6 +368,13 @@ void Thermo_buoy<TF>::exec(const double dt)
 	    {
 		    calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 	    }
+
+        if (swbaroclinic)
+            calc_baroclinic_4th(
+                    fields.st.at("b")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dbdy_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
 }
 #endif

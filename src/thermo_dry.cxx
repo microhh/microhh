@@ -197,10 +197,11 @@ namespace
     }
 
     template<typename TF>
-    void calc_baroclinic(TF* const restrict tht, const TF* const restrict v,
-                         const TF dthetady_ls,
-                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                         const int jj, const int kk)
+    void calc_baroclinic_2nd(
+            TF* const restrict tht, const TF* const restrict v,
+            const TF dthetady_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -211,6 +212,28 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     tht[ijk] -= dthetady_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
+    template<typename TF>
+    void calc_baroclinic_4th(
+            TF* const restrict tht, const TF* const restrict v,
+            const TF dthetady_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        using Finite_difference::O4::interp4c;
+
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tht[ijk] -= dthetady_ls * interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]);
                 }
     }
 
@@ -389,19 +412,31 @@ void Thermo_dry<TF>::exec( const double dt)
     auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
+    {
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
+
+        if (swbaroclinic)
+            calc_baroclinic_2nd(
+                    fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dthetady_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
+    {
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
 
-    if (swbaroclinic)
-        calc_baroclinic(fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
-                        dthetady_ls,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                        gd.icells, gd.ijcells);
+        if (swbaroclinic)
+            calc_baroclinic_4th(
+                    fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dthetady_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
 }
 #endif
 
