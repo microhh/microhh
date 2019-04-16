@@ -29,45 +29,44 @@
 #include "stats.h"
 
 #include "budget.h"
-//#include "budget_disabled.h"
-//#include "budget_2.h"
+#include "budget_disabled.h"
+#include "budget_2.h"
 //#include "budget_4.h"
 
 
 template<typename TF>
-Budget<TF>::Budget(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin,
-    Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin), diff(diffin), advec(advecin), force(forcein), stats(statsin)
-{
-}
+Budget<TF>::Budget(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
+        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin),
+    thermo(thermoin), diff(diffin), advec(advecin), force(forcein), stats(statsin)
+{}
 
 template<typename TF>
 Budget<TF>::~Budget()
-{
-}
+{}
 
 template<typename TF>
-std::shared_ptr<Budget<TF>> Budget<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin,
-    Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin)
+std::shared_ptr<Budget<TF>> Budget<TF>::factory(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
+        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin)
 {
-    std::string swbudgetin = inputin.get_item<std::string>("budget", "swbudget", "", "0");
+    std::string swbudget = inputin.get_item<std::string>("budget", "swbudget", "", "0");
 
     // If the stats is disabled, also disable the budget stats.
     if (statsin.get_switch() == false)
-        swbudgetin = "0";
+        swbudget = "0";
 
-//    if (swbudget == "0")
-//        return new Budget_disabled(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin);
+    if (swbudget == "0")
+        return std::make_shared<Budget_disabled<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin, inputin);
 //    else if (swbudget == "2")
 //        return new Budget_2(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin);
 //    else if (swbudget == "4")
 //        return new Budget_4(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin);
-//    else
-//    {
-//        masterin->print_error("\"%s\" is an illegal value for swbudget\n", swbudget.c_str());
-//        throw 1;
-//    }
-    return NULL; // Temporary return value, to ensure no warning at compile time
+    else
+    {
+        std::string error_message = swbudget + " is an illegal value for swbudget";
+        throw std::runtime_error(error_message);
+    }
 }
 
 template class Budget<double>;

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,21 +20,21 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BUDGET
-#define BUDGET
+#ifndef BUDGET_H
+#define BUDGET_H
 
 #include <string>
+#include <memory>
 
 class Input;
 class Master;
-template<typename> class Stats;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Thermo;
 template<typename> class Diff;
 template<typename> class Advec;
 template<typename> class Force;
-//struct Mask;
+template<typename> class Stats;
 
 /**
  * Base class for the budget statistics. This class is abstract and only
@@ -45,27 +45,31 @@ template<typename TF>
 class Budget
 {
     public:
-        Budget(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
+        Budget(Master&, Grid<TF>&, Fields<TF>&,
+                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
+
         virtual ~Budget();
 
-        static std::shared_ptr<Budget> factory(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&); ///< Factory function for budget class generation.
+        static std::shared_ptr<Budget> factory(
+                Master&, Grid<TF>&, Fields<TF>&,
+                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
 
-        //virtual void init() = 0;
-        //virtual void create() = 0;
-        //virtual void exec_stats(Mask*) = 0;
+        virtual void init() = 0;
+        virtual void create() = 0;
+        virtual void exec_stats(Stats<TF>&) = 0;
 
     protected:
         Master& master;
-        Grid<TF>&   grid;
+        Grid<TF>& grid;
         Fields<TF>& fields;
-        //Thermo<TF>& thermo;
-        Diff<TF>&   diff;
-        Advec<TF>&  advec;
-        Force<TF>&  force;
-        Stats<TF>&  stats;
+        Thermo<TF>& thermo;
+        Diff<TF>& diff;
+        Advec<TF>& advec;
+        Force<TF>& force;
+        Stats<TF>& stats;
 
-        enum class Budget_type {Disabled, Second_order, Fourth_order};
-        Budget_type swbudget;
+        // enum class Budget_type {Disabled, Second_order, Fourth_order};
+        // Budget_type swbudget;
 };
 #endif
 
