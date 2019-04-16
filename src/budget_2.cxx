@@ -43,14 +43,14 @@
 template<typename TF>
 Budget_2<TF>::Budget_2(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin) :
-    Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin, inputin)
+        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Input& inputin) :
+    Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin)
 {
 //     umodel = 0;
 //     vmodel = 0;
 
     // The LES flux budget requires one additional ghost cell in the horizontal
-    if (diff.get_switch() == "smag2")
+    if (diff.get_switch() == Diffusion_type::Diff_smag2)
     {
         const int igc = 2;
         const int jgc = 2;
@@ -81,7 +81,7 @@ void Budget_2<TF>::init()
 }
 
 template<typename TF>
-void Budget_2<TF>::create()
+void Budget_2<TF>::create(Stats<TF>& stats)
 {
     /*
     // add the profiles for the kinetic energy to the statistics
@@ -299,3 +299,6 @@ namespace
         return 0.25 * (a + b + c + d);
     }
 }
+
+template class Budget_2<double>;
+template class Budget_2<float>;

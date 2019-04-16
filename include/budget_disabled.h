@@ -34,11 +34,11 @@ class Budget_disabled : public Budget<TF>
     public:
         Budget_disabled(
                 Master&, Grid<TF>&, Fields<TF>&,
-                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
+                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Input&);
         ~Budget_disabled();
 
         void init();
-        void create();
+        void create(Stats<TF>&);
         void exec_stats(Stats<TF>&);
 };
 #endif

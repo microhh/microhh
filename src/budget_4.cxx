@@ -20,30 +20,50 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "budget_disabled.h"
+#include <cstdio>
+#include <cmath>
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "defines.h"
+#include "finite_difference.h"
+#include "model.h"
+#include "thermo.h"
+#include "diff.h"
+#include "advec.h"
+#include "force.h"
+#include "stats.h"
+
+#include "budget.h"
+#include "budget_4.h"
 
 template<typename TF>
-Budget_disabled<TF>::Budget_disabled(
+Budget_4<TF>::Budget_4(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Input& inputin) :
     Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin)
-{}
+{
+}
 
 template<typename TF>
-Budget_disabled<TF>::~Budget_disabled()
-{}
+Budget_4<TF>::~Budget_4()
+{
+}
 
 template<typename TF>
-void Budget_disabled<TF>::init()
-{}
+void Budget_4<TF>::init()
+{
+}
 
 template<typename TF>
-void Budget_disabled<TF>::create(Stats<TF>&)
-{}
+void Budget_4<TF>::create(Stats<TF>& stats)
+{
+}
 
 template<typename TF>
-void Budget_disabled<TF>::exec_stats(Stats<TF>&)
-{}
+void Budget_4<TF>::exec_stats(Stats<TF>& stats)
+{
+}
 
-template class Budget_disabled<double>;
-template class Budget_disabled<float>;
+template class Budget_4<double>;
+template class Budget_4<float>;

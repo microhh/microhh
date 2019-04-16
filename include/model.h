@@ -49,6 +49,7 @@ template<typename> class Radiation;
 template<typename> class Decay;
 
 template<typename> class Stats;
+template<typename> class Budget;
 template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Dump;
@@ -93,6 +94,7 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
 
         std::shared_ptr<Stats<TF>> stats;
+        std::shared_ptr<Budget<TF>> budget;
         std::shared_ptr<Column<TF>> column;
         std::shared_ptr<Cross<TF>> cross;
         std::shared_ptr<Dump<TF>> dump;

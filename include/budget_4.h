@@ -20,17 +20,17 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BUDGET_2_H
-#define BUDGET_2_H
+#ifndef BUDGET_4_H
+#define BUDGET_4_H
 
 #include "budget.h"
 
 template<typename TF>
-class Budget_2 : public Budget<TF>
+class Budget_4 : public Budget<TF>
 {
     public:
-        Budget_2(Master&, Grid<TF>&, Fields<TF>&, Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Input&);
-        ~Budget_2();
+        Budget_4(Master&, Grid<TF>&, Fields<TF>&, Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Input&);
+        ~Budget_4();
 
         void init();
         void create(Stats<TF>&);

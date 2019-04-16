@@ -24,21 +24,21 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
-//#include "thermo.h"
+#include "thermo.h"
 #include "diff.h"
 #include "stats.h"
 
 #include "budget.h"
 #include "budget_disabled.h"
 #include "budget_2.h"
-//#include "budget_4.h"
+#include "budget_4.h"
 
 
 template<typename TF>
 Budget<TF>::Budget(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin) :
+        Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin),
-    thermo(thermoin), diff(diffin), advec(advecin), force(forcein), stats(statsin)
+    thermo(thermoin), diff(diffin), advec(advecin), force(forcein)
 {}
 
 template<typename TF>
@@ -57,11 +57,11 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
         swbudget = "0";
 
     if (swbudget == "0")
-        return std::make_shared<Budget_disabled<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin, inputin);
-//    else if (swbudget == "2")
-//        return new Budget_2(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin);
-//    else if (swbudget == "4")
-//        return new Budget_4(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin);
+        return std::make_shared<Budget_disabled<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
+    else if (swbudget == "2")
+        return std::make_shared<Budget_2<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
+    else if (swbudget == "4")
+        return std::make_shared<Budget_4<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
     else
     {
         std::string error_message = swbudget + " is an illegal value for swbudget";

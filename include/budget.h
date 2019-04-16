@@ -46,7 +46,7 @@ class Budget
 {
     public:
         Budget(Master&, Grid<TF>&, Fields<TF>&,
-                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
+                Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Input&);
 
         virtual ~Budget();
 
@@ -55,7 +55,7 @@ class Budget
                 Thermo<TF>&, Diff<TF>&, Advec<TF>&, Force<TF>&, Stats<TF>&, Input&);
 
         virtual void init() = 0;
-        virtual void create() = 0;
+        virtual void create(Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&) = 0;
 
     protected:
@@ -66,7 +66,6 @@ class Budget
         Diff<TF>& diff;
         Advec<TF>& advec;
         Force<TF>& force;
-        Stats<TF>& stats;
 
         // enum class Budget_type {Disabled, Second_order, Fourth_order};
         // Budget_type swbudget;

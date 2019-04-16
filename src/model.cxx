@@ -45,6 +45,7 @@
 #include "microphys.h"
 #include "decay.h"
 #include "stats.h"
+#include "budget.h"
 #include "column.h"
 #include "cross.h"
 #include "dump.h"
@@ -130,6 +131,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
         cross     = std::make_shared<Cross <TF>>(master, *grid, *fields, *input);
 
+        budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+
         // Parse the statistics masks
         add_statistics_masks();
     }
@@ -175,6 +178,7 @@ void Model<TF>::init()
     microphys->init();
     radiation->init();
     decay->init(*input);
+    budget->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -234,11 +238,12 @@ void Model<TF>::load()
     radiation->create(*thermo, *stats, *column, *cross, *dump);
     decay->create(*input);
 
-    cross->create();    // Cross needs to be called at the end!
+    cross->create(); // Cross needs to be called at the end!
 
     boundary->set_values();
     pres->set_values();
     diff->create(*stats);
+    budget->create(*stats);
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -515,7 +520,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
-        //budget  ->exec_stats(&stats->masks[maskname]);
+        budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
         radiation->exec_stats(*stats, *thermo, *timeloop);
         // Store the statistics data.
