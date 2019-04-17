@@ -455,7 +455,8 @@ namespace
         boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
         for (auto& field : fields)
         {
-            unit.push_back(split_unit(field, pow));
+            if (field != "-" && field != "")
+                unit.push_back(split_unit(field, pow));
         }
 
         return unit;
@@ -505,11 +506,20 @@ namespace
                 unit1.push_back(u2);
         }
 
+        // Remove the entries with zero power
+        for (auto u1 = unit1.begin(); u1 != unit1.end(); )
+        {
+            if ((*u1).second  == 0)
+                u1 = unit1.erase(u1);
+            else
+                ++u1;
+        }
+
         //Convert pairs back into strings
         std::string output;
         if (unit1.size() == 0)
         {
-            output = "[-]";
+            output = "-";
         }
         else
         {
@@ -520,7 +530,7 @@ namespace
                 {
                     ostream << u1.first << " ";
                 }
-                else if (u1.second != 0)
+                else
                 {
                     ostream << u1.first << u1.second << " ";
                 }
