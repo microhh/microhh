@@ -312,7 +312,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
     else // Single batched FFT over entire 3D field
     {
         cufft_forward_wrapper<TF>(iplanf, p, tmp1);
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
     }
 
     // Transform complex to double output. Allows for creating parallel cuda version at a later stage
@@ -335,7 +335,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
                 cufft_forward_wrapper<TF>(jplanf, &p[ijk], &tmp1[ijk2]);
             }
 
-            cudaThreadSynchronize();
+            cudaDeviceSynchronize();
             cuda_check_error();
 
             if (TF_is_double)
@@ -351,7 +351,7 @@ void Pres<TF>::fft_forward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __rest
             cuda_check_error();
 
             cufft_forward_wrapper<TF>(jplanf, tmp2, tmp1);
-            cudaThreadSynchronize();
+            cudaDeviceSynchronize();
 
             if (TF_is_double)
                 complex_TF_x_g<TF, cufftDoubleComplex><<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, gd.jtot, gd.itot, kk, kkj,  true);
@@ -418,7 +418,7 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
 
                 cufft_backward_wrapper<TF>(jplanb, &tmp1[ijk2], &p[ijk]);
             }
-            cudaThreadSynchronize();
+            cudaDeviceSynchronize();
             cuda_check_error();
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
@@ -433,7 +433,7 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
             cuda_check_error();
 
             cufft_backward_wrapper<TF>(jplanb, tmp1, p);
-            cudaThreadSynchronize();
+            cudaDeviceSynchronize();
             cuda_check_error();
 
             transpose_g<TF><<<gridGPUTb, blockGPUT>>>(tmp1, p, gd.jtot, gd.itot, gd.ktot);
@@ -459,13 +459,13 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
 
             cufft_backward_wrapper<TF>(iplanb, &tmp1[ijk2], &p[ijk]);
         }
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
         cuda_check_error();
     }
     else // Batch FFT over entire domain
     {
         cufft_backward_wrapper<TF>(iplanb, tmp1, p);
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
         cuda_check_error();
     }
 
