@@ -2,8 +2,8 @@ import numpy as np
 import netCDF4 as nc
 from matplotlib.pyplot import *
 
-sample_size = 2
-plotens = False
+sample_size = 30
+plotens = True
 
 stats = nc.Dataset("moser180_default_0000000.nc","r")
 end = len(stats.variables["time"][:])
@@ -109,7 +109,6 @@ uw_prest  = stats.variables["uw_pres"] [start:end,:]
 uw_rdstrt = stats.variables["uw_rdstr"][start:end,:]
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
-#ustart = (visc * utotavgt[:,0] / z[0])**0.5
 ustart = (ufluxt[:,0]**2.)**.25
 
 uavg = np.mean(uavgt,0)
@@ -165,8 +164,8 @@ print('Re_tau = %.2f' % (ustar / visc))
 # create the theoretical lines
 ypluslin = np.arange(0.5,15., 0.1)
 ypluslog = np.arange(5.,800., 1.)
-ulin     = ypluslin
-ulog     = 2.5 * np.log( ypluslog ) + 5.
+ulin = ypluslin
+ulog = 2.5 * np.log( ypluslog ) + 5.
 
 yplus  = z  * ustar / visc
 yplush = zh * ustar / visc
