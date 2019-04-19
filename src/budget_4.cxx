@@ -187,159 +187,146 @@ namespace
                 }
     }
    
-    /*
     template<typename TF>
-    void calc_tke_budget_turb(TF* restrict u, TF* restrict v, TF* restrict w,
-                              TF* restrict wx, TF* restrict wy,
-                              TF* restrict umean, TF* restrict vmean,
-                              TF* restrict u2_shear, TF* restrict v2_shear, TF* restrict tke_shear, TF* restrict uw_shear,
-                              TF* restrict u2_turb, TF* restrict v2_turb, TF* restrict w2_turb, TF* restrict tke_turb, TF* restrict uw_turb,
-                              TF* restrict dzi4, TF* restrict dzhi4,
-                              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                              const int icells, const int ijcells)
+    void calc_tke_budget_turb(
+            TF* restrict u2_turb, TF* restrict v2_turb, TF* restrict w2_turb, TF* restrict tke_turb, TF* restrict uw_turb,
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
+            const TF* restrict wx, const TF* restrict wy,
+            const TF* restrict umean, const TF* restrict vmean,
+            const TF* restrict dzi4, const TF* restrict dzhi4,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
+        using namespace Finite_difference::O4;
+
+        const int jj1 = 1*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        const int kk3 = 3*ijcells;
+
         // 3. CALCULATE TURBULENT FLUXES
         // bottom boundary
-        k = grid.kstart;
+        int k = kstart;
     
-        u2_turb [k] = 0.;
-        v2_turb [k] = 0.;
-        tke_turb[k] = 0.;
-        uw_turb [k] = 0.;
-    
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                u2_turb[k]  -= ( cg0<TF>*((bi0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + bi1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + bi2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + bi3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk-kk1])
-                               + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
-                               + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
-                               + cg3<TF>*((ci0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + ci3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2))*wx[ijk+kk2]) ) * dzi4[k];
+                u2_turb[ijk] = - ( cg0<TF>*((bi0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + bi1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + bi2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + bi3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk-kk1])
+                                 + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
+                                 + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
+                                 + cg3<TF>*((ci0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + ci3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2))*wx[ijk+kk2]) ) * dzi4[k];
     
-                v2_turb[k]  -= ( cg0<TF>*((bi0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + bi1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + bi2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + bi3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk-kk1])
-                               + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
-                               + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
-                               + cg3<TF>*((ci0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + ci3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2))*wy[ijk+kk2]) ) * dzi4[k];
+                v2_turb[ijk] = - ( cg0<TF>*((bi0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + bi1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + bi2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + bi3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk-kk1])
+                                 + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
+                                 + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
+                                 + cg3<TF>*((ci0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + ci3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2))*wy[ijk+kk2]) ) * dzi4[k];
     
-                tke_turb[k] -= 0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+                tke_turb[ijk] = -0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+
+                tke_turb[ijk] += 0.5*(u2_turb[ijk] + v2_turb[ijk]);
             }
-        tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
     
         // interior
-        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
-        {
-            u2_turb [k] = 0.;
-            v2_turb [k] = 0.;
-            tke_turb[k] = 0.;
-    
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart+1; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    u2_turb[k]  -= ( cg0<TF>*((ci0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3<TF>*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
-                                   + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
-                                   + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
-                                   + cg3<TF>*((ci0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + ci3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2))*wx[ijk+kk2]) ) * dzi4[k];
+                    u2_turb[ijk] = - ( cg0<TF>*((ci0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3<TF>*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
+                                     + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
+                                     + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
+                                     + cg3<TF>*((ci0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + ci3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2))*wx[ijk+kk2]) ) * dzi4[k];
     
-                    v2_turb[k]  -= ( cg0<TF>*((ci0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + ci1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci3<TF>*std::pow(v[ijk    ]-vmean[k  ],2))*wy[ijk-kk1])
-                                   + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
-                                   + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
-                                   + cg3<TF>*((ci0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + ci3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2))*wy[ijk+kk2]) ) * dzi4[k];
+                    v2_turb[ijk] = - ( cg0<TF>*((ci0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + ci1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci3<TF>*std::pow(v[ijk    ]-vmean[k  ],2))*wy[ijk-kk1])
+                                     + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
+                                     + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
+                                     + cg3<TF>*((ci0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + ci3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2))*wy[ijk+kk2]) ) * dzi4[k];
     
-                    tke_turb[k] -= 0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+                    tke_turb[ijk] = -0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+
+                    tke_turb[ijk] += 0.5*(u2_turb[ijk] + v2_turb[ijk]);
                 }
-            tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
-        }
-    
+
         // top boundary
-        k = grid.kend-1;
-    
-        u2_turb [k] = 0.;
-        v2_turb [k] = 0.;
-        tke_turb[k] = 0.;
-    
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                u2_turb[k]  -= ( cg0<TF>*((ci0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3<TF>*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
-                               + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
-                               + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
-                               + cg3<TF>*((ti0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ti1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ti2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ti3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1]) ) * dzi4[k];
+                u2_turb[ijk] = - ( cg0<TF>*((ci0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3<TF>*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
+                                 + cg1<TF>*((ci0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + ci1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk    ])
+                                 + cg2<TF>*((ci0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ci1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ci2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ci3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1])
+                                 + cg3<TF>*((ti0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + ti1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + ti2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + ti3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2))*wx[ijk+kk1]) ) * dzi4[k];
     
-                v2_turb[k]  -= ( cg0<TF>*((ci0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + ci1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci3<TF>*std::pow(v[ijk    ]-vmean[k  ],2))*wy[ijk-kk1])
-                               + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
-                               + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
-                               + cg3<TF>*((ti0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ti1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ti2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ti3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1]) ) * dzi4[k];
+                v2_turb[ijk] = - ( cg0<TF>*((ci0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + ci1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci3<TF>*std::pow(v[ijk    ]-vmean[k  ],2))*wy[ijk-kk1])
+                                 + cg1<TF>*((ci0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + ci1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2))*wy[ijk    ])
+                                 + cg2<TF>*((ci0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ci1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ci2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ci3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1])
+                                 + cg3<TF>*((ti0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + ti1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + ti2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + ti3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2))*wy[ijk+kk1]) ) * dzi4[k];
     
-                tke_turb[k] -= 0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+                tke_turb[ijk] = -0.5*( cg0<TF>*std::pow(w[ijk-kk1], 3) + cg1<TF>*std::pow(w[ijk], 3) + cg2<TF>*std::pow(w[ijk+kk1], 3) + cg3<TF>*std::pow(w[ijk+kk2], 3)) * dzi4[k];
+
+                tke_turb[ijk] += 0.5*(u2_turb[ijk] + v2_turb[ijk]);
             }
-        tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
     
         // calculate the vertical velocity term and the vertical reynold stresses
-        k = grid.kstart;
-        w2_turb[k] = 0.;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_turb[k] -= ( cg0<TF>*(bi0<TF>*std::pow(w[ijk-kk2],3) + bi1<TF>*std::pow(w[ijk-kk1],3) + bi2<TF>*std::pow(w[ijk    ],3) + bi3<TF>*std::pow(w[ijk+kk1],3))
-                              + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
-                              + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
-                              + cg3<TF>*(ci0<TF>*std::pow(w[ijk    ],3) + ci1<TF>*std::pow(w[ijk+kk1],3) + ci2<TF>*std::pow(w[ijk+kk2],3) + ci3<TF>*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
+                w2_turb[ijk] = - ( cg0<TF>*(bi0<TF>*std::pow(w[ijk-kk2],3) + bi1<TF>*std::pow(w[ijk-kk1],3) + bi2<TF>*std::pow(w[ijk    ],3) + bi3<TF>*std::pow(w[ijk+kk1],3))
+                                 + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
+                                 + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
+                                 + cg3<TF>*(ci0<TF>*std::pow(w[ijk    ],3) + ci1<TF>*std::pow(w[ijk+kk1],3) + ci2<TF>*std::pow(w[ijk+kk2],3) + ci3<TF>*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
     
-                uw_turb[k] -= ( ( cg0<TF>*( std::pow(bi0<TF>*wx[ijk-kk2] + bi1<TF>*wx[ijk-kk1] + bi2<TF>*wx[ijk    ] + bi3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk2]-umean[k-2]) )
-                                + cg1<TF>*( std::pow(ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
-                                + cg2<TF>*( std::pow(ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
-                                + cg3<TF>*( std::pow(ci0<TF>*wx[ijk    ] + ci1<TF>*wx[ijk+kk1] + ci2<TF>*wx[ijk+kk2] + ci3<TF>*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
-                              * dzhi4[k  ] );
+                uw_turb[ijk] = - ( ( cg0<TF>*( std::pow(bi0<TF>*wx[ijk-kk2] + bi1<TF>*wx[ijk-kk1] + bi2<TF>*wx[ijk    ] + bi3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk2]-umean[k-2]) )
+                                   + cg1<TF>*( std::pow(ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
+                                   + cg2<TF>*( std::pow(ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
+                                   + cg3<TF>*( std::pow(ci0<TF>*wx[ijk    ] + ci1<TF>*wx[ijk+kk1] + ci2<TF>*wx[ijk+kk2] + ci3<TF>*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
+                                 * dzhi4[k  ] );
             }
     
-        for (int k=grid.kstart+1; k<grid.kend; ++k)
-        {
-            w2_turb[k] = 0.;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    w2_turb[k] -= ( cg0<TF>*(ci0<TF>*std::pow(w[ijk-kk3],3) + ci1<TF>*std::pow(w[ijk-kk2],3) + ci2<TF>*std::pow(w[ijk-kk1],3) + ci3<TF>*std::pow(w[ijk    ],3))
-                                  + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
-                                  + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
-                                  + cg3<TF>*(ci0<TF>*std::pow(w[ijk    ],3) + ci1<TF>*std::pow(w[ijk+kk1],3) + ci2<TF>*std::pow(w[ijk+kk2],3) + ci3<TF>*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
+                    w2_turb[ijk] = - ( cg0<TF>*(ci0<TF>*std::pow(w[ijk-kk3],3) + ci1<TF>*std::pow(w[ijk-kk2],3) + ci2<TF>*std::pow(w[ijk-kk1],3) + ci3<TF>*std::pow(w[ijk    ],3))
+                                     + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
+                                     + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
+                                     + cg3<TF>*(ci0<TF>*std::pow(w[ijk    ],3) + ci1<TF>*std::pow(w[ijk+kk1],3) + ci2<TF>*std::pow(w[ijk+kk2],3) + ci3<TF>*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
     
-                    uw_turb[k] -= ( ( cg0<TF>*( std::pow(ci0<TF>*wx[ijk-kk3] + ci1<TF>*wx[ijk-kk2] + ci2<TF>*wx[ijk-kk1] + ci3<TF>*wx[ijk    ], 2) * (u[ijk-kk2]-umean[k-2]) )
-                                    + cg1<TF>*( std::pow(ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
-                                    + cg2<TF>*( std::pow(ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
-                                    + cg3<TF>*( std::pow(ci0<TF>*wx[ijk    ] + ci1<TF>*wx[ijk+kk1] + ci2<TF>*wx[ijk+kk2] + ci3<TF>*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
-                                  * dzhi4[k  ] );
+                    uw_turb[ijk] = - ( ( cg0<TF>*( std::pow(ci0<TF>*wx[ijk-kk3] + ci1<TF>*wx[ijk-kk2] + ci2<TF>*wx[ijk-kk1] + ci3<TF>*wx[ijk    ], 2) * (u[ijk-kk2]-umean[k-2]) )
+                                       + cg1<TF>*( std::pow(ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
+                                       + cg2<TF>*( std::pow(ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
+                                       + cg3<TF>*( std::pow(ci0<TF>*wx[ijk    ] + ci1<TF>*wx[ijk+kk1] + ci2<TF>*wx[ijk+kk2] + ci3<TF>*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
+                                     * dzhi4[k  ] );
                 }
-        }
     
-        k = grid.kend;
-        w2_turb[k] = 0.;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_turb[k] -= ( cg0<TF>*(ci0<TF>*std::pow(w[ijk-kk3],3) + ci1<TF>*std::pow(w[ijk-kk2],3) + ci2<TF>*std::pow(w[ijk-kk1],3) + ci3<TF>*std::pow(w[ijk    ],3))
-                              + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
-                              + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
-                              + cg3<TF>*(ti0<TF>*std::pow(w[ijk-kk1],3) + ti1<TF>*std::pow(w[ijk    ],3) + ti2<TF>*std::pow(w[ijk+kk1],3) + ti3<TF>*std::pow(w[ijk+kk2],3)) ) * dzhi4[k];
+                w2_turb[ijk] = - ( cg0<TF>*(ci0<TF>*std::pow(w[ijk-kk3],3) + ci1<TF>*std::pow(w[ijk-kk2],3) + ci2<TF>*std::pow(w[ijk-kk1],3) + ci3<TF>*std::pow(w[ijk    ],3))
+                                 + cg1<TF>*(ci0<TF>*std::pow(w[ijk-kk2],3) + ci1<TF>*std::pow(w[ijk-kk1],3) + ci2<TF>*std::pow(w[ijk    ],3) + ci3<TF>*std::pow(w[ijk+kk1],3))
+                                 + cg2<TF>*(ci0<TF>*std::pow(w[ijk-kk1],3) + ci1<TF>*std::pow(w[ijk    ],3) + ci2<TF>*std::pow(w[ijk+kk1],3) + ci3<TF>*std::pow(w[ijk+kk2],3))
+                                 + cg3<TF>*(ti0<TF>*std::pow(w[ijk-kk1],3) + ti1<TF>*std::pow(w[ijk    ],3) + ti2<TF>*std::pow(w[ijk+kk1],3) + ti3<TF>*std::pow(w[ijk+kk2],3)) ) * dzhi4[k];
     
-                uw_turb[k] -= ( ( cg0<TF>*( ( ci0<TF>*wx[ijk-kk3] + ci1<TF>*wx[ijk-kk2] + ci2<TF>*wx[ijk-kk1] + ci3<TF>*wx[ijk    ] ) * ( u[ijk-kk2] - umean[k-2] ) )
-                                + cg1<TF>*( ( ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1] ) * ( u[ijk-kk1] - umean[k-1] ) )
-                                + cg2<TF>*( ( ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2] ) * ( u[ijk    ] - umean[k  ] ) )
-                                + cg3<TF>*( ( ti0<TF>*wx[ijk-kk1] + ti1<TF>*wx[ijk    ] + ti2<TF>*wx[ijk+kk1] + ti3<TF>*wx[ijk+kk2] ) * ( u[ijk+kk1] - umean[k+1] ) ) )
-                              * dzhi4[k  ] );
+                uw_turb[ijk] = - ( ( cg0<TF>*( ( ci0<TF>*wx[ijk-kk3] + ci1<TF>*wx[ijk-kk2] + ci2<TF>*wx[ijk-kk1] + ci3<TF>*wx[ijk    ] ) * ( u[ijk-kk2] - umean[k-2] ) )
+                                   + cg1<TF>*( ( ci0<TF>*wx[ijk-kk2] + ci1<TF>*wx[ijk-kk1] + ci2<TF>*wx[ijk    ] + ci3<TF>*wx[ijk+kk1] ) * ( u[ijk-kk1] - umean[k-1] ) )
+                                   + cg2<TF>*( ( ci0<TF>*wx[ijk-kk1] + ci1<TF>*wx[ijk    ] + ci2<TF>*wx[ijk+kk1] + ci3<TF>*wx[ijk+kk2] ) * ( u[ijk    ] - umean[k  ] ) )
+                                   + cg3<TF>*( ( ti0<TF>*wx[ijk-kk1] + ti1<TF>*wx[ijk    ] + ti2<TF>*wx[ijk+kk1] + ti3<TF>*wx[ijk+kk2] ) * ( u[ijk+kk1] - umean[k+1] ) ) )
+                                 * dzhi4[k  ] );
             }
     }
-    */
 }
 
 template<typename TF>
@@ -500,13 +487,34 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold, {"mean"});
     stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold, {"mean"});
 
+    auto u2_turb = std::move(u2_shear);
+    auto v2_turb = std::move(v2_shear);
+    auto w2_turb = fields.get_tmp();
+    auto tke_turb = std::move(tke_shear);
+    auto uw_turb = std::move(uw_shear);
+
+    calc_tke_budget_turb(
+            u2_turb->fld.data(), v2_turb->fld.data(), w2_turb->fld.data(), tke_turb->fld.data(), uw_turb->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+            wx->fld.data(), wy->fld.data(),
+            umodel.data(), vmodel.data(),
+            gd.dzi4.data(), gd.dzhi4.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold, {"mean"});
+
     fields.release_tmp(wx);
     fields.release_tmp(wy);
-    fields.release_tmp(u2_shear);
-    fields.release_tmp(v2_shear);
-    fields.release_tmp(tke_shear);
-    fields.release_tmp(uw_shear);
-
+    fields.release_tmp(u2_turb);
+    fields.release_tmp(v2_turb);
+    fields.release_tmp(w2_turb);
+    fields.release_tmp(tke_turb);
+    fields.release_tmp(uw_turb);
     /*
     calc_tke_budget(fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data,
                     fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
