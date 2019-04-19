@@ -497,7 +497,7 @@ void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const in
     #pragma omp parallel for
     for (int k=0; k<gd.kcells; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;

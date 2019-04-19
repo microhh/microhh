@@ -107,10 +107,10 @@ namespace
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
     
-        // 2. CALCULATE THE SHEAR TERM u'w*dumean/dz
+        // CALCULATE THE SHEAR TERM u'w*dumean/dz
+
         // bottom boundary
         int k = kstart;
-
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -155,7 +155,6 @@ namespace
     
         // top boundary
         k = kend-1;
-    
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -183,7 +182,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    uw_shear[ijk] = -( std::pow(wx[ijk],2) * ( cg0<TF>*umean[k-2] + cg1<TF>*umean[k-1] + cg2<TF>*umean[k] + cg3<TF>*umean[k+1] ) ) * dzhi4[k];
+                    uw_shear[ijk] = -( std::pow(wx[ijk],2)
+                                  * ( cg0<TF>*umean[k-2] + cg1<TF>*umean[k-1] + cg2<TF>*umean[k] + cg3<TF>*umean[k+1] ) ) * dzhi4[k];
                 }
     }
    
@@ -458,7 +458,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     auto tke = fields.get_tmp();
 
     const TF no_offset = 0.;
-    const int no_threshold = 0;
+    const TF no_threshold = 0.;
 
     calc_ke(ke->fld.data(), tke->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
