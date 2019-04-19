@@ -553,22 +553,22 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk  = i + j*jj1 + k*kk1;
-                u2_visc[k]  += visc * ( cg0<TF>*((bg0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + bg1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + bg2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + bg3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k-1])
+                u2_visc[ijk] = visc * ( cg0<TF>*((bg0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + bg1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + bg2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + bg3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k-1])
                                       + cg1<TF>*((cg0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k  ])
                                       + cg2<TF>*((cg0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + cg3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2)) * dzhi4[k+1])
                                       + cg3<TF>*((cg0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + cg2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + cg3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                v2_visc[k]  += visc * ( cg0<TF>*((bg0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + bg1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + bg2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + bg3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2)) * dzhi4[k-1])
+                v2_visc[ijk] = visc * ( cg0<TF>*((bg0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + bg1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + bg2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + bg3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2)) * dzhi4[k-1])
                                       + cg1<TF>*((cg0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2)) * dzhi4[k  ])
                                       + cg2<TF>*((cg0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + cg3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2)) * dzhi4[k+1])
                                       + cg3<TF>*((cg0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + cg2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + cg3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                tke_visc[k] += 0.5 * visc * ( cg0<TF>*((bg0<TF>*std::pow(wz[ijk-kk2],2) + bg1<TF>*std::pow(wz[ijk-kk1],2) + bg2<TF>*std::pow(wz[ijk    ],2) + bg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k-1])
-                                            + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
-                                            + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
-                                            + cg3<TF>*((cg0<TF>*std::pow(wz[ijk    ],2) + cg1<TF>*std::pow(wz[ijk+kk1],2) + cg2<TF>*std::pow(wz[ijk+kk2],2) + cg3<TF>*std::pow(wz[ijk+kk3],2)) * dzhi4[k+2]) ) * dzi4[k];
+                tke_visc[ijk] = 0.5 * visc * ( cg0<TF>*((bg0<TF>*std::pow(wz[ijk-kk2],2) + bg1<TF>*std::pow(wz[ijk-kk1],2) + bg2<TF>*std::pow(wz[ijk    ],2) + bg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k-1])
+                                             + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
+                                             + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
+                                             + cg3<TF>*((cg0<TF>*std::pow(wz[ijk    ],2) + cg1<TF>*std::pow(wz[ijk+kk1],2) + cg2<TF>*std::pow(wz[ijk+kk2],2) + cg3<TF>*std::pow(wz[ijk+kk3],2)) * dzhi4[k+2]) ) * dzi4[k];
 
-                tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
+                tke_visc[ijk] += 0.5*(u2_visc[ijk] + v2_visc[ijk]);
             }
     
         // interior
@@ -578,22 +578,22 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    u2_visc[k]  += visc * ( cg0<TF>*((cg0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3<TF>*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
+                    u2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3<TF>*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
                                           + cg1<TF>*((cg0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k  ])
                                           + cg2<TF>*((cg0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + cg3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2)) * dzhi4[k+1])
                                           + cg3<TF>*((cg0<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg1<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + cg2<TF>*std::pow(u[ijk+kk2]-umean[k+2],2) + cg3<TF>*std::pow(u[ijk+kk3]-umean[k+3],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                    v2_visc[k]  += visc * ( cg0<TF>*((cg0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + cg1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg3<TF>*std::pow(v[ijk    ]-vmean[k  ],2)) * dzhi4[k-1])
+                    v2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + cg1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg3<TF>*std::pow(v[ijk    ]-vmean[k  ],2)) * dzhi4[k-1])
                                           + cg1<TF>*((cg0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2)) * dzhi4[k  ])
                                           + cg2<TF>*((cg0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + cg3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2)) * dzhi4[k+1])
                                           + cg3<TF>*((cg0<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg1<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + cg2<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2) + cg3<TF>*std::pow(v[ijk+kk3]-vmean[k+3],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                    tke_visc[k] += 0.5 * visc * ( cg0<TF>*((cg0<TF>*std::pow(wz[ijk-kk3],2) + cg1<TF>*std::pow(wz[ijk-kk2],2) + cg2<TF>*std::pow(wz[ijk-kk1],2) + cg3<TF>*std::pow(wz[ijk    ],2)) * dzhi4[k-1])
-                                                + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
-                                                + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
-                                                + cg3<TF>*((cg0<TF>*std::pow(wz[ijk    ],2) + cg1<TF>*std::pow(wz[ijk+kk1],2) + cg2<TF>*std::pow(wz[ijk+kk2],2) + cg3<TF>*std::pow(wz[ijk+kk3],2)) * dzhi4[k+2]) ) * dzi4[k];
-
-                    tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
+                    tke_visc[ijk] = 0.5 * visc * ( cg0<TF>*((cg0<TF>*std::pow(wz[ijk-kk3],2) + cg1<TF>*std::pow(wz[ijk-kk2],2) + cg2<TF>*std::pow(wz[ijk-kk1],2) + cg3<TF>*std::pow(wz[ijk    ],2)) * dzhi4[k-1])
+                                                 + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
+                                                 + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
+                                                 + cg3<TF>*((cg0<TF>*std::pow(wz[ijk    ],2) + cg1<TF>*std::pow(wz[ijk+kk1],2) + cg2<TF>*std::pow(wz[ijk+kk2],2) + cg3<TF>*std::pow(wz[ijk+kk3],2)) * dzhi4[k+2]) ) * dzi4[k];
+ 
+                    tke_visc[ijk] += 0.5*(u2_visc[ijk] + v2_visc[ijk]);
                 }
     
         // top boundary
@@ -603,22 +603,22 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                u2_visc[k]  += visc * ( cg0<TF>*((cg0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3<TF>*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
+                u2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3<TF>*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
                                       + cg1<TF>*((cg0<TF>*std::pow(u[ijk-kk2]-umean[k-2],2) + cg1<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg2<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg3<TF>*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k  ])
                                       + cg2<TF>*((cg0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + cg1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + cg2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + cg3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2)) * dzhi4[k+1])
                                       + cg3<TF>*((tg0<TF>*std::pow(u[ijk-kk1]-umean[k-1],2) + tg1<TF>*std::pow(u[ijk    ]-umean[k  ],2) + tg2<TF>*std::pow(u[ijk+kk1]-umean[k+1],2) + tg3<TF>*std::pow(u[ijk+kk2]-umean[k+2],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                v2_visc[k]  += visc * ( cg0<TF>*((cg0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + cg1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg3<TF>*std::pow(v[ijk    ]-vmean[k  ],2)) * dzhi4[k-1])
+                v2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(v[ijk-kk3]-vmean[k-3],2) + cg1<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg2<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg3<TF>*std::pow(v[ijk    ]-vmean[k  ],2)) * dzhi4[k-1])
                                       + cg1<TF>*((cg0<TF>*std::pow(v[ijk-kk2]-vmean[k-2],2) + cg1<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg2<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg3<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2)) * dzhi4[k  ])
                                       + cg2<TF>*((cg0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + cg1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + cg2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + cg3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2)) * dzhi4[k+1])
                                       + cg3<TF>*((tg0<TF>*std::pow(v[ijk-kk1]-vmean[k-1],2) + tg1<TF>*std::pow(v[ijk    ]-vmean[k  ],2) + tg2<TF>*std::pow(v[ijk+kk1]-vmean[k+1],2) + tg3<TF>*std::pow(v[ijk+kk2]-vmean[k+2],2)) * dzhi4[k+2]) ) * dzi4[k];
     
-                tke_visc[k] += 0.5 * visc * ( cg0<TF>*((cg0<TF>*std::pow(wz[ijk-kk3],2) + cg1<TF>*std::pow(wz[ijk-kk2],2) + cg2<TF>*std::pow(wz[ijk-kk1],2) + cg3<TF>*std::pow(wz[ijk    ],2)) * dzhi4[k-1])
-                                            + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
-                                            + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
-                                            + cg3<TF>*((tg0<TF>*std::pow(wz[ijk-kk1],2) + tg1<TF>*std::pow(wz[ijk    ],2) + tg2<TF>*std::pow(wz[ijk+kk1],2) + tg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+2]) ) * dzi4[k];
+                tke_visc[ijk] = 0.5 * visc * ( cg0<TF>*((cg0<TF>*std::pow(wz[ijk-kk3],2) + cg1<TF>*std::pow(wz[ijk-kk2],2) + cg2<TF>*std::pow(wz[ijk-kk1],2) + cg3<TF>*std::pow(wz[ijk    ],2)) * dzhi4[k-1])
+                                             + cg1<TF>*((cg0<TF>*std::pow(wz[ijk-kk2],2) + cg1<TF>*std::pow(wz[ijk-kk1],2) + cg2<TF>*std::pow(wz[ijk    ],2) + cg3<TF>*std::pow(wz[ijk+kk1],2)) * dzhi4[k  ])
+                                             + cg2<TF>*((cg0<TF>*std::pow(wz[ijk-kk1],2) + cg1<TF>*std::pow(wz[ijk    ],2) + cg2<TF>*std::pow(wz[ijk+kk1],2) + cg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+1])
+                                             + cg3<TF>*((tg0<TF>*std::pow(wz[ijk-kk1],2) + tg1<TF>*std::pow(wz[ijk    ],2) + tg2<TF>*std::pow(wz[ijk+kk1],2) + tg3<TF>*std::pow(wz[ijk+kk2],2)) * dzhi4[k+2]) ) * dzi4[k];
 
-                tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
+                tke_visc[ijk] += 0.5*(u2_visc[ijk] + v2_visc[ijk]);
             }
     
         // Calculate the viscous transport of vertical velocity variance and the fluxes.
@@ -631,13 +631,13 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_visc[k] += visc * ( bg0<TF>*((bg0<TF>*std::pow(w[ijk-kk1],2) + bg1<TF>*std::pow(w[ijk    ],2) + bg2<TF>*std::pow(w[ijk+kk1],2) + bg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k-1])
-                                     + bg1<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
-                                     + bg2<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1])
-                                     + bg3<TF>*((cg0<TF>*std::pow(w[ijk+kk1],2) + cg1<TF>*std::pow(w[ijk+kk2],2) + cg2<TF>*std::pow(w[ijk+kk3],2) + cg3<TF>*std::pow(w[ijk+kk4],2)) * dzi4[k+2]) ) * dzhi4bot;
+                w2_visc[ijk] = visc * ( bg0<TF>*((bg0<TF>*std::pow(w[ijk-kk1],2) + bg1<TF>*std::pow(w[ijk    ],2) + bg2<TF>*std::pow(w[ijk+kk1],2) + bg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k-1])
+                                      + bg1<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
+                                      + bg2<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1])
+                                      + bg3<TF>*((cg0<TF>*std::pow(w[ijk+kk1],2) + cg1<TF>*std::pow(w[ijk+kk2],2) + cg2<TF>*std::pow(w[ijk+kk3],2) + cg3<TF>*std::pow(w[ijk+kk4],2)) * dzi4[k+2]) ) * dzhi4bot;
     
     
-                uw_visc[k] += ( ( visc
+                uw_visc[ijk] = ( ( visc
                                 * ( bg0<TF>*( ( bg0<TF>*( uz[ijk        -kk1] * ( ci0<TF>*w[ijk-ii2    -kk1] + ci1<TF>*w[ijk-ii1    -kk1] + ci2<TF>*w[ijk        -kk1] + ci3<TF>*w[ijk+ii1    -kk1] ) )
                                           + bg1<TF>*( uz[ijk            ] * ( ci0<TF>*w[ijk-ii2        ] + ci1<TF>*w[ijk-ii1        ] + ci2<TF>*w[ijk            ] + ci3<TF>*w[ijk+ii1        ] ) )
                                           + bg2<TF>*( uz[ijk        +kk1] * ( ci0<TF>*w[ijk-ii2    +kk1] + ci1<TF>*w[ijk-ii1    +kk1] + ci2<TF>*w[ijk        +kk1] + ci3<TF>*w[ijk+ii1    +kk1] ) )
@@ -678,13 +678,13 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_visc[k] += visc * ( cg0<TF>*((bg0<TF>*std::pow(w[ijk-kk2],2) + bg1<TF>*std::pow(w[ijk-kk1],2) + bg2<TF>*std::pow(w[ijk    ],2) + bg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-2])
-                                     + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
-                                     + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
-                                     + cg3<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1]) ) * dzhi4[k];
+                w2_visc[ijk] = visc * ( cg0<TF>*((bg0<TF>*std::pow(w[ijk-kk2],2) + bg1<TF>*std::pow(w[ijk-kk1],2) + bg2<TF>*std::pow(w[ijk    ],2) + bg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-2])
+                                      + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
+                                      + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
+                                      + cg3<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1]) ) * dzhi4[k];
     
     
-                uw_visc[k] += ( ( visc
+                uw_visc[ijk] = ( ( visc
     
     
                                 * ( cg0<TF>*( ( bg0<TF>*( uz[ijk        -kk2] * ( ci0<TF>*w[ijk-ii2    -kk2] + ci1<TF>*w[ijk-ii1    -kk2] + ci2<TF>*w[ijk        -kk2] + ci3<TF>*w[ijk+ii1    -kk2] ) )
@@ -727,13 +727,13 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    w2_visc[k] += visc * ( cg0<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
-                                         + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
-                                         + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
-                                         + cg3<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1]) ) * dzhi4[k];
+                    w2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
+                                          + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
+                                          + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
+                                          + cg3<TF>*((cg0<TF>*std::pow(w[ijk    ],2) + cg1<TF>*std::pow(w[ijk+kk1],2) + cg2<TF>*std::pow(w[ijk+kk2],2) + cg3<TF>*std::pow(w[ijk+kk3],2)) * dzi4[k+1]) ) * dzhi4[k];
     
     
-                    uw_visc[k] += ( ( visc
+                    uw_visc[ijk] = ( ( visc
     
     
                                     * ( cg0<TF>*( ( cg0<TF>*( uz[ijk        -kk3] * ( ci0<TF>*w[ijk-ii2    -kk3] + ci1<TF>*w[ijk-ii1    -kk3] + ci2<TF>*w[ijk        -kk3] + ci3<TF>*w[ijk+ii1    -kk3] ) )
@@ -775,13 +775,13 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_visc[k] += visc * ( cg0<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
-                                     + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
-                                     + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
-                                     + cg3<TF>*((tg0<TF>*std::pow(w[ijk-kk1],2) + tg1<TF>*std::pow(w[ijk    ],2) + tg2<TF>*std::pow(w[ijk+kk1],2) + tg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k+1]) ) * dzhi4[k];
+                w2_visc[ijk] = visc * ( cg0<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
+                                      + cg1<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
+                                      + cg2<TF>*((cg0<TF>*std::pow(w[ijk-kk1],2) + cg1<TF>*std::pow(w[ijk    ],2) + cg2<TF>*std::pow(w[ijk+kk1],2) + cg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
+                                      + cg3<TF>*((tg0<TF>*std::pow(w[ijk-kk1],2) + tg1<TF>*std::pow(w[ijk    ],2) + tg2<TF>*std::pow(w[ijk+kk1],2) + tg3<TF>*std::pow(w[ijk+kk2],2)) * dzi4[k+1]) ) * dzhi4[k];
     
     
-                uw_visc[k] += ( ( visc
+                uw_visc[ijk] = ( ( visc
     
     
                                 * ( cg0<TF>*( ( cg0<TF>*( uz[ijk        -kk3] * ( ci0<TF>*w[ijk-ii2    -kk3] + ci1<TF>*w[ijk-ii1    -kk3] + ci2<TF>*w[ijk        -kk3] + ci3<TF>*w[ijk+ii1    -kk3] ) )
@@ -823,13 +823,13 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                w2_visc[k] += visc * ( tg0<TF>*((cg0<TF>*std::pow(w[ijk-kk4],2) + cg1<TF>*std::pow(w[ijk-kk3],2) + cg2<TF>*std::pow(w[ijk-kk2],2) + cg3<TF>*std::pow(w[ijk-kk1],2)) * dzi4[k-3])
-                                     + tg1<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
-                                     + tg2<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
-                                     + tg3<TF>*((tg0<TF>*std::pow(w[ijk-kk2],2) + tg1<TF>*std::pow(w[ijk-kk1],2) + tg2<TF>*std::pow(w[ijk    ],2) + tg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k  ]) ) * dzhi4top;
+                w2_visc[ijk] = visc * ( tg0<TF>*((cg0<TF>*std::pow(w[ijk-kk4],2) + cg1<TF>*std::pow(w[ijk-kk3],2) + cg2<TF>*std::pow(w[ijk-kk2],2) + cg3<TF>*std::pow(w[ijk-kk1],2)) * dzi4[k-3])
+                                      + tg1<TF>*((cg0<TF>*std::pow(w[ijk-kk3],2) + cg1<TF>*std::pow(w[ijk-kk2],2) + cg2<TF>*std::pow(w[ijk-kk1],2) + cg3<TF>*std::pow(w[ijk    ],2)) * dzi4[k-2])
+                                      + tg2<TF>*((cg0<TF>*std::pow(w[ijk-kk2],2) + cg1<TF>*std::pow(w[ijk-kk1],2) + cg2<TF>*std::pow(w[ijk    ],2) + cg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
+                                      + tg3<TF>*((tg0<TF>*std::pow(w[ijk-kk2],2) + tg1<TF>*std::pow(w[ijk-kk1],2) + tg2<TF>*std::pow(w[ijk    ],2) + tg3<TF>*std::pow(w[ijk+kk1],2)) * dzi4[k  ]) ) * dzhi4top;
     
     
-                uw_visc[k] += ( ( visc
+                uw_visc[ijk] += ( ( visc
     
     
                                 * ( tg0<TF>*( ( cg0<TF>*( uz[ijk        -kk4] * ( ci0<TF>*w[ijk-ii2    -kk4] + ci1<TF>*w[ijk-ii1    -kk4] + ci2<TF>*w[ijk        -kk4] + ci3<TF>*w[ijk+ii1    -kk4] ) )
@@ -1909,6 +1909,13 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
+    stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold, {"mean"});
+
+
     /*
     calc_tke_budget_pres(
             w2_pres->fld.data(), tke_pres->fld.data(), uw_pres->fld.data(),
@@ -1925,13 +1932,13 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.icells, gd.ijcells);
             */
 
-    fields.release_tmp(wx);
-    fields.release_tmp(wy);
-    fields.release_tmp(u2_turb);
-    fields.release_tmp(v2_turb);
-    fields.release_tmp(w2_pres);
-    fields.release_tmp(tke_pres);
-    fields.release_tmp(uw_pres);
+    fields.release_tmp(uz);
+    fields.release_tmp(wz);
+    fields.release_tmp(u2_visc);
+    fields.release_tmp(v2_visc);
+    fields.release_tmp(w2_visc);
+    fields.release_tmp(tke_visc);
+    fields.release_tmp(uw_visc);
 
     /*
     calc_tke_budget(fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data,
