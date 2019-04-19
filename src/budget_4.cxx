@@ -1646,36 +1646,41 @@ namespace
             }
     }
 
-    /*
     template<typename TF>
-    void calc_tke_budget_pres(
-            TF* restrict w2_pres, TF* restrict tke_pres, TF* restrict uw_pres,
-            // TF* restrict u2_visc, TF* restrict v2_visc, TF* restrict w2_visc, TF* restrict tke_visc, TF* restrict uw_visc,
-            // TF* restrict u2_diss, TF* restrict v2_diss, TF* restrict w2_diss, TF* restrict tke_diss, TF* restrict uw_diss,
-            // TF* restrict u2_rdstr, TF* restrict v2_rdstr, TF* restrict w2_rdstr, TF* restrict uw_rdstr,
+    void calc_tke_budget_rdstr(
+            TF* restrict u2_rdstr, TF* restrict v2_rdstr, TF* restrict w2_rdstr, TF* restrict uw_rdstr,
             const TF* restrict u, const TF* restrict v, const TF* restrict w, const TF* restrict p,
-            const TF* restrict wz, const TF* restrict uz,
             const TF* restrict umean, const TF* restrict vmean,
             const TF* restrict dzi4, const TF* restrict dzhi4,
-            const TF dx, const TF dy, const TF dzhi4bot, const TF dzhi4top,
-            const TF visc,
+            const TF dxi, const TF dyi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int ii3 = 3;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int jj3 = 3*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        const int kk3 = 3*ijcells;
     
         // 7. CALCULATE THE PRESSURE REDISTRIBUTION TERM
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    u2_rdstr [k] += 2.*(ci0<TF>*p[ijk-ii2] + ci1<TF>*p[ijk-ii1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+ii1])
+                    u2_rdstr[ijk] = 2.*(ci0<TF>*p[ijk-ii2] + ci1<TF>*p[ijk-ii1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+ii1])
                                   * ( cg0<TF>*((ci0<TF>*(u[ijk-ii3]-umean[k]) + ci1<TF>*(u[ijk-ii2]-umean[k]) + ci2<TF>*(u[ijk-ii1]-umean[k]) + ci3<TF>*(u[ijk    ]-umean[k])))
                                     + cg1<TF>*((ci0<TF>*(u[ijk-ii2]-umean[k]) + ci1<TF>*(u[ijk-ii1]-umean[k]) + ci2<TF>*(u[ijk    ]-umean[k]) + ci3<TF>*(u[ijk+ii1]-umean[k])))
                                     + cg2<TF>*((ci0<TF>*(u[ijk-ii1]-umean[k]) + ci1<TF>*(u[ijk    ]-umean[k]) + ci2<TF>*(u[ijk+ii1]-umean[k]) + ci3<TF>*(u[ijk+ii2]-umean[k])))
                                     + cg3<TF>*((ci0<TF>*(u[ijk    ]-umean[k]) + ci1<TF>*(u[ijk+ii1]-umean[k]) + ci2<TF>*(u[ijk+ii2]-umean[k]) + ci3<TF>*(u[ijk+ii3]-umean[k]))) ) * dxi;
-                    v2_rdstr [k] += 2.*(ci0<TF>*p[ijk-jj2] + ci1<TF>*p[ijk-jj1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+jj1])
+                    v2_rdstr[ijk] = 2.*(ci0<TF>*p[ijk-jj2] + ci1<TF>*p[ijk-jj1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+jj1])
                                   * ( cg0<TF>*((ci0<TF>*(v[ijk-jj3]-vmean[k]) + ci1<TF>*(v[ijk-jj2]-vmean[k]) + ci2<TF>*(v[ijk-jj1]-vmean[k]) + ci3<TF>*(v[ijk    ]-vmean[k])))
                                     + cg1<TF>*((ci0<TF>*(v[ijk-jj2]-vmean[k]) + ci1<TF>*(v[ijk-jj1]-vmean[k]) + ci2<TF>*(v[ijk    ]-vmean[k]) + ci3<TF>*(v[ijk+jj1]-vmean[k])))
                                     + cg2<TF>*((ci0<TF>*(v[ijk-jj1]-vmean[k]) + ci1<TF>*(v[ijk    ]-vmean[k]) + ci2<TF>*(v[ijk+jj1]-vmean[k]) + ci3<TF>*(v[ijk+jj2]-vmean[k])))
@@ -1684,15 +1689,15 @@ namespace
     
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    w2_rdstr[k] += 2.*(ci0<TF>*p[ijk-kk2] + ci1<TF>*p[ijk-kk1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+kk1])
-                                 * ( cg0<TF>*(ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ])
-                                   + cg1<TF>*(ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1])
-                                   + cg2<TF>*(ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2])
-                                   + cg3<TF>*(ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) ) * dzhi4[k];
+                    w2_rdstr[ijk] = 2.*(ci0<TF>*p[ijk-kk2] + ci1<TF>*p[ijk-kk1] + ci2<TF>*p[ijk] + ci3<TF>*p[ijk+kk1])
+                                  * ( cg0<TF>*(ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ])
+                                    + cg1<TF>*(ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1])
+                                    + cg2<TF>*(ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2])
+                                    + cg3<TF>*(ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) ) * dzhi4[k];
                 }
     
         for (int k=kstart; k<kend+1; ++k)
@@ -1701,15 +1706,14 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    uw_rdstr[k] += ( ( ci0<TF>*( ci0<TF>*p[ijk-ii2-kk2] + ci1<TF>*p[ijk-ii1-kk2] + ci2<TF>*p[ijk-kk2] + ci3<TF>*p[ijk+ii1-kk2] )
-                                     + ci1<TF>*( ci0<TF>*p[ijk-ii2-kk1] + ci1<TF>*p[ijk-ii1-kk1] + ci2<TF>*p[ijk-kk1] + ci3<TF>*p[ijk+ii1-kk1] )
-                                     + ci2<TF>*( ci0<TF>*p[ijk-ii2    ] + ci1<TF>*p[ijk-ii1    ] + ci2<TF>*p[ijk    ] + ci3<TF>*p[ijk+ii1    ] )
-                                     + ci3<TF>*( ci0<TF>*p[ijk-ii2+kk1] + ci1<TF>*p[ijk-ii1+kk1] + ci2<TF>*p[ijk+kk1] + ci3<TF>*p[ijk+ii1+kk1] ) )
+                    uw_rdstr[ijk] = ( ( ci0<TF>*( ci0<TF>*p[ijk-ii2-kk2] + ci1<TF>*p[ijk-ii1-kk2] + ci2<TF>*p[ijk-kk2] + ci3<TF>*p[ijk+ii1-kk2] )
+                                      + ci1<TF>*( ci0<TF>*p[ijk-ii2-kk1] + ci1<TF>*p[ijk-ii1-kk1] + ci2<TF>*p[ijk-kk1] + ci3<TF>*p[ijk+ii1-kk1] )
+                                      + ci2<TF>*( ci0<TF>*p[ijk-ii2    ] + ci1<TF>*p[ijk-ii1    ] + ci2<TF>*p[ijk    ] + ci3<TF>*p[ijk+ii1    ] )
+                                      + ci3<TF>*( ci0<TF>*p[ijk-ii2+kk1] + ci1<TF>*p[ijk-ii1+kk1] + ci2<TF>*p[ijk+kk1] + ci3<TF>*p[ijk+ii1+kk1] ) )
     
-                                   * ( ( ( cg0<TF>*( u[ijk-kk2] - umean[k-2] ) + cg1<TF>*( u[ijk-kk1] - umean[k-1] ) + cg2<TF>*( u[ijk] - umean[k] ) + cg3<TF>*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] ) + ( ( cg0<TF>*w[ijk-ii2] + cg1<TF>*w[ijk-ii1] + cg2<TF>*w[ijk] + cg3<TF>*w[ijk+ii1] ) * dxi ) ) );
+                                    * ( ( ( cg0<TF>*( u[ijk-kk2] - umean[k-2] ) + cg1<TF>*( u[ijk-kk1] - umean[k-1] ) + cg2<TF>*( u[ijk] - umean[k] ) + cg3<TF>*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] ) + ( ( cg0<TF>*w[ijk-ii2] + cg1<TF>*w[ijk-ii1] + cg2<TF>*w[ijk] + cg3<TF>*w[ijk+ii1] ) * dxi ) ) );
                 }
     }
-    */
 }
 
 template<typename TF>
@@ -1793,6 +1797,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
         stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh");
     }
 
+    /*
     if (thermo.get_switch() != "0")
     {
         // Add the profiles for the potential energy budget to the statistics.
@@ -1812,6 +1817,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
         // stats.add_prof("bpe_visc", "Viscous transport term in background potential energy budget", "m2 s-3", "z");
         // stats.add_prof("bpe_diss", "Dissipation term in background potential energy budget", "m2 s-3", "z");
     }
+    */
 }
 
 template<typename TF>
@@ -1957,40 +1963,35 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold, {"mean"});
     stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold, {"mean"});
 
-    /*
-    calc_tke_budget_pres(
-            w2_pres->fld.data(), tke_pres->fld.data(), uw_pres->fld.data(),
-            // u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
-            // u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
-            // u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(), uw_rdstr->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), fields.mp.at("p")->fld.data(),
-            wz->fld.data(), uz->fld.data(),
+    auto u2_rdstr = std::move(u2_diss);
+    auto v2_rdstr = std::move(v2_diss);
+    auto w2_rdstr = std::move(w2_diss);
+    auto uw_rdstr = std::move(uw_diss);
+
+    calc_tke_budget_rdstr(
+            u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(), uw_rdstr->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
             umodel.data(), vmodel.data(),
             gd.dzi4.data(), gd.dzhi4.data(),
-            gd.dx, gd.dy,
-            fields.visc,
+            gd.dxi, gd.dyi,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
-            */
 
+    stats.calc_stats("u2_rdstr", *u2_rdstr, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("v2_rdstr", *v2_rdstr, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("w2_rdstr", *w2_rdstr, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("uw_rdstr", *uw_rdstr, no_offset, no_threshold, {"mean"});
+
+    // Release the tmp arrays that are still in use.
     fields.release_tmp(uz);
     fields.release_tmp(wz);
-    fields.release_tmp(u2_diss);
-    fields.release_tmp(v2_diss);
-    fields.release_tmp(w2_diss);
+    fields.release_tmp(u2_rdstr);
+    fields.release_tmp(v2_rdstr);
+    fields.release_tmp(w2_rdstr);
     fields.release_tmp(tke_diss);
-    fields.release_tmp(uw_diss);
+    fields.release_tmp(uw_rdstr);
 
     /*
-    calc_tke_budget(fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data,
-                    fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
-                    umodel, vmodel,
-                    m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data, m->profs["uw_visc"].data,
-                    m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data,
-                    m->profs["w2_pres"].data, m->profs["tke_pres"].data, m->profs["uw_pres"].data,
-                    m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data, m->profs["uw_rdstr"].data,
-                    grid.dzi4, grid.dzhi4, fields.visc);
-
     // calculate the buoyancy term of the TKE budget
     if (thermo.get_switch() != "0")
     {
