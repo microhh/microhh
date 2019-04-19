@@ -105,7 +105,6 @@ namespace
         const int jj1 = 1*icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
-        const int kk3 = 3*ijcells;
     
         // CALCULATE THE SHEAR TERM u'w*dumean/dz
 
@@ -342,14 +341,10 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
-        const int ii3 = 3;
         const int jj1 = 1*icells;
-        const int jj2 = 2*icells;
-        const int jj3 = 3*icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
-        const int kk4 = 4*ijcells;
     
         // CALCULATE THE PRESSURE TRANSPORT TERM
         // bottom boundary
@@ -471,10 +466,7 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
-        const int ii3 = 3;
         const int jj1 = 1*icells;
-        const int jj2 = 2*icells;
-        const int jj3 = 3*icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
