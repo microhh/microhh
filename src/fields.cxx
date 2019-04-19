@@ -432,6 +432,9 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 template<typename TF>
 void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 {
+    if (tmp == nullptr)
+        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+
     atmp.push_back(std::move(tmp));
 }
 
