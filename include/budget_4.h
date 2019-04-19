@@ -25,6 +25,8 @@
 
 #include "budget.h"
 
+template<typename> class Field3d_operators;
+
 template<typename TF>
 class Budget_4 : public Budget<TF>
 {
@@ -45,10 +47,12 @@ class Budget_4 : public Budget<TF>
         using Budget<TF>::advec;
         using Budget<TF>::force;
 
-        /*
-        double* umodel;
-        double* vmodel;
+        Field3d_operators<TF> field3d_operators;
 
+        std::vector<TF> umodel;
+        std::vector<TF> vmodel;
+
+        /*
         void calc_kinetic_energy(double*, double*, const double*, const double*, const double*, const double*, const double*, const double, const double);
 
         void calc_advection_terms(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*,

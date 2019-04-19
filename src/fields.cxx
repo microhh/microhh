@@ -469,9 +469,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, stat_op_def);
 
     for (auto& it : sp)
-    {
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold, stat_op_def);
-    }
+
     stats.calc_stats("p", *sd["p"], no_offset, no_threshold, stat_op_p);
 
     // Calculate covariances
