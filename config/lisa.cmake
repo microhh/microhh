@@ -12,7 +12,7 @@ set(ENV{CC}  gcc) # C compiler for serial build
 set(ENV{CXX} g++) # C++ compiler for serial build
 
 # set(USER_CXX_FLAGS " -std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0")
-set(USER_CXX_FLAGS " -std=c++14")
+set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
 set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
@@ -29,7 +29,7 @@ if(USECUDA)
    # set(LIBS ${LIBS} -rdynamic /hpc/sw/cuda/8.0.44/lib64/libcufft.so)
    set(LIBS ${LIBS} -rdynamic libcufft.so)
    set(USER_CUDA_NVCC_FLAGS "-arch=sm_70")
-  list(APPEND CUDA_NVCC_FLAGS "-std=c++14")
+  list(APPEND CUDA_NVCC_FLAGS " -std=c++14")
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
