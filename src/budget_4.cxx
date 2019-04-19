@@ -458,15 +458,11 @@ namespace
                 }
     }
 
-    /*
     template<typename TF>
-    void calc_tke_budget_pres(
-            TF* restrict w2_pres, TF* restrict tke_pres, TF* restrict uw_pres,
-            // TF* restrict u2_visc, TF* restrict v2_visc, TF* restrict w2_visc, TF* restrict tke_visc, TF* restrict uw_visc,
-            // TF* restrict u2_diss, TF* restrict v2_diss, TF* restrict w2_diss, TF* restrict tke_diss, TF* restrict uw_diss,
-            // TF* restrict u2_rdstr, TF* restrict v2_rdstr, TF* restrict w2_rdstr, TF* restrict uw_rdstr,
-            const TF* restrict u, const TF* restrict v, const TF* restrict w, const TF* restrict p,
-            const TF* restrict wz, const TF* restrict uz,
+    void calc_tke_budget_visc(
+            TF* restrict u2_visc, TF* restrict v2_visc, TF* restrict w2_visc, TF* restrict tke_visc, TF* restrict uw_visc,
+            TF* restrict wz, TF* restrict uz,
+            const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict umean, const TF* restrict vmean,
             const TF* restrict dzi4, const TF* restrict dzhi4,
             const TF dx, const TF dy, const TF dzhi4bot, const TF dzhi4top,
@@ -475,7 +471,21 @@ namespace
             const int icells, const int ijcells)
     {
         using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int ii3 = 3;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int jj3 = 3*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        const int kk3 = 3*ijcells;
+        const int kk4 = 4*ijcells;
     
+        const TF dxi = 1./dx;
+        const TF dyi = 1./dy;
+ 
         // 5. CALCULATE THE VISCOUS TRANSPORT TERM
         // first, interpolate the vertical velocity to the scalar levels using temporary array wz
         for (int k=kstart; k<kend; ++k)
@@ -508,7 +518,7 @@ namespace
             }
     
         // first, interpolate the horizontal velocity to the flux levels using temporary array uz
-        k = kstart-1;
+        int k = kstart-1;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -854,7 +864,24 @@ namespace
                               * dzhi4top );
     
             }
-    
+    }
+
+    /* 
+    template<typename TF>
+    void calc_tke_budget_pres(
+            TF* restrict w2_pres, TF* restrict tke_pres, TF* restrict uw_pres,
+            // TF* restrict u2_visc, TF* restrict v2_visc, TF* restrict w2_visc, TF* restrict tke_visc, TF* restrict uw_visc,
+            // TF* restrict u2_diss, TF* restrict v2_diss, TF* restrict w2_diss, TF* restrict tke_diss, TF* restrict uw_diss,
+            // TF* restrict u2_rdstr, TF* restrict v2_rdstr, TF* restrict w2_rdstr, TF* restrict uw_rdstr,
+            const TF* restrict u, const TF* restrict v, const TF* restrict w, const TF* restrict p,
+            const TF* restrict wz, const TF* restrict uz,
+            const TF* restrict umean, const TF* restrict vmean,
+            const TF* restrict dzi4, const TF* restrict dzhi4,
+            const TF dx, const TF dy, const TF dzhi4bot, const TF dzhi4top,
+            const TF visc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
         // 6. CALCULATE THE DISSIPATION TERM
     
         // bottom boundary
@@ -1861,6 +1888,26 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold, {"mean"});
     stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold, {"mean"});
     stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold, {"mean"});
+
+    auto u2_visc  = std::move(u2_turb);
+    auto v2_visc  = std::move(v2_turb);
+    auto w2_visc  = std::move(w2_pres);
+    auto tke_visc = std::move(tke_pres);
+    auto uw_visc  = std::move(uw_pres);
+
+    auto wz = std::move(wx);
+    auto uz = std::move(wy);
+
+    calc_tke_budget_visc(
+            u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
+            wz->fld.data(), uz->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+            umodel.data(), vmodel.data(),
+            gd.dzi4.data(), gd.dzhi4.data(),
+            gd.dx, gd.dy, gd.dzhi4bot, gd.dzhi4top,
+            fields.visc,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     /*
     calc_tke_budget_pres(
