@@ -1059,10 +1059,10 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    get_thermo_field(*output, "b",false, true);
+    get_thermo_field(*output, "b", false, true);
     column.calc_column("b", output->fld.data(), no_offset);
 
-    get_thermo_field(*output, "ql",false, true);
+    get_thermo_field(*output, "ql", false, true);
     column.calc_column("ql", output->fld.data(), no_offset);
 
     fields.release_tmp(output);

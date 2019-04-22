@@ -203,7 +203,7 @@ namespace
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
 
-        // 3. CALCULATE TURBULENT FLUXES
+        // CALCULATE TURBULENT FLUXES
         // bottom boundary
         int k = kstart;
     
@@ -472,7 +472,7 @@ namespace
         const int kk3 = 3*ijcells;
         const int kk4 = 4*ijcells;
     
-        // 5. CALCULATE THE VISCOUS TRANSPORT TERM
+        // CALCULATE THE VISCOUS TRANSPORT TERM
         // first, interpolate the vertical velocity to the scalar levels using temporary array wz
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -1660,7 +1660,7 @@ namespace
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
     
-        // 7. CALCULATE THE PRESSURE REDISTRIBUTION TERM
+        // CALCULATE THE PRESSURE REDISTRIBUTION TERM
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1704,6 +1704,49 @@ namespace
                                       + ci3<TF>*( ci0<TF>*p[ijk-ii2+kk1] + ci1<TF>*p[ijk-ii1+kk1] + ci2<TF>*p[ijk+kk1] + ci3<TF>*p[ijk+ii1+kk1] ) )
     
                                     * ( ( ( cg0<TF>*( u[ijk-kk2] - umean[k-2] ) + cg1<TF>*( u[ijk-kk1] - umean[k-1] ) + cg2<TF>*( u[ijk] - umean[k] ) + cg3<TF>*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] ) + ( ( cg0<TF>*w[ijk-ii2] + cg1<TF>*w[ijk-ii1] + cg2<TF>*w[ijk] + cg3<TF>*w[ijk+ii1] ) * dxi ) ) );
+                }
+    }
+
+    template<typename TF>
+    void calc_tke_budget_buoy(
+            TF* restrict w2_buoy, TF* restrict tke_buoy, TF* restrict uw_buoy,
+            const TF* restrict u, const TF* restrict w, const TF* restrict b,
+            const TF* restrict umean, const TF* restrict bmean,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+    
+        // CALCULATE THE BUOYANCY TERM.
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    tke_buoy[ijk] = (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2])*( b[ijk] - bmean[k] );
+                }
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    w2_buoy[ijk] = 2.*(ci0<TF>*b[ijk-kk2] + ci1<TF>*b[ijk-kk1] + ci2<TF>*b[ijk] + ci3<TF>*b[ijk+kk1])*w[ijk];
+
+                    uw_buoy[ijk] = ( ( ci0<TF>*( u[ijk-kk2] - umean[k-2] ) + ci1<TF>*( u[ijk-kk1] - umean[k-1] ) + ci2<TF>*( u[ijk    ] - umean[k  ] ) + ci3<TF>*( u[ijk+kk1] - umean[k+1] ) )
+
+                                   * ( ci0<TF>*( ci0<TF>*( b[ijk-ii2-kk2] - bmean[k-2] ) + ci1<TF>*( b[ijk-ii1-kk2] - bmean[k-2] ) + ci2<TF>*( b[ijk    -kk2] - bmean[k-2] ) + ci3<TF>*( b[ijk+ii1-kk2] - bmean[k-2] ) )
+                                     + ci1<TF>*( ci0<TF>*( b[ijk-ii2-kk1] - bmean[k-1] ) + ci1<TF>*( b[ijk-ii1-kk1] - bmean[k-1] ) + ci2<TF>*( b[ijk    -kk1] - bmean[k-1] ) + ci3<TF>*( b[ijk+ii1-kk1] - bmean[k-1] ) )
+                                     + ci2<TF>*( ci0<TF>*( b[ijk-ii2    ] - bmean[k  ] ) + ci1<TF>*( b[ijk-ii1    ] - bmean[k  ] ) + ci2<TF>*( b[ijk        ] - bmean[k  ] ) + ci3<TF>*( b[ijk+ii1    ] - bmean[k  ] ) )
+                                     + ci3<TF>*( ci0<TF>*( b[ijk-ii2+kk1] - bmean[k+1] ) + ci1<TF>*( b[ijk-ii1+kk1] - bmean[k+1] ) + ci2<TF>*( b[ijk    +kk1] - bmean[k+1] ) + ci3<TF>*( b[ijk+ii1+kk1] - bmean[k+1] ) ) ) );
                 }
     }
 }
@@ -1983,20 +2026,38 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(tke_diss);
     fields.release_tmp(uw_rdstr);
 
-    /*
-    // calculate the buoyancy term of the TKE budget
+    // Calculate the buoyancy term of the TKE budget.
     if (thermo.get_switch() != "0")
     {
-        // store the buoyancy in the tmp1 field
-        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b", true);
+        auto b = fields.get_tmp();
 
-        grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);
-        grid.calc_mean(fields.sd["p"]->datamean, fields.sd["p"]->data, grid.kcells);
+        // Compute the buoyancy, cyclic is true, and stat is true.
+        thermo.get_thermo_field(*b, "b", true, true);
 
-        calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
-                             umodel, fields.atmp["tmp1"]->datamean,
-                             m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
+        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+        field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), b->fld.data());
 
+        auto w2_buoy  = fields.get_tmp();
+        auto tke_buoy = fields.get_tmp();
+        auto uw_buoy  = fields.get_tmp();
+
+        calc_tke_budget_buoy(
+                w2_buoy->fld.data(), tke_buoy->fld.data(), uw_buoy->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), b->fld.data(),
+                umodel.data(), b->fld_mean.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold, {"mean"});
+
+        fields.release_tmp(b);
+        fields.release_tmp(w2_buoy);
+        fields.release_tmp(tke_buoy);
+        fields.release_tmp(uw_buoy);
+
+        /*
         calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
                        fields.atmp["tmp1"]->datamean,
                        m->profs["b2_shear"].data, m->profs["b2_turb"].data, m->profs["b2_visc"].data, m->profs["b2_diss"].data,
@@ -2009,8 +2070,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                        m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data, m->profs["bw_pres"].data,
                        grid.dzi4, grid.dzhi4,
                        fields.visc);
+                       */
     }
 
+    /*
     // calculate the potential energy budget
     if (thermo.get_switch() != "0")
     {
