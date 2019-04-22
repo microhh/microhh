@@ -2029,555 +2029,497 @@ namespace
             }
     }
 
-    /*
-    void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b, double* restrict bz,
-                                  double* restrict pmean, double* restrict bmean,
-                                  double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
-                                  double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss, double* restrict bw_pres,
-                                  double* restrict dzi4, double* restrict dzhi4,
-                                  const double visc)
+    template<typename TF>
+    void calc_bw_budget(
+            TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
+            TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
+            const TF* restrict bz,
+            const TF* restrict w, const TF* restrict p, const TF* restrict b,
+            const TF* restrict pmean, const TF* restrict bmean,
+            const TF* restrict dzi4, const TF* restrict dzhi4,
+            const TF dxi, const TF dyi, const TF dzhi4bot, const TF dzhi4top,
+            const TF visc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells)
     {
+        using namespace Finite_difference::O4;
+
         const int ii1 = 1;
         const int ii2 = 2;
         const int ii3 = 3;
-        const int jj1 = 1*grid.icells;
-        const int jj2 = 2*grid.icells;
-        const int jj3 = 3*grid.icells;
-        const int kk1 = 1*grid.ijcells;
-        const int kk2 = 2*grid.ijcells;
-        const int kk3 = 3*grid.ijcells;
-        const int kk4 = 4*grid.ijcells;
-
-        const double n = grid.itot*grid.jtot;
-
-        const double dxi = grid.dxi;
-        const double dyi = grid.dyi;
-
-        const double dzhi4bot = grid.dzhi4bot;
-        const double dzhi4top = grid.dzhi4top;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int jj3 = 3*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        const int kk3 = 3*ijcells;
+        const int kk4 = 4*ijcells;
 
         // 0. Create an interpolated field for b on the cell face.
-        int k = grid.kstart-1;
-        for (int j=0; j<grid.jcells; ++j)
+        int k = kstart-1;
+        for (int j=0; j<jcells; ++j)
             #pragma ivdep
-            for (int i=0; i<grid.icells; ++i)
+            for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bz[ijk] = ( bi0*( b[ijk-kk1] - bmean[k-1] ) + bi1*( b[ijk    ] - bmean[k  ] ) + bi2*( b[ijk+kk1] - bmean[k+1] ) + bi3*( b[ijk+kk2] - bmean[k+2] ) );
+                bz[ijk] = ( bi0<TF>*( b[ijk-kk1] - bmean[k-1] ) + bi1<TF>*( b[ijk    ] - bmean[k  ] ) + bi2<TF>*( b[ijk+kk1] - bmean[k+1] ) + bi3<TF>*( b[ijk+kk2] - bmean[k+2] ) );
             }
 
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-            for (int j=0; j<grid.jcells; ++j)
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=0; j<jcells; ++j)
                 #pragma ivdep
-                for (int i=0; i<grid.icells; ++i)
+                for (int i=0; i<icells; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    bz[ijk] = ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) );
+                    bz[ijk] = ( ci0<TF>*( b[ijk-kk2] - bmean[k-2] ) + ci1<TF>*( b[ijk-kk1] - bmean[k-1] ) + ci2<TF>*( b[ijk    ] - bmean[k  ] ) + ci3<TF>*( b[ijk+kk1] - bmean[k+1] ) );
                 }
 
-        k = grid.kend+1;
-        for (int j=0; j<grid.jcells; ++j)
+        k = kend+1;
+        for (int j=0; j<jcells; ++j)
             #pragma ivdep
-            for (int i=0; i<grid.icells; ++i)
+            for (int i=0; i<icells; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bz[ijk] = ( ti0*( b[ijk-kk3] - bmean[k-3] ) + ti1*( b[ijk-kk2] - bmean[k-2] ) + ti2*( b[ijk-kk1] - bmean[k-1] ) + ti3*( b[ijk    ] - bmean[k  ] ) );
+                bz[ijk] = ( ti0<TF>*( b[ijk-kk3] - bmean[k-3] ) + ti1<TF>*( b[ijk-kk2] - bmean[k-2] ) + ti2<TF>*( b[ijk-kk1] - bmean[k-1] ) + ti3<TF>*( b[ijk    ] - bmean[k  ] ) );
             }
 
 
         // 1. CALCULATE THE GRADIENT PRODUCTION TERM
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-        {
-            bw_shear[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    bw_shear[k] -= ( ( std::pow( w[ijk], 2 ) * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] );
+                    bw_shear[k] -= ( ( std::pow( w[ijk], 2 ) * ( cg0<TF>*bmean[k-2] + cg1<TF>*bmean[k-1] + cg2<TF>*bmean[k  ] + cg3<TF>*bmean[k+1] ) ) * dzhi4[k] );
                 }
-        }
-
 
         // 2. CALCULATE THE TURBULENT TRANSPORT TERM
-        k = grid.kstart;
-        bw_turb[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_turb[k] -= ( ( bg0*( std::pow( ( bi0*w[ijk-kk1] + bi1*w[ijk    ] + bi2*w[ijk+kk1] + bi3*w[ijk+kk2] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
-                                + bg1*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
-                                + bg2*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) )
-                                + bg3*( std::pow( ( ci0*w[ijk+kk1] + ci1*w[ijk+kk2] + ci2*w[ijk+kk3] + ci3*w[ijk+kk4] ), 2 ) * ( b[ijk+kk2] - bmean[k+2] ) ) )
+                bw_turb[k] -= ( ( bg0<TF>*( std::pow( ( bi0<TF>*w[ijk-kk1] + bi1<TF>*w[ijk    ] + bi2<TF>*w[ijk+kk1] + bi3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                + bg1<TF>*( std::pow( ( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                                + bg2<TF>*( std::pow( ( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) )
+                                + bg3<TF>*( std::pow( ( ci0<TF>*w[ijk+kk1] + ci1<TF>*w[ijk+kk2] + ci2<TF>*w[ijk+kk3] + ci3<TF>*w[ijk+kk4] ), 2 ) * ( b[ijk+kk2] - bmean[k+2] ) ) )
 
                               * dzhi4bot );
             }
 
-        k = grid.kstart+1;
-        bw_turb[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_turb[k] -= ( ( cg0*( std::pow( ( bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
-                                + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
-                                + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
-                                + cg3*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+                bw_turb[k] -= ( ( cg0<TF>*( std::pow( ( bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                                + cg1<TF>*( std::pow( ( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                + cg2<TF>*( std::pow( ( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                                + cg3<TF>*( std::pow( ( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
 
                               * dzhi4[k] );
             }
 
-        for (int k=grid.kstart+2; k<grid.kend-1; ++k)
-        {
-            bw_turb[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart+2; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    bw_turb[k] -= ( ( cg0*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
-                                    + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
-                                    + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
-                                    + cg3*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+                    bw_turb[k] -= ( ( cg0<TF>*( std::pow( ( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                                    + cg1<TF>*( std::pow( ( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                    + cg2<TF>*( std::pow( ( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                                    + cg3<TF>*( std::pow( ( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                   * dzhi4[k] );
                 }
-        }
 
-        k = grid.kend-1;
-        bw_turb[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_turb[k] -= ( ( cg0*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
-                                + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
-                                + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
-                                + cg3*( std::pow( ( ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+                bw_turb[k] -= ( ( cg0<TF>*( std::pow( ( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                                + cg1<TF>*( std::pow( ( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                + cg2<TF>*( std::pow( ( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                                + cg3<TF>*( std::pow( ( ti0<TF>*w[ijk-kk1] + ti1<TF>*w[ijk    ] + ti2<TF>*w[ijk+kk1] + ti3<TF>*w[ijk+kk2] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
 
                               * dzhi4[k] );
             }
 
-        k = grid.kend;
-        bw_turb[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_turb[k] -= ( ( tg0*( std::pow( ( ci0*w[ijk-kk4] + ci1*w[ijk-kk3] + ci2*w[ijk-kk2] + ci3*w[ijk-kk1] ), 2 ) * ( b[ijk-kk3] - bmean[k-3] ) )
-                                + tg1*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
-                                + tg2*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
-                                + tg3*( std::pow( ( ti0*w[ijk-kk2] + ti1*w[ijk-kk1] + ti2*w[ijk    ] + ti3*w[ijk+kk1] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) ) )
+                bw_turb[k] -= ( ( tg0<TF>*( std::pow( ( ci0<TF>*w[ijk-kk4] + ci1<TF>*w[ijk-kk3] + ci2<TF>*w[ijk-kk2] + ci3<TF>*w[ijk-kk1] ), 2 ) * ( b[ijk-kk3] - bmean[k-3] ) )
+                                + tg1<TF>*( std::pow( ( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                                + tg2<TF>*( std::pow( ( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                + tg3<TF>*( std::pow( ( ti0<TF>*w[ijk-kk2] + ti1<TF>*w[ijk-kk1] + ti2<TF>*w[ijk    ] + ti3<TF>*w[ijk+kk1] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) ) )
 
                               * dzhi4top );
             }
 
 
         // 3. CALCULATE THE VISCOUS TRANSPORT TERM
-        k = grid.kstart;
-        bw_visc[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_visc[k] += ( ( visc
 
-                                * ( bg0*( ( bg0*( w[ijk-kk1] * bz[ijk-kk1] ) + bg1*( w[ijk    ] * bz[ijk    ] ) + bg2*( w[ijk+kk1] * bz[ijk+kk1] ) + bg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k-1] )
-                                  + bg1*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
-                                  + bg2*( ( cg0*( w[ijk    ] * bz[ijk    ] ) + cg1*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] )
-                                  + bg3*( ( cg0*( w[ijk+kk1] * bz[ijk+kk1] ) + cg1*( w[ijk+kk2] * bz[ijk+kk2] ) + cg2*( w[ijk+kk3] * bz[ijk+kk3] ) + cg3*( w[ijk+kk4] * bz[ijk+kk4] ) ) * dzi4[k+2] ) ) )
+                                * ( bg0<TF>*( ( bg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + bg1<TF>*( w[ijk    ] * bz[ijk    ] ) + bg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + bg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k-1] )
+                                  + bg1<TF>*( ( cg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1<TF>*( w[ijk    ] * bz[ijk    ] ) + cg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+                                  + bg2<TF>*( ( cg0<TF>*( w[ijk    ] * bz[ijk    ] ) + cg1<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3<TF>*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] )
+                                  + bg3<TF>*( ( cg0<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg1<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) + cg2<TF>*( w[ijk+kk3] * bz[ijk+kk3] ) + cg3<TF>*( w[ijk+kk4] * bz[ijk+kk4] ) ) * dzi4[k+2] ) ) )
 
                               * dzhi4bot );
             }
 
-        k = grid.kstart+1;
-        bw_visc[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_visc[k] += ( ( visc
 
-                                * ( cg0*( ( bg0*( w[ijk-kk2] * bz[ijk-kk2] ) + bg1*( w[ijk-kk1] * bz[ijk-kk1] ) + bg2*( w[ijk    ] * bz[ijk    ] ) + bg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-2] )
-                                  + cg1*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
-                                  + cg2*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
-                                  + cg3*( ( cg0*( w[ijk    ] * bz[ijk    ] ) + cg1*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
+                                * ( cg0<TF>*( ( bg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + bg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + bg2<TF>*( w[ijk    ] * bz[ijk    ] ) + bg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-2] )
+                                  + cg1<TF>*( ( cg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2<TF>*( w[ijk    ] * bz[ijk    ] ) + cg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+                                  + cg2<TF>*( ( cg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1<TF>*( w[ijk    ] * bz[ijk    ] ) + cg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+                                  + cg3<TF>*( ( cg0<TF>*( w[ijk    ] * bz[ijk    ] ) + cg1<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3<TF>*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
 
                               * dzhi4[k] );
             }
 
-        for (int k=grid.kstart+2; k<grid.kend-1; ++k)
-        {
-            bw_visc[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart+2; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     bw_visc[k] += ( ( visc
 
-                                    * ( cg0*( ( cg0*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
-                                      + cg1*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
-                                      + cg2*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
-                                      + cg3*( ( cg0*( w[ijk    ] * bz[ijk    ] ) + cg1*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
+                                    * ( cg0<TF>*( ( cg0<TF>*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3<TF>*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
+                                      + cg1<TF>*( ( cg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2<TF>*( w[ijk    ] * bz[ijk    ] ) + cg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+                                      + cg2<TF>*( ( cg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1<TF>*( w[ijk    ] * bz[ijk    ] ) + cg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+                                      + cg3<TF>*( ( cg0<TF>*( w[ijk    ] * bz[ijk    ] ) + cg1<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3<TF>*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
 
                                   * dzhi4[k] );
                 }
-        }
 
-        k = grid.kend-1;
-        bw_visc[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_visc[k] += ( ( visc
 
-                                * ( cg0*( ( cg0*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
-                                  + cg1*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
-                                  + cg2*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
-                                  + cg3*( ( tg0*( w[ijk-kk1] * bz[ijk-kk1] ) + tg1*( w[ijk    ] * bz[ijk    ] ) + tg2*( w[ijk+kk1] * bz[ijk+kk1] ) + tg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k+1] ) ) )
+                                * ( cg0<TF>*( ( cg0<TF>*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3<TF>*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
+                                  + cg1<TF>*( ( cg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2<TF>*( w[ijk    ] * bz[ijk    ] ) + cg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+                                  + cg2<TF>*( ( cg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1<TF>*( w[ijk    ] * bz[ijk    ] ) + cg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+                                  + cg3<TF>*( ( tg0<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + tg1<TF>*( w[ijk    ] * bz[ijk    ] ) + tg2<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) + tg3<TF>*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k+1] ) ) )
 
                               * dzhi4[k] );
             }
 
-        k = grid.kend;
-        bw_visc[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_visc[k] += ( ( visc
 
-                                * ( tg0*( ( cg0*( w[ijk-kk4] * bz[ijk-kk4] ) + cg1*( w[ijk-kk3] * bz[ijk-kk3] ) + cg2*( w[ijk-kk2] * bz[ijk-kk2] ) + cg3*( w[ijk-kk1] * bz[ijk-kk1] ) ) * dzi4[k-3] )
-                                  + tg1*( ( cg0*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
-                                  + tg2*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
-                                  + tg3*( ( tg0*( w[ijk-kk2] * bz[ijk-kk2] ) + tg1*( w[ijk-kk1] * bz[ijk-kk1] ) + tg2*( w[ijk    ] * bz[ijk    ] ) + tg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k  ] ) ) )
+                                * ( tg0<TF>*( ( cg0<TF>*( w[ijk-kk4] * bz[ijk-kk4] ) + cg1<TF>*( w[ijk-kk3] * bz[ijk-kk3] ) + cg2<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg3<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) ) * dzi4[k-3] )
+                                  + tg1<TF>*( ( cg0<TF>*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3<TF>*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
+                                  + tg2<TF>*( ( cg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2<TF>*( w[ijk    ] * bz[ijk    ] ) + cg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+                                  + tg3<TF>*( ( tg0<TF>*( w[ijk-kk2] * bz[ijk-kk2] ) + tg1<TF>*( w[ijk-kk1] * bz[ijk-kk1] ) + tg2<TF>*( w[ijk    ] * bz[ijk    ] ) + tg3<TF>*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k  ] ) ) )
 
                               * dzhi4top );
             }
 
-
         // 4. CALCULATE THE BUOYANCY TERM
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-        {
-            bw_buoy[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     bw_buoy[k] += std::pow( bz[ijk], 2 );
                 }
-        }
 
         // 5. CALCULATE THE REDISTRIBUTION TERM
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-        {
-            bw_rdstr[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    bw_rdstr[k] += ( ( ( ci0*( p[ijk-kk2] - pmean[k-2] ) + ci1*( p[ijk-kk1] - pmean[k-1] ) + ci2*( p[ijk    ] - pmean[k  ] ) + ci3*( p[ijk+kk1] - pmean[k+1] ) ) * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
+                    bw_rdstr[k] += ( ( ( ci0<TF>*( p[ijk-kk2] - pmean[k-2] ) + ci1<TF>*( p[ijk-kk1] - pmean[k-1] ) + ci2<TF>*( p[ijk    ] - pmean[k  ] ) + ci3<TF>*( p[ijk+kk1] - pmean[k+1] ) ) * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
                 }
-        }
-
 
         // 6. CALCULATE THE DISSIPATION TERM
-        k = grid.kstart;
-        bw_diss[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_diss[k] -= ( ( 2.0 * visc )
 
-                              * ( ( ( ( ( ( cg0*( ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1] )
-                                          + cg2*( ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3] ) )
+                              * ( ( ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3] ) )
 
                                         * dxi )
 
-                                      * ( cg0*( ci0*bz[ijk-ii3] + ci1*bz[ijk-ii2] + ci2*bz[ijk-ii1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-ii2] + ci1*bz[ijk-ii1] + ci2*bz[ijk    ] + ci3*bz[ijk+ii1] )
-                                        + cg2*( ci0*bz[ijk-ii1] + ci1*bz[ijk    ] + ci2*bz[ijk+ii1] + ci3*bz[ijk+ii2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+ii1] + ci2*bz[ijk+ii2] + ci3*bz[ijk+ii3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-ii3] + ci1<TF>*bz[ijk-ii2] + ci2<TF>*bz[ijk-ii1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-ii2] + ci1<TF>*bz[ijk-ii1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+ii1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-ii1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+ii1] + ci3<TF>*bz[ijk+ii2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+ii1] + ci2<TF>*bz[ijk+ii2] + ci3<TF>*bz[ijk+ii3] ) ) )
 
                                     * dxi )
 
-                                  + ( ( ( ( cg0*( ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1] )
-                                          + cg2*( ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3] ) )
+                                  + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3] ) )
 
                                         * dyi )
 
-                                      * ( cg0*( ci0*bz[ijk-jj3] + ci1*bz[ijk-jj2] + ci2*bz[ijk-jj1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-jj2] + ci1*bz[ijk-jj1] + ci2*bz[ijk    ] + ci3*bz[ijk+jj1] )
-                                        + cg2*( ci0*bz[ijk-jj1] + ci1*bz[ijk    ] + ci2*bz[ijk+jj1] + ci3*bz[ijk+jj2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+jj1] + ci2*bz[ijk+jj2] + ci3*bz[ijk+jj3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-jj3] + ci1<TF>*bz[ijk-jj2] + ci2<TF>*bz[ijk-jj1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-jj2] + ci1<TF>*bz[ijk-jj1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+jj1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-jj1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+jj1] + ci3<TF>*bz[ijk+jj2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+jj1] + ci2<TF>*bz[ijk+jj2] + ci3<TF>*bz[ijk+jj3] ) ) )
 
                                     * dyi ) )
 
-                                + ( ( ( ( bg0*( bi0*w[ijk-kk1] + bi1*w[ijk    ] + bi2*w[ijk+kk1] + bi3*w[ijk+kk2] )
-                                        + bg1*( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] )
-                                        + bg2*( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] )
-                                        + bg3*( ci0*w[ijk+kk1] + ci1*w[ijk+kk2] + ci2*w[ijk+kk3] + ci3*w[ijk+kk4] ) )
+                                + ( ( ( ( bg0<TF>*( bi0<TF>*w[ijk-kk1] + bi1<TF>*w[ijk    ] + bi2<TF>*w[ijk+kk1] + bi3<TF>*w[ijk+kk2] )
+                                        + bg1<TF>*( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] )
+                                        + bg2<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] )
+                                        + bg3<TF>*( ci0<TF>*w[ijk+kk1] + ci1<TF>*w[ijk+kk2] + ci2<TF>*w[ijk+kk3] + ci3<TF>*w[ijk+kk4] ) )
 
                                       * dzhi4bot )
 
-                                    * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                    * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                   * dzhi4bot ) ) );
             }
 
-        k = grid.kstart+1;
-        bw_diss[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_diss[k] -= ( ( 2.0 * visc )
 
-                              * ( ( ( ( ( ( cg0*( ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1] )
-                                          + cg2*( ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3] ) )
+                              * ( ( ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3] ) )
 
                                         * dxi )
 
-                                      * ( cg0*( ci0*bz[ijk-ii3] + ci1*bz[ijk-ii2] + ci2*bz[ijk-ii1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-ii2] + ci1*bz[ijk-ii1] + ci2*bz[ijk    ] + ci3*bz[ijk+ii1] )
-                                        + cg2*( ci0*bz[ijk-ii1] + ci1*bz[ijk    ] + ci2*bz[ijk+ii1] + ci3*bz[ijk+ii2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+ii1] + ci2*bz[ijk+ii2] + ci3*bz[ijk+ii3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-ii3] + ci1<TF>*bz[ijk-ii2] + ci2<TF>*bz[ijk-ii1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-ii2] + ci1<TF>*bz[ijk-ii1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+ii1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-ii1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+ii1] + ci3<TF>*bz[ijk+ii2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+ii1] + ci2<TF>*bz[ijk+ii2] + ci3<TF>*bz[ijk+ii3] ) ) )
 
                                     * dxi )
 
-                                  + ( ( ( ( cg0*( ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1] )
-                                          + cg2*( ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3] ) )
+                                  + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3] ) )
 
                                         * dyi )
 
-                                      * ( cg0*( ci0*bz[ijk-jj3] + ci1*bz[ijk-jj2] + ci2*bz[ijk-jj1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-jj2] + ci1*bz[ijk-jj1] + ci2*bz[ijk    ] + ci3*bz[ijk+jj1] )
-                                        + cg2*( ci0*bz[ijk-jj1] + ci1*bz[ijk    ] + ci2*bz[ijk+jj1] + ci3*bz[ijk+jj2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+jj1] + ci2*bz[ijk+jj2] + ci3*bz[ijk+jj3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-jj3] + ci1<TF>*bz[ijk-jj2] + ci2<TF>*bz[ijk-jj1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-jj2] + ci1<TF>*bz[ijk-jj1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+jj1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-jj1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+jj1] + ci3<TF>*bz[ijk+jj2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+jj1] + ci2<TF>*bz[ijk+jj2] + ci3<TF>*bz[ijk+jj3] ) ) )
 
                                     * dyi ) )
 
-                                + ( ( ( ( cg0*( bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1] )
-                                        + cg1*( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] )
-                                        + cg2*( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] )
-                                        + cg3*( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ) )
+                                + ( ( ( ( cg0<TF>*( bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1] )
+                                        + cg1<TF>*( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] )
+                                        + cg2<TF>*( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] )
+                                        + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] ) )
 
                                       * dzhi4[k] )
 
-                                    * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                    * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                   * dzhi4[k] ) ) );
             }
 
-        for (int k=grid.kstart+2; k<grid.kend-1; ++k)
-        {
-            bw_diss[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart+2; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
                     bw_diss[k] -= ( ( 2.0 * visc )
 
-                                  * ( ( ( ( ( ( cg0*( ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ] )
-                                              + cg1*( ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1] )
-                                              + cg2*( ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2] )
-                                              + cg3*( ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3] ) )
+                                  * ( ( ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ] )
+                                              + cg1<TF>*( ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1] )
+                                              + cg2<TF>*( ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2] )
+                                              + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3] ) )
 
                                             * dxi )
 
-                                          * ( cg0*( ci0*bz[ijk-ii3] + ci1*bz[ijk-ii2] + ci2*bz[ijk-ii1] + ci3*bz[ijk    ] )
-                                            + cg1*( ci0*bz[ijk-ii2] + ci1*bz[ijk-ii1] + ci2*bz[ijk    ] + ci3*bz[ijk+ii1] )
-                                            + cg2*( ci0*bz[ijk-ii1] + ci1*bz[ijk    ] + ci2*bz[ijk+ii1] + ci3*bz[ijk+ii2] )
-                                            + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+ii1] + ci2*bz[ijk+ii2] + ci3*bz[ijk+ii3] ) ) )
+                                          * ( cg0<TF>*( ci0<TF>*bz[ijk-ii3] + ci1<TF>*bz[ijk-ii2] + ci2<TF>*bz[ijk-ii1] + ci3<TF>*bz[ijk    ] )
+                                            + cg1<TF>*( ci0<TF>*bz[ijk-ii2] + ci1<TF>*bz[ijk-ii1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+ii1] )
+                                            + cg2<TF>*( ci0<TF>*bz[ijk-ii1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+ii1] + ci3<TF>*bz[ijk+ii2] )
+                                            + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+ii1] + ci2<TF>*bz[ijk+ii2] + ci3<TF>*bz[ijk+ii3] ) ) )
 
                                         * dxi )
 
-                                      + ( ( ( ( cg0*( ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ] )
-                                              + cg1*( ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1] )
-                                              + cg2*( ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2] )
-                                              + cg3*( ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3] ) )
+                                      + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ] )
+                                              + cg1<TF>*( ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1] )
+                                              + cg2<TF>*( ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2] )
+                                              + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3] ) )
 
                                             * dyi )
 
-                                          * ( cg0*( ci0*bz[ijk-jj3] + ci1*bz[ijk-jj2] + ci2*bz[ijk-jj1] + ci3*bz[ijk    ] )
-                                            + cg1*( ci0*bz[ijk-jj2] + ci1*bz[ijk-jj1] + ci2*bz[ijk    ] + ci3*bz[ijk+jj1] )
-                                            + cg2*( ci0*bz[ijk-jj1] + ci1*bz[ijk    ] + ci2*bz[ijk+jj1] + ci3*bz[ijk+jj2] )
-                                            + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+jj1] + ci2*bz[ijk+jj2] + ci3*bz[ijk+jj3] ) ) )
+                                          * ( cg0<TF>*( ci0<TF>*bz[ijk-jj3] + ci1<TF>*bz[ijk-jj2] + ci2<TF>*bz[ijk-jj1] + ci3<TF>*bz[ijk    ] )
+                                            + cg1<TF>*( ci0<TF>*bz[ijk-jj2] + ci1<TF>*bz[ijk-jj1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+jj1] )
+                                            + cg2<TF>*( ci0<TF>*bz[ijk-jj1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+jj1] + ci3<TF>*bz[ijk+jj2] )
+                                            + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+jj1] + ci2<TF>*bz[ijk+jj2] + ci3<TF>*bz[ijk+jj3] ) ) )
 
                                         * dyi ) )
 
-                                    + ( ( ( ( cg0*( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] )
-                                            + cg1*( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] )
-                                            + cg2*( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] )
-                                            + cg3*( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ) )
+                                    + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] )
+                                            + cg1<TF>*( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] )
+                                            + cg2<TF>*( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] )
+                                            + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3] ) )
 
                                           * dzhi4[k] )
 
-                                        * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                        * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                       * dzhi4[k] ) ) );
                 }
-        }
 
-        k = grid.kend-1;
-        bw_diss[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_diss[k] -= ( ( 2.0 * visc )
 
-                              * ( ( ( ( ( ( cg0*( ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1] )
-                                          + cg2*( ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3] ) )
+                              * ( ( ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3] ) )
 
                                         * dxi )
 
-                                      * ( cg0*( ci0*bz[ijk-ii3] + ci1*bz[ijk-ii2] + ci2*bz[ijk-ii1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-ii2] + ci1*bz[ijk-ii1] + ci2*bz[ijk    ] + ci3*bz[ijk+ii1] )
-                                        + cg2*( ci0*bz[ijk-ii1] + ci1*bz[ijk    ] + ci2*bz[ijk+ii1] + ci3*bz[ijk+ii2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+ii1] + ci2*bz[ijk+ii2] + ci3*bz[ijk+ii3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-ii3] + ci1<TF>*bz[ijk-ii2] + ci2<TF>*bz[ijk-ii1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-ii2] + ci1<TF>*bz[ijk-ii1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+ii1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-ii1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+ii1] + ci3<TF>*bz[ijk+ii2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+ii1] + ci2<TF>*bz[ijk+ii2] + ci3<TF>*bz[ijk+ii3] ) ) )
 
                                     * dxi )
 
-                                  + ( ( ( ( cg0*( ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1] )
-                                          + cg2*( ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3] ) )
+                                  + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3] ) )
 
                                         * dyi )
 
-                                      * ( cg0*( ci0*bz[ijk-jj3] + ci1*bz[ijk-jj2] + ci2*bz[ijk-jj1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-jj2] + ci1*bz[ijk-jj1] + ci2*bz[ijk    ] + ci3*bz[ijk+jj1] )
-                                        + cg2*( ci0*bz[ijk-jj1] + ci1*bz[ijk    ] + ci2*bz[ijk+jj1] + ci3*bz[ijk+jj2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+jj1] + ci2*bz[ijk+jj2] + ci3*bz[ijk+jj3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-jj3] + ci1<TF>*bz[ijk-jj2] + ci2<TF>*bz[ijk-jj1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-jj2] + ci1<TF>*bz[ijk-jj1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+jj1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-jj1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+jj1] + ci3<TF>*bz[ijk+jj2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+jj1] + ci2<TF>*bz[ijk+jj2] + ci3<TF>*bz[ijk+jj3] ) ) )
 
                                     * dyi ) )
 
-                                + ( ( ( ( cg0*( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] )
-                                        + cg1*( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] )
-                                        + cg2*( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] )
-                                        + cg3*( ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2] ) )
+                                + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] )
+                                        + cg2<TF>*( ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2] )
+                                        + cg3<TF>*( ti0<TF>*w[ijk-kk1] + ti1<TF>*w[ijk    ] + ti2<TF>*w[ijk+kk1] + ti3<TF>*w[ijk+kk2] ) )
 
                                       * dzhi4[k] )
 
-                                    * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                    * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                   * dzhi4[k] ) ) );
 
 
             }
 
-        k = grid.kend;
-        bw_diss[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 bw_diss[k] -= ( ( 2.0 * visc )
 
-                              * ( ( ( ( ( ( cg0*( ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1] )
-                                          + cg2*( ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3] ) )
+                              * ( ( ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-ii3] + ci1<TF>*w[ijk-ii2] + ci2<TF>*w[ijk-ii1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3] ) )
 
                                         * dxi )
 
-                                      * ( cg0*( ci0*bz[ijk-ii3] + ci1*bz[ijk-ii2] + ci2*bz[ijk-ii1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-ii2] + ci1*bz[ijk-ii1] + ci2*bz[ijk    ] + ci3*bz[ijk+ii1] )
-                                        + cg2*( ci0*bz[ijk-ii1] + ci1*bz[ijk    ] + ci2*bz[ijk+ii1] + ci3*bz[ijk+ii2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+ii1] + ci2*bz[ijk+ii2] + ci3*bz[ijk+ii3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-ii3] + ci1<TF>*bz[ijk-ii2] + ci2<TF>*bz[ijk-ii1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-ii2] + ci1<TF>*bz[ijk-ii1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+ii1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-ii1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+ii1] + ci3<TF>*bz[ijk+ii2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+ii1] + ci2<TF>*bz[ijk+ii2] + ci3<TF>*bz[ijk+ii3] ) ) )
 
                                     * dxi )
 
-                                  + ( ( ( ( cg0*( ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ] )
-                                          + cg1*( ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1] )
-                                          + cg2*( ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2] )
-                                          + cg3*( ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3] ) )
+                                  + ( ( ( ( cg0<TF>*( ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ] )
+                                          + cg1<TF>*( ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1] )
+                                          + cg2<TF>*( ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2] )
+                                          + cg3<TF>*( ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3] ) )
 
                                         * dyi )
 
-                                      * ( cg0*( ci0*bz[ijk-jj3] + ci1*bz[ijk-jj2] + ci2*bz[ijk-jj1] + ci3*bz[ijk    ] )
-                                        + cg1*( ci0*bz[ijk-jj2] + ci1*bz[ijk-jj1] + ci2*bz[ijk    ] + ci3*bz[ijk+jj1] )
-                                        + cg2*( ci0*bz[ijk-jj1] + ci1*bz[ijk    ] + ci2*bz[ijk+jj1] + ci3*bz[ijk+jj2] )
-                                        + cg3*( ci0*bz[ijk    ] + ci1*bz[ijk+jj1] + ci2*bz[ijk+jj2] + ci3*bz[ijk+jj3] ) ) )
+                                      * ( cg0<TF>*( ci0<TF>*bz[ijk-jj3] + ci1<TF>*bz[ijk-jj2] + ci2<TF>*bz[ijk-jj1] + ci3<TF>*bz[ijk    ] )
+                                        + cg1<TF>*( ci0<TF>*bz[ijk-jj2] + ci1<TF>*bz[ijk-jj1] + ci2<TF>*bz[ijk    ] + ci3<TF>*bz[ijk+jj1] )
+                                        + cg2<TF>*( ci0<TF>*bz[ijk-jj1] + ci1<TF>*bz[ijk    ] + ci2<TF>*bz[ijk+jj1] + ci3<TF>*bz[ijk+jj2] )
+                                        + cg3<TF>*( ci0<TF>*bz[ijk    ] + ci1<TF>*bz[ijk+jj1] + ci2<TF>*bz[ijk+jj2] + ci3<TF>*bz[ijk+jj3] ) ) )
 
                                     * dyi ) )
 
-                                + ( ( ( ( tg0*( ci0*w[ijk-kk4] + ci1*w[ijk-kk3] + ci2*w[ijk-kk2] + ci3*w[ijk-kk1] )
-                                        + tg1*( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] )
-                                        + tg2*( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] )
-                                        + tg3*( ti0*w[ijk-kk2] + ti1*w[ijk-kk1] + ti2*w[ijk    ] + ti3*w[ijk+kk1] ) )
+                                + ( ( ( ( tg0<TF>*( ci0<TF>*w[ijk-kk4] + ci1<TF>*w[ijk-kk3] + ci2<TF>*w[ijk-kk2] + ci3<TF>*w[ijk-kk1] )
+                                        + tg1<TF>*( ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ] )
+                                        + tg2<TF>*( ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1] )
+                                        + tg3<TF>*( ti0<TF>*w[ijk-kk2] + ti1<TF>*w[ijk-kk1] + ti2<TF>*w[ijk    ] + ti3<TF>*w[ijk+kk1] ) )
 
                                       * dzhi4top )
 
-                                    * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                    * ( cg0<TF>*( b[ijk-kk2] - bmean[k-2] ) + cg1<TF>*( b[ijk-kk1] - bmean[k-1] ) + cg2<TF>*( b[ijk    ] - bmean[k  ] ) + cg3<TF>*( b[ijk+kk1] - bmean[k+1] ) ) )
 
                                   * dzhi4top ) ) );
             }
 
         // 7. CALCULATE THE PRESSURE TRANSPORT TERM
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-        {
-            bw_pres[k] = 0;
-            for (int j=grid.jstart; j<grid.jend; ++j)
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
-                    bw_pres[k] -= ( ( cg0*( ( p[ijk-kk2] - pmean[k-2] ) * ( b[ijk-kk2] - bmean[k-2] ) ) + cg1*( ( p[ijk-kk1] - pmean[k-1] ) * ( b[ijk-kk1] - bmean[k-1] ) ) + cg2*( ( p[ijk    ] - pmean[k  ] ) * ( b[ijk    ] - bmean[k  ] ) ) + cg3*( ( p[ijk+kk1] - pmean[k+1] ) * ( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
+                    bw_pres[k] -= ( ( cg0<TF>*( ( p[ijk-kk2] - pmean[k-2] ) * ( b[ijk-kk2] - bmean[k-2] ) ) + cg1<TF>*( ( p[ijk-kk1] - pmean[k-1] ) * ( b[ijk-kk1] - bmean[k-1] ) ) + cg2<TF>*( ( p[ijk    ] - pmean[k  ] ) * ( b[ijk    ] - bmean[k  ] ) ) + cg3<TF>*( ( p[ijk+kk1] - pmean[k+1] ) * ( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
                 }
-        }
-
-
-        master.sum(bw_shear, grid.kcells);
-        master.sum(bw_turb , grid.kcells);
-        master.sum(bw_visc , grid.kcells);
-        master.sum(bw_rdstr, grid.kcells);
-        master.sum(bw_buoy , grid.kcells);
-        master.sum(bw_diss , grid.kcells);
-        master.sum(bw_pres , grid.kcells);
-
-        for (int k=grid.kstart; k<grid.kend+1; ++k)
-        {
-            bw_shear[k] /= n;
-            bw_turb [k] /= n;
-            bw_visc [k] /= n;
-            bw_rdstr[k] /= n;
-            bw_buoy [k] /= n;
-            bw_diss [k] /= n;
-            bw_pres [k] /= n;
-        }
     }
-    */
 }
 
 template<typename TF>
