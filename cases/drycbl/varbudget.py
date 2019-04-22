@@ -71,8 +71,8 @@ bw_sum = bw_shear + bw_turb + bw_visc + bw_buoy + bw_rdstr + bw_diss + bw_pres
 
 
 # enable LaTeX plotting
-rc('font',**{'family':'serif','serif':['Palatino']})
-rc('text', usetex=True)
+#rc('font',**{'family':'serif','serif':['Palatino']})
+#rc('text', usetex=True)
 
 zlim = 1.8
 
