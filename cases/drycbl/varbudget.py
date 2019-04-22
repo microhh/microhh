@@ -4,9 +4,9 @@ import netCDF4
 
 from pylab import *
 
-stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
+stats = netCDF4.Dataset("drycbl_default_0000000.nc","r")
 
-t = stats.variables["t"][:]
+t = stats.variables["time"][:]
 end   = t.size
 start = t.size-5
 dt = t[1] - t[0]

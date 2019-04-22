@@ -2864,14 +2864,23 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.jcells, gd.ijcells);
 
+        stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_visc" , *bw_visc , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_buoy" , *bw_buoy , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold, {"mean"});
+
         fields.release_tmp(b);
         fields.release_tmp(bw_shear);
-        fields.release_tmp(bw_turb );
-        fields.release_tmp(bw_visc );
-        fields.release_tmp(bw_buoy );
+        fields.release_tmp(bw_turb);
+        fields.release_tmp(bw_visc);
+        fields.release_tmp(bw_buoy);
         fields.release_tmp(bw_rdstr);
-        fields.release_tmp(bw_diss );
-        fields.release_tmp(bw_pres );
+        fields.release_tmp(bw_diss);
+        fields.release_tmp(bw_pres);
+        fields.release_tmp(bz);
 
         // void calc_bw_budget(
         //         TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
