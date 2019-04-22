@@ -118,7 +118,7 @@ class Stats
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF, std::vector<std::string>);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
-        void set_prof(const std::string, const std::vector<TF>);
+        void set_prof(const std::string, const std::vector<TF>&);
         void set_timeseries(const std::string, const TF);
 
     private:
@@ -169,7 +169,6 @@ class Stats
                 const unsigned int* const, const unsigned int, const int* const,
                 const int, const int, const int, const int, const int, const int, const int, const int);
 
-        void sanitize_operations_vector(std::vector<std::string>);
         bool wmean_set;
 
 };

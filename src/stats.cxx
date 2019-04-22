@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -541,6 +541,43 @@ namespace
 
         return output;
     }
+
+    void sanitize_operations_vector(std::vector<std::string>& operations)
+    {
+        // Sanitize the operations vector:
+        // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
+    
+        std::vector<std::string> tmpvec = operations;
+        for (auto it : tmpvec)
+        {
+            if (it == "flux")
+            {
+                operations.push_back("diff");
+                operations.push_back("w");
+            }
+        }
+        for (auto it : tmpvec)
+        {
+            if (has_only_digits(it) || (it == "w") || (it == "path"))
+            {
+                operations.push_back("mean");
+            }
+        }
+    
+        // Check for duplicates
+        std::sort( operations.begin(), operations.end() );
+        operations.erase( std::unique( operations.begin(), operations.end() ), operations.end() );
+    
+        // Make sure that flux goes at the end
+        for (auto& it : operations)
+        {
+            if (it == "flux" )
+            {
+                std::swap(it, operations.back());
+                break;
+            }
+        }
+    }
 }
 
 template<typename TF>
@@ -1046,11 +1083,11 @@ void Stats<TF>::set_mask_thres(
 }
 
 template<typename TF>
-void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
+void Stats<TF>::set_prof(const std::string varname, const std::vector<TF>& prof)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
     if (it == varlist.end())
-        throw std::runtime_error("Set_prof: Variable "+varname+ " does not exist");
+        throw std::runtime_error("Set_prof: Variable " + varname + " does not exist");
     else
     {
         for (auto& it : masks)
@@ -1297,7 +1334,7 @@ void Stats<TF>::calc_covariance(
 {
     auto& gd = grid.get_grid_data();
 
-    std::string name = varname1+std::to_string(power1)+varname2+std::to_string(power2);
+    std::string name = varname1 + std::to_string(power1) + varname2 + std::to_string(power2);
     unsigned int flag;
     auto it1 = std::find(varlist.begin(), varlist.end(), name);
     int* nmask;
@@ -1534,44 +1571,6 @@ void Stats<TF>::calc_grad_4th(
                 }
 
             prof[k] = tmp / nmask[k];
-        }
-    }
-}
-
-template<typename TF>
-void Stats<TF>::sanitize_operations_vector(std::vector<std::string> operations)
-{
-    // Sanitize the operations vector:
-    // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
-
-    std::vector<std::string> tmpvec = operations;
-    for (auto it : tmpvec)
-    {
-        if (it == "flux")
-        {
-            operations.push_back("diff");
-            operations.push_back("w");
-        }
-    }
-    for (auto it : tmpvec)
-    {
-        if (has_only_digits(it) || (it == "w") || (it == "path"))
-        {
-            operations.push_back("mean");
-        }
-    }
-
-    // Check for duplicates
-    std::sort( operations.begin(), operations.end() );
-    operations.erase( unique( operations.begin(), operations.end() ), operations.end() );
-
-    // Make sure that flux goes at the end
-    for (auto& it : operations)
-    {
-        if (it == "flux" )
-        {
-            std::swap(it, operations.back());
-            break;
         }
     }
 }
