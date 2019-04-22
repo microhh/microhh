@@ -2033,7 +2033,7 @@ namespace
     void calc_bw_budget(
             TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
             TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
-            const TF* restrict bz,
+            TF* restrict bz,
             const TF* restrict w, const TF* restrict p, const TF* restrict b,
             const TF* restrict pmean, const TF* restrict bmean,
             const TF* restrict dzi4, const TF* restrict dzhi4,
@@ -2843,20 +2843,47 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats("b2_visc" , *b2_visc , no_offset, no_threshold, {"mean"});
         stats.calc_stats("b2_diss" , *b2_diss , no_offset, no_threshold, {"mean"});
 
-        fields.release_tmp(b);
-        fields.release_tmp(b2_shear);
-        fields.release_tmp(b2_turb);
-        fields.release_tmp(b2_visc);
-        fields.release_tmp(b2_diss);
+        auto bw_shear = std::move(b2_shear);
+        auto bw_turb  = std::move(b2_turb);
+        auto bw_visc  = std::move(b2_visc);
+        auto bw_buoy  = std::move(b2_diss);
+        auto bw_rdstr = fields.get_tmp();
+        auto bw_diss  = fields.get_tmp();
+        auto bw_pres  = fields.get_tmp();
+        auto bz       = fields.get_tmp();
 
-        /*
-        calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
-                       fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
-                       m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
-                       m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data, m->profs["bw_pres"].data,
-                       grid.dzi4, grid.dzhi4,
-                       fields.visc);
-                       */
+        calc_bw_budget(
+                bw_shear->fld.data(), bw_turb->fld.data(), bw_visc->fld.data(),
+                bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
+                bz->fld.data(),
+                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
+                thermo.get_buoyancy_diffusivity(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.jcells, gd.ijcells);
+
+        fields.release_tmp(b);
+        fields.release_tmp(bw_shear);
+        fields.release_tmp(bw_turb );
+        fields.release_tmp(bw_visc );
+        fields.release_tmp(bw_buoy );
+        fields.release_tmp(bw_rdstr);
+        fields.release_tmp(bw_diss );
+        fields.release_tmp(bw_pres );
+
+        // void calc_bw_budget(
+        //         TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
+        //         TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
+        //         const TF* restrict bz,
+        //         const TF* restrict w, const TF* restrict p, const TF* restrict b,
+        //         const TF* restrict pmean, const TF* restrict bmean,
+        //         const TF* restrict dzi4, const TF* restrict dzhi4,
+        //         const TF dxi, const TF dyi, const TF dzhi4bot, const TF dzhi4top,
+        //         const TF visc,
+        //         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        //         const int icells, const int jcells, const int ijcells)
     }
 
     /*
