@@ -426,7 +426,7 @@ void Thermo_buoy<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 template<typename TF>
 TF Thermo_buoy<TF>::get_buoyancy_diffusivity()
 {
-    return fields.sp["b"]->visc;
+    return fields.sp.at("b")->visc;
 }
 
 template<typename TF>

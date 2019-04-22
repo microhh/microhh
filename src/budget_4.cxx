@@ -2902,7 +2902,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 b->fld_mean.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi,
-                fields.visc, // CvH NEIN, NEIN, NEIN!
+                thermo.get_buoyancy_diffusivity(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -2918,12 +2918,6 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(b2_diss);
 
         /*
-        calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
-                       fields.atmp["tmp1"]->datamean,
-                       m->profs["b2_shear"].data, m->profs["b2_turb"].data, m->profs["b2_visc"].data, m->profs["b2_diss"].data,
-                       grid.dzi4, grid.dzhi4,
-                       fields.visc);
-
         calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
                        fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
                        m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
