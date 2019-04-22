@@ -2044,12 +2044,7 @@ namespace
     {
         using namespace Finite_difference::O4;
 
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int ii3 = 3;
         const int jj1 = 1*icells;
-        const int jj2 = 2*icells;
-        const int jj3 = 3*icells;
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
@@ -3061,15 +3056,6 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         fields.release_tmp(b);
         fields.release_tmp(b_sort);
-
-        /*
-        // calculate the budget of potential energy
-        calc_pe_budget(fields.w->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp2"]->datatop,
-                       m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
-                       // TODO put the correct value for visc here!!!!!
-                       grid.z, grid.zh, grid.dzi4, grid.dzhi4,
-                       fields.visc);
-                       */
     }
 }
 
