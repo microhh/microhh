@@ -2030,9 +2030,8 @@ namespace
     }
 
     template<typename TF>
-    void calc_bw_budget(
+    void calc_bw_budget_shear_turb_visc(
             TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
-            TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
             TF* restrict bz,
             const TF* restrict w, const TF* restrict p, const TF* restrict b,
             const TF* restrict pmean, const TF* restrict bmean,
@@ -2246,6 +2245,32 @@ namespace
 
                               * dzhi4top );
             }
+    }
+
+    template<typename TF>
+    void calc_bw_budget_buoy_rdstr_diss_pres(
+            TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
+            TF* restrict bz,
+            const TF* restrict w, const TF* restrict p, const TF* restrict b,
+            const TF* restrict pmean, const TF* restrict bmean,
+            const TF* restrict dzi4, const TF* restrict dzhi4,
+            const TF dxi, const TF dyi, const TF dzhi4bot, const TF dzhi4top,
+            const TF visc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells)
+    {
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int ii3 = 3;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int jj3 = 3*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        const int kk3 = 3*ijcells;
+        const int kk4 = 4*ijcells;
 
         // 4. CALCULATE THE BUOYANCY TERM
         for (int k=kstart; k<kend+1; ++k)
@@ -2268,7 +2293,7 @@ namespace
                 }
 
         // 6. CALCULATE THE DISSIPATION TERM
-        k = kstart;
+        int k = kstart;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -2846,15 +2871,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         auto bw_shear = std::move(b2_shear);
         auto bw_turb  = std::move(b2_turb);
         auto bw_visc  = std::move(b2_visc);
-        auto bw_buoy  = std::move(b2_diss);
-        auto bw_rdstr = fields.get_tmp();
-        auto bw_diss  = fields.get_tmp();
-        auto bw_pres  = fields.get_tmp();
-        auto bz       = fields.get_tmp();
+        auto bz       = std::move(b2_diss);
 
-        calc_bw_budget(
+        calc_bw_budget_shear_turb_visc(
                 bw_shear->fld.data(), bw_turb->fld.data(), bw_visc->fld.data(),
-                bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
                 bz->fld.data(),
                 fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
                 fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
@@ -2867,32 +2887,34 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_visc" , *bw_visc , no_offset, no_threshold, {"mean"});
+
+        auto bw_buoy  = std::move(bw_shear);
+        auto bw_rdstr = std::move(bw_turb);
+        auto bw_diss  = std::move(bw_visc);
+        auto bw_pres  = fields.get_tmp();
+
+        calc_bw_budget_buoy_rdstr_diss_pres(
+                bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
+                bz->fld.data(),
+                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
+                thermo.get_buoyancy_diffusivity(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.jcells, gd.ijcells);
+
         stats.calc_stats("bw_buoy" , *bw_buoy , no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold, {"mean"});
 
         fields.release_tmp(b);
-        fields.release_tmp(bw_shear);
-        fields.release_tmp(bw_turb);
-        fields.release_tmp(bw_visc);
         fields.release_tmp(bw_buoy);
         fields.release_tmp(bw_rdstr);
         fields.release_tmp(bw_diss);
         fields.release_tmp(bw_pres);
         fields.release_tmp(bz);
-
-        // void calc_bw_budget(
-        //         TF* restrict bw_shear, TF* restrict bw_turb, TF* restrict bw_visc,
-        //         TF* restrict bw_buoy, TF* restrict bw_rdstr, TF* restrict bw_diss, TF* restrict bw_pres,
-        //         const TF* restrict bz,
-        //         const TF* restrict w, const TF* restrict p, const TF* restrict b,
-        //         const TF* restrict pmean, const TF* restrict bmean,
-        //         const TF* restrict dzi4, const TF* restrict dzhi4,
-        //         const TF dxi, const TF dyi, const TF dzhi4bot, const TF dzhi4top,
-        //         const TF visc,
-        //         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-        //         const int icells, const int jcells, const int ijcells)
     }
 
     /*
