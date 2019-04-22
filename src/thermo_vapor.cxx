@@ -770,7 +770,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof("rho"    , fields.rhoref);
         stats.set_prof("rhoh"   , fields.rhorefh);
     }
-    stats.set_timeserie("zi", gd.z[get_bl_depth()]);
+    stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
 
 #ifndef USECUDA
