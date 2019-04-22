@@ -35,6 +35,7 @@
 #include "force.h"
 #include "stats.h"
 #include "field3d_operators.h"
+#include "constants.h"
 
 #include "budget.h"
 #include "budget_4.h"
@@ -2545,6 +2546,136 @@ namespace
                     bw_pres[ijk] = - ( ( cg0<TF>*( ( p[ijk-kk2] - pmean[k-2] ) * ( b[ijk-kk2] - bmean[k-2] ) ) + cg1<TF>*( ( p[ijk-kk1] - pmean[k-1] ) * ( b[ijk-kk1] - bmean[k-1] ) ) + cg2<TF>*( ( p[ijk    ] - pmean[k  ] ) * ( b[ijk    ] - bmean[k  ] ) ) + cg3<TF>*( ( p[ijk+kk1] - pmean[k+1] ) * ( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
                 }
     }
+
+    template<typename TF>
+    void calc_sorted_prof(
+            TF* restrict data, TF* restrict bin, TF* restrict prof,
+            const TF* restrict z, const TF* restrict dz,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells,
+            const int itot, const int jtot, const int nmax,
+            Grid_order grid_order, Master& master)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        TF minval =  Constants::dhuge;
+        TF maxval = -Constants::dhuge;
+
+        // First, get min and max.
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if (data[ijk] < minval)
+                        minval = data[ijk];
+                    if (data[ijk] > maxval)
+                        maxval = data[ijk];
+                }
+
+        master.min(&minval, 1);
+        master.max(&maxval, 1);
+
+        // make sure that the max ends up in the last bin (introduce 1E-9 error)
+        maxval *= (1.+Constants::dsmall);
+
+        const TF range = maxval-minval;
+
+        // In case the field is entirely uniform, dbin becomes zero. In that case we set the profile to the minval.
+        if (range < 1.e-16)
+        {
+            for (int k=kstart; k<kend; ++k)
+                prof[k] = minval;
+        }
+        else
+        {
+            // create bins, equal to the number of grid cells per proc
+            // make sure that bins is not larger than the memory of one 3d field
+            const int bins = nmax;
+
+            // calculate bin width, subtract one to make the minimum and maximum
+            // are in the middle of the bin range and add half a bin size on both sides
+            // |----x----|----x----|----x----|
+            const TF dbin = range / (TF)(bins-1);
+
+            minval -= 0.5*dbin;
+            maxval += 0.5*dbin;
+
+            // set the bin array to zero
+            for (int n=0; n<bins; ++n)
+                bin[n] = 0;
+
+            // calculate the division factor of one equivalent height unit
+            // (the total volume saved is itot*jtot*zsize)
+            const TF nslice = (TF)(itot*jtot);
+
+            // check in which bin each value falls and increment the bin count
+            for (int k=kstart; k<kend; ++k)
+            {
+                const TF dzslice = dz[k] / nslice;
+                for (int j=jstart; j<jend; ++j)
+                    // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int index = (int)((data[ijk] - minval) / dbin);
+                        bin[index] += dzslice;
+                    }
+            }
+
+            // get the bin count
+            master.sum(bin, bins);
+
+            // set the starting values of the loop
+            int index = 0;
+            TF zbin = 0.5*bin[index];
+            TF profval = minval + 0.5*dbin;
+
+            for (int k=kstart; k<kend; ++k)
+            {
+                // Integrate the profile up to the bin count.
+                // Escape the while loop when the integrated profile
+                // exceeds the next grid point.
+                while (zbin < z[k])
+                {
+                    zbin += 0.5*(bin[index]+bin[index+1]);
+                    profval += dbin;
+                    ++index;
+                }
+
+                // In case the first bin is larger than the grid spacing, which can happen
+                // in the inital phase of an MPI run, make sure that no out-of-bounds reads
+                // happen.
+                if (index == 0)
+                    prof[k] = profval;
+                else
+                {
+                    const TF dzfrac = (zbin-z[k]) / (0.5*(bin[index-1]+bin[index]));
+                    prof[k] = profval - dzfrac*dbin;
+                }
+            }
+        }
+
+        // now calculate the ghost cells
+        // \TODO this might not be accurate enough, extrapolate properly
+        TF profbot = minval;
+        TF proftop = maxval;
+
+        if (grid_order == Grid_order::Second)
+        {
+            prof[kstart-1] = 2.*profbot - prof[kstart];
+            prof[kend]     = 2.*proftop - prof[kend-1];
+        }
+        else if (grid_order == Grid_order::Fourth)
+        {
+            prof[kstart-1] = (8./3.)*profbot - 2.*prof[kstart] + (1./3.)*prof[kstart+1];
+            prof[kstart-2] = 8.*profbot      - 9.*prof[kstart] + 2.*prof[kstart+1];
+            prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
+            prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
+        }
+    }
 }
 
 template<typename TF>
@@ -2626,13 +2757,14 @@ void Budget_4<TF>::create(Stats<TF>& stats)
         stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh");
         stats.add_prof("bw_diss" , "Dissipation term in BW budget"        , "m2 s-4", "zh");
         stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh");
+
+        stats.add_prof("b_sort", "Sorted buoyancy", "m s-2", "z");
     }
 
     /*
     if (thermo.get_switch() != "0")
     {
         // Add the profiles for the potential energy budget to the statistics.
-        stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
         stats.add_prof("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
         stats.add_prof("pe"   , "Total potential energy", "m2 s-2", "z");
         stats.add_prof("ape"  , "Available potential energy", "m2 s-2", "z");
@@ -2909,47 +3041,36 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold, {"mean"});
         stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold, {"mean"});
 
-        fields.release_tmp(b);
         fields.release_tmp(bw_buoy);
         fields.release_tmp(bw_rdstr);
         fields.release_tmp(bw_diss);
         fields.release_tmp(bw_pres);
-        fields.release_tmp(bz);
-    }
 
-    /*
-    // calculate the potential energy budget
-    if (thermo.get_switch() != "0")
-    {
-        // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
-        stats.calc_sorted_prof(fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, m->profs["bsort"].data);
+        auto b_sort = std::move(bz);
 
-        // calculate the potential energy back, tmp1 contains the buoyancy, tmp2 will contain height that the local buoyancy
-        // will reach in the sorted profile
-        calc_pe(fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp2"]->databot, fields.atmp["tmp2"]->datatop,
-                grid.z,
-                m->profs["bsort"].data,
-                m->profs["pe"].data, m->profs["ape"].data, m->profs["bpe"].data,
-                m->profs["zsort"].data);
+        // Calculate the sorted buoyancy profile.
+        calc_sorted_prof(
+                b->fld.data(), b_sort->fld.data(), b_sort->fld_mean.data(),
+                gd.z.data(), gd.dz.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                gd.itot, gd.jtot, gd.nmax,
+                grid.get_spatial_order(), master);
 
+        stats.set_prof("b_sort", b_sort->fld_mean);
 
-        // calculate the budget of background potential energy, start with this one, because tmp2 contains the needed height
-        // which will be overwritten inside of the routine
-        // calcBpeBudget(fields.w->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp2"]->databot, fields.atmp["tmp2"]->datatop,
-        //               m->profs["bpe_turb"].data, m->profs["bpe_visc"].data, m->profs["bpe_diss"].data,
-        //               // TODO put the correct value for visc here!!!!!
-        //               m->profs["bsort"].data,
-        //               grid.z, grid.dzi4, grid.dzhi4,
-        //               fields.visc);
+        fields.release_tmp(b);
+        fields.release_tmp(b_sort);
 
+        /*
         // calculate the budget of potential energy
         calc_pe_budget(fields.w->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp2"]->datatop,
                        m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
                        // TODO put the correct value for visc here!!!!!
                        grid.z, grid.zh, grid.dzi4, grid.dzhi4,
                        fields.visc);
+                       */
     }
-    */
 }
 
 template class Budget_4<double>;
