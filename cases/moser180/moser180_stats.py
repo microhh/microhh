@@ -1,13 +1,11 @@
-import numpy
-import struct
-import netCDF4
+import numpy as np
+import netCDF4 as nc
+from matplotlib.pyplot import *
 
-from pylab import *
+sample_size = 30
+plotens = True
 
-sample_size = 60
-plotens = False
-
-stats = netCDF4.Dataset("moser180_default_0000000.nc","r")
+stats = nc.Dataset("moser180_default_0000000.nc","r")
 end = len(stats.variables["time"][:])
 stats.close()
 start = max(0, end - sample_size)
@@ -19,13 +17,13 @@ with open('moser180.ini') as f:
             visc = float(line.split('=')[1])
 
 # Read Moser's data.
-Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
-Moserrey  = numpy.loadtxt("chan180.reystress", skiprows=25)
-Moseru2   = numpy.loadtxt("chan180.uubal", skiprows=25)
-Moserv2   = numpy.loadtxt("chan180.wwbal", skiprows=25)
-Moserw2   = numpy.loadtxt("chan180.vvbal", skiprows=25)
-Mosertke  = numpy.loadtxt("chan180.kbal" , skiprows=25)
-Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=25)
+Mosermean = np.loadtxt("chan180.means", skiprows=25)
+Moserrey  = np.loadtxt("chan180.reystress", skiprows=25)
+Moseru2   = np.loadtxt("chan180.uubal", skiprows=25)
+Moserv2   = np.loadtxt("chan180.wwbal", skiprows=25)
+Moserw2   = np.loadtxt("chan180.vvbal", skiprows=25)
+Mosertke  = np.loadtxt("chan180.kbal" , skiprows=25)
+Moseruw   = np.loadtxt("chan180.uvbal", skiprows=25)
 
 yplusMoser = Mosermean[:,1]
 uavgMoser  = Mosermean[:,2]
@@ -63,7 +61,7 @@ uw_viscMoser  = Moseruw[:,7]
 uw_dissMoser  = Moseruw[:,2]
 uw_rdstrMoser = Moseruw[:,4]
 
-stats = netCDF4.Dataset("moser180_default_0000000.nc","r")
+stats = nc.Dataset("moser180_default_0000000.nc","r")
 t  = stats.variables["time"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]
@@ -77,7 +75,6 @@ uwt    = stats.variables["uw"]   [start:end,:]
 udifft = stats.variables["udiff"][start:end,:]
 ufluxt = stats.variables["uflux"][start:end,:]
 
-"""
 # variance budgets
 u2_sheart = stats.variables["u2_shear"][start:end,:]
 u2_turbt  = stats.variables["u2_turb"] [start:end,:]
@@ -110,69 +107,65 @@ uw_turbt  = stats.variables["uw_turb"] [start:end,:]
 uw_disst  = stats.variables["uw_diss"] [start:end,:]
 uw_prest  = stats.variables["uw_pres"] [start:end,:]
 uw_rdstrt = stats.variables["uw_rdstr"][start:end,:]
-"""
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
-#ustart = (visc * utotavgt[:,0] / z[0])**0.5
 ustart = (ufluxt[:,0]**2.)**.25
 
-uavg = numpy.mean(uavgt,0)
-vavg = numpy.mean(vavgt,0)
-uvar = numpy.mean(uvart,0)
-vvar = numpy.mean(vvart,0)
-wvar = numpy.mean(wvart,0)
+uavg = np.mean(uavgt,0)
+vavg = np.mean(vavgt,0)
+uvar = np.mean(uvart,0)
+vvar = np.mean(vvart,0)
+wvar = np.mean(wvart,0)
 
-uw    = numpy.mean(uwt,0)
-udiff = numpy.mean(udifft,0)
-uflux = numpy.mean(ufluxt,0)
+uw    = np.mean(uwt,0)
+udiff = np.mean(udifft,0)
+uflux = np.mean(ufluxt,0)
 
-"""
-u2_shear = numpy.mean(u2_sheart,0)
-u2_turb  = numpy.mean(u2_turbt ,0)
-u2_visc  = numpy.mean(u2_visct ,0)
-u2_diss  = numpy.mean(u2_disst ,0)
-u2_rdstr = numpy.mean(u2_rdstrt,0)
+u2_shear = np.mean(u2_sheart,0)
+u2_turb  = np.mean(u2_turbt ,0)
+u2_visc  = np.mean(u2_visct ,0)
+u2_diss  = np.mean(u2_disst ,0)
+u2_rdstr = np.mean(u2_rdstrt,0)
 u2_resid = u2_shear + u2_turb + u2_visc + u2_diss + u2_rdstr
 
-v2_turb  = numpy.mean(v2_turbt ,0)
-v2_visc  = numpy.mean(v2_visct ,0)
-v2_diss  = numpy.mean(v2_disst ,0)
-v2_rdstr = numpy.mean(v2_rdstrt,0)
+v2_turb  = np.mean(v2_turbt ,0)
+v2_visc  = np.mean(v2_visct ,0)
+v2_diss  = np.mean(v2_disst ,0)
+v2_rdstr = np.mean(v2_rdstrt,0)
 v2_resid = v2_turb + v2_visc + v2_diss + v2_rdstr
 
-w2_turb  = numpy.mean(w2_turbt ,0)
-w2_visc  = numpy.mean(w2_visct ,0)
-w2_diss  = numpy.mean(w2_disst ,0)
-w2_pres  = numpy.mean(w2_prest ,0)
-w2_rdstr = numpy.mean(w2_rdstrt,0)
+w2_turb  = np.mean(w2_turbt ,0)
+w2_visc  = np.mean(w2_visct ,0)
+w2_diss  = np.mean(w2_disst ,0)
+w2_pres  = np.mean(w2_prest ,0)
+w2_rdstr = np.mean(w2_rdstrt,0)
 w2_resid = w2_turb + w2_visc + w2_diss + w2_pres + w2_rdstr
 
-tke_shear = numpy.mean(tke_sheart,0)
-tke_turb  = numpy.mean(tke_turbt ,0)
-tke_visc  = numpy.mean(tke_visct ,0)
-tke_diss  = numpy.mean(tke_disst ,0)
-tke_pres  = numpy.mean(tke_prest ,0)
+tke_shear = np.mean(tke_sheart,0)
+tke_turb  = np.mean(tke_turbt ,0)
+tke_visc  = np.mean(tke_visct ,0)
+tke_diss  = np.mean(tke_disst ,0)
+tke_pres  = np.mean(tke_prest ,0)
 tke_resid = tke_shear + tke_turb + tke_visc + tke_diss + tke_pres
 
-uw_shear = numpy.mean(uw_sheart,0)
-uw_turb  = numpy.mean(uw_turbt ,0)
-uw_visc  = numpy.mean(uw_visct ,0)
-uw_diss  = numpy.mean(uw_disst ,0)
-uw_pres  = numpy.mean(uw_prest ,0)
-uw_rdstr = numpy.mean(uw_rdstrt,0)
+uw_shear = np.mean(uw_sheart,0)
+uw_turb  = np.mean(uw_turbt ,0)
+uw_visc  = np.mean(uw_visct ,0)
+uw_diss  = np.mean(uw_disst ,0)
+uw_pres  = np.mean(uw_prest ,0)
+uw_rdstr = np.mean(uw_rdstrt,0)
 uw_resid = uw_shear + uw_turb + uw_visc + uw_diss + uw_pres + uw_rdstr
-"""
 
-utotavg = numpy.mean(utotavgt,0)
-ustar   = numpy.mean(ustart)
+utotavg = np.mean(utotavgt,0)
+ustar   = np.mean(ustart)
 
 print('Re_tau = %.2f' % (ustar / visc))
 
 # create the theoretical lines
-ypluslin = arange(0.5,15., 0.1)
-ypluslog = arange(5.,800., 1.)
-ulin     = ypluslin
-ulog     = 2.5 * numpy.log( ypluslog ) + 5.
+ypluslin = np.arange(0.5,15., 0.1)
+ypluslog = np.arange(5.,800., 1.)
+ulin = ypluslin
+ulog = 2.5 * np.log( ypluslog ) + 5.
 
 yplus  = z  * ustar / visc
 yplush = zh * ustar / visc
@@ -182,9 +175,9 @@ endy   = z.size // 2
 
 close('all')
 figure()
-if(plotens):
- for n in range(end-start):
-   semilogx(yplus[starty:endy], utotavgt[n,starty:endy] / ustar, color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        semilogx(yplus[starty:endy], utotavgt[n,starty:endy] / ustar, color='#cccccc')
 semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'bo-', label='u')
 semilogx(yplusMoser, uavgMoser, 'k--', label="Moser")
 semilogx(ypluslin, ulin, 'k:')
@@ -196,32 +189,31 @@ grid()
 axis([0.1, 800, 0, 25])
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplus [starty:endy], (uvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-    plot(yplus [starty:endy], (vvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-    plot(yplush[starty:endy], (wvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplus [starty:endy], (uvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+        plot(yplus [starty:endy], (vvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+        plot(yplush[starty:endy], (wvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
 plot(yplus [starty:endy], (uvar[starty:endy] / ustar**2.)**0.5, 'b-', label='u')
 plot(yplus [starty:endy], (vvar[starty:endy] / ustar**2.)**0.5, 'g-', label='v')
 plot(yplush[starty:endy], (wvar[starty:endy] / ustar**2.)**0.5, 'r-', label='w')
-plot(yplusMoser, sqrt(uvarMoser), 'k--', label="Moser")
-plot(yplusMoser, sqrt(vvarMoser), 'k--')
-plot(yplusMoser, sqrt(wvarMoser), 'k--')
+plot(yplusMoser, np.sqrt(uvarMoser), 'k--', label="Moser")
+plot(yplusMoser, np.sqrt(vvarMoser), 'k--')
+plot(yplusMoser, np.sqrt(wvarMoser), 'k--')
 xlabel('y+')
 ylabel('rms')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 120, 0, 4.0])
 
-"""
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplus[starty:endy], u2_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], u2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], u2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], u2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], u2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplus[starty:endy], u2_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], u2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], u2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], u2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], u2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplus[starty:endy], u2_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
 plot(yplus[starty:endy], u2_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 plot(yplus[starty:endy], u2_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
@@ -240,12 +232,12 @@ grid()
 axis([0, 200, -0.6, 0.6])
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplus[starty:endy], v2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], v2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], v2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], v2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplus[starty:endy], v2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], v2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], v2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], v2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplus[starty:endy], v2_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 plot(yplus[starty:endy], v2_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplus[starty:endy], v2_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
@@ -262,13 +254,13 @@ grid()
 axis([0, 200, -0.06, 0.06])
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplush[starty:endy], w2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplush[starty:endy], w2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplush[starty:endy], w2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplush[starty:endy], w2_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplush[starty:endy], w2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplush[starty:endy], w2_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplush[starty:endy], w2_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplush[starty:endy], w2_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplush[starty:endy], w2_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplush[starty:endy], w2_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplush[starty:endy], w2_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 plot(yplush[starty:endy], w2_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplush[starty:endy], w2_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
@@ -287,13 +279,13 @@ grid()
 axis([0, 200, -0.06, 0.06])
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplus[starty:endy], tke_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], tke_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], tke_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], tke_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], tke_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplus[starty:endy], tke_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], tke_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], tke_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], tke_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], tke_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplus[starty:endy], tke_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
 plot(yplus[starty:endy], tke_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 plot(yplus[starty:endy], tke_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
@@ -312,14 +304,14 @@ grid()
 axis([0, 200, -0.3, 0.3])
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(yplus[starty:endy], uw_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], uw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], uw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], uw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], uw_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
-    plot(yplus[starty:endy], uw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(yplus[starty:endy], uw_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], uw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], uw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], uw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], uw_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
+        plot(yplus[starty:endy], uw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplus[starty:endy], uw_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
 plot(yplus[starty:endy], uw_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 plot(yplus[starty:endy], uw_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
@@ -338,14 +330,13 @@ ylabel('Rxz')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 200, -0.1, 0.1])
-"""
 
 figure()
-if(plotens):
-  for n in range(end-start):
-    plot(zh, ufluxt[n,:] / ustar**2., color='#cccccc')
-    plot(zh, uwt   [n,:] / ustar**2., color='#cccccc')
-    plot(zh, udifft[n,:] / ustar**2., color='#cccccc')
+if plotens:
+    for n in range(end-start):
+        plot(zh, ufluxt[n,:] / ustar**2., color='#cccccc')
+        plot(zh, uwt   [n,:] / ustar**2., color='#cccccc')
+        plot(zh, udifft[n,:] / ustar**2., color='#cccccc')
 plot(zh, uflux / ustar**2., 'b-' , label='total flux')
 plot(zh, uw    / ustar**2., 'b--', label='turbulent flux')
 plot(zh, udiff / ustar**2., 'b:' , label='diffusive flux')
@@ -354,4 +345,3 @@ ylabel('uflux')
 legend(loc=0, frameon=False)
 grid()
 axis([0., 2., -1.1, 1.1])
- 

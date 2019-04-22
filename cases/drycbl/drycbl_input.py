@@ -1,12 +1,14 @@
-import numpy
-#from scipy.special import erf
-from pylab import *
+import numpy as np
+import netCDF4 as nc
+
+float_type = "f8"
+# float_type = "f4"
 
 # set the height (ktot = 512)
 kmax = 512
 dn   = 1./kmax
 
-n = numpy.linspace(dn, 1.-dn, kmax)
+n = np.linspace(dn, 1.-dn, kmax)
 
 nloc1 = 80.*dn
 nbuf1 = 16.*dn
@@ -23,7 +25,7 @@ dz3 = 0.016
 kmax = 1024
 dn   = 1./kmax
 
-n  = numpy.linspace(dn, 1.-dn, kmax)
+n  = np.linspace(dn, 1.-dn, kmax)
 
 nloc1 = 150.*dn
 nbuf1 = 32.*dn
@@ -40,12 +42,12 @@ dzdn1 = dz1/dn
 dzdn2 = dz2/dn
 dzdn3 = dz3/dn
 
-dzdn = dzdn1 + 0.5*(dzdn2-dzdn1)*(1. + numpy.tanh((n-nloc1)/nbuf1)) + 0.5*(dzdn3-dzdn2)*(1. + numpy.tanh((n-nloc2)/nbuf2))
+dzdn = dzdn1 + 0.5*(dzdn2-dzdn1)*(1. + np.tanh((n-nloc1)/nbuf1)) + 0.5*(dzdn3-dzdn2)*(1. + np.tanh((n-nloc2)/nbuf2))
 
 dz = dzdn*dn
 
-z       = numpy.zeros(numpy.size(dz))
-stretch = numpy.zeros(numpy.size(dz))
+z       = np.zeros(dz.size)
+stretch = np.zeros(dz.size)
 
 z      [0] = 0.5*dz[0]
 stretch[0] = 1.
@@ -61,18 +63,23 @@ b0    = 1.
 delta = 4.407731e-3
 N2    = 3.
 
-b = numpy.zeros(numpy.size(z))
+b = np.zeros(z.size)
 
 for k in range(kmax):
-  #b[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
   b[k] = N2*z[k]
 
-# write the data to a file
-proffile = open('drycbl.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
-for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
-proffile.close()
+nc_file = nc.Dataset("drycbl_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+
+nc_file.createDimension("z", kmax)
+nc_z  = nc_file.createVariable("z" , float_type, ("z"))
+
+nc_group_init = nc_file.createGroup("init");
+nc_b = nc_group_init.createVariable("b", float_type, ("z"))
+
+nc_z[:] = z[:]
+nc_b[:] = b[:]
+
+nc_file.close()
 
 """
 #plot the grid
