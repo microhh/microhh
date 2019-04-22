@@ -1060,7 +1060,7 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 }
 
 template<typename TF>
-void Stats<TF>::set_timeserie(const std::string varname, const TF val)
+void Stats<TF>::set_timeseries(const std::string varname, const TF val)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
     if (it != varlist.end())

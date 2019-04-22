@@ -119,7 +119,7 @@ class Stats
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
         void set_prof(const std::string, const std::vector<TF>);
-        void set_timeserie(const std::string, const TF);
+        void set_timeseries(const std::string, const TF);
 
     private:
         Master& master;
