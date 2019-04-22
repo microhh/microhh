@@ -1049,11 +1049,14 @@ template<typename TF>
 void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
-    if (it != varlist.end())
+    if (it == varlist.end())
+        throw std::runtime_error("Set_prof: Variable "+varname+ " does not exist");
+    else
     {
         for (auto& it : masks)
             it.second.profs.at(varname).data = prof;
     }
+
 }
 
 template<typename TF>
