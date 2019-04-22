@@ -1756,6 +1756,7 @@ namespace
             const TF* restrict w, const TF* restrict b,
             const TF* restrict bmean,
             const TF* restrict dzi4, const TF* restrict dzhi4,
+            const TF dxi, const TF dyi,
             const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -1771,9 +1772,6 @@ namespace
         const int kk1 = 1*ijcells;
         const int kk2 = 2*ijcells;
         const int kk3 = 3*ijcells;
-    
-        const TF dxi = dxi;
-        const TF dyi = dyi;
     
         // 1. CALCULATE THE GRADIENT PRODUCTION TERM
         int k = kstart;
@@ -2883,10 +2881,41 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold, {"mean"});
         stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold, {"mean"});
 
+
+        //     TF* restrict b2_shear, TF* restrict b2_turb, TF* restrict b2_visc, TF* restrict b2_diss,
+        //     const TF* restrict w, const TF* restrict b,
+        //     const TF* restrict bmean,
+        //     const TF* restrict dzi4, const TF* restrict dzhi4,
+        //     const TF dxi, const TF dyi,
+        //     const TF visc,
+        //     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+        //     const int icells, const int ijcells)
+
+        auto b2_shear = std::move(w2_buoy);
+        auto b2_turb = std::move(tke_buoy);
+        auto b2_visc = std::move(uw_buoy);
+        auto b2_diss = fields.get_tmp();
+
+        calc_b2_budget(
+                b2_shear->fld.data(), b2_turb->fld.data(), b2_visc->fld.data(), b2_diss->fld.data(),
+                fields.mp.at("w")->fld.data(), b->fld.data(),
+                b->fld_mean.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.dxi, gd.dyi,
+                fields.visc, // CvH NEIN, NEIN, NEIN!
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold, {"mean"});
+        stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("b2_visc" , *b2_visc , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("b2_diss" , *b2_diss , no_offset, no_threshold, {"mean"});
+
         fields.release_tmp(b);
-        fields.release_tmp(w2_buoy);
-        fields.release_tmp(tke_buoy);
-        fields.release_tmp(uw_buoy);
+        fields.release_tmp(b2_shear);
+        fields.release_tmp(b2_turb);
+        fields.release_tmp(b2_visc);
+        fields.release_tmp(b2_diss);
 
         /*
         calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
