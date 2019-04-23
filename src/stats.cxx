@@ -541,43 +541,6 @@ namespace
 
         return output;
     }
-
-    void sanitize_operations_vector(std::vector<std::string>& operations)
-    {
-        // Sanitize the operations vector:
-        // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
-    
-        std::vector<std::string> tmpvec = operations;
-        for (auto it : tmpvec)
-        {
-            if (it == "flux")
-            {
-                operations.push_back("diff");
-                operations.push_back("w");
-            }
-        }
-        for (auto it : tmpvec)
-        {
-            if (has_only_digits(it) || (it == "w") || (it == "path"))
-            {
-                operations.push_back("mean");
-            }
-        }
-    
-        // Check for duplicates
-        std::sort( operations.begin(), operations.end() );
-        operations.erase( std::unique( operations.begin(), operations.end() ), operations.end() );
-    
-        // Make sure that flux goes at the end
-        for (auto& it : operations)
-        {
-            if (it == "flux" )
-            {
-                std::swap(it, operations.back());
-                break;
-            }
-        }
-    }
 }
 
 template<typename TF>
@@ -803,7 +766,7 @@ void Stats<TF>::add_mask(const std::string maskname)
 
 // Add a new profile to each of the NetCDF files.
 template<typename TF>
-void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, const std::vector<std::string>& operations)
+void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<std::string> operations)
 {
     std::string zloc_alt;
     if (zloc == "z")
@@ -817,7 +780,7 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, const std::v
     {
         if (it == "mean")
         {
-            add_prof(var.name, var.longname, var.unit, zloc,  Stats_whitelist_type::White );
+            add_prof(var.name, var.longname, var.unit, zloc, Stats_whitelist_type::White);
         }
         else if (has_only_digits(it))
         {
@@ -826,7 +789,6 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, const std::v
         else if (it == "w")
         {
             add_prof(var.name+"w", "Turbulent flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
-
         }
         else if (it == "grad")
         {
@@ -878,6 +840,99 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
 
 }
 
+
+template<typename TF>
+void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string varname, std::string op)
+{
+    operations.push_back(op);
+    if (is_blacklisted(varname + op))
+    {
+        std::regex re(varname + op);
+        whitelist.push_back(re);
+    }
+
+}
+
+template<typename TF>
+void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std::string>& operations)
+{
+    // Sanitize the operations vector:
+    // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
+
+    std::vector<std::string> tmpvec = operations;
+    for (auto it = tmpvec.begin(); it != tmpvec.end(); )
+    {
+        if (is_blacklisted(varname + *it))
+        {
+            it = tmpvec.erase(it);
+        }
+        else
+        {
+            if (*it == "flux")
+            {
+                add_operation(operations, varname, "diff");
+                add_operation(operations, varname, "w");
+            }
+            else if (has_only_digits(*it) || (*it == "path"))
+            {
+                add_operation(operations, varname, "mean");
+            }
+
+            else if (*it == "w")
+            {
+                add_operation(operations, varname, "mean");
+            }
+            ++it;
+        }
+    }
+
+    // Check for duplicates
+    std::sort( operations.begin(), operations.end() );
+    operations.erase( std::unique( operations.begin(), operations.end() ), operations.end() );
+
+    // Make sure that mean goes in the front
+    for (auto& it : operations)
+    {
+        if (it == "mean" )
+        {
+            std::swap(it, operations.front());
+            break;
+        }
+    }
+    // Make sure that flux goes at the end
+    for (auto& it : operations)
+    {
+        if (it == "flux" )
+        {
+            std::swap(it, operations.back());
+            break;
+        }
+    }
+}
+
+template<typename TF>
+bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wltype)
+{
+    if (wltype == Stats_whitelist_type::White)
+        return false;
+
+    for (const auto& it : whitelist)
+    {
+        if (std::regex_match(name, it))
+            return false;
+    }
+
+    if (wltype == Stats_whitelist_type::Black)
+        return true;
+
+    for (const auto& it : blacklist)
+    {
+        if (std::regex_match(name, it))
+            return true;
+    }
+
+    return false;
+}
 
 // Add a new profile to each of the NetCDF files
 template<typename TF>
@@ -963,37 +1018,7 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
     }
 
     varlist.push_back(name);
-}
 
-template<typename TF>
-bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wltype)
-{
-    if (wltype == Stats_whitelist_type::White)
-        return false;
-
-    for (const auto& it : whitelist)
-    {
-        if (std::regex_match(name, it))
-        {
-            if (wltype == Stats_whitelist_type::Black)
-                master.print_message("DOING statistics for %s\n", name.c_str());
-
-            return false;
-        }
-    }
-
-    if (wltype == Stats_whitelist_type::Black)
-        return true;
-
-    for (const auto& it : blacklist)
-    {
-        if (std::regex_match(name, it))
-        {
-            master.print_message("NOT DOING statistics for %s\n", name.c_str());
-            return true;
-        }
-    }
-    return false;
 }
 
 template<typename TF>
@@ -1118,7 +1143,7 @@ void Stats<TF>::calc_stats(
     const int* nmask;
     std::string name;
 
-    sanitize_operations_vector(operations);
+    sanitize_operations_vector(varname, operations);
 
     // Process mean first
     auto it = std::find(operations.begin(), operations.end(), "mean");
