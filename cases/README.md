@@ -12,3 +12,4 @@
 ## DNS
 * `moser180`: Turbulent channel flow at Re_tau = 180 (Moser et al., 1999).
 * `moser600`: Turbulent channel flow at Re_tau = 600 (Moser et al., 1999).
+* `taylorgreen`: Taylor-Greene vortex case to test spatial accuracy of schemes.
