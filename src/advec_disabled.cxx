@@ -55,7 +55,7 @@ void Advec_disabled<TF>::exec() {}
 template<typename TF>
 void Advec_disabled<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
-    throw std::runtime_error("Advec_disabled cannot deliver an advection flux field");
+    std::fill(advec_flux.fld.begin(), advec_flux.fld.end(), TF(0.));
 }
 
 template class Advec_disabled<double>;
