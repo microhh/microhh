@@ -776,6 +776,8 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
     else
         throw std::runtime_error(zloc + " is an invalid height in add_profs");
 
+    sanitize_operations_vector(var.name, operations);
+
     for (auto& it : operations)
     {
         if (it == "mean")
@@ -858,31 +860,34 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
 {
     // Sanitize the operations vector:
     // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
-
-    std::vector<std::string> tmpvec = operations;
-    for (auto it = tmpvec.begin(); it != tmpvec.end(); )
+    for (auto it = operations.begin(); it != operations.end(); )
     {
         if (is_blacklisted(varname + *it))
         {
-            it = tmpvec.erase(it);
+            it = operations.erase(it);
         }
         else
         {
-            if (*it == "flux")
-            {
-                add_operation(operations, varname, "diff");
-                add_operation(operations, varname, "w");
-            }
-            else if (has_only_digits(*it) || (*it == "path"))
-            {
-                add_operation(operations, varname, "mean");
-            }
-
-            else if (*it == "w")
-            {
-                add_operation(operations, varname, "mean");
-            }
             ++it;
+        }
+    }
+
+    auto tmpvec = operations;
+    for (auto& it : tmpvec)
+    {
+        if (it == "flux")
+        {
+            add_operation(operations, varname, "diff");
+            add_operation(operations, varname, "w");
+        }
+        else if (has_only_digits(it) || (it == "path"))
+        {
+            add_operation(operations, varname, "mean");
+        }
+
+        else if (it == "w")
+        {
+            add_operation(operations, varname, "mean");
         }
     }
 
@@ -1143,7 +1148,7 @@ void Stats<TF>::calc_stats(
     const int* nmask;
     std::string name;
 
-    sanitize_operations_vector(varname, operations);
+    //sanitize_operations_vector(varname, operations);
 
     // Process mean first
     auto it = std::find(operations.begin(), operations.end(), "mean");
