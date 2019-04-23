@@ -58,5 +58,10 @@ double Diff_disabled<TF>::get_dn(const double dt)
     return Constants::dsmall;
 }
 
+template<typename TF>
+void Diff_disabled<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
+{
+    std::fill(out.fld.begin(), out.fld.end(), TF(0.));
+}
 template class Diff_disabled<double>;
 template class Diff_disabled<float>;
