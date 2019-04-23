@@ -108,7 +108,7 @@ class Stats
         // Interface functions.
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
-        void add_profs(const Field3d<TF>&, std::string, const std::vector<std::string>&);
+        void add_profs(const Field3d<TF>&, std::string, std::vector<std::string>);
         void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
@@ -133,7 +133,9 @@ class Stats
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
-        bool is_blacklisted(std::string, Stats_whitelist_type);
+        void add_operation(std::vector<std::string>&, std::string, std::string);
+        void sanitize_operations_vector(std::string, std::vector<std::string>&);
+        bool is_blacklisted(std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         int statistics_counter;
         double sampletime;
