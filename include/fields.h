@@ -192,9 +192,6 @@ class Fields
         // statistics
         std::vector<TF> umodel;
         std::vector<TF> vmodel;
-        const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
-        const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
-        const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
 
         // double* umodel;
         // double* vmodel;

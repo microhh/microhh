@@ -66,7 +66,6 @@ class Diff_smag2 : public Diff<TF>
         const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
 
         void create_stats(Stats<TF>&);
-        const std::vector<std::string> stat_op_evisc  = {"mean","2"};
 
         TF* mlen_g;
 

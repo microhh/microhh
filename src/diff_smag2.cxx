@@ -1030,7 +1030,7 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_profs(*fields.sd["evisc"], "z", stat_op_evisc);
+        stats.add_profs(*fields.sd["evisc"], "z", {"mean","2"});
     }
 }
 
@@ -1039,7 +1039,7 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold, stat_op_evisc);
+    stats.calc_stats("evisc", *fields.sd["evisc"], no_offset, no_threshold);
 }
 
 template<typename TF>

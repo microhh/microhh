@@ -932,14 +932,14 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         b->name = "b";
         b->longname = "Buoyancy";
         b->unit = "m s-2";
-        stats.add_profs(*b, "z", stat_op_b);
+        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
         fields.release_tmp(b);
 
         auto ql = fields.get_tmp();
         ql->name = "ql";
         ql->longname = "Liquid water";
         ql->unit = "kg kg-1";
-        stats.add_profs(*ql, "z", stat_op_ql);
+        stats.add_profs(*ql, "z", {"mean","frac","path","cover"});
         fields.release_tmp(ql);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m");
@@ -1026,7 +1026,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
+    stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
 
@@ -1035,7 +1035,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     ql->loc = gd.sloc;
 
     get_thermo_field(*ql, "ql", true, true);
-    stats.calc_stats("ql", *ql, no_offset, no_threshold, stat_op_ql);
+    stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
     fields.release_tmp(ql);
 

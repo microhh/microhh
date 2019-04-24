@@ -584,8 +584,8 @@ template<typename TF>
 void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;
-    stats.calc_stats_2d("obuk", obuk, no_offset, {"mean"});
-    stats.calc_stats_2d("ustar", ustar, no_offset, {"mean"});
+    stats.calc_stats_2d("obuk", obuk, no_offset);
+    stats.calc_stats_2d("ustar", ustar, no_offset);
 }
 
 template<typename TF>

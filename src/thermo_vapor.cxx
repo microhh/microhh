@@ -681,7 +681,7 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         b->name = "b";
         b->longname = "Buoyancy";
         b->unit = "m s-2";
-        stats.add_profs(*b, "z", stat_op_b);
+        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
         fields.release_tmp(b);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m");
@@ -758,7 +758,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    stats.calc_stats("b", *b, no_offset, no_threshold, stat_op_b);
+    stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
 

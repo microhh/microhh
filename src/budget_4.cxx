@@ -2801,8 +2801,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("ke" , *ke , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke", *tke, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("ke" , *ke , no_offset, no_threshold);
+    stats.calc_stats("tke", *tke, no_offset, no_threshold);
 
     auto wx = std::move(ke );
     auto wy = std::move(tke);
@@ -2829,10 +2829,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
+    stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
+    stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
+    stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
 
     auto u2_turb = std::move(u2_shear);
     auto v2_turb = std::move(v2_shear);
@@ -2849,11 +2849,11 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
+    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
+    stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
+    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
+    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
 
     auto w2_pres  = std::move(w2_turb);
     auto tke_pres = std::move(tke_turb);
@@ -2869,9 +2869,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
+    stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
+    stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
 
     auto u2_visc  = std::move(u2_turb);
     auto v2_visc  = std::move(v2_turb);
@@ -2893,11 +2893,11 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
+    stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
+    stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
+    stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
+    stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
 
     auto u2_diss  = std::move(u2_visc);
     auto v2_diss  = std::move(v2_visc);
@@ -2915,11 +2915,11 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold, {"mean"});
-    stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold, {"mean"});
+    stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
+    stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
+    stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
+    stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
+    stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
 
     auto u2_rdstr = std::move(u2_diss);
     auto v2_rdstr = std::move(v2_diss);
@@ -2935,10 +2935,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    stats.calc_stats("u2_rdstr", *u2_rdstr, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("v2_rdstr", *v2_rdstr, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("w2_rdstr", *w2_rdstr, no_offset, no_threshold, {"mean"});
-    stats.calc_stats("uw_rdstr", *uw_rdstr, no_offset, no_threshold, {"mean"});
+    stats.calc_stats("u2_rdstr", *u2_rdstr, no_offset, no_threshold);
+    stats.calc_stats("v2_rdstr", *v2_rdstr, no_offset, no_threshold);
+    stats.calc_stats("w2_rdstr", *w2_rdstr, no_offset, no_threshold);
+    stats.calc_stats("uw_rdstr", *uw_rdstr, no_offset, no_threshold);
 
     // Release the tmp arrays that are still in use.
     fields.release_tmp(uz);
@@ -2971,9 +2971,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
+        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
+        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
 
         auto b2_shear = std::move(w2_buoy);
         auto b2_turb = std::move(tke_buoy);
@@ -2990,10 +2990,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("b2_visc" , *b2_visc , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("b2_diss" , *b2_diss , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
+        stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
+        stats.calc_stats("b2_visc" , *b2_visc , no_offset, no_threshold);
+        stats.calc_stats("b2_diss" , *b2_diss , no_offset, no_threshold);
 
         auto bw_shear = std::move(b2_shear);
         auto bw_turb  = std::move(b2_turb);
@@ -3011,9 +3011,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.jcells, gd.ijcells);
 
-        stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("bw_visc" , *bw_visc , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
+        stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
+        stats.calc_stats("bw_visc" , *bw_visc , no_offset, no_threshold);
 
         auto bw_buoy  = std::move(bw_shear);
         auto bw_rdstr = std::move(bw_turb);
@@ -3031,10 +3031,10 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.jcells, gd.ijcells);
 
-        stats.calc_stats("bw_buoy" , *bw_buoy , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("bw_buoy" , *bw_buoy , no_offset, no_threshold);
+        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+        stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold);
+        stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold);
 
         fields.release_tmp(bw_buoy);
         fields.release_tmp(bw_rdstr);
