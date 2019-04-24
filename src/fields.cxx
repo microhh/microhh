@@ -467,14 +467,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, stat_op_w);
-    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, stat_op_def);
-    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, stat_op_def);
+    stats.calc_stats("w", *mp["w"], no_offset, no_threshold);
+    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold);
+    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold);
 
     for (auto& it : sp)
-        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, stat_op_def);
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
 
-    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, stat_op_p);
+    stats.calc_stats("p", *sd["p"], no_offset, no_threshold);
 
     // Calculate covariances
     for (auto& it1 : ap)
@@ -797,6 +797,10 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
+    const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
+    const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
+
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
