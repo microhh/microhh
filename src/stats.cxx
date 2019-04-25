@@ -558,6 +558,7 @@ Stats<TF>::Stats(
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
+        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
 
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
@@ -696,6 +697,12 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 }
 
 template<typename TF>
+void Stats<TF>::set_tendency(bool in)
+{
+    doing_tendency = in;
+}
+
+template<typename TF>
 void Stats<TF>::exec(const int iteration, const double time, const unsigned long itime)
 {
     if (!swstats)
@@ -705,6 +712,30 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 
     // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
+
+    // Finalize the total tendencies
+    if (do_tendency())
+    {
+        //Subtract the previous tendency from the current one
+        for (auto& var: tendency_order)
+        {
+            for (auto tend = var.second.rbegin(); tend != std::prev(var.second.rend()); ++tend)
+            {
+                auto prev_tend = std::next(tend); // It is a reverse iterator....
+                std::string name = var.first + "_" + *tend;
+                std::string prev_name = var.first + "_" + *prev_tend;
+                for (auto& mask : masks)
+                {
+                    Mask<TF>& m = mask.second;
+                    std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
+                                    m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
+                }
+            }
+            calc_tend(*fields.at.at(var.first.substr(0, var.first.length() -1)),"total");
+
+            var.second.clear();
+        }
+    }
 
     for (auto& mask : masks)
     {
@@ -820,6 +851,21 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         else
         {
             throw std::runtime_error(it + "is an invalid operator name to add profs");
+        }
+    }
+}
+
+// Add a new profile to each of the NetCDF files.
+template<typename TF>
+void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::string tend_name, std::string tend_longname)
+{
+    if(swtendency)
+    {
+        add_prof(var.name + "_" + tend_name, tend_longname + var.longname, simplify_unit(var.unit,"s-1"), zloc);
+        if(tendency_order.find(var.name) == tendency_order.end())
+        {
+            tendency_order[var.name];
+            add_tendency(var, zloc, "total", "Total");
         }
     }
 }
@@ -1323,6 +1369,33 @@ void Stats<TF>::calc_stats(
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
+{
+    if (!doing_tendency)
+        return;
+    auto& gd = grid.get_grid_data();
+    unsigned int flag;
+    const int* nmask;
+    std::string name = fld.name + "_" + tend_name;
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        tendency_order.at(fld.name).push_back(tend_name);
+        #ifdef USECUDA
+        fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
+        #endif
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }

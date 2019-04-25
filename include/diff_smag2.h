@@ -43,7 +43,7 @@ class Diff_smag2 : public Diff<TF>
 
         void create(Stats<TF>&);
         void init();
-        void exec();
+        void exec(Stats<TF>&);
         void exec_viscosity(Thermo<TF>&);
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
         void exec_stats(Stats<TF>&);
@@ -73,5 +73,8 @@ class Diff_smag2 : public Diff<TF>
         double dnmul;
 
         double cs;
+
+        std::string tend_name = "diff";
+        std::string tend_longname = "Diffusive";
 };
 #endif

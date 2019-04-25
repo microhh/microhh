@@ -38,7 +38,7 @@ class Diff_4 : public Diff<TF>
 
         void create(Stats<TF>&);
         void init() {};
-        void exec();
+        void exec(Stats<TF>&);
         void exec_stats(Stats<TF>&) {};
 
         // Empty functions, these are allowed to pass.

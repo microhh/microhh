@@ -46,7 +46,7 @@ class Diff
         virtual void create(Stats<TF>&) = 0;
         virtual void exec_viscosity(Thermo<TF>&) = 0;
         virtual void init() = 0;
-        virtual void exec() = 0;
+        virtual void exec(Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&) = 0;
         virtual void diff_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
 

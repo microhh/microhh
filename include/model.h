@@ -101,6 +101,7 @@ class Model
 
         Sim_mode sim_mode;
         std::string sim_name;
+        bool cpu_up_to_date;
 
         void load();
         void save();
@@ -108,6 +109,7 @@ class Model
         void delete_objects();
         void print_status();
         void calculate_statistics(int, double, unsigned long, int, double);
+        void setup_stats();
         void set_time_step();
 
         void prepare_gpu();

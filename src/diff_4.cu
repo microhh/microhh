@@ -24,6 +24,7 @@
 #include "fields.h"
 #include "diff_4.h"
 #include "defines.h"
+#include "stats.h"
 #include "constants.h"
 #include "tools.h"
 #include "finite_difference.h"
@@ -159,7 +160,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec()
+void Diff_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 

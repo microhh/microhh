@@ -833,7 +833,7 @@ void Diff_smag2<TF>::create(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec()
+void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -872,6 +872,7 @@ void Diff_smag2<TF>::exec()
                 gd.icells, gd.ijcells);
 
         for (auto it : fields.st)
+        {
             diff_c<TF, Surface_model::Enabled>(
                     it.second->fld.data(), fields.sp[it.first]->fld.data(),
                     gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
@@ -881,6 +882,7 @@ void Diff_smag2<TF>::exec()
                     fields.sp[it.first]->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+        }
     }
     else
     {
@@ -917,6 +919,7 @@ void Diff_smag2<TF>::exec()
                 gd.icells, gd.ijcells);
 
         for (auto it : fields.st)
+        {
             diff_c<TF, Surface_model::Disabled>(
                     it.second->fld.data(), fields.sp[it.first]->fld.data(),
                     gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
@@ -926,7 +929,14 @@ void Diff_smag2<TF>::exec()
                     fields.sp[it.first]->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+        }
     }
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 
 template<typename TF>
@@ -1030,7 +1040,12 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_profs(*fields.sd["evisc"], "z", {"mean","2"});
+        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean","2"});
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("w"), "z", tend_name, tend_longname);
+        for (auto it : fields.st)
+            stats.add_tendency(*it.second, "z", "diff", "Diffusive");
     }
 }
 

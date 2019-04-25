@@ -23,6 +23,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "diff_2.h"
+#include "stats.h"
 #include "defines.h"
 #include "constants.h"
 #include "tools.h"
@@ -86,7 +87,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_2<TF>::exec()
+void Diff_2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;

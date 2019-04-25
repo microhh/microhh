@@ -27,6 +27,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
+#include "stats.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -243,7 +244,7 @@ void Diff_4<TF>::create(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec()
+void Diff_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 

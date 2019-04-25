@@ -96,6 +96,8 @@ class Stats
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swstats; }
         bool do_statistics(unsigned long);
+        bool do_tendency() {return swtendency; }
+        void set_tendency(bool);
 
         void initialize_masks();
         void finalize_masks();
@@ -109,6 +111,8 @@ class Stats
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
         void add_profs(const Field3d<TF>&, std::string, std::vector<std::string>);
+        void add_tendency(const Field3d<TF>&, std::string, std::string, std::string);
+
         void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
         void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
@@ -118,6 +122,7 @@ class Stats
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
+        void calc_tend(Field3d<TF>&, const std::string);
         void set_prof(const std::string, const std::vector<TF>&);
         void set_timeseries(const std::string, const TF);
 
@@ -130,6 +135,8 @@ class Stats
         Boundary_cyclic<TF> boundary_cyclic;
 
         bool swstats;           ///< Statistics on/off switch
+        bool swtendency;
+        bool doing_tendency;
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
@@ -146,6 +153,9 @@ class Stats
         std::vector<std::string> masklist;
         std::vector<unsigned int> mfield;
         std::vector<unsigned int> mfield_bot;
+
+        //Tendency calculations
+        std::map<std::string, std::vector<std::string>> tendency_order;
 
         void calc_flux_2nd(TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
                           const int, const int, const int, const int, const int, const int, const int, const int);

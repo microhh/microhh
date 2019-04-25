@@ -32,6 +32,7 @@
 #include "constants.h"
 #include "thermo.h"
 #include "tools.h"
+#include "stats.h"
 #include "monin_obukhov.h"
 #include "fast_math.h"
 
@@ -503,7 +504,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec()
+void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -542,6 +543,14 @@ void Diff_smag2<TF>::exec()
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
+
 }
 #endif
 
