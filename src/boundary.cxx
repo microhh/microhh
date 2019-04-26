@@ -92,7 +92,8 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     master(masterin),
     grid(gridin),
     fields(fieldsin),
-    boundary_cyclic(master, grid)
+    boundary_cyclic(master, grid),
+    field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -192,6 +193,7 @@ void Boundary<TF>::process_bcs(Input& input)
         }
     }
 
+    sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -292,12 +294,29 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-               sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
-        set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
-               sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
+        // Load 2D fields for bottom boundary from disk.
+        if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        {
+            std::string filename = it.first + "_bot.0000000";
+            master.print_message("Loading \"%s\" ... ", filename.c_str());
+
+            auto tmp = fields.get_tmp();
+            if (field3d_io.load_xy_slice(it.second->fld_bot.data(), tmp->fld.data(), filename.c_str()))
+            {
+                master.print_message("FAILED\n");
+                throw std::runtime_error("Error loading 2D field of bottom boundary");
+            }
+            fields.release_tmp(tmp);
+        }
+        else
+        {
+            set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                   sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+            set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                   sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+        }
     }
 }
 
