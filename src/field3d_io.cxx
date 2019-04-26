@@ -391,8 +391,8 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const cha
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    const int jj  = gd.icells;
-    const int kk  = gd.icells*gd.jcells;
+    const int jj = gd.icells;
+    const int kk = gd.icells*gd.jcells;
     const int jjb = gd.imax;
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
@@ -627,7 +627,7 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
 

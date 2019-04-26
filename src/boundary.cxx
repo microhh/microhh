@@ -210,6 +210,9 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    // Initialize the IO operators.
+    field3d_io.init();
 }
 
 template<typename TF>
@@ -301,7 +304,15 @@ void Boundary<TF>::set_values()
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();
-            if (field3d_io.load_xy_slice(it.second->fld_bot.data(), tmp->fld.data(), filename.c_str()))
+            TF* fld_2d_ptr = nullptr;
+            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
+                fld_2d_ptr = it.second->fld_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Neumann_type)
+                fld_2d_ptr = it.second->grad_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+                fld_2d_ptr = it.second->flux_bot.data();
+
+            if (field3d_io.load_xy_slice(fld_2d_ptr, tmp->fld.data(), filename.c_str()))
             {
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
