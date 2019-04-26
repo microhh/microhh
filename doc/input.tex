@@ -22,7 +22,7 @@
 \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
-\section*{\huge MicroHH 1.6 cheat sheet}
+\section*{\huge MicroHH 2.0 cheat sheet}
 
 \subsection*{[advec] Advection}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -44,23 +44,24 @@ cflmax        & 1.0                  &     & \\
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{|L{\wname} C{\wdef} C{\wopt} L{\wdesc}|}
-swboundary    & default & default   & fully resolved boundaries (smooth wall) \\
-              &         & surface   & MOST based wall model \\
-              &         & patch	    & patches, resolved boundary \\
-              &         & surface\_patch & patches, MOST boundary \\
-mbcbot        & n/a     & noslip    & no-slip bottom boundary condition \\
-              &         & freeslip  & free-slip bottom boundary condition \\
-              &         & ustar     & fixed ustar bottom boundary condition \\
-mbctop        & n/a     & noslip    & no-slip top boundary condition \\
-              &         & freeslip  & free-slip top boundary condition\\
-sbcbot[]      & n/a     & dirichlet & fixed bottom value boundary condition \\
-              &         & neumann   & fixed bottom gradient (only valid for \textit{default}) \\
-              &         & flux      & fixed bottom flux boundary condition \\
-sbcbot[]      & n/a     & dirichlet & fixed top value boundary condition \\
-              &         & neumann   & fixed top gradient (only valid for \textit{default}) \\
-              &         & flux      & fixed top flux boundary condition \\
-sbot[]        & n/a     &           & value of the bottom boundary condition\\
-stop[]        & n/a     &           & value of the top boundary condition \\
+swboundary     & default & default   & fully resolved boundaries (smooth wall) \\
+               &         & surface   & MOST based wall model \\
+               &         & patch	    & patches, resolved boundary \\
+               &         & surface\_patch & patches, MOST boundary \\
+mbcbot         & n/a     & noslip    & no-slip bottom boundary condition \\
+               &         & freeslip  & free-slip bottom boundary condition \\
+               &         & ustar     & fixed ustar bottom boundary condition \\
+mbctop         & n/a     & noslip    & no-slip top boundary condition \\
+               &         & freeslip  & free-slip top boundary condition\\
+sbcbot[]       & n/a     & dirichlet & fixed bottom value boundary condition \\
+               &         & neumann   & fixed bottom gradient (only valid for \textit{default}) \\
+               &         & flux      & fixed bottom flux boundary condition \\
+sbcbot[]       & n/a     & dirichlet & fixed top value boundary condition \\
+               &         & neumann   & fixed top gradient (only valid for \textit{default}) \\
+               &         & flux      & fixed top flux boundary condition \\
+sbot[]         & n/a     &           & value of the bottom boundary condition\\
+stop[]         & n/a     &           & value of the top boundary condition \\
+sbot\_2d\_list &         &           & list of scalars for which 2D binary field is provided for bottom bc value \\
 \hline \multicolumn{4}{l}{Only for swboundary = \textit{surface}:} \\ \hline
 z0m           & n/a     &           & roughness length of momentum [m] \\
 z0h           & n/a     &           & roughness length of scalars [m]\\
