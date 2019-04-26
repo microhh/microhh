@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -231,6 +231,9 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
 
     if (swtimedep)
     {
+        if (!sbot_2d_list.empty())
+            master.print_warning("Provided 2D sbot fields are potentially overwritten by timedep");
+
         // Create temporary list to check which entries are used.
         std::vector<std::string> tmplist = timedeplist;
 
