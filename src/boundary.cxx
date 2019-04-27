@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -92,7 +92,8 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     master(masterin),
     grid(gridin),
     fields(fieldsin),
-    boundary_cyclic(master, grid)
+    boundary_cyclic(master, grid),
+    field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -192,6 +193,7 @@ void Boundary<TF>::process_bcs(Input& input)
         }
     }
 
+    sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -208,6 +210,9 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    // Initialize the IO operators.
+    field3d_io.init();
 }
 
 template<typename TF>
@@ -226,6 +231,9 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
 
     if (swtimedep)
     {
+        if (!sbot_2d_list.empty())
+            master.print_warning("Provided 2D sbot fields are potentially overwritten by timedep");
+
         // Create temporary list to check which entries are used.
         std::vector<std::string> tmplist = timedeplist;
 
@@ -292,12 +300,37 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-               sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
-        set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
-               sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
+        // Load 2D fields for bottom boundary from disk.
+        if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        {
+            std::string filename = it.first + "_bot.0000000";
+            master.print_message("Loading \"%s\" ... ", filename.c_str());
+
+            auto tmp = fields.get_tmp();
+            TF* fld_2d_ptr = nullptr;
+            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
+                fld_2d_ptr = it.second->fld_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Neumann_type)
+                fld_2d_ptr = it.second->grad_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+                fld_2d_ptr = it.second->flux_bot.data();
+
+            if (field3d_io.load_xy_slice(fld_2d_ptr, tmp->fld.data(), filename.c_str()))
+            {
+                master.print_message("FAILED\n");
+                throw std::runtime_error("Error loading 2D field of bottom boundary");
+            }
+            fields.release_tmp(tmp);
+        }
+        else
+        {
+            set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                   sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+            set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                   sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+        }
     }
 }
 
