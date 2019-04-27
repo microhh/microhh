@@ -20,7 +20,6 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/algorithm/string.hpp>
 #include <cstdio>
 #include <cmath>
 #include <sstream>
@@ -429,120 +428,6 @@ namespace
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
-
-    std::pair<std::string, int> split_unit(const std::string s, const int pow)
-    {
-        std::string unit;
-        int power;
-
-        int delim = s.find_first_of("-123456789");
-        if(delim == std::string::npos)
-        {
-            unit  = s;
-            power = pow;
-        }
-        else
-        {
-            unit  = s.substr(0,delim);
-            power = pow * std::stoi(s.substr(delim));
-        }
-        return std::make_pair(unit, power);
-    }
-
-    std::vector<std::pair<std::string, int>> get_units_vector(const std::string str, const int pow)
-    {
-        std::vector<std::string> fields;
-        std::vector<std::pair<std::string, int>> unit;
-
-        boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
-        for (auto& field : fields)
-        {
-            if (field != "-" && field != "")
-                unit.push_back(split_unit(field, pow));
-        }
-
-        return unit;
-    }
-
-    std::string simplify_unit(const std::string str1, const std::string str2, const int pow1  = 1, const int pow2 = 1)
-    {
-        std::vector<std::pair<std::string, int>> unit1, unit2;
-
-        //Split each string in separate unit strings; split those in pairs of unit and power
-        unit1 = get_units_vector(str1, pow1);
-        unit2 = get_units_vector(str2, pow2);
-
-        //Loop through units to find matches; in which case add the powers
-        int unit1_size = unit1.size();
-        for (auto& u2 : unit2)
-        {
-            int i;
-            for (i = 0 ; i < unit1_size; i++)
-            {
-                if (u2.first == unit1[i].first)
-                {
-                    if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
-                    {
-                        int j;
-                        for (j = i++ ; j < unit1_size; j++)
-                        {
-                            if (u2.first == unit1[j].first)
-                                break;
-                        }
-                        if (j == unit1_size)
-                            unit1[i].second += u2.second;
-                        else if (u2.second * unit1[j].second < 0)
-                            unit1[j].second += u2.second;
-                        else
-                            unit1[i].second += u2.second;
-                        break;
-                    }
-                    else
-                    {
-                        unit1[i].second += u2.second;
-                        break;
-                    }
-                }
-            }
-            if (i == unit1_size)
-                unit1.push_back(u2);
-        }
-
-        // Remove the entries with zero power
-        for (auto u1 = unit1.begin(); u1 != unit1.end(); )
-        {
-            if ((*u1).second  == 0)
-                u1 = unit1.erase(u1);
-            else
-                ++u1;
-        }
-
-        //Convert pairs back into strings
-        std::string output;
-        if (unit1.size() == 0)
-        {
-            output = "-";
-        }
-        else
-        {
-            std::ostringstream ostream;
-            for (auto& u1 : unit1)
-            {
-                if (u1.second == 1)
-                {
-                    ostream << u1.first << " ";
-                }
-                else
-                {
-                    ostream << u1.first << u1.second << " ";
-                }
-            }
-            output = ostream.str();
-            output.erase(output.end()-1); //remove final space
-        }
-
-        return output;
-    }
 }
 
 template<typename TF>
@@ -819,24 +704,24 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         }
         else if (has_only_digits(it))
         {
-            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,simplify_unit(var.unit, "",2), zloc);
+            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",2), zloc);
         }
         else if (it == "w")
         {
-            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "grad")
         {
-            add_prof(var.name+"grad", "Gradient of the " + var.longname, simplify_unit(var.unit, "m-1"), zloc_alt);
+            add_prof(var.name+"grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
 
         }
         else if (it == "flux")
         {
-            add_prof(var.name+"flux", "Total flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "diff")
         {
-            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "frac")
         {
@@ -844,7 +729,7 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         }
         else if (it == "path")
         {
-            add_time_series(var.name+"path", var.longname + " path", simplify_unit(var.unit, "kg m-2"));
+            add_time_series(var.name+"path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
         }
         else if (it == "cover")
         {
@@ -863,7 +748,7 @@ void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::stri
 {
     if(swstats && swtendency)
     {
-        add_prof(var.name + "_" + tend_name, tend_longname + var.longname, simplify_unit(var.unit,"s-1"), zloc);
+        add_prof(var.name + "_" + tend_name, tend_longname +" " + var.longname, var.unit, zloc);
         if(tendency_order.find(var.name) == tendency_order.end())
         {
             tendency_order[var.name];
@@ -884,7 +769,7 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
 
             std::string name = var1.name + spow1 + var2.name +spow2;
             std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
-            add_prof(name, longname, simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
+            add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
         }
     }
 

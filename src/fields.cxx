@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 
 #include "master.h"
 #include "grid.h"
@@ -192,6 +193,41 @@ namespace
 
         return mass;
     }
+
+    std::pair<std::string, int> split_unit(const std::string s, const int pow)
+    {
+        std::string unit;
+        int power;
+
+        int delim = s.find_first_of("-123456789");
+        if(delim == std::string::npos)
+        {
+            unit  = s;
+            power = pow;
+        }
+        else
+        {
+            unit  = s.substr(0,delim);
+            power = pow * std::stoi(s.substr(delim));
+        }
+        return std::make_pair(unit, power);
+    }
+
+    std::vector<std::pair<std::string, int>> get_units_vector(const std::string str, const int pow)
+    {
+        std::vector<std::string> fields;
+        std::vector<std::pair<std::string, int>> unit;
+
+        boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
+        for (auto& field : fields)
+        {
+            if (field != "-" && field != "")
+                unit.push_back(split_unit(field, pow));
+        }
+
+        return unit;
+    }
+
 }
 
 template<typename TF>
@@ -513,7 +549,7 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
-    std::string tunit     = unit + "s-1";
+    std::string tunit     = simplify_unit(unit, "s-1");
     std::string tlongname = "Tendency of " + longname;
     mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
@@ -539,7 +575,7 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
-    std::string tunit     = unit + "s-1";
+    std::string tunit     = simplify_unit(unit, "s-1");
     st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // add the prognostic variable and its tendency to the collection
@@ -1025,6 +1061,87 @@ bool Fields<TF>::has_mask(std::string mask_name)
         return true;
     else
         return false;
+}
+
+template<typename TF>
+std::string Fields<TF>::simplify_unit(const std::string str1, const std::string str2, const int pow1, const int pow2)
+{
+    std::vector<std::pair<std::string, int>> unit1, unit2;
+
+    //Split each string in separate unit strings; split those in pairs of unit and power
+    unit1 = get_units_vector(str1, pow1);
+    unit2 = get_units_vector(str2, pow2);
+
+    //Loop through units to find matches; in which case add the powers
+    int unit1_size = unit1.size();
+    for (auto& u2 : unit2)
+    {
+        int i;
+        for (i = 0 ; i < unit1_size; i++)
+        {
+            if (u2.first == unit1[i].first)
+            {
+                if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
+                {
+                    int j;
+                    for (j = i++ ; j < unit1_size; j++)
+                    {
+                        if (u2.first == unit1[j].first)
+                            break;
+                    }
+                    if (j == unit1_size)
+                        unit1[i].second += u2.second;
+                    else if (u2.second * unit1[j].second < 0)
+                        unit1[j].second += u2.second;
+                    else
+                        unit1[i].second += u2.second;
+                    break;
+                }
+                else
+                {
+                    unit1[i].second += u2.second;
+                    break;
+                }
+            }
+        }
+        if (i == unit1_size)
+            unit1.push_back(u2);
+    }
+
+    // Remove the entries with zero power
+    for (auto u1 = unit1.begin(); u1 != unit1.end(); )
+    {
+        if ((*u1).second  == 0)
+            u1 = unit1.erase(u1);
+        else
+            ++u1;
+    }
+
+    //Convert pairs back into strings
+    std::string output;
+    if (unit1.size() == 0)
+    {
+        output = "-";
+    }
+    else
+    {
+        std::ostringstream ostream;
+        for (auto& u1 : unit1)
+        {
+            if (u1.second == 1)
+            {
+                ostream << u1.first << " ";
+            }
+            else
+            {
+                ostream << u1.first << u1.second << " ";
+            }
+        }
+        output = ostream.str();
+        output.erase(output.end()-1); //remove final space
+    }
+
+    return output;
 }
 
 template class Fields<double>;
