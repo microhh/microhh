@@ -208,6 +208,13 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

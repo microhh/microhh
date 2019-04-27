@@ -31,6 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
 
 /**
  * Base class for the advection scheme. This class is abstract and only
@@ -45,7 +46,8 @@ class Advec
         virtual ~Advec(); ///< Destructor of the advection class.
 
         static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for advection class generation.
-        virtual void exec() = 0; ///< Execute the advection scheme.
+        virtual void create(Stats<TF>&) = 0; ///< Create the advection scheme.
+        virtual void exec(Stats<TF>&) = 0; ///< Execute the advection scheme.
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
 

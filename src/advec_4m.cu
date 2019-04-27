@@ -23,6 +23,7 @@
 #include "advec_4m.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "tools.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -33,10 +34,10 @@ using namespace Finite_difference::O4;
 
 namespace
 {
-    template <typename TF> __global__ 
-    void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u, 
+    template <typename TF> __global__
+    void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
                    const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -117,10 +118,10 @@ namespace
         }
     }
 
-    template <typename TF> __global__ 
-    void advec_v_g(TF* __restrict__ vt, const TF* __restrict__ u, 
+    template <typename TF> __global__
+    void advec_v_g(TF* __restrict__ vt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
                    const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -200,11 +201,11 @@ namespace
         }
     }
 
-    template <typename TF> __global__ 
-    void advec_w_g(TF* __restrict__ wt, const TF* __restrict__ u, 
+    template <typename TF> __global__
+    void advec_w_g(TF* __restrict__ wt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ dzhi4, const TF dxi, const TF dyi, 
-                   const int jj, const int kk, 
+                   const TF* __restrict__ dzhi4, const TF dxi, const TF dyi,
+                   const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
     {
@@ -245,9 +246,9 @@ namespace
     }
 
     template<typename TF> __global__
-    void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s, 
+    void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s,
                    const TF* __restrict__ u,  const TF* __restrict__ v, const TF* __restrict__ w,
-                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ dzi4, const TF dxi, const TF dyi,
                    const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -327,17 +328,17 @@ namespace
         }
     }
 
-    template <typename TF> __global__ 
+    template <typename TF> __global__
     void calc_cfl_g(TF* const __restrict__ tmp1,
-                    const TF* __restrict__ u,   const TF* __restrict__ v, const TF* __restrict__ w, 
+                    const TF* __restrict__ u,   const TF* __restrict__ v, const TF* __restrict__ w,
                     const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                     const int jj, const int kk,
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y; 
-        const int k = blockIdx.z; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
 
         const int ii1 = 1;
         const int ii2 = 2;
@@ -387,7 +388,7 @@ double Advec_4m<TF>::get_cfl(const double dt)
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     TF cfl = field3d_operators.calc_max_g(cfl_3d->fld_g);
     // TO DO communicate.
@@ -400,7 +401,7 @@ double Advec_4m<TF>::get_cfl(const double dt)
 }
 
 template<typename TF>
-void Advec_4m<TF>::exec()
+void Advec_4m<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -418,7 +419,7 @@ void Advec_4m<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     advec_v_g<<<gridGPU, blockGPU>>>(
         fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
@@ -426,7 +427,7 @@ void Advec_4m<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     advec_w_g<<<gridGPU, blockGPU>>>(
         fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
@@ -434,7 +435,7 @@ void Advec_4m<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     for (auto& it : fields.st)
         advec_s_g<<<gridGPU, blockGPU>>>(
@@ -445,6 +446,13 @@ void Advec_4m<TF>::exec()
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

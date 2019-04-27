@@ -195,6 +195,7 @@ namespace
             nmask_full[k] = 0;
             nmask_half[k] = 0;
 
+            #pragma omp parallel for reduction (+:nmask_full[k], nmask_half[k]) collapse(2)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
@@ -206,6 +207,7 @@ namespace
 
         nmask_bottom     = 0;
         nmask_half[kend] = 0;
+        #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
@@ -859,7 +861,7 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
 template<typename TF>
 void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::string tend_name, std::string tend_longname)
 {
-    if(swtendency)
+    if(swstats && swtendency)
     {
         add_prof(var.name + "_" + tend_name, tend_longname + var.longname, simplify_unit(var.unit,"s-1"), zloc);
         if(tendency_order.find(var.name) == tendency_order.end())

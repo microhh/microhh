@@ -30,8 +30,9 @@
 #include "master.h"
 #include "tools.h"
 #include "column.h"
+#include "stats.h"
 #include "thermo_moist_functions.h"
-
+#include <iostream>
 namespace
 {
     using namespace Constants;
@@ -119,6 +120,36 @@ namespace
     }
 
     template<typename TF> __global__
+    void calc_buoyancy_h_g(TF* __restrict__ bh,  TF* __restrict__ th,
+                         TF* __restrict__ qt, TF* __restrict__ thvrefh,
+                         TF* __restrict__ ph,  TF* __restrict__ exnh,
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend,
+                         int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int kk  = i + j*jj;
+
+            // Half level temperature and moisture content
+            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
+            const TF ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+
+            // Calculate tendency
+            if (ql > 0)
+                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, thvrefh[k]);
+            else
+                bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
+        }
+    }
+
+    template<typename TF> __global__
     void calc_buoyancy_bot_g(TF* __restrict__ b,      TF* __restrict__ bbot,
                              TF* __restrict__ th,     TF* __restrict__ thbot,
                              TF* __restrict__ qt,     TF* __restrict__ qtbot,
@@ -193,6 +224,28 @@ namespace
         {
             const int ijk = i + j*jj + k*kk;
             ql[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_liquid_water_h_g(TF* __restrict__ qlh, TF* __restrict__ th, TF* __restrict__ qt,
+                             TF* __restrict__ exnh, TF* __restrict__ ph,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int kk  = i + j*jj;
+
+            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
+            qlh[ijk]     = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
         }
     }
 
@@ -367,7 +420,7 @@ void Thermo_moist<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_moist<TF>::exec(const double dt)
+void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -413,6 +466,10 @@ void Thermo_moist<TF>::exec(const double dt)
             gd.iend,    gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -434,7 +491,7 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     dim3 blockGPU2(blocki, blockj, 1);
 
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    if (bs.swupdatebasestate && (name == "b" || name == "ql"))
+    if (bs.swupdatebasestate && (name == "b" || name == "ql" || name == "bh" || name == "qlh"))
     {
         //calc_hydrostatic_pressure_g<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
         //                                          fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
@@ -457,6 +514,8 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
 
         // Only full level pressure and bs.exner needed for calculating buoyancy of ql
         cudaMemcpy(bs.pref_g,   bs.pref.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.prefh_g,  bs.prefh.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnref_g, bs.exnref.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
         cudaMemcpy(bs.exnref_g, bs.exnref.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
@@ -470,11 +529,31 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
+    else if (name == "b_h")
+    {
+        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
+            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            bs.thvrefh_g, bs.prefh_g, bs.exnrefh_g,
+            gd.istart,  gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kcells,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
     else if (name == "ql")
     {
         calc_liquid_water_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.exnref_g, bs.pref_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "ql_h")
+    {
+        calc_liquid_water_h_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            bs.exnrefh_g, bs.prefh_g,
             gd.istart,  gd.jstart,  gd.kstart,
             gd.iend,    gd.jend,    gd.kend,
             gd.icells, gd.ijcells);
@@ -491,7 +570,7 @@ void Thermo_moist<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     }
     else
     {
-        std::string msg = "get_thermo_field \"" + name + "\" not supported";
+        std::string msg = "get_thermo_field_g \"" + name + "\" not supported";
         throw std::runtime_error(msg);
     }
 
@@ -592,6 +671,72 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
 
     fields.release_tmp_g(output);
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+{
+    if (mask_name == "ql")
+    {
+        auto ql  = fields.get_tmp();
+        auto qlh = fields.get_tmp();
+        auto ql_g = fields.get_tmp_g();
+
+        get_thermo_field_g(*ql_g, "ql", true);
+
+        fields.backward_field_device_3d(ql->fld.data(), ql_g->fld_g);
+        get_thermo_field_g(*ql_g, "ql_h", true);
+        fields.backward_field_device_3d(qlh->fld.data(), ql_g->fld_g);
+
+        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp_g(ql_g);
+        fields.release_tmp(ql);
+        fields.release_tmp(qlh);
+    }
+    else if (mask_name == "qlcore")
+    {
+        auto ql  = fields.get_tmp();
+        auto qlh = fields.get_tmp();
+        auto tmp_g = fields.get_tmp_g();
+
+        get_thermo_field_g(*tmp_g, "ql", true);
+        fields.backward_field_device_3d(ql->fld.data(), tmp_g->fld_g);
+        get_thermo_field_g(*tmp_g, "ql_h", true);
+        fields.backward_field_device_3d(qlh->fld.data(), tmp_g->fld_g);
+
+        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp(ql);
+        fields.release_tmp(qlh);
+
+        auto b = fields.get_tmp();
+        auto bh = fields.get_tmp();
+
+        get_thermo_field_g(*tmp_g, "b", true);
+        fields.backward_field_device_3d(b->fld.data(), tmp_g->fld_g);
+        get_thermo_field_g(*tmp_g, "b_h", true);
+        fields.backward_field_device_3d(bh->fld.data(), tmp_g->fld_g);
+
+        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
+
+        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
+        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
+
+        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp(b);
+        fields.release_tmp(bh);
+        fields.release_tmp_g(tmp_g);
+    }
+    else
+    {
+        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
+        throw std::runtime_error(message);
+    }
 }
 #endif
 

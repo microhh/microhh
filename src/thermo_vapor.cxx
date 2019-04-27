@@ -442,7 +442,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_vapor<TF>::exec(const double dt)
+void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -460,6 +460,8 @@ void Thermo_vapor<TF>::exec(const double dt)
                             bs.thvrefh.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -685,6 +687,7 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(b);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m");
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
     }
 }
 

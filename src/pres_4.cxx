@@ -34,6 +34,7 @@
 #include "defines.h"
 #include "finite_difference.h"
 #include "model.h"
+#include "stats.h"
 
 using namespace Finite_difference::O4;
 
@@ -63,9 +64,17 @@ Pres_4<TF>::~Pres_4()
     #endif
 }
 
+template<typename TF>
+void Pres_4<TF>::create(Stats<TF>& stats)
+{
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+}
+
 #ifndef USECUDA
 template<typename TF>
-void Pres_4<TF>::exec(const double dt)
+void Pres_4<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -109,8 +118,8 @@ void Pres_4<TF>::exec(const double dt)
     solve(fields.sd["p"]->fld.data(), tmp1->fld.data(), gd.dz.data(),
           m1.data(), m2.data(), m3.data(), m4.data(),
           m5.data(), m6.data(), m7.data(),
-          &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-          &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+          &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns],
+          &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns],
           bmati.data(), bmatj.data(),
           jslice);
 
@@ -127,6 +136,11 @@ void Pres_4<TF>::exec(const double dt)
         output<true>(
                 fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
                 fields.sd["p"]->fld.data(), gd.dzhi4.data());
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 
 template<typename TF>
@@ -223,7 +237,7 @@ void Pres_4<TF>::set_values()
         m5[k] = (1./576.) * (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
         m6[k] = (1./576.) * (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
         m7[k] = (1./576.) * (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
-    }                                                                                                                                       
+    }
 
     // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
     k  = kmax-1;
@@ -240,7 +254,7 @@ void Pres_4<TF>::set_values()
 template<typename TF>
 template<bool dim3>
 void Pres_4<TF>::input(
-        TF* restrict p, 
+        TF* restrict p,
         const TF* restrict u, const TF* restrict v, const TF* restrict w ,
         TF* restrict ut, TF* restrict vt, TF* restrict wt,
         const TF* restrict dzi4, const TF dt)
@@ -272,7 +286,7 @@ void Pres_4<TF>::input(
     if (dim3)
         boundary_cyclic.exec(vt, Edge::North_south_edge);
 
-    // Set the bc. 
+    // Set the bc.
     for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
         for (int i=0; i<gd.imax; i++)
@@ -516,7 +530,7 @@ void Pres_4<TF>::solve(
 
 template<typename TF>
 template<bool dim3>
-void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt, 
+void Pres_4<TF>::output(TF* restrict ut, TF* restrict vt, TF* restrict wt,
                         const TF* restrict p , const TF* restrict dzhi4)
 {
     auto& gd = grid.get_grid_data();

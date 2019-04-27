@@ -101,7 +101,7 @@ class Model
 
         Sim_mode sim_mode;
         std::string sim_name;
-        bool cpu_up_to_date;
+        bool cpu_up_to_date = false;
 
         void load();
         void save();

@@ -56,7 +56,7 @@ class Thermo_vapor : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(const double); ///< Add the tendencies belonging to the buoyancy.
+        void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
         void exec_stats(Stats<TF>&);
@@ -149,6 +149,8 @@ class Thermo_vapor : public Thermo<TF>
         background_state bs_stats;
 
         std::unique_ptr<Timedep<TF>> tdep_pbot;
+        std::string tend_name = "buoy";
+        std::string tend_longname = "Buoyancy";
 
 };
 #endif

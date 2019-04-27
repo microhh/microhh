@@ -600,6 +600,10 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, St
             stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
             stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z");
         }
+        stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("qt") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("qr") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("nr") , "z", tend_name, tend_longname);
     }
 
     // Create cross sections
@@ -611,7 +615,7 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, St
 
 #ifndef USECUDA
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -719,6 +723,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         fields.release_tmp(it);
 
     fields.release_tmp(ql);
+
+    stats.calc_tend(*fields.mt.at("thl"), tend_name);
+    stats.calc_tend(*fields.mt.at("qt"),  tend_name);
+    stats.calc_tend(*fields.mt.at("qr"),  tend_name);
+    stats.calc_tend(*fields.mt.at("nr"),  tend_name);
 }
 #endif
 

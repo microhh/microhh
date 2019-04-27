@@ -1043,9 +1043,9 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*fields.sd.at("evisc"), "z", {"mean","2"});
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.mt.at("w"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
         for (auto it : fields.st)
-            stats.add_tendency(*it.second, "z", "diff", "Diffusive");
+            stats.add_tendency(*it.second, "z", tend_name, tend_longname);
     }
 }
 

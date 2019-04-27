@@ -34,6 +34,7 @@ class Master;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class FFT;
+template<typename> class Stats;
 
 template<typename TF>
 class Pres
@@ -46,8 +47,9 @@ class Pres
 
         virtual void init() = 0;
         virtual void set_values() = 0;
+        virtual void create(Stats<TF>&) = 0;
 
-        virtual void exec(double) = 0;
+        virtual void exec(double, Stats<TF>&) = 0;
         virtual TF check_divergence() = 0;
 
         #ifdef USECUDA

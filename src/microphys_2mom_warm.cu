@@ -31,7 +31,7 @@
 #include "constants.h"
 #include "tools.h"
 #include "field3d_operators.h"
-
+#include "stats.h"
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
 
@@ -467,7 +467,7 @@ namespace sedimentation
 
 #ifdef USECUDA
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -685,6 +685,12 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
     fields.release_tmp_g(cfl_nr);
     fields.release_tmp_g(slope_nr);
     fields.release_tmp_g(flux_nr);
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("thl"), tend_name);
+    stats.calc_tend(*fields.mt.at("qt"),  tend_name);
+    stats.calc_tend(*fields.mt.at("qr"),  tend_name);
+    stats.calc_tend(*fields.mt.at("nr"),  tend_name);
 }
 #endif
 

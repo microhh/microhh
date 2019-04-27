@@ -229,19 +229,21 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *input_nc, *stats);
-    buffer->create(*input, *input_nc);
-    force->create(*input, *input_nc);
+    buffer->create(*input, *input_nc, *stats);
+    force->create(*input, *input_nc, *stats);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*thermo, *stats, *column, *cross, *dump);
-    decay->create(*input);
+    decay->create(*input, *stats);
 
     cross->create(); // Cross needs to be called at the end!
 
     boundary->set_values();
     pres->set_values();
+    pres->create(*stats);
+    advec->create(*stats);
     diff->create(*stats);
     budget->create(*stats);
 }
@@ -321,38 +323,34 @@ void Model<TF>::exec()
 
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-                advec->exec();
+                advec->exec(*stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Calculate the diffusion tendency.
                 diff->exec(*stats);
 
                 // Calculate the thermodynamics and the buoyancy tendency.
-                thermo->exec(timeloop->get_sub_time_step());
+                thermo->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_sub_time_step());
+                microphys->exec(*thermo, timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
                 // Calculate the tendency due to damping in the buffer layer.
-                buffer->exec();
+                buffer->exec(*stats);
 
                 // Apply the scalar decay.
-                decay->exec(timeloop->get_sub_time_step());
+                decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step(), *thermo); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-                pres->exec(timeloop->get_sub_time_step());
+                pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
-                // Calculate the total tendency statistics
-                for (auto it : fields->at)
-                    stats->calc_tend(*it.second, "total");
 
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
@@ -415,10 +413,12 @@ void Model<TF>::exec()
                             thermo  ->backward_device();
                         }
                         #endif
-
                         // Save data to disk.
-                        timeloop->save(timeloop->get_iotime());
-                        fields  ->save(timeloop->get_iotime());
+                        #pragma omp task default(shared)
+                        {
+                            timeloop->save(timeloop->get_iotime());
+                            fields  ->save(timeloop->get_iotime());
+                        }
                     }
                 }
 
@@ -582,6 +582,7 @@ void Model<TF>::setup_stats()
         stats->finalize_masks();
         if (stats->do_tendency())
         {
+            cpu_up_to_date = false;
             stats->set_tendency(true);
             for (auto& it: fields->mt)
                 stats->calc_tend(*it.second,"total");

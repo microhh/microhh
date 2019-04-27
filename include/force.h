@@ -34,6 +34,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
 template<typename> class Timedep;
+template<typename> class Stats;
 template<typename> class Thermo;
 
 /**
@@ -57,8 +58,8 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Netcdf_handle&);   ///< Read the profiles of the forces from the input.
-        void exec(double, Thermo<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
+        void create(Input&, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void exec(double, Thermo<TF>&, Stats<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
@@ -113,5 +114,15 @@ class Force
         TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
+        std::string tend_name_pres      = "lspres";
+        std::string tend_longname_pres  = "Large Scale Pressure";
+        std::string tend_name_cor       = "cor";
+        std::string tend_longname_cor   = "Coriolis";
+        std::string tend_name_ls        = "ls";
+        std::string tend_longname_ls    = "Large Scale";
+        std::string tend_name_nudge     = "nudge";
+        std::string tend_longname_nudge = "Nudging";
+        std::string tend_name_subs      = "subs";
+        std::string tend_longname_subs  = "Subsidence";
 };
 #endif

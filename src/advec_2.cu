@@ -26,6 +26,7 @@
 #include "tools.h"
 #include "constants.h"
 #include "tools.h"
+#include "stats.h"
 #include "finite_difference.h"
 #include "field3d_operators.h"
 
@@ -182,7 +183,7 @@ double Advec_2<TF>::get_cfl(const double dt)
 }
 
 template<typename TF>
-void Advec_2<TF>::exec()
+void Advec_2<TF>::exec(Stats<TF>& stats)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -214,6 +215,13 @@ void Advec_2<TF>::exec()
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

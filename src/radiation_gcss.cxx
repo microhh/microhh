@@ -344,7 +344,7 @@ void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>&
 
 #ifndef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
 	auto& gd = grid.get_grid_data();
 	auto lwp = fields.get_tmp();
@@ -368,6 +368,8 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 	fields.release_tmp(flx);
 	fields.release_tmp(swn);
 	fields.release_tmp(ql);
+
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 #endif
 
@@ -433,6 +435,7 @@ void Radiation_gcss<TF>::create_stats(Stats<TF>& stats)
     {
         stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z");
         stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z");
+        stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
     }
 }
 

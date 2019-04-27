@@ -58,5 +58,7 @@ class Diff_4 : public Diff<TF>
 
         double dnmax;
         double dnmul;
+        std::string tend_name = "diff";
+        std::string tend_longname = "Diffusive";
 };
 #endif

@@ -40,8 +40,9 @@ class Pres_4 : public Pres<TF>
 
         void init();
         void set_values();
+        void create(Stats<TF>&);
 
-        void exec(const double);
+        void exec(const double, Stats<TF>&);
         TF check_divergence();
 
         #ifdef USECUDA
@@ -85,13 +86,13 @@ class Pres_4 : public Pres<TF>
         cufftDoubleComplex* ffti_complex_g;
         cufftDoubleComplex* fftj_complex_g;
         cufftHandle iplanf;
-        cufftHandle jplanf; 
+        cufftHandle jplanf;
         cufftHandle iplanb;
-        cufftHandle jplanb; 
+        cufftHandle jplanb;
         #endif
 
         template<bool>
-        void input(TF* restrict, 
+        void input(TF* restrict,
                    const TF* restrict, const TF* restrict, const TF* restrict,
                    TF* restrict, TF* restrict, TF* restrict,
                    const TF* restrict, const TF);
@@ -113,5 +114,8 @@ class Pres_4 : public Pres<TF>
                   int);
 
         TF calc_divergence(const TF* restrict, const TF* restrict, const TF* restrict, const TF* restrict);
+
+        std::string tend_name = "pres";
+        std::string tend_longname = "Pressure";
 };
 #endif

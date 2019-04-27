@@ -221,7 +221,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
@@ -273,6 +273,9 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
     fields.release_tmp_g(tmp);
     fields.release_tmp_g(flx);
     fields.release_tmp_g(ql);
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 #endif
 

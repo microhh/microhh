@@ -51,7 +51,7 @@ class Radiation_gcss : public Radiation<TF>
         virtual ~Radiation_gcss();
         void init();
         void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
@@ -93,5 +93,7 @@ class Radiation_gcss : public Radiation<TF>
         void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
         #endif
 
+        std::string tend_name = "rad";
+        std::string tend_longname = "Radiative";
 };
 #endif

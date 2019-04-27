@@ -31,6 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
 
 /**
  * Class that creates a decay term for scalars.
@@ -46,8 +47,8 @@ class Decay
         ~Decay();                                       ///< Destructor of the decay class.
 
         void init(Input&);           ///< Initialize the arrays that contain the profiles.
-        void create(Input&);   ///< Read the profiles of the forces from the input.
-        void exec(double);     ///< Add the tendencies belonging to the decay processes.
+        void create(Input&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void exec(double, Stats<TF>&);     ///< Add the tendencies belonging to the decay processes.
 
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
@@ -70,6 +71,9 @@ class Decay
 
         std::vector<std::string> available_masks = {"couvreux"};   // Vector with the masks that fields can provide
         TF nstd_couvreux;
+
+        std::string tend_name = "decay";
+        std::string tend_longname = "Decay";
 
 };
 #endif

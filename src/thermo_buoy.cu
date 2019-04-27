@@ -27,6 +27,7 @@
 #include "master.h"
 #include "finite_difference.h"
 #include "tools.h"
+#include "stats.h"
 
 namespace
 {
@@ -36,7 +37,7 @@ namespace
     {
         b[threadIdx.x] = bin[threadIdx.x];
     }
-    
+
     template<typename TF> __global__
     void calc_buoyancy_bot_g(TF* __restrict__ b,     TF* __restrict__ bbot,
                              TF* __restrict__ bin,    TF* __restrict__ bbotin,
@@ -70,7 +71,7 @@ namespace
             bfluxbot[ij] = bfluxbotin[ij];
         }
     }
-    
+
     template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2,    TF* __restrict__ b,
                    const TF bg_n2, TF* __restrict__ dzi,
@@ -320,7 +321,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::exec(const double dt)
+void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
 {
 	auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -436,6 +437,9 @@ void Thermo_buoy<TF>::exec(const double dt)
             cuda_check_error();
         }
     }
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -446,15 +450,15 @@ void Thermo_buoy<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, boo
     auto& gd = grid.get_grid_data();
 
 	int blocksize = min(256, 16 * ((gd.ncells / 16) + (gd.ncells % 16 > 0)));
-	
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
     const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    
+
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
-    
+
     if (name == "b")
     {
         calc_buoyancy_g<<<gd.ncells, blocksize>>>(

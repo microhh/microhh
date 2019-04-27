@@ -30,6 +30,8 @@
 #include "master.h"
 #include "tools.h"
 #include "column.h"
+#include "stats.h"
+
 #include "thermo_moist_functions.h"
 
 namespace
@@ -202,7 +204,7 @@ void Thermo_vapor<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_vapor<TF>::exec(const double dt)
+void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -249,6 +251,10 @@ void Thermo_vapor<TF>::exec(const double dt)
         gd.iend,    gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 

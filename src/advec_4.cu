@@ -23,6 +23,7 @@
 #include "advec_4.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "tools.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -499,7 +500,7 @@ double Advec_4<TF>::get_cfl(const double dt)
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     TF cfl = field3d_operators.calc_max_g(cfl_3d->fld_g);
     // TO DO communicate.
@@ -512,7 +513,7 @@ double Advec_4<TF>::get_cfl(const double dt)
 }
 
 template<typename TF>
-void Advec_4<TF>::exec()
+void Advec_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -534,7 +535,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     advec_u_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
         fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
@@ -542,7 +543,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     // Interior:
     advec_u_g<<<gridGPU, blockGPU>>>(
@@ -551,7 +552,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     // Top and bottom boundary:
     advec_v_boundary_g<TF,0><<<gridGPU2D, blockGPU2D>>>(
@@ -560,7 +561,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     advec_v_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
         fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
@@ -568,7 +569,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     // Interior
     advec_v_g<<<gridGPU, blockGPU>>>(
@@ -577,7 +578,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     // Top and bottom boundary:
     advec_w_boundary_g<TF,0><<<gridGPU2D, blockGPU2D>>>(
@@ -586,7 +587,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     advec_w_boundary_g<TF,1><<<gridGPU2D, blockGPU2D>>>(
         fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
@@ -594,7 +595,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     // Interior:
     advec_w_g<<<gridGPU, blockGPU>>>(
@@ -603,7 +604,7 @@ void Advec_4<TF>::exec()
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
-    cuda_check_error(); 
+    cuda_check_error();
 
     for (auto& it : fields.st)
         advec_s_g<<<gridGPU, blockGPU>>>(
@@ -614,6 +615,13 @@ void Advec_4<TF>::exec()
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

@@ -37,6 +37,7 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
+template<typename> class Stats;
 
 template<typename TF>
 class Radiation
@@ -50,7 +51,7 @@ class Radiation
 		//functions that the derived class has to implement
         virtual void init() = 0;
         virtual void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
-        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&) = 0;
+        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
 
         virtual bool check_field_exists(std::string name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&) = 0;

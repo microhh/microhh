@@ -23,6 +23,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "pres_disabled.h"
 
 template<typename TF>
@@ -43,10 +44,13 @@ template<typename TF>
 void Pres_disabled<TF>::init() {}
 
 template<typename TF>
+void Pres_disabled<TF>::create(Stats<TF>& stats) {}
+
+template<typename TF>
 void Pres_disabled<TF>::set_values() {}
 
 template<typename TF>
-void Pres_disabled<TF>::exec(const double dt) {}
+void Pres_disabled<TF>::exec(const double dt, Stats<TF>& stats) {}
 
 // BvS: mixing CUDA and CPU code; put in pres_disabled.cu? Might be a bit of overkill?
 #ifdef USECUDA
