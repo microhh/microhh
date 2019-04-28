@@ -107,7 +107,7 @@ class Thermo_buoy : public Thermo<TF>
 
         bool swbaroclinic;
         TF dbdy_ls;
-        std::string tend_name = "buoy";
-        std::string tend_longname = "Buoyancy";
+        const std::string tend_name = "buoy";
+        const std::string tend_longname = "Buoyancy";
 };
 #endif

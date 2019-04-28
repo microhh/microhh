@@ -154,7 +154,7 @@ class Thermo_moist : public Thermo<TF>
         Background_state bs_stats;
 
         std::unique_ptr<Timedep<TF>> tdep_pbot;
-        std::string tend_name = "buoy";
-        std::string tend_longname = "Buoyancy";
+        const std::string tend_name = "buoy";
+        const std::string tend_longname = "Buoyancy";
 };
 #endif

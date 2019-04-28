@@ -190,7 +190,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
 
-        std::string tend_name = "micro";
-        std::string tend_longname = "Microphysical";
+        const std::string tend_name = "micro";
+        const std::string tend_longname = "Microphysics";
 };
 #endif

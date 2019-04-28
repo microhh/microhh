@@ -70,7 +70,7 @@ class Buffer
         // GPU functions and variables
         std::map<std::string, TF*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
 
-        std::string tend_name = "damp";
-        std::string tend_longname = "Damping";
+        const std::string tend_name = "damp";
+        const std::string tend_longname = "Damping";
 };
 #endif

@@ -93,7 +93,7 @@ class Radiation_gcss : public Radiation<TF>
         void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
         #endif
 
-        std::string tend_name = "rad";
-        std::string tend_longname = "Radiative";
+        const std::string tend_name = "rad";
+        const std::string tend_longname = "Radiation";
 };
 #endif

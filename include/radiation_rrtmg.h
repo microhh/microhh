@@ -113,7 +113,7 @@ class Radiation_rrtmg : public Radiation<TF>
         std::vector<double> duflx_dt;  // (ncol, nlay)
         std::vector<double> duflxc_dt; // (ncol, nlay)
 
-        std::string tend_name = "rad";
-        std::string tend_longname = "Radiative";
+        const std::string tend_name = "rad";
+        const std::string tend_longname = "Radiation";
 };
 #endif

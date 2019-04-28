@@ -72,8 +72,8 @@ class Decay
         std::vector<std::string> available_masks = {"couvreux"};   // Vector with the masks that fields can provide
         TF nstd_couvreux;
 
-        std::string tend_name = "decay";
-        std::string tend_longname = "Decay";
+        const std::string tend_name = "decay";
+        const std::string tend_longname = "Decay";
 
 };
 #endif

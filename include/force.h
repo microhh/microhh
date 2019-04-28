@@ -114,15 +114,15 @@ class Force
         TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
-        std::string tend_name_pres      = "lspres";
-        std::string tend_longname_pres  = "Large Scale Pressure";
-        std::string tend_name_cor       = "cor";
-        std::string tend_longname_cor   = "Coriolis";
-        std::string tend_name_ls        = "ls";
-        std::string tend_longname_ls    = "Large Scale";
-        std::string tend_name_nudge     = "nudge";
-        std::string tend_longname_nudge = "Nudging";
-        std::string tend_name_subs      = "subs";
-        std::string tend_longname_subs  = "Subsidence";
+        const std::string tend_name_pres      = "lspres";
+        const std::string tend_longname_pres  = "Large Scale Pressure";
+        const std::string tend_name_cor       = "cor";
+        const std::string tend_longname_cor   = "Coriolis";
+        const std::string tend_name_ls        = "ls";
+        const std::string tend_longname_ls    = "Large Scale";
+        const std::string tend_name_nudge     = "nudge";
+        const std::string tend_longname_nudge = "Nudging";
+        const std::string tend_name_subs      = "subs";
+        const std::string tend_longname_subs  = "Subsidence";
 };
 #endif

@@ -603,10 +603,10 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
     // Finalize the total tendencies
     if (do_tendency())
     {
-        //Subtract the previous tendency from the current one
         for (auto& var: tendency_order)
         {
-            for (auto tend = var.second.rbegin(); tend != std::prev(var.second.rend()); ++tend)
+            //Subtract the previous tendency from the current one; skipping the last one (total tendency)
+            for (auto tend = std::next(var.second.rbegin()); tend != std::prev(var.second.rend()); ++tend)
             {
                 auto prev_tend = std::next(tend); // It is a reverse iterator....
                 std::string name = var.first + "_" + *tend;
@@ -614,11 +614,18 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
                 for (auto& mask : masks)
                 {
                     Mask<TF>& m = mask.second;
+
                     std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
                                     m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
+
+                    const int* nmask;
+                    if (m.profs.at(name).level == Level_type::Full)
+                        nmask = m.nmask.data();
+                    else
+                        nmask = m.nmaskh.data();
+                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
                 }
             }
-            calc_tend(*fields.at.at(var.first.substr(0, var.first.length() -1)),"total");
 
             var.second.clear();
         }
@@ -882,6 +889,12 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     if (is_blacklisted(name, wltype))
         return;
 
+    Level_type level;
+    if (zloc == "z")
+        level = Level_type::Full;
+    else
+        level = Level_type::Half;
+
     // Add profile to all the NetCDF files.
     for (auto& mask : masks)
     {
@@ -889,7 +902,7 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
         // Create the NetCDF variable.
         // Create the profile variable and the vector at the appropriate size.
-        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
+        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
         m.profs.emplace(name, tmp);
 
         m.profs.at(name).ncvar.add_attribute("units", unit);

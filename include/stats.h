@@ -37,11 +37,14 @@ template<typename> class Timeloop;
 template<typename> class Netcdf_variable;
 
 // Struct for profiles
+enum class Level_type {Full, Half};
+
 template<typename TF>
 struct Prof_var
 {
     Netcdf_variable<TF> ncvar;
     std::vector<TF> data;
+    Level_type level;
 };
 
 // Struct for time series

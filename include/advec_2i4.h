@@ -56,7 +56,7 @@ class Advec_2i4 : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
-        std::string tend_name = "advec";
-        std::string tend_longname = "Advective";
+        const std::string tend_name = "advec";
+        const std::string tend_longname = "Advection";
 };
 #endif

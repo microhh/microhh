@@ -115,7 +115,7 @@ class Pres_4 : public Pres<TF>
 
         TF calc_divergence(const TF* restrict, const TF* restrict, const TF* restrict, const TF* restrict);
 
-        std::string tend_name = "pres";
-        std::string tend_longname = "Pressure";
+        const std::string tend_name = "pres";
+        const std::string tend_longname = "Pressure";
 };
 #endif

@@ -74,7 +74,7 @@ class Diff_smag2 : public Diff<TF>
 
         double cs;
 
-        std::string tend_name = "diff";
-        std::string tend_longname = "Diffusive";
+        const std::string tend_name = "diff";
+        const std::string tend_longname = "Diffusion";
 };
 #endif

@@ -92,7 +92,7 @@ class Pres_2 : public Pres<TF>
                            const TF* const restrict,
                            const TF* const restrict, const TF* const restrict);
 
-       std::string tend_name = "pres";
-       std::string tend_longname = "Pressure";
+       const std::string tend_name = "pres";
+       const std::string tend_longname = "Pressure";
 };
 #endif

@@ -352,6 +352,10 @@ void Model<TF>::exec()
                 pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
+                //Calculate the total tendency statistics, if necessary
+                for (auto& it: fields->at)
+                    stats->calc_tend(*it.second,"total");
+
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
@@ -584,8 +588,6 @@ void Model<TF>::setup_stats()
         {
             cpu_up_to_date = false;
             stats->set_tendency(true);
-            for (auto& it: fields->mt)
-                stats->calc_tend(*it.second,"total");
         }
     }
 }
