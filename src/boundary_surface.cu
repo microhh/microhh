@@ -351,8 +351,8 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 
     du_tot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp["u"]->fld_g,     fields.mp["v"]->fld_g,
-        fields.mp["u"]->fld_bot_g, fields.mp["v"]->fld_bot_g,
+        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.icells, gd.ijcells);
     cuda_check_error();
@@ -393,23 +393,23 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
 
     // Calculate surface momentum fluxes, excluding ghost cells
     surfm_flux_g<<<gridGPU, blockGPU>>>(
-        fields.mp["u"]->flux_bot_g, fields.mp["v"]->flux_bot_g,
-        fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
-        fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
+        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
+        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
         ustar_g, obuk_g, gd.z[gd.kstart], z0m,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.icells, gd.ijcells, mbcbot);
     cuda_check_error();
 
     // 2D cyclic boundaries on the surface fluxes
-    boundary_cyclic.exec_2d_g(fields.mp["u"]->flux_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp["v"]->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
 
     // Calculate surface gradients, including ghost cells
     surfm_grad_g<<<gridGPU2, blockGPU2>>>(
-        fields.mp["u"]->grad_bot_g, fields.mp["v"]->grad_bot_g,
-        fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
-        fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
+        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
+        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
         gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
 

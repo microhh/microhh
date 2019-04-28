@@ -226,7 +226,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                                      fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data,
                                      fields.u->data, fields.v->data, fields.w->data,
                                      fields.u->datafluxbot, fields.v->datafluxbot,
-                                     fields.sd["evisc"]->data, umodel, vmodel,
+                                     fields.sd.at("evisc")->data, umodel, vmodel,
                                      grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
     }
 
@@ -240,7 +240,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
 
         // Calculate mean fields
         grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);
-        grid.calc_mean(fields.sd["p"]->datamean, fields.sd["p"]->data, grid.kcells);
+        grid.calc_mean(fields.sd.at("p")->datamean, fields.sd.at("p")->data, grid.kcells);
 
         // Calculate buoyancy terms
         calc_buoyancy_terms(m->profs["w2_buoy"].data, m->profs["tke_buoy"].data,
@@ -267,8 +267,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                                             grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc, diff_b);
 
         calc_pressure_terms_scalar(m->profs["bw_pres"].data,  m->profs["bw_rdstr"].data,
-                                   fields.atmp["tmp1"]->data, fields.sd["p"]->data,
-                                   fields.atmp["tmp1"]->datamean, fields.sd["p"]->datamean,
+                                   fields.atmp["tmp1"]->data, fields.sd.at("p")->data,
+                                   fields.atmp["tmp1"]->datamean, fields.sd.at("p")->datamean,
                                    grid.dzi, grid.dzhi);
     }
 
@@ -286,7 +286,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         m->profs["uw_pres"].data,     m->profs["vw_pres"].data,
                         m->profs["u2_rdstr"].data,    m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data,
                         m->profs["uw_rdstr"].data,    m->profs["vw_rdstr"].data,
-                        fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel,
+                        fields.u->data, fields.v->data, fields.w->data, fields.sd.at("p")->data, umodel, vmodel,
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
     */
 }

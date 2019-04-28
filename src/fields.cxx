@@ -503,14 +503,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    stats.calc_stats("w", *mp["w"], no_offset, no_threshold);
-    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold);
-    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold);
+    stats.calc_stats("w", *mp.at("w"), no_offset, no_threshold);
+    stats.calc_stats("u", *mp.at("u"), grid.utrans, no_threshold);
+    stats.calc_stats("v", *mp.at("v"), grid.vtrans, no_threshold);
 
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
 
-    stats.calc_stats("p", *sd["p"], no_offset, no_threshold);
+    stats.calc_stats("p", *sd.at("p"), no_offset, no_threshold);
 
     // Calculate covariances
     for (auto& it1 : ap)
@@ -654,8 +654,8 @@ void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
     add_mean_profs(input_nc);
 
     /*
-    nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid.utrans);
-    nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid.vtrans);
+    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, grid.utrans);
+    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, grid.vtrans);
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
@@ -755,12 +755,12 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     Netcdf_group group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
-    add_mean_prof_to_field<TF>(mp["u"]->fld.data(), prof.data(), grid.utrans,
+    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     group_nc.get_variable(prof, "v", start, count);
-    add_mean_prof_to_field<TF>(mp["v"]->fld.data(), prof.data(), grid.vtrans,
+    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
@@ -794,8 +794,8 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
                     for (int i=gd.istart; i<gd.iend; ++i)
                     {
                         const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        mp["u"]->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.xh[i])/gd.xsize)*std::cos(pi*gd.z [k]/gd.zsize);
-                        mp["w"]->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.x [i])/gd.xsize)*std::sin(pi*gd.zh[k]/gd.zsize);
+                        mp.at("u")->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.xh[i])/gd.xsize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp.at("w")->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.x [i])/gd.xsize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
         else if (vortexaxis == "x")
             for (int k=gd.kstart; k<gd.kend; ++k)
@@ -803,8 +803,8 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
                     for (int i=gd.istart; i<gd.iend; ++i)
                     {
                         const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        mp["v"]->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
-                        mp["w"]->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
+                        mp.at("v")->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp.at("w")->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
     }
 }
@@ -964,7 +964,7 @@ TF Fields<TF>::check_momentum()
 {
     auto& gd = grid.get_grid_data();
     return calc_momentum_2nd(
-            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
             gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells,
@@ -978,7 +978,7 @@ TF Fields<TF>::check_tke()
 {
     auto& gd = grid.get_grid_data();
     return calc_tke_2nd(
-            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
             gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells,
@@ -1050,7 +1050,7 @@ void Fields<TF>::exec_column(Column<TF>& column)
     for (auto& it : sp)
         column.calc_column(it.first, it.second->fld.data(), no_offset);
 
-    column.calc_column("p", sd["p"]->fld.data(), no_offset);
+    column.calc_column("p", sd.at("p")->fld.data(), no_offset);
 }
 #endif
 

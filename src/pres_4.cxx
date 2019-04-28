@@ -81,12 +81,12 @@ void Pres_4<TF>::exec(const double dt, Stats<TF>& stats)
     // 1. Create the input for the pressure solver.
     // In case of a two-dimensional run, remove calculation of v contribution.
     if (gd.jtot == 1)
-        input<false>(fields.sd["p"]->fld.data(),
+        input<false>(fields.sd.at("p")->fld.data(),
                      fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                      fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
                      gd.dzi4.data(), dt);
     else
-        input<true>(fields.sd["p"]->fld.data(),
+        input<true>(fields.sd.at("p")->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                     fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
                     gd.dzi4.data(), dt);
@@ -115,7 +115,7 @@ void Pres_4<TF>::exec(const double dt, Stats<TF>& stats)
 
     const int ns = gd.iblock*jslice*(gd.kmax+4);
 
-    solve(fields.sd["p"]->fld.data(), tmp1->fld.data(), gd.dz.data(),
+    solve(fields.sd.at("p")->fld.data(), tmp1->fld.data(), gd.dz.data(),
           m1.data(), m2.data(), m3.data(), m4.data(),
           m5.data(), m6.data(), m7.data(),
           &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns],
@@ -131,11 +131,11 @@ void Pres_4<TF>::exec(const double dt, Stats<TF>& stats)
     if (gd.jtot == 1)
         output<false>(
                 fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
-                fields.sd["p"]->fld.data(), gd.dzhi4.data());
+                fields.sd.at("p")->fld.data(), gd.dzhi4.data());
     else
         output<true>(
                 fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
-                fields.sd["p"]->fld.data(), gd.dzhi4.data());
+                fields.sd.at("p")->fld.data(), gd.dzhi4.data());
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
