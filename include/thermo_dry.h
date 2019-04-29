@@ -23,11 +23,13 @@
 #ifndef THERMO_DRY
 #define THERMO_DRY
 
+#include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -37,7 +39,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
-class Data_block;
 
 
 /**
@@ -56,11 +57,11 @@ class Thermo_dry : public Thermo<TF>
         virtual ~Thermo_dry(); ///< Destructor of the dry thermodynamics class.
 
         void init();
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
+        void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
@@ -73,9 +74,10 @@ class Thermo_dry : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -86,10 +88,11 @@ class Thermo_dry : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
 
         // Empty functions that are allowed to pass.
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
         void update_time_dependent(Timeloop<TF>&);

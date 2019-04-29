@@ -27,7 +27,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -54,16 +54,18 @@ class Thermo_disabled : public Thermo<TF>
 
         // Interfacing functions to get buoyancy properties from other classes.
         void init() {};
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(const double) {};
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
+        void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
         virtual void exec_dump(Dump<TF>&, unsigned long) {};
         virtual void exec_cross(Cross<TF>&, unsigned long) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};
+        int get_bl_depth() { throw std::runtime_error("Function get_bl_depth not implemented"); };
+
         TF get_buoyancy_diffusivity();
 
         unsigned long get_time_limit(unsigned long, double);
@@ -76,6 +78,7 @@ class Thermo_disabled : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool) {};
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
+        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
 
         #endif
 

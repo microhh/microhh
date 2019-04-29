@@ -27,6 +27,7 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -35,10 +36,6 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
-
-class Data_block;
-
-
 
 /**
  * Class for the dry thermodynamics.
@@ -51,7 +48,7 @@ class Thermo_buoy : public Thermo<TF>
 {
     public:
         Thermo_buoy(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_buoy();        ///< Destructor of the dry thermodynamics class.
+        virtual ~Thermo_buoy(); ///< Destructor of the dry thermodynamics class.
 
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
@@ -65,16 +62,17 @@ class Thermo_buoy : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
+        int get_bl_depth();
         TF get_buoyancy_diffusivity();
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double) {};
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
+        void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_column(Column<TF>&) {};
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) {};
+        void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
         void update_time_dependent(Timeloop<TF>&) {};
@@ -85,9 +83,9 @@ class Thermo_buoy : public Thermo<TF>
         void forward_device() {};
         void backward_device() {};
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
-        void get_buoyancy_surf_g(Field3d<TF>&) {};
-        void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
-
+        void get_buoyancy_surf_g(Field3d<TF>&);
+        void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
 
     private:

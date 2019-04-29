@@ -28,14 +28,10 @@
 // Diffusion schemes
 #include "diff.h"
 #include "diff_disabled.h"
-//#include "diff_2.h"
-//#include "diff_4.h"
-//#include "diff_smag2.h"
-
 
 template<typename TF>
-Diff_disabled<TF>::Diff_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin)
+Diff_disabled<TF>::Diff_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin)
 {
 }
 
@@ -62,5 +58,10 @@ double Diff_disabled<TF>::get_dn(const double dt)
     return Constants::dsmall;
 }
 
+template<typename TF>
+void Diff_disabled<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
+{
+    std::fill(out.fld.begin(), out.fld.end(), TF(0.));
+}
 template class Diff_disabled<double>;
 template class Diff_disabled<float>;

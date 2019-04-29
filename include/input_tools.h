@@ -12,12 +12,6 @@ namespace Input_tools
         // Check whether string is empty.
         if (s.empty())
             throw std::runtime_error("Illegal string");
-
-        // Return string if all characters are alphanumeric or _ []
-        if (find_if(s.begin(), s.end(), [](const char c) { return !(std::isalnum(c) || c == '_' || c == '[' || c == ']'); }) == s.end())
-            return;
-        else
-            throw std::runtime_error("Illegal string: " + s);
     }
 
     template<typename T>
@@ -34,6 +28,13 @@ namespace Input_tools
             throw std::runtime_error("Item does not match type");
 
         return item;
+    }
+
+    // In case of string, just return the content of the stringstream.
+    template<>
+    inline std::string get_item_from_stream(std::istringstream& ss)
+    {
+        return ss.str();
     }
 
     inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)

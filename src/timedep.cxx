@@ -21,15 +21,42 @@
  */
 
 #include <algorithm>
+#include <iostream>
 
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "timedep.h"
+
+namespace
+{
+    /*
+    template<typename TF> TF to_numeric(const std::string& str);
+    template<> float  to_numeric(const std::string& str) { return std::stof(str); };
+    template<> double to_numeric(const std::string& str) { return std::stod(str); };
+
+    template<typename TF>
+    bool is_not_sorted(const std::vector<std::string>& values)
+    {
+        if (values.size() == 1)
+            return false;
+
+        TF prev_number = to_numeric<TF>(values[0]);
+        for (int i=1; i<values.size(); ++i)
+        {
+            TF next_number = to_numeric<TF>(values[i]);
+            if (next_number < prev_number)
+                return true;
+            prev_number = next_number;
+        }
+        return false;
+    }
+    */
+}
 
 template<typename TF>
 Timedep<TF>::Timedep(Master& masterin, Grid<TF>& gridin, const std::string varnamein, const bool is_timedep) :
     master(masterin), grid(gridin), varname(varnamein)
 {
-    if(is_timedep)
+    if (is_timedep)
         sw = Timedep_switch::Enabled;
     else
         sw = Timedep_switch::Disabled;
@@ -40,44 +67,106 @@ Timedep<TF>::~Timedep()
 {
 }
 
+namespace
+{
+    std::pair<std::string, int> check_for_unique_time_dim(const std::map<std::string, int>& dims)
+    {
+        // Check for the existence of a unique time dimension.
+        bool only_one_time_dim = false;
+        std::string time_dim;
+        int time_dim_length = 0;
+
+        for (auto i : dims)
+        {
+            if (i.first.substr(0, 4) == "time")
+            {
+                if (only_one_time_dim)
+                    throw std::runtime_error("More than one time dimensions in input");
+                else
+                {
+                    only_one_time_dim = true;
+                    time_dim = i.first;
+                    time_dim_length = i.second;
+                }
+            }
+        }
+
+        return std::make_pair(time_dim, time_dim_length);
+    }
+}
+
 template <typename TF>
-void Timedep<TF>::create_timedep_prof()
+void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
 {
     if (sw == Timedep_switch::Disabled)
         return;
 
-    auto& gd = grid.get_grid_data();
+    /*
     Data_block data_block(master, varname+".time");
     std::vector<std::string> headers = data_block.get_headers();
 
-    // Sort the times
+    // Remove first column (height)
     headers.erase(headers.begin());
-    std::sort(headers.begin(), headers.end());
-    std::vector<TF> tmp(gd.kcells);
+
+    // Check if input times are sorted
+    if (is_not_sorted<TF>(headers))
+        throw std::runtime_error("Time dependent input profiles are not time sorted!");
+
+    std::vector<TF> tmp(gd.kmax);
     for (auto& it : headers)
     {
         time.push_back(std::stod(it));
-        data_block.get_vector(tmp, it, gd.kmax, 0, gd.kstart);
-        data.insert(data.end(),tmp.begin(),tmp.end());
+        data_block.get_vector(tmp, it, gd.kmax, 0, 0);
+        data.insert(data.end(), tmp.begin(), tmp.end());
     }
+    */
+
+    Netcdf_group group_nc = input_nc.get_group("timedep");
+    std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
+
+
+    std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
+    std::string time_dim = unique_time.first;
+    int time_dim_length = unique_time.second;
+
+    time.resize(time_dim_length);
+    group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
+
+    auto& gd = grid.get_grid_data();
+    data.resize(time_dim_length*gd.ktot);
+
+    group_nc.get_variable(data, varname, {0, 0}, {time_dim_length, gd.ktot});
+
+    // Add offset
+    for (int i=0; i<data.size(); ++i)
+        data[i] += offset;
+
     #ifdef USECUDA
     prepare_device();
     #endif
 }
 
 template <typename TF>
-void Timedep<TF>::create_timedep()
+void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
 {
     if (sw == Timedep_switch::Disabled)
         return;
 
-    Data_block data_block(master, varname+".time");
+    Netcdf_group group_nc = input_nc.get_group("timedep");
 
-    int length = data_block.get_vector_length("time");
-    time.resize(length);
-    data.resize(length);
-    data_block.get_vector(time, "time", length, 0, 0);
-    data_block.get_vector(data, varname, length, 0, 0);
+    std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
+
+    std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
+    std::string time_dim = unique_time.first;
+    int time_dim_length = unique_time.second;
+
+    time.resize(time_dim_length);
+    data.resize(time_dim_length);
+
+    group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
+    group_nc.get_variable(data, varname,  {0}, {time_dim_length});
+
+
     #ifdef USECUDA
     prepare_device();
     #endif
@@ -94,7 +183,7 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>
     const int kgc = gd.kgc;
 
     // Get/calculate the interpolation indexes/factors
-    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     // Calculate the new vertical profile
     for (int k=0; k<gd.kmax; ++k)
@@ -108,7 +197,7 @@ void Timedep<TF>::update_time_dependent(TF& val, Timeloop<TF>& timeloop)
         return;
 
     // Get/calculate the interpolation indexes/factors
-    interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
     val = ifac.fac0 * data[ifac.index0] + ifac.fac1 * data[ifac.index1];
     return;
 }

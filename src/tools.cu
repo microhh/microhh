@@ -42,7 +42,7 @@ namespace Tools_g
 
     // Reduce one block of data
     template <typename TF, Reduce_type function, int blockSize> __device__
-    void reduce_block_kernel(volatile TF* as, const unsigned int tid)
+    void reduce_block_kernel(volatile TF* as, const int tid)
     {
         /* Loop is completely unrolled for performance */
         if (blockSize >= 512) { if (tid < 256) { as[tid] = reduction<TF, function>(as[tid],as[tid + 256]); } __syncthreads(); }
@@ -64,21 +64,21 @@ namespace Tools_g
     // Reduce field from 3D to 2D, excluding ghost cells and padding
     template <typename TF, Reduce_type function, int blockSize> __global__
     void reduce_interior_kernel(const TF* a, TF* a2d,
-                        unsigned int istart, unsigned int jstart, unsigned int kstart,
-                        unsigned int iend,   unsigned int jend,
-                        unsigned int icells, unsigned int ijcells)
+                        int istart, int jstart, int kstart,
+                        int iend,   int jend,
+                        int icells, int ijcells)
     {
         // See https://stackoverflow.com/a/27570775/3581217
-        extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
+        extern __shared__ unsigned char as_tmp[];
         TF *as = reinterpret_cast<TF*>(as_tmp);
 
-        const unsigned int tid  = threadIdx.x;
-        const unsigned int i    = istart + threadIdx.x;
-        const unsigned int j    = jstart + blockIdx.y;
-        const unsigned int k    = kstart + blockIdx.z;
-        const unsigned int jk   = blockIdx.y+blockIdx.z*(jend-jstart);   // Index in 2D "a2d"
-        const unsigned int ijk  = i + j*icells + k*ijcells;              // Index in 3D "a"
-        const unsigned int ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
+        const int tid  = threadIdx.x;
+        const int i    = istart + threadIdx.x;
+        const int j    = jstart + blockIdx.y;
+        const int k    = kstart + blockIdx.z;
+        const int jk   = blockIdx.y+blockIdx.z*(jend-jstart);   // Index in 2D "a2d"
+        const int ijk  = i + j*icells + k*ijcells;              // Index in 3D "a"
+        const int ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
 
         TF tmpval;
         if (function == Max_type)
@@ -106,15 +106,16 @@ namespace Tools_g
 
     // Reduce array, not accounting from ghost cells or padding
     template <typename TF, Reduce_type function, int blockSize> __global__
-    void reduce_all_kernel(const TF* a, TF* aout, unsigned int ncells, unsigned int nvaluesperblock, TF scalefac)
+    void reduce_all_kernel(const TF* a, TF* aout, int ncells, int nvaluesperblock, TF scalefac)
     {
         // See https://stackoverflow.com/a/27570775/3581217
-        extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
+//        extern __shared__ __align__(sizeof(TF)) unsigned char as_tmp[];
+        extern __shared__ unsigned char as_tmp[];
         TF *as = reinterpret_cast<TF*>(as_tmp);
 
-        const unsigned int tid = threadIdx.x;
-        const unsigned int iim = nvaluesperblock * (blockIdx.x+1);
-        unsigned int ii        = nvaluesperblock *  blockIdx.x + threadIdx.x;
+        const int tid = threadIdx.x;
+        const int iim = nvaluesperblock * (blockIdx.x+1);
+        int ii        = nvaluesperblock *  blockIdx.x + threadIdx.x;
 
         TF tmpval;
         if (function == Max_type)
@@ -131,15 +132,33 @@ namespace Tools_g
         }
         as[tid] = tmpval * scalefac;
 
-        /* Make sure all threads are synchronised before reducing the shared array */
+        // Make sure all threads are synchronised before reducing the shared array
         __syncthreads();
 
-        /* Reduce block in shared memory */
+        // Reduce block in shared memory
         reduce_block_kernel<TF, function, blockSize>(as, tid);
 
-        /* First value in shared array now holds the reduced value. Write back to global memory */
+        // First value in shared array now holds the reduced value. Write back to global memory
         if (tid == 0)
             aout[blockIdx.x] = as[0];
+    }
+
+    template<typename TF> __global__
+    void set_to_val(TF* __restrict__ a, int nsize, TF val)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] = val;
+    }
+
+    template<typename TF> __global__
+    void mult_by_val(TF* __restrict__ a, int nsize, TF val)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] *= val;
     }
 
     int next_pow_of_2(unsigned int x)
@@ -245,9 +264,14 @@ namespace Tools_g
         }
         cuda_check_error();
     }
+
 }
 
 template void Tools_g::reduce_interior<double>(const double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
 template void Tools_g::reduce_interior<float>(const float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
 template void Tools_g::reduce_all<double>(const double*, double*, int, int, int, Tools_g::Reduce_type, double);
 template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);
+template  __global__ void Tools_g::set_to_val(double* __restrict__, int, double);
+template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
+template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
+template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);

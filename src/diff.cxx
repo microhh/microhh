@@ -26,9 +26,10 @@
 #include <algorithm>
 #include <iostream>
 
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
-#include "master.h"
+#include "boundary.h"
 #include "defines.h"
 #include "constants.h"
 
@@ -40,8 +41,8 @@
 #include "diff_smag2.h"
 
 template<typename TF>
-Diff<TF>::Diff(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin)
+Diff<TF>::Diff(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& input) :
+    master(masterin), grid(gridin), fields(fieldsin), boundary(boundaryin)
 {
 }
 
@@ -52,7 +53,7 @@ Diff<TF>::~Diff()
 
 template<typename TF>
 std::shared_ptr<Diff<TF>> Diff<TF>::factory(
-        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin)
 {
     std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
 
@@ -60,17 +61,17 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
     std::string swboundary = inputin.get_item<std::string>("boundary", "swboundary", "", "default");
 
     if (swdiff == "0")
-        return std::make_shared<Diff_disabled<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Diff_disabled<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else if (swdiff == "2")
-        return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else if (swdiff == "4")
-        return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else if (swdiff == "smag2")
-        return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        throw std::runtime_error("Illegal options swdiff");
+        std::string msg = swdiff + " is an illegal value for swdiff";
+        throw std::runtime_error(msg);
     }
 }
 

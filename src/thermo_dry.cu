@@ -27,11 +27,14 @@
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
+#include "column.h"
 #include "tools.h"
+#include "finite_difference.h"
 
 namespace
 {
     using namespace Constants;
+    using namespace Finite_difference::O2;
 
     template<typename TF> __global__
     void calc_buoyancy_tend_2nd_g(TF* __restrict__ wt,
@@ -51,6 +54,23 @@ namespace
         }
     }
 
+    template<typename TF> __global__
+    void calc_baroclinic_2nd_g(TF* __restrict__ tht, const TF* __restrict__ v,
+                               const TF dthetady_ls,
+                               int istart, int jstart, int kstart,
+                               int iend,   int jend,   int kend,
+                               int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            tht[ijk] -= dthetady_ls * interp2(v[ijk], v[ijk+jj]);
+        }
+    }
 
     template<typename TF> __global__
     void calc_buoyancy_g(TF* __restrict__ b,
@@ -210,13 +230,23 @@ void Thermo_dry<TF>::exec(const double dt)
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
-
         cuda_check_error();
+
+        if (swbaroclinic)
+        {
+            calc_baroclinic_2nd_g<<<gridGPU, blockGPU>>>(
+                fields.st.at("th")->fld_g, fields.mp.at("v")->fld_g,
+                dthetady_ls,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+        }
     }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        master.print_error("4th order thermo_dry not (yet) implemented\n");
-        throw std::runtime_error("Illegal options 4th order thermo");
+        std::string msg = "4th order thermo_dry not (yet) implemented";
+        throw std::runtime_error(msg);
     }
 }
 #endif
@@ -258,8 +288,8 @@ void Thermo_dry<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+        std::string msg = "get_thermo_field \"" + name + "\" not supported";
+        throw std::runtime_error(msg);
     }
 
     if (cyclic)
@@ -318,5 +348,18 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+void Thermo_dry<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp_g();
+
+    get_thermo_field_g(*output, "b", false);
+    column.calc_column("b", output->fld_g, no_offset);
+
+    fields.release_tmp_g(output);
+}
+#endif
 template class Thermo_dry<double>;
 template class Thermo_dry<float>;

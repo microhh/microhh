@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,31 +20,16 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef COLUMN
-#define COLUMN
-
-
-#include <netcdf>
-using namespace netCDF;
+#ifndef COLUMN_H
+#define COLUMN_H
 
 class Master;
 class Input;
+class Netcdf_file;
 template<typename> class Grid;
 template<typename> class Fields;
-
-// struct for profiles
-template<typename TF>
-struct Column_var
-{
-    NcVar ncvar;
-    std::vector<TF> data;
-};
-
-
-// typedefs for containers of profiles and time series
-template<typename TF>
-using Column_map = std::map<std::string, Column_var<TF>>;
-
+template<typename> class Timeloop;
+template<typename> class Netcdf_variable;
 
 template<typename TF>
 class Column
@@ -54,7 +39,7 @@ class Column
         ~Column();
 
         void init(double);
-        void create(int, std::string);
+        void create(Input&, Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swcolumn; }
@@ -67,18 +52,28 @@ class Column
         void calc_column(std::string, const TF* const,
                        const TF);
 
-        std::string name;
-        NcFile* data_file;
-        NcDim z_dim;
-        NcDim zh_dim;
-        NcDim t_dim;
-        NcVar iter_var;
-        NcVar t_var;
-        Column_map<TF> profs;
 
     private:
-        void calc_column(TF* const, const TF* const,
-                       const TF, const int[2]);
+        // Struct for profiles.
+        struct Prof_var
+        {
+            Netcdf_variable<TF> ncvar;
+            std::vector<TF> data;
+        };
+
+        using Prof_map = std::map<std::string, Prof_var>;
+
+        // Structure for columns.
+        struct Column_struct
+        {
+            std::vector<int> coord;
+            std::unique_ptr<Netcdf_file> data_file;
+            std::unique_ptr<Netcdf_variable<int>> iter_var;
+            std::unique_ptr<Netcdf_variable<TF>> time_var;
+            Prof_map profs;
+        };
+
+        std::vector<Column_struct> columns;
 
     protected:
         Master& master;

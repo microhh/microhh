@@ -86,7 +86,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_2<TF>::exec(Boundary<TF>& boundary)
+void Diff_2<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;

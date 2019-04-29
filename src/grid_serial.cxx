@@ -49,13 +49,18 @@ void Grid<TF>::save_grid()
     pFile = fopen(filename, "wbx");
     master.print_message("Saving \"%s\" ... ", filename);
 
+    int nerror = 0;
     if (pFile == NULL)
     {
         master.print_message("FAILED\n");
-        throw 1;
+        nerror++;
     }
     else
         master.print_message("OK\n");
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in grid");
 
     fwrite(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fwrite(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
@@ -76,13 +81,19 @@ void Grid<TF>::load_grid()
     pFile = fopen(filename, "rb");
     master.print_message("Loading \"%s\" ... ", filename);
 
+    int nerror = 0;
     if (pFile == NULL)
     {
         master.print_message("FAILED\n");
-        throw 1;
+        nerror++;
     }
     else
         master.print_message("OK\n");
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in grid");
 
     fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
     fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);

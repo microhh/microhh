@@ -29,22 +29,24 @@ template<typename TF>
 class Diff_4 : public Diff<TF>
 {
     public:
-        Diff_4(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Diff_4(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
         ~Diff_4();
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
-        void set_values();
+        void create(Stats<TF>&);
         void init() {};
-        void exec(Boundary<TF>&);
+        void exec();
+        void exec_stats(Stats<TF>&) {};
 
         // Empty functions, these are allowed to pass.
-        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+        void exec_viscosity(Thermo<TF>&) {}
+        void diff_flux(Field3d<TF>&, const Field3d<TF>&);
 
         #ifdef USECUDA
-        void prepare_device() {};
+        void prepare_device(Boundary<TF>&) {};
         #endif
 
     private:

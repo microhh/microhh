@@ -25,7 +25,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 
 template<typename> class Grid;
 template<typename> class Stats;
@@ -53,16 +53,16 @@ class Microphys
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(Thermo<TF>&, const double) = 0;
-        virtual void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, Thermo<TF>&, const double) = 0;   ///< Calculate the statistics
+        virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
 
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 
-        virtual void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string) = 0;
+        virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;
 
         #ifdef USECUDA
@@ -77,6 +77,7 @@ class Microphys
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
         Microphys_type swmicrophys;
 };

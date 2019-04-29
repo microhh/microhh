@@ -23,11 +23,13 @@
 #ifndef THERMO_MOIST
 #define THERMO_MOIST
 
+#include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -37,8 +39,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
-
-class Data_block;
 
 
 /**
@@ -58,11 +58,11 @@ class Thermo_moist : public Thermo<TF>
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(const double); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
-        void exec_stats(Stats<TF>&, std::string, Field3d<TF>&, Field3d<TF>&, const Diff<TF>&, const double);
+        void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
         void exec_column(Column<TF>&);
@@ -75,9 +75,10 @@ class Thermo_moist : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -88,10 +89,11 @@ class Thermo_moist : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, std::string, bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
+        TF* get_basestate_fld_g(std::string);
         #endif
 
         // Empty functions that are allowed to pass.
-        void get_mask(Field3d<TF>&, Field3d<TF>&, Stats<TF>&, std::string);
+        void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
@@ -119,7 +121,7 @@ class Thermo_moist : public Thermo<TF>
 
         enum class Basestate_type {anelastic, boussinesq};
 
-        struct background_state
+        struct Background_state
         {
             Basestate_type swbasestate;
             bool swupdatebasestate;
@@ -134,6 +136,8 @@ class Thermo_moist : public Thermo<TF>
             std::vector<TF> prefh;
             std::vector<TF> exnref;
             std::vector<TF> exnrefh;
+            std::vector<TF> rhoref;
+            std::vector<TF> rhorefh;
 
             // GPU functions and variables
             TF* thl0_g;
@@ -146,11 +150,9 @@ class Thermo_moist : public Thermo<TF>
             TF* exnrefh_g;
         };
 
-        background_state bs;
-        background_state bs_stats;
+        Background_state bs;
+        Background_state bs_stats;
 
         std::unique_ptr<Timedep<TF>> tdep_pbot;
-
-
 };
 #endif

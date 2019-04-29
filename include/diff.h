@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,6 +30,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Boundary;
 template<typename> class Thermo;
+template<typename> class Stats;
 
 enum class Diffusion_type {Disabled, Diff_2, Diff_4, Diff_smag2};
 
@@ -37,24 +38,26 @@ template <typename TF>
 class Diff
 {
     public:
-        Diff(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        virtual ~Diff();                                ///< Destructor of the diffusion class
+        Diff(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&); ///< Constructor of the diffusion class
+        virtual ~Diff(); ///< Destructor of the diffusion class
 
         // Pure virtual functions below which have to be implemented by the derived class
         virtual Diffusion_type get_switch() const = 0;
-        virtual void set_values() = 0;
-        virtual void exec_viscosity(Boundary<TF>&, Thermo<TF>&) = 0;
+        virtual void create(Stats<TF>&) = 0;
+        virtual void exec_viscosity(Thermo<TF>&) = 0;
         virtual void init() = 0;
-        virtual void exec(Boundary<TF>&) = 0;
+        virtual void exec() = 0;
+        virtual void exec_stats(Stats<TF>&) = 0;
+        virtual void diff_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
         virtual double get_dn(double) = 0;
 
-        static std::shared_ptr<Diff> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        static std::shared_ptr<Diff> factory(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
 
         #ifdef USECUDA
         // GPU functions and variables
-        virtual void prepare_device() = 0;
+        virtual void prepare_device(Boundary<TF>&) = 0;
         #endif
 
         TF tPr;
@@ -63,6 +66,6 @@ class Diff
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-
+        Boundary<TF>& boundary;
 };
 #endif

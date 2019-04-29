@@ -70,7 +70,7 @@ namespace
                                   + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzhi4[kstart+2] )
                                 * dzi4[kstart];
             }
-    
+
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -86,7 +86,7 @@ namespace
                                       + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzhi4[k+2] )
                                     * dzi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -137,7 +137,7 @@ namespace
                                   + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzi4[kstart+2] )
                                 * dzhi4[kstart+1];
             }
-    
+
         for (int k=kstart+2; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -153,7 +153,7 @@ namespace
                                       + cg3<TF>*(cg0<TF>*a[ijk    ] + cg1<TF>*a[ijk+kk1] + cg2<TF>*a[ijk+kk2] + cg3<TF>*a[ijk+kk3]) * dzi4[k+1] )
                                     * dzhi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -170,11 +170,34 @@ namespace
                                 * dzhi4[kend-1];
             }
     }
+
+    template<typename TF>
+    void calc_diff_flux(
+            TF* const restrict out, const TF* const restrict data, const TF visc, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj  = 1*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend+1; ++k)
+        {
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk1;
+                        out[ijk] = - visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi[k];
+                    }
+        }
+    }
 }
 
 template<typename TF>
-Diff_4<TF>::Diff_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin)
+Diff_4<TF>::Diff_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin)
 {
     dnmax = inputin.get_item<double>("diff", "dnmax", "", 0.4);
 }
@@ -203,7 +226,7 @@ double Diff_4<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_4<TF>::set_values()
+void Diff_4<TF>::create(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -220,7 +243,7 @@ void Diff_4<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec(Boundary<TF>& boundary)
+void Diff_4<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
@@ -265,6 +288,17 @@ void Diff_4<TF>::exec(Boundary<TF>& boundary)
     }
 }
 #endif
+
+
+template<typename TF>
+void Diff_4<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& in)
+{
+    auto& gd = grid.get_grid_data();
+    calc_diff_flux(
+            out.fld.data(), in.fld.data(), in.visc, gd.dzhi4.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+}
 
 template class Diff_4<double>;
 template class Diff_4<float>;

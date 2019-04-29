@@ -69,7 +69,7 @@ template<typename TF>
 void Grid<TF>::save_grid()
 {
     auto& md = master.get_MPI_data();
-
+    int nerror = 0;
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
     master.print_message("Saving \"%s\" ... ", filename);
@@ -78,8 +78,13 @@ void Grid<TF>::save_grid()
     if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     {
         master.print_message("FAILED\n");
-        throw 1;
+        nerror++;
     }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in grid");
 
     // select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
@@ -110,7 +115,12 @@ void Grid<TF>::save_grid()
 
     MPI_File_sync(fh);
     if (MPI_File_close(&fh))
-        throw 1;
+        nerror++;
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Grid save FAILED");
 
     if (master.get_mpiid() == 0)
     {
@@ -128,7 +138,7 @@ void Grid<TF>::save_grid()
 template<typename TF>
 void Grid<TF>::load_grid()
 {
-    auto& md = master.get_MPI_data();
+    // auto& md = master.get_MPI_data();
 
     int nerror = 0;
 
@@ -144,6 +154,7 @@ void Grid<TF>::load_grid()
         pFile = fopen(filename, "rb");
         if (pFile == NULL)
         {
+            master.print_message("FAILED\n");
             ++nerror;
         }
         else
@@ -157,12 +168,11 @@ void Grid<TF>::load_grid()
     }
 
     // Communicate the file read error over all procs.
-    master.broadcast(&nerror, 1);
+
+    master.sum(&nerror, 1);
+
     if (nerror)
-    {
-        master.print_message("FAILED\n");
-        throw 1;
-    }
+        throw std::runtime_error("Error in grid");
     else
         master.print_message("OK\n");
 

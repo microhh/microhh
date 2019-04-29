@@ -29,13 +29,14 @@
 #include "defines.h"
 
 template<typename TF>
-Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std::string longnamein, std::string unitin) :
+Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std::string longnamein, std::string unitin, const std::array<int,3>& locin) :
     master(masterin),
     grid(gridin)
 {
     name     = namein;
     longname = longnamein;
     unit     = unitin;
+    loc      = locin;
 }
 
 template<typename TF>
@@ -53,6 +54,7 @@ int Field3d<TF>::init()
 
     // Keep track of the total memory in fields
     static long long total_memory_size = 0;
+    int nerror = 0;
     try
     {
         total_memory_size += field_memory_size;
@@ -69,9 +71,14 @@ int Field3d<TF>::init()
     }
     catch (std::exception &e)
     {
-        master.print_error("Field %s cannot be allocated, total fields memsize %lu is too large\n", name.c_str(), total_memory_size);
-        throw;
+        std::string msg = "Field " + name + " cannot be allocated, total fields memsize " + std::to_string(total_memory_size) + "is too large";
+        master.print_message(msg);
+        nerror++;
     }
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("In Field3d::init");
 
     // set all values to zero
     for (int n=0; n<gd.ncells; ++n)

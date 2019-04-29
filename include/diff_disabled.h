@@ -29,22 +29,25 @@ template<typename TF>
 class Diff_disabled : public Diff<TF>
 {
     public:
-        Diff_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        ~Diff_disabled();                                ///< Destructor of the diffusion class
+        Diff_disabled(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&); ///< Constructor of the diffusion class
+        ~Diff_disabled(); ///< Destructor of the diffusion class
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
         // Empty functions which simply pass for disabled diffusion
-        void set_values() {}
-        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+        void create(Stats<TF>&) {}
+        void exec_viscosity(Thermo<TF>&) {}
         void init() {}
-        void exec(Boundary<TF>&) {}
+        void exec() {}
+        void diff_flux(Field3d<TF>&, const Field3d<TF>&);
+        void exec_stats(Stats<TF>&) {};
+
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device() {}
+        void prepare_device(Boundary<TF>&) {}
         #endif
     private:
 

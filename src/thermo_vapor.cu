@@ -29,6 +29,7 @@
 #include "finite_difference.h"
 #include "master.h"
 #include "tools.h"
+#include "column.h"
 #include "thermo_moist_functions.h"
 
 namespace
@@ -101,8 +102,8 @@ namespace
 
     template<typename TF> __global__
     void calc_buoyancy_flux_bot_g(TF* __restrict__ bfluxbot,
-                                  TF* __restrict__ thbot, TF* __restrict__ thfluxbot,
-                                  TF* __restrict__ qtbot, TF* __restrict__ qtfluxbot,
+                                  TF* __restrict__ th, TF* __restrict__ thfluxbot,
+                                  TF* __restrict__ qt, TF* __restrict__ qtfluxbot,
                                   TF* __restrict__ thvrefh,
                                   int kstart, int icells, int jcells,
                                   int jj, int kk)
@@ -113,7 +114,8 @@ namespace
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = buoyancy_flux_no_ql(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+            const int ijk = i + j*jj + kstart*kk;
+            bfluxbot[ij] = buoyancy_flux_no_ql(th[ijk], thfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
         }
     }
 
@@ -193,6 +195,9 @@ void Thermo_vapor<TF>::backward_device()
     cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice);
     cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice);
+
+    bs_stats = bs;
+
 }
 
 #ifdef USECUDA
@@ -313,12 +318,33 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+            std::string msg = "get_thermo_field \"" + name + "\" not supported";
+            throw std::runtime_error(msg);
     }
 
     if (cyclic)
         boundary_cyclic.exec_g(fld.fld_g);
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+TF* Thermo_vapor<TF>::get_basestate_fld_g(std::string name)
+{
+    // BvS TO-DO: change std::string to enum
+    if (name == "pref")
+        return bs.pref_g;
+    else if (name == "prefh")
+        return bs.prefh_g;
+    else if (name == "exner")
+        return bs.exnref_g;
+    else if (name == "exnerh")
+        return bs.exnrefh_g;
+    else
+    {
+        std::string error_message = "Can not get basestate field \"" + name + "\" from thermo_moist";
+        throw std::runtime_error(error_message);
+    }
 }
 #endif
 
@@ -338,8 +364,8 @@ void Thermo_vapor<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
@@ -370,13 +396,26 @@ void Thermo_vapor<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
-        fields.sp.at("thl")->fld_bot_g, fields.sp.at("thl")->flux_bot_g,
-        fields.sp.at("qt")->fld_bot_g, fields.sp.at("qt")->flux_bot_g,
+        fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+void Thermo_vapor<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    auto output = fields.get_tmp_g();
+
+    get_thermo_field_g(*output, "b", false);
+    column.calc_column("b", output->fld_g, no_offset);
+
+    fields.release_tmp_g(output);
+}
+#endif
 template class Thermo_vapor<double>;
 template class Thermo_vapor<float>;

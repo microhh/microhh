@@ -25,7 +25,6 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_vapor.h"
@@ -33,7 +32,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -81,7 +80,6 @@ namespace
    {
        for (int k=kstart+1; k<kend; k++)
        {
-           const TF exnh = exner(ph[k]);
            for (int j=jstart; j<jend; j++)
                #pragma ivdep
                for (int i=istart; i<iend; i++)
@@ -118,7 +116,6 @@ namespace
                for (int i=istart; i<iend; i++)
                {
                    const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
                    b[ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[k]);
                }
        }
@@ -151,8 +148,6 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
                     bh[ijk] = buoyancy_no_ql(thlh[ijk], qth[ijk], thvrefh[k]);
                 }
         }
@@ -248,9 +243,10 @@ namespace
    }
 
    template<typename TF>
-   void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thlbot, TF* restrict thlfluxbot,
-                              TF* restrict qtbot, TF* restrict qtfluxbot, TF* restrict thvrefh,
-                              const int icells, const int jcells, const int kstart)
+   void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
+                              TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
+                              const int icells, const int jcells, const int kstart,
+                              const int ijcells)
    {
 
        // assume no liquid water at the lowest model level
@@ -258,8 +254,9 @@ namespace
            #pragma ivdep
            for (int i=0; i<icells; i++)
            {
-               const int ij = i + j*icells;
-               bfluxbot[ij] = buoyancy_flux_no_ql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+               const int ij  = i + j*icells;
+               const int ijk = i + j*icells + kstart*ijcells;
+               bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
            }
    }
 
@@ -299,6 +296,24 @@ namespace
                }
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 
@@ -308,6 +323,7 @@ Thermo_vapor<TF>::Thermo_vapor(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     boundary_cyclic(masterin, gridin),
     field3d_operators(master, grid, fieldsin)
 {
+    auto& gd = grid.get_grid_data();
     swthermo = "moist";
 
     // 4th order code is not implemented in Thermo_vapor
@@ -315,8 +331,8 @@ Thermo_vapor<TF>::Thermo_vapor(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields
-    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K");
-    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
+    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", gd.sloc);
+    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", gd.sloc);
 
     // Get the diffusivities of temperature and moisture
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
@@ -369,10 +385,8 @@ void Thermo_vapor<TF>::init()
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
-
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
@@ -381,8 +395,16 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
-    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(bs.thl0, "thl", start, count);
+    group_nc.get_variable(bs.qt0, "qt", start, count);
+
+    // Shift the vector
+    std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
+    std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
@@ -406,7 +428,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
+    tdep_pbot->create_timedep(input_nc);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -448,7 +470,7 @@ unsigned long Thermo_vapor<TF>::get_time_limit(unsigned long idt, const double d
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::get_mask(Field3d<TF>& mfield, Field3d<TF>& mfieldh, Stats<TF>& stats, std::string mask_name)
+void Thermo_vapor<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     std::string message = "Vapor thermodynamics can not provide mask: \"" + mask_name +"\"";
     throw std::runtime_error(message);
@@ -553,9 +575,9 @@ void Thermo_vapor<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
                       fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
                       base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart);
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -568,9 +590,9 @@ void Thermo_vapor<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
     else
         base = bs;
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld_bot.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld_bot.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart);
+    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -620,6 +642,14 @@ TF Thermo_vapor<TF>::get_buoyancy_diffusivity()
 }
 
 template<typename TF>
+int Thermo_vapor<TF>::get_bl_depth()
+{
+    // Use the liquid water potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
+template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
     bs_stats = bs;
@@ -629,10 +659,10 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
@@ -643,23 +673,18 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z");
-        for (int n=2; n<5; ++n)
-        {
-            std::stringstream ss;
-            ss << n;
-            std::string sn = ss.str();
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn, "z");
-        }
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        fields.release_tmp(b);
 
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
     }
 }
 
@@ -715,8 +740,7 @@ void Thermo_vapor<TF>::create_dump(Dump<TF>& dump)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field3d<TF>& mask_field, Field3d<TF>& mask_fieldh,
-        const Diff<TF>& diff, const double dt)
+void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -724,99 +748,53 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats, std::string mask_name, Field
     bs_stats = bs;
     #endif
 
-    Mask<TF>& m = stats.masks[mask_name];
-
-    const TF no_offset = 0.;
+    const TF no_offset    = 0.;
+    const TF no_threshold = 0.;
 
     // calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
+    b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // define the location
-    const int sloc[] = {0,0,0};
+    stats.calc_stats("b", *b, no_offset, no_threshold);
 
-    // calculate the mean
-    stats.calc_mean(m.profs["b"].data.data(), b->fld.data(), no_offset, mask_field.fld.data(), stats.nmask.data());
-
-    // calculate the moments
-    for (int n=2; n<5; ++n)
-    {
-        std::string sn = std::to_string(n);
-        stats.calc_moment(b->fld.data(), m.profs["b"].data.data(), m.profs["b"+sn].data.data(), n, mask_field.fld.data(), stats.nmask.data());
-    }
-
-    auto tmp = fields.get_tmp();
-    stats.calc_grad_2nd(b->fld.data(), m.profs["bgrad"].data.data(), gd.dzhi.data(), mask_fieldh.fld.data(), stats.nmaskh.data());
-    stats.calc_flux_2nd(b->fld.data(), m.profs["b"].data.data(), fields.mp["w"]->fld.data(), m.profs["w"].data.data(),
-                        m.profs["bw"].data.data(), tmp->fld.data(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    if (diff.get_switch() == Diffusion_type::Diff_smag2)
-    {
-        stats.calc_diff_2nd(b->fld.data(), fields.mp["w"]->fld.data(), fields.sd["evisc"]->fld.data(),
-                            m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                            b->flux_bot.data(), b->flux_top.data(), diff.tPr, sloc,
-                            mask_fieldh.fld.data(), stats.nmaskh.data());
-    }
-    else
-        stats.calc_diff_2nd(b->fld.data(), m.profs["bdiff"].data.data(), gd.dzhi.data(),
-                            get_buoyancy_diffusivity(), sloc, mask_fieldh.fld.data(), stats.nmaskh.data());
-    fields.release_tmp(tmp);
-
-    // calculate the total fluxes
-    stats.add_fluxes(m.profs["bflux"].data.data(), m.profs["bw"].data.data(), m.profs["bdiff"].data.data());
-
-    // calculate the sorted buoyancy profile
-    //stats->calc_sorted_prof(fields.sd["tmp1"]->data, fields.sd["tmp2"]->data, m->profs["bsort"].data);
     fields.release_tmp(b);
 
     // Calculate base state in tmp array
     if (bs_stats.swupdatebasestate)
     {
-        m.profs["phydro"  ].data = bs_stats.pref;
-        m.profs["phydroh" ].data = bs_stats.prefh;
-        m.profs["rho" ].data = fields.rhoref;
-        m.profs["rhoh"].data = fields.rhorefh;
+        stats.set_prof("phydro" , bs_stats.pref);
+        stats.set_prof("phydroh", bs_stats.prefh);
+        stats.set_prof("rho"    , fields.rhoref);
+        stats.set_prof("rhoh"   , fields.rhorefh);
     }
+    stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
 
-
+#ifndef USECUDA
 template<typename TF>
 void Thermo_vapor<TF>::exec_column(Column<TF>& column)
 {
-    auto& gd = grid.get_grid_data();
-
-    #ifndef USECUDA
-    bs_stats = bs;
-    #endif
-
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    for (auto& it : dumplist)
-    {
-        if (it == "b")
-            get_thermo_field(*output, "b", false, true);
-        else if (it == "T")
-            get_thermo_field(*output, "T", false, true);
-        else
-        {
-            master.print_error("Thermo dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
-        }
-        column.calc_column(it, output->fld.data(), no_offset);
-    }
+    get_thermo_field(*output, "b",false, true);
+    column.calc_column("b", output->fld.data(), no_offset);
+
     fields.release_tmp(output);
 }
+#endif
 
 
 template<typename TF>
 void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto& gd = grid.get_grid_data();
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
+
     auto output = fields.get_tmp();
 
     if(swcross_b)
@@ -855,8 +833,8 @@ void Thermo_vapor<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             get_thermo_field(*output, "T", false, true);
         else
         {
-            master.print_error("Thermo dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
+            std::string msg = "Thermo dump of field \"" + it + "\" not supported";
+            throw std::runtime_error(msg);
         }
         dump.save_dump(output->fld.data(), it, iotime);
     }

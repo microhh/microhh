@@ -32,7 +32,7 @@
 
 template<typename TF>
 Microphys<TF>::Microphys(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
 {
 }
 
@@ -58,8 +58,8 @@ std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>
         return std::make_shared<Microphys_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for \"swmicro\"\n", swmicro.c_str());
-        throw std::runtime_error("Illegal options \"swmicro\"");
+        std::string msg = swmicro + " is an illegal value for swmicro";
+        throw std::runtime_error(msg);
     }
 }
 

@@ -23,19 +23,24 @@
 #ifndef STATS
 #define STATS
 
-#include <netcdf>
-using namespace netCDF;
+#include <regex>
+#include "boundary_cyclic.h"
 
 class Master;
 class Input;
+class Netcdf_file;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Advec;
+template<typename> class Diff;
+template<typename> class Timeloop;
+template<typename> class Netcdf_variable;
 
 // Struct for profiles
 template<typename TF>
 struct Prof_var
 {
-    NcVar ncvar;
+    Netcdf_variable<TF> ncvar;
     std::vector<TF> data;
 };
 
@@ -43,13 +48,14 @@ struct Prof_var
 template<typename TF>
 struct Time_series_var
 {
-    NcVar ncvar;
+    Netcdf_variable<TF> ncvar;
     TF data;
 };
 
 // Typedefs for containers of profiles and time series
 template<typename TF>
 using Prof_map = std::map<std::string, Prof_var<TF>>;
+
 template<typename TF>
 using Time_series_map = std::map<std::string, Time_series_var<TF>>;
 
@@ -58,12 +64,15 @@ template<typename TF>
 struct Mask
 {
     std::string name;
-    NcFile* data_file;
-    NcDim z_dim;
-    NcDim zh_dim;
-    NcDim t_dim;
-    NcVar iter_var;
-    NcVar t_var;
+    unsigned int flag;
+    unsigned int flagh;
+    std::vector<int> nmask;
+    std::vector<int> nmaskh;
+    int nmask_bot;
+
+    std::unique_ptr<Netcdf_file> data_file;
+    std::unique_ptr<Netcdf_variable<int>> iter_var;
+    std::unique_ptr<Netcdf_variable<TF>> time_var;
     Prof_map<TF> profs;
     Time_series_map<TF> tseries;
 };
@@ -72,89 +81,97 @@ template<typename TF>
 using Mask_map = std::map<std::string, Mask<TF>>;
 
 enum class Stats_mask_type {Plus, Min};
+enum class Stats_whitelist_type {White, Black, Default};
 
 template<typename TF>
 class Stats
 {
     public:
-        Stats(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the statistics class
+        Stats(Master&, Grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
         void init(double);
-        void create(int, std::string);
+        void create(const Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swstats; }
         bool do_statistics(unsigned long);
 
-        void get_mask(Field3d<TF>&, Field3d<TF>&);
-        void get_nmask(Field3d<TF>&, Field3d<TF>&);
-        void set_mask_true(Field3d<TF>&, Field3d<TF>&);
-        void set_mask_thres(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
-        void set_mask_thres_pert(Field3d<TF>&, Field3d<TF>&,Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type);
+        void initialize_masks();
+        void finalize_masks();
 
-        void exec(int, double, unsigned long);
-
-        // Container for all stats, masks as uppermost in hierarchy
-        Mask_map<TF> masks;
-        std::vector<int> nmask;
-        std::vector<int> nmaskh;
-        int nmaskbot;
         const std::vector<std::string>& get_mask_list();
+        void set_mask_thres(std::string, Field3d<TF>&, Field3d<TF>&, TF, Stats_mask_type );
+
+        void exec(const int, const double, const unsigned long);
 
         // Interface functions.
         void add_mask(const std::string);
-        void add_prof(std::string, std::string, std::string, std::string);
+        void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
+        void add_profs(const Field3d<TF>&, std::string, std::vector<std::string>);
+        void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
-        void add_fixed_prof(std::string, std::string, std::string, std::string, TF*);
-        void add_time_series(std::string, std::string, std::string);
+        void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
+        void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
-        void calc_area(TF*, const int[3], int*);
-        void calc_mean(TF* const, const TF* const, const TF, const TF* const, const int* const);
-
-        void calc_mean_2d(TF&, const TF* const, const TF, const TF* const, const int);
-        void calc_max_2d(TF&, const TF* const, const TF, const TF* const, const int);
-
-        void calc_moment(TF*, TF*, TF*, const int, TF*, int*);
-
-        void calc_diff_2nd(TF*, TF*, const TF*, TF, const int[3], TF*, int*);
-        void calc_diff_2nd(TF*, TF*, TF*, TF*, const TF*,
-                           TF*, TF*, TF, const int[3], TF*, int*);
-
-        void calc_diff_4th(
-                TF*, TF*, const TF*,
-                const TF, const int[3],
-                TF*, int*);
-
-        void calc_grad_2nd(TF*, TF*, const TF*, TF*, int*);
-        void calc_grad_4th(TF*, TF*, const TF*, const int[3], TF*, int*);
-
-        void calc_flux_2nd(TF*, TF*, TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-        void calc_flux_4th(TF*, TF*, TF*, TF*, const int[3], TF*, int*);
-
-        void add_fluxes   (TF*, TF*, TF*);
-        //void calc_count   (double*, double*, double, double*, int*);
-        //void calc_path    (double*, double*, int*, double*);
-        //void calc_cover   (double*, double*, int*, double*, double);
-
-        //void calc_sorted_prof(double*, double*, double*);
+        void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
+        void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
+        void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
+                             const std::string, const Field3d<TF>&, const TF, const TF, const int);
+        void set_prof(const std::string, const std::vector<TF>&);
+        void set_timeseries(const std::string, const TF);
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Advec<TF>& advec;
+        Diff<TF>& diff;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         bool swstats;           ///< Statistics on/off switch
+        std::vector<std::regex> whitelist;
+        std::vector<std::regex> blacklist;
+        std::vector<std::string> varlist;
+        void add_operation(std::vector<std::string>&, std::string, std::string);
+        void sanitize_operations_vector(std::string, std::vector<std::string>&);
+        bool is_blacklisted(std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         int statistics_counter;
         double sampletime;
         unsigned long isampletime;
 
+        // Container for all stats, masks as uppermost in hierarchy
+        Mask_map<TF> masks;
         std::vector<std::string> masklist;
+        std::vector<unsigned int> mfield;
+        std::vector<unsigned int> mfield_bot;
 
-        //// mask calculations
-        //void calc_mask(double*, double*, double*, int*, int*, int*);
+        void calc_flux_2nd(TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
+                          const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_flux_4th(TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
+                        const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_grad_2nd(TF* const restrict, const TF* const restrict, const TF* const restrict,
+                            const unsigned int* const, const unsigned int, const int* const,
+                            const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_grad_4th(TF* const restrict, const TF* const restrict, const TF* const restrict,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(TF* restrict, TF* restrict, const TF* restrict, TF, const int*,
+            const unsigned int* const, const unsigned int, const int* const,
+            const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(TF* restrict, TF* restrict w, TF* restrict,
+                TF* restrict, const TF* restrict,
+                TF* restrict, TF* restrict, const TF, const int*,
+                const unsigned int* const, const unsigned int, const int* const,
+                const TF, const TF, const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_4th(
+                TF* restrict, TF* restrict, const TF* restrict,
+                const TF, const int*,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
 
-        static const int nthres = 0;
+        bool wmean_set;
+
 };
 #endif

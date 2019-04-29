@@ -49,6 +49,8 @@ class Decay
         void create(Input&);   ///< Read the profiles of the forces from the input.
         void exec(double);     ///< Add the tendencies belonging to the decay processes.
 
+        void get_mask(Stats<TF>&, std::string);
+        bool has_mask(std::string);
 
 
     private:
@@ -57,8 +59,6 @@ class Decay
         Fields<TF>& fields;
 
         // Internal switches for various forcings
-        Decay_type swdecay;
-        std::vector<std::string> decaylist;         ///< List of variables that have a decay.
         struct Decay_var
         {
             double timescale; ///< Decay timescale.
@@ -67,6 +67,9 @@ class Decay
 
         typedef std::map<std::string, Decay_var> Decay_map;
         Decay_map dmap;
+
+        std::vector<std::string> available_masks = {"couvreux"};   // Vector with the masks that fields can provide
+        TF nstd_couvreux;
 
 };
 #endif
