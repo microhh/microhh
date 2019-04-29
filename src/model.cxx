@@ -229,19 +229,21 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->create(*input, *input_nc, *stats);
-    buffer->create(*input, *input_nc);
-    force->create(*input, *input_nc);
+    buffer->create(*input, *input_nc, *stats);
+    force->create(*input, *input_nc, *stats);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*thermo, *stats, *column, *cross, *dump);
-    decay->create(*input);
+    decay->create(*input, *stats);
 
     cross->create(); // Cross needs to be called at the end!
 
     boundary->set_values();
     pres->set_values();
+    pres->create(*stats);
+    advec->create(*stats);
     diff->create(*stats);
     budget->create(*stats);
 }
@@ -316,36 +318,43 @@ void Model<TF>::exec()
                 // Determine the time step.
                 set_time_step();
 
+                // Calculate stat masks and begin tendency calculation, if necessary
+                setup_stats();
+
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-                advec->exec();
+                advec->exec(*stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Calculate the diffusion tendency.
-                diff->exec();
+                diff->exec(*stats);
 
                 // Calculate the thermodynamics and the buoyancy tendency.
-                thermo->exec(timeloop->get_sub_time_step());
+                thermo->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_sub_time_step());
+                microphys->exec(*thermo, timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
                 // Calculate the tendency due to damping in the buffer layer.
-                buffer->exec();
+                buffer->exec(*stats);
 
                 // Apply the scalar decay.
-                decay->exec(timeloop->get_sub_time_step());
+                decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step(), *thermo); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-                pres->exec(timeloop->get_sub_time_step());
+                pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+                //Calculate the total tendency statistics, if necessary
+                for (auto& it: fields->at)
+                    stats->calc_tend(*it.second,"total");
 
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
@@ -353,11 +362,15 @@ void Model<TF>::exec()
                     if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
                         dump->do_dump(timeloop->get_itime()))
                     {
-                        #pragma omp taskwait
                         #ifdef USECUDA
-                        fields  ->backward_device();
-                        boundary->backward_device();
-                        thermo  ->backward_device();
+                        if (!cpu_up_to_date)
+                        {
+                            #pragma omp taskwait
+                            cpu_up_to_date = true;
+                            fields  ->backward_device();
+                            boundary->backward_device();
+                            thermo  ->backward_device();
+                        }
                         #endif
                         #pragma omp task default(shared)
                         calculate_statistics(
@@ -387,20 +400,29 @@ void Model<TF>::exec()
 
                     // Increase the time with the time step.
                     timeloop->step_time();
+                    #ifdef USECUDA
+                    cpu_up_to_date = false;
+                    #endif
 
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
-                        #pragma omp taskwait
                         #ifdef USECUDA
-                        fields  ->backward_device();
-                        boundary->backward_device();
-                        thermo  ->backward_device();
+                        if (!cpu_up_to_date)
+                        {
+                            #pragma omp taskwait
+                            cpu_up_to_date = true;
+                            fields  ->backward_device();
+                            boundary->backward_device();
+                            thermo  ->backward_device();
+                        }
                         #endif
-
                         // Save data to disk.
-                        timeloop->save(timeloop->get_iotime());
-                        fields  ->save(timeloop->get_iotime());
+                        #pragma omp task default(shared)
+                        {
+                            timeloop->save(timeloop->get_iotime());
+                            fields  ->save(timeloop->get_iotime());
+                        }
                     }
                 }
 
@@ -492,29 +514,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Do the statistics.
     if (stats->do_statistics(itime))
     {
-        // Prepare all the masks.
-        const std::vector<std::string>& mask_list = stats->get_mask_list();
-
-        stats->initialize_masks();
-        for (auto& mask_name : mask_list)
-        {
-            // Get the mask from one of the mask providing classes
-            if (fields->has_mask(mask_name))
-                fields->get_mask(*stats, mask_name);
-            else if (thermo->has_mask(mask_name))
-                thermo->get_mask(*stats, mask_name);
-            else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*stats, mask_name);
-            else if (decay->has_mask(mask_name))
-                decay->get_mask(*stats, mask_name);
-            else
-            {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-                throw std::runtime_error(error_message);
-            }
-        }
-        stats->finalize_masks();
-
         // Calculate statistics
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
@@ -544,6 +543,52 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
         radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
+    }
+}
+// Calculate the statistics for all classes that have a statistics function.
+template<typename TF>
+void Model<TF>::setup_stats()
+{
+    stats->set_tendency(false);
+    if (stats->do_statistics(timeloop->get_itime()) && timeloop->is_stats_step())
+    {
+        #ifdef USECUDA
+        if (!cpu_up_to_date)
+        {
+            #pragma omp taskwait
+            cpu_up_to_date = true;
+            fields  ->backward_device();
+            boundary->backward_device();
+            thermo  ->backward_device();
+        }
+        #endif
+        // Prepare all the masks.
+        const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+        stats->initialize_masks();
+        for (auto& mask_name : mask_list)
+        {
+            // Get the mask from one of the mask providing classes
+            if (fields->has_mask(mask_name))
+                fields->get_mask(*stats, mask_name);
+            else if (thermo->has_mask(mask_name))
+                thermo->get_mask(*stats, mask_name);
+            else if (microphys->has_mask(mask_name))
+                microphys->get_mask(*stats, mask_name);
+            else if (decay->has_mask(mask_name))
+                decay->get_mask(*stats, mask_name);
+            else
+            {
+                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                throw std::runtime_error(error_message);
+            }
+        }
+        stats->finalize_masks();
+        if (stats->do_tendency())
+        {
+            cpu_up_to_date = false;
+            stats->set_tendency(true);
+        }
     }
 }
 

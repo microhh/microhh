@@ -748,7 +748,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     {
         surfs(ustar.data(), obuk.data(), it.second->fld.data(),
               it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-              gd.z[gd.kstart], z0m, z0h, sbc[it.first].bcbot,
+              gd.z[gd.kstart], z0m, z0h, sbc.at(it.first).bcbot,
               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
               gd.icells, gd.jcells, gd.ijcells,
               boundary_cyclic);

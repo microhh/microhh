@@ -24,6 +24,7 @@
 #include "fields.h"
 #include "diff_4.h"
 #include "defines.h"
+#include "stats.h"
 #include "constants.h"
 #include "tools.h"
 #include "finite_difference.h"
@@ -159,7 +160,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec()
+void Diff_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -202,11 +203,18 @@ void Diff_4<TF>::exec()
         diff_c_g<<<gridGPU, blockGPU>>>(
                 it.second->fld_g, fields.sp.at(it.first)->fld_g,
                 gd.dzi4_g, gd.dzhi4_g,
-                gd.dx, gd.dy, fields.sp[it.first]->visc,
+                gd.dx, gd.dy, fields.sp.at(it.first)->visc,
                 gd.icells, gd.ijcells,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

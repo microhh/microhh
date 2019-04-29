@@ -36,6 +36,7 @@
 #include "tools.h"
 #include "constants.h"
 #include "field3d_operators.h"
+#include "stats.h"
 
 namespace
 {
@@ -490,7 +491,7 @@ void Pres_4<TF>::clear_device()
 }
 
 template<typename TF>
-void Pres_4<TF>::exec(double dt)
+void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -618,6 +619,11 @@ void Pres_4<TF>::exec(double dt)
 
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
 }
 
 template<typename TF>

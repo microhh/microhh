@@ -35,6 +35,7 @@
 #include "timeloop.h"
 #include "boundary.h"
 #include "netcdf_interface.h"
+#include "stats.h"
 #include "thermo.h"
 
 using namespace Finite_difference::O2;
@@ -352,12 +353,16 @@ void Force<TF>::init()
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
+void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     Netcdf_group group_nc = input_nc.get_group("init");
 
-    if (swlspres == Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::fixed_flux)
+    {
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name_pres, tend_longname_pres);
+    }
+    else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
 
         group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
@@ -368,6 +373,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         const TF offset = 0;
         for (auto& it : tdep_geo)
             it.second->create_timedep_prof(input_nc, offset);
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
+        stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
+
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -391,6 +399,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         const TF offset = 0;
         for (auto& it : tdep_ls)
             it.second->create_timedep_prof(input_nc, offset);
+
+        for (std::string& it : lslist)
+            stats.add_tendency(*fields.at.at(it), "z", tend_name_ls, tend_longname_ls);
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -433,6 +444,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
                 offset = 0;
 
             it.second->create_timedep_prof(input_nc, offset);
+            stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
         }
     }
 
@@ -444,12 +456,14 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 
         const TF offset = 0;
         tdep_wls->create_timedep_prof(input_nc, offset);
+        for (auto& it : fields.st)
+            stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
     }
 }
 
 #ifndef USECUDA
 template <typename TF>
-void Force<TF>::exec(double dt, Thermo<TF>& thermo)
+void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -461,6 +475,8 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
         enforce_fixed_flux<TF>(
                 fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
     }
 
     else if (swlspres == Large_scale_pressure_type::geo_wind)
@@ -478,24 +494,36 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
             grid.utrans, grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name_cor);
+        stats.calc_tend(*fields.mt.at("v"), tend_name_cor);
+
     }
 
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : lslist)
+        {
             calc_large_scale_source<TF>(
                     fields.at.at(it)->fld.data(), lsprofs.at(it).data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+
+            stats.calc_tend(*fields.at.at(it), tend_name_ls);
+        }
+
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)
     {
         for (auto& it : fields.st)
+        {
             advec_wls_2nd<TF>(
                     fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(), wls.data(), gd.dzhi.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+            stats.calc_tend(*it.second, tend_name_subs);
+        }
     }
 
     if (swnudge == Nudging_type::enabled)
@@ -514,6 +542,8 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
                     nudgeprofs.at(it).data(), nudge_factor.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+
+            stats.calc_tend(*fields.at.at(it), tend_name_nudge);
         }
     }
 }

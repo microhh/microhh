@@ -209,8 +209,8 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
 
     calculate_du_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp["u"]->fld_g,     fields.mp["v"]->fld_g,
-        fields.mp["u"]->fld_bot_g, fields.mp["v"]->fld_bot_g,
+        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     cuda_check_error();
@@ -221,19 +221,19 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
 
     // Calculate surface momentum fluxes, excluding ghost cells
     momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
-        fields.mp["u"]->flux_bot_g, fields.mp["v"]->flux_bot_g,
-        fields.mp["u"]->grad_bot_g, fields.mp["v"]->grad_bot_g,
-        fields.mp["u"]->fld_g,      fields.mp["v"]->fld_g,
-        fields.mp["u"]->fld_bot_g,  fields.mp["v"]->fld_bot_g,
+        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
+        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
+        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
         dutot->fld_g, bulk_cm, zsl,
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on the surface fluxes
-    boundary_cyclic.exec_2d_g(fields.mp["u"]->flux_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp["v"]->flux_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp["u"]->grad_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp["v"]->grad_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("u")->grad_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
 
     // Calculate scalar fluxes, gradients and/or values, including ghost cells
     for (auto it : fields.sp)
@@ -241,7 +241,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
         scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g, it.second->grad_bot_g,
             it.second->fld_g, it.second->fld_bot_g,
-            dutot->fld_g, bulk_cs[it.first], zsl,
+            dutot->fld_g, bulk_cs.at(it.first), zsl,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         cuda_check_error();
         boundary_cyclic.exec_2d_g(it.second->flux_bot_g);

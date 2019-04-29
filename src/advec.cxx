@@ -27,6 +27,7 @@
 #include "constants.h"
 #include "master.h"
 #include "field3d_operators.h"
+#include "stats.h"
 
 #include "advec.h"
 #include "advec_disabled.h"

@@ -23,6 +23,7 @@
 #include "advec_2i4.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "tools.h"
 #include "constants.h"
 #include "tools.h"
@@ -34,11 +35,11 @@ namespace
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
 
-    template<typename TF> __global__ 
-    void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u, 
+    template<typename TF> __global__
+    void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
-                   const TF* __restrict__ dzi, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                    const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -60,58 +61,58 @@ namespace
 
             if (k == kstart)
             {
-                ut[ijk] += 
+                ut[ijk] +=
                     - (  interp2(u[ijk        ], u[ijk+ii1]) * interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                        - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4c(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4c(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kstart+1)
             {
-                ut[ijk] += 
+                ut[ijk] +=
                     - (  interp2(u[ijk        ], u[ijk+ii1]) * interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                        - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4c(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4c(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4c(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                        - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
-                ut[ijk] += 
+                ut[ijk] +=
                     - (  interp2(u[ijk        ], u[ijk+ii1]) * interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                        - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4c(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4c(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
                        - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4c(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
-                ut[ijk] += 
+                ut[ijk] +=
                     - (  interp2(u[ijk        ], u[ijk+ii1]) * interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                        - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4c(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4c(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi
 
                     - ( -rhorefh[k] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
             }
             else
             {
-                ut[ijk] += 
+                ut[ijk] +=
                     - (  interp2(u[ijk        ], u[ijk+ii1]) * interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
                        - interp2(u[ijk-ii1    ], u[ijk    ]) * interp4c(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
 
                     - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp4c(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
-                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+                       - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4c(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4c(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                        - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4c(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
@@ -119,11 +120,11 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void advec_v_g(TF* __restrict__ vt, const TF* __restrict__ u, 
+    template<typename TF> __global__
+    void advec_v_g(TF* __restrict__ vt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
-                   const TF* __restrict__ dzi, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                    const int jj, const int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -145,7 +146,7 @@ namespace
 
             if (k == kstart)
             {
-                vt[ijk] += 
+                vt[ijk] +=
                     - (  interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4c(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                        - interp2(u[ijk    -jj1], u[ijk    ]) * interp4c(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
@@ -156,7 +157,7 @@ namespace
             }
             else if (k == kstart+1)
             {
-                vt[ijk] += 
+                vt[ijk] +=
                     - (  interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4c(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                        - interp2(u[ijk    -jj1], u[ijk    ]) * interp4c(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
@@ -168,7 +169,7 @@ namespace
             }
             else if (k == kend-2)
             {
-                vt[ijk] += 
+                vt[ijk] +=
                     - (  interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4c(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                        - interp2(u[ijk    -jj1], u[ijk    ]) * interp4c(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
@@ -191,7 +192,7 @@ namespace
             }
             else
             {
-                vt[ijk] += 
+                vt[ijk] +=
                     - (  interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp4c(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
                        - interp2(u[ijk    -jj1], u[ijk    ]) * interp4c(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
 
@@ -204,11 +205,11 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
-    void advec_w_g(TF* __restrict__ wt, const TF* __restrict__ u, 
+    template<typename TF> __global__
+    void advec_w_g(TF* __restrict__ wt, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
-                   const TF* __restrict__ dzhi, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzhi, const TF dxi, const TF dyi,
                    const int jj, int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -230,7 +231,7 @@ namespace
 
             if (k == kstart+1)
             {
-                wt[ijk] += 
+                wt[ijk] +=
                     - (  interp2(u[ijk+ii1-kk1], u[ijk+ii1]) * interp4c(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
                        - interp2(u[ijk    -kk1], u[ijk    ]) * interp4c(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
 
@@ -242,7 +243,7 @@ namespace
             }
             else if (k == kend-1)
             {
-                wt[ijk] += 
+                wt[ijk] +=
                     - (  interp2(u[ijk+ii1-kk1], u[ijk+ii1]) * interp4c(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
                        - interp2(u[ijk    -kk1], u[ijk    ]) * interp4c(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
 
@@ -268,10 +269,10 @@ namespace
     }
 
     template<typename TF> __global__
-    void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s, const TF* __restrict__ u, 
+    void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s, const TF* __restrict__ u,
                    const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh, 
-                   const TF* __restrict__ dzi, const TF dxi, const TF dyi, 
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                    const int jj, int kk,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend)
@@ -293,58 +294,58 @@ namespace
 
             if (k == kstart)
             {
-                st[ijk] += 
+                st[ijk] +=
                     - (  u[ijk+ii1] * interp4c(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                        - u[ijk    ] * interp4c(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - (  v[ijk+jj1] * interp4c(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kstart+1)
             {
-                st[ijk] += 
+                st[ijk] +=
                     - (  u[ijk+ii1] * interp4c(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                        - u[ijk    ] * interp4c(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - (  v[ijk+jj1] * interp4c(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * w[ijk+kk1] * interp4c(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                        - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
-                st[ijk] += 
+                st[ijk] +=
                     - (  u[ijk+ii1] * interp4c(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                        - u[ijk    ] * interp4c(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - (  v[ijk+jj1] * interp4c(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
                        - rhorefh[k  ] * w[ijk    ] * interp4c(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
-                st[ijk] += 
+                st[ijk] +=
                     - (  u[ijk+ii1] * interp4c(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                        - u[ijk    ] * interp4c(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - (  v[ijk+jj1] * interp4c(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                     - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
             else
             {
-                st[ijk] += 
+                st[ijk] +=
                     - (  u[ijk+ii1] * interp4c(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
                        - u[ijk    ] * interp4c(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                     - (  v[ijk+jj1] * interp4c(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+                       - v[ijk    ] * interp4c(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                     - (  rhorefh[k+1] * w[ijk+kk1] * interp4c(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                        - rhorefh[k  ] * w[ijk    ] * interp4c(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
@@ -352,17 +353,17 @@ namespace
         }
     }
 
-    template<typename TF> __global__ 
+    template<typename TF> __global__
     void calc_cfl_g(TF* const __restrict__ tmp1,
-                    const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w, 
+                    const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
                     const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                     const int jj, const int kk,
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-        const int k = blockIdx.z + kstart; 
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
         const int ii1 = 1;
         const int ii2 = 2;
@@ -376,12 +377,12 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             if (k == kstart || k == kend-1)
-                tmp1[ijk] = fabs(interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi 
-                          + fabs(interp4c(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]))*dyi 
+                tmp1[ijk] = fabs(interp4c(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi
+                          + fabs(interp4c(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]))*dyi
                           + fabs(interp2(w[ijk    ], w[ijk+kk1]))*dzi[k];
             else
-                tmp1[ijk] = fabs(interp4c(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi 
-                          + fabs(interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]))*dyi 
+                tmp1[ijk] = fabs(interp4c(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi
+                          + fabs(interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]))*dyi
                           + fabs(interp4c(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]))*dzi[k];
         }
     }
@@ -431,7 +432,7 @@ double Advec_2i4<TF>::get_cfl(const double dt)
 }
 
 template<typename TF>
-void Advec_2i4<TF>::exec()
+void Advec_2i4<TF>::exec(Stats<TF>& stats)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
@@ -479,6 +480,13 @@ void Advec_2i4<TF>::exec()
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

@@ -29,6 +29,7 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
 template<typename> class FFT;
 
 template<typename TF>
@@ -40,8 +41,9 @@ class Pres_disabled : public Pres<TF>
 
         void init();
         void set_values();
+        void create(Stats<TF>&);
 
-        void exec(double);
+        void exec(double, Stats<TF>&);
         TF check_divergence();
 
         #ifdef USECUDA

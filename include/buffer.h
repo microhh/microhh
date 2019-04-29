@@ -28,6 +28,7 @@ class Input;
 class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
 
 /**
  * Class for the buffer layer in the top of the domain.
@@ -42,8 +43,8 @@ class Buffer
         ~Buffer(); ///< Destructor of the buffer class.
 
         void init(); ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Netcdf_handle&); ///< Read the profiles of the forces from the input.
-        void exec(); ///< Add the tendencies created by the damping.
+        void create(Input&, Netcdf_handle&, Stats<TF>&); ///< Read the profiles of the forces from the input.
+        void exec(Stats<TF>&); ///< Add the tendencies created by the damping.
 
         // GPU functions and variables
         void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU
@@ -68,5 +69,8 @@ class Buffer
 
         // GPU functions and variables
         std::map<std::string, TF*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
+
+        const std::string tend_name = "damp";
+        const std::string tend_longname = "Damping";
 };
 #endif

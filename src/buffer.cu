@@ -28,6 +28,7 @@
 #include "fields.h"
 #include "buffer.h"
 #include "constants.h"
+#include "stats.h"
 #include "tools.h"
 
 namespace
@@ -94,7 +95,7 @@ void Buffer<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Buffer<TF>::exec()
+void Buffer<TF>::exec(Stats<TF>& stats)
 {
     if (swbuffer)
     {
@@ -189,6 +190,12 @@ void Buffer<TF>::exec()
                     gd.icells, gd.ijcells);
             cuda_check_error();
         }
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name);
+        stats.calc_tend(*fields.mt.at("v"), tend_name);
+        stats.calc_tend(*fields.mt.at("w"), tend_name);
+        for (auto it : fields.st)
+            stats.calc_tend(*it.second, tend_name);
     }
 }
 #endif

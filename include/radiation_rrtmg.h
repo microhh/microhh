@@ -47,7 +47,7 @@ class Radiation_rrtmg : public Radiation<TF>
 		bool check_field_exists(std::string name);
         void init();
         void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
 		// Empty functions that should throw
 		// Stats/dump not implemented in rrmtg now
@@ -112,5 +112,8 @@ class Radiation_rrtmg : public Radiation<TF>
         std::vector<double> hrc;       // (ncol, nlay)
         std::vector<double> duflx_dt;  // (ncol, nlay)
         std::vector<double> duflxc_dt; // (ncol, nlay)
+
+        const std::string tend_name = "rad";
+        const std::string tend_longname = "Radiation";
 };
 #endif

@@ -50,7 +50,8 @@ class Thermo_buoy : public Thermo<TF>
         Thermo_buoy(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
         virtual ~Thermo_buoy(); ///< Destructor of the dry thermodynamics class.
 
-        void exec(const double); ///< Add the tendencies belonging to the buoyancy.
+        void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
@@ -67,7 +68,6 @@ class Thermo_buoy : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {}
         void exec_stats(Stats<TF>&) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
@@ -107,5 +107,7 @@ class Thermo_buoy : public Thermo<TF>
 
         bool swbaroclinic;
         TF dbdy_ls;
+        const std::string tend_name = "buoy";
+        const std::string tend_longname = "Buoyancy";
 };
 #endif

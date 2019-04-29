@@ -27,6 +27,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "buffer.h"
 #include "defines.h"
 #include "netcdf_interface.h"
@@ -96,7 +97,7 @@ void Buffer<TF>::init()
 }
 
 template<typename TF>
-void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
+void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     if (swbuffer)
     {
@@ -148,12 +149,17 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc)
                 std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
             }
         }
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+        for (auto it : fields.st)
+            stats.add_tendency(*it.second, "z", tend_name, tend_longname);
     }
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Buffer<TF>::exec()
+void Buffer<TF>::exec(Stats<TF>& stats)
 {
     if (swbuffer)
     {
@@ -191,7 +197,11 @@ void Buffer<TF>::exec()
                 calc_buffer(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), bufferprofs.at(it.first).data(),
                             gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
         }
-    }
+        stats.calc_tend(*fields.mt.at("u"), tend_name);
+        stats.calc_tend(*fields.mt.at("v"), tend_name);
+        stats.calc_tend(*fields.mt.at("w"), tend_name);
+        for (auto it : fields.st)
+            stats.calc_tend(*it.second, tend_name);    }
 }
 #endif
 

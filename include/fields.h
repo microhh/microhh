@@ -74,7 +74,7 @@ class Fields
         void init_momentum_field  (std::string, std::string, std::string, const std::array<int,3>&);
         void init_prognostic_field(std::string, std::string, std::string, const std::array<int,3>&);
         void init_diagnostic_field(std::string, std::string, std::string, const std::array<int,3>&);
-
+        std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
 
         #ifdef USECUDA

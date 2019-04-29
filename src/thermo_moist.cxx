@@ -623,7 +623,7 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_moist<TF>::exec(const double dt)
+void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -645,6 +645,8 @@ void Thermo_moist<TF>::exec(const double dt)
                            gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
+
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
 }
 #endif
 
@@ -654,20 +656,18 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
     return Constants::ulhuge;
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    #ifndef USECUDA
-    bs_stats = bs;
-    #endif
 
     if (mask_name == "ql")
     {
         auto ql = fields.get_tmp();
         auto qlh = fields.get_tmp();
 
-        get_thermo_field(*ql, "ql", true, true);
-        get_thermo_field(*qlh, "ql_h", true, true);
+        get_thermo_field(*ql, "ql", true, false);
+        get_thermo_field(*qlh, "ql_h", true, false);
 
         stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
 
@@ -679,8 +679,8 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         auto ql = fields.get_tmp();
         auto qlh = fields.get_tmp();
 
-        get_thermo_field(*ql, "ql", true, true);
-        get_thermo_field(*qlh, "ql_h", true, true);
+        get_thermo_field(*ql, "ql", true, false);
+        get_thermo_field(*qlh, "ql_h", true, false);
 
         stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
 
@@ -709,7 +709,7 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         throw std::runtime_error(message);
     }
 }
-
+#endif
 
 template<typename TF>
 bool Thermo_moist<TF>::has_mask(std::string mask_name)
@@ -943,6 +943,7 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(ql);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m");
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
     }
 }
 
