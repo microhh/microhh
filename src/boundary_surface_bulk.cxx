@@ -265,7 +265,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
     {
         scalar_fluxgrad(it.second->flux_bot.data(), it.second->grad_bot.data(),
                         it.second->fld.data(), it.second->fld_bot.data(),
-                        dutot->fld.data(), bulk_cs[it.first], zsl,
+                        dutot->fld.data(), bulk_cs.at(it.first), zsl,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         boundary_cyclic.exec_2d(it.second->flux_bot.data());
         boundary_cyclic.exec_2d(it.second->grad_bot.data());

@@ -874,12 +874,12 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         for (auto it : fields.st)
         {
             diff_c<TF, Surface_model::Enabled>(
-                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                     gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
                     fields.sd.at("evisc")->fld.data(),
-                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.sp.at(it.first)->flux_bot.data(), fields.sp.at(it.first)->flux_top.data(),
                     fields.rhoref.data(), fields.rhorefh.data(), tPr,
-                    fields.sp[it.first]->visc,
+                    fields.sp.at(it.first)->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
@@ -921,12 +921,12 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         for (auto it : fields.st)
         {
             diff_c<TF, Surface_model::Disabled>(
-                    it.second->fld.data(), fields.sp[it.first]->fld.data(),
+                    it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                     gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
                     fields.sd.at("evisc")->fld.data(),
-                    fields.sp[it.first]->flux_bot.data(), fields.sp[it.first]->flux_top.data(),
+                    fields.sp.at(it.first)->flux_bot.data(), fields.sp.at(it.first)->flux_top.data(),
                     fields.rhoref.data(), fields.rhorefh.data(), tPr,
-                    fields.sp[it.first]->visc,
+                    fields.sp.at(it.first)->visc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }

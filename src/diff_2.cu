@@ -131,9 +131,9 @@ void Diff_2<TF>::exec(Stats<TF>& stats)
 
     for (auto &it : fields.st)
         diff_c_g<TF><<<gridGPU, blockGPU>>>(
-            it.second->fld_g, fields.sp[it.first]->fld_g,
+            it.second->fld_g, fields.sp.at(it.first)->fld_g,
             gd.dzi_g, gd.dzhi_g,
-            dxidxi, dyidyi, fields.sp[it.first]->visc,
+            dxidxi, dyidyi, fields.sp.at(it.first)->visc,
             gd.icells, gd.ijcells,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend);

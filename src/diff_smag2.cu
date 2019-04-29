@@ -535,8 +535,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
     for (auto it : fields.st)
         diff_c_g<<<gridGPU, blockGPU>>>(
-                it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd.at("evisc")->fld_g,
-                fields.sp[it.first]->flux_bot_g, fields.sp[it.first]->flux_top_g,
+                it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
+                fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                 fields.rhoref_g, fields.rhorefh_g, tPri,
                 gd.istart, gd.jstart, gd.kstart,

@@ -420,7 +420,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             it.second->fld_bot_g,  it.second->fld_g,
             ustar_g, obuk_g, gd.z[gd.kstart], z0h,
             gd.icells,  gd.jcells, gd.kstart,
-            gd.icells, gd.ijcells, sbc[it.first].bcbot);
+            gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
     cuda_check_error();
 }
 #endif

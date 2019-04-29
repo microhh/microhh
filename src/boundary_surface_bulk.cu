@@ -241,7 +241,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
         scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g, it.second->grad_bot_g,
             it.second->fld_g, it.second->fld_bot_g,
-            dutot->fld_g, bulk_cs[it.first], zsl,
+            dutot->fld_g, bulk_cs.at(it.first), zsl,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         cuda_check_error();
         boundary_cyclic.exec_2d_g(it.second->flux_bot_g);
