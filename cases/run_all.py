@@ -81,8 +81,10 @@ def test_cases(cases, executable):
         # Move to working directory
         os.chdir(case.name)
 
-        # Script only works if there is a `[name].ini` and `[name]prof.py` present
-        if (os.path.exists('{0}.ini'.format(case.name)) and os.path.exists('{0}prof.py'.format(case.name))):
+        # Script only works if there is a `[name].ini` and `[name]_input.py` present
+        if (os.path.exists('{0}.ini'.format(case.name)) and os.path.exists('{0}_input.py'.format(case.name))):
+            # Run init and run phases
+            execute('git clean -f')      # BvS: do we want this?
 
             # Backup original .ini file
             shutil.copy('{0}.ini'.format(case.name), '{0}.ini.original'.format(case.name))
@@ -94,8 +96,6 @@ def test_cases(cases, executable):
             # Create input data, and do other pre-processing
             run_scripts(case.name, case.pre)
 
-            # Run init and run phases
-            execute('rm -f *000*')      # BvS: do we want this?
             for phase in ['init', 'run']:
                 if mode == 'serial':
                     execute('{} {} {}'.format(executable, phase, case.name))
@@ -110,7 +110,7 @@ def test_cases(cases, executable):
             os.remove('{0}.ini.original'.format(case.name))
 
         else:
-            print_warning('cannot find {0}.ini and/or {0}prof.py, skipping...!'.format(case.name))
+            print_warning('cannot find {0}.ini and/or {0}_input.py, skipping...!'.format(case.name))
 
         # Go back to root of all cases
         os.chdir('..')
@@ -124,9 +124,9 @@ class Case:
         self.pre      = pre         # List of pre-processing python scripts
         self.post     = post        # List of post-processing python scripts
 
-        # By default; run {name}prof.py in preprocessing phase
+        # By default; run {name}_input.py in preprocessing phase
         if self.pre is None:
-            self.pre = {'{}prof.py'.format(name): None}
+            self.pre = {'{}_input.py'.format(name): None}
 
 
 if __name__ == "__main__":
@@ -139,7 +139,7 @@ if __name__ == "__main__":
                 ]
 
         test_cases(cases, '../build/microhh')
-        test_cases(cases, '../build/microhh_single')
+
 
         # Parallel
         cases = [
@@ -148,10 +148,10 @@ if __name__ == "__main__":
                 ]
 
         test_cases(cases, '../build_parallel/microhh')
-        test_cases(cases, '../build_parallel/microhh_single')
+
 
     if (True):
-        blacklist = ['prandtlslope']
+        blacklist = ['prandtlslope','moser600']
 
         # Settings for all test cases:
         settings_serial   = { "itot" : 16, "jtot" : 8,  "ktot" : 16, "endtime": 10 }
@@ -162,14 +162,13 @@ if __name__ == "__main__":
         cases_parallel = []
         for dir in dirs:
             if os.path.isdir(dir) and dir not in blacklist:
+                print(dir)
                 cases_serial  .append(Case(dir, settings_serial  ))
                 cases_parallel.append(Case(dir, settings_parallel))
 
         test_cases(cases_serial, '../build/microhh')
-        test_cases(cases_serial, '../build/microhh_single')
 
-        test_cases(cases_parallel, '../build_parallel/microhh')
-        test_cases(cases_parallel, '../build_parallel/microhh_single')
+        #test_cases(cases_parallel, '../build_parallel/microhh')
 
 
 #    if (False):
