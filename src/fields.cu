@@ -94,7 +94,7 @@ TF Fields<TF>::check_momentum()
     auto tmp1 = get_tmp_g();
 
     calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
+        mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -126,7 +126,7 @@ TF Fields<TF>::check_tke()
     auto tmp1 = get_tmp_g();
 
     calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
+        mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -419,16 +419,16 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld_g, grid.utrans);
-    column.calc_column("v",mp["v"]->fld_g, grid.vtrans);
-    column.calc_column("w",mp["w"]->fld_g, no_offset);
+    column.calc_column("u",mp.at("u")->fld_g, grid.utrans);
+    column.calc_column("v",mp.at("v")->fld_g, grid.vtrans);
+    column.calc_column("w",mp.at("w")->fld_g, no_offset);
 
     for (auto& it : sp)
     {
         column.calc_column(it.first, it.second->fld_g, no_offset);
     }
 
-    column.calc_column("p", sd["p"]->fld_g, no_offset);
+    column.calc_column("p", sd.at("p")->fld_g, no_offset);
 }
 #endif
 

@@ -25,6 +25,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "advec_2.h"
 #include "defines.h"
 #include "constants.h"
@@ -251,6 +252,16 @@ namespace
     }
 }
 
+template<typename TF>
+void Advec_2<TF>::create(Stats<TF>& stats)
+{
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+    for (auto it : fields.st)
+        stats.add_tendency(*it.second, "z", tend_name, tend_longname);
+}
+
 #ifndef USECUDA
 template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
@@ -282,8 +293,9 @@ unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
     return idt * cflmax / cfl;
 }
 
+
 template<typename TF>
-void Advec_2<TF>::exec()
+void Advec_2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     advec_u(fields.mt.at("u")->fld.data(),
@@ -314,6 +326,12 @@ void Advec_2<TF>::exec()
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

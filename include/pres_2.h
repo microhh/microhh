@@ -40,8 +40,9 @@ class Pres_2 : public Pres<TF>
 
         void init();
         void set_values();
+        void create(Stats<TF>&);
 
-        void exec(double);
+        void exec(double, Stats<TF>&);
         TF check_divergence();
 
         #ifdef USECUDA
@@ -90,5 +91,8 @@ class Pres_2 : public Pres<TF>
         TF calc_divergence(const TF* const restrict, const TF* const restrict, const TF* const restrict,
                            const TF* const restrict,
                            const TF* const restrict, const TF* const restrict);
+
+       const std::string tend_name = "pres";
+       const std::string tend_longname = "Pressure";
 };
 #endif

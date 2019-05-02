@@ -38,7 +38,7 @@ class Diff_2 : public Diff<TF>
 
         void create(Stats<TF>&);
         void init() {};
-        void exec();
+        void exec(Stats<TF>&);
 
         // Empty functions, these are allowed to pass.
         void exec_viscosity(Thermo<TF>&) {}
@@ -58,5 +58,7 @@ class Diff_2 : public Diff<TF>
 
         double dnmax;
         double dnmul;
+        const std::string tend_name = "diff";
+        const std::string tend_longname = "Diffusion";
 };
 #endif

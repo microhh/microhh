@@ -38,7 +38,7 @@ class Diff_4 : public Diff<TF>
 
         void create(Stats<TF>&);
         void init() {};
-        void exec();
+        void exec(Stats<TF>&);
         void exec_stats(Stats<TF>&) {};
 
         // Empty functions, these are allowed to pass.
@@ -58,5 +58,7 @@ class Diff_4 : public Diff<TF>
 
         double dnmax;
         double dnmul;
+        const std::string tend_name = "diff";
+        const std::string tend_longname = "Diffusion";
 };
 #endif

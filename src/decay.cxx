@@ -87,13 +87,13 @@ void Decay<TF>::init(Input& inputin)
 }
 
 template <typename TF>
-void Decay<TF>::create(Input& inputin)
+void Decay<TF>::create(Input& inputin, Stats<TF>& stats)
 {
 }
 
 #ifndef USECUDA
 template <typename TF>
-void Decay<TF>::exec(double dt)
+void Decay<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     for (auto& it : dmap)
@@ -104,6 +104,7 @@ void Decay<TF>::exec(double dt)
                     fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), it.second.timescale, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.st.at(it.first), tend_name);
         }
     }
 }

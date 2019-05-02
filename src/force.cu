@@ -27,6 +27,7 @@
 #include "field3d_operators.h"
 #include "timeloop.h"
 #include "timedep.h"
+#include "stats.h"
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
@@ -315,7 +316,7 @@ void Force<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Force<TF>::exec(double dt, Thermo<TF>& thermo)
+void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -344,6 +345,9 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
+
     }
     else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
@@ -369,6 +373,9 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
                 gd.iend,   gd.jend,   gd.kend);
             cuda_check_error();
         }
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name_cor);
+        stats.calc_tend(*fields.mt.at("v"), tend_name_cor);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -381,6 +388,8 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.at.at(it), tend_name_ls);
         }
     }
 
@@ -404,6 +413,8 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.at.at(it), tend_name_nudge);
         }
     }
 
@@ -417,6 +428,9 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo)
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*it.second, tend_name_subs);
         }
     }
 }

@@ -407,7 +407,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::exec( const double dt)
+void Thermo_dry<TF>::exec( const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -437,6 +437,8 @@ void Thermo_dry<TF>::exec( const double dt)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -606,6 +608,7 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(b);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m");
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
 
     }
 }

@@ -25,6 +25,7 @@
 #include <iostream>
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "thermo_buoy.h"
 #include "defines.h"
 #include "constants.h"
@@ -331,9 +332,15 @@ Thermo_buoy<TF>::~Thermo_buoy()
 {
 }
 
+template<typename TF>
+void Thermo_buoy<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+}
+
 #ifndef USECUDA
 template<typename TF>
-void Thermo_buoy<TF>::exec(const double dt)
+void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     if (grid.get_spatial_order() == Grid_order::Second)
@@ -376,6 +383,8 @@ void Thermo_buoy<TF>::exec(const double dt)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 

@@ -29,6 +29,7 @@
 #include "fft.h"
 #include "pres_2.h"
 #include "defines.h"
+#include "stats.h"
 
 template<typename TF>
 Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
@@ -52,9 +53,17 @@ Pres_2<TF>::~Pres_2()
     #endif
 }
 
+template<typename TF>
+void Pres_2<TF>::create(Stats<TF>& stats)
+{
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+}
+
 #ifndef USECUDA
 template<typename TF>
-void Pres_2<TF>::exec(const double dt)
+void Pres_2<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -78,6 +87,10 @@ void Pres_2<TF>::exec(const double dt)
     // get the pressure tendencies from the pressure field
     output(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(), fields.mt.at("w")->fld.data(),
            fields.sd.at("p")->fld.data(), gd.dzhi.data());
+
+   stats.calc_tend(*fields.mt.at("u"), tend_name);
+   stats.calc_tend(*fields.mt.at("v"), tend_name);
+   stats.calc_tend(*fields.mt.at("w"), tend_name);
 }
 #endif
 

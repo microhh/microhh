@@ -176,7 +176,7 @@ void Radiation_rrtmg<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>
 }
 
 template<typename TF>
-void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop)
+void Radiation_rrtmg<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     /*
     // auto& gd = grid.get_grid_data();

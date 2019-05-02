@@ -56,7 +56,7 @@ class Microphys
         virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
-        virtual void exec(Thermo<TF>&, const double) = 0;
+        virtual void exec(Thermo<TF>&, const double, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
 
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;

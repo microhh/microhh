@@ -25,6 +25,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "advec_4.h"
 #include "defines.h"
 #include "constants.h"
@@ -60,12 +61,12 @@ namespace
         const int jj2 = 2*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
-    
+
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
-    
+
         TF cfl = 0;
-    
+
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -101,10 +102,10 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
-    
+
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
-    
+
         // bottom boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -115,7 +116,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
@@ -123,14 +124,14 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                 }
-    
+
                 ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (bi0<TF>*u[ijk-kk2] + bi1<TF>*u[ijk-kk1] + bi2<TF>*u[ijk    ] + bi3<TF>*u[ijk+kk1]))
                            + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
                            + cg3<TF>*((ci0<TF>*w[ijk-ii2+kk2] + ci1<TF>*w[ijk-ii1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+ii1+kk2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+kk1] + ci2<TF>*u[ijk+kk2] + ci3<TF>*u[ijk+kk3])) )
                          * dzi4[kstart];
             }
-    
+
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -141,7 +142,7 @@ namespace
                                + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
                                + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
-    
+
                     if (dim3)
                     {
                         ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
@@ -149,14 +150,14 @@ namespace
                                    + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
                                    + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                     }
-    
+
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
                                + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
                                + cg3<TF>*((ci0<TF>*w[ijk-ii2+kk2] + ci1<TF>*w[ijk-ii1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+ii1+kk2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+kk1] + ci2<TF>*u[ijk+kk2] + ci3<TF>*u[ijk+kk3])) )
                              * dzi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -167,7 +168,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]) * (ci0<TF>*u[ijk-ii2] + ci1<TF>*u[ijk-ii1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]) * (ci0<TF>*u[ijk-ii1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+ii1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     ut[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-ii2-jj1] + ci1<TF>*v[ijk-ii1-jj1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk+ii1-jj1]) * (ci0<TF>*u[ijk-jj3] + ci1<TF>*u[ijk-jj2] + ci2<TF>*u[ijk-jj1] + ci3<TF>*u[ijk    ]))
@@ -175,7 +176,7 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk-ii2+jj1] + ci1<TF>*v[ijk-ii1+jj1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+ii1+jj1]) * (ci0<TF>*u[ijk-jj1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+jj1] + ci3<TF>*u[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk-ii2+jj2] + ci1<TF>*v[ijk-ii1+jj2] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+ii1+jj2]) * (ci0<TF>*u[ijk    ] + ci1<TF>*u[ijk+jj1] + ci2<TF>*u[ijk+jj2] + ci3<TF>*u[ijk+jj3])) ) * dyi;
                 }
-    
+
                 ut[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-ii2-kk1] + ci1<TF>*w[ijk-ii1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+ii1-kk1]) * (ci0<TF>*u[ijk-kk3] + ci1<TF>*u[ijk-kk2] + ci2<TF>*u[ijk-kk1] + ci3<TF>*u[ijk    ]))
                            + cg1<TF>*((ci0<TF>*w[ijk-ii2    ] + ci1<TF>*w[ijk-ii1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1    ]) * (ci0<TF>*u[ijk-kk2] + ci1<TF>*u[ijk-kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-ii2+kk1] + ci1<TF>*w[ijk-ii1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+ii1+kk1]) * (ci0<TF>*u[ijk-kk1] + ci1<TF>*u[ijk    ] + ci2<TF>*u[ijk+kk1] + ci3<TF>*u[ijk+kk2]))
@@ -201,10 +202,10 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
-    
+
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
-    
+
         // bottom boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -215,7 +216,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
@@ -223,14 +224,14 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                 }
-    
+
                 vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (bi0<TF>*v[ijk-kk2] + bi1<TF>*v[ijk-kk1] + bi2<TF>*v[ijk    ] + bi3<TF>*v[ijk+kk1]))
                            + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
                            + cg3<TF>*((ci0<TF>*w[ijk-jj2+kk2] + ci1<TF>*w[ijk-jj1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+jj1+kk2]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+kk1] + ci2<TF>*v[ijk+kk2] + ci3<TF>*v[ijk+kk3])) )
                          * dzi4[kstart];
             }
-    
+
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -241,7 +242,7 @@ namespace
                                + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
                                + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
-    
+
                     if (dim3)
                     {
                         vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
@@ -249,14 +250,14 @@ namespace
                                    + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
                                    + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                     }
-    
+
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
                                + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
                                + cg3<TF>*((ci0<TF>*w[ijk-jj2+kk2] + ci1<TF>*w[ijk-jj1+kk2] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+jj1+kk2]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+kk1] + ci2<TF>*v[ijk+kk2] + ci3<TF>*v[ijk+kk3])) )
                              * dzi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -267,7 +268,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk    -jj2] + ci1<TF>*u[ijk    -jj1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +jj1]) * (ci0<TF>*v[ijk-ii2] + ci1<TF>*v[ijk-ii1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk+ii1-jj2] + ci1<TF>*u[ijk+ii1-jj1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+jj1]) * (ci0<TF>*v[ijk-ii1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+ii1] + ci3<TF>*v[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk+ii2-jj2] + ci1<TF>*u[ijk+ii2-jj1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+jj1]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+ii1] + ci2<TF>*v[ijk+ii2] + ci3<TF>*v[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     vt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]) * (ci0<TF>*v[ijk-jj3] + ci1<TF>*v[ijk-jj2] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk    ]))
@@ -275,7 +276,7 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]) * (ci0<TF>*v[ijk-jj1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3]) * (ci0<TF>*v[ijk    ] + ci1<TF>*v[ijk+jj1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj3])) ) * dyi;
                 }
-    
+
                 vt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-jj2-kk1] + ci1<TF>*w[ijk-jj1-kk1] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk+jj1-kk1]) * (ci0<TF>*v[ijk-kk3] + ci1<TF>*v[ijk-kk2] + ci2<TF>*v[ijk-kk1] + ci3<TF>*v[ijk    ]))
                            + cg1<TF>*((ci0<TF>*w[ijk-jj2    ] + ci1<TF>*w[ijk-jj1    ] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+jj1    ]) * (ci0<TF>*v[ijk-kk2] + ci1<TF>*v[ijk-kk1] + ci2<TF>*v[ijk    ] + ci3<TF>*v[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-jj2+kk1] + ci1<TF>*w[ijk-jj1+kk1] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+jj1+kk1]) * (ci0<TF>*v[ijk-kk1] + ci1<TF>*v[ijk    ] + ci2<TF>*v[ijk+kk1] + ci3<TF>*v[ijk+kk2]))
@@ -301,10 +302,10 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
-    
+
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
-    
+
         // bottom boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -315,7 +316,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
@@ -323,14 +324,14 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                 }
-    
+
                 wt[ijk] -= ( cg0<TF>*((bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]) * (bi0<TF>*w[ijk-kk2] + bi1<TF>*w[ijk-kk1] + bi2<TF>*w[ijk    ] + bi3<TF>*w[ijk+kk1]))
                            + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
                            + cg3<TF>*((ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3])) )
                          * dzhi4[kstart+1];
             }
-    
+
         for (int k=kstart+2; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -341,7 +342,7 @@ namespace
                                + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                                + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
                                + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
-    
+
                     if (dim3)
                     {
                         wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
@@ -349,14 +350,14 @@ namespace
                                    + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
                                    + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                     }
-    
+
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
                                + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
                                + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
                                + cg3<TF>*((ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+kk1] + ci2<TF>*w[ijk+kk2] + ci3<TF>*w[ijk+kk3])) )
                              * dzhi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -367,7 +368,7 @@ namespace
                            + cg1<TF>*((ci0<TF>*u[ijk    -kk2] + ci1<TF>*u[ijk    -kk1] + ci2<TF>*u[ijk    ] + ci3<TF>*u[ijk    +kk1]) * (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+ii1]))
                            + cg2<TF>*((ci0<TF>*u[ijk+ii1-kk2] + ci1<TF>*u[ijk+ii1-kk1] + ci2<TF>*u[ijk+ii1] + ci3<TF>*u[ijk+ii1+kk1]) * (ci0<TF>*w[ijk-ii1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+ii1] + ci3<TF>*w[ijk+ii2]))
                            + cg3<TF>*((ci0<TF>*u[ijk+ii2-kk2] + ci1<TF>*u[ijk+ii2-kk1] + ci2<TF>*u[ijk+ii2] + ci3<TF>*u[ijk+ii2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+ii1] + ci2<TF>*w[ijk+ii2] + ci3<TF>*w[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     wt[ijk] -= ( cg0<TF>*((ci0<TF>*v[ijk-jj1-kk2] + ci1<TF>*v[ijk-jj1-kk1] + ci2<TF>*v[ijk-jj1] + ci3<TF>*v[ijk-jj1+kk1]) * (ci0<TF>*w[ijk-jj3] + ci1<TF>*w[ijk-jj2] + ci2<TF>*w[ijk-jj1] + ci3<TF>*w[ijk    ]))
@@ -375,7 +376,7 @@ namespace
                                + cg2<TF>*((ci0<TF>*v[ijk+jj1-kk2] + ci1<TF>*v[ijk+jj1-kk1] + ci2<TF>*v[ijk+jj1] + ci3<TF>*v[ijk+jj1+kk1]) * (ci0<TF>*w[ijk-jj1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+jj1] + ci3<TF>*w[ijk+jj2]))
                                + cg3<TF>*((ci0<TF>*v[ijk+jj2-kk2] + ci1<TF>*v[ijk+jj2-kk1] + ci2<TF>*v[ijk+jj2] + ci3<TF>*v[ijk+jj2+kk1]) * (ci0<TF>*w[ijk    ] + ci1<TF>*w[ijk+jj1] + ci2<TF>*w[ijk+jj2] + ci3<TF>*w[ijk+jj3])) ) * dyi;
                 }
-    
+
                 wt[ijk] -= ( cg0<TF>*((ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]) * (ci0<TF>*w[ijk-kk3] + ci1<TF>*w[ijk-kk2] + ci2<TF>*w[ijk-kk1] + ci3<TF>*w[ijk    ]))
                            + cg1<TF>*((ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]) * (ci0<TF>*w[ijk-kk2] + ci1<TF>*w[ijk-kk1] + ci2<TF>*w[ijk    ] + ci3<TF>*w[ijk+kk1]))
                            + cg2<TF>*((ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]) * (ci0<TF>*w[ijk-kk1] + ci1<TF>*w[ijk    ] + ci2<TF>*w[ijk+kk1] + ci3<TF>*w[ijk+kk2]))
@@ -401,10 +402,10 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
         const int kk3 = 3*kk;
-    
+
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
-    
+
         // bottom boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -415,7 +416,7 @@ namespace
                            + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                            + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
                            + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
@@ -423,14 +424,14 @@ namespace
                                + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
                                + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                 }
-    
+
                 st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (bi0<TF>*s[ijk-kk2] + bi1<TF>*s[ijk-kk1] + bi2<TF>*s[ijk    ] + bi3<TF>*s[ijk+kk1]))
                            + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
                            + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
                            + cg3<TF>*(w[ijk+kk2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+kk1] + ci2<TF>*s[ijk+kk2] + ci3<TF>*s[ijk+kk3])) )
                          * dzi4[kstart];
             }
-    
+
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -441,7 +442,7 @@ namespace
                                + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                                + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
                                + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
-    
+
                     if (dim3)
                     {
                         st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
@@ -449,14 +450,14 @@ namespace
                                    + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
                                    + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                     }
-    
+
                     st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
                                + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
                                + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
                                + cg3<TF>*(w[ijk+kk2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+kk1] + ci2<TF>*s[ijk+kk2] + ci3<TF>*s[ijk+kk3])) )
                              * dzi4[k];
                 }
-    
+
         // top boundary
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -467,7 +468,7 @@ namespace
                            + cg1<TF>*(u[ijk    ] * (ci0<TF>*s[ijk-ii2] + ci1<TF>*s[ijk-ii1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+ii1]))
                            + cg2<TF>*(u[ijk+ii1] * (ci0<TF>*s[ijk-ii1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+ii1] + ci3<TF>*s[ijk+ii2]))
                            + cg3<TF>*(u[ijk+ii2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+ii1] + ci2<TF>*s[ijk+ii2] + ci3<TF>*s[ijk+ii3])) ) * dxi;
-    
+
                 if (dim3)
                 {
                     st[ijk] -= ( cg0<TF>*(v[ijk-jj1] * (ci0<TF>*s[ijk-jj3] + ci1<TF>*s[ijk-jj2] + ci2<TF>*s[ijk-jj1] + ci3<TF>*s[ijk    ]))
@@ -475,7 +476,7 @@ namespace
                                + cg2<TF>*(v[ijk+jj1] * (ci0<TF>*s[ijk-jj1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+jj1] + ci3<TF>*s[ijk+jj2]))
                                + cg3<TF>*(v[ijk+jj2] * (ci0<TF>*s[ijk    ] + ci1<TF>*s[ijk+jj1] + ci2<TF>*s[ijk+jj2] + ci3<TF>*s[ijk+jj3])) ) * dyi;
                 }
-    
+
                 st[ijk] -= ( cg0<TF>*(w[ijk-kk1] * (ci0<TF>*s[ijk-kk3] + ci1<TF>*s[ijk-kk2] + ci2<TF>*s[ijk-kk1] + ci3<TF>*s[ijk    ]))
                            + cg1<TF>*(w[ijk    ] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk    ] + ci3<TF>*s[ijk+kk1]))
                            + cg2<TF>*(w[ijk+kk1] * (ci0<TF>*s[ijk-kk1] + ci1<TF>*s[ijk    ] + ci2<TF>*s[ijk+kk1] + ci3<TF>*s[ijk+kk2]))
@@ -546,6 +547,16 @@ namespace
     }
 }
 
+template<typename TF>
+void Advec_4<TF>::create(Stats<TF>& stats)
+{
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+    for (auto it : fields.st)
+        stats.add_tendency(*it.second, "z", tend_name, tend_longname);
+}
+
 #ifndef USECUDA
 template<typename TF>
 double Advec_4<TF>::get_cfl(double dt)
@@ -578,7 +589,7 @@ unsigned long Advec_4<TF>::get_time_limit(unsigned long idt, double dt)
 }
 
 template<typename TF>
-void Advec_4<TF>::exec()
+void Advec_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -590,21 +601,21 @@ void Advec_4<TF>::exec()
                 gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         advec_v<TF,0>(
                 fields.mt.at("v")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         advec_w<TF,0>(
                 fields.mt.at("w")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzhi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         for (auto& it : fields.st)
             advec_s<TF,0>(
                     it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
@@ -621,21 +632,21 @@ void Advec_4<TF>::exec()
                 gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         advec_v<TF,1>(
                 fields.mt.at("v")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         advec_w<TF,1>(
                 fields.mt.at("w")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzhi4.data(), gd.dx, gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    
+
         for (auto& it : fields.st)
             advec_s<TF,1>(
                     it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
@@ -644,6 +655,12 @@ void Advec_4<TF>::exec()
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

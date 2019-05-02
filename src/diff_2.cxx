@@ -27,6 +27,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
+#include "stats.h"
 #include "defines.h"
 #include "constants.h"
 
@@ -148,11 +149,17 @@ void Diff_2<TF>::create(Stats<TF>& stats)
     dnmul = 0;
     for (int k=gd.kstart; k<gd.kend; ++k)
         dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
+
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+    for (auto it : fields.st)
+        stats.add_tendency(*it.second, "z", tend_name, tend_longname);
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_2<TF>::exec()
+void Diff_2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -172,6 +179,12 @@ void Diff_2<TF>::exec()
         diff_c<TF>(it.second->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->visc,
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
+
+   stats.calc_tend(*fields.mt.at("u"), tend_name);
+   stats.calc_tend(*fields.mt.at("v"), tend_name);
+   stats.calc_tend(*fields.mt.at("w"), tend_name);
+   for (auto it : fields.st)
+       stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

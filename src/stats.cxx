@@ -20,7 +20,6 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/algorithm/string.hpp>
 #include <cstdio>
 #include <cmath>
 #include <sstream>
@@ -195,6 +194,7 @@ namespace
             nmask_full[k] = 0;
             nmask_half[k] = 0;
 
+            #pragma omp parallel for reduction (+:nmask_full[k], nmask_half[k]) collapse(2)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
@@ -206,6 +206,7 @@ namespace
 
         nmask_bottom     = 0;
         nmask_half[kend] = 0;
+        #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
@@ -427,120 +428,6 @@ namespace
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
-
-    std::pair<std::string, int> split_unit(const std::string s, const int pow)
-    {
-        std::string unit;
-        int power;
-
-        int delim = s.find_first_of("-123456789");
-        if(delim == std::string::npos)
-        {
-            unit  = s;
-            power = pow;
-        }
-        else
-        {
-            unit  = s.substr(0,delim);
-            power = pow * std::stoi(s.substr(delim));
-        }
-        return std::make_pair(unit, power);
-    }
-
-    std::vector<std::pair<std::string, int>> get_units_vector(const std::string str, const int pow)
-    {
-        std::vector<std::string> fields;
-        std::vector<std::pair<std::string, int>> unit;
-
-        boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
-        for (auto& field : fields)
-        {
-            if (field != "-" && field != "")
-                unit.push_back(split_unit(field, pow));
-        }
-
-        return unit;
-    }
-
-    std::string simplify_unit(const std::string str1, const std::string str2, const int pow1  = 1, const int pow2 = 1)
-    {
-        std::vector<std::pair<std::string, int>> unit1, unit2;
-
-        //Split each string in separate unit strings; split those in pairs of unit and power
-        unit1 = get_units_vector(str1, pow1);
-        unit2 = get_units_vector(str2, pow2);
-
-        //Loop through units to find matches; in which case add the powers
-        int unit1_size = unit1.size();
-        for (auto& u2 : unit2)
-        {
-            int i;
-            for (i = 0 ; i < unit1_size; i++)
-            {
-                if (u2.first == unit1[i].first)
-                {
-                    if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
-                    {
-                        int j;
-                        for (j = i++ ; j < unit1_size; j++)
-                        {
-                            if (u2.first == unit1[j].first)
-                                break;
-                        }
-                        if (j == unit1_size)
-                            unit1[i].second += u2.second;
-                        else if (u2.second * unit1[j].second < 0)
-                            unit1[j].second += u2.second;
-                        else
-                            unit1[i].second += u2.second;
-                        break;
-                    }
-                    else
-                    {
-                        unit1[i].second += u2.second;
-                        break;
-                    }
-                }
-            }
-            if (i == unit1_size)
-                unit1.push_back(u2);
-        }
-
-        // Remove the entries with zero power
-        for (auto u1 = unit1.begin(); u1 != unit1.end(); )
-        {
-            if ((*u1).second  == 0)
-                u1 = unit1.erase(u1);
-            else
-                ++u1;
-        }
-
-        //Convert pairs back into strings
-        std::string output;
-        if (unit1.size() == 0)
-        {
-            output = "-";
-        }
-        else
-        {
-            std::ostringstream ostream;
-            for (auto& u1 : unit1)
-            {
-                if (u1.second == 1)
-                {
-                    ostream << u1.first << " ";
-                }
-                else
-                {
-                    ostream << u1.first << u1.second << " ";
-                }
-            }
-            output = ostream.str();
-            output.erase(output.end()-1); //remove final space
-        }
-
-        return output;
-    }
 }
 
 template<typename TF>
@@ -558,6 +445,7 @@ Stats<TF>::Stats(
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
+        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
 
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
@@ -696,6 +584,12 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 }
 
 template<typename TF>
+void Stats<TF>::set_tendency(bool in)
+{
+    doing_tendency = in;
+}
+
+template<typename TF>
 void Stats<TF>::exec(const int iteration, const double time, const unsigned long itime)
 {
     if (!swstats)
@@ -705,6 +599,37 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 
     // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
+
+    // Finalize the total tendencies
+    if (do_tendency())
+    {
+        for (auto& var: tendency_order)
+        {
+            //Subtract the previous tendency from the current one; skipping the last one (total tendency)
+            for (auto tend = std::next(var.second.rbegin()); tend != std::prev(var.second.rend()); ++tend)
+            {
+                auto prev_tend = std::next(tend); // It is a reverse iterator....
+                std::string name = var.first + "_" + *tend;
+                std::string prev_name = var.first + "_" + *prev_tend;
+                for (auto& mask : masks)
+                {
+                    Mask<TF>& m = mask.second;
+
+                    std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
+                                    m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
+
+                    const int* nmask;
+                    if (m.profs.at(name).level == Level_type::Full)
+                        nmask = m.nmask.data();
+                    else
+                        nmask = m.nmaskh.data();
+                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+                }
+            }
+
+            var.second.clear();
+        }
+    }
 
     for (auto& mask : masks)
     {
@@ -786,40 +711,54 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         }
         else if (has_only_digits(it))
         {
-            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,simplify_unit(var.unit, "",2), zloc);
+            add_prof(var.name + "_" + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",std::stoi(it)), zloc);
         }
         else if (it == "w")
         {
-            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "grad")
         {
-            add_prof(var.name+"grad", "Gradient of the " + var.longname, simplify_unit(var.unit, "m-1"), zloc_alt);
-
+            add_prof(var.name+"_grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
         }
         else if (it == "flux")
         {
-            add_prof(var.name+"flux", "Total flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "diff")
         {
-            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "frac")
         {
-            add_prof(var.name+"frac", var.longname + " fraction", "-", zloc);
+            add_prof(var.name+"_frac", var.longname + " fraction", "-", zloc);
         }
         else if (it == "path")
         {
-            add_time_series(var.name+"path", var.longname + " path", simplify_unit(var.unit, "kg m-2"));
+            add_time_series(var.name+"_path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
         }
         else if (it == "cover")
         {
-            add_time_series(var.name+"cover", var.longname + " cover", "-");
+            add_time_series(var.name+"_cover", var.longname + " cover", "-");
         }
         else
         {
             throw std::runtime_error(it + "is an invalid operator name to add profs");
+        }
+    }
+}
+
+// Add a new profile to each of the NetCDF files.
+template<typename TF>
+void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::string tend_name, std::string tend_longname)
+{
+    if(swstats && swtendency)
+    {
+        add_prof(var.name + "_" + tend_name, tend_longname +" " + var.longname, var.unit, zloc);
+        if(tendency_order.find(var.name) == tendency_order.end())
+        {
+            tendency_order[var.name];
+            add_tendency(var, zloc, "total", "Total");
         }
     }
 }
@@ -834,9 +773,9 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
             std::string spow1 = std::to_string(pow1);
             std::string spow2 = std::to_string(pow2);
 
-            std::string name = var1.name + spow1 + var2.name +spow2;
+            std::string name = var1.name + "_" + spow1 + "_" + var2.name + "_" + spow2;
             std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
-            add_prof(name, longname, simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
+            add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
         }
     }
 
@@ -847,9 +786,9 @@ template<typename TF>
 void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string varname, std::string op)
 {
     operations.push_back(op);
-    if (is_blacklisted(varname + op))
+    if (is_blacklisted(varname + "_" +  op))
     {
-        std::regex re(varname + op);
+        std::regex re(varname + "_" + op);
         whitelist.push_back(re);
     }
 
@@ -862,7 +801,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
     // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
     for (auto it = operations.begin(); it != operations.end(); )
     {
-        if (is_blacklisted(varname + *it))
+        if (is_blacklisted(varname + "_" + *it))
         {
             it = operations.erase(it);
         }
@@ -880,7 +819,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
             add_operation(operations, varname, "diff");
             add_operation(operations, varname, "w");
         }
-        else if (has_only_digits(it) || (it == "path"))
+        else if (has_only_digits(it))
         {
             add_operation(operations, varname, "mean");
         }
@@ -949,6 +888,14 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     if (is_blacklisted(name, wltype))
         return;
 
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        return;
+
+    Level_type level;
+    if (zloc == "z")
+        level = Level_type::Full;
+    else
+        level = Level_type::Half;
     // Add profile to all the NetCDF files.
     for (auto& mask : masks)
     {
@@ -956,17 +903,16 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 
         // Create the NetCDF variable.
         // Create the profile variable and the vector at the appropriate size.
-        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
-        m.profs.emplace(name, tmp);
+        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
 
+        m.profs.emplace(name, tmp);
         m.profs.at(name).ncvar.add_attribute("units", unit);
         m.profs.at(name).ncvar.add_attribute("long_name", longname);
-        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
 
         m.data_file->sync();
-
-        varlist.push_back(name);
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -1005,6 +951,9 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
 {
     // Check whether variable is part of whitelist/blacklist.
     if (is_blacklisted(name, wltype))
+        return;
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         return;
 
     // Add the series to all files.
@@ -1323,6 +1272,33 @@ void Stats<TF>::calc_stats(
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
+{
+    if (!doing_tendency)
+        return;
+    auto& gd = grid.get_grid_data();
+    unsigned int flag;
+    const int* nmask;
+    std::string name = fld.name + "_" + tend_name;
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        tendency_order.at(fld.name).push_back(tend_name);
+        #ifdef USECUDA
+        fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
+        #endif
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }

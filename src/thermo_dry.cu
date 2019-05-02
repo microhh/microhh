@@ -29,6 +29,7 @@
 #include "master.h"
 #include "column.h"
 #include "tools.h"
+#include "stats.h"
 #include "finite_difference.h"
 
 namespace
@@ -211,7 +212,7 @@ void Thermo_dry<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::exec(const double dt)
+void Thermo_dry<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -248,6 +249,9 @@ void Thermo_dry<TF>::exec(const double dt)
         std::string msg = "4th order thermo_dry not (yet) implemented";
         throw std::runtime_error(msg);
     }
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 

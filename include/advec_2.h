@@ -41,7 +41,8 @@ class Advec_2 : public Advec<TF>
         Advec_2(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
         ~Advec_2(); ///< Destructor of the advection class.
 
-        void exec(); ///< Execute the advection scheme.
+        void create(Stats<TF>&);
+        void exec(Stats<TF>&); ///< Execute the advection scheme.
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
         double get_cfl(double); ///< Get the CFL number.
 
@@ -55,5 +56,7 @@ class Advec_2 : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
+        const std::string tend_name = "advec";
+        const std::string tend_longname = "Advection";
 };
 #endif
