@@ -711,35 +711,35 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         }
         else if (has_only_digits(it))
         {
-            add_prof(var.name + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",2), zloc);
+            add_prof(var.name + "_" + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",std::stoi(it)), zloc);
         }
         else if (it == "w")
         {
-            add_prof(var.name+"w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "grad")
         {
-            add_prof(var.name+"grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
+            add_prof(var.name+"_grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
         }
         else if (it == "flux")
         {
-            add_prof(var.name+"flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "diff")
         {
-            add_prof(var.name+"diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
         }
         else if (it == "frac")
         {
-            add_prof(var.name+"frac", var.longname + " fraction", "-", zloc);
+            add_prof(var.name+"_frac", var.longname + " fraction", "-", zloc);
         }
         else if (it == "path")
         {
-            add_time_series(var.name+"path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
+            add_time_series(var.name+"_path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
         }
         else if (it == "cover")
         {
-            add_time_series(var.name+"cover", var.longname + " cover", "-");
+            add_time_series(var.name+"_cover", var.longname + " cover", "-");
         }
         else
         {
@@ -773,7 +773,7 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
             std::string spow1 = std::to_string(pow1);
             std::string spow2 = std::to_string(pow2);
 
-            std::string name = var1.name + spow1 + var2.name +spow2;
+            std::string name = var1.name + "_" + spow1 + "_" + var2.name + "_" + spow2;
             std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
             add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
         }
@@ -786,9 +786,9 @@ template<typename TF>
 void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string varname, std::string op)
 {
     operations.push_back(op);
-    if (is_blacklisted(varname + op))
+    if (is_blacklisted(varname + "_" +  op))
     {
-        std::regex re(varname + op);
+        std::regex re(varname + "_" + op);
         whitelist.push_back(re);
     }
 
@@ -801,7 +801,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
     // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
     for (auto it = operations.begin(); it != operations.end(); )
     {
-        if (is_blacklisted(varname + *it))
+        if (is_blacklisted(varname + "_" + *it))
         {
             it = operations.erase(it);
         }
@@ -819,7 +819,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
             add_operation(operations, varname, "diff");
             add_operation(operations, varname, "w");
         }
-        else if (has_only_digits(it) || (it == "path"))
+        else if (has_only_digits(it))
         {
             add_operation(operations, varname, "mean");
         }
@@ -888,12 +888,14 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
     if (is_blacklisted(name, wltype))
         return;
 
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        return;
+
     Level_type level;
     if (zloc == "z")
         level = Level_type::Full;
     else
         level = Level_type::Half;
-
     // Add profile to all the NetCDF files.
     for (auto& mask : masks)
     {
@@ -902,16 +904,15 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         // Create the NetCDF variable.
         // Create the profile variable and the vector at the appropriate size.
         Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
-        m.profs.emplace(name, tmp);
 
+        m.profs.emplace(name, tmp);
         m.profs.at(name).ncvar.add_attribute("units", unit);
         m.profs.at(name).ncvar.add_attribute("long_name", longname);
-        // m.profs.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
 
         m.data_file->sync();
-
-        varlist.push_back(name);
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -950,6 +951,9 @@ void Stats<TF>::add_time_series(const std::string name, const std::string longna
 {
     // Check whether variable is part of whitelist/blacklist.
     if (is_blacklisted(name, wltype))
+        return;
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         return;
 
     // Add the series to all files.
