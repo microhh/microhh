@@ -687,10 +687,10 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     fields.release_tmp_g(flux_nr);
 
     cudaDeviceSynchronize();
-    stats.calc_tend(*fields.mt.at("thl"), tend_name);
-    stats.calc_tend(*fields.mt.at("qt"),  tend_name);
-    stats.calc_tend(*fields.mt.at("qr"),  tend_name);
-    stats.calc_tend(*fields.mt.at("nr"),  tend_name);
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
+    stats.calc_tend(*fields.st.at("qt"),  tend_name);
+    stats.calc_tend(*fields.st.at("qr"),  tend_name);
+    stats.calc_tend(*fields.st.at("nr"),  tend_name);
 }
 #endif
 

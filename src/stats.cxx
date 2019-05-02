@@ -720,7 +720,6 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
         else if (it == "grad")
         {
             add_prof(var.name+"grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
-
         }
         else if (it == "flux")
         {
