@@ -4,6 +4,7 @@ import shutil
 import re
 import os
 import glob
+import sys
 
 from messages import *
 
@@ -22,9 +23,9 @@ def determine_mode(namelist):
     return mode, npx*npy
 
 
-def run_scripts(case_name, scripts):
-    def exec_function(lib, function):
-        rc = getattr(lib, function)()
+def run_scripts(scripts):
+    def exec_function(lib, function, *args):
+        rc = getattr(lib, function)(*args)
 
         if rc != 0:
             print_error('{}: {}() returned {}'.format(script, function, rc))
@@ -32,22 +33,37 @@ def run_scripts(case_name, scripts):
     if scripts is not None:
         # Loop over, and execute all functions
         for script, functions in scripts.items():
+            if (script == __file__):
+                lib = sys.modules[__name__]
+            else:
+                # Module name = script name minus the `.py`
+                module = script.replace('.py', '')
+                print(script, os.getcwd())
 
-            # Module name = script name minus the `.py`
-            module = script.replace('.py', '')
-
-            # Import module; this executes all code that is not in classes/functions
-            lib = importlib.import_module('{0}.{1}'.format(case_name, module))
+                # Import module; this executes all code that is not in classes/functions
+                lib = importlib.import_module(script)
 
             # If any specific routines are specified, run them
             if functions is not None:
-                if isinstance(functions, list):
-                    for function in functions:
-                        exec_function(lib, function)
-                else:
-                    exec_function(lib, functions)
+                for function in functions:
+                    args = function[1:]
+                    exec_function(lib, function[0], *args)
 
+def restart_pre(origin, time):
+    #Write a real function that copies relevant files from dir1 to dir2
 
+    fnames = glob.glob("../"+origin+"/*_input.nc")
+    fnames += glob.glob("../"+origin+"/*"+time)
+    for file in fnames:
+        shutil.copy(file, ".")
+    return 0        
+    
+       
+def restart_post(dir1, dir2, time):
+    #Write a real function that compares relevant files between dir1 and dir2
+    print(dir1, dir2, time)
+    return 0
+    
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = sp.communicate()
@@ -79,57 +95,73 @@ def test_cases(cases, executable):
         print_header('Testing case \"{}\" for executable \"{}\" ({})'.format(case.name, executable_rel, mode))
 
         # Move to working directory
+        rootdir = os.getcwd()
         os.chdir(case.name)
+        casedir = os.getcwd()
+        rundir = casedir +  "/" + case.rundir + "/"
+        try:
+            shutil.rmtree(rundir)
+        except Exception:
+            pass
+            
+        os.mkdir(rundir)    
+        
+        try:
+            for fname in case.files:
+                shutil.copy(fname, rundir)
+        except:
+            print_warning('Cannot find required files, skipping!')
 
-        # Script only works if there is a `[name].ini` and `[name]_input.py` present
-        if (os.path.exists('{0}.ini'.format(case.name)) and os.path.exists('{0}_input.py'.format(case.name))):
-            # Run init and run phases
-            execute('git clean -f')      # BvS: do we want this?
+        os.chdir(rundir)
+        
+        # Update .ini file for testing
+        for variable, value in case.options.items():
+            replace_namelist_value('{0}.ini'.format(case.name), variable, value)
 
-            # Backup original .ini file
-            shutil.copy('{0}.ini'.format(case.name), '{0}.ini.original'.format(case.name))
+        # Create input data, and do other pre-processing
+        run_scripts(case.pre)
 
-            # Update .ini file for testing
-            for variable, value in case.options.items():
-                replace_namelist_value('{0}.ini'.format(case.name), variable, value)
+        for phase in case.phases:
+            if mode == 'serial':
+                execute('{} {} {}'.format(executable, phase, case.name))
+            elif mode == 'parallel':
+                execute('mpirun -n {} {} {} {}'.format(ntasks, executable, phase, case.name))
 
-            # Create input data, and do other pre-processing
-            run_scripts(case.name, case.pre)
-
-            for phase in ['init', 'run']:
-                if mode == 'serial':
-                    execute('{} {} {}'.format(executable, phase, case.name))
-                elif mode == 'parallel':
-                    execute('mpirun -n {} {} {} {}'.format(ntasks, executable, phase, case.name))
-
-            # Run the post-processing steps
-            run_scripts(case.name, case.post)
-
-            # Restore original .ini file and remove backup
-            shutil.copy('{0}.ini.original'.format(case.name), '{0}.ini'.format(case.name))
-            os.remove('{0}.ini.original'.format(case.name))
-
-        else:
-            print_warning('cannot find {0}.ini and/or {0}_input.py, skipping...!'.format(case.name))
+        # Run the post-processing steps
+        run_scripts(case.post)
 
         # Go back to root of all cases
-        os.chdir('..')
+        os.chdir(rootdir)
 
 
 class Case:
-    def __init__(self, name, options, pre=None, post=None):
+    def __init__(self, name, options, pre=None, post=None, phases = ["init","run"], rundir=".", files=None):
 
         self.name     = name        # Case / directory name
         self.options  = options     # Override existing namelist options
         self.pre      = pre         # List of pre-processing python scripts
         self.post     = post        # List of post-processing python scripts
-
+        self.phases   = phases      # List of the run phases we have to go through
+        self.rundir   = rundir      # Relative run directory
+        self.files    = files       # List of files necessary to run the case
         # By default; run {name}_input.py in preprocessing phase
         if self.pre is None:
             self.pre = {'{}_input.py'.format(name): None}
+        if self.files is None:
+            self.files = ['{}_input.py'.format(name), '{0}.ini'.format(name)]
 
 
 if __name__ == "__main__":
+
+    if (True):
+        # Serial
+        cases = [
+            #Case("bomex",     {"savetime"  : 1800 , "endtime": 3600 }, rundir="run1"),
+            Case("bomex",     {"starttime" : 1800, "endtime": 3600 }, pre={__file__ : [['restart_pre', 'run1', '1800']]}, post={__file__ : [['restart_post', 'run1', 'run2', '3600']]}, rundir="run2"),
+
+                ]
+
+        test_cases(cases, '../build/microhh')
 
     if (False):
         # Serial
@@ -150,7 +182,7 @@ if __name__ == "__main__":
         test_cases(cases, '../build_parallel/microhh')
 
 
-    if (True):
+    if (False):
         blacklist = ['prandtlslope','moser600']
 
         # Settings for all test cases:
