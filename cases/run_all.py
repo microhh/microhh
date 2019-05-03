@@ -22,7 +22,7 @@ def determine_mode(namelist):
     return mode, npx*npy
 
 
-def run_scripts(case_name, scripts):
+def run_scripts(case_name, run_dir, scripts):
     def exec_function(lib, function, *args):
         rc = getattr(lib, function)(*args)
 
@@ -40,15 +40,16 @@ def run_scripts(case_name, scripts):
             else:
                 # Module name = script name minus the `.py`
                 module = script.replace('.py', '')
-
+                # The full module name is relative to the source file, with dots instead of slashes
+                full_module = os.path.relpath(os.getcwd(),sys.path[0]).replace('/','.')+'.'+module
                 # Import module; this executes all code that is not in classes/functions
-                lib = importlib.import_module('{0}.{1}'.format(case_name, module))
-
+                lib = importlib.import_module(full_module)
             # If any specific routines are specified, run them
             if functions is not None:
                 for function in functions:
                     args = function[1:]
                     nerror += exec_function(lib, function[0], *args)
+
     return nerror
 
 def restart_pre(origin, timestr):
@@ -127,8 +128,7 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
             mht.replace_namelist_value(variable, value, '{0}.ini'.format(case.name))
 
         # Create input data, and do other pre-processing
-        nerror += run_scripts(case.name, case.pre)
-
+        nerror += run_scripts(case.name, case.rundir, case.pre)
         for phase in case.phases:
             case.time = timeit.default_timer()
             if mode == 'serial':
@@ -138,7 +138,7 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
             case.time = timeit.default_timer() - case.time
 
         # Run the post-processing steps
-        nerror += run_scripts(case.name, case.post)
+        nerror += run_scripts(case.name, case.rundir, case.post)
 
         case.success = (nerror == 0)
 
@@ -154,9 +154,8 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
     csvFile.close()
 
     for case in cases:
-        print(rundir, case, case.success, case.keep)
+        rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
         if case.success and not case.keep:
-            rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
             shutil.rmtree(rundir)
 
 def generator_restart(cases):
@@ -189,7 +188,46 @@ def generator_restart(cases):
         cases_out.append([case_init, case_restart])
 
     return cases_out
-        
+
+def primeFactors(n):
+    import math
+
+    result = []
+    for i in range(2,int(math.sqrt(n))+1):
+        # while i divides n , print i ad divide n
+        while n % i== 0:
+            result.append(i),
+            n = n / i
+
+    if (n > 1):
+        result.append(int(n))
+
+    return result
+
+def generator_strongscaling(cases, procs, dir='y'):
+    cases_out = []
+    for case in cases:
+        for proc in procs:
+            if dir == 'x':
+                option = {'npx' : proc}
+            elif dir == 'y':
+                option = {'npy' : proc}
+            elif dir == 'xy':
+                primes = primeFactors(proc)
+                npy = 1
+                npx = 1
+                for i in range(0,len(primes),2):
+                    npy *= primes[i]
+                    if i+1 < len(primes):
+                        npx *= primes[i+1]
+                option = {'npy' : npy, 'npx' : npx}
+            new_case = copy.deepcopy(case)
+            new_case.options.update(option)
+            new_case.rundir = '{0:03d}'.format(proc)
+            cases_out.append(new_case)
+
+    return cases_out
+
 class Case:
     def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], rundir='', files=[], keep=False):
 
@@ -208,15 +246,17 @@ class Case:
         self.pre.update({'{}_input.py'.format(name): None})
         if self.files == []:
             self.files = ['{0}.ini'.format(name)]
+        self.files += list(self.pre.keys()) + list(self.post.keys())
 
 
 if __name__ == '__main__':
 
     if (True):
         # Serial
-        cases = generator_restart(Case('bomex'))
-
-        test_cases(cases, '../build/microhh')
+        #cases = generator_restart([Case('bomex')])
+        cases = generator_strongscaling([Case('bomex')],procs=[1,2,4,8], dir='xy')
+        print(cases)
+        test_cases(cases, '../build_mpi/microhh')
 
     if (False):
         # Serial
