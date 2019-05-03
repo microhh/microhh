@@ -258,7 +258,6 @@ def generator_parameter_change(cases, **kwargs):
     cases_out = []
     if len(kwargs) > 0:
         for case in cases:
-            print("list", list(kwargs.items()))
             key, value = list(kwargs.items())[0]
             for val in value:
                 new_case = copy.deepcopy(case)
@@ -290,7 +289,20 @@ class Case:
         if self.files == []:
             self.files = ['{0}.ini'.format(name), '{}_input.py'.format(name)]
 
-
+def taylorgreen():
+    kwargs = {'itot' : [16, 32, 64, 128, 256], 'swadvec' : ['2', '4', '4m']}
+    cases = generator_parameter_change([Case('taylorgreen', keep=True)], **kwargs )
+    for case in cases:
+        options = copy.deepcopy(case.options)
+        for key, value in options.items():
+            if key == 'itot':
+                case.options.update({'ktot' : int(value/2)})
+            elif key == 'swadvec':
+                if value == '2':
+                    case.options.update({'swspatialorder' : 2})
+                else:
+                    case.options.update({'swspatialorder' : 4})
+    return cases
 
 if __name__ == '__main__':
 
@@ -301,14 +313,8 @@ if __name__ == '__main__':
         test_cases(cases, '../build_mpi/microhh')
 
     if (True):
-        # Serial
-        #cases = [
-        #        Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 16, 'endtime': 3600 }, rundir='run1'),
-        #            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }, rundir='run2', post={__file__ : [['compare', 'run1', 'bomex_default_0000000.nc']]}),
-        #                    ]
 
-        kwargs = {'itot' : [16, 32], 'jtot' : [16, 32]}
-        cases = generator_parameter_change([Case('bomex')], **kwargs )
+        cases = taylorgreen()
         test_cases(cases, '../build/microhh')
 
 
