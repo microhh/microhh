@@ -254,6 +254,22 @@ def generator_scaling(cases, procs, type='strong', dir='y'):
 
     return cases_out
 
+def generator_parameter_change(cases, **kwargs):
+    cases_out = []
+    if len(kwargs) > 0:
+        for case in cases:
+            print("list", list(kwargs.items()))
+            key, value = list(kwargs.items())[0]
+            for val in value:
+                new_case = copy.deepcopy(case)
+                new_case.options.update({key : val})
+                new_case.rundir += key+str(val)
+                cases_out.append(new_case)
+        del kwargs[key]
+        if len(kwargs) > 0:
+            cases_out = generator_parameter_change(cases_out, **kwargs)
+
+    return cases_out
 
 class Case:
     def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], rundir='', files=[], keep=False):
@@ -286,11 +302,13 @@ if __name__ == '__main__':
 
     if (True):
         # Serial
-        cases = [
-            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 16, 'endtime': 3600 }, rundir='run1'),
-            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }, rundir='run2', post={__file__ : [['compare', 'run1', 'bomex_default_0000000.nc']]}),
-                ]
+        #cases = [
+        #        Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 16, 'endtime': 3600 }, rundir='run1'),
+        #            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }, rundir='run2', post={__file__ : [['compare', 'run1', 'bomex_default_0000000.nc']]}),
+        #                    ]
 
+        kwargs = {'itot' : [16, 32], 'jtot' : [16, 32]}
+        cases = generator_parameter_change([Case('bomex')], **kwargs )
         test_cases(cases, '../build/microhh')
 
 
