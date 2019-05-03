@@ -9,13 +9,17 @@ import filecmp
 import timeit
 import csv
 import copy
+import numpy as np
+import netCDF4 as nc
 sys.path.append('../python/')
 import microhh_tools as mht
 
 from messages import *
 
 
-def determine_mode(namelist):
+def determine_mode():
+    namelist = mht.Read_namelist()['master']
+
     npx = namelist['npx'] if 'npx' in namelist.keys() else 1
     npy = namelist['npy'] if 'npy' in namelist.keys() else 1
     mode = 'serial' if npx*npy == 1 else 'parallel'
@@ -72,6 +76,19 @@ def restart_post(origin, timestr):
 
     return 0
 
+def compare(origin, file):
+    nc_new = nc.Dataset(file, mode="r")
+    nc_old = nc.Dataset('../'+origin+'/'+file, mode="r")
+
+    for key in nc_new.variables.keys():
+        var_new = nc_new.variables[key][:]
+        var_old = nc_old.variables[key][:]
+        if not np.allclose(var_new, var_old, equal_nan=True):
+            return file + ' is not identical'
+
+    return 0
+
+
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = sp.communicate()
@@ -101,9 +118,7 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
 
     for case in cases:
         # Determine whether to run serial or parallel
-        mode, ntasks = determine_mode(case.options)
 
-        print_header('Testing case \'{}\' for executable \'{}\' ({})'.format(case.name, executable_rel, mode))
         nerror = 0
         # Move to working directory
         rootdir = os.getcwd()
@@ -126,6 +141,8 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
         # Update .ini file for testing
         for variable, value in case.options.items():
             mht.replace_namelist_value(variable, value, '{0}.ini'.format(case.name))
+        mode, ntasks = determine_mode()
+        print_header('Testing case \'{}\' for executable \'{}\' ({})'.format(case.name, executable_rel, mode))
 
         # Create input data, and do other pre-processing
         nerror += run_scripts(case.name, case.rundir, case.pre)
@@ -204,9 +221,16 @@ def primeFactors(n):
 
     return result
 
-def generator_strongscaling(cases, procs, dir='y'):
+def generator_scaling(cases, procs, type='strong', dir='y'):
     cases_out = []
     for case in cases:
+        if type == 'weak':
+            nl = mht.Read_namelist('{0}/{0}.ini'.format(case.name))
+            itot  = nl['grid']['itot']
+            jtot  = nl['grid']['jtot']
+            xsize = nl['grid']['xsize']
+            ysize = nl['grid']['ysize']
+
         for proc in procs:
             if dir == 'x':
                 option = {'npx' : proc}
@@ -221,12 +245,15 @@ def generator_strongscaling(cases, procs, dir='y'):
                     if i+1 < len(primes):
                         npx *= primes[i+1]
                 option = {'npy' : npy, 'npx' : npx}
+            if type == 'weak':
+                option.update({'itot' : itot*npx, 'jtot' : jtot*npy, 'xsize' : xsize*npx, 'ysize' : ysize * npy})
             new_case = copy.deepcopy(case)
             new_case.options.update(option)
             new_case.rundir = '{0:03d}'.format(proc)
             cases_out.append(new_case)
 
     return cases_out
+
 
 class Case:
     def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], rundir='', files=[], keep=False):
@@ -245,36 +272,26 @@ class Case:
         # By default; run {name}_input.py in preprocessing phase
         self.pre.update({'{}_input.py'.format(name): None})
         if self.files == []:
-            self.files = ['{0}.ini'.format(name)]
-        self.files += list(self.pre.keys()) + list(self.post.keys())
+            self.files = ['{0}.ini'.format(name), '{}_input.py'.format(name)]
+
 
 
 if __name__ == '__main__':
 
-    if (True):
-        # Serial
-        #cases = generator_restart([Case('bomex')])
-        cases = generator_strongscaling([Case('bomex')],procs=[1,2,4,8], dir='xy')
-        print(cases)
-        test_cases(cases, '../build_mpi/microhh')
-
     if (False):
         # Serial
+        #cases = generator_restart([Case('bomex')])
+        cases = generator_scaling([Case('bomex')],procs=[1,2,4,8], type='weak',dir='xy')
+        test_cases(cases, '../build_mpi/microhh')
+
+    if (True):
+        # Serial
         cases = [
-            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }),
-            Case('drycblles', { 'itot' : 16, 'jtot' : 16, 'ktot' : 32 }, post={'validate.py': ['test1', 'test2']})
+            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 16, 'endtime': 3600 }, rundir='run1'),
+            Case('bomex',     { 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }, rundir='run2', post={__file__ : [['compare', 'run1', 'bomex_default_0000000.nc']]}),
                 ]
 
         test_cases(cases, '../build/microhh')
-
-
-        # Parallel
-        cases = [
-            Case('bomex',     { 'npx': 1, 'npy': 2, 'itot' : 16, 'jtot' : 16,  'ktot' : 32, 'endtime': 3600 }),
-            Case('drycblles', { 'npx': 1, 'npy': 2, 'itot' : 16, 'jtot' : 16, 'ktot' : 32 }, post={'validate.py': ['test1', 'test2']})
-                ]
-
-        test_cases(cases, '../build_parallel/microhh')
 
 
     if (False):
@@ -289,7 +306,6 @@ if __name__ == '__main__':
         cases_parallel = []
         for dir in dirs:
             if os.path.isdir(dir) and dir not in blacklist:
-                print(dir)
                 cases_serial  .append(Case(dir, settings_serial  ))
                 cases_parallel.append(Case(dir, settings_parallel))
 
