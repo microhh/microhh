@@ -8,15 +8,11 @@ import sys
 import filecmp
 import timeit
 import csv
+import copy
+sys.path.append('../python/')
+import microhh_tools as mht
 
 from messages import *
-
-def replace_namelist_value(namelist_file, variable, new_value):
-    with open(namelist_file, 'r') as source:
-        lines = source.readlines()
-    with open(namelist_file, 'w') as source:
-        for line in lines:
-            source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
 
 
 def determine_mode(namelist):
@@ -55,26 +51,26 @@ def run_scripts(case_name, scripts):
                     nerror += exec_function(lib, function[0], *args)
     return nerror
 
-def restart_pre(origin, time):
+def restart_pre(origin, timestr):
     fnames = glob.glob('../'+origin+'/*_input.nc')
     fnames += glob.glob('../'+origin+'/grid.0000000')
     fnames += glob.glob('../'+origin+'/fftwplan.0000000')
-    fnames += glob.glob('../'+origin+'/*'+time)
+    fnames += glob.glob('../'+origin+'/*.'+timestr)
     for file in fnames:
         shutil.copy(file, '.')
-    return 0        
-    
-       
-def restart_post(origin, time):
+    return 0
+
+
+def restart_post(origin, timestr):
     #Write a real function that compares relevant files between dir1 and dir2
 
-    fnames = glob.glob('*'+time)
+    fnames = glob.glob('*.'+timestr)
     for file in fnames:
         if not filecmp.cmp('../'+origin+'/'+file, file):
             return file + ' is not identical'
-            
+
     return 0
-    
+
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = sp.communicate()
@@ -89,76 +85,113 @@ def execute(command):
     if sp.returncode != 0:
         print_error('\'{}\' returned \'{}\'.'.format(command, sp.returncode))
         return 1
-        
+
     return 0
 
 
-def test_cases(cases, executable):
+def test_cases(cases, executable, outputfile='test_results.csv'):
     if not os.path.exists(executable):
         raise Exception('ERROR: Executable {} does not exists'.format(executable))
 
     # Get the absolute path to the executable
     executable_rel = executable
     executable = os.path.abspath(executable)
+    rootdir = os.getcwd()
 
-    with open('test_results.csv', 'w') as csvFile:
+    for case in cases:
+        # Determine whether to run serial or parallel
+        mode, ntasks = determine_mode(case.options)
+
+        print_header('Testing case \'{}\' for executable \'{}\' ({})'.format(case.name, executable_rel, mode))
+        nerror = 0
+        # Move to working directory
+        rootdir = os.getcwd()
+        rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
+        casedir = rootdir + '/' + case.name +  '/'
+
+        try:
+            shutil.rmtree(rundir)
+        except Exception:
+            pass
+        os.mkdir(rundir)
+        os.chdir(rundir)
+
+        try:
+            for fname in case.files:
+                shutil.copy(casedir+fname, rundir)
+        except:
+            print_warning('Cannot find required files, skipping!')
+
+        # Update .ini file for testing
+        for variable, value in case.options.items():
+            mht.replace_namelist_value(variable, value, '{0}.ini'.format(case.name))
+
+        # Create input data, and do other pre-processing
+        nerror += run_scripts(case.name, case.pre)
+
+        for phase in case.phases:
+            case.time = timeit.default_timer()
+            if mode == 'serial':
+                nerror += execute('{} {} {}'.format(executable, phase, case.name))
+            elif mode == 'parallel':
+                nerror += execute('mpirun -n {} {} {} {}'.format(ntasks, executable, phase, case.name))
+            case.time = timeit.default_timer() - case.time
+
+        # Run the post-processing steps
+        nerror += run_scripts(case.name, case.post)
+
+        case.success = (nerror == 0)
+
+        # Go back to root of all cases
+        os.chdir(rootdir)
+
+    #Write the output file and remove unnecssary dirs
+    with open(outputfile, 'w') as csvFile:
         write = csv.writer(csvFile)
-        write.writerow(["Name", "Run Dir", "Success", "Time", "Options"])
+        write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
         for case in cases:
-            # Determine whether to run serial or parallel
-            mode, ntasks = determine_mode(case.options)
-
-            print_header('Testing case \'{}\' for executable \'{}\' ({})'.format(case.name, executable_rel, mode))
-            nerror = 0
-            # Move to working directory
-            rootdir = os.getcwd()
-            os.chdir(case.name)
-            casedir = os.getcwd()
-            rundir = casedir +  '/' + case.rundir + '/'
-            try:
-                shutil.rmtree(rundir)
-            except Exception:
-                pass
-                
-            os.mkdir(rundir)    
-            
-            try:
-                for fname in case.files:
-                    shutil.copy(fname, rundir)
-            except:
-                print_warning('Cannot find required files, skipping!')
-
-            os.chdir(rundir)
-            
-            # Update .ini file for testing
-            for variable, value in case.options.items():
-                replace_namelist_value('{0}.ini'.format(case.name), variable, value)
-
-            # Create input data, and do other pre-processing
-            nerror += run_scripts(case.name, case.pre)
-
-            for phase in case.phases:
-                case.time = timeit.default_timer()
-                if mode == 'serial':
-                    nerror += execute('{} {} {}'.format(executable, phase, case.name))
-                elif mode == 'parallel':
-                    nerror += execute('mpirun -n {} {} {} {}'.format(ntasks, executable, phase, case.name))
-                case.time = timeit.default_timer() - case.time
-                
-            # Run the post-processing steps
-            nerror += run_scripts(case.name, case.post)
-
-            case.success = (nerror == 0)
-            
             write.writerow([case.name, case.rundir, case.success, case.time, case.options])
-            # Go back to root of all cases
-            os.chdir(rootdir)
-            
-            
     csvFile.close()
 
+    for case in cases:
+        print(rundir, case, case.success, case.keep)
+        if case.success and not case.keep:
+            rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
+            shutil.rmtree(rundir)
+
+def generator_restart(cases):
+    cases_out = []
+    for case in cases:
+        nl = mht.Read_namelist('{0}/{0}.ini'.format(case.name))
+        #Everything relevant is in the time group, so merge that with the overriding options
+        options = {'iotimeprec' : 0}
+        options.update(nl['time'])
+        if case.options is not None:
+            options.update(case.options)
+
+        iotimeprec  = options['iotimeprec']
+        endtime     = options['endtime']
+        savetime    = int(endtime/2)
+        endtimestr  = '{0:07d}'.format(endtime*10**(-iotimeprec))
+        savetimestr = '{0:07d}'.format(savetime*10**(-iotimeprec))
+
+        case_init = case
+        case_init.rundir = 'init'
+        case_init.options.update({'savetime' : savetime, 'endtime': endtime })
+
+        case_restart = copy.deepcopy(case)
+        case_restart.rundir = 'restart'
+        case_restart.phases = ['run']
+        case_restart.options.update({'starttime' : savetime, 'endtime': endtime })
+        case_restart.pre     = {__file__ : [['restart_pre',  case_init.rundir, savetimestr]]}
+        case_restart.post    = {__file__ : [['restart_post', case_init.rundir, endtimestr]]}
+
+        cases_out.append([case_init, case_restart])
+
+    return cases_out
+        
 class Case:
-    def __init__(self, name, options, pre=None, post=None, phases = ['init','run'], rundir='.', files=None):
+    def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], rundir='', files=[], keep=False):
 
         self.name     = name        # Case / directory name
         self.options  = options     # Override existing namelist options
@@ -169,23 +202,19 @@ class Case:
         self.files    = files       # List of files necessary to run the case
         self.success  = None        # Whether the entire case was run succesfully or not
         self.time     = None        # Duration of the last phase (usually run)
-        
+        self.keep     = keep        # Whether to keep the results of succefull simulations afterwards
+
         # By default; run {name}_input.py in preprocessing phase
-        if self.pre is None:
-            self.pre = {'{}_input.py'.format(name): None}
-        if self.files is None:
-            self.files = ['{}_input.py'.format(name), '{0}.ini'.format(name)]
+        self.pre.update({'{}_input.py'.format(name): None})
+        if self.files == []:
+            self.files = ['{0}.ini'.format(name)]
 
 
 if __name__ == '__main__':
 
     if (True):
         # Serial
-        cases = [
-            Case('bomex',     {'savetime'  : 1800 , 'endtime': 3600 }, rundir='run1'),
-            Case('bomex',     {'starttime' : 1800, 'endtime': 3600 }, pre={__file__ : [['restart_pre', 'run1', '1800']]}, post={__file__ : [['restart_post', 'run1', '3600']]}, phases=['run'], rundir='run2'),
-
-                ]
+        cases = generator_restart(Case('bomex'))
 
         test_cases(cases, '../build/microhh')
 
@@ -235,4 +264,3 @@ if __name__ == '__main__':
 #        for dir in dirs:
 #            if os.path.isdir(dir):
 #                execute('git checkout {0}/{0}.ini'.format(dir))
-
