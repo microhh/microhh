@@ -289,7 +289,7 @@ class Case:
         if self.files == []:
             self.files = ['{0}.ini'.format(name), '{}_input.py'.format(name)]
 
-def taylorgreen():
+def taylorgreen(executable, float_type):
     kwargs = {'itot' : [16, 32, 64, 128, 256], 'swadvec' : ['2', '4', '4m']}
     cases = generator_parameter_change([Case('taylorgreen', keep=True)], **kwargs )
     for case in cases:
@@ -302,9 +302,22 @@ def taylorgreen():
                     case.options.update({'swspatialorder' : 2})
                 else:
                     case.options.update({'swspatialorder' : 4})
-    return cases
+
+    test_cases(cases,executable)
+    os.chdir('taylorgreen')
+    import taylorgreen.taylorgreenconv as conv
+    conv.main(float_type)
+
+    for case in cases:
+        if case.success:
+            shutil.rmtree(case.rundir)
+    os.chdir('..')
 
 if __name__ == '__main__':
+
+    exec = '../build/microhh'
+    exec_mpi = '../build_mpi/microhh'
+    float_type = 'float'
 
     if (False):
         # Serial
@@ -313,9 +326,7 @@ if __name__ == '__main__':
         test_cases(cases, '../build_mpi/microhh')
 
     if (True):
-
-        cases = taylorgreen()
-        test_cases(cases, '../build/microhh')
+        taylorgreen(exec, float_type)
 
 
     if (False):
