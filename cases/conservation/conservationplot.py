@@ -1,7 +1,8 @@
 from pylab import *
 from matplotlib.backends.backend_pdf import PdfPages
+import sys
 
-def main():
+def main(filename='results.pdf'):
     data100_3rd = loadtxt('rkorder3dtmax10/conservation.out', skiprows=1)
     data200_3rd = loadtxt('rkorder3dtmax5/conservation.out', skiprows=1)
     data400_3rd = loadtxt('rkorder3dtmax25/conservation.out', skiprows=1)
@@ -53,7 +54,7 @@ def main():
     mass800_4th = data800_4th[:,9] / data800_4th[1,9]
 
 
-    with PdfPages('results.pdf') as pdf:
+    with PdfPages(filename) as pdf:
         figure()
         subplot(131)
         plot(time100_3rd[1:100], mom100_3rd [1:100] - mom100_3rd [1], 'b-' , label='rk3: dt=10.0')
@@ -122,4 +123,7 @@ def main():
         pdf.savefig()
 
 if __name__ == "__main__":
+    if len(sys.argv)>1:
+        main(sys.argv[1:])
+    else:
         main()

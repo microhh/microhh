@@ -47,7 +47,11 @@ def run_scripts(scripts):
                 # The full module name is relative to the source file, with dots instead of slashes
                 full_module = os.path.relpath(os.getcwd(),sys.path[0]).replace('/','.')+'.'+module
                 # Import module; this executes all code that is not in classes/functions
-                lib = importlib.import_module(full_module)
+                if full_module not in sys.modules:
+                    lib = importlib.import_module(full_module)
+                else:
+                    importlib.reload(sys.modules[full_module])
+
             # If any specific routines are specified, run them
             if functions is not None:
                 for function in functions:
@@ -331,9 +335,10 @@ def taylorgreen(executable, float_type):
                     case.options.update({'swspatialorder' : 4})
 
     nerror = test_cases(cases,executable,outputfile='taylorgreen.csv')
+
     os.chdir('taylorgreen')
     import taylorgreen.taylorgreenconv as conv
-    conv.main(float_type)
+    conv.main(filename='../taylorgreen_{}.pdf'.format(executable.split("microhh_")[1]),float_type=float_type)
 
     for case in cases:
         if case.success:
@@ -342,14 +347,15 @@ def taylorgreen(executable, float_type):
 
     return nerror
 
-def conservation(executable, float_type):
+def conservation(executable):
     kwargs = {'rkorder' : [3, 4], 'dtmax' : [10, 5, 2.5, 1.25]}
     cases = generator_parameter_change([Case('conservation', keep=True)], **kwargs )
 
     nerror = test_cases(cases,executable,outputfile='conservation.csv')
     os.chdir('conservation')
     import conservation.conservationplot as cons
-    cons.main()
+
+    cons.main('../conservation_{}.pdf'.format(executable.split("microhh_")[1]))
 
     for case in cases:
         if case.success:
@@ -396,6 +402,7 @@ if __name__ == '__main__':
     exec_cpu_double = '../microhh_cpu_double'
     exec_mpi_single = '../microhh_mpi_single'
     exec_mpi_double = '../microhh_mpi_double'
+    execs = [exec_cpu_double, exec_cpu_single, exec_mpi_double, exec_mpi_single, exec_gpu_double, exec_gpu_single]
     float_type = 'double'
 
     if (False):
@@ -404,10 +411,12 @@ if __name__ == '__main__':
         cases = generator_scaling([Case('bomex')],procs=[1,2,4,8], type='weak',dir='xy')
         nerror += test_cases(cases, '../build_mpi/microhh')
 
-    if (False):
-        nerror += taylorgreen(exec_cpu_single, 'float')
     if (True):
-        nerror += conservation(exec_gpu_single, 'float')
+        for exec in execs:
+            float_type = exec.split('_')[-1]
+            nerror += taylorgreen(exec, float_type)
+    if (True):
+        nerror += conservation(exec_mpi_double)
 
 
     if (False):

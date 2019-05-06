@@ -19,11 +19,11 @@ class microhh:
     if (loadtype == 'double'):
         TF = 8
         ra = 'd'
-    elif (loadtype == 'float'):
+    elif (loadtype == 'single'):
         TF = 4
         ra = 'f'
     else:
-        raise RuntimeError("The savetype has to be float or double")
+        raise RuntimeError("The savetype has to be single or double")
 
     fstring = '{0}{1}'+ra
 
@@ -93,7 +93,7 @@ class geterror:
       self.w = self.w + sum(dx*dz*abs(data.w[k,:] - ref.w[k,:]))
       self.p = self.p + sum(dx*dz*abs(data.p[k,:] - ref.p[k,:]))
 
-def main(float_type='double'):
+def main(filename='results.pdf',float_type='double'):
 
     t    = 1
     time = 1.
@@ -195,7 +195,7 @@ def main(float_type='double'):
     slope4 = off4*(dxs[:] / dxs[0])**4.
 
     close('all')
-    with PdfPages('results.pdf') as pdf:
+    with PdfPages(filename) as pdf:
         figure()
         if(t > 0):
           loglog(dxs, errsu_2nd, 'bo-', label="u_2nd")
@@ -274,6 +274,6 @@ def main(float_type='double'):
 
 if __name__ == "__main__":
     if len(sys.argv)>1:
-        main(sys.argv[1])
+        main(sys.argv[1:])
     else:
         main()
