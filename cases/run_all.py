@@ -411,12 +411,13 @@ if __name__ == '__main__':
         cases = generator_scaling([Case('bomex')],procs=[1,2,4,8], type='weak',dir='xy')
         nerror += test_cases(cases, '../build_mpi/microhh')
 
-    if (True):
+    if (False):
         for exec in execs:
             float_type = exec.split('_')[-1]
             nerror += taylorgreen(exec, float_type)
     if (True):
-        nerror += conservation(exec_mpi_double)
+        for exec in execs:
+            nerror += conservation(exec)
 
 
     if (False):
