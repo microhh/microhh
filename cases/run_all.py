@@ -231,7 +231,8 @@ def generator_restart(cases):
         case_restart.pre     = {__file__ : [['restart_pre',  case_init.rundir, savetimestr]]}
         case_restart.post    = {__file__ : [['restart_post', case_init.rundir, endtimestr]]}
 
-        cases_out.append([case_init, case_restart])
+        cases_out.append(case_init)
+        cases_out.append(case_restart)
 
     return cases_out
 
