@@ -351,9 +351,9 @@ def conservation(executable, float_type):
     import conservation.conservationplot as cons
     cons.main()
 
-    #for case in cases:
-        #if case.success:
-            #shutil.rmtree(case.rundir)
+    for case in cases:
+        if case.success:
+            shutil.rmtree(case.rundir)
     os.chdir('..')
 
     return nerror
