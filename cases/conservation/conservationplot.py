@@ -7,10 +7,10 @@ def main():
     data400_3rd = loadtxt('rkorder3dtmax25/conservation.out', skiprows=1)
     data800_3rd = loadtxt('rkorder3dtmax125/conservation.out', skiprows=1)
 
-    data100_4th = loadtxt('rkorder3dtmax10/conservation.out', skiprows=1)
-    data200_4th = loadtxt('rkorder3dtmax5/conservation.out', skiprows=1)
-    data400_4th = loadtxt('rkorder3dtmax25/conservation.out', skiprows=1)
-    data800_4th = loadtxt('rkorder3dtmax125/conservation.out', skiprows=1)
+    data100_4th = loadtxt('rkorder4dtmax10/conservation.out', skiprows=1)
+    data200_4th = loadtxt('rkorder4dtmax5/conservation.out', skiprows=1)
+    data400_4th = loadtxt('rkorder4dtmax25/conservation.out', skiprows=1)
+    data800_4th = loadtxt('rkorder4dtmax125/conservation.out', skiprows=1)
 
     time100_3rd = data100_3rd[:,1]
     mom100_3rd  = data100_3rd[:,7] / data100_3rd[1,7]

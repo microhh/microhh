@@ -26,7 +26,7 @@ def determine_mode():
     return mode, npx*npy
 
 
-def run_scripts(case_name, run_dir, scripts):
+def run_scripts(scripts):
     def exec_function(lib, function, *args):
         rc = getattr(lib, function)(*args)
 
@@ -76,17 +76,32 @@ def restart_post(origin, timestr):
 
     return 0
 
-def compare(origin, file):
-    nc_new = nc.Dataset(file, mode="r")
-    nc_old = nc.Dataset('../'+origin+'/'+file, mode="r")
+def compare(origin, file, starttime=-1, vars={}):
+    nerror = 0
+    try:
+        nc_new = nc.Dataset(file, mode="r")
+        nc_old = nc.Dataset('../'+origin+'/'+file, mode="r")
+    except Exception:
+        pass
+        return sys.exc_info()[1]
 
-    for key in nc_new.variables.keys():
-        var_new = nc_new.variables[key][:]
-        var_old = nc_old.variables[key][:]
-        if not np.allclose(var_new, var_old, equal_nan=True):
-            return file + ' is not identical'
+    blacklist=['iter']
+    rtol=1e-3
+    atol=1e-8
+    if len(vars) == 0:
+        for key in nc_new.variables.keys():
+            if key not in blacklist:
+                vars.update({key: [rtol, atol]})
 
-    return 0
+    for key, opts in vars.items():
+        tmp = nc_new.variables[key][:]
+        var_new = np.mean(nc_new.variables[key][starttime:,...],axis=0)
+        var_old = np.mean(nc_old.variables[key][starttime:,...],axis=0)
+        if not np.allclose(var_new, var_old, rtol=opts[0], atol=opts[1], equal_nan=True):
+            with np.errstate(all='ignore'):
+                print('{0} in {1} has a relative error of up to {2:.2%}'.format(key, file, np.max(np.abs((var_new - var_old)/var_old))))
+            nerror = 1
+    return nerror
 
 
 def execute(command):
@@ -107,7 +122,9 @@ def execute(command):
     return 0
 
 
-def test_cases(cases, executable, outputfile='test_results.csv'):
+def test_cases(cases, executable, outputfile=''):
+    nerror = 0
+
     if not os.path.exists(executable):
         raise Exception('ERROR: Executable {} does not exists'.format(executable))
 
@@ -117,11 +134,14 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
     rootdir = os.getcwd()
 
     for case in cases:
+        print_header('Testing case \'{}\' for executable \'{}\''.format(case.name, executable_rel))
         # Determine whether to run serial or parallel
-
         nerror = 0
         # Move to working directory
         rootdir = os.getcwd()
+        if case.rundir is '':
+            print_error(case.name + ' case.rundir is empty; not allowed!')
+            continue
         rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
         casedir = rootdir + '/' + case.name +  '/'
 
@@ -136,16 +156,17 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
             for fname in case.files:
                 shutil.copy(casedir+fname, rundir)
         except:
-            print_warning('Cannot find required files, skipping!')
+            print_warning(case.name +  ': Cannot find {} for copying,  skipping case!'.format(casedir+fname))
+            os.chdir(rootdir)
+            continue
 
         # Update .ini file for testing
         for variable, value in case.options.items():
             mht.replace_namelist_value(variable, value, '{0}.ini'.format(case.name))
         mode, ntasks = determine_mode()
-        print_header('Testing case \'{}\' for executable \'{}\' ({})'.format(case.name, executable_rel, mode))
 
         # Create input data, and do other pre-processing
-        nerror += run_scripts(case.name, case.rundir, case.pre)
+        nerror += run_scripts(case.pre)
         for phase in case.phases:
             case.time = timeit.default_timer()
             if mode == 'serial':
@@ -155,25 +176,29 @@ def test_cases(cases, executable, outputfile='test_results.csv'):
             case.time = timeit.default_timer() - case.time
 
         # Run the post-processing steps
-        nerror += run_scripts(case.name, case.rundir, case.post)
+        nerror += run_scripts(case.post)
 
         case.success = (nerror == 0)
-
+        if not case.success:
+            nerror += 1
         # Go back to root of all cases
         os.chdir(rootdir)
 
     #Write the output file and remove unnecssary dirs
-    with open(outputfile, 'w') as csvFile:
-        write = csv.writer(csvFile)
-        write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
-        for case in cases:
-            write.writerow([case.name, case.rundir, case.success, case.time, case.options])
-    csvFile.close()
+    if outputfile is not '':
+        with open(outputfile, 'w') as csvFile:
+            write = csv.writer(csvFile)
+            write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
+            for case in cases:
+                write.writerow([case.name, case.rundir, case.success, case.time, case.options])
+        csvFile.close()
 
     for case in cases:
         rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
         if case.success and not case.keep:
             shutil.rmtree(rundir)
+
+    return nerror
 
 def generator_restart(cases):
     cases_out = []
@@ -262,7 +287,8 @@ def generator_parameter_change(cases, **kwargs):
             for val in value:
                 new_case = copy.deepcopy(case)
                 new_case.options.update({key : val})
-                new_case.rundir += key+str(val)
+                new_case.rundir += (key+str(val)).replace('.','')
+
                 cases_out.append(new_case)
         del kwargs[key]
         if len(kwargs) > 0:
@@ -285,7 +311,8 @@ class Case:
         self.keep     = keep        # Whether to keep the results of succefull simulations afterwards
 
         # By default; run {name}_input.py in preprocessing phase
-        self.pre.update({'{}_input.py'.format(name): None})
+        if self.pre == {}:
+            self.pre = {'{}_input.py'.format(name): None}
         if self.files == []:
             self.files = ['{0}.ini'.format(name), '{}_input.py'.format(name)]
 
@@ -303,7 +330,7 @@ def taylorgreen(executable, float_type):
                 else:
                     case.options.update({'swspatialorder' : 4})
 
-    test_cases(cases,executable)
+    nerror = test_cases(cases,executable,outputfile='taylorgreen.csv')
     os.chdir('taylorgreen')
     import taylorgreen.taylorgreenconv as conv
     conv.main(float_type)
@@ -313,41 +340,92 @@ def taylorgreen(executable, float_type):
             shutil.rmtree(case.rundir)
     os.chdir('..')
 
+    return nerror
+
+def conservation(executable, float_type):
+    kwargs = {'rkorder' : [3, 4], 'dtmax' : [10, 5, 2.5, 1.25]}
+    cases = generator_parameter_change([Case('conservation', keep=True)], **kwargs )
+
+    nerror = test_cases(cases,executable,outputfile='conservation.csv')
+    os.chdir('conservation')
+    import conservation.conservationplot as cons
+    cons.main()
+
+    #for case in cases:
+        #if case.success:
+            #shutil.rmtree(case.rundir)
+    os.chdir('..')
+
+    return nerror
+
+def compare_execs(cases, execs, options=None):
+    nerror = 0
+
+    for i in range(len(execs)):
+        runcases = copy.deepcopy(cases)
+        rundir = 'run{0:03d}'.format(i)
+        for case in runcases:
+            if i == 0:
+                case.keep = True
+            else:
+                case.keep = False
+                compfile = '{}_default_0000000.nc'.format(case.name)
+                case.post = {__file__ : [['compare', 'run000', '{}_default_0000000.nc'.format(case.name)]]}
+            case.rundir = rundir
+
+            if options is not None:
+                case.options.update(options[i])
+
+        nerror += test_cases(runcases, execs[i],outputfile='compare_execs_{0:03d}.csv'.format(i))
+
+
+    if nerror == 0:
+        for case in cases:
+            if case.success:
+                shutil.rmtree(case.name+'/run000')
+
+    return nerror
+
 if __name__ == '__main__':
 
-    exec = '../build/microhh'
-    exec_mpi = '../build_mpi/microhh'
-    float_type = 'float'
+    nerror = 0
+
+    exec_gpu_single = '../microhh_gpu_single'
+    exec_gpu_double = '../microhh_gpu_double'
+    exec_cpu_single = '../microhh_cpu_single'
+    exec_cpu_double = '../microhh_cpu_double'
+    exec_mpi_single = '../microhh_mpi_single'
+    exec_mpi_double = '../microhh_mpi_double'
+    float_type = 'double'
 
     if (False):
         # Serial
         #cases = generator_restart([Case('bomex')])
         cases = generator_scaling([Case('bomex')],procs=[1,2,4,8], type='weak',dir='xy')
-        test_cases(cases, '../build_mpi/microhh')
+        nerror += test_cases(cases, '../build_mpi/microhh')
 
+    if (False):
+        nerror += taylorgreen(exec_cpu_single, 'float')
     if (True):
-        taylorgreen(exec, float_type)
+        nerror += conservation(exec_gpu_single, 'float')
 
 
     if (False):
         blacklist = ['prandtlslope','moser600']
 
         # Settings for all test cases:
-        settings_serial   = { 'itot' : 16, 'jtot' : 8,  'ktot' : 16, 'endtime': 10 }
-        settings_parallel = { 'itot' : 16, 'jtot' : 8,  'ktot' : 16, 'endtime': 10, 'npx': 1, 'npy': 2 }
 
         dirs  = glob.glob('*')
-        cases_serial   = []
-        cases_parallel = []
+        cases = []
         for dir in dirs:
             if os.path.isdir(dir) and dir not in blacklist:
-                cases_serial  .append(Case(dir, settings_serial  ))
-                cases_parallel.append(Case(dir, settings_parallel))
+                cases.append(Case(dir))
+        opt_mpi = {'npx' : 8}
+        cases = [Case('bomex'), Case('drycbl'), Case('drycblles')]
+        nerror += compare_execs(cases, [exec_mpi_double, exec_mpi_single, exec_gpu_double, exec_gpu_single], options=[opt_mpi, opt_mpi,{} , {}])
 
-        test_cases(cases_serial, '../build/microhh')
 
-        #test_cases(cases_parallel, '../build_parallel/microhh')
-
+    sys.exit(nerror)
 
 #    if (False):
 #        # DANGER: checkout all ini files
