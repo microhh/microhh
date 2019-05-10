@@ -23,6 +23,7 @@
 #ifndef IMMERSED_BOUNDARY
 #define IMMERSED_BOUNDARY
 
+#include "boundary.h"
 #include "boundary_cyclic.h"
 
 class Master;
@@ -58,7 +59,20 @@ struct Ghost_cells
     std::vector<int> ip_i;
     std::vector<int> ip_j;
     std::vector<int> ip_k;
-    std::vector<int> ip_d;  // Distance to interpolation point
+    std::vector<TF>  ip_d;  // Distance to interpolation point
+
+    // Interpolation coefficients
+    std::vector<TF> c_idw;
+};
+
+// Convenience struct to simplify sorting
+template<typename TF>
+struct Neighbour
+{
+    int i;
+    int j;
+    int k;
+    TF distance;
 };
 
 
@@ -82,10 +96,12 @@ class Immersed_boundary
         IB_type sw_ib;
 
         int n_idw_points;    // Number of interpolation points in IDW interpolation
+        Boundary_type sbcbot;
 
         // IB input from DEM
         std::vector<TF> dem;
 
+        // Structs with the ghost cell properties
         Ghost_cells<TF> ghost_u;
         Ghost_cells<TF> ghost_v;
         Ghost_cells<TF> ghost_w;
