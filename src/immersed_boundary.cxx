@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <constants.h>
 
 #include "master.h"
 #include "grid.h"
@@ -188,7 +189,8 @@ namespace
             std::vector<TF> x, std::vector<TF> y, std::vector<TF> z, std::vector<TF> dem,
             const TF d_lim, const TF dx, const TF dy,
             const int i, const int j, const int k,
-            const int kstart, const int icells, const int mpi_offset_x, const int mpi_offset_y)
+            const int kstart, const int icells, const int ijcells,
+            const int mpi_offset_x, const int mpi_offset_y)
     {
         // Vectors including all neighbours outside IB
         std::vector<Neighbour<TF>> neighbours;
@@ -214,8 +216,8 @@ namespace
                         // Exclude if grid point is too close to the IB
                         if (dist > d_lim)
                         {
-                            Neighbour<TF> tmp_neighbour = {i+di, j+dj, k+dk,
-                                 absolute_distance(x[i], y[j], z[k], x[i+di], y[j+dj], z[k+dk])};
+                            const TF distance = absolute_distance(x[i], y[j], z[k], x[i+di], y[j+dj], z[k+dk]);
+                            Neighbour<TF> tmp_neighbour = {i+di, j+dj, k+dk, distance};
                             neighbours.push_back(tmp_neighbour);
                         }
                     }
@@ -227,7 +229,7 @@ namespace
         // Save `n_idw` nearest neighbours
         for (int ii=0; ii<n_idw; ++ii)
         {
-            const int in = ii + index * n_idw;
+            const int in = ii + index*n_idw;
             ip_i[in] = neighbours[ii].i;
             ip_j[in] = neighbours[ii].j;
             ip_k[in] = neighbours[ii].k;
@@ -236,13 +238,60 @@ namespace
     }
 
     template<typename TF>
+    void precalculate_idw(std::vector<TF>& c_idw, std::vector<TF>& c_idw_sum,
+                          std::vector<int>& ip_i, std::vector<int>& ip_j, std::vector<int>& ip_k,
+                          std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
+                          const TF xi, const TF yi, const TF zi,
+                          const TF xb, const TF yb, const TF zb,
+                          Boundary_type bc, const int index, const int n_idw)
+    {
+        // Dirichlet BCs use one interpolation point less, and include
+        // the boundary value as an interpolation point
+        const int n = (bc == Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
+
+        TF dist_max = TF(0);
+
+        // Temp vector for calculations
+        std::vector<TF> tmp(n_idw);
+
+        // Calculate distances interpolation points -> image point
+        for (int i=0; i<n; ++i)
+        {
+            const int ii  = i + index * n_idw;
+            const int ipi = ip_i[ii];
+            const int ipj = ip_j[ii];
+            const int ipk = ip_k[ii];
+
+            tmp[i] = absolute_distance(xi, yi, zi, x[ipi], y[ipj], z[ipk]);
+            dist_max = std::max(dist_max, tmp[i]);
+        }
+
+        // For Dirichlet, add distance image point to IB
+        if (bc == Boundary_type::Dirichlet_type)
+        {
+            tmp[n_idw] = std::max(absolute_distance(xi, yi, zi, xb, yb, zb), TF(1e-9));
+            dist_max = std::max(dist_max, tmp[n_idw]);
+        }
+
+        // Calculate interpolation coefficients
+        for (int i=0; i<n_idw; ++i)
+        {
+            const int ii = i + index * n_idw;
+
+            c_idw[ii] = std::pow((dist_max - tmp[i]) / (dist_max * tmp[i]), 0.5) + TF(1e-9);
+            c_idw_sum[index] += c_idw[ii];
+        }
+    }
+
+    template<typename TF>
     void calc_ghost_cells(
             Ghost_cells<TF>& ghost,
             std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
-            const TF dx, const TF dy, std::vector<TF> dz, const int n_idw,
+            Boundary_type bc, const TF dx, const TF dy, std::vector<TF> dz, const int n_idw,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
-            const int icells, const int mpi_offset_x, const int mpi_offset_y)
+            const int icells, const int ijcells,
+            const int mpi_offset_x, const int mpi_offset_y)
     {
         // 1. Find the IB ghost cells
         for (int k=kstart; k<kend; ++k)
@@ -307,10 +356,25 @@ namespace
             find_interpolation_points(
                     ghost.ip_i, ghost.ip_j, ghost.ip_k, ghost.ip_d, ghost.c_idw,
                     n, n_idw, x, y, z, dem, dist_lim, dx, dy,
-                    ghost.i[n], ghost.j[n], ghost.k[n], kstart, icells, mpi_offset_x, mpi_offset_y);
+                    ghost.i[n], ghost.j[n], ghost.k[n], kstart, icells, ijcells,
+                    mpi_offset_x, mpi_offset_y);
         }
 
+        // 4. Calculate interpolation coefficients
+        ghost.c_idw.resize(nghost*n_idw);
+        ghost.c_idw_sum.resize(nghost);
+
+        for (int n=0; n<nghost; ++n)
+        {
+            precalculate_idw(
+                    ghost.c_idw, ghost.c_idw_sum,
+                    ghost.ip_i, ghost.ip_j, ghost.ip_k, x, y, z,
+                    ghost.xi[n], ghost.yi[n], ghost.zi[n],
+                    ghost.xb[n], ghost.yb[n], ghost.zb[n],
+                    bc, n, n_idw);
+        }
     }
+
 
     void print_statistics(std::vector<int>& ghost_i, std::string name, Master& master)
     {
@@ -352,9 +416,6 @@ Immersed_boundary<TF>::Immersed_boundary(Master& masterin, Grid<TF>& gridin, Fie
 
         // Read additional settings
         n_idw_points = inputin.get_item<int>("IB", "n_idw_points", "");
-
-        // Boundary type for scalars
-
     }
 }
 
@@ -370,6 +431,25 @@ void Immersed_boundary<TF>::init(Input& inputin)
 
     if (sw_ib == IB_type::DEM)
         dem.resize(gd.ijcells);
+
+    if (sw_ib != IB_type::Disabled)
+    {
+        if (fields.sp.size() > 0)
+        {
+            std::string sbcbot_str = inputin.get_item<std::string>("IB", "sbcbot", "");
+            if (sbcbot_str == "flux")
+                sbcbot = Boundary_type::Flux_type;
+            else if (sbcbot_str == "dirichlet")
+                sbcbot = Boundary_type::Dirichlet_type;
+            else if (sbcbot_str == "neumann")
+                sbcbot = Boundary_type::Neumann_type;
+            else
+            {
+                std::string error = "IB sbcbot=" + sbcbot_str + " is not a valid choice (options: dirichlet, neumann, flux)";
+                throw std::runtime_error(error);
+            }
+        }
+    }
 }
 
 template <typename TF>
@@ -414,24 +494,30 @@ void Immersed_boundary<TF>::create()
         // location on staggered grid.
         calc_ghost_cells(
                 ghost_u, dem, gd.xh, gd.y, gd.z,
+                Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, mpi_offset_x, mpi_offset_y);
+                gd.icells, gd.ijcells,
+                mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
                 ghost_v, dem, gd.x, gd.yh, gd.z,
+                Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, mpi_offset_x, mpi_offset_y);
+                gd.icells, gd.ijcells,
+                mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
                 ghost_w, dem, gd.x, gd.y, gd.zh,
+                Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dzh, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, mpi_offset_x, mpi_offset_y);
+                gd.icells, gd.ijcells,
+                mpi_offset_x, mpi_offset_y);
 
         // Print some statistics (number of ghost cells)
         print_statistics(ghost_u.i, std::string("u"), master);
@@ -441,11 +527,12 @@ void Immersed_boundary<TF>::create()
         if (fields.sp.size() > 0)
         {
             calc_ghost_cells(
-                    ghost_s, dem, gd.x, gd.y, gd.z,
+                    ghost_s, dem, gd.x, gd.y, gd.z, sbcbot,
                     gd.dx, gd.dy, gd.dz, n_idw_points,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, mpi_offset_x, mpi_offset_y);
+                    gd.icells, gd.ijcells,
+                    mpi_offset_x, mpi_offset_y);
 
             print_statistics(ghost_s.i, std::string("s"), master);
         }

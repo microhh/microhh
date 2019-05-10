@@ -53,7 +53,7 @@ struct Ghost_cells
     std::vector<TF> zi;
 
     std::vector<TF> di; // Distance ghost cell to interpolation point
-    std::vector<TF> idw_sum;  // Sum IDW coefficients
+    std::vector<TF> c_idw_sum;  // Sum IDW coefficients
 
     // Points outside IB used for IDW interpolation:
     std::vector<int> ip_i;
@@ -95,8 +95,8 @@ class Immersed_boundary
 
         IB_type sw_ib;
 
-        int n_idw_points;    // Number of interpolation points in IDW interpolation
-        Boundary_type sbcbot;
+        int n_idw_points;       // Number of interpolation points in IDW interpolation
+        Boundary_type sbcbot;   // Boundary type for scalars
 
         // IB input from DEM
         std::vector<TF> dem;
