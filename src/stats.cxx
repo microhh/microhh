@@ -1117,7 +1117,7 @@ void Stats<TF>::calc_stats(
     // Calc moments
     for (int power=2; power<=4; power++)
     {
-        name = varname + std::to_string(power);
+        name = varname + "_" + std::to_string(power);
         if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         {
             for (auto& m : masks)
@@ -1135,7 +1135,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Resolved Flux
-    name = varname + "w";
+    name = varname + "_w";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         auto advec_flux = fields.get_tmp();
@@ -1156,7 +1156,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Diffusive Flux
-    name = varname + "diff";
+    name = varname + "_diff";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         auto diff_flux = fields.get_tmp();
@@ -1178,7 +1178,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Total Flux
-    name = varname + "flux";
+    name = varname + "_flux";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         for (auto& m : masks)
@@ -1193,7 +1193,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Gradient
-    name = varname + "grad";
+    name = varname + "_grad";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         for (auto& m : masks)
@@ -1221,7 +1221,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Integrated Path
-    name = varname + "path";
+    name = varname + "_path";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         for (auto& m : masks)
@@ -1236,7 +1236,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Cover
-    name = varname + "cover";
+    name = varname + "_cover";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         for (auto& m : masks)
@@ -1258,7 +1258,7 @@ void Stats<TF>::calc_stats(
     }
 
     //Calc Fraction
-    name = varname + "frac";
+    name = varname + "_frac";
     auto it1 = std::find(varlist.begin(), varlist.end(), name);
     if (it1 != varlist.end())
     {
@@ -1329,7 +1329,7 @@ void Stats<TF>::calc_covariance(
 {
     auto& gd = grid.get_grid_data();
 
-    std::string name = varname1 + std::to_string(power1) + varname2 + std::to_string(power2);
+    std::string name = varname1 + "_" + std::to_string(power1) + "_" + varname2 + "_" + std::to_string(power2);
     unsigned int flag;
 
     int* nmask;
