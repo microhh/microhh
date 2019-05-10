@@ -1134,7 +1134,7 @@ void Stats<TF>::calc_stats(
         }
     }
 
-    //Calc Resolved Flux
+    // Calc Resolved Flux
     name = varname + "_w";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1155,7 +1155,7 @@ void Stats<TF>::calc_stats(
         fields.release_tmp(advec_flux);
     }
 
-    //Calc Diffusive Flux
+    // Calc Diffusive Flux
     name = varname + "_diff";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1177,7 +1177,7 @@ void Stats<TF>::calc_stats(
         fields.release_tmp(diff_flux);
     }
 
-    //Calc Total Flux
+    // Calc Total Flux
     name = varname + "_flux";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1186,13 +1186,13 @@ void Stats<TF>::calc_stats(
             // No sum is required in this routine as values all.
             set_flag(flag, nmask, m.second, !fld.loc[2]);
             add_fluxes(
-                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
+                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
                     gd.kstart, gd.kend);
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
 
-    //Calc Gradient
+    // Calc Gradient
     name = varname + "_grad";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1220,7 +1220,7 @@ void Stats<TF>::calc_stats(
         }
     }
 
-    //Calc Integrated Path
+    // Calc Integrated Path
     name = varname + "_path";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1235,7 +1235,7 @@ void Stats<TF>::calc_stats(
         }
     }
 
-    //Calc Cover
+    // Calc Cover
     name = varname + "_cover";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1257,7 +1257,7 @@ void Stats<TF>::calc_stats(
         }
     }
 
-    //Calc Fraction
+    // Calc Fraction
     name = varname + "_frac";
     auto it1 = std::find(varlist.begin(), varlist.end(), name);
     if (it1 != varlist.end())
