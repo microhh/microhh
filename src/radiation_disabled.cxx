@@ -36,7 +36,7 @@ Radiation_disabled<TF>::~Radiation_disabled()
 template<typename TF>
 bool Radiation_disabled<TF>::check_field_exists(std::string name)
 {
- return false;  // always returns error
+    return false;  // always returns error
 }
 
  template class Radiation_disabled<double>;

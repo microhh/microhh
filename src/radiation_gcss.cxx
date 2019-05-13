@@ -344,7 +344,7 @@ void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>&
 
 #ifndef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
 	auto& gd = grid.get_grid_data();
 	auto lwp = fields.get_tmp();
