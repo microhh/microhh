@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2018 Chiel van Heerwaarden
-#  Copyright (c) 2011-2018 Thijs Heus
-#  Copyright (c) 2014-2018 Bart van Stratum
+#  Copyright (c) 2011-2019 Chiel van Heerwaarden
+#  Copyright (c) 2011-2019 Thijs Heus
+#  Copyright (c) 2014-2019 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -29,7 +29,7 @@ if(NOT FLOAT_TYPE)
 else()
   string(STRIP ${FLOAT_TYPE} FLOAT_TYPE)
   string(TOLOWER ${FLOAT_TYPE} FLOAT_TYPE)
-  if(FLOAT_TYPE STREQUAL "float")
+  if(FLOAT_TYPE STREQUAL "single")
     add_definitions("-DFLOAT_SINGLE")
     message(STATUS "Precision: Single (32-bits floats)")
   elseif(FLOAT_TYPE STREQUAL "double")
