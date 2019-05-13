@@ -56,10 +56,14 @@ namespace
     {
         return nc_get_vara_int(ncid, var_id, start.data(), count.data(), values.data());
     }
-}
 
-namespace
-{
+    template<>
+    int nc_get_vara_wrapper(
+            int ncid, int var_id, const std::vector<size_t>& start, const std::vector<size_t>& count, std::vector<char>& values)
+    {
+        return nc_get_vara_text(ncid, var_id, start.data(), count.data(), values.data());
+    }
+
     // Wrapper for the `nc_put_vara_TYPE` functions
     template<typename TF>
     int nc_put_vara_wrapper(
@@ -385,6 +389,26 @@ Netcdf_group Netcdf_handle::get_group(const std::string& name)
     return Netcdf_group(master, group_ncid, root_ncid, mpiid_to_write);
 }
 
+int Netcdf_handle::get_dimension_size(const std::string& name)
+{
+    int nc_check_code = 0;
+    int dim_id;
+
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_inq_dimid(ncid, name.c_str(), &dim_id);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    size_t dim_len_size_t = 0;
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_inq_dimlen(ncid, dim_id, &dim_len_size_t);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    int dim_len = dim_len_size_t;
+    master.broadcast(&dim_len, 1);
+
+    return dim_len;
+}
+
 Netcdf_group::Netcdf_group(Master& master, const int ncid_in, const int root_ncid_in, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
@@ -432,6 +456,83 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
     }
 
     return dims;
+}
+
+bool Netcdf_handle::variable_exists(const std::string& name)
+{
+    int nc_check_code = 0;
+    int var_id;
+
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+template<typename TF>
+TF Netcdf_handle::get_variable(
+        const std::string& name)
+{
+    std::string message = "Retrieving from NetCDF (single value): " + name;
+    master.print_message(message);
+
+    int nc_check_code = 0;
+    int var_id;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    TF value = 0;
+    if (master.get_mpiid() == 0)
+    {
+        std::vector<TF> values(1);
+        nc_check_code = nc_get_vara_wrapper(ncid, var_id, {0}, {1}, values);
+        value = values[0];
+    }
+    nc_check(master, nc_check_code, mpiid_to_write);
+    master.broadcast(&value, 1);
+
+    return value;
+}
+
+template<typename TF>
+std::vector<TF> Netcdf_handle::get_variable(
+        const std::string& name,
+        const std::vector<int>& i_count)
+{
+    std::string message = "Retrieving from NetCDF (full array): " + name;
+    master.print_message(message);
+
+    const std::vector<size_t> i_start_size_t(i_count.size());
+    const std::vector<size_t> i_count_size_t(i_count.begin(), i_count.end());
+
+    int nc_check_code = 0;
+    int var_id;
+
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
+    master.broadcast(&total_count, 1);
+    // CvH check needs to be added if total count matches multiplication of all dimensions.
+
+    std::vector<TF> values(total_count);
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values);
+    nc_check(master, nc_check_code, mpiid_to_write);
+    master.broadcast(values.data(), total_count, mpiid_to_write);
+
+    return values;
 }
 
 template<typename TF>

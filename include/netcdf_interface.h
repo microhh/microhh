@@ -1,7 +1,6 @@
 #ifndef NETCDF_INTERFACE_H
 #define NETCDF_INTERFACE_H
 
-#include <iostream>
 #include <map>
 #include <vector>
 #include <netcdf.h>
@@ -42,12 +41,25 @@ class Netcdf_handle
         Netcdf_group add_group(const std::string&);
         Netcdf_group get_group(const std::string&);
 
+        int get_dimension_size(const std::string&);
+
         std::map<std::string, int> get_variable_dimensions(const std::string&);
+
+        bool variable_exists(const std::string&);
 
         template<typename T>
         Netcdf_variable<T> add_variable(
                 const std::string&,
                 const std::vector<std::string>);
+
+        template<typename T>
+        T get_variable(
+            const std::string&);
+
+        template<typename T>
+        std::vector<T> get_variable(
+            const std::string&,
+            const std::vector<int>&);
 
         template<typename T>
         void get_variable(
