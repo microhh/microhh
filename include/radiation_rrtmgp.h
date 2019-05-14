@@ -77,8 +77,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 
-        Gas_concs<TF> gas_concs;
-        std::unique_ptr<Gas_optics<TF>> kdist_lw;
-        std::unique_ptr<Gas_optics<TF>> kdist_sw;
+        Gas_concs<double> gas_concs;
+        std::unique_ptr<Gas_optics<double>> kdist_lw;
+        std::unique_ptr<Gas_optics<double>> kdist_sw;
 };
 #endif

@@ -632,6 +632,16 @@ template class Netcdf_variable<double>;
 template class Netcdf_variable<float>;
 template class Netcdf_variable<int>;
 
+template std::vector<double> Netcdf_handle::get_variable<double>(const std::string&, const std::vector<int>&);
+template std::vector<float>  Netcdf_handle::get_variable<float> (const std::string&, const std::vector<int>&);
+template std::vector<int>    Netcdf_handle::get_variable<int>   (const std::string&, const std::vector<int>&);
+template std::vector<char>   Netcdf_handle::get_variable<char>  (const std::string&, const std::vector<int>&);
+
+template double Netcdf_handle::get_variable<double>(const std::string&);
+template float  Netcdf_handle::get_variable<float> (const std::string&);
+template int    Netcdf_handle::get_variable<int>   (const std::string&);
+template char   Netcdf_handle::get_variable<char>  (const std::string&);
+
 template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::get_variable<float> (std::vector<float>&,  const std::string&, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::get_variable<int>   (std::vector<int>&,    const std::string&, const std::vector<int>&, const std::vector<int>&);

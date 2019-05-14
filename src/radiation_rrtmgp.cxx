@@ -69,10 +69,9 @@ namespace
         return var;
     }
 
-    template<typename TF>
-    Gas_optics<TF> load_and_init_gas_optics(
+    Gas_optics<double> load_and_init_gas_optics(
             Master& master,
-            const Gas_concs<TF>& gas_concs,
+            const Gas_concs<double>& gas_concs,
             const std::string& coef_file)
     {
         // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
@@ -102,20 +101,20 @@ namespace
         Array<int,3> key_species(
                 coef_nc.get_variable<int>("key_species", {n_bnds, n_layers, 2}),
                 {2, n_layers, n_bnds});
-        Array<TF,2> band_lims(coef_nc.get_variable<TF>("bnd_limits_wavenumber", {n_bnds, 2}), {2, n_bnds});
+        Array<double,2> band_lims(coef_nc.get_variable<double>("bnd_limits_wavenumber", {n_bnds, 2}), {2, n_bnds});
         Array<int,2> band2gpt(coef_nc.get_variable<int>("bnd_limits_gpt", {n_bnds, 2}), {2, n_bnds});
-        Array<TF,1> press_ref(coef_nc.get_variable<TF>("press_ref", {n_press}), {n_press});
-        Array<TF,1> temp_ref(coef_nc.get_variable<TF>("temp_ref", {n_temps}), {n_temps});
+        Array<double,1> press_ref(coef_nc.get_variable<double>("press_ref", {n_press}), {n_press});
+        Array<double,1> temp_ref(coef_nc.get_variable<double>("temp_ref", {n_temps}), {n_temps});
 
-        TF temp_ref_p = coef_nc.get_variable<TF>("absorption_coefficient_ref_P");
-        TF temp_ref_t = coef_nc.get_variable<TF>("absorption_coefficient_ref_T");
-        TF press_ref_trop = coef_nc.get_variable<TF>("press_ref_trop");
+        double temp_ref_p = coef_nc.get_variable<double>("absorption_coefficient_ref_P");
+        double temp_ref_t = coef_nc.get_variable<double>("absorption_coefficient_ref_T");
+        double press_ref_trop = coef_nc.get_variable<double>("press_ref_trop");
 
-        Array<TF,3> kminor_lower(
-                coef_nc.get_variable<TF>("kminor_lower", {n_temps, n_mixingfracs, n_contributors_lower}),
+        Array<double,3> kminor_lower(
+                coef_nc.get_variable<double>("kminor_lower", {n_temps, n_mixingfracs, n_contributors_lower}),
                 {n_contributors_lower, n_mixingfracs, n_temps});
-        Array<TF,3> kminor_upper(
-                coef_nc.get_variable<TF>("kminor_upper", {n_temps, n_mixingfracs, n_contributors_upper}),
+        Array<double,3> kminor_upper(
+                coef_nc.get_variable<double>("kminor_upper", {n_temps, n_mixingfracs, n_contributors_upper}),
                 {n_contributors_upper, n_mixingfracs, n_temps});
 
         Array<std::string,1> gas_minor(get_variable_string("gas_minor", {n_minorabsorbers}, coef_nc, n_char),
@@ -166,24 +165,24 @@ namespace
                 coef_nc.get_variable<int>("kminor_start_upper", {n_minor_absorber_intervals_upper}),
                 {n_minor_absorber_intervals_upper});
 
-        Array<TF,3> vmr_ref(
-                coef_nc.get_variable<TF>("vmr_ref", {n_temps, n_extabsorbers, n_layers}),
+        Array<double,3> vmr_ref(
+                coef_nc.get_variable<double>("vmr_ref", {n_temps, n_extabsorbers, n_layers}),
                 {n_layers, n_extabsorbers, n_temps});
 
-        Array<TF,4> kmajor(
-                coef_nc.get_variable<TF>("kmajor", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
+        Array<double,4> kmajor(
+                coef_nc.get_variable<double>("kmajor", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
                 {n_gpts, n_mixingfracs, n_press+1, n_temps});
 
         // Keep the size at zero, if it does not exist.
-        Array<TF,3> rayl_lower;
-        Array<TF,3> rayl_upper;
+        Array<double,3> rayl_lower;
+        Array<double,3> rayl_upper;
 
         if (coef_nc.variable_exists("rayl_lower"))
         {
             rayl_lower.set_dims({n_gpts, n_mixingfracs, n_temps});
             rayl_upper.set_dims({n_gpts, n_mixingfracs, n_temps});
-            rayl_lower = coef_nc.get_variable<TF>("rayl_lower", {n_temps, n_mixingfracs, n_gpts});
-            rayl_upper = coef_nc.get_variable<TF>("rayl_upper", {n_temps, n_mixingfracs, n_gpts});
+            rayl_lower = coef_nc.get_variable<double>("rayl_lower", {n_temps, n_mixingfracs, n_gpts});
+            rayl_upper = coef_nc.get_variable<double>("rayl_upper", {n_temps, n_mixingfracs, n_gpts});
         }
 
         // Is it really LW if so read these variables as well.
@@ -191,15 +190,15 @@ namespace
         {
             int n_internal_sourcetemps = coef_nc.get_dimension_size("temperature_Planck");
 
-            Array<TF,2> totplnk(
-                    coef_nc.get_variable<TF>( "totplnk", {n_bnds, n_internal_sourcetemps}),
+            Array<double,2> totplnk(
+                    coef_nc.get_variable<double>( "totplnk", {n_bnds, n_internal_sourcetemps}),
                     {n_internal_sourcetemps, n_bnds});
-            Array<TF,4> planck_frac(
-                    coef_nc.get_variable<TF>("plank_fraction", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
+            Array<double,4> planck_frac(
+                    coef_nc.get_variable<double>("plank_fraction", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
                     {n_gpts, n_mixingfracs, n_press+1, n_temps});
 
             // Construct the k-distribution.
-            return Gas_optics<TF>(
+            return Gas_optics<double>(
                     gas_concs,
                     gas_names,
                     key_species,
@@ -235,10 +234,10 @@ namespace
         }
         else
         {
-            Array<TF,1> solar_src(
-                    coef_nc.get_variable<TF>("solar_source", {n_gpts}), {n_gpts});
+            Array<double,1> solar_src(
+                    coef_nc.get_variable<double>("solar_source", {n_gpts}), {n_gpts});
 
-            return Gas_optics<TF>(
+            return Gas_optics<double>(
                     gas_concs,
                     gas_names,
                     key_species,
@@ -315,10 +314,10 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(Master& masterin, Grid<TF>& gridin, Field
     Array<TF,2> col_dry(input_nc.get_variable<TF>("col_dry", {n_lay, n_col}), {n_col, n_lay});
     */
 
-    // Construct the gas optics class.
-    kdist_lw = std::make_unique<Gas_optics<TF>>(
+    // Construct the gas optics class, always in double precision.
+    kdist_lw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
-    kdist_sw = std::make_unique<Gas_optics<TF>>(
+    kdist_sw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_sw.nc"));
 }
 
