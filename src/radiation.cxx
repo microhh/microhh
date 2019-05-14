@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <memory>
 #include <cstdio>
 #include <cmath>
@@ -32,6 +33,8 @@
 #include "radiation_disabled.h"
 #include "radiation_gcss.h"
 #include "radiation_rrtmgp.h"
+
+#include "Optical_props.h"
 
 template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :

@@ -24,6 +24,9 @@
 #include "radiation.h"
 #include "field3d_operators.h"
 
+#include "Gas_optics.h"
+#include "Gas_concs.h"
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -36,12 +39,16 @@ template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
 
+// RRTMGP classes.
+template<typename> class Gas_concs;
+template<typename> class Gas_optics;
+
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
 {
 	public:
 		Radiation_rrtmgp(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Radiation_rrtmgp();
+        virtual ~Radiation_rrtmgp() {}
 
 		bool check_field_exists(std::string name)
         { throw std::runtime_error("Not implemented"); }
@@ -69,5 +76,9 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
+
+        Gas_concs<TF> gas_concs;
+        std::unique_ptr<Gas_optics<TF>> kdist_lw;
+        std::unique_ptr<Gas_optics<TF>> kdist_sw;
 };
 #endif
