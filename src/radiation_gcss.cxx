@@ -333,7 +333,9 @@ void Radiation_gcss<TF>::init()
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Radiation_gcss<TF>::create(
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Set up output classes
 	create_stats(stats);

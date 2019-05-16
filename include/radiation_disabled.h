@@ -48,7 +48,9 @@ class Radiation_disabled : public Radiation<TF>
 
 		bool check_field_exists(std::string name);
         void init() {};
-        void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&){};
+        void create(
+                Input&, Netcdf_handle&, Thermo<TF>&,
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&){};
 
 		// Empty functions that should throw

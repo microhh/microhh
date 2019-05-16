@@ -54,7 +54,9 @@ class Radiation_rrtmgp : public Radiation<TF>
         { throw std::runtime_error("Not implemented"); }
 
         void init();
-        void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(
+                Input&, Netcdf_handle&, Thermo<TF>&,
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
 		// Empty functions that should throw
