@@ -108,7 +108,7 @@ class Gas_optics : public Optical_props<TF>
                 std::unique_ptr<Optical_props_arry<TF>>& optical_props,
                 Source_func_lw<TF>& sources,
                 const Array<TF,2>& col_dry,
-                const Array<TF,2>& tlev);
+                const Array<TF,2>& tlev) const;
 
         // Shortwave variant.
         void gas_optics(
@@ -118,23 +118,7 @@ class Gas_optics : public Optical_props<TF>
                 const Gas_concs<TF>& gas_desc,
                 std::unique_ptr<Optical_props_arry<TF>>& optical_props,
                 Array<TF,2>& toa_src,
-                const Array<TF,2>& col_dry);
-
-    void combine_and_reorder(
-            const Array<TF,3>& tau,
-            const Array<TF,3>& tau_rayleigh,
-            const bool has_rayleigh,
-            std::unique_ptr<Optical_props_arry<TF>>& optical_props);
-
-    void source(
-            const int ncol, const int nlay, const int nband, const int ngpt,
-            const Array<TF,2>& play, const Array<TF,2>& plev,
-            const Array<TF,2>& tlay, const Array<TF,1>& tsfc,
-            const Array<int,2>& jtemp, const Array<int,2>& jpress,
-            const Array<int,4>& jeta, const Array<int,2>& tropo,
-            const Array<TF,6>& fmajor,
-            Source_func_lw<TF>& sources,
-            const Array<TF,2>& tlev);
+                const Array<TF,2>& col_dry) const;
 
     private:
         Array<TF,2> totplnk;
@@ -229,6 +213,22 @@ class Gas_optics : public Optical_props<TF>
                 Array<int,4>& jeta,
                 Array<int,2>& tropo,
                 Array<TF,6>& fmajor,
-                const Array<TF,2>& col_dry);
+                const Array<TF,2>& col_dry) const;
+
+        void combine_and_reorder(
+                const Array<TF,3>& tau,
+                const Array<TF,3>& tau_rayleigh,
+                const bool has_rayleigh,
+                std::unique_ptr<Optical_props_arry<TF>>& optical_props) const;
+
+        void source(
+                const int ncol, const int nlay, const int nband, const int ngpt,
+                const Array<TF,2>& play, const Array<TF,2>& plev,
+                const Array<TF,2>& tlay, const Array<TF,1>& tsfc,
+                const Array<int,2>& jtemp, const Array<int,2>& jpress,
+                const Array<int,4>& jeta, const Array<int,2>& tropo,
+                const Array<TF,6>& fmajor,
+                Source_func_lw<TF>& sources,
+                const Array<TF,2>& tlev) const;
 };
 #endif

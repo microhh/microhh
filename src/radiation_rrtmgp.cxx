@@ -558,7 +558,7 @@ namespace
             Array<TF,2>& flux_dn_dir, Array<TF,2>& flux_net,
             Array<TF,2>& flux_dn_inc, Array<TF,2>& flux_dn_dir_inc, const TF p_top,
             const Gas_concs<TF>& gas_concs,
-            const std::unique_ptr<Gas_optics<TF>>& kdist_sw,
+            const Gas_optics<TF>& kdist_sw,
             const Array<TF,2>& col_dry,
             const Array<TF,2>& p_lay, const Array<TF,2>& p_lev,
             const Array<TF,2>& t_lay, const Array<TF,2>& t_lev,
@@ -574,10 +574,10 @@ namespace
         const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
 
         // Create the field for the top of atmosphere source.
-        const int n_gpt = kdist_sw->get_ngpt();
+        const int n_gpt = kdist_sw.get_ngpt();
         Array<TF,2> toa_src({n_col, n_gpt});
 
-        kdist_sw->gas_optics(
+        kdist_sw.gas_optics(
                 p_lay,
                 p_lev,
                 t_lay,
@@ -878,7 +878,6 @@ void Radiation_rrtmgp<TF>::create(
     const int n_gpt = kdist_sw->get_ngpt();
     Array<double,2> lw_flux_dn_inc({n_col, n_gpt});
 
-    const int n_col_block = 1;
     solve_longwave_column<double>(
             optical_props_lw,
             lw_flux_up, lw_flux_dn, lw_flux_net,
@@ -908,7 +907,7 @@ void Radiation_rrtmgp<TF>::create(
             sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
             sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kstart],
             gas_concs,
-            kdist_sw,
+            *kdist_sw,
             col_dry,
             p_lay, p_lev,
             t_lay, t_lev,
