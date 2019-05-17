@@ -506,6 +506,26 @@ void Immersed_boundary<TF>::exec_momentum()
 }
 
 template <typename TF>
+void Immersed_boundary<TF>::exec_scalars()
+{
+    if (sw_ib == IB_type::Disabled)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    for (auto& it : fields.sp)
+    {
+        set_ghost_cells(
+                it.second->fld.data(), sbc.at(it.first),
+                ghost_s.c_idw.data(), ghost_s.c_idw_sum.data(), ghost_s.di.data(),
+                ghost_s.i.data(), ghost_s.j.data(), ghost_s.k.data(),
+                ghost_s.ip_i.data(), ghost_s.ip_j.data(), ghost_s.ip_k.data(),
+                sbcbot, it.second->visc, ghost_s.i.size(), n_idw_points,
+                gd.icells, gd.ijcells);
+    }
+}
+
+template <typename TF>
 void Immersed_boundary<TF>::init(Input& inputin)
 {
     auto& gd = grid.get_grid_data();
@@ -515,20 +535,27 @@ void Immersed_boundary<TF>::init(Input& inputin)
 
     if (sw_ib != IB_type::Disabled)
     {
+        // Process the boundary conditions for scalars
         if (fields.sp.size() > 0)
         {
-            std::string sbcbot_str = inputin.get_item<std::string>("IB", "sbcbot", "");
-            if (sbcbot_str == "flux")
+            // All scalars have the same boundary type (for now)
+            std::string swbot = inputin.get_item<std::string>("IB", "sbcbot", "");
+
+            if (swbot == "flux")
                 sbcbot = Boundary_type::Flux_type;
-            else if (sbcbot_str == "dirichlet")
+            else if (swbot == "dirichlet")
                 sbcbot = Boundary_type::Dirichlet_type;
-            else if (sbcbot_str == "neumann")
+            else if (swbot == "neumann")
                 sbcbot = Boundary_type::Neumann_type;
             else
             {
-                std::string error = "IB sbcbot=" + sbcbot_str + " is not a valid choice (options: dirichlet, neumann, flux)";
+                std::string error = "IB sbcbot=" + swbot + " is not a valid choice (options: dirichlet, neumann, flux)";
                 throw std::runtime_error(error);
             }
+
+            // Process boundary values per scalar
+            for (auto& it : fields.sp)
+                sbc.emplace(it.first, inputin.get_item<TF>("IB", "sbot", it.first));
         }
     }
 }

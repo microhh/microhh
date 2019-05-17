@@ -75,7 +75,6 @@ struct Neighbour
     TF distance;
 };
 
-
 template<typename TF>
 class Immersed_boundary
 {
@@ -86,6 +85,7 @@ class Immersed_boundary
         void init(Input&);
         void create();
         void exec_momentum();
+        void exec_scalars();
 
     private:
         Master& master;
@@ -97,7 +97,10 @@ class Immersed_boundary
         IB_type sw_ib;
 
         int n_idw_points;       // Number of interpolation points in IDW interpolation
-        Boundary_type sbcbot;   // Boundary type for scalars
+
+        // Boundary conditions for scalars
+        Boundary_type sbcbot;
+        std::map<std::string, TF> sbc;
 
         // IB input from DEM
         std::vector<TF> dem;
