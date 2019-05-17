@@ -281,6 +281,9 @@ void Model<TF>::exec()
     // Calculate the field means, in case needed.
     fields->exec();
 
+    // Set the immersed boundary conditions
+    ib->exec_momentum();
+
     // Get the viscosity to be used in diffusion.
     diff->exec_viscosity(*boundary, *thermo);
 
@@ -335,6 +338,9 @@ void Model<TF>::exec()
 
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step());
+
+                // Set the immersed boundary conditions
+                ib->exec_momentum();
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step());

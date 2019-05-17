@@ -269,7 +269,7 @@ namespace
         // For Dirichlet, add distance image point to IB
         if (bc == Boundary_type::Dirichlet_type)
         {
-            tmp[n_idw] = std::max(absolute_distance(xi, yi, zi, xb, yb, zb), TF(1e-9));
+            tmp[n_idw-1] = std::max(absolute_distance(xi, yi, zi, xb, yb, zb), TF(1e-9));
             dist_max = std::max(dist_max, tmp[n_idw]);
         }
 
@@ -375,7 +375,6 @@ namespace
         }
     }
 
-
     void print_statistics(std::vector<int>& ghost_i, std::string name, Master& master)
     {
         int nghost = ghost_i.size();
@@ -385,6 +384,53 @@ namespace
         {
             std::string message = "Found: " + std::to_string(nghost) + " IB ghost cells at the " + name + " location";
             master.print_message(message);
+        }
+    }
+
+    template<typename TF>
+    void set_ghost_cells(
+            TF* const restrict fld, const TF boundary_value,
+            const TF* const restrict c_idw, const TF* const restrict c_idw_sum,
+            const TF* const restrict di,
+            const int* const restrict gi, const int* const restrict gj, const int* const restrict gk,
+            const int* const restrict ipi, const int* const restrict ipj, const int* const restrict ipk,
+            Boundary_type bc, const TF visc, const int n_ghostcells, const int n_idw,
+            const int icells, const int ijcells)
+    {
+        const int n_idw_loc = (bc == Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
+
+        for (int n=0; n<n_ghostcells; ++n)
+        {
+            const int ijkg = gi[n] + gj[n]*icells + gk[n]*ijcells;
+
+            // Sum the IDW coefficient times the value at the neighbouring grid points
+            TF vI = TF(0);
+            for (int i=0; i<n_idw_loc; ++i)
+            {
+                const int ii = i + n*n_idw;
+                const int ijki = ipi[ii] + ipj[ii]*icells + ipk[ii]*ijcells;
+                vI += c_idw[ii] * fld[ijki];
+            }
+
+            // For Dirichlet BCs, add the boundary value
+            if (bc == Boundary_type::Dirichlet_type)
+            {
+                const int ii = n_idw-1 + n*n_idw;
+                vI += c_idw[ii] * boundary_value;
+            }
+
+            vI /= c_idw_sum[n];
+
+            // Set the ghost cells, depending on the IB boundary conditions
+            if (bc == Boundary_type::Dirichlet_type)
+                fld[ijkg] = 2*boundary_value - vI;         // Image value reflected across IB
+            else if (bc == Boundary_type::Neumann_type)
+                fld[ijkg] = vI - boundary_value * di[n];   // Image value minus gradient times distance
+            else if (bc == Boundary_type::Flux_type)
+            {
+                const TF grad = -boundary_value / visc;
+                fld[ijkg] = vI - grad * di[n];             // Image value minus gradient times distance
+            }
         }
     }
 
@@ -422,6 +468,41 @@ Immersed_boundary<TF>::Immersed_boundary(Master& masterin, Grid<TF>& gridin, Fie
 template <typename TF>
 Immersed_boundary<TF>::~Immersed_boundary()
 {
+}
+
+template <typename TF>
+void Immersed_boundary<TF>::exec_momentum()
+{
+    if (sw_ib == IB_type::Disabled)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    TF noslip_bc = TF(0);
+
+    set_ghost_cells(
+            fields.mp.at("u")->fld.data(), noslip_bc,
+            ghost_u.c_idw.data(), ghost_u.c_idw_sum.data(), ghost_u.di.data(),
+            ghost_u.i.data(), ghost_u.j.data(), ghost_u.k.data(),
+            ghost_u.ip_i.data(), ghost_u.ip_j.data(), ghost_u.ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost_u.i.size(), n_idw_points,
+            gd.icells, gd.ijcells);
+
+    set_ghost_cells(
+            fields.mp.at("v")->fld.data(), noslip_bc,
+            ghost_v.c_idw.data(), ghost_v.c_idw_sum.data(), ghost_v.di.data(),
+            ghost_v.i.data(), ghost_v.j.data(), ghost_v.k.data(),
+            ghost_v.ip_i.data(), ghost_v.ip_j.data(), ghost_v.ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost_v.i.size(), n_idw_points,
+            gd.icells, gd.ijcells);
+
+    set_ghost_cells(
+            fields.mp.at("w")->fld.data(), noslip_bc,
+            ghost_w.c_idw.data(), ghost_w.c_idw_sum.data(), ghost_w.di.data(),
+            ghost_w.i.data(), ghost_w.j.data(), ghost_w.k.data(),
+            ghost_w.ip_i.data(), ghost_w.ip_j.data(), ghost_w.ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost_w.i.size(), n_idw_points,
+            gd.icells, gd.ijcells);
 }
 
 template <typename TF>

@@ -38,31 +38,31 @@ template<typename TF>
 struct Ghost_cells
 {
     // Indices of IB ghost cells:
-    std::vector<int> i;
+    std::vector<int> i;     // size = number of ghost cells
     std::vector<int> j;
     std::vector<int> k;
 
     // Nearest location of IB to ghost cell:
-    std::vector<TF> xb;
+    std::vector<TF> xb;     // size = number of ghost cells
     std::vector<TF> yb;
     std::vector<TF> zb;
 
     // Location of interpolation point outside IB:
-    std::vector<TF> xi;
+    std::vector<TF> xi;     // size = number of ghost cells
     std::vector<TF> yi;
     std::vector<TF> zi;
 
     std::vector<TF> di; // Distance ghost cell to interpolation point
-    std::vector<TF> c_idw_sum;  // Sum IDW coefficients
 
     // Points outside IB used for IDW interpolation:
-    std::vector<int> ip_i;
+    std::vector<int> ip_i;     // size = number of ghost cells x n_idw_points
     std::vector<int> ip_j;
     std::vector<int> ip_k;
     std::vector<TF>  ip_d;  // Distance to interpolation point
 
     // Interpolation coefficients
-    std::vector<TF> c_idw;
+    std::vector<TF> c_idw;     // size = number of ghost cells x n_idw_points
+    std::vector<TF> c_idw_sum; // size = number of ghost cells
 };
 
 // Convenience struct to simplify sorting
@@ -85,6 +85,7 @@ class Immersed_boundary
 
         void init(Input&);
         void create();
+        void exec_momentum();
 
     private:
         Master& master;
