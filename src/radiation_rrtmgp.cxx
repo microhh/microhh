@@ -300,7 +300,6 @@ namespace
         }
         // End reading of k-distribution.
     }
-
     template<typename TF>
     void solve_longwave(
             std::unique_ptr<Optical_props_arry<TF>>& optical_props,
@@ -497,9 +496,66 @@ namespace
     }
 
     template<typename TF>
-    void solve_shortwave_column(
+    void solve_longwave_column(
             std::unique_ptr<Optical_props_arry<TF>>& optical_props,
             Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_net,
+            Array<TF,2>& flux_dn_inc, const TF p_top,
+            const Gas_concs<TF>& gas_concs,
+            const std::unique_ptr<Gas_optics<TF>>& kdist_lw,
+            const std::unique_ptr<Source_func_lw<TF>>& sources,
+            const Array<TF,2>& col_dry,
+            const Array<TF,2>& p_lay, const Array<TF,2>& p_lev,
+            const Array<TF,2>& t_lay, const Array<TF,2>& t_lev,
+            const Array<TF,1>& t_sfc, const Array<TF,2>& emis_sfc,
+            const int n_lay)
+    {
+        const int n_col = 1;
+        const int n_lev = n_lay + 1;
+
+        // Set the number of angles to 1.
+        const int n_ang = 1;
+
+        // Check the dimension ordering.
+        const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
+
+        // Solve a single block, this does not require subsetting.
+        kdist_lw->gas_optics(
+                p_lay,
+                p_lev,
+                t_lay,
+                t_sfc,
+                gas_concs,
+                optical_props,
+                *sources,
+                col_dry,
+                t_lev);
+
+        std::unique_ptr<Fluxes_broadband<double>> fluxes =
+                std::make_unique<Fluxes_broadband<double>>(n_col, n_lev);
+
+        Rte_lw<double>::rte_lw(
+                optical_props,
+                top_at_1,
+                *sources,
+                emis_sfc,
+                fluxes,
+                n_ang);
+
+        // Copy the data to the output.
+        for (int ilev=1; ilev<=n_lev; ++ilev)
+            for (int icol=1; icol<=n_col; ++icol)
+            {
+                flux_up ({icol, ilev}) = fluxes->get_flux_up ()({icol, ilev});
+                flux_dn ({icol, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
+                flux_net({icol, ilev}) = fluxes->get_flux_net()({icol, ilev});
+            }
+    }
+
+    template<typename TF>
+    void solve_shortwave_column(
+            std::unique_ptr<Optical_props_arry<TF>>& optical_props,
+            Array<TF,2>& flux_up, Array<TF,2>& flux_dn,
+            Array<TF,2>& flux_dn_dir, Array<TF,2>& flux_net,
             Array<TF,2>& flux_dn_inc, Array<TF,2>& flux_dn_dir_inc, const TF p_top,
             const Gas_concs<TF>& gas_concs,
             const std::unique_ptr<Gas_optics<TF>>& kdist_sw,
@@ -816,10 +872,14 @@ void Radiation_rrtmgp<TF>::create(
     Array<double,2> lw_flux_dn ({n_col, n_lev});
     Array<double,2> lw_flux_net({n_col, n_lev});
 
+    const int n_gpt = kdist_sw->get_ngpt();
+    Array<double,2> lw_flux_dn_inc({n_col, n_gpt});
+
     const int n_col_block = 1;
-    solve_longwave(
+    solve_longwave_column<double>(
             optical_props_lw,
             lw_flux_up, lw_flux_dn, lw_flux_net,
+            lw_flux_dn_inc, thermo.get_ph_vector()[gd.kstart],
             gas_concs,
             kdist_lw,
             sources_lw,
@@ -827,22 +887,22 @@ void Radiation_rrtmgp<TF>::create(
             p_lay, p_lev,
             t_lay, t_lev,
             t_sfc, emis_sfc,
-            n_col, n_col_block, n_lay);
+            n_lay);
 
     std::unique_ptr<Optical_props_arry<double>> optical_props_sw =
             std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw);
 
-    Array<double,2> sw_flux_up ({n_col, n_lev});
-    Array<double,2> sw_flux_dn ({n_col, n_lev});
-    Array<double,2> sw_flux_net({n_col, n_lev});
+    Array<double,2> sw_flux_up    ({n_col, n_lev});
+    Array<double,2> sw_flux_dn    ({n_col, n_lev});
+    Array<double,2> sw_flux_dn_dir({n_col, n_lev});
+    Array<double,2> sw_flux_net   ({n_col, n_lev});
 
-    const int n_gpt = kdist_sw->get_ngpt();
     Array<double,2> sw_flux_dn_inc    ({n_col, n_gpt});
     Array<double,2> sw_flux_dn_dir_inc({n_col, n_gpt});
 
     solve_shortwave_column<double>(
             optical_props_sw,
-            sw_flux_up, sw_flux_dn, sw_flux_net,
+            sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
             sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kstart],
             gas_concs,
             kdist_sw,
