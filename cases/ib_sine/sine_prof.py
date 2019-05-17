@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pylab as pl
+import netCDF4 as nc
 
 from microhh_tools import *    # available in MICROHH_DIR/python; copy to this directory
 
@@ -34,7 +35,7 @@ class Grid:
         pl.figure()
         pl.plot(self.z, self.dz, '-x')
         pl.xlabel('z (m)')
-        pl.ylabel('dz (m)') 
+        pl.ylabel('dz (m)')
 
 if __name__ == "__main__":
     pl.close('all')
@@ -70,12 +71,22 @@ if __name__ == "__main__":
     u = ini['force']['uflux'] * np.ones(z.size)
     s = z
 
-    # Write the data to a .prof file for MicroHH
-    proffile = open('sine.prof','w')
-    proffile.write('{0:^20s} {1:^20s} {2:^20s}\n'.format('z', 'u', 's'))
-    for k in range(z.size):
-        proffile.write('{0:1.14E} {1:1.14E} {2:1.14E}\n'.format(z[k], u[k], s[k]))
-    proffile.close()
+    # Write the data to a .nc file for MicroHH
+    float_type = 'f8' if tf==np.float64 else 'f4'
+
+    nc_file = nc.Dataset("sine_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+    nc_file.createDimension("z", grid.kmax)
+    nc_z  = nc_file.createVariable("z" , float_type, ("z"))
+
+    nc_group_init = nc_file.createGroup("init");
+    nc_u  = nc_group_init.createVariable("u" , float_type, ("z"))
+    nc_s  = nc_group_init.createVariable("s" , float_type, ("z"))
+
+    nc_z[:] = grid.z [:]
+    nc_u[:] = u[:]
+    nc_s[:] = s[:]
+
+    nc_file.close()
 
     # Create 2D height map
     dx = ini['grid']['xsize'] / ini['grid']['itot']
