@@ -497,8 +497,8 @@ void Radiation_rrtmgp<TF>::create(
 
     Netcdf_group rad_nc = input_nc.get_group("radiation");
 
-    const int n_lay = input_nc.get_dimension_size("lay");
-    const int n_lev = input_nc.get_dimension_size("lev");
+    const int n_lay = rad_nc.get_dimension_size("lay");
+    const int n_lev = rad_nc.get_dimension_size("lev");
 
     Array<double,2> p_lay(rad_nc.get_variable<double>("p_lay", {n_lay, n_col}), {n_col, n_lay});
     Array<double,2> t_lay(rad_nc.get_variable<double>("t_lay", {n_lay, n_col}), {n_col, n_lay});
