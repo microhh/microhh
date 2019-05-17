@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC
-#define ADVEC
+#ifndef ADVEC_H
+#define ADVEC_H
 
 #include <string>
 #include <memory>
@@ -31,6 +31,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
 
 /**
  * Base class for the advection scheme. This class is abstract and only
@@ -45,9 +46,12 @@ class Advec
         virtual ~Advec(); ///< Destructor of the advection class.
 
         static std::shared_ptr<Advec> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for advection class generation.
-        virtual void exec() = 0; ///< Execute the advection scheme.
+        virtual void create(Stats<TF>&) = 0; ///< Create the advection scheme.
+        virtual void exec(Stats<TF>&) = 0; ///< Execute the advection scheme.
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
+
+        virtual void get_advec_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
 
     protected:
         Master& master; ///< Pointer to master class.

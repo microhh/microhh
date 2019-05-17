@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -92,7 +92,8 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     master(masterin),
     grid(gridin),
     fields(fieldsin),
-    boundary_cyclic(master, grid)
+    boundary_cyclic(master, grid),
+    field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -118,8 +119,6 @@ std::string Boundary<TF>::get_switch()
 template<typename TF>
 void Boundary<TF>::process_bcs(Input& input)
 {
-    int nerror = 0;
-
     std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
     std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
@@ -139,8 +138,8 @@ void Boundary<TF>::process_bcs(Input& input)
         mbcbot = Boundary_type::Ustar_type;
     else
     {
-        master.print_error("%s is illegal value for mbcbot\n", swbot.c_str());
-        nerror++;
+        std::string msg = swbot + " is an illegal value for mbcbot";
+        throw std::runtime_error(msg);
     }
 
     // set the top bc
@@ -154,8 +153,8 @@ void Boundary<TF>::process_bcs(Input& input)
         mbctop = Boundary_type::Ustar_type;
     else
     {
-        master.print_error("%s is illegal value for mbctop\n", swtop.c_str());
-        nerror++;
+        std::string msg = swtop + " is an illegal value for mbctop";
+        throw std::runtime_error(msg);
     }
 
     // read the boundaries per field
@@ -176,8 +175,8 @@ void Boundary<TF>::process_bcs(Input& input)
             sbc.at(it.first).bcbot = Boundary_type::Flux_type;
         else
         {
-            master.print_error("%s is illegal value for sbcbot\n", swbot.c_str());
-            nerror++;
+            std::string msg = swbot + " is an illegal value for sbcbot";
+            throw std::runtime_error(msg);
         }
 
         // set the top bc
@@ -189,13 +188,12 @@ void Boundary<TF>::process_bcs(Input& input)
             sbc.at(it.first).bctop = Boundary_type::Flux_type;
         else
         {
-            master.print_error("%s is illegal value for sbctop\n", swtop.c_str());
-            nerror++;
+            std::string msg = swbot + " is an illegal value for sbctop";
+            throw std::runtime_error(msg);
         }
     }
 
-    if (nerror)
-        throw 1;
+    sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -204,31 +202,28 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
 
-    int nerror = 0;
-
     // there is no option (yet) for prescribing ustar without surface model
     if (mbcbot == Boundary_type::Ustar_type || mbctop == Boundary_type::Ustar_type)
     {
-        master.print_error("ustar bc is not supported for default boundary\n");
-        ++nerror;
-    }
-
-    if (nerror)
         throw std::runtime_error("Cannot use ustar bc for default boundary");
+    }
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    // Initialize the IO operators.
+    field3d_io.init();
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input& input, Stats<TF>& stats)
+void Boundary<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
-    process_time_dependent(input);
+    process_time_dependent(input, input_nc);
 }
 
 
 template<typename TF>
-void Boundary<TF>::process_time_dependent(Input& input)
+void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
 {
     // get the list of time varying variables
     bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
@@ -236,6 +231,9 @@ void Boundary<TF>::process_time_dependent(Input& input)
 
     if (swtimedep)
     {
+        if (!sbot_2d_list.empty())
+            master.print_warning("Provided 2D sbot fields are potentially overwritten by timedep");
+
         // Create temporary list to check which entries are used.
         std::vector<std::string> tmplist = timedeplist;
 
@@ -247,7 +245,7 @@ void Boundary<TF>::process_time_dependent(Input& input)
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep();
+                tdep_bc.at(it.first)->create_timedep(input_nc);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -302,12 +300,37 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-               sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
-        set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
-               sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
-               gd.icells, gd.jcells);
+        // Load 2D fields for bottom boundary from disk.
+        if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        {
+            std::string filename = it.first + "_bot.0000000";
+            master.print_message("Loading \"%s\" ... ", filename.c_str());
+
+            auto tmp = fields.get_tmp();
+            TF* fld_2d_ptr = nullptr;
+            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
+                fld_2d_ptr = it.second->fld_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Neumann_type)
+                fld_2d_ptr = it.second->grad_bot.data();
+            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+                fld_2d_ptr = it.second->flux_bot.data();
+
+            if (field3d_io.load_xy_slice(fld_2d_ptr, tmp->fld.data(), filename.c_str()))
+            {
+                master.print_message("FAILED\n");
+                throw std::runtime_error("Error loading 2D field of bottom boundary");
+            }
+            fields.release_tmp(tmp);
+        }
+        else
+        {
+            set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                   sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+            set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                   sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                   gd.icells, gd.jcells);
+        }
     }
 }
 
@@ -755,8 +778,8 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& gr
         return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
     else
     {
-        master.print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
-        throw std::runtime_error("Illegal value for swboundary");
+        std::string msg = swboundary + " is an illegal value for swboundary";
+        throw std::runtime_error(msg);
     }
 }
 /*

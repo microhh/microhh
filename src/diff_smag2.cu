@@ -32,6 +32,7 @@
 #include "constants.h"
 #include "thermo.h"
 #include "tools.h"
+#include "stats.h"
 #include "monin_obukhov.h"
 #include "fast_math.h"
 
@@ -438,7 +439,7 @@ void Diff_smag2<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -452,9 +453,9 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
     // Calculate total strain rate
     strain2_g<<<gridGPU, blockGPU>>>(
-        fields.sd["evisc"]->fld_g,
-        fields.mp["u"]->fld_g, fields.mp["v"]->fld_g, fields.mp["w"]->fld_g,
-        fields.mp["u"]->flux_bot_g, fields.mp["v"]->flux_bot_g,
+        fields.sd.at("evisc")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
         boundary.ustar_g, boundary.obuk_g,
         gd.z_g, gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
         gd.istart, gd.jstart, gd.kstart,
@@ -466,13 +467,13 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         evisc_neutral_g<<<gridGPU, blockGPU>>>(
-            fields.sd["evisc"]->fld_g, mlen_g,
+            fields.sd.at("evisc")->fld_g, mlen_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        boundary_cyclic.exec_g(fields.sd["evisc"]->fld_g);
+        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
     }
     // assume buoyancy calculation is needed
     else
@@ -486,7 +487,7 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
         // Calculate eddy viscosity
         TF tPri = 1./tPr;
         evisc_g<<<gridGPU, blockGPU>>>(
-            fields.sd["evisc"]->fld_g, tmp1->fld_g,
+            fields.sd.at("evisc")->fld_g, tmp1->fld_g,
             tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
             mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
             gd.istart, gd.jstart, gd.kstart,
@@ -496,14 +497,14 @@ void Diff_smag2<TF>::exec_viscosity(Boundary<TF>& boundary, Thermo<TF>& thermo)
 
         fields.release_tmp_g(tmp1);
 
-        boundary_cyclic.exec_g(fields.sd["evisc"]->fld_g);
+        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
     }
 }
 #endif
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
+void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -520,11 +521,11 @@ void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
     const TF tPri = 1./tPr;
 
     diff_uvw_g<<<gridGPU, blockGPU>>>(
-            fields.mt["u"]->fld_g, fields.mt["v"]->fld_g, fields.mt["w"]->fld_g,
-            fields.sd["evisc"]->fld_g,
-            fields.mp["u"]->fld_g, fields.mp["v"]->fld_g, fields.mp["w"]->fld_g,
-            fields.mp["u"]->flux_bot_g, fields.mp["u"]->flux_top_g,
-            fields.mp["v"]->flux_bot_g, fields.mp["v"]->flux_top_g,
+            fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
+            fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
             gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
             fields.rhoref_g, fields.rhorefh_g,
             gd.istart, gd.jstart, gd.kstart,
@@ -534,14 +535,22 @@ void Diff_smag2<TF>::exec(Boundary<TF>& boundary)
 
     for (auto it : fields.st)
         diff_c_g<<<gridGPU, blockGPU>>>(
-                it.second->fld_g, fields.sp[it.first]->fld_g, fields.sd["evisc"]->fld_g,
-                fields.sp[it.first]->flux_bot_g, fields.sp[it.first]->flux_top_g,
+                it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
+                fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                 fields.rhoref_g, fields.rhorefh_g, tPri,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
+
 }
 #endif
 
@@ -567,7 +576,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 
     // Calculate dnmul in tmp1 field
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
-            tmp1->fld_g, fields.sd["evisc"]->fld_g,
+            tmp1->fld_g, fields.sd.at("evisc")->fld_g,
             gd.dzi_g, tPrfac, dxidxi, dyidyi,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
@@ -607,7 +616,7 @@ double Diff_smag2<TF>::get_dn(double dt)
     auto dnmul_tmp = fields.get_tmp_g();
 
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
-        dnmul_tmp->fld_g, fields.sd["evisc"]->fld_g,
+        dnmul_tmp->fld_g, fields.sd.at("evisc")->fld_g,
         gd.dzi_g, tPrfac, dxidxi, dyidyi,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,

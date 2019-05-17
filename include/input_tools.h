@@ -30,6 +30,13 @@ namespace Input_tools
         return item;
     }
 
+    // In case of string, just return the content of the stringstream.
+    template<>
+    inline std::string get_item_from_stream(std::istringstream& ss)
+    {
+        return ss.str();
+    }
+
     inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
     {
         int has_line = false;

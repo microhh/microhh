@@ -20,17 +20,19 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "field3d_operators.h"
 #include "timeloop.h"
 #include "timedep.h"
+#include "stats.h"
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
 #include "boundary.h"
-#include "data_block.h"
+#include "thermo.h"
 #include "force.h"
 
 using namespace Finite_difference::O2;
@@ -189,6 +191,34 @@ namespace
         }
     }
 
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
+
+    template<typename TF>
+    void rescale_nudgeprof(TF* const restrict fldmean, const int kinv, const int kstart, const int kend)
+    {
+        for (int k=kstart+1; k<kinv; ++k)
+            fldmean[k] = fldmean[kstart];
+
+        for (int k=kinv+1; k<kend-2; ++k)
+            fldmean[k] = fldmean[kend-1];
+    }
+
     template<typename TF> __global__
     void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
                                     const double fac0, const double fac1,
@@ -210,7 +240,7 @@ void Force<TF>::prepare_device()
 
     const int nmemsize  = gd.kcells*sizeof(TF);
 
-    if (swlspres== Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::geo_wind)
     {
         cuda_safe_call(cudaMalloc(&ug_g, nmemsize));
         cuda_safe_call(cudaMalloc(&vg_g, nmemsize));
@@ -223,8 +253,9 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : lslist)
         {
-            cuda_safe_call(cudaMalloc(&lsprofs_g[it], nmemsize));
-            cuda_safe_call(cudaMemcpy(lsprofs_g[it], lsprofs[it].data(), nmemsize, cudaMemcpyHostToDevice));
+            lsprofs_g.emplace(it, nullptr);
+            cuda_safe_call(cudaMalloc(&lsprofs_g.at(it), nmemsize));
+            cuda_safe_call(cudaMemcpy(lsprofs_g.at(it), lsprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
     }
 
@@ -232,8 +263,9 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : nudgelist)
         {
-            cuda_safe_call(cudaMalloc(&nudgeprofs_g[it], nmemsize));
-            cuda_safe_call(cudaMemcpy(nudgeprofs_g[it], nudgeprofs[it].data(), nmemsize, cudaMemcpyHostToDevice));
+            nudgeprofs_g.emplace(it, nullptr);
+            cuda_safe_call(cudaMalloc(&nudgeprofs_g.at(it), nmemsize));
+            cuda_safe_call(cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
         cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
@@ -284,7 +316,7 @@ void Force<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Force<TF>::exec(double dt)
+void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -313,8 +345,11 @@ void Force<TF>::exec(double dt)
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
+
     }
-    else if (swlspres== Large_scale_pressure_type::geo_wind)
+    else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
         if (grid.get_spatial_order() == Grid_order::Second)
         {
@@ -338,6 +373,9 @@ void Force<TF>::exec(double dt)
                 gd.iend,   gd.jend,   gd.kend);
             cuda_check_error();
         }
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name_cor);
+        stats.calc_tend(*fields.mt.at("v"), tend_name_cor);
     }
 
     if (swls == Large_scale_tendency_type::enabled)
@@ -345,11 +383,13 @@ void Force<TF>::exec(double dt)
         for (auto& it : lslist)
         {
             large_scale_source_g<<<gridGPU, blockGPU>>>(
-                fields.st.at(it)->fld_g, lsprofs_g.at(it),
+                fields.at.at(it)->fld_g, lsprofs_g.at(it),
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.at.at(it), tend_name_ls);
         }
     }
 
@@ -357,13 +397,24 @@ void Force<TF>::exec(double dt)
     {
         for (auto& it : nudgelist)
         {
+            auto it1 = std::find(scalednudgelist.begin(), scalednudgelist.end(), it);
+            if (it1 != scalednudgelist.end())
+            {
+                cudaMemcpy(fields.ap.at(it)->fld_mean.data(), fields.ap.at(it)->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+                const int kinv = thermo.get_bl_depth();
+                rescale_nudgeprof(nudgeprofs.at(it).data(), kinv, gd.kstart, gd.kend);
+                cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+            }
+
             nudging_tendency_g<<<gridGPU, blockGPU>>>(
-                fields.st.at(it)->fld_g, fields.sp.at(it)->fld_mean_g,
+                fields.at.at(it)->fld_g, fields.ap.at(it)->fld_mean_g,
                 nudgeprofs_g.at(it), nudge_factor_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.at.at(it), tend_name_nudge);
         }
     }
 
@@ -377,6 +428,9 @@ void Force<TF>::exec(double dt)
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*it.second, tend_name_subs);
         }
     }
 }
@@ -389,19 +443,19 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (swls == Large_scale_tendency_type::enabled)
     {
         for (auto& it : tdep_ls)
-            it.second->update_time_dependent_prof_g(lsprofs_g[it.first],timeloop);
+            it.second->update_time_dependent_prof_g(lsprofs_g.at(it.first), timeloop);
     }
 
     if (swnudge == Nudging_type::enabled)
     {
         for (auto& it : tdep_nudge)
-            it.second->update_time_dependent_prof_g(nudgeprofs_g[it.first],timeloop);
+            it.second->update_time_dependent_prof_g(nudgeprofs_g.at(it.first), timeloop);
     }
 
     if (swlspres == Large_scale_pressure_type::geo_wind)
     {
-        tdep_geo.at("ug")->update_time_dependent_prof(ug, timeloop);
-        tdep_geo.at("vg")->update_time_dependent_prof(vg, timeloop);
+        tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
+        tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
     if (swwls == Large_scale_subsidence_type::enabled)

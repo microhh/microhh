@@ -25,7 +25,6 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_vapor.h"
@@ -33,7 +32,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -297,6 +296,24 @@ namespace
                }
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 
@@ -368,10 +385,8 @@ void Thermo_vapor<TF>::init()
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-
-
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
@@ -380,8 +395,16 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-    data_block.get_vector(bs.thl0, "thl", gd.ktot, 0, gd.kstart);
-    data_block.get_vector(bs.qt0, "qt", gd.ktot, 0, gd.kstart);
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(bs.thl0, "thl", start, count);
+    group_nc.get_variable(bs.qt0, "qt", start, count);
+
+    // Shift the vector
+    std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
+    std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
@@ -405,7 +428,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
     }
 
     // 6. Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
+    tdep_pbot->create_timedep(input_nc);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -419,7 +442,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>&
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_vapor<TF>::exec(const double dt)
+void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -437,6 +460,8 @@ void Thermo_vapor<TF>::exec(const double dt)
                             bs.thvrefh.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -619,6 +644,14 @@ TF Thermo_vapor<TF>::get_buoyancy_diffusivity()
 }
 
 template<typename TF>
+int Thermo_vapor<TF>::get_bl_depth()
+{
+    // Use the liquid water potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
+template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
     bs_stats = bs;
@@ -628,10 +661,10 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref.data() );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref.data() );
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
@@ -642,23 +675,19 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref.data() );
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh.data());
+            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z", Stats_whitelist_type::White);
-        for (int n=2; n<5; ++n)
-        {
-            std::stringstream ss;
-            ss << n;
-            std::string sn = ss.str();
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn, "z");
-        }
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        fields.release_tmp(b);
 
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
     }
 }
 
@@ -732,10 +761,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // calculate the mean
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
 
@@ -747,7 +773,7 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof("rho"    , fields.rhoref);
         stats.set_prof("rhoh"   , fields.rhorefh);
     }
-
+    stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
 
 #ifndef USECUDA
@@ -810,8 +836,8 @@ void Thermo_vapor<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             get_thermo_field(*output, "T", false, true);
         else
         {
-            master.print_error("Thermo dump of field \"%s\" not supported\n", it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
+            std::string msg = "Thermo dump of field \"" + it + "\" not supported";
+            throw std::runtime_error(msg);
         }
         dump.save_dump(output->fld.data(), it, iotime);
     }

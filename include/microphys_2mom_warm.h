@@ -37,7 +37,7 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_handle;
 
 template<typename> class Grid;
 template<typename> class Stats;
@@ -155,8 +155,8 @@ class Microphys_2mom_warm : public Microphys<TF>
         virtual ~Microphys_2mom_warm();
 
         void init();
-        void create(Input&, Data_block&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, const double);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
+        void exec(Thermo<TF>&, const double, Stats<TF>&);
 
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double);
         void exec_dump(Dump<TF>&, unsigned long) {};
@@ -189,5 +189,8 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
+
+        const std::string tend_name = "micro";
+        const std::string tend_longname = "Microphysics";
 };
 #endif

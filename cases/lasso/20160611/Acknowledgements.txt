@@ -1,0 +1,64 @@
+PROPER ACKNOWLEDGEMENT WHEN USING THE LASSO ALPHA 2 RELEASE
+
+At the time of the release, the Alpha 2 simulations and tools
+are not yet documented in a peer reviewed article. We therefore
+request that users publishing with the LASSO products consider
+including appropriate LASSO team members as co-authors. Contact
+the LASSO principal investigator (PI) (william.gustafson@pnnl.gov)
+for specifics regarding the different team member contributions.
+
+The LASSO Alpha 2 documentation and dataset have separate DOIs
+due to technical details related to the way hosting of the
+information is handled, and therefore, they should be cited
+separately. The recommended citation for the documentation is:
+
+  Gustafson, WI, AM Vogelmann, X Cheng, S Endo, B Krishna, Z
+  Li, T Toto, and H Xiao, 2017: Description of the LASSO Alpha 2
+  Release. Ed. by R. Stafford, DOE Atmospheric Radiation Measurement
+  Research Facility, DOE/SC-ARM-TR-199, doi:10.2172/1376727.
+
+And, the recommended citation for the Alpha 2 data is:
+
+  Atmospheric Radiation Measurement (ARM) Climate Research Facility,
+  2017: LASSO Alpha 2 Data Bundles. <<dates of the data used, e.g., 10
+  Jun 2016 or various dates>>, 36° 36' 18.0" N, 97° 29' 6.0" W: Southern
+  Great Plains Central Facility (C1). Compiled by WI Gustafson, AM
+  Vogelmann, X Cheng, S Endo, B Krishna, Z Li, T Toto, and H Xiao. ARM
+  Data Archive: Oak Ridge, Tennessee, USA. Data set accessed <<insert
+  date downloaded from web>> at http://dx.doi.org/10.5439/1342961.
+
+At a minimum, ARM requests the following acknowledgement:
+
+  LASSO data were used from the U.S. Department of Energy's
+  Atmospheric Radiation Measurement (ARM) Climate Research Facility.
+
+
+---------------------------------------------------------
+
+ACKNOWLEDGEMENT BY THE LASSO TEAM FOR THE ALPHA 2 RELEASE
+
+The LASSO Pilot Project team consists of William I. Gustafson Jr.
+(PI), Andrew M. Vogelmann (Co-PI), Xiaoping Cheng, Satoshi Endo,
+Zhijin Li, Tami Toto, and Heng Xiao. The LASSO Bundle Browser has been
+developed by Bhargavi Krishna. Funding provided by the U.S. Department
+of Energy Office of Science Biological and Environmental Research via
+the Atmospheric Radiation Measurement Climate Research Facility. We
+acknowledge the advice from external members for the LASSO Advisory Team:
+Maike Ahlgrimm (ECMWF), Chris Bretherton (University of Washington),
+Graham Feingold (NOAA ESRL), Chris Golaz (LLNL), David Turner (NOAA
+NSSL), Minghua Zhang (Stony Brook U.), and Jim Mather (ARM Technical
+Director). We acknowledge numerous members of the ARM infrastructure
+team for their coordination, installation, maintenance, processing,
+and advice given on the data products used and for LASSO product
+management. Portions of the work performed at 1) the Pacific Northwest
+National Laboratory (PNNL)--Battelle Memorial Institute operates PNNL
+under contract DEAC05-76RL01830, 2) Brookhaven National Laboratory, and
+3) the Jet Propulsion Laboratory and the University of California Los
+Angeles via a subcontract through PNNL. Computation has been provided by
+1) the ARM Data Center Computing Facility, 2) the Oak Ridge Leadership
+Computing Facility at the Oak Ridge National Laboratory, which is
+supported by the Office of Science of the U.S. Department of Energy
+under Contract No. DE-AC05-00OR22725; 3) the National Energy Research
+Scientific Computing Center, a DOE Office of Science User Facility
+supported by the Office of Science of the U.S. Department of Energy under
+Contract No. DE-AC02-05CH11231; and 4) PNNL Institutional Computing.

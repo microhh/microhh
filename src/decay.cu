@@ -27,6 +27,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "tools.h"
 #include "stats.h"
 #include "decay.h"
@@ -51,7 +52,7 @@ namespace
 
 #ifdef USECUDA
 template <typename TF>
-void Decay<TF>::exec(double dt)
+void Decay<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -72,6 +73,8 @@ void Decay<TF>::exec(double dt)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             cuda_check_error();
 
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.st.at(it.first), tend_name);
         }
     }
 

@@ -32,7 +32,8 @@
 
 class Master;
 class Input;
-class Data_block;
+class Netcdf_file;
+class Netcdf_handle;
 
 template<typename> class Grid;
 template<typename> class Stats;
@@ -59,7 +60,7 @@ class Fields
         ~Fields(); ///< Destructor of the fields class.
 
         void init(Dump<TF>&,Cross<TF>&);  ///< Initialization of the field arrays.
-        void create(Input&, Data_block&); ///< Initialization of the fields (random perturbations, vortices).
+        void create(Input&, Netcdf_file&); ///< Initialization of the fields (random perturbations, vortices).
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);      ///< Initialization of the single column output.
@@ -73,7 +74,7 @@ class Fields
         void init_momentum_field  (std::string, std::string, std::string, const std::array<int,3>&);
         void init_prognostic_field(std::string, std::string, std::string, const std::array<int,3>&);
         void init_diagnostic_field(std::string, std::string, std::string, const std::array<int,3>&);
-
+        std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
 
         #ifdef USECUDA
@@ -183,7 +184,7 @@ class Fields
         int vortexnpair;
         std::string vortexaxis;
 
-        void add_mean_profs(Data_block&);
+        void add_mean_profs(Netcdf_handle&);
         // int add_mean_prof(Input*, std::string, double*, double);
         void randomize(Input&, std::string, TF* const restrict);
         void add_vortex_pair(Input&);
@@ -191,6 +192,7 @@ class Fields
         // statistics
         std::vector<TF> umodel;
         std::vector<TF> vmodel;
+
         // double* umodel;
         // double* vmodel;
 

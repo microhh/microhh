@@ -142,9 +142,9 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::create(Input& input, Stats<TF>& stats)
+void Boundary_surface_bulk<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
-    Boundary<TF>::process_time_dependent(input);
+    Boundary<TF>::process_time_dependent(input, input_nc);
 
     // add variables to the statistics
     if (stats.get_switch())
@@ -179,8 +179,8 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
     // crash in case fixed gradient is prescribed
     if (mbcbot != Boundary_type::Dirichlet_type)
     {
-        master.print_error("Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"\n");
-        throw 1;
+        std::string msg = "Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"";
+        throw std::runtime_error(msg);
     }
 
     bulk_cm = inputin.get_item<TF>("boundary", "bulk_cm", "");
@@ -190,8 +190,8 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
     {
         if (it.second.bcbot != Boundary_type::Dirichlet_type)
         {
-            master.print_error("Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"\n");
-            throw 1;
+            std::string msg = "Only \"noslip\" is allowed as mbcbot with swboundary=\"bulk\"";
+            throw std::runtime_error(msg);
         }
         bulk_cs[it.first] = inputin.get_item<TF>("boundary", "bulk_cs", it.first);
     }
@@ -221,8 +221,8 @@ template<typename TF>
 void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;
-    stats.calc_stats_2d("obuk", obuk, no_offset, {"mean"});
-    stats.calc_stats_2d("ustar", ustar, no_offset, {"mean"});
+    stats.calc_stats_2d("obuk", obuk, no_offset);
+    stats.calc_stats_2d("ustar", ustar, no_offset);
 }
 
 template<typename TF>
@@ -265,7 +265,7 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
     {
         scalar_fluxgrad(it.second->flux_bot.data(), it.second->grad_bot.data(),
                         it.second->fld.data(), it.second->fld_bot.data(),
-                        dutot->fld.data(), bulk_cs[it.first], zsl,
+                        dutot->fld.data(), bulk_cs.at(it.first), zsl,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
         boundary_cyclic.exec_2d(it.second->flux_bot.data());
         boundary_cyclic.exec_2d(it.second->grad_bot.data());

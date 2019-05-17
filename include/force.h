@@ -29,11 +29,13 @@
 
 class Master;
 class Input;
-
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
 template<typename> class Timedep;
+template<typename> class Stats;
+template<typename> class Thermo;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -56,8 +58,8 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Data_block&);   ///< Read the profiles of the forces from the input.
-        void exec(double);     ///< Add the tendencies belonging to the large-scale processes.
+        void create(Input&, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void exec(double, Thermo<TF>&, Stats<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
@@ -65,6 +67,7 @@ class Force
         std::map<std::string, std::vector<TF>> lsprofs; ///< Map of profiles with forcings stored by its name.
 
         std::vector<std::string> nudgelist;        ///< List of variables that are nudged to a provided profile
+        std::vector<std::string> scalednudgelist;        ///< List of variables that are nudged to a provided profile
         std::map<std::string, std::vector<TF>> nudgeprofs; ///< Map of nudge profiles stored by its name.
 
         // GPU functions and variables
@@ -111,5 +114,15 @@ class Force
         TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
 
+        const std::string tend_name_pres      = "lspres";
+        const std::string tend_longname_pres  = "Large Scale Pressure";
+        const std::string tend_name_cor       = "cor";
+        const std::string tend_longname_cor   = "Coriolis";
+        const std::string tend_name_ls        = "ls";
+        const std::string tend_longname_ls    = "Large Scale";
+        const std::string tend_name_nudge     = "nudge";
+        const std::string tend_longname_nudge = "Nudging";
+        const std::string tend_name_subs      = "subs";
+        const std::string tend_longname_subs  = "Subsidence";
 };
 #endif

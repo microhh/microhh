@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,12 +20,13 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TIMELOOP
-#define TIMELOOP
 
-#include <sys/time.h>
+#ifndef TIMELOOP_H
+#define TIMELOOP_H
+
 #include <string>
 #include <vector>
+#include <ctime>
 
 class Master;
 template<typename> class Grid;
@@ -56,7 +57,7 @@ class Timeloop
         void set_time_step();
         void set_time_step_limit();
         void set_time_step_limit(unsigned long);
-        double get_sub_time_step();
+        double get_sub_time_step() const;
 
         Interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
 
@@ -75,13 +76,19 @@ class Timeloop
         bool is_finished();
 
         // Accessors for other classes
-        double get_time()   { return time;    }
-        double get_dt()     { return dt;      }
-        double get_ifactor(){ return ifactor; }
-        unsigned long get_itime() { return itime; }
-        unsigned long get_idt()   { return idt;   }
-        int get_iotime()    { return iotime;    }
-        int get_iteration() { return iteration; }
+        double get_time() const { return time;    }
+        double get_dt() const { return dt;      }
+        double get_ifactor() const { return ifactor; }
+        unsigned long get_itime() const { return itime; }
+        unsigned long get_idt() const { return idt;   }
+        int get_iotime() const { return iotime;    }
+        int get_iteration() const { return iteration; }
+
+        // Functions for UTC time support.
+        bool has_utc_time() const { return flag_utc_time; }
+        std::string get_datetime_utc_start_string() const;
+        double calc_day_of_year() const;
+        double calc_hour_of_day() const;
 
     private:
         Master& master;
@@ -108,6 +115,8 @@ class Timeloop
         double endtime;
         double savetime;
         double postproctime;
+        bool flag_utc_time;
+        std::tm tm_utc_start;
 
         int iteration;
         int iotime;

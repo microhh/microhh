@@ -27,6 +27,7 @@
 #include "constants.h"
 #include "master.h"
 #include "field3d_operators.h"
+#include "stats.h"
 
 #include "advec.h"
 #include "advec_disabled.h"
@@ -70,8 +71,8 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
         return std::make_shared<Advec_4m<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
-        masterin.print_error("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
-        throw std::runtime_error("Illegal options swadvec");
+        std::string msg = swadvec +  " is an illegal value for swadvec";
+        throw std::runtime_error(msg);
     }
 }
 

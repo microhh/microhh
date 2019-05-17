@@ -29,6 +29,7 @@
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Stats;
 template<typename> class Diff;
@@ -38,8 +39,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
-
-class Data_block;
 
 
 /**
@@ -59,8 +58,8 @@ class Thermo_moist : public Thermo<TF>
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
-        void create(Input&, Data_block&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(const double); ///< Add the tendencies belonging to the buoyancy.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
 
         void exec_stats(Stats<TF>&);
@@ -76,9 +75,10 @@ class Thermo_moist : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
 
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        TF get_buoyancy_diffusivity();
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -154,5 +154,7 @@ class Thermo_moist : public Thermo<TF>
         Background_state bs_stats;
 
         std::unique_ptr<Timedep<TF>> tdep_pbot;
+        const std::string tend_name = "buoy";
+        const std::string tend_longname = "Buoyancy";
 };
 #endif

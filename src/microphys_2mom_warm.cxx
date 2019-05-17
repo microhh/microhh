@@ -566,7 +566,7 @@ void Microphys_2mom_warm<TF>::init()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
     // BvS: for now I have left the init of statistics and cross-sections here
     // If this gets out of hand, move initialisation to separate function like in e.g. thermo_moist
@@ -576,9 +576,7 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1");
-        stats.add_time_series("qrpath", "Rain water path", "kg m-2");
-        stats.add_time_series("qrcover", "Rain water cover", "-");
-        stats.add_prof("qrfrac", "Rain water fraction", "-", "z");
+        stats.add_profs(*fields.sp.at("qr"), "z", {"frac","path","cover"});
 
         if (swmicrobudget)
         {
@@ -602,6 +600,11 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
             stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
             stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z");
         }
+
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("nr") , "z", tend_name, tend_longname);
     }
 
     // Create cross sections
@@ -613,7 +616,7 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Data_block& data_block, Sta
 
 #ifndef USECUDA
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
+void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -721,6 +724,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt)
         fields.release_tmp(it);
 
     fields.release_tmp(ql);
+
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
+    stats.calc_tend(*fields.st.at("qt"),  tend_name);
+    stats.calc_tend(*fields.st.at("qr"),  tend_name);
+    stats.calc_tend(*fields.st.at("nr"),  tend_name);
 }
 #endif
 
@@ -734,8 +742,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
     const TF no_threshold = 0.;
     const TF threshold_qr = 1.e-6;
 
-    stats.calc_stats_2d("rr", rr_bot, no_offset, {"mean"});
-    stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr, {"path","frac","cover"});
+    stats.calc_stats_2d("rr", rr_bot, no_offset);
+    stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr);
 
     if (swmicrobudget)
     {
@@ -806,10 +814,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
 
-        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("auto_qrt" , *qrt , no_offset, no_threshold);
+        stats.calc_stats("auto_nrt" , *nrt , no_offset, no_threshold);
+        stats.calc_stats("auto_thlt", *thlt, no_offset, no_threshold);
+        stats.calc_stats("auto_qtt" , *qtt , no_offset, no_threshold);
 
         // Accretion; growth of raindrops collecting cloud droplets
         // -------------------------
@@ -823,9 +831,9 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
                         gd.iend,   gd.jend,   gd.kend,
                         gd.icells, gd.ijcells);
 
-        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("accr_qrt" , *qrt , no_offset, no_threshold);
+        stats.calc_stats("accr_thlt", *thlt, no_offset, no_threshold);
+        stats.calc_stats("accr_qtt" , *qtt , no_offset, no_threshold);
 
         // Rest of the microphysics is handled per XZ slice
         // Evaporation; evaporation of rain drops in unsaturated environment
@@ -850,10 +858,10 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
                               gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold, {"mean"});
-        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("evap_qrt" , *qrt , no_offset, no_threshold);
+        stats.calc_stats("evap_nrt" , *nrt , no_offset, no_threshold);
+        stats.calc_stats("evap_thlt", *thlt, no_offset, no_threshold);
+        stats.calc_stats("evap_qtt" , *qtt , no_offset, no_threshold);
 
         // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
         // -------------------------
@@ -872,7 +880,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
                                          gd.icells, gd.ijcells, j);
         }
 
-        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("scbr_nrt" , *nrt , no_offset, no_threshold);
 
         // Sedimentation; sub-grid sedimentation of rain
         // -------------------------
@@ -894,8 +902,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
                                      gd.icells, gd.kcells, gd.ijcells, j);
         }
 
-        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold, {"mean"});
-        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold, {"mean"});
+        stats.calc_stats("sed_qrt" , *qrt , no_offset, no_threshold);
+        stats.calc_stats("sed_nrt" , *nrt , no_offset, no_threshold);
 
         // Release all local tmp fields in use
         for (auto& it: tmp_fields)

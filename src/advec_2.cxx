@@ -25,6 +25,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "stats.h"
 #include "advec_2.h"
 #include "defines.h"
 #include "constants.h"
@@ -44,7 +45,6 @@ Advec_2<TF>::Advec_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, I
 template<typename TF>
 Advec_2<TF>::~Advec_2() {}
 
-#ifndef USECUDA
 namespace
 {
     template<typename TF>
@@ -200,8 +200,69 @@ namespace
                                - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
                 }
     }
+
+    template<typename TF>
+    void advec_flux_u(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii = 1;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = interp2(w[ijk-ii], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                }
+    }
+
+    template<typename TF>
+    void advec_flux_v(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = interp2(w[ijk-jj], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                }
+    }
+
+    template<typename TF>
+    void advec_flux_s(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = w[ijk] * interp2(s[ijk-kk], s[ijk]);
+                }
+    }
 }
 
+template<typename TF>
+void Advec_2<TF>::create(Stats<TF>& stats)
+{
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+    for (auto it : fields.st)
+        stats.add_tendency(*it.second, "z", tend_name, tend_longname);
+}
+
+#ifndef USECUDA
 template<typename TF>
 double Advec_2<TF>::get_cfl(double dt)
 {
@@ -232,8 +293,9 @@ unsigned long Advec_2<TF>::get_time_limit(unsigned long idt, double dt)
     return idt * cflmax / cfl;
 }
 
+
 template<typename TF>
-void Advec_2<TF>::exec()
+void Advec_2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     advec_u(fields.mt.at("u")->fld.data(),
@@ -264,8 +326,44 @@ void Advec_2<TF>::exec()
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
+
+template<typename TF>
+void Advec_2<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    if (fld.loc == gd.uloc)
+    {
+        advec_flux_u(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.vloc)
+    {
+        advec_flux_v(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.sloc)
+    {
+        advec_flux_s(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else
+        throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
+}
 
 template class Advec_2<double>;
 template class Advec_2<float>;

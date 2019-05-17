@@ -24,6 +24,7 @@
 #include "fields.h"
 #include "constants.h"
 #include "master.h"
+#include "stats.h"
 
 #include "advec.h"
 #include "advec_disabled.h"
@@ -50,7 +51,18 @@ double Advec_disabled<TF>::get_cfl(const double dt)
 }
 
 template<typename TF>
-void Advec_disabled<TF>::exec() {}
+void Advec_disabled<TF>::create(Stats<TF>& stats)
+{
+}
+
+template<typename TF>
+void Advec_disabled<TF>::exec(Stats<TF>&) {}
+
+template<typename TF>
+void Advec_disabled<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+    std::fill(advec_flux.fld.begin(), advec_flux.fld.end(), TF(0.));
+}
 
 template class Advec_disabled<double>;
 template class Advec_disabled<float>;

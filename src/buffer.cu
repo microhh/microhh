@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,12 +21,14 @@
  */
 
 #include <cstdio>
+#include <iostream>
 #include <cmath>
 #include <stdlib.h>
 #include "grid.h"
 #include "fields.h"
 #include "buffer.h"
 #include "constants.h"
+#include "stats.h"
 #include "tools.h"
 
 namespace
@@ -69,34 +71,31 @@ void Buffer<TF>::prepare_device()
         const int nmemsize = gd.kcells*sizeof(TF);
 
         // Allocate the buffer arrays at GPU.
-        for (auto& it : fields.mp)
-            cuda_safe_call(cudaMalloc(&bufferprofs_g[it.first], nmemsize));
-        for (auto& it : fields.sp)
-            cuda_safe_call(cudaMalloc(&bufferprofs_g[it.first], nmemsize));
+        for (auto& it : fields.ap)
+        {
+            bufferprofs_g.emplace(it.first, nullptr);
+            cuda_safe_call(cudaMalloc(&bufferprofs_g.at(it.first), nmemsize));
+        }
 
         // Copy buffers to GPU.
-        for (auto& it : fields.mp)
-            cuda_safe_call(cudaMemcpy(bufferprofs_g[it.first], bufferprofs[it.first].data(), nmemsize, cudaMemcpyHostToDevice));
-        for (auto& it : fields.sp)
-            cuda_safe_call(cudaMemcpy(bufferprofs_g[it.first], bufferprofs[it.first].data(), nmemsize, cudaMemcpyHostToDevice));
+        for (auto& it : fields.ap)
+            cuda_safe_call(cudaMemcpy(bufferprofs_g.at(it.first), bufferprofs.at(it.first).data(), nmemsize, cudaMemcpyHostToDevice));
     }
 }
 
 template<typename TF>
 void Buffer<TF>::clear_device()
 {
-    if(swbuffer)
+    if (swbuffer)
     {
-        for (auto& it : fields.mp)
-            cuda_safe_call(cudaFree(bufferprofs_g[it.first]));
-        for (auto& it : fields.sp)
-            cuda_safe_call(cudaFree(bufferprofs_g[it.first]));
+        for (auto& it : bufferprofs_g)
+            cuda_safe_call(cudaFree(it.second));
     }
 }
 
 #ifdef USECUDA
 template<typename TF>
-void Buffer<TF>::exec()
+void Buffer<TF>::exec(Stats<TF>& stats)
 {
     if (swbuffer)
     {
@@ -113,42 +112,90 @@ void Buffer<TF>::exec()
 
         const TF zsizebufi = 1./(gd.zsize-zstart);
 
-        buffer_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
-            bufferprofs_g["u"], gd.z_g,
-            zstart, zsizebufi, sigma, beta,
-            gd.istart,  gd.jstart, bufferkstart,
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
-
-        buffer_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
-            bufferprofs_g["v"], gd.z_g,
-            zstart, zsizebufi, sigma, beta,
-            gd.istart,  gd.jstart, bufferkstart,
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
-
-        buffer_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
-            bufferprofs_g["w"], gd.zh_g,
-            zstart, zsizebufi, sigma, beta,
-            gd.istart,  gd.jstart, bufferkstart,
-            gd.iend,    gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
-
-        for (auto& it : fields.sp)
+        if (swupdate)
+        {
             buffer_g<<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g,
-                bufferprofs_g[it.first], gd.z_g,
+                fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
+                fields.mp.at("u")->fld_mean_g, gd.z_g,
                 zstart, zsizebufi, sigma, beta,
-                gd.istart,  gd.jstart, bufferkstart,
-                gd.iend,    gd.jend,   gd.kend,
-                gd.icells   , gd.ijcells);
-        cuda_check_error();
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            buffer_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
+                fields.mp.at("v")->fld_mean_g, gd.z_g,
+                zstart, zsizebufi, sigma, beta,
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            buffer_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
+                fields.mp.at("w")->fld_mean_g, gd.zh_g,
+                zstart, zsizebufi, sigma, beta,
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            for (auto& it : fields.sp)
+                buffer_g<<<gridGPU, blockGPU>>>(
+                    fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g,
+                    fields.sp.at(it.first)->fld_mean_g, gd.z_g,
+                    zstart, zsizebufi, sigma, beta,
+                    gd.istart, gd.jstart, bufferkstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells);
+            cuda_check_error();
+        }
+        else
+        {
+            buffer_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
+                bufferprofs_g.at("u"), gd.z_g,
+                zstart, zsizebufi, sigma, beta,
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            buffer_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
+                bufferprofs_g.at("v"), gd.z_g,
+                zstart, zsizebufi, sigma, beta,
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            buffer_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
+                bufferprofs_g.at("w"), gd.zh_g,
+                zstart, zsizebufi, sigma, beta,
+                gd.istart, gd.jstart, bufferkstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            for (auto& it : fields.sp)
+                buffer_g<<<gridGPU, blockGPU>>>(
+                    fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g,
+                    bufferprofs_g.at(it.first), gd.z_g,
+                    zstart, zsizebufi, sigma, beta,
+                    gd.istart, gd.jstart, bufferkstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells);
+            cuda_check_error();
+        }
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name);
+        stats.calc_tend(*fields.mt.at("v"), tend_name);
+        stats.calc_tend(*fields.mt.at("w"), tend_name);
+        for (auto it : fields.st)
+            stats.calc_tend(*it.second, tend_name);
     }
 }
 #endif

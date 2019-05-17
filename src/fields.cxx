@@ -26,13 +26,14 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "field3d.h"
 #include "input.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "stats.h"
@@ -192,6 +193,41 @@ namespace
 
         return mass;
     }
+
+    std::pair<std::string, int> split_unit(const std::string s, const int pow)
+    {
+        std::string unit;
+        int power;
+
+        int delim = s.find_first_of("-123456789");
+        if(delim == std::string::npos)
+        {
+            unit  = s;
+            power = pow;
+        }
+        else
+        {
+            unit  = s.substr(0,delim);
+            power = pow * std::stoi(s.substr(delim));
+        }
+        return std::make_pair(unit, power);
+    }
+
+    std::vector<std::pair<std::string, int>> get_units_vector(const std::string str, const int pow)
+    {
+        std::vector<std::string> fields;
+        std::vector<std::pair<std::string, int>> unit;
+
+        boost::split(fields, str, boost::is_any_of( " " ), boost::token_compress_on );
+        for (auto& field : fields)
+        {
+            if (field != "-" && field != "")
+                unit.push_back(split_unit(field, pow));
+        }
+
+        return unit;
+    }
+
 }
 
 template<typename TF>
@@ -291,8 +327,10 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     for (auto& tmp : atmp)
         nerror += tmp->init();
 
-    if (nerror > 0)
-        throw 1;
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error allocating fields");
 
     // Get the grid data.
     const Grid_data<TF>& gd = grid.get_grid_data();
@@ -430,6 +468,9 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 template<typename TF>
 void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 {
+    if (tmp == nullptr)
+        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+
     atmp.push_back(std::move(tmp));
 }
 
@@ -462,16 +503,14 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    const std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-    stats.calc_stats("w", *mp["w"], no_offset, no_threshold, {"mean","2","3","4"});
-    stats.calc_stats("u", *mp["u"], grid.utrans, no_threshold, operators);
-    stats.calc_stats("v", *mp["v"], grid.vtrans, no_threshold, operators);
+    stats.calc_stats("w", *mp.at("w"), no_offset, no_threshold);
+    stats.calc_stats("u", *mp.at("u"), grid.utrans, no_threshold);
+    stats.calc_stats("v", *mp.at("v"), grid.vtrans, no_threshold);
 
     for (auto& it : sp)
-    {
-        stats.calc_stats(it.first, *it.second, no_offset, no_threshold, operators);
-    }
-    stats.calc_stats("p", *sd["p"], no_offset, no_threshold, {"mean","2","w","grad"});
+        stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
+
+    stats.calc_stats("p", *sd.at("p"), no_offset, no_threshold);
 
     // Calculate covariances
     for (auto& it1 : ap)
@@ -501,8 +540,8 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 {
     if (mp.find(fldname) != mp.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     // Add a new prognostic momentum variable.
@@ -510,7 +549,7 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
-    std::string tunit     = unit + "s-1";
+    std::string tunit     = simplify_unit(unit, "s-1");
     std::string tlongname = "Tendency of " + longname;
     mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
@@ -526,8 +565,8 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 {
     if (sp.find(fldname)!=sp.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     // add a new scalar variable
@@ -536,7 +575,7 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
-    std::string tunit     = unit + "s-1";
+    std::string tunit     = simplify_unit(unit, "s-1");
     st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
 
     // add the prognostic variable and its tendency to the collection
@@ -551,8 +590,8 @@ void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname,
 {
     if (sd.find(fldname)!=sd.end())
     {
-        master.print_error("\"%s\" already exists\n", fldname.c_str());
-        throw 1;
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
     }
 
     sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
@@ -593,30 +632,30 @@ void Fields<TF>::init_tmp_field_g()
 
 
 template<typename TF>
-void Fields<TF>::create(Input& inputin, Data_block& profs)
+void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
 {
     // Randomize the momentum
-    randomize(inputin, "u", mp.at("u")->fld.data());
-    randomize(inputin, "w", mp.at("w")->fld.data());
+    randomize(input, "u", mp.at("u")->fld.data());
+    randomize(input, "w", mp.at("w")->fld.data());
 
     // Only add perturbation to v in case of a 3d run.
     const Grid_data<TF>& gd = grid.get_grid_data();
     if (gd.jtot > 1)
-        randomize(inputin, "v", mp.at("v")->fld.data());
+        randomize(input, "v", mp.at("v")->fld.data());
 
     // Randomize the scalars
     for (auto& it : sp)
-        randomize(inputin, it.first, it.second->fld.data());
+        randomize(input, it.first, it.second->fld.data());
 
     // Add Vortices
-    add_vortex_pair(inputin);
+    add_vortex_pair(input);
 
     // Add the mean profiles to the fields
-    add_mean_profs(profs);
+    add_mean_profs(input_nc);
 
     /*
-    nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid.utrans);
-    nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid.vtrans);
+    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, grid.utrans);
+    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, grid.vtrans);
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
@@ -658,8 +697,8 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
 
     if (rndz > gd.zsize)
     {
-        master.print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, gd.zsize);
-        throw std::runtime_error("Randomizer error");
+        std::string msg = "randomizer height rndz (" + std::to_string(rndz) + ") higher than domain top (" + std::to_string(gd.zsize) +")";
+        throw std::runtime_error(msg);
     }
 
     // Find the location of the randomizer height.
@@ -705,30 +744,34 @@ namespace
 }
 
 template<typename TF>
-void Fields<TF>::add_mean_profs(Data_block& profs)
+void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     std::vector<TF> prof(gd.ktot);
 
-    profs.get_vector(prof, "u", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(mp["u"]->fld.data(), prof.data(), grid.utrans,
+    const std::vector<int> start = {0};
+    const std::vector<int> count = {gd.ktot};
+
+    Netcdf_group group_nc = input_nc.get_group("init");
+    group_nc.get_variable(prof, "u", start, count);
+
+    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    profs.get_vector(prof, "v", gd.ktot, 0, 0);
-    add_mean_prof_to_field<TF>(mp["v"]->fld.data(), prof.data(), grid.vtrans,
+    group_nc.get_variable(prof, "v", start, count);
+    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        profs.get_vector(prof, f.first, gd.ktot, 0, 0);
+        group_nc.get_variable(prof, f.first, start, count);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
 }
-
 
 template<typename TF>
 void Fields<TF>::add_vortex_pair(Input& inputin)
@@ -751,8 +794,8 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
                     for (int i=gd.istart; i<gd.iend; ++i)
                     {
                         const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        mp["u"]->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.xh[i])/gd.xsize)*std::cos(pi*gd.z [k]/gd.zsize);
-                        mp["w"]->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.x [i])/gd.xsize)*std::sin(pi*gd.zh[k]/gd.zsize);
+                        mp.at("u")->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.xh[i])/gd.xsize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp.at("w")->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.x [i])/gd.xsize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
         else if (vortexaxis == "x")
             for (int k=gd.kstart; k<gd.kend; ++k)
@@ -760,8 +803,8 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
                     for (int i=gd.istart; i<gd.iend; ++i)
                     {
                         const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        mp["v"]->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
-                        mp["w"]->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
+                        mp.at("v")->fld[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(gd.yh[j])/gd.ysize)*std::cos(pi*gd.z [k]/gd.zsize);
+                        mp.at("w")->fld[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(gd.y [j])/gd.ysize)*std::sin(pi*gd.zh[k]/gd.zsize);
                     }
     }
 }
@@ -790,87 +833,33 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
+    const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
+    const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
+
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
-        // Mean velocity compontents
-        stats.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z",  Stats_whitelist_type::White );
-        stats.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z",  Stats_whitelist_type::White );
-        stats.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh", Stats_whitelist_type::White);
-
-        // Mean prognostic scalars
-        for (auto& it : sp)
-            stats.add_prof(it.first, it.second->longname, it.second->unit, "z", Stats_whitelist_type::White);
-
-        // Pressure with its variance, fluxes and gradients
-        stats.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z", Stats_whitelist_type::White);
-        std::string sn("2");
-        stats.add_prof(sd["p"]->name + sn,    "Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
-        stats.add_prof(sd["p"]->name +"w",    "Turbulent flux of the "   + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
-        stats.add_prof(sd["p"]->name +"grad", "Gradient of the "         + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
-
-        // Add the second up to fourth moments of the velocity and scalars
-        for (int n=2; n<5; ++n)
+        for (auto& it : ap)
         {
-            std::string sn = std::to_string(n);
-            //std::stringstream ss;
-            //ss << n;
-            //std::string sn = ss.str();
-            stats.add_prof(ap["u"]->name + sn, "Moment "+ sn + " of the " + ap["u"]->longname,"(" + ap["u"]->unit + ")"+sn, "z" );
-            stats.add_prof(ap["v"]->name + sn, "Moment "+ sn + " of the " + ap["v"]->longname,"(" + ap["v"]->unit + ")"+sn, "z" );
-            stats.add_prof(ap["w"]->name + sn, "Moment "+ sn + " of the " + ap["w"]->longname,"(" + ap["w"]->unit + ")"+sn, "zh" );
-            for (auto& it : sp)
-                stats.add_prof(it.first + sn, "Moment "+ sn + " of the " + it.second->longname,"(" + it.second->unit + ")"+sn, "z" );
+            if(it.first=="w")
+                stats.add_profs(*it.second, "zh", stat_op_w);
+            else
+                stats.add_profs(*it.second, "z", stat_op_def);
         }
-
-        // Gradients
-        stats.add_prof("ugrad", "Gradient of the " + ap["u"]->longname, "s-1", "zh");
-        stats.add_prof("vgrad", "Gradient of the " + ap["v"]->longname, "s-1", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"grad", "Gradient of the " + it.second->longname, it.second->unit + " m-1", "zh");
-
-        // Turbulent fluxes
-        stats.add_prof("uw", "Turbulent flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vw", "Turbulent flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"w", "Turbulent flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
-
-        // Diffusive fluxes
-        stats.add_prof("udiff", "Diffusive flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vdiff", "Diffusive flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"diff", "Diffusive flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
-
-        // Total fluxes
-        stats.add_prof("uflux", "Total flux of the " + ap["u"]->longname, "m2 s-2", "zh");
-        stats.add_prof("vflux", "Total flux of the " + ap["v"]->longname, "m2 s-2", "zh");
-        for (auto& it : sp)
-            stats.add_prof(it.first+"flux", "Total flux of the " + it.second->longname, it.second->unit + " m s-1", "zh");
+        stats.add_profs(*sd.at("p"), "z", stat_op_p);
 
         // Covariances
-        for (typename Field_map<TF>::iterator it1=ap.begin(); it1!=ap.end(); ++it1)
+        for (auto& it1 : ap)
         {
-            for (typename Field_map<TF>::iterator it2=it1; it2!=ap.end(); ++it2)
+            for (auto& it2 : ap)
             {
                 std::string locstring;
-                if(it2->first == "w")
+                if(it2.first == "w")
                     locstring = "zh";
                 else
                     locstring = "z";
-
-                for (int pow1 = 1; pow1<5; ++pow1)
-                {
-                    for (int pow2 = 1; pow2<5; ++pow2)
-                    {
-                        std::string spow1 = std::to_string(pow1);
-                        std::string spow2 = std::to_string(pow2);
-
-                        std::string name = it1->first + spow1 + it2->first +spow2;
-                        std::string longname = "Covariance of " + it1->first +spow1 + " and " + it2->first +spow2;
-                        std::string unit = "(" + it1->second->unit + ")" + spow1 + "(" + it2->second->unit + ")" + spow2;
-                        stats.add_prof(name, longname, unit, locstring, Stats_whitelist_type::Black);
-                    }
-                }
+                stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
     }
@@ -883,14 +872,14 @@ void Fields<TF>::create_column(Column<TF>& column)
     if (column.get_switch())
     {
         // add variables to the statistics
-        column.add_prof(ap["u"]->name, ap["u"]->longname, ap["u"]->unit, "z" );
-        column.add_prof(ap["v"]->name, ap["v"]->longname, ap["v"]->unit, "z" );
-        column.add_prof(ap["w"]->name, ap["w"]->longname, ap["w"]->unit, "zh");
+        column.add_prof(mp.at("u")->name, mp.at("u")->longname, mp.at("u")->unit, "z" );
+        column.add_prof(mp.at("v")->name, mp.at("v")->longname, mp.at("v")->unit, "z" );
+        column.add_prof(mp.at("w")->name, mp.at("w")->longname, mp.at("w")->unit, "zh");
 
         for (auto& it : sp)
-            column.add_prof(it.first,it.second->longname, it.second->unit, "z");
+            column.add_prof(it.first, it.second->longname, it.second->unit, "z");
 
-        column.add_prof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+        column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
 }
 
@@ -925,8 +914,10 @@ void Fields<TF>::save(int n)
     release_tmp(tmp1);
     release_tmp(tmp2);
 
+    master.sum(&nerror, 1);
+
     if (nerror)
-        throw 1;
+        throw std::runtime_error("Error allocating fields");
 }
 
 template<typename TF>
@@ -961,8 +952,10 @@ void Fields<TF>::load(int n)
     release_tmp(tmp1);
     release_tmp(tmp2);
 
+    master.sum(&nerror, 1);
+
     if (nerror)
-        throw 1;
+        throw std::runtime_error("Error loading fields");
 }
 
 #ifndef USECUDA
@@ -971,7 +964,7 @@ TF Fields<TF>::check_momentum()
 {
     auto& gd = grid.get_grid_data();
     return calc_momentum_2nd(
-            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
             gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells,
@@ -985,7 +978,7 @@ TF Fields<TF>::check_tke()
 {
     auto& gd = grid.get_grid_data();
     return calc_tke_2nd(
-            mp["u"]->fld.data(), mp["v"]->fld.data(), mp["w"]->fld.data(),
+            mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
             gd.dz.data(), gd.itot*gd.jtot*gd.zsize,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells,
@@ -1050,16 +1043,14 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld.data(), grid.utrans);
-    column.calc_column("v",mp["v"]->fld.data(), grid.vtrans);
-    column.calc_column("w",mp["w"]->fld.data(), no_offset);
+    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
-    {
         column.calc_column(it.first, it.second->fld.data(), no_offset);
-    }
 
-    column.calc_column("p", sd["p"]->fld.data(), no_offset);
+    column.calc_column("p", sd.at("p")->fld.data(), no_offset);
 }
 #endif
 
@@ -1070,6 +1061,87 @@ bool Fields<TF>::has_mask(std::string mask_name)
         return true;
     else
         return false;
+}
+
+template<typename TF>
+std::string Fields<TF>::simplify_unit(const std::string str1, const std::string str2, const int pow1, const int pow2)
+{
+    std::vector<std::pair<std::string, int>> unit1, unit2;
+
+    //Split each string in separate unit strings; split those in pairs of unit and power
+    unit1 = get_units_vector(str1, pow1);
+    unit2 = get_units_vector(str2, pow2);
+
+    //Loop through units to find matches; in which case add the powers
+    int unit1_size = unit1.size();
+    for (auto& u2 : unit2)
+    {
+        int i;
+        for (i = 0 ; i < unit1_size; i++)
+        {
+            if (u2.first == unit1[i].first)
+            {
+                if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
+                {
+                    int j;
+                    for (j = i++ ; j < unit1_size; j++)
+                    {
+                        if (u2.first == unit1[j].first)
+                            break;
+                    }
+                    if (j == unit1_size)
+                        unit1[i].second += u2.second;
+                    else if (u2.second * unit1[j].second < 0)
+                        unit1[j].second += u2.second;
+                    else
+                        unit1[i].second += u2.second;
+                    break;
+                }
+                else
+                {
+                    unit1[i].second += u2.second;
+                    break;
+                }
+            }
+        }
+        if (i == unit1_size)
+            unit1.push_back(u2);
+    }
+
+    // Remove the entries with zero power
+    for (auto u1 = unit1.begin(); u1 != unit1.end(); )
+    {
+        if ((*u1).second  == 0)
+            u1 = unit1.erase(u1);
+        else
+            ++u1;
+    }
+
+    //Convert pairs back into strings
+    std::string output;
+    if (unit1.size() == 0)
+    {
+        output = "-";
+    }
+    else
+    {
+        std::ostringstream ostream;
+        for (auto& u1 : unit1)
+        {
+            if (u1.second == 1)
+            {
+                ostream << u1.first << " ";
+            }
+            else
+            {
+                ostream << u1.first << u1.second << " ";
+            }
+        }
+        output = ostream.str();
+        output.erase(output.end()-1); //remove final space
+    }
+
+    return output;
 }
 
 template class Fields<double>;

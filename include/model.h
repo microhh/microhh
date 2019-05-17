@@ -29,6 +29,7 @@
 class Master;
 class Input;
 class Data_block;
+class Netcdf_file;
 
 template<typename> class Grid;
 template<typename> class Fields;
@@ -49,6 +50,7 @@ template<typename> class Radiation;
 template<typename> class Decay;
 
 template<typename> class Stats;
+template<typename> class Budget;
 template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Dump;
@@ -71,6 +73,7 @@ class Model
 
         std::shared_ptr<Input> input;
         std::shared_ptr<Data_block> profs;
+        std::shared_ptr<Netcdf_file> input_nc;
 
         std::shared_ptr<Grid<TF>> grid;
         std::shared_ptr<Fields<TF>> fields;
@@ -93,12 +96,14 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
 
         std::shared_ptr<Stats<TF>> stats;
+        std::shared_ptr<Budget<TF>> budget;
         std::shared_ptr<Column<TF>> column;
         std::shared_ptr<Cross<TF>> cross;
         std::shared_ptr<Dump<TF>> dump;
 
         Sim_mode sim_mode;
         std::string sim_name;
+        bool cpu_up_to_date = false;
 
         void load();
         void save();
@@ -106,6 +111,7 @@ class Model
         void delete_objects();
         void print_status();
         void calculate_statistics(int, double, unsigned long, int, double);
+        void setup_stats();
         void set_time_step();
 
         void prepare_gpu();

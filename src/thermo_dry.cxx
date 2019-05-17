@@ -29,7 +29,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-#include "data_block.h"
+#include "netcdf_interface.h"
 #include "stats.h"
 #include "diff.h"
 
@@ -197,10 +197,11 @@ namespace
     }
 
     template<typename TF>
-    void calc_baroclinic(TF* const restrict tht, const TF* const restrict v,
-                         const TF dthetady_ls,
-                         const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                         const int jj, const int kk)
+    void calc_baroclinic_2nd(
+            TF* const restrict tht, const TF* const restrict v,
+            const TF dthetady_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -211,6 +212,28 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     tht[ijk] -= dthetady_ls * interp2(v[ijk], v[ijk+jj]);
+                }
+    }
+
+    template<typename TF>
+    void calc_baroclinic_4th(
+            TF* const restrict tht, const TF* const restrict v,
+            const TF dthetady_ls,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        using Finite_difference::O4::interp4c;
+
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tht[ijk] -= dthetady_ls * interp4c(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]);
                 }
     }
 
@@ -257,6 +280,24 @@ namespace
             rhorefh[k] = prefh[k] / (Rd<TF> * threfh[k] * exnrefh[k]);
         }
     }
+
+    template<typename TF>
+    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    {
+        TF maxgrad = 0.;
+        TF grad = 0.;
+        int kinv = kstart;
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            grad = plusminus * (fldmean[k] - fldmean[k-1]);
+            if (grad > maxgrad)
+            {
+                maxgrad = grad;
+                kinv = k;
+            }
+        }
+        return kinv;
+    }
 }
 
 template<typename TF>
@@ -282,8 +323,8 @@ boundary_cyclic(masterin, gridin)
 
     if (grid.get_spatial_order() == Grid_order::Fourth && bs.swbasestate == Basestate_type::anelastic)
     {
-        master.print_error("Anelastic mode is not supported for swspatialorder=4\n");
-        throw std::runtime_error("Illegal options swbasestate");
+        std::string msg ="Anelastic mode is not supported for swspatialorder=4";
+        throw std::runtime_error(msg);
     }
 
     swbaroclinic = inputin.get_item<bool>("thermo", "swbaroclinic", "", false);
@@ -314,7 +355,7 @@ void Thermo_dry<TF>::init()
 }
 
 template<typename TF>
-void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
     /* Setup base state:
@@ -326,7 +367,13 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
 
         // Read the reference profile, and start writing it at index kstart as thref is kcells long.
-        data_block.get_vector(bs.thref, "th", gd.kmax, 0, gd.kstart);
+        const std::vector<int> start = {0};
+        const std::vector<int> count = {gd.ktot};
+
+        Netcdf_group group_nc = input_nc.get_group("init");
+        group_nc.get_variable(bs.thref, "th", start, count);
+        // Shift the vector to take into account the ghost cells;
+        std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());
 
         calc_base_state(
                 fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
@@ -349,8 +396,7 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
     boundary_cyclic.init();
 
     // Process the time dependent surface pressure
-    tdep_pbot->create_timedep();
-
+    tdep_pbot->create_timedep(input_nc);
 
     // Set up output classes
     create_stats(stats);
@@ -361,24 +407,38 @@ void Thermo_dry<TF>::create(Input& inputin, Data_block& data_block, Stats<TF>& s
 
 #ifndef USECUDA
 template<typename TF>
-void Thermo_dry<TF>::exec( const double dt)
+void Thermo_dry<TF>::exec( const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
+    {
         calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
+
+        if (swbaroclinic)
+            calc_baroclinic_2nd(
+                    fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dthetady_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
+    {
         calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("th")->fld.data(), bs.threfh.data(),
                                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                                gd.icells, gd.ijcells);
 
-    if (swbaroclinic)
-        calc_baroclinic(fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
-                        dthetady_ls,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                        gd.icells, gd.ijcells);
+        if (swbaroclinic)
+            calc_baroclinic_4th(
+                    fields.st.at("th")->fld.data(), fields.mp.at("v")->fld.data(),
+                    dthetady_ls,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    }
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -513,6 +573,14 @@ TF Thermo_dry<TF>::get_buoyancy_diffusivity()
     return fields.sp.at("th")->visc;
 }
 
+template<typename TF>
+int Thermo_dry<TF>::get_bl_depth()
+{
+    // Use the potential temperature gradient to find the BL depth
+    auto& gd = grid.get_grid_data();
+    return calc_zi(fields.sp.at("th")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
 template <typename TF>
 void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
 {
@@ -521,30 +589,27 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
     {
         bs_stats = bs;
         // Add base state profiles to statistics
-        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields.rhoref.data());
-        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields.rhorefh.data());
-        stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", bs_stats.thref.data());
-        stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref.data());
+        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields.rhorefh);
+        stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", bs_stats.thref);
+        stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",bs_stats.thref);
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
-            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref.data());
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh.data());
+            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z",  bs_stats.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs_stats.prefh);
             stats.add_prof("T", "Absolute temperature", "K", "z");
         }
 
-        stats.add_prof("b", "Buoyancy", "m s-2", "z");
-        for (int n=2; n<5; ++n)
-        {
-            std::string sn = std::to_string(n);
-            stats.add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-        }
+        auto b = fields.get_tmp();
+        b->name = "b";
+        b->longname = "Buoyancy";
+        b->unit = "m s-2";
+        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        fields.release_tmp(b);
 
-        stats.add_prof("bgrad", "Gradient of the buoyancy", "s-2", "zh");
-        stats.add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-        stats.add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+        stats.add_time_series("zi", "Boundary Layer Depth", "m");
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
 
-        // stats.add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
     }
 }
 
@@ -636,12 +701,10 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     get_buoyancy_surf(*b, true);
     get_buoyancy_fluxbot(*b, true);
 
-    // calculate the mean
-    std::vector<std::string> operators = {"mean","2","3","4","w","grad","diff","flux"};
-
-    stats.calc_stats("b", *b, no_offset, no_threshold, operators);
+    stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
+    stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
 
 template<typename TF>
@@ -657,8 +720,8 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
             get_thermo_field(*output, "T", false, true);
         else
         {
-            master.print_error("Thermo dump of field \"%s\" not supported\n",it.c_str());
-            throw std::runtime_error("Error in Thermo Dump");
+            std::string msg = "Thermo dump of field \"" + it + "\" not supported";
+            throw std::runtime_error(msg);
         }
         dump.save_dump(output->fld.data(), it, iotime);
     }

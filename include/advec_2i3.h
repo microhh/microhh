@@ -41,9 +41,12 @@ class Advec_2i3 : public Advec<TF>
         Advec_2i3(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
         virtual ~Advec_2i3(); ///< Destructor of the advection class.
 
-        void exec(); ///< Execute the advection scheme.
+        void create(Stats<TF>&);
+        void exec(Stats<TF>&); ///< Execute the advection scheme.
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
         double get_cfl(double); ///< Get the CFL number.
+
+        void get_advec_flux(Field3d<TF>&, const Field3d<TF>&);
 
     private:
         using Advec<TF>::master;
@@ -53,5 +56,8 @@ class Advec_2i3 : public Advec<TF>
 
         using Advec<TF>::cflmax;
         using Advec<TF>::cflmin;
+
+        const std::string tend_name = "advec";
+        const std::string tend_longname = "Advection";
 };
 #endif

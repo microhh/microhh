@@ -2,7 +2,7 @@
 
 basedir=$(pwd)
 export PYTHON_EXEC=python3
-export MICROHH_EXEC=$basedir/"../build_gpu/microhh_single" #Choose here to use the CPU, GPU, MPI, etc version of MicroHH
+export MICROHH_EXEC=$basedir/"../build/microhh" #Choose here to use the CPU, GPU, MPI, etc version of MicroHH
 blacklist="moser600/ eady/ eady_callies/ gabls4s3/ gabls4s3_nbl/ vanheerwarden2016/"
 echo "Test runs at" $(date)
 echo "MicroHH Binary:" $MICROHH_EXEC

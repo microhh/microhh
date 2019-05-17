@@ -27,6 +27,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
+#include "stats.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -196,8 +197,8 @@ namespace
 }
 
 template<typename TF>
-Diff_4<TF>::Diff_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Diff<TF>(masterin, gridin, fieldsin, inputin)
+Diff_4<TF>::Diff_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
+    Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin)
 {
     dnmax = inputin.get_item<double>("diff", "dnmax", "", 0.4);
 }
@@ -239,11 +240,17 @@ void Diff_4<TF>::create(Stats<TF>& stats)
     dnmul = 0;
     for (int k=gd.kstart; k<gd.kend; ++k)
         dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
+
+    stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+    stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+    for (auto it : fields.st)
+        stats.add_tendency(*it.second, "z", tend_name, tend_longname);
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_4<TF>::exec(Boundary<TF>& boundary)
+void Diff_4<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -286,6 +293,12 @@ void Diff_4<TF>::exec(Boundary<TF>& boundary)
                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                          gd.dx, gd.dy, gd.dzi4.data(), gd.dzhi4.data());
     }
+
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

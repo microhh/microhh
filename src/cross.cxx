@@ -31,10 +31,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-//#include "thermo.h"
 #include "timeloop.h"
-#include <netcdf>
-
 
 namespace
 {
@@ -249,8 +246,8 @@ Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         // Crash on empty list.
         if (crosslist.empty())
         {
-            master.print_error("empty cross section list\n");
-            throw 1;
+            std::string msg = "Empty cross-section list";
+            throw std::runtime_error(msg);
         }
 
         // get the list of indices at which to take cross sections
@@ -297,7 +294,6 @@ void Cross<TF>::init(double ifactor)
 template<typename TF>
 void Cross<TF>::create()
 {
-    int nerror = 0;
     int temploc, temploch, hoffset;
 
     auto& gd = grid.get_grid_data();
@@ -312,8 +308,8 @@ void Cross<TF>::create()
 
         if (it < 0 || it > gd.ysize) // Check if cross location is inside domain
         {
-            master.print_error("%f in [cross][xz] is outside domain\n", it);
-            ++nerror;
+            std::string msg = std::to_string(it) + " in [cross][xz] is outside domain";
+            throw std::runtime_error(msg);
         }
         else
         {
@@ -357,8 +353,8 @@ void Cross<TF>::create()
 
         if (it < 0 || it > gd.xsize) // Check if cross location is inside domain
         {
-            master.print_error("%f in [cross][yz] is outside domain\n", it);
-            ++nerror;
+            std::string msg = std::to_string(it) + " in [cross][yz] is outside domain";
+            throw std::runtime_error(msg);
         }
         else
         {
@@ -400,8 +396,8 @@ void Cross<TF>::create()
         hoffset = 0;
         if (it < 0 || it > gd.zsize) // Check if cross location is inside domain
         {
-            master.print_error("%f in [cross][xy] is outside domain\n", it);
-            ++nerror;
+            std::string msg = std::to_string(it) + " in [cross][xy] is outside domain";
+            throw std::runtime_error(msg);
         }
         else
         {
@@ -450,8 +446,6 @@ void Cross<TF>::create()
             master.print_warning("field %s in [cross][crosslist] is illegal\n", it.c_str());
     }
 
-    if (nerror)
-        throw 1;
 }
 
 template<typename TF>

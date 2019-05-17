@@ -29,8 +29,8 @@ template<typename TF>
 class Diff_2 : public Diff<TF>
 {
     public:
-        Diff_2(Master&, Grid<TF>&, Fields<TF>&, Input&);  ///< Constructor of the diffusion class
-        ~Diff_2();                                ///< Destructor of the diffusion class
+        Diff_2(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&); ///< Constructor of the diffusion class
+        ~Diff_2(); ///< Destructor of the diffusion class
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
@@ -38,10 +38,10 @@ class Diff_2 : public Diff<TF>
 
         void create(Stats<TF>&);
         void init() {};
-        void exec(Boundary<TF>&);
+        void exec(Stats<TF>&);
 
         // Empty functions, these are allowed to pass.
-        void exec_viscosity(Boundary<TF>&, Thermo<TF>&) {}
+        void exec_viscosity(Thermo<TF>&) {}
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
         void exec_stats(Stats<TF>&) {};
 
@@ -58,5 +58,7 @@ class Diff_2 : public Diff<TF>
 
         double dnmax;
         double dnmul;
+        const std::string tend_name = "diff";
+        const std::string tend_longname = "Diffusion";
 };
 #endif

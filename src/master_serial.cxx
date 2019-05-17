@@ -65,8 +65,8 @@ void Master::init(Input& input)
 
     if (md.nprocs != md.npx*md.npy)
     {
-        print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", md.npx, md.npy);
-        throw 1;
+        std::string msg = "npx*npy = " + std::to_string(md.npy) + "*" + std::to_string(md.npy) + " has to be equal to 1*1 in serial mode";
+        throw std::runtime_error(msg);
     }
 
     // set the coordinates to 0
@@ -86,11 +86,11 @@ double Master::get_wall_clock_time()
 // void Master::wait_all() {}
 
 // All broadcasts return directly, because there is nothing to broadcast.
-void Master::broadcast(char* data, int datasize) {}
-void Master::broadcast(int* data, int datasize) {}
-void Master::broadcast(unsigned long* data, int datasize) {}
-void Master::broadcast(double* data, int datasize) {}
-void Master::broadcast(float* data, int datasize) {}
+void Master::broadcast(char* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(int* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(unsigned long* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(double* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(float* data, int datasize, int mpiid_to_send) {}
 void Master::sum(int* var, int datasize) {}
 void Master::sum(double* var, int datasize) {}
 void Master::sum(float* var, int datasize) {}

@@ -19,13 +19,13 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
 #include <sstream>
 #include <iostream>
-#include "data_block.h"
 #include "fields.h"
 #include "grid.h"
 #include "master.h"
@@ -75,15 +75,6 @@ namespace
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
-
-    template<typename TF> __global__
-    void set_to_huge(TF* __restrict__ a, int nsize)
-    {
-        const int n = blockIdx.x*blockDim.x + threadIdx.x;
-
-        if (n < nsize)
-            a[n] = -1e30;
-    }
 }
 
 #ifdef USECUDA
@@ -103,7 +94,7 @@ TF Fields<TF>::check_momentum()
     auto tmp1 = get_tmp_g();
 
     calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
+        mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -135,7 +126,7 @@ TF Fields<TF>::check_tke()
     auto tmp1 = get_tmp_g();
 
     calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
-        mp["u"]->fld_g, mp["v"]->fld_g, mp["w"]->fld_g,
+        mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -213,15 +204,15 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 
     const int nblock = 256;
     const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells);
-    set_to_huge<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells);
+    const TF  huge   = -1e30;
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
+    set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
     cuda_check_error();
     #endif
 
@@ -428,16 +419,16 @@ void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp["u"]->fld_g, grid.utrans);
-    column.calc_column("v",mp["v"]->fld_g, grid.vtrans);
-    column.calc_column("w",mp["w"]->fld_g, no_offset);
+    column.calc_column("u",mp.at("u")->fld_g, grid.utrans);
+    column.calc_column("v",mp.at("v")->fld_g, grid.vtrans);
+    column.calc_column("w",mp.at("w")->fld_g, no_offset);
 
     for (auto& it : sp)
     {
         column.calc_column(it.first, it.second->fld_g, no_offset);
     }
 
-    column.calc_column("p", sd["p"]->fld_g, no_offset);
+    column.calc_column("p", sd.at("p")->fld_g, no_offset);
 }
 #endif
 

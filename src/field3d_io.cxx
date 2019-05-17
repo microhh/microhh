@@ -113,7 +113,7 @@ void Field3d_io<TF>::exit_mpi()
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2, char* filename, TF offset)
+int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2, const char* filename, TF offset)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -162,7 +162,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2, char* filename, TF offset)
+int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2, const char* filename, TF offset)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -211,13 +211,13 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* filename, int jslice)
+int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int jslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
@@ -271,13 +271,13 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* filename, int islice)
+int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int islice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    int nerror=0;
+    int nerror = 0;
 
     const int jj = gd.icells;
     const int kk = gd.ijcells;
@@ -333,7 +333,7 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -385,14 +385,14 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     // extract the data from the 3d field without the ghost cells
-    const int jj  = gd.icells;
-    const int kk  = gd.icells*gd.jcells;
+    const int jj = gd.icells;
+    const int kk = gd.icells*gd.jcells;
     const int jjb = gd.imax;
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
@@ -447,7 +447,7 @@ void Field3d_io<TF>::exit_mpi()
 
 template<typename TF>
 int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        char* filename, const TF offset)
+        const char* filename, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
@@ -485,7 +485,7 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 
 template<typename TF>
 int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        char* filename, const TF offset)
+        const char* filename, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
@@ -522,7 +522,7 @@ int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* filename, int jslice)
+int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int jslice)
 {
     auto& gd = grid.get_grid_data();
 
@@ -555,7 +555,7 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* filename, int islice)
+int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int islice)
 {
     auto& gd = grid.get_grid_data();
 
@@ -590,7 +590,7 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
 
@@ -627,7 +627,7 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, char* fil
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, char* filename, int kslice)
+int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
 

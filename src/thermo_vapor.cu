@@ -30,6 +30,8 @@
 #include "master.h"
 #include "tools.h"
 #include "column.h"
+#include "stats.h"
+
 #include "thermo_moist_functions.h"
 
 namespace
@@ -202,7 +204,7 @@ void Thermo_vapor<TF>::backward_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_vapor<TF>::exec(const double dt)
+void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -225,8 +227,8 @@ void Thermo_vapor<TF>::exec(const double dt)
 
         // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp.at("thl")->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp.at("qt")->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
         auto tmp = fields.get_tmp();
 
@@ -249,6 +251,10 @@ void Thermo_vapor<TF>::exec(const double dt)
         gd.iend,    gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
+
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+
 }
 #endif
 
@@ -279,8 +285,8 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
 
         // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles.
-        cudaMemcpy(fields.sp["thl"]->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
-        cudaMemcpy(fields.sp["qt"]->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp.at("thl")->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+        cudaMemcpy(fields.sp.at("qt")->fld_mean.data(),  fields.sp.at("qt")->fld_mean_g,  gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
 
         auto tmp = fields.get_tmp();
 
@@ -318,8 +324,8 @@ void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bo
     }
     else
     {
-        master.print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
-        throw std::runtime_error("Illegal thermo field");
+            std::string msg = "get_thermo_field \"" + name + "\" not supported";
+            throw std::runtime_error(msg);
     }
 
     if (cyclic)

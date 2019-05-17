@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -28,8 +28,6 @@
 #include <iomanip>
 #include <vector>
 #include <utility>
-#include <netcdf>       // C++
-#include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -38,19 +36,17 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "timeloop.h"
+#include "advec.h"
 #include "diff.h"
+
+#include <netcdf.h>
+#include "netcdf_interface.h"
 
 namespace
 {
-    using namespace netCDF;
-    using namespace netCDF::exceptions;
     using namespace Constants;
 
-    // Help functions to switch between the different NetCDF data types
-    template<typename TF> NcType netcdf_fp_type();
-    template<> NcType netcdf_fp_type<double>() { return ncDouble; }
-    template<> NcType netcdf_fp_type<float>()  { return ncFloat; }
-
+    // Help function(s) to switch between the different NetCDF data types
     template<typename TF> TF netcdf_fp_fillvalue();
     template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
     template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
@@ -198,6 +194,7 @@ namespace
             nmask_full[k] = 0;
             nmask_half[k] = 0;
 
+            #pragma omp parallel for reduction (+:nmask_full[k], nmask_half[k]) collapse(2)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
@@ -209,6 +206,7 @@ namespace
 
         nmask_bottom     = 0;
         nmask_half[kend] = 0;
+        #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
@@ -447,6 +445,7 @@ Stats<TF>::Stats(
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
+        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
 
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
@@ -467,7 +466,6 @@ Stats<TF>::Stats(
             std::regex re(it);
             blacklist.push_back(re);
         }
-
     }
 }
 
@@ -495,13 +493,14 @@ void Stats<TF>::init(double ifactor)
 }
 
 template<typename TF>
-void Stats<TF>::create(int iotime, std::string sim_name)
+void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
 {
     // Do not create statistics file if stats is disabled.
     if (!swstats)
         return;
 
-    int nerror = 0;
+    int iotime = timeloop.get_iotime();
+
     auto& gd = grid.get_grid_data();
 
     // Create a NetCDF file for each of the masks.
@@ -509,68 +508,45 @@ void Stats<TF>::create(int iotime, std::string sim_name)
     {
         Mask<TF>& m = mask.second;
 
-        if (master.get_mpiid() == 0)
-        {
-            std::stringstream filename;
-            filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        std::stringstream filename;
+        filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
-            // Create new NetCDF file, and catch any exceptions locally, to be able
-            // to communicate them to the other processes.
-            try
-            {
-                m.data_file = new NcFile(filename.str(), NcFile::newFile);
-            }
-            catch (NcException& e)
-            {
-                master.print_error("NetCDF exception: %s\n",e.what());
-                ++nerror;
-            }
-        }
-
-        // Crash on all processes in case the file could not be written.
-        master.broadcast(&nerror, 1);
-
-        // CvH: Do not throw 1, but the appropriate exception.
-        if (nerror)
-            throw 1;
+        // Create new NetCDF file
+        m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
 
         // Create dimensions.
-        if (master.get_mpiid() == 0)
-        {
-            m.z_dim  = m.data_file->addDim("z" , gd.kmax);
-            m.zh_dim = m.data_file->addDim("zh", gd.kmax+1);
-            m.t_dim  = m.data_file->addDim("time");
+        m.data_file->add_dimension("z",  gd.kmax);
+        m.data_file->add_dimension("zh", gd.kmax+1);
+        m.data_file->add_dimension("time");
 
-            NcVar z_var;
-            NcVar zh_var;
+        // Create variables belonging to dimensions.
+        m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
+        m.iter_var->add_attribute("units", "-");
+        m.iter_var->add_attribute("long_name", "Iteration number");
 
-            // Create variables belonging to dimensions.
-            m.iter_var = m.data_file->addVar("iter", ncInt, m.t_dim);
-            m.iter_var.putAtt("units", "-");
-            m.iter_var.putAtt("long_name", "Iteration number");
+        m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
+        if (timeloop.has_utc_time())
+            m.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+        else
+            m.time_var->add_attribute("units", "seconds since start");
+        m.time_var->add_attribute("long_name", "Time");
 
-            m.t_var = m.data_file->addVar("time", ncDouble, m.t_dim);
-            m.t_var.putAtt("units", "s");
-            m.t_var.putAtt("long_name", "Time");
+        Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
+        z_var.add_attribute("units", "m");
+        z_var.add_attribute("long_name", "Full level height");
 
-            z_var = m.data_file->addVar("z", netcdf_fp_type<TF>(), m.z_dim);
-            z_var.putAtt("units", "m");
-            z_var.putAtt("long_name", "Full level height");
+        Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
+        zh_var.add_attribute("units", "m");
+        zh_var.add_attribute("long_name", "Half level height");
 
-            zh_var = m.data_file->addVar("zh", netcdf_fp_type<TF>(), m.zh_dim);
-            zh_var.putAtt("units", "m");
-            zh_var.putAtt("long_name", "Half level height");
+        // Save the grid variables.
+        std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
+        std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
+        z_var .insert( z_nogc, {0});
+        zh_var.insert(zh_nogc, {0});
 
-            // Save the grid variables.
-            z_var .putVar(&gd.z [gd.kstart]);
-            zh_var.putVar(&gd.zh[gd.kstart]);
-
-            // Synchronize the NetCDF file.
-            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-            //m.data_file->sync();
-            nc_sync(m.data_file->getId());
-        }
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
 
         m.nmask. resize(gd.kcells);
         m.nmaskh.resize(gd.kcells);
@@ -608,187 +584,274 @@ bool Stats<TF>::do_statistics(unsigned long itime)
 }
 
 template<typename TF>
-void Stats<TF>::exec(int iteration, double time, unsigned long itime)
+void Stats<TF>::set_tendency(bool in)
+{
+    doing_tendency = in;
+}
+
+template<typename TF>
+void Stats<TF>::exec(const int iteration, const double time, const unsigned long itime)
 {
     if (!swstats)
         return;
 
     auto& gd = grid.get_grid_data();
 
-    // check if time for execution
-    // BvS: why was this used? This function is only called after a stats->do_statistics(), which already checks the sampletime...
-    //if (itime % isampletime != 0)
-    //    return;
-
-    // Write message in case stats is triggered
+    // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
+
+    // Finalize the total tendencies
+    if (do_tendency())
+    {
+        for (auto& var: tendency_order)
+        {
+            //Subtract the previous tendency from the current one; skipping the last one (total tendency)
+            for (auto tend = std::next(var.second.rbegin()); tend != std::prev(var.second.rend()); ++tend)
+            {
+                auto prev_tend = std::next(tend); // It is a reverse iterator....
+                std::string name = var.first + "_" + *tend;
+                std::string prev_name = var.first + "_" + *prev_tend;
+                for (auto& mask : masks)
+                {
+                    Mask<TF>& m = mask.second;
+
+                    std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
+                                    m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
+
+                    const int* nmask;
+                    if (m.profs.at(name).level == Level_type::Full)
+                        nmask = m.nmask.data();
+                    else
+                        nmask = m.nmaskh.data();
+                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+                }
+            }
+
+            var.second.clear();
+        }
+    }
 
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
 
-        // Put the data into the NetCDF file
-        if (master.get_mpiid() == 0)
+        // Put the data into the NetCDF file.
+        const std::vector<int> time_index{statistics_counter};
+
+        // Write the time and iteration number.
+        m.time_var->insert(time     , time_index);
+        m.iter_var->insert(iteration, time_index);
+
+        const std::vector<int> time_height_index = {statistics_counter, 0};
+
+        for (auto& p : m.profs)
         {
-            const std::vector<size_t> time_index = {static_cast<size_t>(statistics_counter)};
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
 
-            // Write the time and iteration number
-            m.t_var   .putVar(time_index, &time     );
-            m.iter_var.putVar(time_index, &iteration);
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + gd.kstart,
+                    p.second.data.begin() + gd.kstart + ksize);
 
-            const std::vector<size_t> time_height_index = {static_cast<size_t>(statistics_counter), 0};
-            std::vector<size_t> time_height_size  = {1, 0};
-
-            //for (Prof_map::const_iterator it=m.profs.begin(); it!=m.profs.end(); ++it)
-            for (auto& p : m.profs)
-            {
-                time_height_size[1] = m.profs[p.first].ncvar.getDim(1).getSize();
-                m.profs[p.first].ncvar.putVar(time_height_index, time_height_size, &m.profs[p.first].data.data()[gd.kstart]);
-            }
-
-            for (auto& ts: m.tseries)
-                m.tseries[ts.first].ncvar.putVar(time_index, &m.tseries[ts.first].data);
-
-            // Synchronize the NetCDF file
-            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
-            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
-            //m.dataFile->sync();
-            nc_sync(m.data_file->getId());
+            m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
         }
+
+        for (auto& ts : m.tseries)
+            m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
+
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
     }
+
     wmean_set = false;
 
-    // Increment the statistics index
+    // Increment the statistics index.
     ++statistics_counter;
 }
 
-// Retrieve the user input list of requested masks
+// Retrieve the user input list of requested masks.
 template<typename TF>
 const std::vector<std::string>& Stats<TF>::get_mask_list()
 {
     return masklist;
 }
 
-// Add a new mask to the mask map
+// Add a new mask to the mask map.
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
 {
-    masks[maskname].name = maskname;
-    masks[maskname].data_file = 0;
+    masks.emplace(maskname, Mask<TF>{});
+    masks.at(maskname).name = maskname;
+    masks.at(maskname).data_file = 0;
 
     int nmasks = masks.size();
-    masks[maskname].flag  = (1 << (2 * (nmasks-1)    ));
-    masks[maskname].flagh = (1 << (2 * (nmasks-1) + 1));
+    masks.at(maskname).flag  = (1 << (2 * (nmasks-1)    ));
+    masks.at(maskname).flagh = (1 << (2 * (nmasks-1) + 1));
 }
 
-// Add a new profile to each of the NetCDF files
+// Add a new profile to each of the NetCDF files.
 template<typename TF>
-void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
+void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<std::string> operations)
 {
-    auto& gd = grid.get_grid_data();
-    // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
-    if (is_blacklisted(name, wltype))
-        return;
-    // Add profile to all the NetCDF files
-    for (auto& mask : masks)
+    std::string zloc_alt;
+    if (zloc == "z")
+        zloc_alt = "zh";
+    else if (zloc == "zh")
+        zloc_alt = "z";
+    else
+        throw std::runtime_error(zloc + " is an invalid height in add_profs");
+
+    sanitize_operations_vector(var.name, operations);
+
+    for (auto& it : operations)
     {
-        Mask<TF>& m = mask.second;
-
-        // Create the NetCDF variable
-        if (master.get_mpiid() == 0)
+        if (it == "mean")
         {
-            std::vector<NcDim> dim_vector = {m.t_dim};
-
-            if (zloc == "z")
-            {
-                dim_vector.push_back(m.z_dim);
-                m.profs[name].ncvar = m.data_file->addVar(name, netcdf_fp_type<TF>(), dim_vector);
-                // m.profs[name].data = NULL;
-            }
-            else if (zloc == "zh")
-            {
-                dim_vector.push_back(m.zh_dim);
-                m.profs[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), dim_vector);
-                // m.profs[name].data = NULL;
-            }
-
-            m.profs[name].ncvar.putAtt("units", unit.c_str());
-            m.profs[name].ncvar.putAtt("long_name", longname.c_str());
-            m.profs[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
-
-            nc_sync(m.data_file->getId());
+            add_prof(var.name, var.longname, var.unit, zloc, Stats_whitelist_type::White);
         }
+        else if (has_only_digits(it))
+        {
+            add_prof(var.name + "_" + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",std::stoi(it)), zloc);
+        }
+        else if (it == "w")
+        {
+            add_prof(var.name+"_w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+        }
+        else if (it == "grad")
+        {
+            add_prof(var.name+"_grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
+        }
+        else if (it == "flux")
+        {
+            add_prof(var.name+"_flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+        }
+        else if (it == "diff")
+        {
+            add_prof(var.name+"_diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+        }
+        else if (it == "frac")
+        {
+            add_prof(var.name+"_frac", var.longname + " fraction", "-", zloc);
+        }
+        else if (it == "path")
+        {
+            add_time_series(var.name+"_path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
+        }
+        else if (it == "cover")
+        {
+            add_time_series(var.name+"_cover", var.longname + " cover", "-");
+        }
+        else
+        {
+            throw std::runtime_error(it + "is an invalid operator name to add profs");
+        }
+    }
+}
 
-        // Resize the vector holding the data at all processes
-        m.profs[name].data.resize(gd.kcells);
-
-        varlist.push_back(name);
+// Add a new profile to each of the NetCDF files.
+template<typename TF>
+void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::string tend_name, std::string tend_longname)
+{
+    if(swstats && swtendency)
+    {
+        add_prof(var.name + "_" + tend_name, tend_longname +" " + var.longname, var.unit, zloc);
+        if(tendency_order.find(var.name) == tendency_order.end())
+        {
+            tendency_order[var.name];
+            add_tendency(var, zloc, "total", "Total");
+        }
     }
 }
 
 template<typename TF>
-void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, TF* restrict prof)
+void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2, std::string zloc)
 {
-    auto& gd = grid.get_grid_data();
-
-    for (auto& mask : masks)
+    for (int pow1 = 1; pow1<5; ++pow1)
     {
-        Mask<TF>& m = mask.second;
-
-        // Create the NetCDF variable
-        if (master.get_mpiid() == 0)
+        for (int pow2 = 1; pow2<5; ++pow2)
         {
-            NcVar var;
-            if (zloc == "z")
-                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.z_dim);
-            else if (zloc == "zh")
-                var = m.data_file->addVar(name, netcdf_fp_type<TF>(), m.zh_dim);
+            std::string spow1 = std::to_string(pow1);
+            std::string spow2 = std::to_string(pow2);
 
-            var.putAtt("units", unit.c_str());
-            var.putAtt("long_name", longname.c_str());
-            var.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+            std::string name = var1.name + "_" + spow1 + "_" + var2.name + "_" + spow2;
+            std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
+            add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
+        }
+    }
 
-            const std::vector<size_t> index = {0};
-            if (zloc == "z")
-            {
-                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax)};
-                var.putVar(index, size, &prof[gd.kstart]);
-            }
-            else if (zloc == "zh")
-            {
-                const std::vector<size_t> size  = {static_cast<size_t>(gd.kmax+1)};
-                var.putVar(index, size, &prof[gd.kstart]);
-            }
-       }
-   }
+}
+
+
+template<typename TF>
+void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string varname, std::string op)
+{
+    operations.push_back(op);
+    if (is_blacklisted(varname + "_" +  op))
+    {
+        std::regex re(varname + "_" + op);
+        whitelist.push_back(re);
+    }
+
 }
 
 template<typename TF>
-void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
+void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std::string>& operations)
 {
-    // Check whether variable is part of whitelist/blacklist.
-    if (is_blacklisted(name, wltype))
-        return;
-
-    // add the series to all files
-    for (auto& mask : masks)
+    // Sanitize the operations vector:
+    // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
+    for (auto it = operations.begin(); it != operations.end(); )
     {
-        // shortcut
-        Mask<TF>& m = mask.second;
-
-        // create the NetCDF variable
-        if (master.get_mpiid() == 0)
+        if (is_blacklisted(varname + "_" + *it))
         {
-            m.tseries[name].ncvar = m.data_file->addVar(name.c_str(), netcdf_fp_type<TF>(), m.t_dim);
-            m.tseries[name].ncvar.putAtt("units", unit.c_str());
-            m.tseries[name].ncvar.putAtt("long_name", longname.c_str());
-            m.tseries[name].ncvar.putAtt("_FillValue", netcdf_fp_type<TF>(), netcdf_fp_fillvalue<TF>());
+            it = operations.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    auto tmpvec = operations;
+    for (auto& it : tmpvec)
+    {
+        if (it == "flux")
+        {
+            add_operation(operations, varname, "diff");
+            add_operation(operations, varname, "w");
+        }
+        else if (has_only_digits(it))
+        {
+            add_operation(operations, varname, "mean");
         }
 
-        // Initialize at zero
-        m.tseries[name].data = 0.;
+        else if (it == "w")
+        {
+            add_operation(operations, varname, "mean");
+        }
     }
-    varlist.push_back(name);
+
+    // Check for duplicates
+    std::sort( operations.begin(), operations.end() );
+    operations.erase( std::unique( operations.begin(), operations.end() ), operations.end() );
+
+    // Make sure that mean goes in the front
+    for (auto& it : operations)
+    {
+        if (it == "mean" )
+        {
+            std::swap(it, operations.front());
+            break;
+        }
+    }
+    // Make sure that flux goes at the end
+    for (auto& it : operations)
+    {
+        if (it == "flux" )
+        {
+            std::swap(it, operations.back());
+            break;
+        }
+    }
 }
 
 template<typename TF>
@@ -800,12 +863,7 @@ bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wlty
     for (const auto& it : whitelist)
     {
         if (std::regex_match(name, it))
-        {
-            if (wltype == Stats_whitelist_type::Black)
-                master.print_message("DOING statistics for %s\n", name.c_str());
-
             return false;
-        }
     }
 
     if (wltype == Stats_whitelist_type::Black)
@@ -814,12 +872,107 @@ bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wlty
     for (const auto& it : blacklist)
     {
         if (std::regex_match(name, it))
-        {
-            master.print_message("NOT DOING statistics for %s\n", name.c_str());
             return true;
-        }
     }
+
     return false;
+}
+
+// Add a new profile to each of the NetCDF files
+template<typename TF>
+void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
+    if (is_blacklisted(name, wltype))
+        return;
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        return;
+
+    Level_type level;
+    if (zloc == "z")
+        level = Level_type::Full;
+    else
+        level = Level_type::Half;
+    // Add profile to all the NetCDF files.
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable.
+        // Create the profile variable and the vector at the appropriate size.
+        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
+
+        m.profs.emplace(name, tmp);
+        m.profs.at(name).ncvar.add_attribute("units", unit);
+        m.profs.at(name).ncvar.add_attribute("long_name", longname);
+
+        m.data_file->sync();
+    }
+    varlist.push_back(name);
+
+}
+
+template<typename TF>
+void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, std::vector<TF>& prof)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable.
+        Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
+
+        var.add_attribute("units", unit.c_str());
+        var.add_attribute("long_name", longname.c_str());
+        // var.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
+
+        if (zloc == "z")
+        {
+            std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend);
+            var.insert(prof_nogc, {0}, {gd.ktot});
+        }
+        else if (zloc == "zh")
+        {
+            std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
+            var.insert(prof_nogc, {0}, {gd.ktot+1});
+        }
+
+        m.data_file->sync();
+    }
+}
+
+template<typename TF>
+void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
+{
+    // Check whether variable is part of whitelist/blacklist.
+    if (is_blacklisted(name, wltype))
+        return;
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        return;
+
+    // Add the series to all files.
+    for (auto& mask : masks)
+    {
+        // Shortcut
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable
+        Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
+        m.tseries.emplace(name, tmp);
+
+        m.tseries.at(name).ncvar.add_attribute("units", unit);
+        m.tseries.at(name).ncvar.add_attribute("long_name", longname);
+        // m.tseries.at(name).ncvar.add_attribute("_FillValue", netcdf_fp_fillvalue<TF>());
+    }
+
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -859,16 +1012,19 @@ void Stats<TF>::finalize_masks()
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
-            calc_area(it.second.profs["area" ].data.data(), gd.sloc.data(), it.second.nmask .data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(),
+                    gd.kstart, gd.kend, gd.itot*gd.jtot);
 
         it1 = std::find(varlist.begin(), varlist.end(), "areah");
         if (it1 != varlist.end())
-            calc_area(it.second.profs["areah"].data.data(), gd.wloc.data(), it.second.nmaskh.data(), gd.kstart, gd.kend, gd.itot*gd.jtot);
+            calc_area(it.second.profs.at("areah").data.data(), gd.wloc.data(), it.second.nmaskh.data(),
+                    gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
 
 template<typename TF>
-void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
+void Stats<TF>::set_mask_thres(
+        std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
     unsigned int flag, flagh;
@@ -906,20 +1062,33 @@ void Stats<TF>::set_mask_thres(std::string mask_name, Field3d<TF>& fld, Field3d<
 }
 
 template<typename TF>
-void Stats<TF>::set_prof(const std::string varname, const std::vector<TF> prof)
+void Stats<TF>::set_prof(const std::string varname, const std::vector<TF>& prof)
+{
+    auto it = std::find(varlist.begin(), varlist.end(), varname);
+    if (it == varlist.end())
+        throw std::runtime_error("Set_prof: Variable " + varname + " does not exist");
+    else
+    {
+        for (auto& it : masks)
+            it.second.profs.at(varname).data = prof;
+    }
+
+}
+
+template<typename TF>
+void Stats<TF>::set_timeseries(const std::string varname, const TF val)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
     if (it != varlist.end())
     {
         for (auto& it : masks)
-            it.second.profs.at(varname).data = prof;
+            it.second.tseries.at(varname).data = val;
     }
 }
 
 template<typename TF>
 void Stats<TF>::calc_stats(
-        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold,
-        std::vector<std::string> operations)
+        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     auto& gd = grid.get_grid_data();
 
@@ -927,48 +1096,30 @@ void Stats<TF>::calc_stats(
     const int* nmask;
     std::string name;
 
-    sanitize_operations_vector(operations);
-
-    // Process mean first
-    auto it = std::find(operations.begin(), operations.end(), "mean");
-    if (it != operations.end())
+    // Calc mean
+    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
     {
-        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
-        if (it1 != varlist.end())
+        for (auto& m : masks)
         {
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, fld.loc[2]);
-                calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
-                // Add the offset.
-                for (auto& value : m.second.profs.at(varname).data)
-                    value += offset;
+            // Add the offset.
+            for (auto& value : m.second.profs.at(varname).data)
+                value += offset;
 
-                set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
-            }
-
-            if (varname == "w")
-                wmean_set = true;
-
-            operations.erase(it);
+            set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
 
-    // Loop over all other operations.
-    for (auto& it : operations)
+    // Calc moments
+    for (int power=2; power<=4; power++)
     {
-        name = varname+it;
-        auto it1 = std::find(varlist.begin(), varlist.end(), name);
-
-        if (it1 == varlist.end())
+        name = varname + "_" + std::to_string(power);
+        if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         {
-        }
-        else if (has_only_digits(it))
-        {
-            int power = std::stoi(it);
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
@@ -981,167 +1132,192 @@ void Stats<TF>::calc_stats(
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
         }
-        else if (it == "w")
+    }
+
+    // Calc Resolved Flux
+    name = varname + "_w";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        auto advec_flux = fields.get_tmp();
+        advec.get_advec_flux(*advec_flux, fld);
+
+        for (auto& m : masks)
         {
-            if (!wmean_set)
-                throw std::runtime_error("W mean not calculated in stat - needed for flux");
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            calc_mean(
+                    m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
 
-            auto tmp = fields.get_tmp();
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, !fld.loc[2]);
-                if (grid.get_spatial_order() == Grid_order::Second)
-                {
-                    calc_flux_2nd(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset,
-                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                }
-                else if (grid.get_spatial_order() == Grid_order::Fourth)
-                {
-                    calc_flux_4th(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(),
-                            fields.mp["w"]->fld.data(), m.second.profs.at("w").data.data(),
-                            tmp->fld.data(), fld.loc.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-                }
-
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-            }
-
-            fields.release_tmp(tmp);
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
-        else if (it == "diff")
-        {
-            auto diffusion = fields.get_tmp();
-            diff.diff_flux(*diffusion, fld);
+        fields.release_tmp(advec_flux);
+    }
 
-            for (auto& m : masks)
+    // Calc Diffusive Flux
+    name = varname + "_diff";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        auto diff_flux = fields.get_tmp();
+        diff.diff_flux(*diff_flux, fld);
+
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            calc_mean(
+                    m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+
+        fields.release_tmp(diff_flux);
+    }
+
+    // Calc Total Flux
+    name = varname + "_flux";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            // No sum is required in this routine as values all.
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            add_fluxes(
+                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
+                    gd.kstart, gd.kend);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+
+    // Calc Gradient
+    name = varname + "_grad";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
+
+            if (grid.get_spatial_order() == Grid_order::Second)
             {
-                set_flag(flag, nmask, m.second, !fld.loc[2]);
-                calc_mean(
-                        m.second.profs.at(name).data.data(), diffusion->fld.data(), mfield.data(), flag, nmask,
+                calc_grad_2nd(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
-
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
             }
-
-            fields.release_tmp(diffusion);
-        }
-        else if (it == "flux")
-        {
-            for (auto& m : masks)
+            else if (grid.get_spatial_order() == Grid_order::Fourth)
             {
-                // No sum is required in this routine as values all.
-                set_flag(flag, nmask, m.second, !fld.loc[2]);
-                add_fluxes(
-                        m.second.profs.at(name).data.data(), m.second.profs.at(varname+"w").data.data(), m.second.profs.at(varname+"diff").data.data(),
-                        gd.kstart, gd.kend);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-            }
-        }
-        else if (it == "grad")
-        {
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, !fld.loc[2]);
-
-                if (grid.get_spatial_order() == Grid_order::Second)
-                {
-                    calc_grad_2nd(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                            gd.icells, gd.ijcells);
-                }
-                else if (grid.get_spatial_order() == Grid_order::Fourth)
-                {
-                    calc_grad_4th(
-                            m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                            gd.icells, gd.ijcells);
-                }
-
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-            }
-        }
-        else if (it == "path")
-        {
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, fld.loc[2]);
-
-                calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
-                        mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-
-                master.sum(&m.second.tseries.at(name).data, 1);
-            }
-        }
-        else if (it == "cover")
-        {
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, fld.loc[2]);
-
-                // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
-                std::pair<int, int> cover = calc_cover(
-                        fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                calc_grad_4th(
+                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
-
-                master.sum(&cover.first, 1);
-                master.sum(&cover.second, 1);
-
-                // Only assign if number of points in mask is positive.
-                m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
             }
-        }
-        else if (it == "frac")
-        {
-            for (auto& m : masks)
-            {
-                set_flag(flag, nmask, m.second, fld.loc[2]);
 
-                calc_frac(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                        gd.icells, gd.ijcells);
-
-                master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-                set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-            }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
-        else
+    }
+
+    // Calc Integrated Path
+    name = varname + "_path";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
         {
-            throw std::runtime_error("Invalid operations in stat.");
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
+            calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
+                    mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+            master.sum(&m.second.tseries.at(name).data, 1);
+        }
+    }
+
+    // Calc Cover
+    name = varname + "_cover";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
+            // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
+            std::pair<int, int> cover = calc_cover(
+                    fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            master.sum(&cover.first, 1);
+            master.sum(&cover.second, 1);
+
+            // Only assign if number of points in mask is positive.
+            m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
+        }
+    }
+
+    // Calc Fraction
+    name = varname + "_frac";
+    auto it1 = std::find(varlist.begin(), varlist.end(), name);
+    if (it1 != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
+            calc_frac(
+                    m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
+{
+    if (!doing_tendency)
+        return;
+    auto& gd = grid.get_grid_data();
+    unsigned int flag;
+    const int* nmask;
+    std::string name = fld.name + "_" + tend_name;
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        tendency_order.at(fld.name).push_back(tend_name);
+        #ifdef USECUDA
+        fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
+        #endif
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
 }
 
 template<typename TF>
 void Stats<TF>::calc_stats_2d(
-        const std::string varname, const std::vector<TF>& fld, const TF offset, std::vector<std::string> operations)
+        const std::string varname, const std::vector<TF>& fld, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
-    // Process mean first
-    auto it = std::find(operations.begin(), operations.end(), "mean");
-    if (it != operations.end())
+    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
     {
-        auto it1 = std::find(varlist.begin(), varlist.end(), varname);
-        if (it1 != varlist.end())
+        for (auto& m : masks)
         {
-            for (auto& m : masks)
-            {
-                calc_mean_2d(m.second.tseries.at(varname).data, fld.data(),
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
-                master.sum(&m.second.tseries.at(varname).data, 1);
-                m.second.tseries.at(varname).data += offset;
-            }
+            calc_mean_2d(m.second.tseries.at(varname).data, fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
+            master.sum(&m.second.tseries.at(varname).data, 1);
+            m.second.tseries.at(varname).data += offset;
         }
     }
 }
@@ -1153,12 +1329,12 @@ void Stats<TF>::calc_covariance(
 {
     auto& gd = grid.get_grid_data();
 
-    std::string name = varname1+std::to_string(power1)+varname2+std::to_string(power2);
+    std::string name = varname1 + "_" + std::to_string(power1) + "_" + varname2 + "_" + std::to_string(power2);
     unsigned int flag;
-    auto it1 = std::find(varlist.begin(), varlist.end(), name);
+
     int* nmask;
 
-    if (it1 != varlist.end())
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         if (fld1.loc == fld2.loc)
         {
@@ -1201,8 +1377,11 @@ void Stats<TF>::calc_covariance(
         else
         {
             auto tmp = fields.get_tmp();
+            if (grid.get_spatial_order() == Grid_order::Second)
+                grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
+            else if (grid.get_spatial_order() == Grid_order::Fourth)
+                grid.interpolate_4th(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
 
-            grid.interpolate_2nd(tmp->fld.data(), fld1.fld.data(), fld1.loc.data(), fld2.loc.data());
             for (auto& m : masks)
             {
                 if (fld2.loc[2] == 0)
@@ -1387,44 +1566,6 @@ void Stats<TF>::calc_grad_4th(
                 }
 
             prof[k] = tmp / nmask[k];
-        }
-    }
-}
-
-template<typename TF>
-void Stats<TF>::sanitize_operations_vector(std::vector<std::string> operations)
-{
-    // Sanitize the operations vector:
-    // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
-
-    std::vector<std::string> tmpvec = operations;
-    for (auto it : tmpvec)
-    {
-        if (it == "flux")
-        {
-            operations.push_back("diff");
-            operations.push_back("w");
-        }
-    }
-    for (auto it : tmpvec)
-    {
-        if (has_only_digits(it) || (it == "w") || (it == "path"))
-        {
-            operations.push_back("mean");
-        }
-    }
-
-    // Check for duplicates
-    std::sort( operations.begin(), operations.end() );
-    operations.erase( unique( operations.begin(), operations.end() ), operations.end() );
-
-    // Make sure that flux goes at the end
-    for (auto& it : operations)
-    {
-        if (it == "flux" )
-        {
-            std::swap(it, operations.back());
-            break;
         }
     }
 }
