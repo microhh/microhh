@@ -460,7 +460,39 @@ namespace
         }
         else
         {
-        // Solve a single block, this does not require subsetting.
+            // Solve a single block, this does not require subsetting.
+            kdist_lw->gas_optics(
+                    p_lay,
+                    p_lev,
+                    t_lay,
+                    t_sfc,
+                    gas_concs,
+                    optical_props,
+                    *sources,
+                    col_dry,
+                    t_lev);
+
+            std::unique_ptr<Fluxes_broadband<double>> fluxes =
+                    std::make_unique<Fluxes_broadband<double>>(n_col, n_lev);
+
+            const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
+
+            Rte_lw<double>::rte_lw(
+                    optical_props,
+                    top_at_1,
+                    *sources,
+                    emis_sfc,
+                    fluxes,
+                    n_ang);
+
+            // Copy the data to the output.
+            for (int ilev=1; ilev<=n_lev; ++ilev)
+                for (int icol=1; icol<=n_col; ++icol)
+                {
+                    flux_up ({icol, ilev}) = fluxes->get_flux_up ()({icol, ilev});
+                    flux_dn ({icol, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
+                    flux_net({icol, ilev}) = fluxes->get_flux_net()({icol, ilev});
+                }
         }
     }
 }
