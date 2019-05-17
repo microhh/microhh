@@ -606,16 +606,18 @@ namespace
         for (int ilev=1; ilev<=n_lev; ++ilev)
             for (int icol=1; icol<=n_col; ++icol)
             {
-                flux_up ({icol, ilev}) = fluxes->get_flux_up ()({icol, ilev});
-                flux_dn ({icol, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
-                flux_net({icol, ilev}) = fluxes->get_flux_net()({icol, ilev});
+                flux_up    ({icol, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
+                flux_dn    ({icol, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
+                flux_dn_dir({icol, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
+                flux_net   ({icol, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
             }
     }
 
     template<typename TF>
     void solve_shortwave(
             std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-            Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_net,
+            Array<TF,2>& flux_up, Array<TF,2>& flux_dn,
+            Array<TF,2>& flux_dn_dir, Array<TF,2>& flux_net,
             const Gas_concs<TF>& gas_concs,
             const std::unique_ptr<Gas_optics<TF>>& kdist_sw,
             const Array<TF,2>& col_dry,
@@ -698,9 +700,10 @@ namespace
             for (int ilev=1; ilev<=n_lev; ++ilev)
                 for (int icol=1; icol<=n_col_block_subset; ++icol)
                 {
-                    flux_up ({icol+col_s_in-1, ilev}) = fluxes->get_flux_up ()({icol, ilev});
-                    flux_dn ({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
-                    flux_net({icol+col_s_in-1, ilev}) = fluxes->get_flux_net()({icol, ilev});
+                    flux_up    ({icol+col_s_in-1, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
+                    flux_dn    ({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
+                    flux_dn_dir({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
+                    flux_net   ({icol+col_s_in-1, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
                 }
         };
 
