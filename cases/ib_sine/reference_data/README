@@ -1,0 +1,27 @@
+The files XLAM00 to XLAM09 contain data of case wb3 from 
+Hudson (1993) at 10 streamwise positions, where
+
+y: 	height over the surface in [cm]
+v1avg:	U      [cm/s]        mean velocity
+v2avg:	V      [cm/s]        mean velocity
+v1':	rms(u) [cm/s]        rms velocity
+v2':	rms(v) [cm/s]        rms velocity
+RS':    u'v'   [cm^2/s^2]    Reynolds stress
+
+For other quantities refer to the data files.
+
+U_b= 8.64 cm/s 	        : bulk velocity in the lower channel half
+Re_h=U_b*h / nu= 2390	: Reynolds number
+
+The friction velocity at the wavy wall is u_tau_wa = 1.29 cm/s.
+
+** ATTENTION ** All velocities in the files have to be multiplied 
+by sqrt(2).  (The article from Hudson et a. (1996) contains the
+corrected data.)  This results in e.g. Re_h = 3380.
+
+In XLAM01 the sign of the v-velocity is changed, so that it has
+a downward direction (as in the thesis). XLAM01BAK contains the data
+as provided by Hudson.
+
+The file pressure.dat contains pressure data, calculated from the 
+velocity data by Hudson (for corrected velocities).
