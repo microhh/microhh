@@ -530,10 +530,10 @@ namespace
         if (n_col > n_col_block)
         {
             std::unique_ptr<Optical_props_arry<TF>> optical_props_subset =
-                    std::make_unique<Optical_props_1scl<TF>>(n_col_block, n_lay, *kdist_sw);
+                    std::make_unique<Optical_props_2str<TF>>(n_col_block, n_lay, *kdist_sw);
 
             std::unique_ptr<Optical_props_arry<TF>> optical_props_left =
-                    std::make_unique<Optical_props_1scl<TF>>(n_col_block_left, n_lay, *kdist_sw);
+                    std::make_unique<Optical_props_2str<TF>>(n_col_block_left, n_lay, *kdist_sw);
 
             // Lambda function for solving optical properties subset.
             auto calc_optical_props_subset = [&](
@@ -679,7 +679,7 @@ namespace
                     toa_src({1, igpt}) *= tsi_scaling;
 
             std::unique_ptr<Fluxes_broadband<TF>> fluxes =
-                    std::make_unique<Fluxes_broadband<TF>>(n_col_block_left, n_lev);
+                    std::make_unique<Fluxes_broadband<TF>>(n_col, n_lev);
 
             Rte_sw<double>::rte_sw(
                     optical_props,
@@ -792,9 +792,9 @@ void Radiation_rrtmgp<TF>::create(
     std::unique_ptr<Optical_props_arry<double>> optical_props_lw =
             std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_lw);
 
-    Array<double,2> lw_flux_up ({n_col, n_lay});
-    Array<double,2> lw_flux_dn ({n_col, n_lay});
-    Array<double,2> lw_flux_net({n_col, n_lay});
+    Array<double,2> lw_flux_up ({n_col, n_lev});
+    Array<double,2> lw_flux_dn ({n_col, n_lev});
+    Array<double,2> lw_flux_net({n_col, n_lev});
 
     const int n_col_block = 1;
     solve_longwave(
@@ -810,11 +810,11 @@ void Radiation_rrtmgp<TF>::create(
             n_col, n_col_block, n_lay);
 
     std::unique_ptr<Optical_props_arry<double>> optical_props_sw =
-            std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_sw);
+            std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw);
 
-    Array<double,2> sw_flux_up ({n_col, n_lay});
-    Array<double,2> sw_flux_dn ({n_col, n_lay});
-    Array<double,2> sw_flux_net({n_col, n_lay});
+    Array<double,2> sw_flux_up ({n_col, n_lev});
+    Array<double,2> sw_flux_dn ({n_col, n_lev});
+    Array<double,2> sw_flux_net({n_col, n_lev});
 
     solve_shortwave(
             optical_props_sw,
