@@ -3,8 +3,8 @@
 
 template<typename TF>
 Optical_props<TF>::Optical_props(
-        Array<TF,2>& band_lims_wvn,
-        Array<int,2>& band_lims_gpt)
+        const Array<TF,2>& band_lims_wvn,
+        const Array<int,2>& band_lims_gpt)
 {
     Array<int,2> band_lims_gpt_lcl(band_lims_gpt);
     this->band2gpt = band_lims_gpt_lcl;

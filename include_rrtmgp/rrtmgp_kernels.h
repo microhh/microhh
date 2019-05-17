@@ -29,11 +29,7 @@ namespace rrtmgp_kernels
             int* ncol, int* nlev, int* nbnd,
             FLOAT_TYPE* byband_flux_dn, FLOAT_TYPE* byband_flux_up,
             FLOAT_TYPE* byband_flux_net);
-}
 
-// Kernels of gas optics.
-namespace rrtmgp_kernels
-{
     extern "C" void zero_array_3D(
             int* ni, int* nj, int* nk, FLOAT_TYPE* array);
 
@@ -118,11 +114,7 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* fminor, int* eta,
             int* tropo, int* jtemp,
             FLOAT_TYPE* tau_rayleigh);
-}
 
-// Kernels of longwave solver.
-namespace rrtmgp_kernels
-{
     extern "C" void apply_BC_0(
             int* ncol, int* nlay, int* ngpt,
             int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
@@ -134,11 +126,7 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* lay_source, FLOAT_TYPE* lev_source_inc, FLOAT_TYPE* lev_source_dec,
             FLOAT_TYPE* sfc_emis_gpt, FLOAT_TYPE* sfc_source,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn);
-}
 
-// Kernels of shortwave solver.
-namespace rrtmgp_kernels
-{
     extern "C" void apply_BC_0(
             int* ncol, int* nlay, int* ngpt,
             int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
@@ -157,5 +145,4 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* sfc_alb_dir_gpt, FLOAT_TYPE* sfc_alb_dif_gpt,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn, FLOAT_TYPE* gpt_flux_dir);
 }
-
 #endif

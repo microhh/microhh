@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <algorithm>
 #include <iostream>
 
 template<int N>
@@ -96,7 +97,7 @@ class Array
             offsets({})
         {}
 
-        Array(std::vector<T>& data, const std::array<int, N>& dims) :
+        Array(const std::vector<T>& data, const std::array<int, N>& dims) :
             dims(dims),
             ncells(product<N>(dims)),
             data(data),

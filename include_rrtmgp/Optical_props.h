@@ -1,6 +1,7 @@
 #ifndef OPTICAL_PROPS_H
 #define OPTICAL_PROPS_H
 
+#include <memory>
 #include "Array.h"
 
 template<typename TF>
@@ -8,8 +9,8 @@ class Optical_props
 {
     public:
         Optical_props(
-                Array<TF,2>& band_lims_wvn,
-                Array<int,2>& band_lims_gpt);
+                const Array<TF,2>& band_lims_wvn,
+                const Array<int,2>& band_lims_gpt);
 
         virtual ~Optical_props() {};
 

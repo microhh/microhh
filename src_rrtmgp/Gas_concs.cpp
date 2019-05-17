@@ -14,16 +14,39 @@ Gas_concs<TF>::Gas_concs(const Gas_concs& gas_concs_ref, const int start, const 
 
 // Insert new gas into the map.
 template<typename TF>
-void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,2>& data)
+void Gas_concs<TF>::set_vmr(const std::string& name, const TF data)
 {
-    gas_concs_map.emplace(name, data);
+    Array<TF,2> data_2d({1, 1});
+    data_2d({1, 1}) = data;
+    gas_concs_map.emplace(name, std::move(data_2d));
 }
 
 // Insert new gas into the map.
 template<typename TF>
-void Gas_concs<TF>::get_vmr(const std::string& name, Array<TF,2>& data) const
+void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,1>& data)
 {
-    data = this->gas_concs_map.at(name);
+    Array<TF,2> data_2d(data.v(), {1, data.dim(1)});
+    gas_concs_map.emplace(name, std::move(data_2d));
+}
+// Insert new gas into the map.
+template<typename TF>
+void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,2>& data_2d)
+{
+    gas_concs_map.emplace(name, data_2d);
+}
+
+// Insert new gas into the map.
+// template<typename TF>
+// void Gas_concs<TF>::get_vmr(const std::string& name, Array<TF,2>& data) const
+// {
+//     data = this->gas_concs_map.at(name);
+// }
+
+// Insert new gas into the map.
+template<typename TF>
+const Array<TF,2>& Gas_concs<TF>::get_vmr(const std::string& name) const
+{
+    return this->gas_concs_map.at(name);
 }
 
 // Check if gas exists in map.

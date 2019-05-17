@@ -182,8 +182,9 @@ namespace
                     const int ks = key_species({ip,ia,it});
                     if (ks != 0)
                     {
-                        key_species_red({ip,ia,it}) = find_index(gas_names_red, gas_names({ks}));
-                        if (ks == -1)
+                        const int ksr = find_index(gas_names_red, gas_names({ks}));
+                        key_species_red({ip,ia,it}) = ksr;
+                        if (ksr == -1)
                             key_species_present_init({ks}) = 0;
                     }
                     else
@@ -330,37 +331,37 @@ namespace
 template<typename TF>
 Gas_optics<TF>::Gas_optics(
         const Gas_concs<TF>& available_gases,
-        Array<std::string,1>& gas_names,
-        Array<int,3>& key_species,
-        Array<int,2>& band2gpt,
-        Array<TF,2>& band_lims_wavenum,
-        Array<TF,1>& press_ref,
-        TF press_ref_trop,
-        Array<TF,1>& temp_ref,
-        TF temp_ref_p,
-        TF temp_ref_t,
-        Array<TF,3>& vmr_ref,
-        Array<TF,4>& kmajor,
-        Array<TF,3>& kminor_lower,
-        Array<TF,3>& kminor_upper,
-        Array<std::string,1>& gas_minor,
-        Array<std::string,1>& identifier_minor,
-        Array<std::string,1>& minor_gases_lower,
-        Array<std::string,1>& minor_gases_upper,
-        Array<int,2>& minor_limits_gpt_lower,
-        Array<int,2>& minor_limits_gpt_upper,
-        Array<int,1>& minor_scales_with_density_lower,
-        Array<int,1>& minor_scales_with_density_upper,
-        Array<std::string,1>& scaling_gas_lower,
-        Array<std::string,1>& scaling_gas_upper,
-        Array<int,1>& scale_by_complement_lower,
-        Array<int,1>& scale_by_complement_upper,
-        Array<int,1>& kminor_start_lower,
-        Array<int,1>& kminor_start_upper,
-        Array<TF,2>& totplnk,
-        Array<TF,4>& planck_frac,
-        Array<TF,3>& rayl_lower,
-        Array<TF,3>& rayl_upper) :
+        const Array<std::string,1>& gas_names,
+        const Array<int,3>& key_species,
+        const Array<int,2>& band2gpt,
+        const Array<TF,2>& band_lims_wavenum,
+        const Array<TF,1>& press_ref,
+        const TF press_ref_trop,
+        const Array<TF,1>& temp_ref,
+        const TF temp_ref_p,
+        const TF temp_ref_t,
+        const Array<TF,3>& vmr_ref,
+        const Array<TF,4>& kmajor,
+        const Array<TF,3>& kminor_lower,
+        const Array<TF,3>& kminor_upper,
+        const Array<std::string,1>& gas_minor,
+        const Array<std::string,1>& identifier_minor,
+        const Array<std::string,1>& minor_gases_lower,
+        const Array<std::string,1>& minor_gases_upper,
+        const Array<int,2>& minor_limits_gpt_lower,
+        const Array<int,2>& minor_limits_gpt_upper,
+        const Array<int,1>& minor_scales_with_density_lower,
+        const Array<int,1>& minor_scales_with_density_upper,
+        const Array<std::string,1>& scaling_gas_lower,
+        const Array<std::string,1>& scaling_gas_upper,
+        const Array<int,1>& scale_by_complement_lower,
+        const Array<int,1>& scale_by_complement_upper,
+        const Array<int,1>& kminor_start_lower,
+        const Array<int,1>& kminor_start_upper,
+        const Array<TF,2>& totplnk,
+        const Array<TF,4>& planck_frac,
+        const Array<TF,3>& rayl_lower,
+        const Array<TF,3>& rayl_upper) :
             Optical_props<TF>(band_lims_wavenum, band2gpt),
             totplnk(totplnk),
             planck_frac(planck_frac)
@@ -398,36 +399,36 @@ Gas_optics<TF>::Gas_optics(
 template<typename TF>
 Gas_optics<TF>::Gas_optics(
         const Gas_concs<TF>& available_gases,
-        Array<std::string,1>& gas_names,
-        Array<int,3>& key_species,
-        Array<int,2>& band2gpt,
-        Array<TF,2>& band_lims_wavenum,
-        Array<TF,1>& press_ref,
-        TF press_ref_trop,
-        Array<TF,1>& temp_ref,
-        TF temp_ref_p,
-        TF temp_ref_t,
-        Array<TF,3>& vmr_ref,
-        Array<TF,4>& kmajor,
-        Array<TF,3>& kminor_lower,
-        Array<TF,3>& kminor_upper,
-        Array<std::string,1>& gas_minor,
-        Array<std::string,1>& identifier_minor,
-        Array<std::string,1>& minor_gases_lower,
-        Array<std::string,1>& minor_gases_upper,
-        Array<int,2>& minor_limits_gpt_lower,
-        Array<int,2>& minor_limits_gpt_upper,
-        Array<int,1>& minor_scales_with_density_lower,
-        Array<int,1>& minor_scales_with_density_upper,
-        Array<std::string,1>& scaling_gas_lower,
-        Array<std::string,1>& scaling_gas_upper,
-        Array<int,1>& scale_by_complement_lower,
-        Array<int,1>& scale_by_complement_upper,
-        Array<int,1>& kminor_start_lower,
-        Array<int,1>& kminor_start_upper,
-        Array<TF,1>& solar_src,
-        Array<TF,3>& rayl_lower,
-        Array<TF,3>& rayl_upper) :
+        const Array<std::string,1>& gas_names,
+        const Array<int,3>& key_species,
+        const Array<int,2>& band2gpt,
+        const Array<TF,2>& band_lims_wavenum,
+        const Array<TF,1>& press_ref,
+        const TF press_ref_trop,
+        const Array<TF,1>& temp_ref,
+        const TF temp_ref_p,
+        const TF temp_ref_t,
+        const Array<TF,3>& vmr_ref,
+        const Array<TF,4>& kmajor,
+        const Array<TF,3>& kminor_lower,
+        const Array<TF,3>& kminor_upper,
+        const Array<std::string,1>& gas_minor,
+        const Array<std::string,1>& identifier_minor,
+        const Array<std::string,1>& minor_gases_lower,
+        const Array<std::string,1>& minor_gases_upper,
+        const Array<int,2>& minor_limits_gpt_lower,
+        const Array<int,2>& minor_limits_gpt_upper,
+        const Array<int,1>& minor_scales_with_density_lower,
+        const Array<int,1>& minor_scales_with_density_upper,
+        const Array<std::string,1>& scaling_gas_lower,
+        const Array<std::string,1>& scaling_gas_upper,
+        const Array<int,1>& scale_by_complement_lower,
+        const Array<int,1>& scale_by_complement_upper,
+        const Array<int,1>& kminor_start_lower,
+        const Array<int,1>& kminor_start_upper,
+        const Array<TF,1>& solar_src,
+        const Array<TF,3>& rayl_lower,
+        const Array<TF,3>& rayl_upper) :
             Optical_props<TF>(band_lims_wavenum, band2gpt),
             solar_src(solar_src)
 {
@@ -649,6 +650,38 @@ void Gas_optics<TF>::init_abs_coeffs(
         }
 
     this->is_key = is_key;
+}
+
+// Calculate the molecules of dry air.
+template<typename TF>
+void Gas_optics<TF>::get_col_dry(
+        Array<TF,2>& col_dry, const Array<TF,2>& vmr_h2o,
+        const Array<TF,2>& plev)
+{
+    // CvH: RRTMGP uses more accurate method based on latitude.
+    constexpr TF g0 = 9.80665;
+
+    constexpr TF avogad = 6.02214076e23;
+    constexpr TF m_dry = 0.028964;
+    constexpr TF m_h2o = 0.018016;
+
+    Array<double,2> delta_plev({col_dry.dim(1), col_dry.dim(2)});
+    Array<double,2> m_air     ({col_dry.dim(1), col_dry.dim(2)});
+
+    for (int ilay=1; ilay<=col_dry.dim(2); ++ilay)
+        for (int icol=1; icol<=col_dry.dim(1); ++icol)
+            delta_plev({icol, ilay}) = std::abs(plev({icol, ilay}) - plev({icol, ilay+1}));
+
+    for (int ilay=1; ilay<=col_dry.dim(2); ++ilay)
+        for (int icol=1; icol<=col_dry.dim(1); ++icol)
+            m_air({icol, ilay}) = (m_dry + m_h2o * vmr_h2o({icol, ilay})) / (1. + vmr_h2o({icol, ilay}));
+
+    for (int ilay=1; ilay<=col_dry.dim(2); ++ilay)
+        for (int icol=1; icol<=col_dry.dim(1); ++icol)
+        {
+            col_dry({icol, ilay}) = TF(10.) * delta_plev({icol, ilay}) * avogad / (TF(1000.)*m_air({icol, ilay})*TF(100.)*g0);
+            col_dry({icol, ilay}) /= (TF(1.) + vmr_h2o({icol, ilay}));
+        }
 }
 
 // Gas optics solver longwave variant.
@@ -960,16 +993,36 @@ void Gas_optics<TF>::compute_gas_taus(
 
     for (int igas=1; igas<=ngas; ++igas)
     {
-        Array<TF,2> vmr_2d({ncol, nlay});
-        gas_desc.get_vmr(this->gas_names({igas}), vmr_2d);
+        const Array<TF,2>& vmr_2d = gas_desc.get_vmr(this->gas_names({igas}));
 
-        for (int icol=1; icol<=ncol; ++icol)
+        // Fill array with constant value.
+        if (vmr_2d.dim(1) == 1 && vmr_2d.dim(2) == 1)
+        {
+            const TF vmr_c = vmr_2d({1, 1});
             for (int ilay=1; ilay<=nlay; ++ilay)
-                vmr({icol, ilay, igas}) = vmr_2d({icol, ilay});
+                for (int icol=1; icol<=ncol; ++icol)
+                    vmr({icol, ilay, igas}) = vmr_c;
+        }
+        // Fill array with constant profile.
+        else if (vmr_2d.dim(1) == 1)
+        {
+            for (int ilay=1; ilay<=nlay; ++ilay)
+            {
+                const TF vmr_lay = vmr_2d({1, ilay});
+                for (int icol=1; icol<=ncol; ++icol)
+                    vmr({icol, ilay, igas}) = vmr_lay;
+            }
+        }
+        // Fill array with full 2d data.
+        else
+        {
+            for (int ilay=1; ilay<=nlay; ++ilay)
+                for (int icol=1; icol<=ncol; ++icol)
+                    vmr({icol, ilay, igas}) = vmr_2d({icol, ilay});
+        }
     }
 
     // CvH: Assume that col_dry is provided.
-
     for (int ilay=1; ilay<=nlay; ++ilay)
         for (int icol=1; icol<=ncol; ++icol)
             col_gas({icol, ilay, 0}) = col_dry({icol, ilay});
