@@ -118,7 +118,11 @@ class Stats
 
         void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
-        void add_fixed_prof(std::string, std::string, std::string, std::string, std::vector<TF>&);
+        void add_fixed_prof(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&,
+                const std::vector<TF>&);
+
         void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);

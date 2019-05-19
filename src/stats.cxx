@@ -916,7 +916,12 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
 }
 
 template<typename TF>
-void Stats<TF>::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, std::vector<TF>& prof)
+void Stats<TF>::add_fixed_prof(
+        const std::string& name,
+        const std::string& longname,
+        const std::string& unit,
+        const std::string& zloc,
+        const std::vector<TF>& prof)
 {
     auto& gd = grid.get_grid_data();
 
