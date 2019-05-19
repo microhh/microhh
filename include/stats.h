@@ -111,6 +111,7 @@ class Stats
         void exec(const int, const double, const unsigned long);
 
         // Interface functions.
+        void add_dimension(const std::string&, const int);
         void add_mask(const std::string);
         void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
         void add_profs(const Field3d<TF>&, std::string, std::vector<std::string>);
@@ -119,6 +120,11 @@ class Stats
         void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
 
         void add_fixed_prof(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&,
+                const std::vector<TF>&);
+
+        void add_fixed_prof_raw(
                 const std::string&, const std::string&,
                 const std::string&, const std::string&,
                 const std::vector<TF>&);

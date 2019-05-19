@@ -676,6 +676,16 @@ const std::vector<std::string>& Stats<TF>::get_mask_list()
     return masklist;
 }
 
+// Add a new dimension to the stats file.
+template<typename TF>
+void Stats<TF>::add_dimension(
+        const std::string& name, const int size)
+{
+    // Create a NetCDF file for each of the masks.
+    for (auto& mask : masks)
+        mask.second.data_file->add_dimension(name, size);
+}
+
 // Add a new mask to the mask map.
 template<typename TF>
 void Stats<TF>::add_mask(const std::string maskname)
@@ -946,6 +956,31 @@ void Stats<TF>::add_fixed_prof(
             std::vector<TF> prof_nogc(prof.begin() + gd.kstart, prof.begin() + gd.kend+1);
             var.insert(prof_nogc, {0}, {gd.ktot+1});
         }
+
+        m.data_file->sync();
+    }
+}
+
+template<typename TF>
+void Stats<TF>::add_fixed_prof_raw(
+        const std::string& name,
+        const std::string& longname,
+        const std::string& unit,
+        const std::string& dim,
+        const std::vector<TF>& prof)
+{
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Create the NetCDF variable.
+        Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {dim});
+
+        var.add_attribute("units", unit.c_str());
+        var.add_attribute("long_name", longname.c_str());
+
+        const int size = prof.size();
+        var.insert(prof, {0}, {size});
 
         m.data_file->sync();
     }
