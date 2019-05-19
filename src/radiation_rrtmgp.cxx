@@ -28,7 +28,9 @@
 #include "thermo.h"
 #include "input.h"
 #include "netcdf_interface.h"
+#include "stats.h"
 
+// RRTMGP headers.
 #include "Array.h"
 #include "Optical_props.h"
 #include "Gas_optics.h"
@@ -933,7 +935,43 @@ void Radiation_rrtmgp<TF>::create(
             tsi_scaling,
             n_lay);
 
-    // Save the reference radiation fluxes in the stats.
+    // Save the reference profile fluxes in the stats.
+    if (stats.get_switch())
+    {
+        stats.add_dimension("p_rad", n_lev);
+        stats.add_fixed_prof_raw(
+                "p_rad",
+                "Pressure of radiation reference column",
+                "Pa", "p_rad",
+                std::vector<TF>(p_lev.v().begin(), p_lev.v().end()));
+
+        // CvH, I put an vector copy here because radiation is always double.
+        stats.add_fixed_prof_raw(
+                "lw_flux_up_ref",
+                "Longwave upwelling flux of reference column",
+                "W m-2", "p_rad",
+                std::vector<TF>(lw_flux_up.v().begin(), lw_flux_up.v().end()));
+        stats.add_fixed_prof_raw(
+                "lw_flux_dn_ref",
+                "Longwave downwelling flux of reference column",
+                "W m-2", "p_rad",
+                std::vector<TF>(lw_flux_dn.v().begin(), lw_flux_dn.v().end()));
+        stats.add_fixed_prof_raw(
+                "sw_flux_up_ref",
+                "Shortwave upwelling flux of reference column",
+                "W m-2", "p_rad",
+                std::vector<TF>(sw_flux_up.v().begin(), sw_flux_up.v().end()));
+        stats.add_fixed_prof_raw(
+                "sw_flux_dn_ref",
+                "Shortwave downwelling flux of reference column",
+                "W m-2", "p_rad",
+                std::vector<TF>(sw_flux_dn.v().begin(), sw_flux_dn.v().end()));
+        stats.add_fixed_prof_raw(
+                "sw_flux_dn_dir_ref",
+                "Shortwave direct downwelling flux of reference column",
+                "W m-2", "p_rad",
+                std::vector<TF>(sw_flux_dn_dir.v().begin(), sw_flux_dn_dir.v().end()));
+    }
 }
 
 template<typename TF>
