@@ -50,8 +50,8 @@ void Rte_lw<TF>::rte_lw(
         const int top_at_1,
         const Source_func_lw<TF>& sources,
         const Array<TF,2>& sfc_emis,
-        // CvH: RRTMGP has this: std::unique_ptr<Fluxes<TF>>& fluxes,
-        std::unique_ptr<Fluxes_broadband<TF>>& fluxes,
+        Array<TF,3>& gpt_flux_up,
+        Array<TF,3>& gpt_flux_dn,
         const int n_gauss_angles)
 {
     const int max_gauss_pts = 4;
@@ -72,10 +72,7 @@ void Rte_lw<TF>::rte_lw(
     const int ncol = optical_props->get_ncol();
     const int nlay = optical_props->get_nlay();
     const int ngpt = optical_props->get_ngpt();
-    // const int nband = optical_props->get_nband();
 
-    Array<TF,3> gpt_flux_up({ncol, nlay+1, ngpt});
-    Array<TF,3> gpt_flux_dn({ncol, nlay+1, ngpt});
     Array<TF,2> sfc_emis_gpt({ncol, ngpt});
 
     expand_and_transpose(optical_props, sfc_emis, sfc_emis_gpt);
@@ -100,7 +97,8 @@ void Rte_lw<TF>::rte_lw(
             sfc_emis_gpt, sources.get_sfc_source(),
             gpt_flux_up, gpt_flux_dn);
 
-    fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
+    // CvH: In the fortran code this call is here, I removed it for performance and flexibility.
+    // fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
 }
 
 template<typename TF>

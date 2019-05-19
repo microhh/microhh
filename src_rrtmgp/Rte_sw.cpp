@@ -62,16 +62,13 @@ void Rte_sw<TF>::rte_sw(
         const Array<TF,2>& inc_flux,
         const Array<TF,2>& sfc_alb_dir,
         const Array<TF,2>& sfc_alb_dif,
-        std::unique_ptr<Fluxes_broadband<TF>>& fluxes)
+        Array<TF,3>& gpt_flux_up,
+        Array<TF,3>& gpt_flux_dn,
+        Array<TF,3>& gpt_flux_dir)
 {
     const int ncol = optical_props->get_ncol();
     const int nlay = optical_props->get_nlay();
     const int ngpt = optical_props->get_ngpt();
-    // const int nband = optical_props->get_nband();
-
-    Array<TF,3> gpt_flux_up ({ncol, nlay+1, ngpt});
-    Array<TF,3> gpt_flux_dn ({ncol, nlay+1, ngpt});
-    Array<TF,3> gpt_flux_dir({ncol, nlay+1, ngpt});
 
     Array<TF,2> sfc_alb_dir_gpt({ncol, ngpt});
     Array<TF,2> sfc_alb_dif_gpt({ncol, ngpt});
@@ -94,7 +91,8 @@ void Rte_sw<TF>::rte_sw(
             sfc_alb_dir_gpt, sfc_alb_dif_gpt,
             gpt_flux_up, gpt_flux_dn, gpt_flux_dir);
 
-    fluxes->reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dir, optical_props, top_at_1);
+    // CvH: The original fortran code had a call to the reduce here.
+    // fluxes->reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dir, optical_props, top_at_1);
 }
 
 template<typename TF>

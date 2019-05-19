@@ -533,13 +533,20 @@ namespace
         std::unique_ptr<Fluxes_broadband<double>> fluxes =
                 std::make_unique<Fluxes_broadband<double>>(n_col, n_lev);
 
+        const int n_gpt = kdist_lw->get_ngpt();
+        Array<double,3> gpt_flux_up({n_col, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn({n_col, n_lev, n_gpt});
+
         Rte_lw<double>::rte_lw(
                 optical_props,
                 top_at_1,
                 *sources,
                 emis_sfc,
-                fluxes,
+                gpt_flux_up,
+                gpt_flux_dn,
                 n_ang);
+
+        fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
 
         // Copy the data to the output.
         for (int ilev=1; ilev<=n_lev; ++ilev)
@@ -593,6 +600,10 @@ namespace
         std::unique_ptr<Fluxes_broadband<TF>> fluxes =
                 std::make_unique<Fluxes_broadband<TF>>(n_col, n_lev);
 
+        Array<double,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
+
         Rte_sw<TF>::rte_sw(
                 optical_props,
                 top_at_1,
@@ -600,7 +611,13 @@ namespace
                 toa_src,
                 sfc_alb_dir,
                 sfc_alb_dif,
-                fluxes);
+                gpt_flux_up,
+                gpt_flux_dn,
+                gpt_flux_dn_dir);
+
+        fluxes->reduce(
+                gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
+                optical_props, top_at_1);
 
         // Copy the data to the output.
         for (int ilev=1; ilev<=n_lev; ++ilev)
@@ -915,6 +932,8 @@ void Radiation_rrtmgp<TF>::create(
             sfc_alb_dir, sfc_alb_dif,
             tsi_scaling,
             n_lay);
+
+    // Save the reference radiation fluxes in the stats.
 }
 
 template<typename TF>

@@ -18,8 +18,8 @@ class Rte_lw
                 const int top_at_1,
                 const Source_func_lw<TF>& sources,
                 const Array<TF,2>& sfc_emis,
-                // CvH: RRTMGP has this: std::unique_ptr<Fluxes<TF>>& fluxes,
-                std::unique_ptr<Fluxes_broadband<TF>>& fluxes,
+                Array<TF,3>& gpt_flux_up,
+                Array<TF,3>& gpt_flux_dn,
                 const int n_gauss_angles);
 
         static void expand_and_transpose(

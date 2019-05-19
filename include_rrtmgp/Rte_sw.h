@@ -19,7 +19,9 @@ class Rte_sw
                 const Array<TF,2>& inc_flux,
                 const Array<TF,2>& sfc_alb_dir,
                 const Array<TF,2>& sfc_alb_dif,
-                std::unique_ptr<Fluxes_broadband<TF>>& fluxes);
+                Array<TF,3>& gpt_flux_up,
+                Array<TF,3>& gpt_flux_dn,
+                Array<TF,3>& gpt_flux_dir);
 
         static void expand_and_transpose(
                 const std::unique_ptr<Optical_props_arry<TF>>& ops,
