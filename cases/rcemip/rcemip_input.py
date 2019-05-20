@@ -3,7 +3,7 @@ import netCDF4 as nc
 
 float_type = "f8"
 
-def calc_p_q_T_thl(z):
+def calc_p_q_T_thl_o3(z):
     q_0 = 0.01864 # for 300 K SST.
     z_q1 = 4.0e3
     z_q2 = 7.5e3
@@ -40,37 +40,15 @@ def calc_p_q_T_thl(z):
 
     thl = T*(p0/p)**(Rd/cp)
 
-    return p, q, T, thl
+    g1 = 3.6478
+    g2 = 0.83209
+    g3 = 11.3515
+    p_hpa = p/100.
+    o3 = g1 * p_hpa**g2 * np.exp(-p_hpa/g3) * 1e-6
 
-# Get number of vertical levels and size from .ini file
-with open('rcemip.ini') as f:
-    for line in f:
-        if(line.split('=')[0]=='ktot'):
-            kmax = int(line.split('=')[1])
-        if(line.split('=')[0]=='zsize'):
-            zsize = float(line.split('=')[1])
-
-dz = zsize / kmax
-
-# set the height
-z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
-
-_, qt, _, thl = calc_p_q_T_thl(z)
+    return p, q, T, thl, o3
 
 nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
-
-# The height dimension.
-nc_file.createDimension("z", kmax)
-nc_z  = nc_file.createVariable("z" , float_type, ("z"))
-nc_z[:] = z[:]
-
-# Initial profiles.
-nc_group_init = nc_file.createGroup("init");
-nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
-nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
-
-nc_thl[:] = thl[:]
-nc_qt [:] = qt [:]
 
 ### RADIATION INIT ###
 # Radiation profiles.
@@ -80,8 +58,8 @@ z  = np.arange(dz/2, z_top, dz)
 zh = np.arange(   0, z_top-dz/2, dz)
 zh = np.append(zh, z_top)
 
-p_lay, h2o, T_lay, _ = calc_p_q_T_thl( z)
-p_lev,   _, T_lev, _ = calc_p_q_T_thl(zh)
+p_lay, h2o, T_lay, _, o3 = calc_p_q_T_thl_o3( z)
+p_lev,   _, T_lev, _,  _ = calc_p_q_T_thl_o3(zh)
 
 co2 =  348.e-6
 ch4 = 1650.e-9
@@ -128,6 +106,50 @@ nc_CH4[:] = ch4
 nc_N2O[:] = n2o
 nc_O3 [:] = o3 [:]
 nc_H2O[:] = h2o[:]
+nc_N2 [:] = n2
+nc_O2 [:] = o2
+
+### INITIAL PROFILES ###
+# Get number of vertical levels and size from .ini file
+with open('rcemip.ini') as f:
+    for line in f:
+        if(line.split('=')[0]=='ktot'):
+            kmax = int(line.split('=')[1])
+        if(line.split('=')[0]=='zsize'):
+            zsize = float(line.split('=')[1])
+
+dz = zsize / kmax
+
+# set the height
+z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+
+_, qt, _, thl, o3 = calc_p_q_T_thl_o3(z)
+
+nc_file.createDimension("z", kmax)
+nc_z  = nc_file.createVariable("z" , float_type, ("z"))
+nc_z[:] = z[:]
+
+# Initial profiles.
+nc_group_init = nc_file.createGroup("init");
+nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
+nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
+
+nc_CO2 = nc_group_init.createVariable("co2", float_type, ("z"))
+nc_CH4 = nc_group_init.createVariable("ch4", float_type, ("z"))
+nc_N2O = nc_group_init.createVariable("n2o", float_type, ("z"))
+nc_O3  = nc_group_init.createVariable("o3" , float_type, ("z"))
+nc_H2O = nc_group_init.createVariable("h2o", float_type, ("z"))
+nc_N2  = nc_group_init.createVariable("n2" , float_type, ("z"))
+nc_O2  = nc_group_init.createVariable("o2" , float_type, ("z"))
+
+nc_thl[:] = thl[:]
+nc_qt [:] = qt [:]
+
+nc_CO2[:] = co2
+nc_CH4[:] = ch4
+nc_N2O[:] = n2
+nc_O3 [:] = o3
+nc_H2O[:] = qt[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2
 
