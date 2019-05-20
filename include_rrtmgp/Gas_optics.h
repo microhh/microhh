@@ -84,7 +84,7 @@ class Gas_optics : public Optical_props<TF>
                 const Array<TF,3>& rayl_lower,
                 const Array<TF,3>& rayl_upper);
 
-        void get_col_dry(
+        static void get_col_dry(
                 Array<TF,2>& col_dry,
                 const Array<TF,2>& vmr_h2o,
                 const Array<TF,2>& plev);

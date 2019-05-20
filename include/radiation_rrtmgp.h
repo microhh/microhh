@@ -64,10 +64,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("Not implemented"); }
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&){};
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
-        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
-        void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&){};
+        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
 	private:
 		using Radiation<TF>::swradiation;
@@ -76,11 +76,35 @@ class Radiation_rrtmgp : public Radiation<TF>
 		using Radiation<TF>::fields;
 		using Radiation<TF>::field3d_operators;
 
+        void create_column(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
+        void create_solver(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
+
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 
+        // RRTMGP related variables.
+        double tsi_scaling;
+        double t_sfc;
+        double emis_sfc;
+        double sfc_alb_dir;
+        double sfc_alb_dif;
+        double mu0;
+
+        // The reference column for the full profile.
+        Gas_concs<double> gas_concs_col;
+        std::unique_ptr<Gas_optics<double>> kdist_lw_col;
+        std::unique_ptr<Gas_optics<double>> kdist_sw_col;
+        Array<double,2> sw_flux_dn_inc;
+        Array<double,2> sw_flux_dn_dir_inc;
+        Array<double,2> lw_flux_dn_inc;
+
+        // The full solver.
         Gas_concs<double> gas_concs;
         std::unique_ptr<Gas_optics<double>> kdist_lw;
         std::unique_ptr<Gas_optics<double>> kdist_sw;
+        std::unique_ptr<Optical_props_arry<double>> optical_props_lw;
+        std::unique_ptr<Optical_props_arry<double>> optical_props_sw;
 };
 #endif

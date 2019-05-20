@@ -78,25 +78,22 @@ namespace
     template<typename TF>
     void load_gas_concs(Gas_concs<TF>& gas_concs, Netcdf_handle& input_nc)
     {
-        // This part is contained in the create
-        Netcdf_group rad_nc = input_nc.get_group("radiation");
-
-        const int n_lay = rad_nc.get_dimension_size("lay");
+        const int n_lay = input_nc.get_dimension_size("lay");
 
         gas_concs.set_vmr("h2o",
-                Array<TF,1>(rad_nc.get_variable<TF>("h2o", {n_lay}), {n_lay}));
+                Array<TF,1>(input_nc.get_variable<TF>("h2o", {n_lay}), {n_lay}));
         gas_concs.set_vmr("co2",
-                rad_nc.get_variable<TF>("co2"));
+                input_nc.get_variable<TF>("co2"));
         gas_concs.set_vmr("o3",
-                Array<TF,1>(rad_nc.get_variable<TF>("o3", {n_lay}), {n_lay}));
+                Array<TF,1>(input_nc.get_variable<TF>("o3", {n_lay}), {n_lay}));
         gas_concs.set_vmr("n2o",
-                rad_nc.get_variable<TF>("n2o"));
+                input_nc.get_variable<TF>("n2o"));
         gas_concs.set_vmr("ch4",
-                rad_nc.get_variable<TF>("ch4"));
+                input_nc.get_variable<TF>("ch4"));
         gas_concs.set_vmr("o2",
-                rad_nc.get_variable<TF>("o2"));
+                input_nc.get_variable<TF>("o2"));
         gas_concs.set_vmr("n2",
-                rad_nc.get_variable<TF>("n2"));
+                input_nc.get_variable<TF>("n2"));
     }
 
     Gas_optics<double> load_and_init_gas_optics(
@@ -840,7 +837,16 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
 	Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "rrtmgp";
+    swradiation = "rrtmgp";
+
+	t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
+    emis_sfc    = inputin.get_item<double>("radiation", "emis_sfc"   , "");
+    sfc_alb_dir = inputin.get_item<double>("radiation", "sfc_alb_dir", "");
+    sfc_alb_dif = inputin.get_item<double>("radiation", "sfc_alb_dif", "");
+    tsi_scaling = inputin.get_item<double>("radiation", "tsi_scaling", "", -999.);
+
+    const double sza = inputin.get_item<double>("radiation", "sza", "");
+    mu0 = std::cos(sza);
 }
 
 template<typename TF>
@@ -853,21 +859,28 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+    create_column(input, input_nc, thermo, stats);
+    create_solver(input, input_nc, thermo, stats);
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::create_column(
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
+{
     auto& gd = grid.get_grid_data();
 
     // 1. Load the available gas concentrations from the group of the netcdf file.
-    load_gas_concs<double>(gas_concs, input_nc);
+    Netcdf_handle rad_nc = input_nc.get_group("radiation");
+    load_gas_concs<double>(gas_concs_col, rad_nc);
 
     // 2. Set up the gas optics classes for long and shortwave.
-    kdist_lw = std::make_unique<Gas_optics<double>>(
-            load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
-    kdist_sw = std::make_unique<Gas_optics<double>>(
-            load_and_init_gas_optics(master, gas_concs, "coefficients_sw.nc"));
+    kdist_lw_col = std::make_unique<Gas_optics<double>>(
+            load_and_init_gas_optics(master, gas_concs_col, "coefficients_lw.nc"));
+    kdist_sw_col = std::make_unique<Gas_optics<double>>(
+            load_and_init_gas_optics(master, gas_concs_col, "coefficients_sw.nc"));
 
     // 3. Read the atmospheric pressure and temperature.
     const int n_col = 1;
-
-    Netcdf_group rad_nc = input_nc.get_group("radiation");
 
     const int n_lay = rad_nc.get_dimension_size("lay");
     const int n_lev = rad_nc.get_dimension_size("lev");
@@ -881,65 +894,52 @@ void Radiation_rrtmgp<TF>::create(
     if (rad_nc.variable_exists("col_dry"))
         col_dry = rad_nc.get_variable<double>("col_dry", {n_lay, n_col});
     else
-    {
-        kdist_lw->get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
-        // kdist_sw->get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
-    }
-
-    const double tsi_scaling = input.get_item<double>("radiation", "tsi_scaling", "", -999.);
+        Gas_optics<double>::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev);
 
     // 4. Read the boundary conditions for the longwave and shortwave solver.
     // Set the surface temperature and emissivity.
     // CvH: communicate with surface scheme.
-    const double t_sfc_in = input.get_item<double>("radiation", "t_sfc", "");
     Array<double,1> t_sfc({1});
-    t_sfc({1}) = t_sfc_in;
+    t_sfc({1}) = this->t_sfc;
 
-    const double emis_sfc_in = input.get_item<double>("radiation", "emis_sfc", "");
-    const int n_bnd = kdist_lw->get_nband();
+    const int n_bnd = kdist_lw_col->get_nband();
     Array<double,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = emis_sfc_in;
+        emis_sfc({ibnd, 1}) = this->emis_sfc;
 
     // Set the solar zenith angle and albedo.
-    Array<double,1> sza({n_col});
     Array<double,2> sfc_alb_dir({n_bnd, n_col});
     Array<double,2> sfc_alb_dif({n_bnd, n_col});
 
-    const double sza_in = input.get_item<double>("radiation", "sza", "");
-    sza({1}) = sza_in;
-
-    const double sfc_alb_dir_in = input.get_item<double>("radiation", "sfc_alb_dir", "");
-    const double sfc_alb_dif_in = input.get_item<double>("radiation", "sfc_alb_dif", "");
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
     {
-        sfc_alb_dir({ibnd, 1}) = sfc_alb_dir_in;
-        sfc_alb_dif({ibnd, 1}) = sfc_alb_dif_in;
+        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
+        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
     }
 
     Array<double,1> mu0({n_col});
-    mu0({1}) = std::cos(sza({1}));
+    mu0({1}) = this->mu0;
 
     // Compute the longwave for the reference profile.
     std::unique_ptr<Source_func_lw<double>> sources_lw =
-            std::make_unique<Source_func_lw<double>>(n_col, n_lay, *kdist_lw);
+            std::make_unique<Source_func_lw<double>>(n_col, n_lay, *kdist_lw_col);
 
     std::unique_ptr<Optical_props_arry<double>> optical_props_lw =
-            std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_lw);
+            std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_lw_col);
 
     Array<double,2> lw_flux_up ({n_col, n_lev});
     Array<double,2> lw_flux_dn ({n_col, n_lev});
     Array<double,2> lw_flux_net({n_col, n_lev});
 
-    const int n_gpt_lw = kdist_lw->get_ngpt();
+    const int n_gpt_lw = kdist_lw_col->get_ngpt();
     Array<double,2> lw_flux_dn_inc({n_col, n_gpt_lw});
 
     solve_longwave_column<double>(
             optical_props_lw,
             lw_flux_up, lw_flux_dn, lw_flux_net,
             lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
-            gas_concs,
-            kdist_lw,
+            gas_concs_col,
+            kdist_lw_col,
             sources_lw,
             col_dry,
             p_lay, p_lev,
@@ -948,14 +948,14 @@ void Radiation_rrtmgp<TF>::create(
             n_lay);
 
     std::unique_ptr<Optical_props_arry<double>> optical_props_sw =
-            std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw);
+            std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw_col);
 
     Array<double,2> sw_flux_up    ({n_col, n_lev});
     Array<double,2> sw_flux_dn    ({n_col, n_lev});
     Array<double,2> sw_flux_dn_dir({n_col, n_lev});
     Array<double,2> sw_flux_net   ({n_col, n_lev});
 
-    const int n_gpt_sw = kdist_sw->get_ngpt();
+    const int n_gpt_sw = kdist_sw_col->get_ngpt();
     Array<double,2> sw_flux_dn_inc    ({n_col, n_gpt_sw});
     Array<double,2> sw_flux_dn_dir_inc({n_col, n_gpt_sw});
 
@@ -963,8 +963,8 @@ void Radiation_rrtmgp<TF>::create(
             optical_props_sw,
             sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
             sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kend],
-            gas_concs,
-            *kdist_sw,
+            gas_concs_col,
+            *kdist_sw_col,
             col_dry,
             p_lay, p_lev,
             t_lay, t_lev,
@@ -1010,6 +1010,141 @@ void Radiation_rrtmgp<TF>::create(
                 "W m-2", "p_rad",
                 std::vector<TF>(sw_flux_dn_dir.v().begin(), sw_flux_dn_dir.v().end()));
     }
+}
+template<typename TF>
+void Radiation_rrtmgp<TF>::create_solver(
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
+{
+    auto& gd = grid.get_grid_data();
+
+    // 1. Load the available gas concentrations from the group of the netcdf file.
+    Netcdf_handle rad_input_nc = input_nc.get_group("init");
+    load_gas_concs<double>(gas_concs, rad_input_nc);
+
+    // 2. Set up the gas optics classes for long and shortwave.
+    kdist_lw = std::make_unique<Gas_optics<double>>(
+            load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
+    kdist_sw = std::make_unique<Gas_optics<double>>(
+            load_and_init_gas_optics(master, gas_concs, "coefficients_sw.nc"));
+
+    // 3. Initialize the optical properties classes
+    optical_props_lw = std::make_unique<Optical_props_1scl<double>>(gd.imax, gd.ktot, *kdist_lw);
+    optical_props_sw = std::make_unique<Optical_props_2str<double>>(gd.imax, gd.ktot, *kdist_sw);
+
+    // 4. Read the boundary conditions for the longwave and shortwave solver.
+    // Set the surface temperature and emissivity.
+    // CvH: communicate with surface scheme.
+    // Array<double,1> t_sfc({1});
+    // t_sfc({1}) = t_sfc_in;
+
+    // const int n_bnd = kdist_lw_col->get_nband();
+    // Array<double,2> emis_sfc({n_bnd, 1});
+    // for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+    //     emis_sfc({ibnd, 1}) = emis_sfc_in;
+
+    // Set the solar zenith angle and albedo.
+    // Array<double,2> sfc_alb_dir({n_bnd, n_col});
+    // Array<double,2> sfc_alb_dif({n_bnd, n_col});
+
+    // for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+    // {
+    //     sfc_alb_dir({ibnd, 1}) = sfc_alb_dir_in;
+    //     sfc_alb_dif({ibnd, 1}) = sfc_alb_dif_in;
+    // }
+
+    // Array<double,1> mu0({n_col});
+    // mu0({1}) = this->mu0;
+
+    // Compute the longwave for the reference profile.
+    // std::unique_ptr<Source_func_lw<double>> sources_lw =
+    //         std::make_unique<Source_func_lw<double>>(n_col, n_lay, *kdist_lw_col);
+
+    // std::unique_ptr<Optical_props_arry<double>> optical_props_lw =
+    //         std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_lw_col);
+
+    // Array<double,2> lw_flux_up ({n_col, n_lev});
+    // Array<double,2> lw_flux_dn ({n_col, n_lev});
+    // Array<double,2> lw_flux_net({n_col, n_lev});
+
+    // const int n_gpt_lw = kdist_lw_col->get_ngpt();
+    // lw_flux_dn_inc.set_dims({n_col, n_gpt_lw});
+
+    // solve_longwave_column<double>(
+    //         optical_props_lw,
+    //         lw_flux_up, lw_flux_dn, lw_flux_net,
+    //         lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
+    //         gas_concs_col,
+    //         kdist_lw_col,
+    //         sources_lw,
+    //         col_dry,
+    //         p_lay, p_lev,
+    //         t_lay, t_lev,
+    //         t_sfc, emis_sfc,
+    //         n_lay);
+
+    // std::unique_ptr<Optical_props_arry<double>> optical_props_sw =
+    //         std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw_col);
+
+    // Array<double,2> sw_flux_up    ({n_col, n_lev});
+    // Array<double,2> sw_flux_dn    ({n_col, n_lev});
+    // Array<double,2> sw_flux_dn_dir({n_col, n_lev});
+    // Array<double,2> sw_flux_net   ({n_col, n_lev});
+
+    // const int n_gpt_sw = kdist_sw_col->get_ngpt();
+    // sw_flux_dn_inc    .set_dims({n_col, n_gpt_sw});
+    // sw_flux_dn_dir_inc.set_dims({n_col, n_gpt_sw});
+
+    // solve_shortwave_column<double>(
+    //         optical_props_sw,
+    //         sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
+    //         sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kend],
+    //         gas_concs_col,
+    //         *kdist_sw_col,
+    //         col_dry,
+    //         p_lay, p_lev,
+    //         t_lay, t_lev,
+    //         mu0,
+    //         sfc_alb_dir, sfc_alb_dif,
+    //         tsi_scaling,
+    //         n_lay);
+
+    // Save the reference profile fluxes in the stats.
+    // if (stats.get_switch())
+    // {
+    //     stats.add_dimension("p_rad", n_lev);
+    //     stats.add_fixed_prof_raw(
+    //             "p_rad",
+    //             "Pressure of radiation reference column",
+    //             "Pa", "p_rad",
+    //             std::vector<TF>(p_lev.v().begin(), p_lev.v().end()));
+
+    //     // CvH, I put an vector copy here because radiation is always double.
+    //     stats.add_fixed_prof_raw(
+    //             "lw_flux_up_ref",
+    //             "Longwave upwelling flux of reference column",
+    //             "W m-2", "p_rad",
+    //             std::vector<TF>(lw_flux_up.v().begin(), lw_flux_up.v().end()));
+    //     stats.add_fixed_prof_raw(
+    //             "lw_flux_dn_ref",
+    //             "Longwave downwelling flux of reference column",
+    //             "W m-2", "p_rad",
+    //             std::vector<TF>(lw_flux_dn.v().begin(), lw_flux_dn.v().end()));
+    //     stats.add_fixed_prof_raw(
+    //             "sw_flux_up_ref",
+    //             "Shortwave upwelling flux of reference column",
+    //             "W m-2", "p_rad",
+    //             std::vector<TF>(sw_flux_up.v().begin(), sw_flux_up.v().end()));
+    //     stats.add_fixed_prof_raw(
+    //             "sw_flux_dn_ref",
+    //             "Shortwave downwelling flux of reference column",
+    //             "W m-2", "p_rad",
+    //             std::vector<TF>(sw_flux_dn.v().begin(), sw_flux_dn.v().end()));
+    //     stats.add_fixed_prof_raw(
+    //             "sw_flux_dn_dir_ref",
+    //             "Shortwave direct downwelling flux of reference column",
+    //             "W m-2", "p_rad",
+    //             std::vector<TF>(sw_flux_dn_dir.v().begin(), sw_flux_dn_dir.v().end()));
+    // }
 }
 
 template<typename TF>
