@@ -550,6 +550,23 @@ namespace
 
         fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
 
+        // Find the index where p_lev exceeds p_top.
+        int idx_top=1;
+        for (; idx_top<=n_lev; ++idx_top)
+        {
+            if (p_lev({1, idx_top}) < p_top)
+                break;
+        }
+
+        // Calculate the interpolation factors.
+        const int idx_bot = idx_top - 1;
+        const double fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+        const double fac_top = 1. - fac_bot;
+
+        // Interpolate the top boundary conditions.
+        for (int igpt=1; igpt<=n_gpt; ++igpt)
+            flux_dn_inc({1, igpt}) = fac_bot * gpt_flux_dn({1, idx_bot, igpt}) + fac_top * gpt_flux_dn({1, idx_top, igpt});
+
         // Copy the data to the output.
         for (int ilev=1; ilev<=n_lev; ++ilev)
             for (int icol=1; icol<=n_col; ++icol)
@@ -620,6 +637,26 @@ namespace
         fluxes->reduce(
                 gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
                 optical_props, top_at_1);
+
+        // Find the index where p_lev exceeds p_top.
+        int idx_top=1;
+        for (; idx_top<=n_lev; ++idx_top)
+        {
+            if (p_lev({1, idx_top}) < p_top)
+                break;
+        }
+
+        // Calculate the interpolation factors.
+        const int idx_bot = idx_top - 1;
+        const double fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+        const double fac_top = 1. - fac_bot;
+
+        // Interpolate the top boundary conditions.
+        for (int igpt=1; igpt<=n_gpt; ++igpt)
+        {
+            flux_dn_inc    ({1, igpt}) = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
+            flux_dn_dir_inc({1, igpt}) = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
+        }
 
         // Copy the data to the output.
         for (int ilev=1; ilev<=n_lev; ++ilev)
@@ -841,12 +878,12 @@ void Radiation_rrtmgp<TF>::create(
     Array<double,2> t_lev(rad_nc.get_variable<double>("t_lev", {n_lev, n_col}), {n_col, n_lev});
 
     Array<double,2> col_dry({n_col, n_lay});
-    if (input_nc.variable_exists("col_dry"))
+    if (rad_nc.variable_exists("col_dry"))
         col_dry = rad_nc.get_variable<double>("col_dry", {n_lay, n_col});
     else
     {
         kdist_lw->get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
-        kdist_sw->get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
+        // kdist_sw->get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
     }
 
     const double tsi_scaling = input.get_item<double>("radiation", "tsi_scaling", "", -999.);
@@ -894,13 +931,13 @@ void Radiation_rrtmgp<TF>::create(
     Array<double,2> lw_flux_dn ({n_col, n_lev});
     Array<double,2> lw_flux_net({n_col, n_lev});
 
-    const int n_gpt = kdist_sw->get_ngpt();
-    Array<double,2> lw_flux_dn_inc({n_col, n_gpt});
+    const int n_gpt_lw = kdist_lw->get_ngpt();
+    Array<double,2> lw_flux_dn_inc({n_col, n_gpt_lw});
 
     solve_longwave_column<double>(
             optical_props_lw,
             lw_flux_up, lw_flux_dn, lw_flux_net,
-            lw_flux_dn_inc, thermo.get_ph_vector()[gd.kstart],
+            lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
             gas_concs,
             kdist_lw,
             sources_lw,
@@ -918,13 +955,14 @@ void Radiation_rrtmgp<TF>::create(
     Array<double,2> sw_flux_dn_dir({n_col, n_lev});
     Array<double,2> sw_flux_net   ({n_col, n_lev});
 
-    Array<double,2> sw_flux_dn_inc    ({n_col, n_gpt});
-    Array<double,2> sw_flux_dn_dir_inc({n_col, n_gpt});
+    const int n_gpt_sw = kdist_sw->get_ngpt();
+    Array<double,2> sw_flux_dn_inc    ({n_col, n_gpt_sw});
+    Array<double,2> sw_flux_dn_dir_inc({n_col, n_gpt_sw});
 
     solve_shortwave_column<double>(
             optical_props_sw,
             sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
-            sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kstart],
+            sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kend],
             gas_concs,
             *kdist_sw,
             col_dry,
