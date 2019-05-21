@@ -41,13 +41,13 @@ namespace
         const TF rate = 1./(std::max(decaytime, dt));
 
         for (int k=kstart; k<kend; ++k)
-           for (int j=jstart; j<jend; ++j)
-               #pragma ivdep
-               for (int i=istart; i<iend; ++i)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   tend[ijk] -= rate * var[ijk];
-               }
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    tend[ijk] -= rate * var[ijk];
+                }
     }
 }
 

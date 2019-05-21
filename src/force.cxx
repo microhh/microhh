@@ -53,13 +53,13 @@ namespace
         const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
 
         for (int k=kstart; k<kend; ++k)
-           for (int j=jstart; j<jend; ++j)
-               #pragma ivdep
-               for (int i=istart; i<iend; ++i)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   ut[ijk] += fbody;
-               }
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    ut[ijk] += fbody;
+                }
     }
     template<typename TF>
     void calc_coriolis_2nd(
