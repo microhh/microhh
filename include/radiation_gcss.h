@@ -46,8 +46,8 @@ template<typename> class Timeloop;
 template<typename TF>
 class Radiation_gcss : public Radiation<TF>
 {
-	public:
-		Radiation_gcss(Master&, Grid<TF>&, Fields<TF>&, Input&);
+    public:
+        Radiation_gcss(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_gcss();
         void init();
         void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
@@ -60,23 +60,23 @@ class Radiation_gcss : public Radiation<TF>
         void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
         void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
-	private:
-		//cross sections
-		std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-		bool swcross_rflx;
+    private:
+        //cross sections
+        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+        bool swcross_rflx;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-		void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
 
-		using Radiation<TF>::swradiation;
-		using Radiation<TF>::master;
-		using Radiation<TF>::grid;
-		using Radiation<TF>::fields;
-		using Radiation<TF>::field3d_operators;
+        using Radiation<TF>::swradiation;
+        using Radiation<TF>::master;
+        using Radiation<TF>::grid;
+        using Radiation<TF>::fields;
+        using Radiation<TF>::field3d_operators;
 
         TF lat;
         TF lon;

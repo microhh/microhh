@@ -173,7 +173,7 @@ namespace
 
     template<typename TF> __global__
     void nudging_tendency_g(TF* const __restrict__ st, TF* const __restrict__ smn,
-			                TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
+                            TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int jj,     const int kk)

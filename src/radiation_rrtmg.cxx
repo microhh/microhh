@@ -49,9 +49,9 @@ namespace
 
 template<typename TF>
 Radiation_rrtmg<TF>::Radiation_rrtmg(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-	Radiation<TF>(masterin, gridin, fieldsin, inputin)
+    Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "1";
+    swradiation = "1";
 
     // double cp = 1004.;
     // c_rrtmg_lw_init(&cp);

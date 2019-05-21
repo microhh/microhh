@@ -40,31 +40,31 @@ template<typename> class Timeloop;
 template<typename TF>
 class Radiation_rrtmg : public Radiation<TF>
 {
-	public:
-		Radiation_rrtmg(Master&, Grid<TF>&, Fields<TF>&, Input&);
+    public:
+        Radiation_rrtmg(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_rrtmg();
 
-		bool check_field_exists(std::string name);
+        bool check_field_exists(std::string name);
         void init();
         void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
-		// Empty functions that should throw
-		// Stats/dump not implemented in rrmtg now
+        // Empty functions that should throw
+        // Stats/dump not implemented in rrmtg now
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&){throw 1;};
 
         void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&){};
         void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
         virtual void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&){};
-	private:
-		using Radiation<TF>::swradiation;
-		using Radiation<TF>::master;
-		using Radiation<TF>::grid;
-		using Radiation<TF>::fields;
-		using Radiation<TF>::field3d_operators;
+    private:
+        using Radiation<TF>::swradiation;
+        using Radiation<TF>::master;
+        using Radiation<TF>::grid;
+        using Radiation<TF>::fields;
+        using Radiation<TF>::field3d_operators;
 
-		int ncol;
+        int ncol;
         int nlay;
         int nbndlw;
 

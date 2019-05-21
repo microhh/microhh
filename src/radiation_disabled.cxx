@@ -23,9 +23,9 @@
 
 template<typename TF>
 Radiation_disabled<TF>::Radiation_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-	Radiation<TF>(masterin, gridin, fieldsin, inputin)
+    Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "0";
+    swradiation = "0";
 }
 
 template<typename TF>

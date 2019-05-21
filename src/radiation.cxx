@@ -47,14 +47,14 @@ Radiation<TF>::~Radiation()
 template<typename TF>
 std::string Radiation<TF>::get_switch()
 {
-	return swradiation;
+    return swradiation;
 }
 
 template<typename TF>
 std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
-	std::string swradiation = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
+    std::string swradiation = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
     if (swradiation == "0")
         return std::make_shared<Radiation_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "rrtmg") //rrtmg - call fortran
