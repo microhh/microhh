@@ -81,6 +81,9 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
 
+        void exec_longwave(
+                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
+
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 

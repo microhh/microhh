@@ -76,9 +76,10 @@ namespace
     }
 
     template<typename TF>
-    void load_gas_concs(Gas_concs<TF>& gas_concs, Netcdf_handle& input_nc)
+    void load_gas_concs(
+            Gas_concs<TF>& gas_concs, Netcdf_handle& input_nc, const std::string& dim_name)
     {
-        const int n_lay = input_nc.get_dimension_size("lay");
+        const int n_lay = input_nc.get_dimension_size(dim_name);
 
         gas_concs.set_vmr("h2o",
                 Array<TF,1>(input_nc.get_variable<TF>("h2o", {n_lay}), {n_lay}));
@@ -871,7 +872,7 @@ void Radiation_rrtmgp<TF>::create_column(
 
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle rad_nc = input_nc.get_group("radiation");
-    load_gas_concs<double>(gas_concs_col, rad_nc);
+    load_gas_concs<double>(gas_concs_col, rad_nc, "lay");
 
     // 2. Set up the gas optics classes for long and shortwave.
     kdist_lw_col = std::make_unique<Gas_optics<double>>(
@@ -1019,7 +1020,7 @@ void Radiation_rrtmgp<TF>::create_solver(
 
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle rad_input_nc = input_nc.get_group("init");
-    load_gas_concs<double>(gas_concs, rad_input_nc);
+    load_gas_concs<double>(gas_concs, rad_input_nc, "z");
 
     // 2. Set up the gas optics classes for long and shortwave.
     kdist_lw = std::make_unique<Gas_optics<double>>(
@@ -1030,6 +1031,16 @@ void Radiation_rrtmgp<TF>::create_solver(
     // 3. Initialize the optical properties classes
     optical_props_lw = std::make_unique<Optical_props_1scl<double>>(gd.imax, gd.ktot, *kdist_lw);
     optical_props_sw = std::make_unique<Optical_props_2str<double>>(gd.imax, gd.ktot, *kdist_sw);
+
+    // 4. Set up the statistics.
+    if (stats.get_switch())
+    {
+        stats.add_prof("lw_flux_up"    , "Longwave upwelling flux"          , "W m-2", "zh");
+        stats.add_prof("lw_flux_dn"    , "Longwave downwelling flux"        , "W m-2", "zh");
+        stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
+        stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
+        stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+    }
 
     // 4. Read the boundary conditions for the longwave and shortwave solver.
     // Set the surface temperature and emissivity.
@@ -1055,13 +1066,6 @@ void Radiation_rrtmgp<TF>::create_solver(
     // Array<double,1> mu0({n_col});
     // mu0({1}) = this->mu0;
 
-    // Compute the longwave for the reference profile.
-    // std::unique_ptr<Source_func_lw<double>> sources_lw =
-    //         std::make_unique<Source_func_lw<double>>(n_col, n_lay, *kdist_lw_col);
-
-    // std::unique_ptr<Optical_props_arry<double>> optical_props_lw =
-    //         std::make_unique<Optical_props_1scl<double>>(n_col, n_lay, *kdist_lw_col);
-
     // Array<double,2> lw_flux_up ({n_col, n_lev});
     // Array<double,2> lw_flux_dn ({n_col, n_lev});
     // Array<double,2> lw_flux_net({n_col, n_lev});
@@ -1081,9 +1085,6 @@ void Radiation_rrtmgp<TF>::create_solver(
     //         t_lay, t_lev,
     //         t_sfc, emis_sfc,
     //         n_lay);
-
-    // std::unique_ptr<Optical_props_arry<double>> optical_props_sw =
-    //         std::make_unique<Optical_props_2str<double>>(n_col, n_lay, *kdist_sw_col);
 
     // Array<double,2> sw_flux_up    ({n_col, n_lev});
     // Array<double,2> sw_flux_dn    ({n_col, n_lev});
@@ -1151,7 +1152,185 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
+    auto t_lay = fields.get_tmp();
+    auto t_lev = fields.get_tmp();
+    auto h2o   = fields.get_tmp();
+    auto ql    = fields.get_tmp();
+
+    // Set the input to the radiation on a 3D grid without ghost cells.
+    // CvH IMPLEMENT THIS.
+    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
+
+    exec_longwave(
+            thermo, time, timeloop, stats);
+
+    fields.release_tmp(t_lay);
+    fields.release_tmp(t_lev);
+    fields.release_tmp(h2o  );
+    fields.release_tmp(ql   );
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_longwave(
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+{
+    // How many profiles are solved simultaneously?
+    constexpr int n_col_block = 8;
+
     auto& gd = grid.get_grid_data();
+
+    const int n_lay = gd.ktot;
+    const int n_lev = gd.ktot+1;
+    const int n_col = gd.imax;
+
+    const int n_blocks = n_col / n_col_block;
+    const int n_col_block_left = n_col % n_col_block;
+
+    // Store the number of bands in a variable.
+    const int n_bnd = kdist_lw->get_nband();
+
+    // Set the number of angles to 1.
+    const int n_ang = 1;
+
+    // Check the dimension ordering. The top is not at 1 in MicroHH, but the surface is.
+    const int top_at_1 = 0;
+
+    // Define the pointers for the subsetting.
+    std::unique_ptr<Optical_props_arry<double>> optical_props_subset =
+            std::make_unique<Optical_props_1scl<double>>(n_col_block, n_lay, *kdist_lw);
+    std::unique_ptr<Source_func_lw<double>> sources_subset =
+            std::make_unique<Source_func_lw<double>>(n_col_block, n_lay, *kdist_lw);
+
+    std::unique_ptr<Optical_props_arry<double>> optical_props_left =
+            std::make_unique<Optical_props_1scl<double>>(n_col_block_left, n_lay, *kdist_lw);
+    std::unique_ptr<Source_func_lw<double>> sources_left =
+            std::make_unique<Source_func_lw<double>>(n_col_block_left, n_lay, *kdist_lw);
+
+    /*
+    // Define the arrays that contain the subsets.
+    Array<TF,2> p_lay;
+    Array<TF,2> p_lev;
+    Array<TF,2> t_lay;
+    Array<TF,2> t_sfc;
+    Array<TF,2> col_dry;
+    Array<TF,2> t_lev;
+
+    // Lambda function for solving optical properties subset.
+    auto calc_optical_props_subset = [&](
+            const int col_s_in, const int col_e_in,
+            std::unique_ptr<Optical_props_arry<TF>>& optical_props_subset_in,
+            Source_func_lw<TF>& sources_subset_in)
+    {
+        const int n_col_in = col_e_in - col_s_in + 1;
+        Gas_concs<TF> gas_concs_subset(gas_concs, col_s_in, n_col_in);
+
+        kdist_lw->gas_optics(
+                p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
+                t_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                t_sfc.subset({{ {col_s_in, col_e_in} }}),
+                gas_concs_subset,
+                optical_props_subset_in,
+                sources_subset_in,
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                t_lev.subset  ({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
+
+        optical_props->set_subset(optical_props_subset_in, col_s_in, col_e_in);
+        sources->set_subset(sources_subset_in, col_s_in, col_e_in);
+    };
+
+    // Lambda function for solving fluxes of a subset.
+    auto calc_fluxes_subset = [&](
+            const int col_s_in, const int col_e_in,
+            const std::unique_ptr<Optical_props_arry<TF>>& optical_props_subset_in,
+            const Source_func_lw<TF>& sources_subset_in,
+            const Array<TF,2> emis_sfc_subset_in,
+            std::unique_ptr<Fluxes_broadband<TF>>& fluxes)
+    {
+        const int n_col_block_subset = col_e_in - col_s_in + 1;
+
+        Rte_lw<TF>::rte_lw(
+                optical_props_subset_in,
+                top_at_1,
+                sources_subset_in,
+                emis_sfc_subset_in,
+                fluxes,
+                n_ang);
+
+        // Copy the data to the output.
+        for (int ilev=1; ilev<=n_lev; ++ilev)
+            for (int icol=1; icol<=n_col_block_subset; ++icol)
+            {
+                flux_up ({icol+col_s_in-1, ilev}) = fluxes->get_flux_up ()({icol, ilev});
+                flux_dn ({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
+                flux_net({icol+col_s_in-1, ilev}) = fluxes->get_flux_net()({icol, ilev});
+            }
+    };
+
+    for (int b=1; b<=n_blocks; ++b)
+    {
+        const int col_s = (b-1) * n_col_block + 1;
+        const int col_e =  b    * n_col_block;
+
+        calc_optical_props_subset(
+                col_s, col_e,
+                optical_props_subset,
+                *sources_subset);
+    }
+
+    if (n_col_block_left > 0)
+    {
+        const int col_s = n_col - n_col_block_left + 1;
+        const int col_e = n_col;
+
+        calc_optical_props_subset(
+                col_s, col_e,
+                optical_props_left,
+                *sources_left);
+    }
+
+    for (int b=1; b<=n_blocks; ++b)
+    {
+        const int col_s = (b-1) * n_col_block + 1;
+        const int col_e =  b    * n_col_block;
+
+        optical_props_subset->get_subset(optical_props, col_s, col_e);
+        sources_subset->get_subset(*sources, col_s, col_e);
+
+        Array<TF,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+
+        std::unique_ptr<Fluxes_broadband<TF>> fluxes_subset =
+                std::make_unique<Fluxes_byband<TF>>(n_col_block, n_lev, n_bnd);
+
+        calc_fluxes_subset(
+                col_s, col_e,
+                optical_props_subset,
+                *sources_subset,
+                emis_sfc_subset,
+                fluxes_subset);
+    }
+
+    if (n_col_block_left > 0)
+    {
+        const int col_s = n_col - n_col_block_left + 1;
+        const int col_e = n_col;
+
+        optical_props_left->get_subset(optical_props, col_s, col_e);
+        sources_left->get_subset(*sources, col_s, col_e);
+
+        Array<TF,2> emis_sfc_left = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+
+        std::unique_ptr<Fluxes_broadband<TF>> fluxes_left =
+                std::make_unique<Fluxes_byband<TF>>(n_col_block_left, n_lev, n_bnd);
+
+        calc_fluxes_subset(
+                col_s, col_e,
+                optical_props_left,
+                *sources_left,
+                emis_sfc_left,
+                fluxes_left);
+    }
+    */
 }
 
 template class Radiation_rrtmgp<double>;
