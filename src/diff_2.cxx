@@ -180,11 +180,11 @@ void Diff_2<TF>::exec(Stats<TF>& stats)
                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells,
                    gd.dx, gd.dy, gd.dzi.data(), gd.dzhi.data());
 
-   stats.calc_tend(*fields.mt.at("u"), tend_name);
-   stats.calc_tend(*fields.mt.at("v"), tend_name);
-   stats.calc_tend(*fields.mt.at("w"), tend_name);
-   for (auto it : fields.st)
-       stats.calc_tend(*it.second, tend_name);
+    stats.calc_tend(*fields.mt.at("u"), tend_name);
+    stats.calc_tend(*fields.mt.at("v"), tend_name);
+    stats.calc_tend(*fields.mt.at("w"), tend_name);
+    for (auto it : fields.st)
+        stats.calc_tend(*it.second, tend_name);
 }
 #endif
 

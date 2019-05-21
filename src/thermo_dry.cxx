@@ -679,7 +679,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
             else
                 ++it;
         }
-   }
+    }
 }
 
 template<typename TF>

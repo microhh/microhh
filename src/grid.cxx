@@ -368,7 +368,7 @@ void Grid<TF>::check_ghost_cells()
     // Check whether the size per patch is larger than number of ghost cells for 3D runs.
     if (gd.imax < gd.igc)
     {
-	    master.print_message("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
+        master.print_message("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.iend-gd.istart), gd.igc);
         std::string msg = "Either increase itot or decrease npx";
         throw std::runtime_error(msg);
     }
@@ -376,7 +376,7 @@ void Grid<TF>::check_ghost_cells()
     // Check the jtot > 1 condition, to still allow for 2d runs.
     if (gd.jtot > 1 && gd.jmax < gd.jgc)
     {
-	    master.print_message("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
+        master.print_message("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(gd.jend-gd.jstart), gd.jgc);
         std::string msg = "Either increase jtot or decrease npy";
         throw std::runtime_error(msg);
     }

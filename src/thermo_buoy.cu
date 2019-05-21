@@ -323,7 +323,7 @@ namespace
 template<typename TF>
 void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
 {
-	auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -336,7 +336,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
     {
         if (bs.has_slope || bs.has_N2)
         {
-	        const TF sinalpha = std::sin(bs.alpha);
+            const TF sinalpha = std::sin(bs.alpha);
             const TF cosalpha = std::cos(bs.alpha);
 
             calc_buoyancy_tend_u_2nd_g<<<gridGPU, blockGPU>>>(
@@ -366,7 +366,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         }
         else
         {
-	        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
+            calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
@@ -418,7 +418,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         }
         else
         {
-	        calc_buoyancy_tend_4th_g<<<gridGPU, blockGPU>>>(
+            calc_buoyancy_tend_4th_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("b")->fld_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
@@ -449,7 +449,7 @@ void Thermo_buoy<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, boo
 {
     auto& gd = grid.get_grid_data();
 
-	int blocksize = min(256, 16 * ((gd.ncells / 16) + (gd.ncells % 16 > 0)));
+    int blocksize = min(256, 16 * ((gd.ncells / 16) + (gd.ncells % 16 > 0)));
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;

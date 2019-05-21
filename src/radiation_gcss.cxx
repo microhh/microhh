@@ -311,9 +311,9 @@ namespace
 
 template<typename TF>
 Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-	Radiation<TF>(masterin, gridin, fieldsin, inputin)
+    Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "gcss"; //2 for gcss
+    swradiation = "gcss"; //2 for gcss
     lat = inputin.get_item<TF>("radiation", "lat", "");
     lon = inputin.get_item<TF>("radiation", "lon", "");
     xka = inputin.get_item<TF>("radiation", "xka", "");
@@ -338,38 +338,38 @@ void Radiation_gcss<TF>::create(
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Set up output classes
-	create_stats(stats);
-	create_column(column);
-	create_dump(dump);
-	create_cross(cross);
+    create_stats(stats);
+    create_column(column);
+    create_dump(dump);
+    create_cross(cross);
 }
 
 #ifndef USECUDA
 template<typename TF>
 void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
-	auto& gd = grid.get_grid_data();
-	auto lwp = fields.get_tmp();
-	auto flx = fields.get_tmp();
-	auto swn = fields.get_tmp();
-	auto ql  = fields.get_tmp();
+    auto& gd = grid.get_grid_data();
+    auto lwp = fields.get_tmp();
+    auto flx = fields.get_tmp();
+    auto swn = fields.get_tmp();
+    auto ql  = fields.get_tmp();
 
-	thermo.get_thermo_field(*ql, "ql", false, false);
+    thermo.get_thermo_field(*ql, "ql", false, false);
 
-	TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
+    TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
-	exec_gcss_rad<TF>(
-		    fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
-		    lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
+    exec_gcss_rad<TF>(
+            fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
+            lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
             mu, mu_min, fr0, fr1, xka, div,
-		    gd.z.data(), gd.dzhi.data(),
-		    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-		    gd.icells, gd.ijcells, gd.ncells);
+            gd.z.data(), gd.dzhi.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells, gd.ncells);
 
-	fields.release_tmp(lwp);
-	fields.release_tmp(flx);
-	fields.release_tmp(swn);
-	fields.release_tmp(ql);
+    fields.release_tmp(lwp);
+    fields.release_tmp(flx);
+    fields.release_tmp(swn);
+    fields.release_tmp(ql);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
