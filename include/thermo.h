@@ -52,7 +52,8 @@ class Thermo
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(
+                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(const double, Stats<TF>&) = 0;
@@ -71,6 +72,8 @@ class Thermo
         virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
         virtual void get_T_bot(Field3d<TF>&, bool) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
+        virtual void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         virtual const std::vector<TF>& get_p_vector() const = 0;
         virtual const std::vector<TF>& get_ph_vector() const = 0;
         virtual const std::vector<TF>& get_exner_vector() const = 0;

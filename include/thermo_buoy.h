@@ -60,6 +60,9 @@ class Thermo_buoy : public Thermo<TF>
         void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
         void get_thermo_field(Field3d<TF>&, std::string, bool, bool); ///< Compute the buoyancy for usage in another routine.
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+                { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }

@@ -811,6 +811,11 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
         boundary_cyclic.exec(fld.fld.data());
 }
 
+void Thermo_moist<TF>::get_radiation_fields(
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& ql)
+{
+}
+
 template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
