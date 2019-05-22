@@ -26,6 +26,7 @@
 
 #include "Gas_optics.h"
 #include "Gas_concs.h"
+#include "Source_functions.h"
 
 class Master;
 class Input;
@@ -38,10 +39,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
-
-// RRTMGP classes.
-template<typename> class Gas_concs;
-template<typename> class Gas_optics;
 
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
@@ -82,7 +79,9 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
 
         void exec_longwave(
-                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
+                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
+                const Array<double,2>&, const Array<double,2>&,
+                const Array<double,2>&, const Array<double,2>&);
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
@@ -109,5 +108,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Gas_optics<double>> kdist_sw;
         std::unique_ptr<Optical_props_arry<double>> optical_props_lw;
         std::unique_ptr<Optical_props_arry<double>> optical_props_sw;
+        std::unique_ptr<Source_func_lw<double>> sources;
 };
 #endif

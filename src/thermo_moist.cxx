@@ -484,8 +484,64 @@ namespace
         }
         return kinv;
     }
-}
 
+    template<typename TF>
+    void calc_radiation_fields(
+            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict ql,
+            TF* restrict thlh, TF* restrict qth,
+            const TF* restrict thl, const TF* restrict qt,
+            const TF* restrict p, const TF* restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                    ql[ijk_nogc] = ssa.ql;
+                    qv[ijk_nogc] = qt[ijk] - ssa.ql;
+                    T [ijk_nogc] = ssa.t;
+                }
+        }
+
+        for (int k=kstart; k<kend+1; k++)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                }
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jj;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                }
+        }
+    }
+}
 
 template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -815,6 +871,19 @@ template<typename TF>
 void Thermo_moist<TF>::get_radiation_fields(
         Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& ql) const
 {
+    auto& gd = grid.get_grid_data();
+
+    calc_radiation_fields(
+            T.fld.data(), T_h.fld.data(), qv.fld.data(), ql.fld.data(),
+            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+            T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
+            bs.pref.data(), bs.prefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.igc, gd.jgc, gd.kgc,
+            gd.icells, gd.ijcells,
+            gd.imax, gd.imax*gd.jmax);
 }
 
 template<typename TF>
