@@ -654,6 +654,25 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     const double sza = inputin.get_item<double>("radiation", "sza", "");
     mu0 = std::cos(sza);
+    // t_sfc({1}) = t_sfc_in;
+
+    // const int n_bnd = kdist_lw_col->get_nband();
+    // Array<double,2> emis_sfc({n_bnd, 1});
+    // for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+    //     emis_sfc({ibnd, 1}) = emis_sfc_in;
+
+    // Set the solar zenith angle and albedo.
+    // Array<double,2> sfc_alb_dir({n_bnd, n_col});
+    // Array<double,2> sfc_alb_dif({n_bnd, n_col});
+
+    // for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+    // {
+    //     sfc_alb_dir({ibnd, 1}) = sfc_alb_dir_in;
+    //     sfc_alb_dif({ibnd, 1}) = sfc_alb_dif_in;
+    // }
+
+    // Array<double,1> mu0({n_col});
+    // mu0({1}) = this->mu0;
 }
 
 template<typename TF>
@@ -818,6 +837,7 @@ void Radiation_rrtmgp<TF>::create_column(
                 std::vector<TF>(sw_flux_dn_dir.v().begin(), sw_flux_dn_dir.v().end()));
     }
 }
+
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_solver(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
@@ -1009,8 +1029,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     const int n_blocks = n_col / n_col_block;
     const int n_col_block_left = n_col % n_col_block;
 
-    // Store the number of bands in a variable.
+    // Store the number of bands and gpt in a variable.
     const int n_bnd = kdist_lw->get_nband();
+    const int n_gpt = kdist_lw->get_ngpt();
 
     // Set the number of angles to 1.
     const int n_ang = 1;
@@ -1030,19 +1051,15 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::make_unique<Source_func_lw<double>>(n_col_block_left, n_lay, *kdist_lw);
 
     // Define the arrays that contain the subsets.
-    Array<double,2> p_lay;
-    Array<double,2> p_lev;
-    Array<double,1> t_sfc;
-    Array<double,2> col_dry;
+    Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
+    Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
 
-    Array<double,2> emis_sfc;
+    Array<double,1> t_sfc(std::vector<double>(1, this->t_sfc), {1});
+    Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {1, n_bnd});
 
     Array<double,2> flux_up;
     Array<double,2> flux_dn;
     Array<double,2> flux_net;
-
-    Array<double,3> gpt_flux_up;
-    Array<double,3> gpt_flux_dn;
 
     // Lambda function for solving optical properties subset.
     auto calc_optical_props_subset = [&](
@@ -1053,6 +1070,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int n_col_in = col_e_in - col_s_in + 1;
         Gas_concs<double> gas_concs_subset(gas_concs, col_s_in, n_col_in);
 
+        Array<double,2> col_dry({n_col_in, n_lay});
+        Gas_optics<double>::get_col_dry(col_dry, gas_concs_subset.get_vmr("h2o"), p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
         kdist_lw->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
@@ -1061,7 +1081,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 gas_concs_subset,
                 optical_props_subset_in,
                 sources_subset_in,
-                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                col_dry,
                 t_lev.subset  ({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
         optical_props_lw->set_subset(optical_props_subset_in, col_s_in, col_e_in);
@@ -1077,6 +1097,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::unique_ptr<Fluxes_broadband<double>>& fluxes)
     {
         const int n_col_block_subset = col_e_in - col_s_in + 1;
+
+        Array<double,3> gpt_flux_up({n_col_block_subset, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn({n_col_block_subset, n_lev, n_gpt});
 
         Rte_lw<double>::rte_lw(
                 optical_props_subset_in,

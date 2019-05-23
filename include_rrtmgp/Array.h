@@ -190,8 +190,14 @@ class Array
         {
             // Calculate the dimension sizes based on the range.
             std::array<int, N> subdims;
+            std::array<bool, N> do_spread;
+
             for (int i=0; i<N; ++i)
+            {
                 subdims[i] = ranges[i].second - ranges[i].first + 1;
+                // CvH how flexible / tolerant are we?
+                do_spread[i] = (dims[i] == 1 && subdims[i] > 1) ? true : false;
+            }
 
             // Create the array and fill it with the subset.
             Array<T, N> a_sub(subdims);
@@ -201,10 +207,10 @@ class Array
                 int ic = i;
                 for (int n=N-1; n>0; --n)
                 {
-                    index[n] = ic / a_sub.strides[n] + ranges[n].first;
+                    index[n] = do_spread[n] ? 1 : ic / a_sub.strides[n] + ranges[n].first;
                     ic %= a_sub.strides[n];
                 }
-                index[0] = ic + ranges[0].first;
+                index[0] = do_spread[0] ? 1 : ic + ranges[0].first;
                 a_sub.data[i] = (*this)(index);
             }
 
