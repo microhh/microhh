@@ -147,7 +147,7 @@ nc_qt [:] = qt [:]
 
 nc_CO2[:] = co2
 nc_CH4[:] = ch4
-nc_N2O[:] = n2
+nc_N2O[:] = n2o
 nc_O3 [:] = o3
 nc_H2O[:] = qt[:]
 nc_N2 [:] = n2
