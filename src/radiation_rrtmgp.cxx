@@ -1033,7 +1033,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
-    const int n_col = gd.imax;
+    const int n_col = gd.imax*gd.jmax;
 
     const int n_blocks = n_col / n_col_block;
     const int n_col_block_left = n_col % n_col_block;
