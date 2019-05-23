@@ -1031,6 +1031,23 @@ void Radiation_rrtmgp<TF>::exec(
             std::vector<TF>(flux_dn.v().begin(), flux_dn.v().end()).data(),
             is_hlf);
 
+    std::vector<TF> h2o_test(gd.ktot);
+    std::vector<TF> t_test (gd.ktot);
+    std::vector<TF> th_test(gd.ktot+1);
+
+    field3d_operators.calc_mean_profile_nogc(
+            h2o_test.data(),
+            std::vector<TF>(h2o_a.v().begin(), h2o_a.v().end()).data(),
+            false);
+    field3d_operators.calc_mean_profile_nogc(
+            t_test.data(),
+            std::vector<TF>(t_lay_a.v().begin(), t_lay_a.v().end()).data(),
+            false);
+    field3d_operators.calc_mean_profile_nogc(
+            th_test.data(),
+            std::vector<TF>(t_lev_a.v().begin(), t_lev_a.v().end()).data(),
+            is_hlf);
+
     // CvH: TEMP EDITS
     if (stats.get_switch())
     {
@@ -1045,6 +1062,21 @@ void Radiation_rrtmgp<TF>::exec(
                 "Longwave downwelling flux of reference column",
                 "W m-2", "zh",
                 lw_flux_dn);
+        stats.add_fixed_prof_raw(
+                "h2o_test",
+                "Longwave upwelling flux of reference column",
+                "W m-2", "z",
+                h2o_test);
+        stats.add_fixed_prof_raw(
+                "t_lay_test",
+                "Longwave downwelling flux of reference column",
+                "W m-2", "z",
+                t_test);
+        stats.add_fixed_prof_raw(
+                "t_lev_test",
+                "Longwave downwelling flux of reference column",
+                "W m-2", "zh",
+                th_test);
     }
 }
 
