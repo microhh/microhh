@@ -7,8 +7,13 @@ Gas_concs<TF>::Gas_concs(const Gas_concs& gas_concs_ref, const int start, const 
     const int end = start + size - 1;
     for (auto& g : gas_concs_ref.gas_concs_map)
     {
-        Array<TF,2> gas_conc_subset = g.second.subset({{ {start, end}, {1, g.second.dim(2)} }});
-        this->gas_concs_map.emplace(g.first, gas_conc_subset);
+        if (g.second.dim(1) == 1)
+            this->gas_concs_map.emplace(g.first, g.second);
+        else
+        {
+            Array<TF,2> gas_conc_subset = g.second.subset({{ {start, end}, {1, g.second.dim(2)} }});
+            this->gas_concs_map.emplace(g.first, gas_conc_subset);
+        }
     }
 }
 
