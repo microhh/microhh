@@ -28,6 +28,7 @@ void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,1>& data)
     Array<TF,2> data_2d(data.v(), {1, data.dim(1)});
     gas_concs_map.emplace(name, std::move(data_2d));
 }
+
 // Insert new gas into the map.
 template<typename TF>
 void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,2>& data_2d)

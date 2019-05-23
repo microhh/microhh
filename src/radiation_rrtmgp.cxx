@@ -1062,6 +1062,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<double,2> flux_dn ({n_col, n_lev});
     Array<double,2> flux_net({n_col, n_lev});
 
+    gas_concs.set_vmr("h2o", h2o);
     Array<double,2> col_dry({n_col, n_lay});
     Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
