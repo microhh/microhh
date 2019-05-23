@@ -993,10 +993,12 @@ void Radiation_rrtmgp<TF>::exec(
     thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
 
     // Initialize arrays in double precision, cast when needed.
+    const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
+
     Array<double,2> t_lay_a(
             std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> t_lev_a(
-            std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+            std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
     Array<double,2> h2o_a(
             std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> ql_a(
