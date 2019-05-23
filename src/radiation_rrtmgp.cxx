@@ -990,7 +990,6 @@ void Radiation_rrtmgp<TF>::exec(
     auto ql    = fields.get_tmp();
 
     // Set the input to the radiation on a 3D grid without ghost cells.
-    // CvH IMPLEMENT THIS.
     thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
 
     // Initialize arrays in double precision, cast when needed.
@@ -1018,6 +1017,35 @@ void Radiation_rrtmgp<TF>::exec(
     fields.release_tmp(t_lev);
     fields.release_tmp(h2o  );
     fields.release_tmp(ql   );
+
+    std::vector<TF> lw_flux_up(gd.ktot+1);
+    std::vector<TF> lw_flux_dn(gd.ktot+1);
+
+    const bool is_hlf = true;
+    field3d_operators.calc_mean_profile_nogc(
+            lw_flux_up.data(),
+            std::vector<TF>(flux_up.v().begin(), flux_up.v().end()).data(),
+            is_hlf);
+    field3d_operators.calc_mean_profile_nogc(
+            lw_flux_dn.data(),
+            std::vector<TF>(flux_dn.v().begin(), flux_dn.v().end()).data(),
+            is_hlf);
+
+    // CvH: TEMP EDITS
+    if (stats.get_switch())
+    {
+        // CvH, I put an vector copy here because radiation is always double.
+        stats.add_fixed_prof_raw(
+                "lw_flux_up_test",
+                "Longwave upwelling flux of reference column",
+                "W m-2", "zh",
+                lw_flux_up);
+        stats.add_fixed_prof_raw(
+                "lw_flux_dn_test",
+                "Longwave downwelling flux of reference column",
+                "W m-2", "zh",
+                lw_flux_dn);
+    }
 }
 
 template<typename TF>
