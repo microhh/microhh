@@ -1004,8 +1004,13 @@ void Radiation_rrtmgp<TF>::exec(
     Array<double,2> ql_a(
             std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
+    Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
+
     exec_longwave(
             thermo, time, timeloop, stats,
+            flux_up, flux_dn, flux_net,
             t_lay_a, t_lev_a, h2o_a, ql_a);
 
     fields.release_tmp(t_lay);
@@ -1017,6 +1022,7 @@ void Radiation_rrtmgp<TF>::exec(
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
         const Array<double,2>& h2o, const Array<double,2>& ql)
 {
@@ -1059,10 +1065,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
     Array<double,1> t_sfc(std::vector<double>(1, this->t_sfc), {1});
     Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {1, n_bnd});
-
-    Array<double,2> flux_up ({n_col, n_lev});
-    Array<double,2> flux_dn ({n_col, n_lev});
-    Array<double,2> flux_net({n_col, n_lev});
 
     gas_concs.set_vmr("h2o", h2o);
     Array<double,2> col_dry({n_col, n_lay});

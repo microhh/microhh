@@ -80,6 +80,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         void exec_longwave(
                 Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
+                Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
 
