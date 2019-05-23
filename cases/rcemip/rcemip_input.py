@@ -38,7 +38,8 @@ def calc_p_q_T_thl_o3(z):
     
     p[i_above_zt] = p_tmp[i_above_zt]
 
-    thl = T*(p0/p)**(Rd/cp)
+    p00 = 1e5
+    thl = T*(p00/p)**(Rd/cp)
 
     g1 = 3.6478
     g2 = 0.83209
