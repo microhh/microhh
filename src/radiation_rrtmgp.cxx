@@ -1093,7 +1093,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
 
     Array<double,1> t_sfc(std::vector<double>(1, this->t_sfc), {1});
-    Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {1, n_bnd});
+    Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {n_bnd, 1});
 
     gas_concs.set_vmr("h2o", h2o);
     Array<double,2> col_dry({n_col, n_lay});
