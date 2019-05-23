@@ -505,9 +505,9 @@ namespace
         for (int k=kstart; k<kend; ++k)
         {
             const TF ex = exner(p[k]);
-            for (int j=jstart; j<jend; j++)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
@@ -518,22 +518,22 @@ namespace
                 }
         }
 
-        for (int k=kstart; k<kend+1; k++)
+        for (int k=kstart; k<kend+1; ++k)
         {
             const TF exnh = exner(ph[k]);
-            for (int j=jstart; j<jend; j++)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                    qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
                 }
 
-            for (int j=jstart; j<jend; j++)
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ij = i + j*jj;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
@@ -875,8 +875,8 @@ void Thermo_moist<TF>::get_radiation_fields(
 
     calc_radiation_fields(
             T.fld.data(), T_h.fld.data(), qv.fld.data(), ql.fld.data(),
-            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
             T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
+            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
             bs.pref.data(), bs.prefh.data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,

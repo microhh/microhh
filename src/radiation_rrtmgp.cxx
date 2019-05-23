@@ -20,6 +20,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <numeric>
+#include <cmath>
 
 #include "radiation_rrtmgp.h"
 #include "master.h"
@@ -1062,7 +1063,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<double,2> flux_net({n_col, n_lev});
 
     Array<double,2> col_dry({n_col, n_lay});
-    Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lay} }}));
+    Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
     // Lambda function for solving optical properties subset.
     auto calc_optical_props_subset = [&](
