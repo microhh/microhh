@@ -349,6 +349,7 @@ namespace
                 top_at_1,
                 *sources,
                 emis_sfc,
+                Array<double,2>(),
                 gpt_flux_up,
                 gpt_flux_dn,
                 n_ang);
@@ -1099,7 +1100,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             const int col_s_in, const int col_e_in,
             const std::unique_ptr<Optical_props_arry<double>>& optical_props_subset_in,
             const Source_func_lw<double>& sources_subset_in,
-            const Array<double,2> emis_sfc_subset_in,
+            const Array<double,2>& emis_sfc_subset_in,
+            const Array<double,2>& lw_flux_dn_inc_subset_in,
             std::unique_ptr<Fluxes_broadband<double>>& fluxes)
     {
         const int n_col_block_subset = col_e_in - col_s_in + 1;
@@ -1112,6 +1114,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 top_at_1,
                 sources_subset_in,
                 emis_sfc_subset_in,
+                lw_flux_dn_inc_subset_in,
                 gpt_flux_up, gpt_flux_dn,
                 n_ang);
 
@@ -1158,6 +1161,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         sources_subset->get_subset(*sources, col_s, col_e);
 
         Array<double,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<double,2> lw_flux_dn_inc_subset = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_subset =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block, n_lev);
@@ -1167,6 +1171,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 optical_props_subset,
                 *sources_subset,
                 emis_sfc_subset,
+                lw_flux_dn_inc_subset,
                 fluxes_subset);
     }
 
@@ -1179,6 +1184,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         sources_left->get_subset(*sources, col_s, col_e);
 
         Array<double,2> emis_sfc_left = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<double,2> lw_flux_dn_inc_left = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_left =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block_left, n_lev);
@@ -1188,6 +1194,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 optical_props_left,
                 *sources_left,
                 emis_sfc_left,
+                lw_flux_dn_inc_left,
                 fluxes_left);
     }
 }

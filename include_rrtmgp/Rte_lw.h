@@ -18,6 +18,7 @@ class Rte_lw
                 const int top_at_1,
                 const Source_func_lw<TF>& sources,
                 const Array<TF,2>& sfc_emis,
+                const Array<TF,2>& inc_flux,
                 Array<TF,3>& gpt_flux_up,
                 Array<TF,3>& gpt_flux_dn,
                 const int n_gauss_angles);
