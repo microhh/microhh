@@ -760,7 +760,7 @@ void Radiation_rrtmgp<TF>::create_column(
     Array<double,2> lw_flux_net({n_col, n_lev});
 
     const int n_gpt_lw = kdist_lw_col->get_ngpt();
-    Array<double,2> lw_flux_dn_inc({n_col, n_gpt_lw});
+    lw_flux_dn_inc.set_dims({n_col, n_gpt_lw});
 
     solve_longwave_column<double>(
             optical_props_lw,

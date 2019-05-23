@@ -19,6 +19,17 @@ namespace rrtmgp_kernel_launcher
     }
 
     template<typename TF>
+    void apply_BC(
+            int ncol, int nlay, int ngpt,
+            int top_at_1, const Array<TF,2>& inc_flux,
+            Array<TF,3>& gpt_flux_dn)
+    {
+        rrtmgp_kernels::apply_BC_gpt(
+                &ncol, &nlay, &ngpt,
+                &top_at_1, const_cast<TF*>(inc_flux.ptr()), gpt_flux_dn.ptr());
+    }
+
+    template<typename TF>
     void lw_solver_noscat_GaussQuad(
             int ncol, int nlay, int ngpt, int top_at_1, int n_quad_angs,
             const Array<TF,2>& gauss_Ds_subset,
@@ -79,7 +90,10 @@ void Rte_lw<TF>::rte_lw(
     expand_and_transpose(optical_props, sfc_emis, sfc_emis_gpt);
 
     // Upper boundary condition.
-    rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, gpt_flux_dn);
+    if (inc_flux.size() == 0)
+        rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, gpt_flux_dn);
+    else
+        rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux, gpt_flux_dn);
 
     // Run the radiative transfer solver
     const int n_quad_angs = n_gauss_angles;

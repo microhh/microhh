@@ -119,6 +119,10 @@ namespace rrtmgp_kernels
             int* ncol, int* nlay, int* ngpt,
             int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
 
+    extern "C" void apply_BC_gpt(
+            int* ncol, int* nlay, int* ngpt,
+            int* top_at_1, FLOAT_TYPE* inc_flux, FLOAT_TYPE* gpt_flux_dn);
+
     extern "C" void lw_solver_noscat_GaussQuad(
             int* ncol, int* nlay, int* ngpt, int* top_at_1, int* n_quad_angs,
             FLOAT_TYPE* gauss_Ds_subset, FLOAT_TYPE* gauss_wts_subset,
@@ -127,9 +131,9 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* sfc_emis_gpt, FLOAT_TYPE* sfc_source,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn);
 
-    extern "C" void apply_BC_0(
-            int* ncol, int* nlay, int* ngpt,
-            int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
+    // extern "C" void apply_BC_0(
+    //         int* ncol, int* nlay, int* ngpt,
+    //         int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
 
     extern "C" void apply_BC_factor(
             int* ncol, int* nlay, int* ngpt,
