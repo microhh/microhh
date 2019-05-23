@@ -993,13 +993,13 @@ void Radiation_rrtmgp<TF>::exec(
 
     // Initialize arrays in double precision, cast when needed.
     Array<double,2> t_lay_a(
-            std::vector<double>(t_lay->fld.begin(), t_lay->fld.end()), {gd.imax*gd.jmax, gd.ktot});
+            std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> t_lev_a(
-            std::vector<double>(t_lev->fld.begin(), t_lev->fld.end()), {gd.imax*gd.jmax, gd.ktot});
+            std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> h2o_a(
-            std::vector<double>(h2o->fld.begin(), h2o->fld.end()), {gd.imax*gd.jmax, gd.ktot});
+            std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> ql_a(
-            std::vector<double>(ql->fld.begin(), ql->fld.end()), {gd.imax*gd.jmax, gd.ktot});
+            std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
     exec_longwave(
             thermo, time, timeloop, stats,
