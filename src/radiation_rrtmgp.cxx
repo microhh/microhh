@@ -1057,9 +1057,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<double,1> t_sfc(std::vector<double>(1, this->t_sfc), {1});
     Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {1, n_bnd});
 
-    Array<double,2> flux_up;
-    Array<double,2> flux_dn;
-    Array<double,2> flux_net;
+    Array<double,2> flux_up ({n_col, n_lev});
+    Array<double,2> flux_dn ({n_col, n_lev});
+    Array<double,2> flux_net({n_col, n_lev});
+
+    Array<double,2> col_dry({n_col, n_lay});
+    Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lay} }}));
 
     // Lambda function for solving optical properties subset.
     auto calc_optical_props_subset = [&](
@@ -1070,9 +1073,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int n_col_in = col_e_in - col_s_in + 1;
         Gas_concs<double> gas_concs_subset(gas_concs, col_s_in, n_col_in);
 
-        Array<double,2> col_dry({n_col_in, n_lay});
-        Gas_optics<double>::get_col_dry(col_dry, gas_concs_subset.get_vmr("h2o"), p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-
         kdist_lw->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
@@ -1081,8 +1081,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 gas_concs_subset,
                 optical_props_subset_in,
                 sources_subset_in,
-                col_dry,
-                t_lev.subset  ({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                t_lev  .subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
         optical_props_lw->set_subset(optical_props_subset_in, col_s_in, col_e_in);
         sources->set_subset(sources_subset_in, col_s_in, col_e_in);
