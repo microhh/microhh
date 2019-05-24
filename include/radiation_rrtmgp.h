@@ -84,6 +84,12 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
 
+        void exec_shortwave(
+                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
+                Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
+                const Array<double,2>&, const Array<double,2>&,
+                const Array<double,2>&, const Array<double,2>&);
+
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 
