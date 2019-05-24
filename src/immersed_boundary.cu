@@ -123,7 +123,7 @@ void Immersed_boundary<TF>::exec_momentum()
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    set_ghost_cells_g<TF><<<gridGPU_v, blockGPU>>>(
+    set_ghost_cells_g<TF><<<gridGPU_w, blockGPU>>>(
             fields.mp.at("w")->fld_g, noslip_bc,
             ghost.at("w").c_idw_g, ghost.at("w").c_idw_sum_g, ghost.at("w").di_g,
             ghost.at("w").i_g, ghost.at("w").j_g, ghost.at("w").k_g,
@@ -131,6 +131,10 @@ void Immersed_boundary<TF>::exec_momentum()
             Boundary_type::Dirichlet_type, fields.visc, nghost_w, n_idw_points,
             gd.icells, gd.ijcells);
     cuda_check_error();
+
+    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
 }
 
 template <typename TF>
@@ -159,6 +163,8 @@ void Immersed_boundary<TF>::exec_scalars()
                     ghost.at("s").ip_i_g, ghost.at("s").ip_j_g, ghost.at("s").ip_k_g,
                     sbcbot, it.second->visc, nghost_s, n_idw_points,
                     gd.icells, gd.ijcells);
+
+            boundary_cyclic.exec_g(it.second->fld_g);
         }
     }
 }

@@ -518,6 +518,10 @@ void Immersed_boundary<TF>::exec_momentum()
             ghost.at("w").ip_i.data(), ghost.at("w").ip_j.data(), ghost.at("w").ip_k.data(),
             Boundary_type::Dirichlet_type, fields.visc, ghost.at("w").i.size(), n_idw_points,
             gd.icells, gd.ijcells);
+
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
 }
 
 template <typename TF>
@@ -537,6 +541,8 @@ void Immersed_boundary<TF>::exec_scalars()
                 ghost.at("s").ip_i.data(), ghost.at("s").ip_j.data(), ghost.at("s").ip_k.data(),
                 sbcbot, it.second->visc, ghost.at("s").i.size(), n_idw_points,
                 gd.icells, gd.ijcells);
+    
+        boundary_cyclic.exec(it.second->fld.data());
     }
 }
 #endif
