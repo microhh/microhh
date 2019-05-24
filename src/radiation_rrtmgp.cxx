@@ -785,13 +785,13 @@ void Radiation_rrtmgp<TF>::create_column(
     Array<double,2> sw_flux_net   ({n_col, n_lev});
 
     const int n_gpt_sw = kdist_sw_col->get_ngpt();
-    Array<double,2> sw_flux_dn_inc    ({n_col, n_gpt_sw});
-    Array<double,2> sw_flux_dn_dir_inc({n_col, n_gpt_sw});
+    sw_flux_dn_inc    .set_dims({n_col, n_gpt_sw});
+    sw_flux_dn_dif_inc.set_dims({n_col, n_gpt_sw});
 
     solve_shortwave_column<double>(
             optical_props_sw,
             sw_flux_up, sw_flux_dn, sw_flux_dn_dir, sw_flux_net,
-            sw_flux_dn_inc, sw_flux_dn_dir_inc, thermo.get_ph_vector()[gd.kend],
+            sw_flux_dn_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
             gas_concs_col,
             *kdist_sw_col,
             col_dry,
@@ -1449,8 +1449,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array<double,2> toa_src_subset = toa_src.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array<double,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array<double,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<double,2> sw_flux_dn_inc_subset = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array<double,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_inc_subset;// = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_dif_inc_subset;// = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_subset =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block, n_lev);
@@ -1477,8 +1477,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array<double,2> toa_src_left = toa_src.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array<double,2> sfc_alb_dir_left = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array<double,2> sfc_alb_dif_left = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<double,2> sw_flux_dn_inc_left = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array<double,2> sw_flux_dn_dif_inc_left = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_inc_left;// = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_dif_inc_left;// = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_left =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block_left, n_lev);
