@@ -56,16 +56,31 @@ namespace
     TF interp2_dem(
             const TF x_goal, const TF y_goal,
             std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& dem,
-            const TF dx, const TF dy, const int icells,
+            const TF dx, const TF dy,
+            const int icells, const int jcells,
             const int mpi_offset_x, const int mpi_offset_y)
     {
         const int ii = 1;
         const int jj = icells;
 
         // Indices west and south of `x_goal`, `y_goal`
-        const int i0 = (x_goal - TF(0.5)*dx) / dx + mpi_offset_x;
-        const int j0 = (y_goal - TF(0.5)*dy) / dy + mpi_offset_y;
+        int i0 = (x_goal - TF(0.5)*dx) / dx + mpi_offset_x;
+        int j0 = (y_goal - TF(0.5)*dy) / dy + mpi_offset_y;
+
+        // Account for interpolation in last ghost cell (east and north)
+        if (i0 == icells-1)
+            i0 -= 1;
+        if (j0 == jcells-1)
+            j0 -= 1;
+
         const int ij = i0 + j0*jj;
+
+        // Bounds check...
+        if (i0 < 0 or i0 >= icells-1 or j0 < 0 or j0 >= jcells-1)
+        {
+            std::string error = "IB dem interpolation out of bounds!";
+            throw std::runtime_error(error);
+        }
 
         // Interpolation factors
         const TF f1x = (x_goal - x[i0]) / dx;
@@ -84,14 +99,13 @@ namespace
             std::vector<TF>& dem,
             std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
             const TF dx, const TF dy,
-            const int i, const int j, const int k, const int icells,
+            const int i, const int j, const int k,
+            const int icells, const int jcells,
             const int mpi_offset_x, const int mpi_offset_y)
     {
-        const int ij = i + j*icells;
-
         const TF zdem = interp2_dem(
                 x[i], y[j], x, y, dem, dx, dy,
-                icells, mpi_offset_x, mpi_offset_y);
+                icells, jcells, mpi_offset_x, mpi_offset_y);
 
         // Check if grid point is below IB. If so; check if
         // one of the neighbouring grid points is outside.
@@ -124,7 +138,7 @@ namespace
                 // Interpolate DEM to account for half-level locations x,y
                 const TF zdem = interp2_dem(
                         x[i], y[j+dj], x, y, dem, dx, dy,
-                        icells, mpi_offset_x, mpi_offset_y);
+                        icells, jcells, mpi_offset_x, mpi_offset_y);
 
                 for (int dk = -1; dk <= 1; ++dk)
                     if (z[k + dk] > zdem)
@@ -136,7 +150,7 @@ namespace
                 // Interpolate DEM to account for half-level locations x,y
                 const TF zdem = interp2_dem(
                         x[i+di], y[j], x, y, dem, dx, dy,
-                        icells, mpi_offset_x, mpi_offset_y);
+                        icells, jcells, mpi_offset_x, mpi_offset_y);
 
                 for (int dk = -1; dk <= 1; ++dk)
                     if (z[k + dk] > zdem)
@@ -152,7 +166,8 @@ namespace
             TF& xb, TF& yb, TF& zb,
             std::vector<TF> x, std::vector<TF> y, std::vector<TF> dem,
             const TF x0, const TF y0, const TF z0,
-            const TF dx, const TF dy, const int icells,
+            const TF dx, const TF dy,
+            const int icells, const int jcells,
             const int mpi_offset_x, const int mpi_offset_y)
     {
         TF d_min = 1e12;
@@ -164,7 +179,7 @@ namespace
             {
                 const TF xc = x0 + 2 * ii / (double) n * dx;
                 const TF yc = y0 + 2 * jj / (double) n * dy;
-                const TF zc = interp2_dem(xc, yc, x, y, dem, dx, dy, icells, mpi_offset_x, mpi_offset_y);
+                const TF zc = interp2_dem(xc, yc, x, y, dem, dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
                 const TF d  = absolute_distance(x0, y0, z0, xc, yc, zc);
 
                 if (d < d_min)
@@ -188,7 +203,7 @@ namespace
             std::vector<TF> x, std::vector<TF> y, std::vector<TF> z, std::vector<TF> dem,
             const TF d_lim, const TF dx, const TF dy,
             const int i, const int j, const int k,
-            const int kstart, const int icells, const int ijcells,
+            const int kstart, const int icells, const int jcells, const int ijcells,
             const int mpi_offset_x, const int mpi_offset_y)
     {
         // Vectors including all neighbours outside IB
@@ -203,13 +218,13 @@ namespace
                 for (int di=-1; di<2; ++di)
                 {
                     // Check if grid point is outside IB
-                    if (z[k+dk] > interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, icells, mpi_offset_x, mpi_offset_y))
+                    if (z[k+dk] > interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y))
                     {
                         // Calculate distance to IB
                         TF xb, yb, zb;
                         find_nearest_location_wall(
                                 xb, yb, zb, x, y, dem, x[i+di], y[j+dj], z[k+dk],
-                                dx, dy, icells, mpi_offset_x, mpi_offset_y);
+                                dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
                         const TF dist = absolute_distance(xb, yb, zb, x[i+di], y[j+dj], z[k+dk]);
 
                         // Exclude if grid point is too close to the IB
@@ -289,7 +304,7 @@ namespace
             Boundary_type bc, const TF dx, const TF dy, std::vector<TF> dz, const int n_idw,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
-            const int icells, const int ijcells,
+            const int icells, const int jcells, const int ijcells,
             const int mpi_offset_x, const int mpi_offset_y)
     {
         // 1. Find the IB ghost cells
@@ -297,7 +312,7 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                     if (is_ghost_cell(dem, x, y, z, dx, dy, i, j, k,
-                                      icells, mpi_offset_x, mpi_offset_y))
+                                      icells, jcells, mpi_offset_x, mpi_offset_y))
                     {
                         ghost.i.push_back(i);
                         ghost.j.push_back(j);
@@ -329,7 +344,7 @@ namespace
             find_nearest_location_wall(
                     ghost.xb[n], ghost.yb[n], ghost.zb[n],
                     x, y, dem, x[i], y[j], z[k],
-                    dx, dy, icells, mpi_offset_x, mpi_offset_y);
+                    dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
 
             // Image point
             ghost.xi[n] = 2*ghost.xb[n] - x[i];
@@ -355,7 +370,8 @@ namespace
             find_interpolation_points(
                     ghost.ip_i, ghost.ip_j, ghost.ip_k, ghost.ip_d, ghost.c_idw,
                     n, n_idw, x, y, z, dem, dist_lim, dx, dy,
-                    ghost.i[n], ghost.j[n], ghost.k[n], kstart, icells, ijcells,
+                    ghost.i[n], ghost.j[n], ghost.k[n], kstart,
+                    icells, jcells, ijcells,
                     mpi_offset_x, mpi_offset_y);
         }
 
@@ -605,7 +621,7 @@ void Immersed_boundary<TF>::create()
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells,
                 mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
@@ -614,7 +630,7 @@ void Immersed_boundary<TF>::create()
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells,
                 mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
@@ -623,7 +639,7 @@ void Immersed_boundary<TF>::create()
                 gd.dx, gd.dy, gd.dzh, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells,
                 mpi_offset_x, mpi_offset_y);
 
         // Print some statistics (number of ghost cells)
@@ -638,7 +654,7 @@ void Immersed_boundary<TF>::create()
                     gd.dx, gd.dy, gd.dz, n_idw_points,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, gd.ijcells,
+                    gd.icells, gd.jcells, gd.ijcells,
                     mpi_offset_x, mpi_offset_y);
 
             print_statistics(ghost_s.i, std::string("s"), master);
