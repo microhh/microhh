@@ -32,7 +32,7 @@ def _int_or_float_or_str(value):
 def _convert_value(value):
     """ Helper function: convert namelist value or list """
     if ',' in value:
-        value = value.split(',') 
+        value = value.split(',')
         return [_int_or_float_or_str(val) for val in value]
     else:
         return _int_or_float_or_str(value)
@@ -42,9 +42,9 @@ def _find_namelist_file():
     """ Helper function: automatically find the .ini file in the current directory """
     namelist_file = glob.glob('*.ini')
     if len(namelist_file) == 0:
-        raise RuntimeError('Can\'t find any .ini files in the current directory!') 
+        raise RuntimeError('Can\'t find any .ini files in the current directory!')
     if len(namelist_file) > 1:
-        raise RuntimeError('There are multiple .ini files: {}'.format(namelist_file)) 
+        raise RuntimeError('There are multiple .ini files: {}'.format(namelist_file))
     else:
         return namelist_file[0]
 
@@ -69,7 +69,7 @@ def _process_precision(precision):
 # -------------------------
 
 class Read_namelist:
-    """ Reads a MicroHH .ini file to memory 
+    """ Reads a MicroHH .ini file to memory
         All available variables are accessible as e.g.:
             nl = Read_namelist()    # with no name specified, it searches for a .ini file in the current dir
             itot = nl['grid']['itot']
@@ -79,7 +79,7 @@ class Read_namelist:
     def __init__(self, namelist_file=None):
         if (namelist_file is None):
             namelist_file = _find_namelist_file()
-        
+
         self.groups = {}   # Dictionary holding all the data
         with open(namelist_file) as f:
             for line in f:
@@ -125,7 +125,7 @@ def determine_mode():
 
 class Read_statistics:
     """ Read all the NetCDF statistics
-        Example: 
+        Example:
         f = Read_statistics('drycblles.default.0000000.nc')
         print(f) prints a list with the available variables
         The data can be accessed as either f['th'] or f.th, which returns the numpy array with data
@@ -141,8 +141,8 @@ class Read_statistics:
         self.units      = {}
         self.names      = {}
         self.dimensions = {}
-     
-        # For each variable in the NetCDF file, read all the content and info 
+
+        # For each variable in the NetCDF file, read all the content and info
         for var in f.variables:
             self.data[var]       = f.variables[var].__array__()
             self.units[var]      = f.variables[var].units
@@ -156,7 +156,7 @@ class Read_statistics:
             return self.data[name]
         else:
             raise RuntimeError('Can\'t find variable \"{}\" in statistics file'.format(name))
-    
+
     def __getattr__(self, name):
         if name in self.data.keys():
             return self.data[name]
@@ -168,7 +168,7 @@ class Read_statistics:
 
 
 class Read_grid:
-    """ Read the grid file from MicroHH. 
+    """ Read the grid file from MicroHH.
         If no file name is provided, grid.0000000 from the current directory is read """
     def __init__(self, itot, jtot, ktot, filename=None, endian='little', precision='double'):
         self.en  = _process_endian(endian)
@@ -176,7 +176,7 @@ class Read_grid:
         filename = 'grid.0000000' if filename is None else filename
 
         self.fin = open(filename, 'rb')
-        
+
         self.dim = {}
         self.dim['x']  = self.read(itot)
         self.dim['xh'] = self.read(itot)
@@ -196,12 +196,12 @@ class Read_binary:
      def __init__(self, filename, endian='little', precision='double'):
         self.en  = _process_endian(endian)
         self.TF, self.prec = _process_precision(precision)
-        
+
         try:
             self.file = open(filename, 'rb')
         except:
             raise Exception('Cannot find file {}'.format(filename))
-            
+
      def close(self):
         self.file.close()
 
@@ -210,23 +210,23 @@ class Read_binary:
 
 class Create_ncfile():
     def __init__(self, grid, filename, varname, dimensions):
-        self.ncfile = nc.Dataset(filename, "w")
-        if grid.prec == 'single': 
+        self.ncfile = nc.Dataset(filename, "w", clobber=False)
+        if grid.prec == 'single':
             precision = 'f4'
         else:
             precision = 'f8'
-    
-        if(varname == 'u'): 
+
+        if(varname == 'u'):
             try:
                 dimensions['xh'] = dimensions.pop('x')
             except KeyError:
                 pass
-        if(varname == 'v'): 
+        if(varname == 'v'):
             try:
                 dimensions['yh'] = dimensions.pop('y')
             except KeyError:
                 pass
-        if(varname == 'w'): 
+        if(varname == 'w'):
             try:
                 dimensions['zh'] = dimensions.pop('z')
             except KeyError:
@@ -235,65 +235,17 @@ class Create_ncfile():
         self.dim = {}
         self.dimvar = {}
         for key, value in dimensions.items():
-            print (key, value)
             self.dim[key]       = self.ncfile.createDimension(key, len(value))
             self.dimvar[key]    = self.ncfile.createVariable(key, precision, (key))
             if key is not 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
-        print(self.dimvar['x'])
-        print(self.dimvar['y'][:])
-        print(tuple(dimensions.keys()))
         self.var = self.ncfile.createVariable(varname, precision, tuple(dimensions.keys()),zlib=True)
-    
+
     def sync(self):
         self.ncfile.sync()
 
     def close(self):
         self.ncfile.close()
-def read_restart_file(path, itot, jtot, ktot, endian='little'):
-    """ Read a MicroHH restart file into a 3D (or 2D if ktot=1) numpy array 
-        The returned array has the dimensions ordered as [z,y,x] """
-
-    en = _process_endian(endian)
-    
-    f  = open(path, 'rb')
-    if (ktot > 1):
-        field = np.zeros((ktot, jtot, itot))
-        for k in range(ktot):
-            raw = f.read(itot*jtot*8)
-            tmp = np.array(st.unpack('{0}{1}d'.format(en, itot*jtot), raw))
-            field[k,:,:] = tmp.reshape((jtot, itot))[:,:]
-        f.close()
-    else:
-        raw = f.read(itot*jtot*8)
-        tmp = np.array(st.unpack('{0}{1}d'.format(en, itot*jtot), raw))
-        field = tmp.reshape((jtot, itot))
-
-    return field
-
-
-def write_restart_file(data, itot, jtot, ktot, path, per_slice=True, endian='little'):
-    """ Write a restart file in the format requires by MicroHH.
-        The input array should be indexed as [z,y,x] """
-    
-    en = _process_endian(endian)
-
-    if(per_slice): 
-        # Write level by level (less memory hungry.....)
-        fout  = open(path, "wb")
-        for k in range(ktot):
-            tmp  = data[k,:,:].reshape(itot*jtot)
-            tmp2 = st.pack('{0}{1}d'.format(en, tmp.size), *tmp) 
-            fout.write(tmp2)
-        fout.close()
-    else:
-        # Write entire field at once (memory hungry....)
-        tmp  = data.reshape(data.size)
-        tmp2 = st.pack('{0}{1}d'.format(en, tmp.size), *tmp) 
-        fout = open(path, "wb")
-        fout.write(tmp2)
-        fout.close()  
-
 
 def get_cross_indices(variable, mode):
     """ Find the cross-section indices given a variable name and mode (in 'xy','xz','yz') """
@@ -361,7 +313,7 @@ def run_scripts(scripts):
 
         if rc != 0:
             raise Exception('{}: {}() returned {}'.format(script, function, rc))
-            
+
 
     if scripts is not None:
         # Loop over, and execute all functions
@@ -420,7 +372,7 @@ def compare(origin, file, starttime=-1, vars={}):
         if not np.allclose(var_new, var_old, rtol=opts[0], atol=opts[1], equal_nan=True):
             with np.errstate(all='ignore'):
                 raise Warning('{0} in {1} has a relative error of up to {2:.2%}'.format(key, file, np.max(np.abs((var_new - var_old)/var_old))))
-            
+
 
 def execute(command):
     sp = subprocess.Popen(command, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -449,7 +401,7 @@ def test_cases(cases, executable, outputfile=''):
     for case in cases:
         print_header('Testing case \'{}\' for executable \'{}\''.format(case.name, executable_rel))
         # Determine whether to run serial or parallel
-        
+
         # Move to working directory
         rootdir = os.getcwd()
         if case.rundir is '':
@@ -482,7 +434,7 @@ def test_cases(cases, executable, outputfile=''):
 
             # Create input data, and do other pre-processing
             run_scripts(case.pre)
-            
+
             for phase in case.phases:
                 case.time = timeit.default_timer()
                 if mode == 'serial':

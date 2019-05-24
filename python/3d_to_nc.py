@@ -5,31 +5,28 @@ import argparse
 parser = argparse.ArgumentParser(description='Convert microHH 3D binary to netCDF4 files.')
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
-parser.add_argument('-i', '--iotimeprec', help='iotimeprec', type=int)
 parser.add_argument('-e', '--endian', help='endianess', choices = ['little', 'big'],default='little')
-parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'],default='single')
-
+parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'],default='double')
+parser.add_argument('-t0',    '--starttime', help='first time step to be parsed')
+parser.add_argument('-t1',    '--endtime', help='last time step to be parsed')
+parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed')
 args = parser.parse_args()
-
 
 nl = mht.Read_namelist(args.filename)
 itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
-starttime  = nl['grid'] ['starttime']
-endtime    = nl['grid'] ['endtime']
-sampletime = nl['dump']['sampletime']
+starttime  = args.starttime  if args.starttime  is not None else nl['time']['starttime']
+endtime    = args.endtime    if args.endtime    is not None else nl['time']['endtime']
+sampletime = args.sampletime if args.sampletime is not None else nl['dump']['sampletime']
+
+try:
+    iotimeprec = nl['time']['iotimeprec']
+except KeyError:
+    iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['dump']['dumplist']
 
-if args.iotimeprec is None:
-    try:
-        iotimeprec = nl['time']['iotimeprec']
-    except KeyError:
-        iotimeprec = 0.
-        pass
-else:
-    iotimeprec = args.iotimeprec
 endian = args.endian
 precision = args.precision
 #End option parsing
@@ -50,7 +47,7 @@ for variable in variables:
 
         # Loop through the files and read 3d field
         for t in range(niter):
-            otime = int((starttime + t*sampletime) / 10**iotimeprec)
+            otime = round((starttime + t*sampletime) / 10**iotimeprec)
             f_in  = "{0:}.{1:07d}".format(variable, otime)
 
             try:
@@ -67,8 +64,7 @@ for variable in variables:
             ncfile.var[t,:,:,:] = fin.read(n)
 
             fin.close()
-            ncfile.close() 
+            ncfile.close()
     except:
-        print("Failed to create %s.nc"%variable)
+        print("Failed to create %s"%filename)
         ncfile.close()
-        
