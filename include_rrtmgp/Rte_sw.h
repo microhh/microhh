@@ -16,7 +16,7 @@ class Rte_sw
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
                 const int top_at_1,
                 const Array<TF,1>& mu0,
-                const Array<TF,2>& inc_flux,
+                const Array<TF,2>& inc_flux_dir,
                 const Array<TF,2>& sfc_alb_dir,
                 const Array<TF,2>& sfc_alb_dif,
                 const Array<TF,2>& inc_flux_dif,

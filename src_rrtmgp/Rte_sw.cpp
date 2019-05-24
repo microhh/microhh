@@ -20,6 +20,16 @@ namespace rrtmgp_kernel_launcher
     template<typename TF>
     void apply_BC(
             int ncol, int nlay, int ngpt, int top_at_1,
+            const Array<TF,2>& inc_flux, Array<TF,3>& gpt_flux_dn)
+    {
+        rrtmgp_kernels::apply_BC_gpt(
+                &ncol, &nlay, &ngpt, &top_at_1,
+                const_cast<TF*>(inc_flux.ptr()), gpt_flux_dn.ptr());
+    }
+
+    template<typename TF>
+    void apply_BC(
+            int ncol, int nlay, int ngpt, int top_at_1,
             const Array<TF,2>& inc_flux,
             const Array<TF,1>& factor,
             Array<TF,3>& gpt_flux)
@@ -59,7 +69,7 @@ void Rte_sw<TF>::rte_sw(
         const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
         const int top_at_1,
         const Array<TF,1>& mu0,
-        const Array<TF,2>& inc_flux,
+        const Array<TF,2>& inc_flux_dir,
         const Array<TF,2>& sfc_alb_dir,
         const Array<TF,2>& sfc_alb_dif,
         const Array<TF,2>& inc_flux_dif,
@@ -77,9 +87,12 @@ void Rte_sw<TF>::rte_sw(
     expand_and_transpose(optical_props, sfc_alb_dir, sfc_alb_dir_gpt);
     expand_and_transpose(optical_props, sfc_alb_dif, sfc_alb_dif_gpt);
 
-    // Upper boundary condition.
-    rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux, mu0, gpt_flux_dir);
-    rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, gpt_flux_dn);
+    // Upper boundary condition. At this stage, flux_dn contains the diffuse radiation only.
+    rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux_dir, mu0, gpt_flux_dir);
+    if (inc_flux_dif.size() == 0)
+        rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, gpt_flux_dn);
+    else
+        rrtmgp_kernel_launcher::apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux_dif, gpt_flux_dn);
 
     // Run the radiative transfer solver
     // CvH: only two-stream solutions, I skipped the sw_solver_noscat
