@@ -22,13 +22,13 @@
 
 #include <iostream>
 #include <cmath>
-#include <constants.h>
+#include <algorithm>
 
+#include <constants.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "input.h"
-
 #include "immersed_boundary.h"
 #include "fast_math.h"
 
