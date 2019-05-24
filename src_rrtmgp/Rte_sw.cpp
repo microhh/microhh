@@ -62,6 +62,7 @@ void Rte_sw<TF>::rte_sw(
         const Array<TF,2>& inc_flux,
         const Array<TF,2>& sfc_alb_dir,
         const Array<TF,2>& sfc_alb_dif,
+        const Array<TF,2>& inc_flux_dif,
         Array<TF,3>& gpt_flux_up,
         Array<TF,3>& gpt_flux_dn,
         Array<TF,3>& gpt_flux_dir)

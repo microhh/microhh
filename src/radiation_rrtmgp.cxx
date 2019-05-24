@@ -436,6 +436,7 @@ namespace
                 toa_src,
                 sfc_alb_dir,
                 sfc_alb_dif,
+                Array<double,2>(),
                 gpt_flux_up,
                 gpt_flux_dn,
                 gpt_flux_dn_dir);
@@ -1381,13 +1382,14 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const Array<double,2>& toa_src_subset_in,
             const Array<double,2>& sfc_alb_dir_subset_in,
             const Array<double,2>& sfc_alb_dif_subset_in,
+            const Array<double,2>& sw_flux_dn_dif_inc_subset_in,
             std::unique_ptr<Fluxes_broadband<double>>& fluxes)
     {
         const int n_col_block_subset = col_e_in - col_s_in + 1;
 
-        Array<double,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
-        Array<double,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
-        Array<double,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
+        Array<double,3> gpt_flux_up    ({n_col_block_subset, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn    ({n_col_block_subset, n_lev, n_gpt});
+        Array<double,3> gpt_flux_dn_dir({n_col_block_subset, n_lev, n_gpt});
 
         Rte_sw<double>::rte_sw(
                 optical_props_subset_in,
@@ -1396,6 +1398,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 toa_src_subset_in,
                 sfc_alb_dir_subset_in,
                 sfc_alb_dif_subset_in,
+                sw_flux_dn_dif_inc_subset_in,
                 gpt_flux_up,
                 gpt_flux_dn,
                 gpt_flux_dn_dir);
@@ -1446,6 +1449,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array<double,2> toa_src_subset = toa_src.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array<double,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array<double,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<double,2> sw_flux_dn_inc_subset = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_subset =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block, n_lev);
@@ -1457,6 +1462,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 toa_src_subset,
                 sfc_alb_dir_subset,
                 sfc_alb_dif_subset,
+                sw_flux_dn_dif_inc_subset,
                 fluxes_subset);
     }
 
@@ -1471,6 +1477,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array<double,2> toa_src_left = toa_src.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array<double,2> sfc_alb_dir_left = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array<double,2> sfc_alb_dif_left = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<double,2> sw_flux_dn_inc_left = sw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<double,2> sw_flux_dn_dif_inc_left = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband<double>> fluxes_left =
                 std::make_unique<Fluxes_broadband<double>>(n_col_block_left, n_lev);
@@ -1482,6 +1490,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 toa_src_left,
                 sfc_alb_dir_left,
                 sfc_alb_dif_left,
+                sw_flux_dn_dif_inc_left,
                 fluxes_left);
     }
 }

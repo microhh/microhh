@@ -106,7 +106,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Gas_optics<double>> kdist_lw_col;
         std::unique_ptr<Gas_optics<double>> kdist_sw_col;
         Array<double,2> sw_flux_dn_inc;
-        Array<double,2> sw_flux_dn_dir_inc;
+        Array<double,2> sw_flux_dn_dif_inc;
         Array<double,2> lw_flux_dn_inc;
 
         // The full solver.
