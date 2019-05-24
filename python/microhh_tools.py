@@ -210,7 +210,7 @@ class Read_binary:
 
 class Create_ncfile():
     def __init__(self, grid, filename, varname, dimensions):
-        self.ncfile = nc.Dataset(filename, "w", clobber=False)
+        self.ncfile = nc.Dataset(filename, "w", clobber=True)
         if grid.prec == 'single':
             precision = 'f4'
         else:
