@@ -284,7 +284,7 @@ namespace
         if (bc == Boundary_type::Dirichlet_type)
         {
             tmp[n_idw-1] = std::max(absolute_distance(xi, yi, zi, xb, yb, zb), TF(1e-9));
-            dist_max = std::max(dist_max, tmp[n_idw]);
+            dist_max = std::max(dist_max, tmp[n_idw-1]);
         }
 
         // Calculate interpolation coefficients
