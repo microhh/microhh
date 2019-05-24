@@ -50,7 +50,7 @@ namespace
     }
 
 
-/* Bi-linear interpolation of the 2D IB DEM
+    /* Bi-linear interpolation of the 2D IB DEM
      * onto the requested (`x_goal`, `y_goal`) location */
     template<typename TF>
     TF interp2_dem(
@@ -75,7 +75,6 @@ namespace
 
         const TF z = f0y * (f0x * dem[ij   ] + f1x * dem[ij+ii   ]) +
                      f1y * (f0x * dem[ij+jj] + f1x * dem[ij+ii+jj]);
-
         return z;
     }
 
@@ -200,8 +199,8 @@ namespace
 
         // Find neighbouring grid points outside IB
         for (int dk=dk0; dk<3; ++dk)
-            for (int dj=-2; dj<3; ++dj)
-                for (int di=-2; di<3; ++di)
+            for (int dj=-1; dj<2; ++dj)
+                for (int di=-1; di<2; ++di)
                 {
                     // Check if grid point is outside IB
                     if (z[k+dk] > interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, icells, mpi_offset_x, mpi_offset_y))

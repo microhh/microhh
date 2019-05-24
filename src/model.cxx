@@ -332,7 +332,6 @@ void Model<TF>::exec()
                 // Set the immersed boundary conditions for scalars
                 ib->exec_scalars();
 
-
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 advec->exec(*stats);
