@@ -37,6 +37,12 @@ enum class IB_type {Disabled, DEM, User};
 template<typename TF>
 struct Ghost_cells
 {
+    int nghost;
+
+    //
+    // CPU
+    //
+
     // Indices of IB ghost cells:
     std::vector<int> i;     // size = number of ghost cells
     std::vector<int> j;
@@ -63,6 +69,37 @@ struct Ghost_cells
     // Interpolation coefficients
     std::vector<TF> c_idw;     // size = number of ghost cells x n_idw_points
     std::vector<TF> c_idw_sum; // size = number of ghost cells
+    
+    //
+    // GPU 
+    //
+
+    // Indices of IB ghost cells:
+    int* i_g;
+    int* j_g;
+    int* k_g;
+
+    // Nearest location of IB to ghost cell:
+    TF* xb_g;
+    TF* yb_g;
+    TF* zb_g;
+
+    // Location of interpolation point outside IB:
+    TF* xi_g;
+    TF* yi_g;
+    TF* zi_g;
+
+    TF* di_g;  // Distance ghost cell to interpolation point
+
+    // Points outside IB used for IDW interpolation:
+    int* ip_i_g;
+    int* ip_j_g;
+    int* ip_k_g;
+    TF* ip_d_g;
+
+    // Interpolation coefficients
+    TF* c_idw_g;
+    TF* c_idw_sum_g;
 };
 
 // Convenience struct to simplify sorting
@@ -87,6 +124,9 @@ class Immersed_boundary
         void exec_momentum();
         void exec_scalars();
 
+        void prepare_device();
+        void clear_device();
+
     private:
         Master& master;
         Grid<TF>& grid;
@@ -106,10 +146,15 @@ class Immersed_boundary
         std::vector<TF> dem;
 
         // Structs with the ghost cell properties
-        Ghost_cells<TF> ghost_u;
-        Ghost_cells<TF> ghost_v;
-        Ghost_cells<TF> ghost_w;
-        Ghost_cells<TF> ghost_s;
+        //Ghost_cells<TF> ghost_u;
+        //Ghost_cells<TF> ghost_v;
+        //Ghost_cells<TF> ghost_w;
+        //Ghost_cells<TF> ghost_s;
+
+        // Vector with all ghost cell structs
+        //std::vector<Ghost_cells<TF>> ghost_structs;
+
+        std::map<std::string, Ghost_cells<TF>> ghost;
 };
 
 #endif

@@ -502,6 +502,7 @@ void Model<TF>::prepare_gpu()
     boundary->prepare_device();
     diff    ->prepare_device(*boundary);
     force   ->prepare_device();
+    ib      ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
     pres    ->prepare_device();
@@ -518,6 +519,7 @@ void Model<TF>::clear_gpu()
     // boundary->clear_device();
     // diff    ->clear_device();
     force   ->clear_device();
+    ib      ->clear_device();
     // decay   ->clear_device();
     // // Clear pressure last, for memory check
     pres    ->clear_device();

@@ -49,7 +49,6 @@ namespace
         return a.distance < b.distance;
     }
 
-
     /* Bi-linear interpolation of the 2D IB DEM
      * onto the requested (`x_goal`, `y_goal`) location */
     template<typename TF>
@@ -320,6 +319,7 @@ namespace
                     }
 
         const int nghost = ghost.i.size();
+        ghost.nghost = nghost;
 
         // 2. For each ghost cell, find the nearest location on the wall,
         // the image point (ghost cell mirrored across the IB),
@@ -448,7 +448,6 @@ namespace
             }
         }
     }
-
 }
 
 template<typename TF>
@@ -485,6 +484,7 @@ Immersed_boundary<TF>::~Immersed_boundary()
 {
 }
 
+#ifndef USECUDA
 template <typename TF>
 void Immersed_boundary<TF>::exec_momentum()
 {
@@ -497,26 +497,26 @@ void Immersed_boundary<TF>::exec_momentum()
 
     set_ghost_cells(
             fields.mp.at("u")->fld.data(), noslip_bc,
-            ghost_u.c_idw.data(), ghost_u.c_idw_sum.data(), ghost_u.di.data(),
-            ghost_u.i.data(), ghost_u.j.data(), ghost_u.k.data(),
-            ghost_u.ip_i.data(), ghost_u.ip_j.data(), ghost_u.ip_k.data(),
-            Boundary_type::Dirichlet_type, fields.visc, ghost_u.i.size(), n_idw_points,
+            ghost.at("u").c_idw.data(), ghost.at("u").c_idw_sum.data(), ghost.at("u").di.data(),
+            ghost.at("u").i.data(), ghost.at("u").j.data(), ghost.at("u").k.data(),
+            ghost.at("u").ip_i.data(), ghost.at("u").ip_j.data(), ghost.at("u").ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost.at("u").i.size(), n_idw_points,
             gd.icells, gd.ijcells);
 
     set_ghost_cells(
             fields.mp.at("v")->fld.data(), noslip_bc,
-            ghost_v.c_idw.data(), ghost_v.c_idw_sum.data(), ghost_v.di.data(),
-            ghost_v.i.data(), ghost_v.j.data(), ghost_v.k.data(),
-            ghost_v.ip_i.data(), ghost_v.ip_j.data(), ghost_v.ip_k.data(),
-            Boundary_type::Dirichlet_type, fields.visc, ghost_v.i.size(), n_idw_points,
+            ghost.at("v").c_idw.data(), ghost.at("v").c_idw_sum.data(), ghost.at("v").di.data(),
+            ghost.at("v").i.data(), ghost.at("v").j.data(), ghost.at("v").k.data(),
+            ghost.at("v").ip_i.data(), ghost.at("v").ip_j.data(), ghost.at("v").ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost.at("v").i.size(), n_idw_points,
             gd.icells, gd.ijcells);
 
     set_ghost_cells(
             fields.mp.at("w")->fld.data(), noslip_bc,
-            ghost_w.c_idw.data(), ghost_w.c_idw_sum.data(), ghost_w.di.data(),
-            ghost_w.i.data(), ghost_w.j.data(), ghost_w.k.data(),
-            ghost_w.ip_i.data(), ghost_w.ip_j.data(), ghost_w.ip_k.data(),
-            Boundary_type::Dirichlet_type, fields.visc, ghost_w.i.size(), n_idw_points,
+            ghost.at("w").c_idw.data(), ghost.at("w").c_idw_sum.data(), ghost.at("w").di.data(),
+            ghost.at("w").i.data(), ghost.at("w").j.data(), ghost.at("w").k.data(),
+            ghost.at("w").ip_i.data(), ghost.at("w").ip_j.data(), ghost.at("w").ip_k.data(),
+            Boundary_type::Dirichlet_type, fields.visc, ghost.at("w").i.size(), n_idw_points,
             gd.icells, gd.ijcells);
 }
 
@@ -532,13 +532,14 @@ void Immersed_boundary<TF>::exec_scalars()
     {
         set_ghost_cells(
                 it.second->fld.data(), sbc.at(it.first),
-                ghost_s.c_idw.data(), ghost_s.c_idw_sum.data(), ghost_s.di.data(),
-                ghost_s.i.data(), ghost_s.j.data(), ghost_s.k.data(),
-                ghost_s.ip_i.data(), ghost_s.ip_j.data(), ghost_s.ip_k.data(),
-                sbcbot, it.second->visc, ghost_s.i.size(), n_idw_points,
+                ghost.at("s").c_idw.data(), ghost.at("s").c_idw_sum.data(), ghost.at("s").di.data(),
+                ghost.at("s").i.data(), ghost.at("s").j.data(), ghost.at("s").k.data(),
+                ghost.at("s").ip_i.data(), ghost.at("s").ip_j.data(), ghost.at("s").ip_k.data(),
+                sbcbot, it.second->visc, ghost.at("s").i.size(), n_idw_points,
                 gd.icells, gd.ijcells);
     }
 }
+#endif
 
 template <typename TF>
 void Immersed_boundary<TF>::init(Input& inputin)
@@ -615,8 +616,12 @@ void Immersed_boundary<TF>::create()
         // Find ghost cells (grid points inside IB, which have at least one
         // neighbouring grid point outside of IB). Different for each
         // location on staggered grid.
+        ghost.emplace("u", Ghost_cells<TF>());
+        ghost.emplace("v", Ghost_cells<TF>());
+        ghost.emplace("w", Ghost_cells<TF>());
+
         calc_ghost_cells(
-                ghost_u, dem, gd.xh, gd.y, gd.z,
+                ghost.at("u"), dem, gd.xh, gd.y, gd.z,
                 Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
@@ -625,7 +630,7 @@ void Immersed_boundary<TF>::create()
                 mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
-                ghost_v, dem, gd.x, gd.yh, gd.z,
+                ghost.at("v"), dem, gd.x, gd.yh, gd.z,
                 Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dz, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
@@ -634,7 +639,7 @@ void Immersed_boundary<TF>::create()
                 mpi_offset_x, mpi_offset_y);
 
         calc_ghost_cells(
-                ghost_w, dem, gd.x, gd.y, gd.zh,
+                ghost.at("w"), dem, gd.x, gd.y, gd.zh,
                 Boundary_type::Dirichlet_type,
                 gd.dx, gd.dy, gd.dzh, n_idw_points,
                 gd.istart, gd.jstart, gd.kstart,
@@ -643,21 +648,23 @@ void Immersed_boundary<TF>::create()
                 mpi_offset_x, mpi_offset_y);
 
         // Print some statistics (number of ghost cells)
-        print_statistics(ghost_u.i, std::string("u"), master);
-        print_statistics(ghost_v.i, std::string("v"), master);
-        print_statistics(ghost_w.i, std::string("w"), master);
+        print_statistics(ghost.at("u").i, std::string("u"), master);
+        print_statistics(ghost.at("v").i, std::string("v"), master);
+        print_statistics(ghost.at("w").i, std::string("w"), master);
 
         if (fields.sp.size() > 0)
         {
+            ghost.emplace("s", Ghost_cells<TF>());
+
             calc_ghost_cells(
-                    ghost_s, dem, gd.x, gd.y, gd.z, sbcbot,
+                    ghost.at("s"), dem, gd.x, gd.y, gd.z, sbcbot,
                     gd.dx, gd.dy, gd.dz, n_idw_points,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     mpi_offset_x, mpi_offset_y);
 
-            print_statistics(ghost_s.i, std::string("s"), master);
+            print_statistics(ghost.at("s").i, std::string("s"), master);
         }
     }
 }
