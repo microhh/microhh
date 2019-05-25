@@ -1,17 +1,17 @@
-import microhh_tools as mht     # available in microhh/python directory
+import microhh_tools as mht # available in microhh/python directory
 import argparse
 
-#Parse command line and namelist options
+# Parse command line and namelist options
 cross_modes = ['xy', 'xz', 'yz', 'surf']
-parser = argparse.ArgumentParser(description='Convert microHH binary cross-sections to netCDF4 files.')
-parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
+parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
+parser.add_argument('-m', '--modes', nargs='*', help='mode of the cross section', choices=cross_modes)
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
 parser.add_argument('-x', '--index', nargs='*', help='indices')
-parser.add_argument('-e', '--endian', help='endianess', choices = ['little', 'big'],default='little')
-parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'],default='double')
-parser.add_argument('-t0',    '--starttime', help='first time step to be parsed')
-parser.add_argument('-t1',    '--endtime', help='last time step to be parsed')
+parser.add_argument('-e', '--endian', help='endianness', choices=['little', 'big'], default='little')
+parser.add_argument('-p', '--precision', help='precision', choices=['single', 'double'], default='double')
+parser.add_argument('-t0', '--starttime', help='first time step to be parsed')
+parser.add_argument('-t1', '--endtime', help='last time step to be parsed')
 parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed')
 
 args = parser.parse_args()
@@ -41,9 +41,9 @@ variables = args.vars if args.vars is not None else nl['cross']['crosslist']
 
 endian = args.endian
 precision = args.precision
-#End option parsing
+# End option parsing
 
-# calculate the number of iterations
+# Calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot, endian = endian, precision = precision)
@@ -59,7 +59,7 @@ for mode in modes:
                 else:
                     indexes_local = indexes
 
-            dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
+            dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
             if mode == 'xy':
                 dim.update({'z' : indexes_local})
                 n = itot * jtot
