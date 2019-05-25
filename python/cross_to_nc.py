@@ -8,8 +8,6 @@ parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross sectio
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
 parser.add_argument('-x', '--index', nargs='*', help='indices')
-parser.add_argument('-e', '--endian', help='endianess', choices = ['little', 'big'],default='little')
-parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'],default='double')
 parser.add_argument('-t0',    '--starttime', help='first time step to be parsed')
 parser.add_argument('-t1',    '--endtime', help='last time step to be parsed')
 parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed')
@@ -46,7 +44,7 @@ precision = args.precision
 # calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
 
-grid = mht.Read_grid(itot, jtot, ktot, endian = endian, precision = precision)
+grid = mht.Read_grid(itot, jtot, ktot)
 
 # Loop over the different variables and crosssections
 for mode in modes:
@@ -83,7 +81,7 @@ for mode in modes:
                     f_in  = "{0:}.{1}.{2:05d}.{3:07d}".format(variable, mode, index, otime)
 
                     try:
-                        fin = mht.Read_binary(f_in, endian=endian, precision=precision)
+                        fin = mht.Read_binary(grid, f_in)
                     except Exception as ex:
                         print (ex)
                         raise Exception('Stopping: cannot find file {}'.format(f_in))
