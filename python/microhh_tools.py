@@ -48,22 +48,6 @@ def _find_namelist_file():
     else:
         return namelist_file[0]
 
-
-def _process_endian(endian):
-    if endian not in ['little', 'big']:
-        raise ValueError('endian has to be \"little\" or \"big\"!')
-    endian = '<' if endian == 'little' else '>'
-    return endian
-
-
-def _process_precision(precision):
-    if precision not in ['double', 'single']:
-        raise ValueError('precision has to be \"double\" or \"single\"!')
-    tf  = 4   if precision == 'single' else  8
-    str = 'f' if precision == 'single' else 'd'
-    return tf, str
-
-
 # -------------------------
 # Classes and functions to read and write MicroHH things
 # -------------------------
@@ -170,10 +154,14 @@ class Read_statistics:
 class Read_grid:
     """ Read the grid file from MicroHH.
         If no file name is provided, grid.0000000 from the current directory is read """
-    def __init__(self, itot, jtot, ktot, filename=None, endian='little', precision='double'):
-        self.en  = _process_endian(endian)
-        self.TF, self.prec = _process_precision(precision)
+    def __init__(self, itot, jtot, ktot, filename=None):
+        self.en = '<' if sys.byteorder == 'little' else '>'
         filename = 'grid.0000000' if filename is None else filename
+        self.TF  = round(os.path.getsize(filename)/(2*itot + 2*jtot + 2*ktot))
+        if self.TF == 8:
+            self.prec = 'd'
+        else:
+            self.prec = 'f'
 
         self.fin = open(filename, 'rb')
 
@@ -193,9 +181,10 @@ class Read_grid:
 
 class Read_binary:
      """ Read a binary file from MicroHH. """
-     def __init__(self, filename, endian='little', precision='double'):
-        self.en  = _process_endian(endian)
-        self.TF, self.prec = _process_precision(precision)
+     def __init__(self, grid, filename):
+        self.en   = grid.en
+        self.prec = grid.prec
+        self.TF   = grid.TF
 
         try:
             self.file = open(filename, 'rb')
@@ -210,7 +199,7 @@ class Read_binary:
 
 class Create_ncfile():
     def __init__(self, grid, filename, varname, dimensions):
-        self.ncfile = nc.Dataset(filename, "w", clobber=True)
+        self.ncfile = nc.Dataset(filename, "w", clobber=False)
         if grid.prec == 'single':
             precision = 'f4'
         else:
@@ -404,27 +393,25 @@ def test_cases(cases, executable, outputfile=''):
 
         # Move to working directory
         rootdir = os.getcwd()
-        if case.rundir is '':
-            print_warning(case.name + ' case.rundir is empty; not allowed!')
-            continue
+        rundir  = rootdir + '/' + case.casedir +  '/' + case.rundir + '/'
+        casedir = rootdir + '/' + case.casedir +  '/'
+        if case.rundir is not '':
+            try:
+                shutil.rmtree(rundir)
+            except Exception:
+                pass
+            os.mkdir(rundir)
+            os.chdir(rundir)
 
-        rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
-        casedir = rootdir + '/' + case.name +  '/'
-
-        try:
-            shutil.rmtree(rundir)
-        except Exception:
-            pass
-        os.mkdir(rundir)
-        os.chdir(rundir)
-
-        try:
-            for fname in case.files:
-                shutil.copy(casedir+fname, rundir)
-        except:
-            print_warning(case.name +  ': Cannot find {} for copying,  skipping case!'.format(casedir+fname))
-            os.chdir(rootdir)
-            continue
+            try:
+                for fname in case.files:
+                    shutil.copy(casedir+fname, rundir)
+            except:
+                print_warning(case.name +  ': Cannot find {} for copying,  skipping case!'.format(casedir+fname))
+                os.chdir(rootdir)
+                continue
+        else:
+            case.keep = True
 
         try:
             # Update .ini file for testing
@@ -446,7 +433,9 @@ def test_cases(cases, executable, outputfile=''):
             # Run the post-processing steps
             run_scripts(case.post)
             case.success = True
-        except Exception:
+        except Exception as e:
+            print(str(e))
+            print_warning('Case Failed!')
             case.success = False
         finally:
             # Go back to root of all cases
@@ -462,10 +451,9 @@ def test_cases(cases, executable, outputfile=''):
         csvFile.close()
 
     for case in cases:
-        rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
         if case.success and not case.keep:
+            rundir  = rootdir + '/' + case.name +  '/' + case.rundir + '/'
             shutil.rmtree(rundir)
-
 
 def generator_restart(cases):
     cases_out = []
@@ -565,13 +553,14 @@ def generator_parameter_change(cases, **kwargs):
     return cases_out
 
 class Case:
-    def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], rundir='', files=[], keep=False):
+    def __init__(self, name, options={}, pre={}, post={}, phases = ['init','run'], casedir = '', rundir='', files=[], keep=False):
 
-        self.name     = name        # Case / directory name
+        self.name     = name        # Case name
         self.options  = options     # Override existing namelist options
         self.pre      = pre         # List of pre-processing python scripts
         self.post     = post        # List of post-processing python scripts
         self.phases   = phases      # List of the run phases we have to go through
+        self.casedir  = casedir     # Directory of the case; self.name by default
         self.rundir   = rundir      # Relative run directory
         self.files    = files       # List of files necessary to run the case
         self.success  = None        # Whether the entire case was run succesfully or not
@@ -579,7 +568,9 @@ class Case:
         self.keep     = keep        # Whether to keep the results of succefull simulations afterwards
 
         # By default; run {name}_input.py in preprocessing phase
-        if self.pre == {}:
-            self.pre = {'{}_input.py'.format(name): None}
-        if self.files == []:
-            self.files = ['{0}.ini'.format(name), '{}_input.py'.format(name)]
+        self.pre = pre if pre else {'{}_input.py'.format(name): None}
+        print(self.name, files)
+        self.files = files if files else ['{0}.ini'.format(name), '{}_input.py'.format(name)]
+        print(self.files)
+        self.casedir = casedir if casedir else name
+       

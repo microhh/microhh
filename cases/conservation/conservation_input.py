@@ -29,7 +29,7 @@ nc_file = nc.Dataset("conservation_input.nc", mode="w", datamodel="NETCDF4", clo
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
 
-nc_group_init = nc_file.createGroup("init");
+nc_group_init = nc_file.createGroup("init")
 nc_s  = nc_group_init.createVariable("s"   , float_type, ("z"))
 
 
