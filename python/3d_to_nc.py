@@ -3,9 +3,10 @@ import argparse
 import os
 
 #Parse command line and namelist options
-parser = argparse.ArgumentParser(description='Convert microHH 3D binary to netCDF4 files.')
+parser = argparse.ArgumentParser(description='Convert MicroHH 3D binary to netCDF4 files.')
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
+parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'])
 parser.add_argument('-t0',    '--starttime', help='first time step to be parsed', type=float)
 parser.add_argument('-t1',    '--endtime', help='last time step to be parsed', type=float)
 parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed', type=float)
@@ -27,8 +28,9 @@ except KeyError:
     iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['dump']['dumplist']
+precision = args.precision
 perslice  = args.perslice
-print(args)
+
 #End option parsing
 
 # calculate the number of iterations
@@ -41,7 +43,7 @@ for variable in variables:
         try:
             filename = "{0}.nc".format(variable)
             dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
-            ncfile = mht.Create_ncfile(grid, filename, variable, dim)
+            ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
 
             # Loop through the files and read 3d field
             for t in range(niter):

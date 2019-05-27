@@ -1,9 +1,10 @@
+import os
 import microhh_tools as mht     # available in microhh/python directory
 import argparse
 
 #Parse command line and namelist options
-cross_modes = ['xy', 'xz', 'yz', 'surf']
-parser = argparse.ArgumentParser(description='Convert microHH binary cross-sections to netCDF4 files.')
+cross_modes = ['xy', 'xz', 'yz']
+parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
 parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
@@ -11,6 +12,7 @@ parser.add_argument('-x', '--index', nargs='*', help='indices')
 parser.add_argument('-t0',    '--starttime', help='first time step to be parsed')
 parser.add_argument('-t1',    '--endtime', help='last time step to be parsed')
 parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed')
+parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'])
 
 args = parser.parse_args()
 
@@ -29,15 +31,12 @@ if args.modes is None:
     modes = list(nl['cross'].keys() & cross_modes)
 else:
     modes = args.modes
-print(modes)
 try:
     iotimeprec = nl['time']['iotimeprec']
 except KeyError:
     iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['cross']['crosslist']
-
-endian = args.endian
 precision = args.precision
 #End option parsing
 
@@ -50,21 +49,29 @@ grid = mht.Read_grid(itot, jtot, ktot)
 for mode in modes:
     for variable in variables:
         try:
+            otime = round(starttime / 10**iotimeprec)
+            if os.path.isfile("{0}.xy.{1:07d}".format(variable, otime)):
+                if mode is not 'xy':
+                    continue
+                at_surface = True
+            else:
+                at_surface = False
+
             filename = "{0}.{1}.nc".format(variable,mode)
-            if mode is not 'surf':
+            if not at_surface:
                 if indexes == None:
                     indexes_local = mht.get_cross_indices(variable, mode)
                 else:
                     indexes_local = indexes
 
             dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
-            if mode == 'xy':
-                dim.update({'z' : indexes_local})
-                n = itot * jtot
-            elif mode == 'surf':
+            if at_surface:
                 dim.pop('z')
                 n = itot * jtot
                 indexes_local = [-1]
+            elif mode == 'xy':
+                dim.update({'z' : indexes_local})
+                n = itot * jtot
             elif mode == 'xz':
                 dim.update({'y' : indexes_local})
                 n = itot * ktot
@@ -72,14 +79,15 @@ for mode in modes:
                 dim.update({'x' : indexes_local})
                 n = ktot * jtot
 
-            ncfile = mht.Create_ncfile(grid, filename, variable, dim)
+            ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
             for t in range(niter):
-                print(t)
                 for k in range(len(indexes_local)):
                     index = indexes_local[k]
                     otime = round((starttime + t*sampletime) / 10**iotimeprec)
-                    f_in  = "{0:}.{1}.{2:05d}.{3:07d}".format(variable, mode, index, otime)
-
+                    if at_surface:
+                        f_in  = "{0}.{1}.{2:07d}".format(variable, mode, otime)
+                    else:
+                        f_in  = "{0:}.{1}.{2:05d}.{3:07d}".format(variable, mode, index, otime)
                     try:
                         fin = mht.Read_binary(grid, f_in)
                     except Exception as ex:
@@ -90,13 +98,13 @@ for mode in modes:
 
                     ncfile.dimvar['time'][t] = otime * 10**iotimeprec
 
-                    if mode == 'xy':
-                        ncfile.var[t,k,:,:] = fin.read(n)
-                    if mode == 'surf':
+                    if at_surface:
                         ncfile.var[t,:,:]   = fin.read(n)
-                    if mode == 'xz':
+                    elif mode == 'xy':
+                        ncfile.var[t,k,:,:] = fin.read(n)
+                    elif mode == 'xz':
                         ncfile.var[t,:,k,:] = fin.read(n)
-                    if mode == 'yz':
+                    elif mode == 'yz':
                         ncfile.var[t,:,:,k] = fin.read(n)
 
                     fin.close()

@@ -198,13 +198,14 @@ class Read_binary:
         return np.array(st.unpack('{0}{1}{2}'.format(self.en, n, self.prec), self.file.read(n*self.TF)))
 
 class Create_ncfile():
-    def __init__(self, grid, filename, varname, dimensions):
+    def __init__(self, grid, filename, varname, dimensions, precision=''):
         self.ncfile = nc.Dataset(filename, "w", clobber=False)
-        if grid.prec == 'single':
+        if not precision:
+            precision = 'f{}'.format(grid.TF)
+        elif precision == 'single':
             precision = 'f4'
         else:
             precision = 'f8'
-
         if(varname == 'u'):
             try:
                 dimensions['xh'] = dimensions.pop('x')
