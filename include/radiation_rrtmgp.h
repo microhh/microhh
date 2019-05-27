@@ -75,8 +75,21 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         void create_column(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
+        void create_column_longwave(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                const Gas_concs<double>&);
+        void create_column_shortwave(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                const Gas_concs<double>&);
+
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
+        void create_solver_longwave(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                const Gas_concs<double>&);
+        void create_solver_shortwave(
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                const Gas_concs<double>&);
 
         void exec_longwave(
                 Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
@@ -93,6 +106,9 @@ class Radiation_rrtmgp : public Radiation<TF>
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 
+        bool sw_longwave;
+        bool sw_shortwave;
+
         // RRTMGP related variables.
         double tsi_scaling;
         double t_sfc;
@@ -102,9 +118,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         double mu0;
 
         // The reference column for the full profile.
-        Gas_concs<double> gas_concs_col;
-        std::unique_ptr<Gas_optics<double>> kdist_lw_col;
-        std::unique_ptr<Gas_optics<double>> kdist_sw_col;
         Array<double,2> lw_flux_dn_inc;
         Array<double,2> sw_flux_dn_dir_inc;
         Array<double,2> sw_flux_dn_dif_inc;
@@ -113,8 +126,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         Gas_concs<double> gas_concs;
         std::unique_ptr<Gas_optics<double>> kdist_lw;
         std::unique_ptr<Gas_optics<double>> kdist_sw;
-        std::unique_ptr<Optical_props_arry<double>> optical_props_lw;
-        std::unique_ptr<Optical_props_arry<double>> optical_props_sw;
-        std::unique_ptr<Source_func_lw<double>> sources;
+        // std::unique_ptr<Source_func_lw<double>> sources;
 };
 #endif
