@@ -907,7 +907,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const Array<double,2>& h2o, const Array<double,2>& ql)
 {
     // How many profiles are solved simultaneously?
-    constexpr int n_col_block = 8;
+    constexpr int n_col_block = 4;
 
     auto& gd = grid.get_grid_data();
 
@@ -1044,7 +1044,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const Array<double,2>& h2o, const Array<double,2>& ql)
 {
     // How many profiles are solved simultaneously?
-    const int n_col_block = 8;
+    constexpr int n_col_block = 4;
 
     auto& gd = grid.get_grid_data();
 
