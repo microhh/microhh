@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DRY
-#define THERMO_DRY
+#ifndef THERMO_DRY_H
+#define THERMO_DRY_H
 
 #include "boundary_cyclic.h"
 #include "timedep.h"

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO
-#define THERMO
+#ifndef THERMO_H
+#define THERMO_H
 
 class Master;
 class Input;
@@ -48,7 +48,7 @@ class Thermo
         Thermo(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Thermo();
         static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        std::string get_switch();
+        const std::string& get_switch() const;
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
@@ -57,8 +57,8 @@ class Thermo
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(const double, Stats<TF>&) = 0;
-        virtual void exec_stats(Stats<TF>&) = 0;   ///< Calculate the statistics
-        virtual void exec_column(Column<TF>&) = 0;   ///< Output the column
+        virtual void exec_stats(Stats<TF>&) = 0; ///< Calculate the statistics
+        virtual void exec_column(Column<TF>&) = 0; ///< Output the column
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 

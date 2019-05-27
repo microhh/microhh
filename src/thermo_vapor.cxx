@@ -676,7 +676,7 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
+            stats.add_fixed_prof("phydro" , "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
         }
 
@@ -697,9 +697,7 @@ void Thermo_vapor<TF>::create_column(Column<TF>& column)
 {
     // add the profiles to the columns
     if (column.get_switch())
-    {
         column.add_prof("b", "Buoyancy", "m s-2", "z");
-    }
 }
 
 template<typename TF>
@@ -771,8 +769,10 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     {
         stats.set_prof("phydro" , bs_stats.pref);
         stats.set_prof("phydroh", bs_stats.prefh);
-        stats.set_prof("rho"    , fields.rhoref);
-        stats.set_prof("rhoh"   , fields.rhorefh);
+
+        // CvH this is not the correct rho if the base state is on.
+        stats.set_prof("rho" , fields.rhoref);
+        stats.set_prof("rhoh", fields.rhorefh);
     }
     stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
@@ -784,7 +784,7 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    get_thermo_field(*output, "b",false, true);
+    get_thermo_field(*output, "b", false, true);
     column.calc_column("b", output->fld.data(), no_offset);
 
     fields.release_tmp(output);
@@ -801,11 +801,12 @@ void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     auto output = fields.get_tmp();
 
-    if(swcross_b)
+    if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
         get_buoyancy_fluxbot(*output, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "b")

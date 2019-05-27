@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_MOIST_FUNCTIONS
-#define THERMO_MOIST_FUNCTIONS
+#ifndef THERMO_MOIST_FUNCTIONS_H
+#define THERMO_MOIST_FUNCTIONS_H
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__

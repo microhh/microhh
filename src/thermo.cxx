@@ -46,7 +46,7 @@ Thermo<TF>::~Thermo()
 {
 }
 template<typename TF>
-std::string Thermo<TF>::get_switch()
+const std::string& Thermo<TF>::get_switch() const
 {
     return swthermo;
 }
