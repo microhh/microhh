@@ -539,10 +539,17 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-    // 1. Create the gas optics solver that is needed for the column and model solver.
+    // Check if the thermo supports the radiation.
+    if (thermo.get_switch() != "moist")
+    {
+        const std::string error = "Radiation does not support thermo mode " + thermo.get_switch();
+        throw std::runtime_error(error);
+    }
+
+    // Create the gas optics solver that is needed for the column and model solver.
     create_solver(input, input_nc, thermo, stats);
 
-    // 2. Solve the reference column to compute upper boundary conditions.
+    // Solve the reference column to compute upper boundary conditions.
     create_column(input, input_nc, thermo, stats);
 }
 
@@ -847,7 +854,7 @@ void Radiation_rrtmgp<TF>::exec(
         calc_tendency(
                 fields.st.at("thl")->fld.data(),
                 flux_up.ptr(), flux_dn.ptr(),
-                thermo.get_rho_vector().data(), thermo.get_exner_vector().data(),
+                fields.rhoref.data(), thermo.get_exner_vector().data(),
                 gd.dz.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.igc, gd.jgc, gd.kgc,
@@ -875,6 +882,15 @@ void Radiation_rrtmgp<TF>::exec(
                 flux_up, flux_dn, flux_dn_dir, flux_net,
                 t_lay_a, t_lev_a, h2o_a, ql_a);
 
+        calc_tendency(
+                fields.st.at("thl")->fld.data(),
+                flux_up.ptr(), flux_dn.ptr(),
+                fields.rhoref.data(), thermo.get_exner_vector().data(),
+                gd.dz.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax*gd.jmax);
 
         sw_flux_up    .resize(gd.ktot+1);
         sw_flux_dn    .resize(gd.ktot+1);
