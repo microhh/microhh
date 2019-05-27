@@ -521,8 +521,6 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::create_column(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
 {
-    auto& gd = grid.get_grid_data();
-
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle rad_nc = input_nc.get_group("radiation");
 
@@ -724,8 +722,6 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::create_solver(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
 {
-    auto& gd = grid.get_grid_data();
-
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle rad_input_nc = input_nc.get_group("init");
     load_gas_concs<double>(gas_concs, rad_input_nc, "z");
@@ -742,8 +738,6 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
         const Gas_concs<double>& gas_concs)
 {
-    auto& gd = grid.get_grid_data();
-
     // Set up the gas optics classes for long and shortwave.
     kdist_lw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
@@ -761,8 +755,6 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
         const Gas_concs<double>& gas_concs)
 {
-    auto& gd = grid.get_grid_data();
-
     // Set up the gas optics classes for long and shortwave.
     kdist_lw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
