@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import microhh_tools as mht     # available in microhh/python directory
 import argparse
@@ -6,11 +7,20 @@ import argparse
 cross_modes = ['xy', 'xz', 'yz']
 parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
 parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
+=======
+import microhh_tools as mht # available in microhh/python directory
+import argparse
+
+# Parse command line and namelist options
+cross_modes = ['xy', 'xz', 'yz', 'surf']
+parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
+parser.add_argument('-m', '--modes', nargs='*', help='mode of the cross section', choices=cross_modes)
+>>>>>>> 3f64fd00712226684bf62cf2bc33bf795a6041a3
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
 parser.add_argument('-x', '--index', nargs='*', help='indices')
-parser.add_argument('-t0',    '--starttime', help='first time step to be parsed')
-parser.add_argument('-t1',    '--endtime', help='last time step to be parsed')
+parser.add_argument('-t0', '--starttime', help='first time step to be parsed')
+parser.add_argument('-t1', '--endtime', help='last time step to be parsed')
 parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed')
 parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'])
 
@@ -38,9 +48,9 @@ except KeyError:
 
 variables = args.vars if args.vars is not None else nl['cross']['crosslist']
 precision = args.precision
-#End option parsing
+# End option parsing
 
-# calculate the number of iterations
+# Calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
