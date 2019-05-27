@@ -30,6 +30,7 @@
 #include "input.h"
 #include "netcdf_interface.h"
 #include "stats.h"
+#include "constants.h"
 
 // RRTMGP headers.
 #include "Array.h"
@@ -300,6 +301,34 @@ namespace
                     rayl_upper);
         }
         // End reading of k-distribution.
+    }
+
+    template<typename TF>
+    void calc_tendency(
+            TF* restrict thlt,
+            const double* restrict flux_up, const double* restrict flux_dn, // Fluxes are double precision.
+            const TF* restrict rho, const TF* exner, const TF* dz,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        for (int k=kstart; k<kend; ++k)
+        {
+            // Conversion from energy to temperature.
+            const TF fac = TF(1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
+
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + i*jj + k*kk;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+
+                    thlt[ijk] += fac *
+                        ( flux_up[ijk_nogc+kk_nogc] - flux_up[ijk_nogc]
+                        - flux_dn[ijk_nogc+kk_nogc] + flux_dn[ijk_nogc] );
+                }
+        }
     }
 
     template<typename TF>
@@ -815,6 +844,16 @@ void Radiation_rrtmgp<TF>::exec(
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, h2o_a, ql_a);
 
+        calc_tendency(
+                fields.st.at("thl")->fld.data(),
+                flux_up.ptr(), flux_dn.ptr(),
+                thermo.get_rho_vector().data(), thermo.get_exner_vector().data(),
+                gd.dz.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax*gd.jmax);
+
         lw_flux_up.resize(gd.ktot+1);
         lw_flux_dn.resize(gd.ktot+1);
 
@@ -835,6 +874,7 @@ void Radiation_rrtmgp<TF>::exec(
                 thermo, time, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
                 t_lay_a, t_lev_a, h2o_a, ql_a);
+
 
         sw_flux_up    .resize(gd.ktot+1);
         sw_flux_dn    .resize(gd.ktot+1);
