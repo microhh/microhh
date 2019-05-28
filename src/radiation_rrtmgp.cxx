@@ -925,6 +925,7 @@ void Radiation_rrtmgp<TF>::exec(
     fields.release_tmp(ql   );
 
     // CvH: TEMP EDITS
+    /*
     if (stats.get_switch())
     {
         // CvH, I put an vector copy here because radiation is always double.
@@ -961,6 +962,7 @@ void Radiation_rrtmgp<TF>::exec(
                     sw_flux_dn_dir);
         }
     }
+    */
 }
 
 template<typename TF>
