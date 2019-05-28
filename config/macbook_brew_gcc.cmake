@@ -4,9 +4,9 @@ if(USEMPI)
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
   set(ENV{FC}  mpif90) # Fortran compiler for parallel build
 else()
-  set(ENV{CC}  gcc-8 ) # C compiler for serial build
-  set(ENV{CXX} g++-8 ) # C++ compiler for serial build
-  set(ENV{FC}  gfortran-8) # Fortran compiler for serial build
+  set(ENV{CC}  gcc-9 ) # C compiler for serial build
+  set(ENV{CXX} g++-9 ) # C++ compiler for serial build
+  set(ENV{FC}  gfortran-9) # Fortran compiler for serial build
 endif()
 
 set(GNU_SED "gsed")
