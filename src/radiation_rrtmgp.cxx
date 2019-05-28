@@ -324,7 +324,7 @@ namespace
                     const int ijk = i + i*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-                    thlt[ijk] += fac *
+                    thlt[ijk] -= fac *
                         ( flux_up[ijk_nogc+kk_nogc] - flux_up[ijk_nogc]
                         - flux_dn[ijk_nogc+kk_nogc] + flux_dn[ijk_nogc] );
                 }
