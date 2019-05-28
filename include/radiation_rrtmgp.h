@@ -103,8 +103,10 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
 
-        const std::string tend_name = "rad";
-        const std::string tend_longname = "Radiation";
+        const std::string tend_name_lw = "rad_lw";
+        const std::string tend_longname_lw = "Longwave radiation";
+        const std::string tend_name_sw = "rad_sw";
+        const std::string tend_longname_sw = "Shortwave radiation";
 
         bool sw_longwave;
         bool sw_shortwave;

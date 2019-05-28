@@ -783,6 +783,8 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
     {
         stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
         stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
+
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name_lw, tend_longname_lw);
     }
 }
 
@@ -803,6 +805,8 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name_sw, tend_longname_sw);
     }
 }
 
@@ -861,6 +865,8 @@ void Radiation_rrtmgp<TF>::exec(
                 gd.icells, gd.ijcells,
                 gd.imax, gd.imax*gd.jmax);
 
+        stats.calc_tend(*fields.st.at("thl"), tend_name_lw);
+
         lw_flux_up.resize(gd.ktot+1);
         lw_flux_dn.resize(gd.ktot+1);
 
@@ -891,6 +897,8 @@ void Radiation_rrtmgp<TF>::exec(
                 gd.igc, gd.jgc, gd.kgc,
                 gd.icells, gd.ijcells,
                 gd.imax, gd.imax*gd.jmax);
+
+        stats.calc_tend(*fields.st.at("thl"), tend_name_sw);
 
         sw_flux_up    .resize(gd.ktot+1);
         sw_flux_dn    .resize(gd.ktot+1);
