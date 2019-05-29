@@ -316,7 +316,7 @@ namespace
         for (int k=kstart; k<kend; ++k)
         {
             // Conversion from energy to temperature.
-            const TF fac = TF(-1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
+            const TF fac = TF(1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
 
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
@@ -324,11 +324,9 @@ namespace
                     const int ijk = i + i*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-                    const TF heating_rate = fac *
+                    thlt_rad[ijk] -= fac *
                         ( flux_up[ijk_nogc+kk_nogc] - flux_up[ijk_nogc]
                         - flux_dn[ijk_nogc+kk_nogc] + flux_dn[ijk_nogc] );
-
-                    thlt_rad[ijk] += heating_rate;
                 }
         }
     }
