@@ -851,7 +851,7 @@ void Radiation_rrtmgp<TF>::exec(
     if (sw_longwave)
     {
         exec_longwave(
-                thermo, time, timeloop, stats,
+                thermo, timeloop, stats,
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, h2o_a, ql_a);
 
@@ -884,7 +884,7 @@ void Radiation_rrtmgp<TF>::exec(
     if (sw_shortwave)
     {
         exec_shortwave(
-                thermo, time, timeloop, stats,
+                thermo, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
                 t_lay_a, t_lev_a, h2o_a, ql_a);
 
@@ -965,9 +965,115 @@ void Radiation_rrtmgp<TF>::exec(
     */
 }
 
+namespace
+{
+    template<typename TF>
+    void add_ghost_cells(
+            TF* restrict out, const double* restrict in,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                    out[ijk] = in[ijk_nogc];
+                }
+    }
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+{
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+
+    // CvH: lots of code repetition with exec()
+    auto& gd = grid.get_grid_data();
+
+    auto t_lay = fields.get_tmp();
+    auto t_lev = fields.get_tmp();
+    auto h2o   = fields.get_tmp();
+    auto ql    = fields.get_tmp();
+
+    // Set the input to the radiation on a 3D grid without ghost cells.
+    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
+
+    // Initialize arrays in double precision, cast when needed.
+    const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
+
+    Array<double,2> t_lay_a(
+            std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+    Array<double,2> t_lev_a(
+            std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> h2o_a(
+            std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+    Array<double,2> ql_a(
+            std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+
+    Array<double,2> flux_up    ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_dn    ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_net   ({gd.imax*gd.jmax, gd.ktot+1});
+
+    auto tmp = fields.get_tmp();
+
+    // Use a lambda function to avoid code repetition.
+    auto save_stats = [&](Array<double,2>& array, const std::string& name)
+    {
+        add_ghost_cells(
+                tmp->fld.data(), array.ptr(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax*gd.jmax);
+
+        stats.calc_stats(name, *tmp, no_offset, no_threshold);
+    };
+
+    if (sw_longwave)
+    {
+        exec_longwave(
+                thermo, timeloop, stats,
+                flux_up, flux_dn, flux_net,
+                t_lay_a, t_lev_a, h2o_a, ql_a);
+
+        save_stats(flux_up, "lw_flux_up");
+        save_stats(flux_dn, "lw_flux_dn");
+    }
+
+    if (sw_shortwave)
+    {
+        exec_shortwave(
+                thermo, timeloop, stats,
+                flux_up, flux_dn, flux_dn_dir, flux_net,
+                t_lay_a, t_lev_a, h2o_a, ql_a);
+
+        save_stats(flux_up,     "sw_flux_up"    );
+        save_stats(flux_dn,     "sw_flux_dn"    );
+        save_stats(flux_dn_dir, "sw_flux_dn_dir");
+    }
+
+    fields.release_tmp(tmp);
+    fields.release_tmp(t_lay);
+    fields.release_tmp(t_lev);
+    fields.release_tmp(h2o  );
+    fields.release_tmp(ql   );
+}
+
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
         const Array<double,2>& h2o, const Array<double,2>& ql)
@@ -1104,7 +1210,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_dn_dir, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
         const Array<double,2>& h2o, const Array<double,2>& ql)

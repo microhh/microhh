@@ -61,7 +61,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("Not implemented"); }
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
         void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
@@ -92,13 +92,13 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Gas_concs<double>&);
 
         void exec_longwave(
-                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
 
         void exec_shortwave(
-                Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);

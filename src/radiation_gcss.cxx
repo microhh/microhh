@@ -497,10 +497,10 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
     // calculate the mean
     auto tmp = fields.get_tmp();
 
-    get_radiation_field(*tmp,"lflx",thermo, timeloop);
+    get_radiation_field(*tmp, "lflx", thermo, timeloop);
     stats.calc_stats("lflx", *tmp, no_offset, no_threshold);
 
-    get_radiation_field(*tmp,"sflx",thermo, timeloop);
+    get_radiation_field(*tmp, "sflx", thermo, timeloop);
     stats.calc_stats("sflx", *tmp, no_offset, no_threshold);
 
     fields.release_tmp(tmp);
