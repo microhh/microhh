@@ -305,7 +305,7 @@ namespace
 
     template<typename TF>
     void calc_tendency(
-            TF* restrict thlt,
+            TF* restrict thlt_rad,
             const double* restrict flux_up, const double* restrict flux_dn, // Fluxes are double precision.
             const TF* restrict rho, const TF* exner, const TF* dz,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -316,7 +316,7 @@ namespace
         for (int k=kstart; k<kend; ++k)
         {
             // Conversion from energy to temperature.
-            const TF fac = TF(1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
+            const TF fac = TF(-1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
 
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
@@ -324,11 +324,28 @@ namespace
                     const int ijk = i + i*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-                    thlt[ijk] -= fac *
+                    const TF heating_rate = fac *
                         ( flux_up[ijk_nogc+kk_nogc] - flux_up[ijk_nogc]
                         - flux_dn[ijk_nogc+kk_nogc] + flux_dn[ijk_nogc] );
+
+                    thlt_rad[ijk] += heating_rate;
                 }
         }
+    }
+
+    template<typename TF>
+    void add_tendency(
+            TF* restrict thlt, const TF* restrict thlt_rad,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + i*jj + k*kk;
+                    thlt[ijk] += thlt_rad[ijk];
+                }
     }
 
     template<typename TF>
@@ -519,6 +536,9 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
 
+    dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
+    next_rad_time = 0.;
+
 	t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
     emis_sfc    = inputin.get_item<double>("radiation", "emis_sfc"   , "");
     sfc_alb_dir = inputin.get_item<double>("radiation", "sfc_alb_dir", "");
@@ -527,6 +547,9 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     const double sza = inputin.get_item<double>("radiation", "sza", "");
     mu0 = std::cos(sza);
+
+    auto& gd = grid.get_grid_data();
+    fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", gd.sloc);
 }
 
 template<typename TF>
@@ -545,6 +568,10 @@ void Radiation_rrtmgp<TF>::create(
         const std::string error = "Radiation does not support thermo mode " + thermo.get_switch();
         throw std::runtime_error(error);
     }
+
+    // Initialize the tendency if the radiation is used.
+    if (stats.get_switch() && (sw_longwave || sw_shortwave))
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
 
     // Create the gas optics solver that is needed for the column and model solver.
     create_solver(input, input_nc, thermo, stats);
@@ -783,8 +810,6 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
     {
         stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
         stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
-
-        stats.add_tendency(*fields.st.at("thl"), "z", tend_name_lw, tend_longname_lw);
     }
 }
 
@@ -805,8 +830,6 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
-
-        stats.add_tendency(*fields.st.at("thl"), "z", tend_name_sw, tend_longname_sw);
     }
 }
 
@@ -816,76 +839,90 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    auto t_lay = fields.get_tmp();
-    auto t_lev = fields.get_tmp();
-    auto h2o   = fields.get_tmp();
-    auto ql    = fields.get_tmp();
-
-    // Set the input to the radiation on a 3D grid without ghost cells.
-    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
-
-    // Initialize arrays in double precision, cast when needed.
-    const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
-
-    Array<double,2> t_lay_a(
-            std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
-    Array<double,2> t_lev_a(
-            std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> h2o_a(
-            std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
-    Array<double,2> ql_a(
-            std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
-
-    Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
-
-    if (sw_longwave)
+    if (time >= next_rad_time)
     {
-        exec_longwave(
-                thermo, timeloop, stats,
-                flux_up, flux_dn, flux_net,
-                t_lay_a, t_lev_a, h2o_a, ql_a);
+        // Set the tendency to zero.
+        std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), TF(0.));
 
-        calc_tendency(
-                fields.st.at("thl")->fld.data(),
-                flux_up.ptr(), flux_dn.ptr(),
-                fields.rhoref.data(), thermo.get_exner_vector().data(),
-                gd.dz.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.igc, gd.jgc, gd.kgc,
-                gd.icells, gd.ijcells,
-                gd.imax, gd.imax*gd.jmax);
+        auto t_lay = fields.get_tmp();
+        auto t_lev = fields.get_tmp();
+        auto h2o   = fields.get_tmp();
+        auto ql    = fields.get_tmp();
 
-        stats.calc_tend(*fields.st.at("thl"), tend_name_lw);
+        // Set the input to the radiation on a 3D grid without ghost cells.
+        thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *ql);
+
+        // Initialize arrays in double precision, cast when needed.
+        const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
+
+        Array<double,2> t_lay_a(
+                std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+        Array<double,2> t_lev_a(
+                std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
+        Array<double,2> h2o_a(
+                std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+        Array<double,2> ql_a(
+                std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+
+        Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+        Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+        Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
+
+        if (sw_longwave)
+        {
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, ql_a);
+
+            calc_tendency(
+                    fields.sd.at("thlt_rad")->fld.data(),
+                    flux_up.ptr(), flux_dn.ptr(),
+                    fields.rhoref.data(), thermo.get_exner_vector().data(),
+                    gd.dz.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.igc, gd.jgc, gd.kgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax, gd.imax*gd.jmax);
+        }
+
+        if (sw_shortwave)
+        {
+            Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, ql_a);
+
+            calc_tendency(
+                    fields.sd.at("thlt_rad")->fld.data(),
+                    flux_up.ptr(), flux_dn.ptr(),
+                    fields.rhoref.data(), thermo.get_exner_vector().data(),
+                    gd.dz.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.igc, gd.jgc, gd.kgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax, gd.imax*gd.jmax);
+        }
+
+        fields.release_tmp(t_lay);
+        fields.release_tmp(t_lev);
+        fields.release_tmp(h2o  );
+        fields.release_tmp(ql   );
+
+        // Increment the rad_time
+        next_rad_time += dt_rad;
     }
 
-    if (sw_shortwave)
-    {
-        Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+    // Always add the tendency.
+    add_tendency(
+            fields.st.at("thl")->fld.data(),
+            fields.sd.at("thlt_rad")->fld.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
-        exec_shortwave(
-                thermo, timeloop, stats,
-                flux_up, flux_dn, flux_dn_dir, flux_net,
-                t_lay_a, t_lev_a, h2o_a, ql_a);
-
-        calc_tendency(
-                fields.st.at("thl")->fld.data(),
-                flux_up.ptr(), flux_dn.ptr(),
-                fields.rhoref.data(), thermo.get_exner_vector().data(),
-                gd.dz.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.igc, gd.jgc, gd.kgc,
-                gd.icells, gd.ijcells,
-                gd.imax, gd.imax*gd.jmax);
-
-        stats.calc_tend(*fields.st.at("thl"), tend_name_sw);
-    }
-
-    fields.release_tmp(t_lay);
-    fields.release_tmp(t_lev);
-    fields.release_tmp(h2o  );
-    fields.release_tmp(ql   );
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 
 namespace
