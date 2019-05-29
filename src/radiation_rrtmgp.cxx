@@ -836,17 +836,9 @@ void Radiation_rrtmgp<TF>::exec(
     Array<double,2> ql_a(
             std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
-    Array<double,2> flux_up    ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_dn    ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_net   ({gd.imax*gd.jmax, gd.ktot+1});
-
-    std::vector<TF> lw_flux_up(gd.ktot+1);
-    std::vector<TF> lw_flux_dn(gd.ktot+1);
-
-    std::vector<TF> sw_flux_up    (gd.ktot+1);
-    std::vector<TF> sw_flux_dn    (gd.ktot+1);
-    std::vector<TF> sw_flux_dn_dir(gd.ktot+1);
+    Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
     if (sw_longwave)
     {
@@ -870,6 +862,8 @@ void Radiation_rrtmgp<TF>::exec(
 
     if (sw_shortwave)
     {
+        Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
         exec_shortwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
@@ -948,10 +942,9 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
     Array<double,2> ql_a(
             std::vector<double>(ql->fld.begin(), ql->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
-    Array<double,2> flux_up    ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_dn    ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-    Array<double,2> flux_net   ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
     auto tmp = fields.get_tmp();
 
@@ -983,6 +976,8 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
 
     if (sw_shortwave)
     {
+        Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
         exec_shortwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
