@@ -866,19 +866,6 @@ void Radiation_rrtmgp<TF>::exec(
                 gd.imax, gd.imax*gd.jmax);
 
         stats.calc_tend(*fields.st.at("thl"), tend_name_lw);
-
-        lw_flux_up.resize(gd.ktot+1);
-        lw_flux_dn.resize(gd.ktot+1);
-
-        const bool is_hlf = true;
-        field3d_operators.calc_mean_profile_nogc(
-                lw_flux_up.data(),
-                std::vector<TF>(flux_up.v().begin(), flux_up.v().end()).data(),
-                is_hlf);
-        field3d_operators.calc_mean_profile_nogc(
-                lw_flux_dn.data(),
-                std::vector<TF>(flux_dn.v().begin(), flux_dn.v().end()).data(),
-                is_hlf);
     }
 
     if (sw_shortwave)
@@ -899,70 +886,12 @@ void Radiation_rrtmgp<TF>::exec(
                 gd.imax, gd.imax*gd.jmax);
 
         stats.calc_tend(*fields.st.at("thl"), tend_name_sw);
-
-        sw_flux_up    .resize(gd.ktot+1);
-        sw_flux_dn    .resize(gd.ktot+1);
-        sw_flux_dn_dir.resize(gd.ktot+1);
-
-        const bool is_hlf = true;
-        field3d_operators.calc_mean_profile_nogc(
-                sw_flux_up.data(),
-                std::vector<TF>(flux_up.v().begin(), flux_up.v().end()).data(),
-                is_hlf);
-        field3d_operators.calc_mean_profile_nogc(
-                sw_flux_dn.data(),
-                std::vector<TF>(flux_dn.v().begin(), flux_dn.v().end()).data(),
-                is_hlf);
-        field3d_operators.calc_mean_profile_nogc(
-                sw_flux_dn_dir.data(),
-                std::vector<TF>(flux_dn_dir.v().begin(), flux_dn_dir.v().end()).data(),
-                is_hlf);
     }
 
     fields.release_tmp(t_lay);
     fields.release_tmp(t_lev);
     fields.release_tmp(h2o  );
     fields.release_tmp(ql   );
-
-    // CvH: TEMP EDITS
-    /*
-    if (stats.get_switch())
-    {
-        // CvH, I put an vector copy here because radiation is always double.
-        if (sw_longwave)
-        {
-            stats.add_fixed_prof_raw(
-                    "lw_flux_up_test",
-                    "Longwave upwelling flux of reference column",
-                    "W m-2", "zh",
-                    lw_flux_up);
-            stats.add_fixed_prof_raw(
-                    "lw_flux_dn_test",
-                    "Longwave downwelling flux of reference column",
-                    "W m-2", "zh",
-                    lw_flux_dn);
-        }
-
-        if (sw_shortwave)
-        {
-            stats.add_fixed_prof_raw(
-                    "sw_flux_up_test",
-                    "Shortwave upwelling flux of reference column",
-                    "W m-2", "zh",
-                    sw_flux_up);
-            stats.add_fixed_prof_raw(
-                    "sw_flux_dn_test",
-                    "Shortwave downwelling flux of reference column",
-                    "W m-2", "zh",
-                    sw_flux_dn);
-            stats.add_fixed_prof_raw(
-                    "sw_flux_dn_dir_test",
-                    "Shortwave direct downwelling flux of reference column",
-                    "W m-2", "zh",
-                    sw_flux_dn_dir);
-        }
-    }
-    */
 }
 
 namespace
