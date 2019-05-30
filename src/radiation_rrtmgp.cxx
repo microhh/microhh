@@ -1224,7 +1224,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_dn_dir, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& ql)
+        const Array<double,2>& h2o, const Array<double,2>& clwp)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1252,6 +1252,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     std::unique_ptr<Optical_props_arry<double>> optical_props_left =
             std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *kdist_sw);
 
+    std::unique_ptr<Optical_props_2str<double>> cloud_optical_props_subset =
+            std::make_unique<Optical_props_2str<double>>(n_col_block, n_lay, *cloud_sw);
+
+    std::unique_ptr<Optical_props_2str<double>> cloud_optical_props_left =
+            std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *cloud_sw);
+
     // Define the arrays that contain the subsets.
     Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
     Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
@@ -1272,6 +1278,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     auto call_kernels = [&](
             const int col_s_in, const int col_e_in,
             std::unique_ptr<Optical_props_arry<double>>& optical_props_subset_in,
+            std::unique_ptr<Optical_props_2str<double>>& cloud_optical_props_in,
             const Array<double,1>& mu0_subset_in,
             const Array<double,2>& toa_src_subset_in,
             const Array<double,2>& sfc_alb_dir_subset_in,
@@ -1295,9 +1302,26 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
         // 2. Solve the cloud optical properties.
-        // cloud_sw->cloud_optics(
-        //         n_col_in, n_lay, n_bnd, n_rghice,
-        //         );
+        Array<double,2> clwp_subset(
+                clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+        Array<double,2> ciwp_subset({n_col_in, n_lay});
+
+        Array<int,2> cld_mask_liq({n_col_in, n_lay});
+
+        constexpr double mask_min_value = 1e-20;
+        for (int i=0; i<cld_mask_liq.size(); ++i)
+            cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
+
+        Array<int,2> cld_mask_ice({n_col_in, n_lay});
+
+        Array<double,2> rel({n_col_in, n_lay});
+        Array<double,2> rei({n_col_in, n_lay});
+
+        cloud_sw->cloud_optics(
+                cld_mask_liq, cld_mask_ice,
+                clwp_subset, ciwp_subset,
+                rel, rei,
+                *cloud_optical_props_in);
 
         // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
@@ -1316,6 +1340,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 gpt_flux_dn,
                 gpt_flux_dn_dir);
 
+        // 4. Reduce the fluxes to the needed information.
         fluxes->reduce(
                 gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
                 optical_props_subset_in, top_at_1);
@@ -1348,6 +1373,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         call_kernels(
                 col_s, col_e,
                 optical_props_subset,
+                cloud_optical_props_subset,
                 mu0_subset,
                 toa_src_subset,
                 sfc_alb_dir_subset,
@@ -1373,6 +1399,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         call_kernels(
                 col_s, col_e,
                 optical_props_left,
+                cloud_optical_props_left,
                 mu0_left,
                 toa_src_left,
                 sfc_alb_dir_left,

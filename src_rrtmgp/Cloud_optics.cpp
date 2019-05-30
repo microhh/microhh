@@ -63,12 +63,16 @@ void compute_from_table(
 // Two-stream variant of cloud optics.
 template<typename TF>
 void Cloud_optics<TF>::cloud_optics(
-        const int ncol, const int nlay, const int nbnd, const int nrghice,
         const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
-        const Array<TF,2>& clwp, const Array<int,2>& ciwp,
-        const Array<TF,2>& reliq, const Array<int,2>& reice,
+        const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
+        const Array<TF,2>& reliq, const Array<TF,2>& reice,
         Optical_props_2str<TF>& optical_props)
 {
+    const int ncol = clwp.dim(1);
+    const int nlay = clwp.dim(2);
+    const int nbnd = this->get_nband();
+    const int nrghice = this->lut_extice.dim(3);
+
     Optical_props_2str<TF> clouds_liq(ncol, nlay, optical_props);
 
     // Liquid water.
@@ -113,12 +117,16 @@ void Cloud_optics<TF>::cloud_optics(
 // 1scl variant of cloud optics.
 template<typename TF>
 void Cloud_optics<TF>::cloud_optics(
-        const int ncol, const int nlay, const int nbnd, const int nrghice,
         const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
-        const Array<TF,2>& clwp, const Array<int,2>& ciwp,
-        const Array<TF,2>& reliq, const Array<int,2>& reice,
+        const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
+        const Array<TF,2>& reliq, const Array<TF,2>& reice,
         Optical_props_1scl<TF>& optical_props)
 {
+    const int ncol = clwp.dim(1);
+    const int nlay = clwp.dim(2);
+    const int nbnd = this->get_nband();
+    const int nrghice = this->lut_extice.dim(3);
+
     Optical_props_1scl<TF> clouds_liq(ncol, nlay, optical_props);
 
     // Liquid water.
