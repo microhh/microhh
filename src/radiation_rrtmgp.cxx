@@ -42,6 +42,7 @@
 #include "Rte_lw.h"
 #include "Rte_sw.h"
 #include "Source_functions.h"
+#include "Cloud_optics.h"
 
 namespace
 {
@@ -303,6 +304,53 @@ namespace
         }
         // End reading of k-distribution.
     }
+
+    Cloud_optics<double> load_and_init_cloud_optics(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band     = coef_nc.get_dimension_size("nband");
+        int n_rghice   = coef_nc.get_dimension_size("nrghice");
+        int n_size_liq = coef_nc.get_dimension_size("nsize_liq");
+        int n_size_ice = coef_nc.get_dimension_size("nsize_ice");
+
+        Array<double,2> band_lims_wvn(coef_nc.get_variable<double>("bnd_limits_wavenumber", {n_band, 2}), {2, n_band});
+
+        // Read look-up table constants.
+        double radliq_lwr = coef_nc.get_variable<double>("radliq_lwr");
+        double radliq_upr = coef_nc.get_variable<double>("radliq_upr");
+        double radliq_fac = coef_nc.get_variable<double>("radliq_fac");
+
+        double radice_lwr = coef_nc.get_variable<double>("radice_lwr");
+        double radice_upr = coef_nc.get_variable<double>("radice_upr");
+        double radice_fac = coef_nc.get_variable<double>("radice_fac");
+
+        Array<double,2> lut_extliq(
+                coef_nc.get_variable<double>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+        Array<double,2> lut_ssaliq(
+                coef_nc.get_variable<double>("lut_ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+        Array<double,2> lut_asyliq(
+                coef_nc.get_variable<double>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+
+        Array<double,3> lut_extice(
+                coef_nc.get_variable<double>("lut_extice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+        Array<double,3> lut_ssaice(
+                coef_nc.get_variable<double>("lut_ssaice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+        Array<double,3> lut_asyice(
+                coef_nc.get_variable<double>("lut_asyice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+
+        return Cloud_optics<double>(
+                band_lims_wvn,
+                radliq_lwr, radliq_upr, radliq_fac,
+                radice_lwr, radice_upr, radice_fac,
+                lut_extliq, lut_ssaliq, lut_asyliq,
+                lut_extice, lut_ssaice, lut_asyice);
+    }
+
 
     template<typename TF>
     void calc_tendency(
