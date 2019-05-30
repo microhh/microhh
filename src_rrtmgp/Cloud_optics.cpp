@@ -33,13 +33,118 @@ Cloud_optics<TF>::Cloud_optics(
 }
 
 template<typename TF>
+void compute_from_table(
+        const int ncol, const int nlay, const int nbnd,
+        const Array<int,2>& mask, const Array<TF,2>& size, const int nsteps,
+        const TF step_size, const TF offset, const Array<TF,2>& table,
+        Array<TF,3>& out)
+{
+    for (int ilay=1; ilay<=nlay; ++ilay)
+        for (int icol=1; icol<=ncol; ++icol)
+        {
+            if (mask({icol, ilay}))
+            {
+                const int index = std::min(
+                        static_cast<int>((size({icol, ilay}) - offset) / step_size) + 1, nsteps-1);
+                const TF fint = (size({icol, ilay}) - offset) / step_size - (index-1);
+
+                for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+                    out({icol, ilay, ibnd}) =
+                            table({index, ibnd}) + fint * (table({index+1, ibnd}) - table({index, ibnd}));
+            }
+            else
+            {
+                for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+                    out({icol, ilay, ibnd}) = TF(0.);
+            }
+        }
+}
+
+// Two-stream variant of cloud optics.
+template<typename TF>
 void Cloud_optics<TF>::cloud_optics(
         const int ncol, const int nlay, const int nbnd, const int nrghice,
         const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
         const Array<TF,2>& clwp, const Array<int,2>& ciwp,
         const Array<TF,2>& reliq, const Array<int,2>& reice,
-        std::unique_ptr<Optical_props_arry<TF>>& optical_props)
+        Optical_props_2str<TF>& optical_props)
 {
+    Optical_props_2str<TF> clouds_liq(ncol, nlay, optical_props);
+
+    // Liquid water.
+    compute_from_table(
+            ncol, nlay, nbnd, liqmsk, reliq,
+            this->liq_nsteps, this->liq_step_size,
+            this->radliq_lwr, this->lut_extliq,
+            clouds_liq.get_tau());
+
+    compute_from_table(
+            ncol, nlay, nbnd, liqmsk, reliq,
+            this->liq_nsteps, this->liq_step_size,
+            this->radliq_lwr, this->lut_ssaliq,
+            clouds_liq.get_ssa());
+
+    compute_from_table(
+            ncol, nlay, nbnd, liqmsk, reliq,
+            this->liq_nsteps, this->liq_step_size,
+            this->radliq_lwr, this->lut_asyliq,
+            clouds_liq.get_g());
+
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+                clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
+
+    // Add ice as soon as ice microphysics are added.
+
+    // Process the calculated optical properties.
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+            {
+                optical_props.get_tau()({icol, ilay, ibnd}) = clouds_liq.get_tau()({icol, ilay, ibnd});
+                optical_props.get_ssa()({icol, ilay, ibnd}) = clouds_liq.get_ssa()({icol, ilay, ibnd});
+                optical_props.get_g  ()({icol, ilay, ibnd}) = clouds_liq.get_g  ()({icol, ilay, ibnd});
+            }
+}
+
+// 1scl variant of cloud optics.
+template<typename TF>
+void Cloud_optics<TF>::cloud_optics(
+        const int ncol, const int nlay, const int nbnd, const int nrghice,
+        const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
+        const Array<TF,2>& clwp, const Array<int,2>& ciwp,
+        const Array<TF,2>& reliq, const Array<int,2>& reice,
+        Optical_props_1scl<TF>& optical_props)
+{
+    Optical_props_1scl<TF> clouds_liq(ncol, nlay, optical_props);
+
+    // Liquid water.
+    compute_from_table(
+            ncol, nlay, nbnd, liqmsk, reliq,
+            this->liq_nsteps, this->liq_step_size,
+            this->radliq_lwr, this->lut_extliq,
+            clouds_liq.get_tau());
+
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+                clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
+
+    // Add ice as soon as ice microphysics are added.
+
+    // Process the calculated optical properties.
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+            {
+                optical_props.get_tau()({icol, ilay, ibnd}) =
+                        clouds_liq.get_tau()({icol, ilay, ibnd}) * (TF(1.) - clouds_liq.get_ssa()({icol, ilay, ibnd}));
+            }
 }
 
 #ifdef FLOAT_SINGLE
