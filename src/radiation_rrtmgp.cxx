@@ -337,11 +337,11 @@ namespace
                 coef_nc.get_variable<double>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
 
         Array<double,3> lut_extice(
-                coef_nc.get_variable<double>("lut_extice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<double>("lut_extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<double,3> lut_ssaice(
-                coef_nc.get_variable<double>("lut_ssaice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<double>("lut_ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<double,3> lut_asyice(
-                coef_nc.get_variable<double>("lut_asyice", {n_rghice, n_band, n_size_liq}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<double>("lut_asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
 
         return Cloud_optics<double>(
                 band_lims_wvn,
