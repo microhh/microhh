@@ -1284,6 +1284,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Gas_concs<double> gas_concs_subset(gas_concs, col_s_in, n_col_in);
         Array<double,2> toa_src_dummy({n_col_in, n_gpt});
 
+        // 1. Solve the gas optical properties.
         kdist_sw->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
@@ -1293,6 +1294,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 toa_src_dummy,
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
+        // 2. Solve the cloud optical properties.
+        // cloud_sw->cloud_optics(
+        //         n_col_in, n_lay, n_bnd, n_rghice,
+        //         );
+
+        // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
         Array<double,3> gpt_flux_dn    ({n_col_in, n_lev, n_gpt});
         Array<double,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});

@@ -17,7 +17,13 @@ class Cloud_optics : public Optical_props<TF>
                 const TF radice_lwr, const TF radice_upr, const TF radice_fac,
                 const Array<TF,2>& lut_extliq, const Array<TF,2>& lut_ssaliq, const Array<TF,2>& lut_asyliq,
                 const Array<TF,3>& lut_extice, const Array<TF,3>& lut_ssaice, const Array<TF,3>& lut_asyice);
-        void cloud_optics() {}
+
+        void cloud_optics(
+                const int ncol, const int nlay, const int nbnd, const int nrghice,
+                const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
+                const Array<TF,2>& clwp, const Array<int,2>& ciwp,
+                const Array<TF,2>& reliq, const Array<int,2>& reice,
+                std::unique_ptr<Optical_props_arry<TF>>& optical_props);
 
     private:
         int liq_nsteps;
