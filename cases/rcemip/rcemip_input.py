@@ -53,7 +53,7 @@ nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=T
 
 ### RADIATION INIT ###
 # Radiation profiles.
-z_top = 60.e3
+z_top = 100.e3
 dz = 500.
 z  = np.arange(dz/2, z_top, dz)
 zh = np.arange(   0, z_top-dz/2, dz)
@@ -102,6 +102,11 @@ nc_H2O = nc_group_rad.createVariable("h2o", float_type, ("lay"))
 nc_N2  = nc_group_rad.createVariable("n2" , float_type, ("lay"))
 nc_O2  = nc_group_rad.createVariable("o2" , float_type, ("lay"))
 
+nc_CFC11 = nc_group_rad.createVariable("cfc11", float_type, ("lay"))
+nc_CFC12 = nc_group_rad.createVariable("cfc12", float_type, ("lay"))
+nc_CFC22 = nc_group_rad.createVariable("cfc22", float_type, ("lay"))
+nc_CCL4  = nc_group_rad.createVariable("ccl4" , float_type, ("lay"))
+
 nc_CO2[:] = co2
 nc_CH4[:] = ch4
 nc_N2O[:] = n2o
@@ -109,6 +114,11 @@ nc_O3 [:] = o3 [:]
 nc_H2O[:] = h2o[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2
+
+nc_CFC11[:]
+nc_CFC12[:]
+nc_CFC22[:]
+nc_CCL4 [:]
 
 ### INITIAL PROFILES ###
 # Get number of vertical levels and size from .ini file
@@ -143,6 +153,11 @@ nc_H2O = nc_group_init.createVariable("h2o", float_type, ("z"))
 nc_N2  = nc_group_init.createVariable("n2" , float_type, ("z"))
 nc_O2  = nc_group_init.createVariable("o2" , float_type, ("z"))
 
+nc_CFC11 = nc_group_init.createVariable("cfc11", float_type, ("z"))
+nc_CFC12 = nc_group_init.createVariable("cfc12", float_type, ("z"))
+nc_CFC22 = nc_group_init.createVariable("cfc22", float_type, ("z"))
+nc_CCL4  = nc_group_init.createVariable("ccl4" , float_type, ("z"))
+
 nc_thl[:] = thl[:]
 nc_qt [:] = qt [:]
 
@@ -153,5 +168,10 @@ nc_O3 [:] = o3
 nc_H2O[:] = qt[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2
+
+nc_CFC11[:] = 0.
+nc_CFC12[:] = 0.
+nc_CFC22[:] = 0.
+nc_CCL4 [:] = 0.
 
 nc_file.close()

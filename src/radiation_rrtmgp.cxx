@@ -20,6 +20,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <numeric>
+#include <string>
 #include <cmath>
 
 #include "radiation_rrtmgp.h"
@@ -83,20 +84,20 @@ namespace
     {
         const int n_lay = input_nc.get_dimension_size(dim_name);
 
-        gas_concs.set_vmr("h2o",
-                Array<TF,1>(input_nc.get_variable<TF>("h2o", {n_lay}), {n_lay}));
-        gas_concs.set_vmr("co2",
-                input_nc.get_variable<TF>("co2"));
-        gas_concs.set_vmr("o3",
-                Array<TF,1>(input_nc.get_variable<TF>("o3", {n_lay}), {n_lay}));
-        gas_concs.set_vmr("n2o",
-                input_nc.get_variable<TF>("n2o"));
-        gas_concs.set_vmr("ch4",
-                input_nc.get_variable<TF>("ch4"));
-        gas_concs.set_vmr("o2",
-                input_nc.get_variable<TF>("o2"));
-        gas_concs.set_vmr("n2",
-                input_nc.get_variable<TF>("n2"));
+        const std::vector<std::string> possible_gases = {
+                "h2o", "co2" ,"o3", "n2o", "co", "ch4", "o2", "n2",
+                "ccl4", "cfc11", "cfc12", "cfc22",
+                "hfc143a", "hfc125", "hfc23", "hfc32", "hfc134a",
+                "cf4", "no2" };
+
+        for (const std::string& gas : possible_gases)
+        {
+            if (input_nc.variable_exists(gas))
+            {
+                gas_concs.set_vmr(gas,
+                        Array<TF,1>(input_nc.get_variable<TF>(gas, {n_lay}), {n_lay}));
+            }
+        };
     }
 
     Gas_optics<double> load_and_init_gas_optics(
