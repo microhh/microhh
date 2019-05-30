@@ -24,9 +24,10 @@
 #include "radiation.h"
 #include "field3d_operators.h"
 
-#include "Gas_optics.h"
 #include "Gas_concs.h"
+#include "Gas_optics.h"
 #include "Source_functions.h"
+#include "Cloud_optics.h"
 
 class Master;
 class Input;
@@ -128,6 +129,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         Gas_concs<double> gas_concs;
         std::unique_ptr<Gas_optics<double>> kdist_lw;
         std::unique_ptr<Gas_optics<double>> kdist_sw;
-        // std::unique_ptr<Source_func_lw<double>> sources;
+
+        std::unique_ptr<Cloud_optics<double>> cloud_lw;
+        std::unique_ptr<Cloud_optics<double>> cloud_sw;
 };
 #endif

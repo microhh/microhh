@@ -12,6 +12,9 @@ class Optical_props
                 const Array<TF,2>& band_lims_wvn,
                 const Array<int,2>& band_lims_gpt);
 
+        Optical_props(
+                const Array<TF,2>& band_lims_wvn);
+
         virtual ~Optical_props() {};
 
         Optical_props(const Optical_props&) = default;

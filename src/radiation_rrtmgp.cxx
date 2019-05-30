@@ -351,7 +351,6 @@ namespace
                 lut_extice, lut_ssaice, lut_asyice);
     }
 
-
     template<typename TF>
     void calc_tendency(
             TF* restrict thlt_rad,
@@ -852,6 +851,9 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
     kdist_lw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
 
+    cloud_lw = std::make_unique<Cloud_optics<double>>(
+            load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
+
     // Set up the statistics.
     if (stats.get_switch())
     {
@@ -866,10 +868,11 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         const Gas_concs<double>& gas_concs)
 {
     // Set up the gas optics classes for long and shortwave.
-    kdist_lw = std::make_unique<Gas_optics<double>>(
-            load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
     kdist_sw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_sw.nc"));
+
+    cloud_sw = std::make_unique<Cloud_optics<double>>(
+            load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
     // Set up the statistics.
     if (stats.get_switch())

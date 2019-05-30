@@ -1,12 +1,14 @@
 #include "Optical_props.h"
 #include "Array.h"
 
+// Optical properties per gpoint.
 template<typename TF>
 Optical_props<TF>::Optical_props(
         const Array<TF,2>& band_lims_wvn,
         const Array<int,2>& band_lims_gpt)
 {
     Array<int,2> band_lims_gpt_lcl(band_lims_gpt);
+
     this->band2gpt = band_lims_gpt_lcl;
     this->band_lims_wvn = band_lims_wvn;
 
@@ -19,6 +21,30 @@ Optical_props<TF>::Optical_props(
     }
 }
 
+// Optical properties per band.
+template<typename TF>
+Optical_props<TF>::Optical_props(
+        const Array<TF,2>& band_lims_wvn)
+{
+    Array<int,2> band_lims_gpt_lcl({2, band_lims_wvn.dim(2)});
+
+    for (int iband=1; iband<=band_lims_wvn.dim(2); ++iband)
+    {
+        band_lims_gpt_lcl({1, iband}) = iband;
+        band_lims_gpt_lcl({2, iband}) = iband;
+    }
+
+    this->band2gpt = band_lims_gpt_lcl;
+    this->band_lims_wvn = band_lims_wvn;
+
+    // Make a map between g-points and bands.
+    this->gpt2band.set_dims({band_lims_gpt_lcl.max()});
+    for (int iband=1; iband<=band_lims_gpt_lcl.dim(2); ++iband)
+    {
+        for (int i=band_lims_gpt_lcl({1,iband}); i<=band_lims_gpt_lcl({2,iband}); ++i)
+            this->gpt2band({i}) = iband;
+    }
+}
 template<typename TF>
 Optical_props_1scl<TF>::Optical_props_1scl(
         const int ncol,
