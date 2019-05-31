@@ -115,10 +115,10 @@ nc_H2O[:] = h2o[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2
 
-nc_CFC11[:]
-nc_CFC12[:]
-nc_CFC22[:]
-nc_CCL4 [:]
+nc_CFC11[:] = 0.
+nc_CFC12[:] = 0.
+nc_CFC22[:] = 0.
+nc_CCL4 [:] = 0.
 
 ### INITIAL PROFILES ###
 # Get number of vertical levels and size from .ini file
