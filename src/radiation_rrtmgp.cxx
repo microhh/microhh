@@ -1116,14 +1116,13 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::make_unique<Optical_props_1scl<double>>(n_col_block, n_lay, *kdist_lw);
     std::unique_ptr<Source_func_lw<double>> sources_subset =
             std::make_unique<Source_func_lw<double>>(n_col_block, n_lay, *kdist_lw);
+    std::unique_ptr<Optical_props_1scl<double>> cloud_optical_props_subset =
+            std::make_unique<Optical_props_1scl<double>>(n_col_block, n_lay, *cloud_lw);
 
     std::unique_ptr<Optical_props_arry<double>> optical_props_left =
             std::make_unique<Optical_props_1scl<double>>(n_col_block_left, n_lay, *kdist_lw);
     std::unique_ptr<Source_func_lw<double>> sources_left =
             std::make_unique<Source_func_lw<double>>(n_col_block_left, n_lay, *kdist_lw);
-
-    std::unique_ptr<Optical_props_1scl<double>> cloud_optical_props_subset =
-            std::make_unique<Optical_props_1scl<double>>(n_col_block, n_lay, *cloud_lw);
     std::unique_ptr<Optical_props_1scl<double>> cloud_optical_props_left =
             std::make_unique<Optical_props_1scl<double>>(n_col_block_left, n_lay, *cloud_lw);
 
@@ -1249,7 +1248,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Array<double,2> emis_sfc_left = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array<double,2> lw_flux_dn_inc_left = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
         std::unique_ptr<Fluxes_broadband<double>> fluxes_left =
-                std::make_unique<Fluxes_broadband<double>>(n_col_block, n_lev);
+                std::make_unique<Fluxes_broadband<double>>(n_col_block_left, n_lev);
 
         call_kernels(
                 col_s, col_e,
@@ -1291,13 +1290,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     // Define the pointers for the subsetting.
     std::unique_ptr<Optical_props_arry<double>> optical_props_subset =
             std::make_unique<Optical_props_2str<double>>(n_col_block, n_lay, *kdist_sw);
-
-    std::unique_ptr<Optical_props_arry<double>> optical_props_left =
-            std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *kdist_sw);
-
     std::unique_ptr<Optical_props_2str<double>> cloud_optical_props_subset =
             std::make_unique<Optical_props_2str<double>>(n_col_block, n_lay, *cloud_sw);
 
+    std::unique_ptr<Optical_props_arry<double>> optical_props_left =
+            std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *kdist_sw);
     std::unique_ptr<Optical_props_2str<double>> cloud_optical_props_left =
             std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *cloud_sw);
 
