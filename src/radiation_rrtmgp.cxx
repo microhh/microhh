@@ -369,7 +369,7 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + i*jj + k*kk;
+                    const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
                     thlt_rad[ijk] -= fac *
