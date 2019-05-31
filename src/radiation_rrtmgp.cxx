@@ -1302,26 +1302,32 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
         // 2. Solve the cloud optical properties.
-        Array<double,2> clwp_subset(
-                clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+        // Assume no ice for now.
+        Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
         Array<double,2> ciwp_subset({n_col_in, n_lay});
 
+        // Set the masks. Assume no ice
         Array<int,2> cld_mask_liq({n_col_in, n_lay});
-
         constexpr double mask_min_value = 1e-20;
         for (int i=0; i<cld_mask_liq.size(); ++i)
             cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
 
         Array<int,2> cld_mask_ice({n_col_in, n_lay});
 
+        // Compute the effective droplet radius. Assume no ice.
         Array<double,2> rel({n_col_in, n_lay});
         Array<double,2> rei({n_col_in, n_lay});
+        for (int i=0; i<rel.size(); ++i)
+            rel.v()[i] = TF(10.)*cld_mask_liq.v()[i];
 
         cloud_sw->cloud_optics(
                 cld_mask_liq, cld_mask_ice,
                 clwp_subset, ciwp_subset,
                 rel, rei,
                 *cloud_optical_props_in);
+
+        // Add the cloud optical props to the gas optical properties.
+        // optical_props_subset_in.increment(cloud_optical_props_in);
 
         // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});

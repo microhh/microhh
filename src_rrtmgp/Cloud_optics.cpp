@@ -71,7 +71,6 @@ void Cloud_optics<TF>::cloud_optics(
     const int ncol = clwp.dim(1);
     const int nlay = clwp.dim(2);
     const int nbnd = this->get_nband();
-    const int nrghice = this->lut_extice.dim(3);
 
     Optical_props_2str<TF> clouds_liq(ncol, nlay, optical_props);
 
@@ -125,7 +124,6 @@ void Cloud_optics<TF>::cloud_optics(
     const int ncol = clwp.dim(1);
     const int nlay = clwp.dim(2);
     const int nbnd = this->get_nband();
-    const int nrghice = this->lut_extice.dim(3);
 
     Optical_props_1scl<TF> clouds_liq(ncol, nlay, optical_props);
 
