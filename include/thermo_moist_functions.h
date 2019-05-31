@@ -139,7 +139,11 @@ namespace Thermo_moist_functions
         }
 
         if (niter == nitermax)
-            throw std::runtime_error("Non-converging saturation adjustment.");
+        {
+            std::string error = "Non-converging saturation adjustment: thl, qt, p = "
+                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+            throw std::runtime_error(error);
+        }
 
         ql = std::max(TF(0.), qt - qs);
 
