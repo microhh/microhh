@@ -487,7 +487,7 @@ namespace
 
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict ql,
+            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict clwp,
             TF* restrict thlh, TF* restrict qth,
             const TF* restrict thl, const TF* restrict qt,
             const TF* restrict p, const TF* restrict ph,
@@ -505,6 +505,7 @@ namespace
         for (int k=kstart; k<kend; ++k)
         {
             const TF ex = exner(p[k]);
+            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -512,9 +513,9 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
                     const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
-                    ql[ijk_nogc] = ssa.ql;
-                    qv[ijk_nogc] = qt[ijk] - ssa.ql;
-                    T [ijk_nogc] = ssa.t;
+                    clwp[ijk_nogc] = ssa.ql * dpg;
+                    qv  [ijk_nogc] = qt[ijk] - ssa.ql;
+                    T   [ijk_nogc] = ssa.t;
                 }
         }
 
@@ -869,12 +870,12 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 
 template<typename TF>
 void Thermo_moist<TF>::get_radiation_fields(
-        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& ql) const
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& clwp) const
 {
     auto& gd = grid.get_grid_data();
 
     calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(), ql.fld.data(),
+            T.fld.data(), T_h.fld.data(), qv.fld.data(), clwp.fld.data(),
             T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
             fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
             bs.pref.data(), bs.prefh.data(),

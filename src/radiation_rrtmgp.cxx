@@ -1304,6 +1304,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         // 2. Solve the cloud optical properties.
         // Assume no ice for now.
         Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+        // Convert to g/m2.
+        for (int i=0; i<clwp_subset.size(); ++i)
+            clwp_subset.v()[i] *= 1000;
+
         Array<double,2> ciwp_subset({n_col_in, n_lay});
 
         // Set the masks. Assume no ice
