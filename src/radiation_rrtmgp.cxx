@@ -1087,7 +1087,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& ql)
+        const Array<double,2>& h2o, const Array<double,2>& clwp)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1122,6 +1122,11 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     std::unique_ptr<Source_func_lw<double>> sources_left =
             std::make_unique<Source_func_lw<double>>(n_col_block_left, n_lay, *kdist_lw);
 
+    std::unique_ptr<Optical_props_1scl<double>> cloud_optical_props_subset =
+            std::make_unique<Optical_props_1scl<double>>(n_col_block, n_lay, *cloud_lw);
+    std::unique_ptr<Optical_props_1scl<double>> cloud_optical_props_left =
+            std::make_unique<Optical_props_1scl<double>>(n_col_block_left, n_lay, *cloud_lw);
+
     // Define the arrays that contain the subsets.
     Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
     Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
@@ -1137,6 +1142,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     auto call_kernels = [&](
             const int col_s_in, const int col_e_in,
             std::unique_ptr<Optical_props_arry<double>>& optical_props_subset_in,
+            std::unique_ptr<Optical_props_1scl<double>>& cloud_optical_props_in,
             Source_func_lw<double>& sources_subset_in,
             const Array<double,2>& emis_sfc_subset_in,
             const Array<double,2>& lw_flux_dn_inc_subset_in,
@@ -1155,6 +1161,41 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 sources_subset_in,
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 t_lev  .subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
+
+        // 2. Solve the cloud optical properties.
+        // Assume no ice for now.
+        Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+        // Convert to g/m2.
+        for (int i=0; i<clwp_subset.size(); ++i)
+            clwp_subset.v()[i] *= 1000;
+
+        Array<double,2> ciwp_subset({n_col_in, n_lay});
+
+        // Set the masks. Assume no ice.
+        Array<int,2> cld_mask_liq({n_col_in, n_lay});
+        constexpr double mask_min_value = 1e-20;
+        for (int i=0; i<cld_mask_liq.size(); ++i)
+            cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
+
+        Array<int,2> cld_mask_ice({n_col_in, n_lay});
+
+        // Compute the effective droplet radius. Assume no ice.
+        Array<double,2> rel({n_col_in, n_lay});
+        Array<double,2> rei({n_col_in, n_lay});
+        for (int i=0; i<rel.size(); ++i)
+            rel.v()[i] = TF(10.)*cld_mask_liq.v()[i];
+
+        cloud_lw->cloud_optics(
+                cld_mask_liq, cld_mask_ice,
+                clwp_subset, ciwp_subset,
+                rel, rei,
+                *cloud_optical_props_in);
+
+        // Add the cloud optical props to the gas optical properties.
+        add_to(
+                dynamic_cast<Optical_props_1scl<double>&>(*optical_props_subset_in),
+                dynamic_cast<Optical_props_1scl<double>&>(*cloud_optical_props_in));
 
         Array<double,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
         Array<double,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
@@ -1193,6 +1234,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         call_kernels(
                 col_s, col_e,
                 optical_props_subset,
+                cloud_optical_props_subset,
                 *sources_subset,
                 emis_sfc_subset,
                 lw_flux_dn_inc_subset,
@@ -1212,6 +1254,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         call_kernels(
                 col_s, col_e,
                 optical_props_left,
+                cloud_optical_props_left,
                 *sources_left,
                 emis_sfc_left,
                 lw_flux_dn_inc_left,

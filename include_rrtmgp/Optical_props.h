@@ -129,5 +129,6 @@ class Optical_props_2str : public Optical_props_arry<TF>
         Array<TF,3> g;
 };
 
+template<typename TF> void add_to(Optical_props_1scl<TF>& op_inout, const Optical_props_1scl<TF>& op_in);
 template<typename TF> void add_to(Optical_props_2str<TF>& op_inout, const Optical_props_2str<TF>& op_in);
 #endif

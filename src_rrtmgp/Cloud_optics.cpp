@@ -147,10 +147,7 @@ void Cloud_optics<TF>::cloud_optics(
         for (int ilay=1; ilay<=nlay; ++ilay)
             #pragma ivdep
             for (int icol=1; icol<=ncol; ++icol)
-            {
-                optical_props.get_tau()({icol, ilay, ibnd}) =
-                        clouds_liq.get_tau()({icol, ilay, ibnd}) * (TF(1.) - clouds_liq.get_ssa()({icol, ilay, ibnd}));
-            }
+                optical_props.get_tau()({icol, ilay, ibnd}) = clouds_liq.get_tau()({icol, ilay, ibnd});
 }
 
 #ifdef FLOAT_SINGLE

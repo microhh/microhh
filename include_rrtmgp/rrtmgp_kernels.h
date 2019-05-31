@@ -150,5 +150,10 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* tau_inout, FLOAT_TYPE* ssa_inout, FLOAT_TYPE* g_inout,
             FLOAT_TYPE* tau_in, FLOAT_TYPE* ssa_in, FLOAT_TYPE* g_in,
             int* nbnd, int* band_lims_gpoint);
+
+    extern "C" void inc_1scalar_by_1scalar_bybnd(
+            int* ncol, int* nlev, int* ngpt,
+            FLOAT_TYPE* tau_inout, FLOAT_TYPE* tau_in,
+            int* nbnd, int* band_lims_gpoint);
 }
 #endif

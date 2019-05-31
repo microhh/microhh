@@ -120,6 +120,18 @@ void Optical_props_2str<TF>::get_subset(
 
 namespace rrtmgp_kernel_launcher
 {
+    template<typename TF> void inc_1scalar_by_1scalar_bybnd(
+            int ncol, int nlay, int ngpt,
+            Array<TF,3>& tau_inout, const Array<TF,3>& tau_in,
+            int nbnd, const Array<int,2>& band_lims_gpoint)
+
+    {
+        rrtmgp_kernels::inc_1scalar_by_1scalar_bybnd(
+                &ncol, &nlay, &ngpt,
+                tau_inout.ptr(), const_cast<TF*>(tau_in.ptr()),
+                &nbnd, const_cast<int*>(band_lims_gpoint.ptr()));
+    }
+
     template<typename TF> void inc_2stream_by_2stream_bybnd(
             int ncol, int nlay, int ngpt,
             Array<TF,3>& tau_inout, Array<TF,3>& ssa_inout, Array<TF,3>& g_inout,
@@ -132,6 +144,27 @@ namespace rrtmgp_kernel_launcher
                 tau_inout.ptr(), ssa_inout.ptr(), g_inout.ptr(),
                 const_cast<TF*>(tau_in.ptr()), const_cast<TF*>(ssa_in.ptr()), const_cast<TF*>(g_in.ptr()),
                 &nbnd, const_cast<int*>(band_lims_gpoint.ptr()));
+    }
+}
+
+template<typename TF>
+void add_to(Optical_props_1scl<TF>& op_inout, const Optical_props_1scl<TF>& op_in)
+{
+    const int ncol = op_inout.get_ncol();
+    const int nlay = op_inout.get_nlay();
+    const int ngpt = op_inout.get_ngpt();
+
+    if (ngpt == op_in.get_ngpt())
+        throw std::runtime_error("Adding optical properties of the same gpts is not implemented yet");
+    else
+    {
+        if (op_in.get_ngpt() != op_inout.get_nband())
+            throw std::runtime_error("Cannot add optical properties with incompatible band - gpoint combination");
+
+        rrtmgp_kernel_launcher::inc_1scalar_by_1scalar_bybnd(
+                ncol, nlay, ngpt,
+                op_inout.get_tau(), op_in.get_tau(),
+                op_inout.get_nband(), op_inout.get_band_lims_gpoint());
     }
 }
 
@@ -162,9 +195,11 @@ template class Optical_props<float>;
 template class Optical_props_1scl<float>;
 template class Optical_props_2str<float>;
 template void add_to(Optical_props_2str<float>&, const Optical_props_2str<float>&);
+template void add_to(Optical_props_1scl<float>&, const Optical_props_1scl<float>&);
 #else
 template class Optical_props<double>;
 template class Optical_props_1scl<double>;
 template class Optical_props_2str<double>;
 template void add_to(Optical_props_2str<double>&, const Optical_props_2str<double>&);
+template void add_to(Optical_props_1scl<double>&, const Optical_props_1scl<double>&);
 #endif
