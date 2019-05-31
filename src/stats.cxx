@@ -760,12 +760,13 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
 
 // Add a new profile to each of the NetCDF files.
 template<typename TF>
-void Stats<TF>::add_tendency(const Field3d<TF>& var, std::string zloc, std::string tend_name, std::string tend_longname)
+void Stats<TF>::add_tendency(
+        const Field3d<TF>& var, const std::string& zloc, const std::string& tend_name, const std::string& tend_longname)
 {
-    if(swstats && swtendency)
+    if (swstats && swtendency)
     {
-        add_prof(var.name + "_" + tend_name, tend_longname +" " + var.longname, var.unit, zloc);
-        if(tendency_order.find(var.name) == tendency_order.end())
+        add_prof(var.name + "_" + tend_name, tend_longname + " " + var.longname, var.unit, zloc);
+        if (tendency_order.find(var.name) == tendency_order.end())
         {
             tendency_order[var.name];
             add_tendency(var, zloc, "total", "Total");
@@ -1322,6 +1323,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
 {
     if (!doing_tendency)
         return;
+
     auto& gd = grid.get_grid_data();
     unsigned int flag;
     const int* nmask;
