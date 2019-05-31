@@ -131,10 +131,6 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* sfc_emis_gpt, FLOAT_TYPE* sfc_source,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn);
 
-    // extern "C" void apply_BC_0(
-    //         int* ncol, int* nlay, int* ngpt,
-    //         int* top_at_1, FLOAT_TYPE* gpt_flux_dn);
-
     extern "C" void apply_BC_factor(
             int* ncol, int* nlay, int* ngpt,
             int* top_at_1, FLOAT_TYPE* inc_flux,
@@ -148,5 +144,11 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* mu0,
             FLOAT_TYPE* sfc_alb_dir_gpt, FLOAT_TYPE* sfc_alb_dif_gpt,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn, FLOAT_TYPE* gpt_flux_dir);
+
+    extern "C" void inc_2stream_by_2stream_bybnd(
+            int* ncol, int* nlev, int* ngpt,
+            FLOAT_TYPE* tau_inout, FLOAT_TYPE* ssa_inout, FLOAT_TYPE* g_inout,
+            FLOAT_TYPE* tau_in, FLOAT_TYPE* ssa_in, FLOAT_TYPE* g_in,
+            int* nbnd, int* band_lims_gpoint);
 }
 #endif

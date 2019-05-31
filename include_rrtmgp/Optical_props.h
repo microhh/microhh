@@ -46,6 +46,10 @@ class Optical_props_arry : public Optical_props<TF>
         virtual Array<TF,3>& get_ssa() = 0;
         virtual Array<TF,3>& get_g  () = 0;
 
+        virtual const Array<TF,3>& get_tau() const = 0;
+        virtual const Array<TF,3>& get_ssa() const = 0;
+        virtual const Array<TF,3>& get_g  () const = 0;
+
         virtual void set_subset(
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props_sub,
                 const int col_s, const int col_e) = 0;
@@ -83,6 +87,10 @@ class Optical_props_1scl : public Optical_props_arry<TF>
         Array<TF,3>& get_ssa() { throw std::runtime_error("ssa is not available in this class"); }
         Array<TF,3>& get_g  () { throw std::runtime_error("g is available in this class"); }
 
+        const Array<TF,3>& get_tau() const { return tau; }
+        const Array<TF,3>& get_ssa() const { throw std::runtime_error("ssa is not available in this class"); }
+        const Array<TF,3>& get_g  () const { throw std::runtime_error("g is available in this class"); }
+
     private:
         Array<TF,3> tau;
 };
@@ -111,9 +119,15 @@ class Optical_props_2str : public Optical_props_arry<TF>
         Array<TF,3>& get_ssa() { return ssa; }
         Array<TF,3>& get_g  () { return g; }
 
+        const Array<TF,3>& get_tau() const { return tau; }
+        const Array<TF,3>& get_ssa() const { return ssa; }
+        const Array<TF,3>& get_g  () const { return g; }
+
     private:
         Array<TF,3> tau;
         Array<TF,3> ssa;
         Array<TF,3> g;
 };
+
+template<typename TF> void add_to(Optical_props_2str<TF>& op_inout, const Optical_props_2str<TF>& op_in);
 #endif
