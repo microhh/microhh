@@ -196,7 +196,7 @@ class Array
             {
                 subdims[i] = ranges[i].second - ranges[i].first + 1;
                 // CvH how flexible / tolerant are we?
-                do_spread[i] = (dims[i] == 1 && subdims[i] > 1) ? true : false;
+                do_spread[i] = (dims[i] == 1);
             }
 
             // Create the array and fill it with the subset.
