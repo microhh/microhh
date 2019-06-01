@@ -6,7 +6,8 @@
 * `drycblles`: Dry convective boundary layer growing against linear stratification.
 * `dycoms`: DYCOMS stratocumulus case.
 * `eady`: Eady's baroclinic instability on an f-plane.
-* `lasso`: LASSO cases, based on ARM observations 2015-
+* `lasso`: LASSO cases, based on ARM observations 2015.
+* `rcemip`: RCEMIP radiative convective equilibrium case (Wing et al., 2018).
 * `rico`: RICO precipitating cumulus case (van Zanten et al., 2013).
 
 ## DNS
