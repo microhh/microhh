@@ -59,27 +59,6 @@ inline int product(const std::array<int, N>& array)
     return product;
 }
 
-/*
-template<typename T>
-class Array_iterator
-{
-    public:
-        Array_iterator(const std::vector<T>& data, const int n) : data(data), n(n) {}
-        Array_iterator& operator++()
-        {
-            ++n;
-            return *this;
-        }
-        std::pair<int, T> operator*() const { return std::make_pair(n, data[n]); }
-
-    private:
-        const std::vector<T>& data;
-        int n;
-
-    friend bool operator!=(const Array_iterator<T>& left, const Array_iterator<T>& right) { return left.n != right.n; }
-};
-*/
-
 template<typename T, int N>
 class Array
 {
@@ -114,16 +93,16 @@ class Array
         {} // CvH Do we need to size check data?
 
         // Define the default copy constructor and assignment operator.
-        Array(const Array<T, N>&) = default;
-        Array<T,N>& operator=(const Array<T, N>&) = default; // CvH does this one need empty checking?
+        // Array(const Array<T, N>&) = default;
+        // Array<T,N>& operator=(const Array<T, N>&) = default; // CvH does this one need empty checking?
 
-        Array(Array<T, N>&& array) :
-            dims(std::exchange(array.dims, {})),
-            ncells(std::exchange(array.ncells, 0)),
-            data(std::move(array.data)),
-            strides(std::exchange(array.strides, {})),
-            offsets(std::exchange(array.offsets, {}))
-        {}
+        // Array(Array<T, N>&& array) :
+        //     dims(std::exchange(array.dims, {})),
+        //     ncells(std::exchange(array.ncells, 0)),
+        //     data(std::move(array.data)),
+        //     strides(std::exchange(array.strides, {})),
+        //     offsets(std::exchange(array.offsets, {}))
+        // {}
 
         inline void set_offsets(const std::array<int, N>& offsets)
         {
@@ -178,9 +157,6 @@ class Array
             const int index = calc_index<N>(indices, strides, offsets);
             return data[index];
         }
-
-        // inline Array_iterator<T> begin() { return Array_iterator<T>(data, 0); }
-        // inline Array_iterator<T> end()   { return Array_iterator<T>(data, ncells); }
 
         inline int dim(const int i) const { return dims[i-1]; }
         inline bool is_empty() const { return ncells == 0; }
