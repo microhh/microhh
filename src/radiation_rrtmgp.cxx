@@ -1014,16 +1014,13 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop,
         const unsigned long itime, const int iotime)
 {
-    if (stats.do_statistics(itime))
-        exec_stats(stats, thermo, timeloop);
+    const bool do_stats = stats.do_statistics(itime);
+    const bool do_cross = cross.do_cross(itime);
 
-    if (cross.do_cross(itime))
-        exec_cross(cross, iotime, thermo, timeloop);
-}
+    // Return in case of no stats or cross section.
+    if ( !(do_stats || do_cross) )
+        return;
 
-template<typename TF>
-void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
-{
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
@@ -1057,18 +1054,26 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
     auto tmp = fields.get_tmp();
 
     // Use a lambda function to avoid code repetition.
-    auto save_stats = [&](Array<double,2>& array, const std::string& name)
+    auto save_stats_and_cross = [&](Array<double,2>& array, const std::string& name)
     {
-        add_ghost_cells(
-                tmp->fld.data(), array.ptr(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.igc, gd.jgc, gd.kgc,
-                gd.icells, gd.ijcells,
-                gd.imax, gd.imax*gd.jmax);
+        if (do_stats || do_cross)
+            add_ghost_cells(
+                    tmp->fld.data(), array.ptr(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.igc, gd.jgc, gd.kgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax, gd.imax*gd.jmax);
 
-        stats.calc_stats(name, *tmp, no_offset, no_threshold);
+        if (do_stats)
+            stats.calc_stats(name, *tmp, no_offset, no_threshold);
+
+        if (do_cross)
+        {
+            if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
+                cross.cross_simple(tmp->fld.data(), name, iotime);
+        }
     };
 
     if (sw_longwave)
@@ -1078,8 +1083,8 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, h2o_a, clwp_a);
 
-        save_stats(flux_up, "lw_flux_up");
-        save_stats(flux_dn, "lw_flux_dn");
+        save_stats_and_cross(flux_up, "lw_flux_up");
+        save_stats_and_cross(flux_dn, "lw_flux_dn");
     }
 
     if (sw_shortwave)
@@ -1091,9 +1096,9 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
                 flux_up, flux_dn, flux_dn_dir, flux_net,
                 t_lay_a, t_lev_a, h2o_a, clwp_a);
 
-        save_stats(flux_up,     "sw_flux_up"    );
-        save_stats(flux_dn,     "sw_flux_dn"    );
-        save_stats(flux_dn_dir, "sw_flux_dn_dir");
+        save_stats_and_cross(flux_up,     "sw_flux_up"    );
+        save_stats_and_cross(flux_dn,     "sw_flux_dn"    );
+        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir");
     }
 
     fields.release_tmp(tmp);
@@ -1101,28 +1106,6 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
     fields.release_tmp(t_lev);
     fields.release_tmp(h2o);
     fields.release_tmp(clwp);
-}
-
-template<typename TF>
-void Radiation_rrtmgp<TF>::exec_cross(
-        Cross<TF>& cross, const int iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
-{
-    /*
-    // Vectors with allowed cross variables for radiative flux
-    std::vector<std::string> allowed_crossvars_rflx = {"sflx", "lflx"};
-
-    crosslist = cross.get_enabled_variables(allowed_crossvars_rflx);
-
-    auto tmp = fields.get_tmp();
-
-    for (auto& it : crosslist)
-    {
-        get_radiation_field(*tmp, it, thermo, timeloop);
-        cross.cross_simple(tmp->fld.data(), it, iotime);
-    }
-
-    fields.release_tmp(tmp);
-    */
 }
 
 template<typename TF>

@@ -513,10 +513,10 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
     const TF no_offset = 0.;
 
     auto flx = fields.get_tmp();
-    get_radiation_field(*flx,"lflx",thermo,timeloop);
+    get_radiation_field(*flx, "lflx", thermo, timeloop);
     column.calc_column("lflx", flx->fld.data(), no_offset);
 
-    get_radiation_field(*flx,"sflx",thermo,timeloop);
+    get_radiation_field(*flx, "sflx", thermo, timeloop);
     column.calc_column("sflx", flx->fld.data(), no_offset);
 
     fields.release_tmp(flx);

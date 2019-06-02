@@ -104,9 +104,9 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
-        void exec_dump(Dump<TF>&, const int, Thermo<TF>&, Timeloop<TF>&) {};
+        // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
+        // void exec_dump(Dump<TF>&, const int, Thermo<TF>&, Timeloop<TF>&) {};
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
