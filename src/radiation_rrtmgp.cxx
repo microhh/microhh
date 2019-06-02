@@ -625,6 +625,13 @@ void Radiation_rrtmgp<TF>::create(
 
     // Solve the reference column to compute upper boundary conditions.
     create_column(input, input_nc, thermo, stats);
+
+    // Get the allowed cross sections from the cross list
+    const std::vector<std::string> allowed_crossvars_radiation =
+            {"lw_flux_dn", "lw_flux_up",
+             "sw_flux_dn", "sw_flux_dn_dir", "sw_flux_up"};
+
+    crosslist = cross.get_enabled_variables(allowed_crossvars_radiation);
 }
 
 template<typename TF>
@@ -1100,6 +1107,22 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::exec_cross(
         Cross<TF>& cross, const int iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    /*
+    // Vectors with allowed cross variables for radiative flux
+    std::vector<std::string> allowed_crossvars_rflx = {"sflx", "lflx"};
+
+    crosslist = cross.get_enabled_variables(allowed_crossvars_rflx);
+
+    auto tmp = fields.get_tmp();
+
+    for (auto& it : crosslist)
+    {
+        get_radiation_field(*tmp, it, thermo, timeloop);
+        cross.cross_simple(tmp->fld.data(), it, iotime);
+    }
+
+    fields.release_tmp(tmp);
+    */
 }
 
 template<typename TF>

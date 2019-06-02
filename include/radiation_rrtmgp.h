@@ -116,6 +116,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         double dt_rad;
         double next_rad_time;
 
+        std::vector<std::string> crosslist;
+
         // RRTMGP related variables.
         double tsi_scaling;
         double t_sfc;
