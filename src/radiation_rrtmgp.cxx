@@ -31,6 +31,7 @@
 #include "input.h"
 #include "netcdf_interface.h"
 #include "stats.h"
+#include "cross.h"
 #include "constants.h"
 
 // RRTMGP headers.
@@ -1008,6 +1009,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 {
     if (stats.do_statistics(itime))
         exec_stats(stats, thermo, timeloop);
+
+    if (cross.do_cross(itime))
+        exec_cross(cross, iotime, thermo, timeloop);
 }
 
 template<typename TF>
@@ -1090,6 +1094,12 @@ void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Time
     fields.release_tmp(t_lev);
     fields.release_tmp(h2o);
     fields.release_tmp(clwp);
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_cross(
+        Cross<TF>& cross, const int iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+{
 }
 
 template<typename TF>
