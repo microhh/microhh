@@ -1054,7 +1054,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     auto tmp = fields.get_tmp();
 
     // Use a lambda function to avoid code repetition.
-    auto save_stats_and_cross = [&](Array<double,2>& array, const std::string& name)
+    auto save_stats_and_cross = [&](const Array<double,2>& array, const std::string& name)
     {
         if (do_stats || do_cross)
             add_ghost_cells(
