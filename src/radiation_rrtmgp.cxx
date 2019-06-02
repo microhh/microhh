@@ -627,9 +627,20 @@ void Radiation_rrtmgp<TF>::create(
     create_column(input, input_nc, thermo, stats);
 
     // Get the allowed cross sections from the cross list
-    const std::vector<std::string> allowed_crossvars_radiation =
-            {"lw_flux_dn", "lw_flux_up",
-             "sw_flux_dn", "sw_flux_dn_dir", "sw_flux_up"};
+    std::vector<std::string> allowed_crossvars_radiation;
+
+    if (sw_shortwave)
+    {
+        allowed_crossvars_radiation.push_back("sw_flux_up");
+        allowed_crossvars_radiation.push_back("sw_flux_dn");
+        allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
+    }
+
+    if (sw_longwave)
+    {
+        allowed_crossvars_radiation.push_back("lw_flux_up");
+        allowed_crossvars_radiation.push_back("lw_flux_dn");
+    }
 
     crosslist = cross.get_enabled_variables(allowed_crossvars_radiation);
 }
