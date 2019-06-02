@@ -390,7 +390,7 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + i*jj + k*kk;
+                    const int ijk = i + j*jj + k*kk;
                     thlt[ijk] += thlt_rad[ijk];
                 }
     }
