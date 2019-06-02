@@ -1054,7 +1054,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     auto tmp = fields.get_tmp();
 
     // Use a lambda function to avoid code repetition.
-    auto save_stats_and_cross = [&](const Array<double,2>& array, const std::string& name)
+    auto save_stats_and_cross = [&](
+            const Array<double,2>& array, const std::string& name, const std::array<int,3>& loc)
     {
         if (do_stats || do_cross)
             add_ghost_cells(
@@ -1072,7 +1073,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(tmp->fld.data(), name, iotime);
+                cross.cross_simple(tmp->fld.data(), name, iotime, loc);
         }
     };
 
@@ -1083,8 +1084,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, h2o_a, clwp_a);
 
-        save_stats_and_cross(flux_up, "lw_flux_up");
-        save_stats_and_cross(flux_dn, "lw_flux_dn");
+        save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
+        save_stats_and_cross(flux_dn, "lw_flux_dn", gd.wloc);
     }
 
     if (sw_shortwave)
@@ -1096,9 +1097,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 flux_up, flux_dn, flux_dn_dir, flux_net,
                 t_lay_a, t_lev_a, h2o_a, clwp_a);
 
-        save_stats_and_cross(flux_up,     "sw_flux_up"    );
-        save_stats_and_cross(flux_dn,     "sw_flux_dn"    );
-        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir");
+        save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
+        save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
+        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
     }
 
     fields.release_tmp(tmp);

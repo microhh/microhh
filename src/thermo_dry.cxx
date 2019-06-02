@@ -745,6 +745,8 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+
     auto b = fields.get_tmp();
 
     if (swcross_b)
@@ -756,7 +758,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(b->fld.data(), "b", iotime);
+            cross.cross_simple(b->fld.data(), "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
         else if (it == "bbot")

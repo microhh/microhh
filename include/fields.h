@@ -95,16 +95,16 @@ class Fields
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
 
-        Field_map<TF> a;  ///< Map containing all field3d instances
-        Field_map<TF> ap; ///< Map containing all prognostic field3d instances
-        Field_map<TF> at; ///< Map containing all tendency field3d instances
+        Field_map<TF> a;  ///< Map containing all field3d instances.
+        Field_map<TF> ap; ///< Map containing all prognostic field3d instances.
+        Field_map<TF> at; ///< Map containing all tendency field3d instances.
 
-        Field_map<TF> mp; ///< Map containing all momentum field3d instances
-        Field_map<TF> mt; ///< Map containing all momentum tendency field3d instances
+        Field_map<TF> mp; ///< Map containing all momentum field3d instances.
+        Field_map<TF> mt; ///< Map containing all momentum tendency field3d instances.
 
-        Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances
-        Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
-        Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
+        Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances.
+        Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances.
+        Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances.
 
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);

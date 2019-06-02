@@ -392,7 +392,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         auto& gd = grid.get_grid_data();
         auto lwp = fields.get_tmp();
         auto ql  = fields.get_tmp();
-        thermo.get_thermo_field(*ql,"ql",false,false);
+        thermo.get_thermo_field(*ql, "ql", false, false);
 
         calc_gcss_rad_LW(
                 ql->fld.data(), fields.ap.at("qt")->fld.data(),
@@ -413,7 +413,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp();
-            thermo.get_thermo_field(*ql,"ql",false,false);
+            thermo.get_thermo_field(*ql, "ql", false, false);
             calc_gcss_rad_SW(
                     fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
                     fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
@@ -458,7 +458,7 @@ void Radiation_gcss<TF>::create_cross(Cross<TF>& cross)
     if (cross.get_switch())
     {
         // Vectors with allowed cross variables for radiative flux
-        std::vector<std::string> allowed_crossvars_rflx = {"sflx","lflx"};
+        std::vector<std::string> allowed_crossvars_rflx = {"sflx", "lflx"};
 
         crosslist  = cross.get_enabled_variables(allowed_crossvars_rflx);
     }
@@ -524,20 +524,25 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 #endif
 
 template<typename TF>
-void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec_cross(
+        Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     auto tmp = fields.get_tmp();
 
     for (auto& it : crosslist)
     {
         get_radiation_field(*tmp, it, thermo, timeloop);
-        cross.cross_simple(tmp->fld.data(), it, iotime);
+        // All cross sections possible in this class are at the sloc located.
+        cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
     }
     fields.release_tmp(tmp);
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec_dump(
+        Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     auto output = fields.get_tmp();
 

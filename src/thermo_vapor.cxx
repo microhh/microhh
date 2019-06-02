@@ -795,6 +795,8 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -810,7 +812,7 @@ void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime);
+            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
         else if (it == "bbot")

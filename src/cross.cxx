@@ -512,16 +512,19 @@ std::vector<std::string> Cross<TF>::get_enabled_variables(std::vector<std::strin
 
 
 template<typename TF>
-int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
+int Cross<TF>::cross_simple(
+        TF* restrict data, const std::string& name, const int iotime, const std::array<int,3>& loc)
 {
+    auto& gd = grid.get_grid_data();
+
     int nerror = 0;
     char filename[256];
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
 
-    // loop over the index arrays to save all xz cross sections
-    if (name == "v")
+    // Loop over the index arrays to save all xz cross sections.
+    if (loc == gd.vloc)
     {
         for (auto& it: jxzh)
         {
@@ -538,8 +541,8 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         }
     }
 
-    // loop over the index arrays to save all yz cross sections
-    if (name == "u")
+    // Loop over the index arrays to save all yz cross sections.
+    if (loc == gd.uloc)
     {
         for (auto& it: ixzh)
         {
@@ -556,7 +559,7 @@ int Cross<TF>::cross_simple(TF* restrict data, std::string name, int iotime)
         }
     }
 
-    if (name == "w")
+    if (loc == gd.wloc)
     {
         // loop over the index arrays to save all xy cross sections
         for (auto& it: kxyh)
@@ -596,7 +599,6 @@ int Cross<TF>::cross_plane(TF* restrict data, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 {
-
     auto& gd = grid.get_grid_data();
 
     int nerror = 0;

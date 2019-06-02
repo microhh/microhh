@@ -1009,7 +1009,7 @@ template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime);
+        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
 
     for (auto& it : cross_lngrad)
         cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
