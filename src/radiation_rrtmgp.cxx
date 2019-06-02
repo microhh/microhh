@@ -1001,6 +1001,16 @@ namespace
 }
 
 template<typename TF>
+void Radiation_rrtmgp<TF>::exec_all_stats(
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop,
+        const unsigned long itime, const int iotime)
+{
+    if (stats.do_statistics(itime))
+        exec_stats(stats, thermo, timeloop);
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     const TF no_offset = 0.;

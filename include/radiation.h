@@ -59,9 +59,15 @@ class Radiation
         virtual bool check_field_exists(std::string name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&) = 0;
 
-        virtual void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
-        virtual void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
-        virtual void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
+        // virtual void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
+        // virtual void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
+        // virtual void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
+
+        virtual void exec_all_stats(
+                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Thermo<TF>&, Timeloop<TF>&,
+                const unsigned long, const int) = 0;
+
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
     protected:
         Master& master;

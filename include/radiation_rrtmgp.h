@@ -57,14 +57,14 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
-		// Empty functions that should throw
-		// Stats/dump not implemented in rrmtg now
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("Not implemented"); }
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
-        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_all_stats(
+                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Thermo<TF>&, Timeloop<TF>&,
+                const unsigned long, const int);
+
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
 	private:
@@ -103,6 +103,10 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&);
+
+        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        void exec_cross(Cross<TF>&, const unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+        void exec_dump(Dump<TF>&, const unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
