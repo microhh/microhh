@@ -325,23 +325,23 @@ contains
   !   transport
   !
   ! -------------------------------------------------------------------------------------------------
-   subroutine sw_solver_2stream (ncol, nlay, ngpt, top_at_1, &
+  subroutine sw_solver_2stream (ncol, nlay, ngpt, top_at_1, &
                                  tau, ssa, g, mu0,           &
                                  sfc_alb_dir, sfc_alb_dif,   &
                                  flux_up, flux_dn, flux_dir) bind(C, name="sw_solver_2stream")
-    integer,                    intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                intent( in) :: top_at_1
-    real(wp), dimension(ncol,nlay,  ngpt), intent( in) :: tau, &  ! Optical thickness,
-                                                          ssa, &  ! single-scattering albedo,
-                                                          g       ! asymmetry parameter []
-    real(wp), dimension(ncol            ), intent( in) :: mu0     ! cosine of solar zenith angle
-    real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_alb_dir, sfc_alb_dif
-                                                                  ! Spectral albedo of surface to direct and diffuse radiation
+    integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
+    logical(wl),                           intent(in   ) :: top_at_1
+    real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: tau, &  ! Optical thickness,
+                                                            ssa, &  ! single-scattering albedo,
+                                                            g       ! asymmetry parameter []
+    real(wp), dimension(ncol            ), intent(in   ) :: mu0     ! cosine of solar zenith angle
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_alb_dir, sfc_alb_dif
+                                                                    ! Spectral albedo of surface to direct and diffuse radiation
     real(wp), dimension(ncol,nlay+1,ngpt), &
-                                           intent(out) :: flux_up, flux_dn, &  ! Fluxes [W/m2]
-                                                          flux_dir             ! Downward direct
-                                                                               ! Top level (= merge(1, nlay+1, top_at_1)
-                                                                               ! must contain incident flux boundary condition
+                                           intent(  out) :: flux_up ! Fluxes [W/m2]
+    real(wp), dimension(ncol,nlay+1,ngpt), &                        ! Downward fluxes contain boundary conditions
+                                           intent(inout) :: flux_dn, flux_dir
+    ! -------------------------------------------
     integer :: igpt
     real(wp), dimension(ncol,nlay) :: Rdif, Tdif, Rdir, Tdir, Tnoscat
     real(wp), dimension(ncol,nlay) :: source_up, source_dn
