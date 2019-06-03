@@ -1210,7 +1210,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
         // Set the masks. Assume no ice.
         Array<int,2> cld_mask_liq({n_col_in, n_lay});
-        constexpr double mask_min_value = 1e-20;
+        constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
         for (int i=0; i<cld_mask_liq.size(); ++i)
             cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
 
@@ -1222,7 +1222,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
         const double sig_g = 1.34;
         const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
-        const double four_pi = 4.*M_PI;
+        const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
 
         for (int ilay=1; ilay<=n_lay; ++ilay)
         {
@@ -1234,19 +1234,19 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
                 // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                 // CvH: Potentially better using moments from microphysics.
-                rel({ilay, icol}) = cld_mask_liq({ilay, icol}) * fac *
-                    std::pow(3.*(clwp({ilay, icol})/layer_mass) / (four_pi*Nc0*Constants::rho_w<double>), (1./3.));
+                double rel_value = cld_mask_liq({icol, ilay}) * fac *
+                    std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
 
-                //1.e6*( 3.*( 1.e-3*LWP_slice(i,k)/layerMass(i,k) ) / (4.*pi*Nc_0*rho_liq) )**(1./3.) * exp(log(sig_g)**2 )
-
-                if (cld_mask_liq({ilay, icol}))
-                    std::cout << rel({ilay, icol}) << std::endl;
+                // Limit the values between 2.5 and 60.
+                rel_value = std::max(rel_value, 2.5);
+                rel_value = std::min(rel_value, 60.);
+                rel({icol, ilay}) = rel_value;
             }
         }
 
         // Convert to g/m2.
         for (int i=0; i<clwp_subset.size(); ++i)
-            clwp_subset.v()[i] *= 1000;
+            clwp_subset.v()[i] *= 1e3;
 
         cloud_lw->cloud_optics(
                 cld_mask_liq, cld_mask_ice,
