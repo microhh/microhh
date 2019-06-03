@@ -1,4 +1,4 @@
-if(FLOAT_TYPE STREQUAL "single")
+if(FLOAT_TYPE_RRTMGP STREQUAL "single")
     message(STATUS "Compiling RRTMGP kernels in single precision")
     FILE(GLOB sourcefiles "../src_rrtmgp_fortran/*.F90")
     add_library(rrtmgp_kernels STATIC ${sourcefiles})

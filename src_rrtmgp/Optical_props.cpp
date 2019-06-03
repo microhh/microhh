@@ -190,7 +190,7 @@ void add_to(Optical_props_2str<TF>& op_inout, const Optical_props_2str<TF>& op_i
     }
 }
 
-#ifdef FLOAT_SINGLE
+#ifdef FLOAT_SINGLE_RRTMGP
 template class Optical_props<float>;
 template class Optical_props_1scl<float>;
 template class Optical_props_2str<float>;

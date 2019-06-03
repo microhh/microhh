@@ -1,7 +1,7 @@
 #ifndef RRTMGP_KERNELS_H
 #define RRTMGP_KERNELS_H
 
-#ifdef FLOAT_SINGLE
+#ifdef FLOAT_SINGLE_RRTMGP
 #define FLOAT_TYPE float
 #else
 #define FLOAT_TYPE double

@@ -150,7 +150,7 @@ void Cloud_optics<TF>::cloud_optics(
                 optical_props.get_tau()({icol, ilay, ibnd}) = clouds_liq.get_tau()({icol, ilay, ibnd});
 }
 
-#ifdef FLOAT_SINGLE
+#ifdef FLOAT_SINGLE_RRTMGP
 template class Cloud_optics<float>;
 #else
 template class Cloud_optics<double>;

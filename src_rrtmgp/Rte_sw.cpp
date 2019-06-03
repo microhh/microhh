@@ -125,7 +125,7 @@ void Rte_sw<TF>::expand_and_transpose(
                 arr_out({icol, igpt}) = arr_in({iband, icol});
 }
 
-#ifdef FLOAT_SINGLE
+#ifdef FLOAT_SINGLE_RRTMGP
 template class Rte_sw<float>;
 #else
 template class Rte_sw<double>;

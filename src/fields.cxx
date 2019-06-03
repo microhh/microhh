@@ -199,8 +199,8 @@ namespace
         std::string unit;
         int power;
 
-        int delim = s.find_first_of("-123456789");
-        if(delim == std::string::npos)
+        size_t delim = s.find_first_of("-123456789");
+        if (delim == std::string::npos)
         {
             unit  = s;
             power = pow;

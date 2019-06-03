@@ -31,12 +31,16 @@ else()
   string(TOLOWER ${FLOAT_TYPE} FLOAT_TYPE)
   if(FLOAT_TYPE STREQUAL "single")
     add_definitions("-DFLOAT_SINGLE")
+    # Single precision RRTMGP is disabled as it is unsupported.
+    # add_definitions("-DFLOAT_SINGLE_RRTMGP")
     message(STATUS "Precision: Single (32-bits floats)")
   elseif(FLOAT_TYPE STREQUAL "double")
     message(STATUS "Precision: Double (64-bits floats)")
   else()
     message(FATAL_ERROR "Illegal FLOAT_TYPE specified.")
   endif()
+  # Set the RRTMGP float type always to double as single is not supported.
+  set(FLOAT_TYPE_RRTMGP "double")
 endif()
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.

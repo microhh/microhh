@@ -1239,7 +1239,7 @@ void Gas_optics<TF>::source(
     // reorder123x321_test(sources.get_lev_source_dec().ptr(), lev_source_dec_t.ptr(), ngpt, nlay, ncol);
 }
 
-#ifdef FLOAT_SINGLE
+#ifdef FLOAT_SINGLE_RRTMGP
 template class Gas_optics<float>;
 #else
 template class Gas_optics<double>;
