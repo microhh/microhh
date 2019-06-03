@@ -902,6 +902,7 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
@@ -993,6 +994,7 @@ void Radiation_rrtmgp<TF>::exec(
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
+#endif
 
 namespace
 {
