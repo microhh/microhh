@@ -28,5 +28,5 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 }
 #endif
 
-template class Radiation_gcss<double>;
-template class Radiation_gcss<float>;
+template class Radiation_rrtmgp<double>;
+template class Radiation_rrtmgp<float>;
