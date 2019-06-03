@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 import microhh_tools as mht     # available in microhh/python directory
 import argparse
@@ -7,15 +6,6 @@ import argparse
 cross_modes = ['xy', 'xz', 'yz']
 parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
 parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
-=======
-import microhh_tools as mht # available in microhh/python directory
-import argparse
-
-# Parse command line and namelist options
-cross_modes = ['xy', 'xz', 'yz', 'surf']
-parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
-parser.add_argument('-m', '--modes', nargs='*', help='mode of the cross section', choices=cross_modes)
->>>>>>> 3f64fd00712226684bf62cf2bc33bf795a6041a3
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
 parser.add_argument('-x', '--index', nargs='*', help='indices')
