@@ -43,6 +43,13 @@ for variable in variables:
         try:
             filename = "{0}.nc".format(variable)
             dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
+            if variable is 'u':
+                dim['xh'] = dim.pop('x')
+            if variable is 'v':
+                dim['yh'] = dim.pop('y')
+            if variable is 'w':
+                dim['zh'] = dim.pop('z')
+
             ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
 
             # Loop through the files and read 3d field

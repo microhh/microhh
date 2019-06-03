@@ -79,6 +79,13 @@ for mode in modes:
                 dim.update({'x' : indexes_local})
                 n = ktot * jtot
 
+            if variable is 'u':
+                dim['xh'] = dim.pop('x')
+            if variable is 'v':
+                dim['yh'] = dim.pop('y')
+            if variable is 'w':
+                dim['zh'] = dim.pop('z')
+
             ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
             for t in range(niter):
                 for k in range(len(indexes_local)):
