@@ -119,12 +119,13 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<std::string> crosslist;
 
         // RRTMGP related variables.
-        double tsi_scaling;
-        double t_sfc;
-        double emis_sfc;
-        double sfc_alb_dir;
-        double sfc_alb_dif;
-        double mu0;
+        double tsi_scaling; // Total solar irradiance scaling factor.
+        double t_sfc;       // Surface absolute temperature in K.
+        double emis_sfc;    // Surface emissivity.
+        double sfc_alb_dir; // Surface albedo.
+        double sfc_alb_dif; // Surface albedo for diffuse light.
+        double mu0;         // Cosine of solar zenith angle.
+        double Nc0;         // Total droplet number concentration.
 
         // The reference column for the full profile.
         Array<double,2> lw_flux_dn_inc;

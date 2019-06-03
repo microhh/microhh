@@ -595,6 +595,8 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     const double sza = inputin.get_item<double>("radiation", "sza", "");
     mu0 = std::cos(sza);
 
+    Nc0 = inputin.get_item<double>("microphysics", "Nc0", "", 70e6);
+
     auto& gd = grid.get_grid_data();
     fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", gd.sloc);
 }
@@ -1204,11 +1206,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         // 2. Solve the cloud optical properties.
         // Assume no ice for now.
         Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-
-        // Convert to g/m2.
-        for (int i=0; i<clwp_subset.size(); ++i)
-            clwp_subset.v()[i] *= 1000;
-
         Array<double,2> ciwp_subset({n_col_in, n_lay});
 
         // Set the masks. Assume no ice.
@@ -1222,8 +1219,34 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         // Compute the effective droplet radius. Assume no ice.
         Array<double,2> rel({n_col_in, n_lay});
         Array<double,2> rei({n_col_in, n_lay});
-        for (int i=0; i<rel.size(); ++i)
-            rel.v()[i] = TF(10.)*cld_mask_liq.v()[i];
+
+        constexpr double sig_g = 1.34;
+        constexpr double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+        constexpr double four_pi = 4.*M_PI;
+
+        for (int ilay=1; ilay<=n_lay; ++ilay)
+        {
+            const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+            for (int icol=1; icol<=n_col_in; ++icol)
+            {
+                // Simple constant value of 10 microh.
+                // rel({ilay, icol}) = TF(10.)*cld_mask_liq({ilay, icol});
+
+                // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
+                // CvH: Potentially better using moments from microphysics.
+                rel({ilay, icol}) = cld_mask_liq({ilay, icol}) * fac *
+                    std::pow(3.*(clwp({ilay, icol})/layer_mass) / (four_pi*Nc0*Constants::rho_w<double>), (1./3.));
+
+                //1.e6*( 3.*( 1.e-3*LWP_slice(i,k)/layerMass(i,k) ) / (4.*pi*Nc_0*rho_liq) )**(1./3.) * exp(log(sig_g)**2 )
+
+                if (cld_mask_liq({ilay, icol}))
+                    std::cout << rel({ilay, icol}) << std::endl;
+            }
+        }
+
+        // Convert to g/m2.
+        for (int i=0; i<clwp_subset.size(); ++i)
+            clwp_subset.v()[i] *= 1000;
 
         cloud_lw->cloud_optics(
                 cld_mask_liq, cld_mask_ice,
