@@ -1220,9 +1220,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Array<double,2> rel({n_col_in, n_lay});
         Array<double,2> rei({n_col_in, n_lay});
 
-        constexpr double sig_g = 1.34;
-        constexpr double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
-        constexpr double four_pi = 4.*M_PI;
+        const double sig_g = 1.34;
+        const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+        const double four_pi = 4.*M_PI;
 
         for (int ilay=1; ilay<=n_lay; ++ilay)
         {
