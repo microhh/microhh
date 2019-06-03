@@ -522,8 +522,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
         // radiation->exec_stats(*stats, *thermo, *timeloop);
-        // Store the statistics data.
-        stats->exec(iteration, time, itime);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -550,6 +548,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
             *stats, *cross, *dump,
             *thermo, *timeloop,
             itime, iotime);
+
+    if (stats->do_statistics(itime))
+        stats->exec(iteration, time, itime);
 }
 
 // Calculate the statistics for all classes that have a statistics function.
