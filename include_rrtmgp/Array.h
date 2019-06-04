@@ -140,6 +140,11 @@ class Array
             return *std::max_element(data.begin(), data.end());
         }
 
+        inline T min() const
+        {
+            return *std::min_element(data.begin(), data.end());
+        }
+
         inline void operator=(std::vector<T>&& data)
         {
             // CvH check size.

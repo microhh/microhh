@@ -330,7 +330,7 @@ void Timeloop<TF>::exec()
     if (rkorder == 3)
     {
         for (auto& f : fields.at)
-            rk3<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
@@ -340,11 +340,19 @@ void Timeloop<TF>::exec()
     if (rkorder == 4)
     {
         for (auto& f : fields.at)
-            rk4<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 5;
+    }
+
+    // CvH Clip the moisture
+    for (int i=0; i<gd.ncells; ++i)
+    {
+        fields.sp.at("qt")->fld[i] = std::max(fields.sp.at("qt")->fld[i], TF(0.));
+        fields.sp.at("nr")->fld[i] = std::max(fields.sp.at("nr")->fld[i], TF(0.));
+        fields.sp.at("qr")->fld[i] = std::max(fields.sp.at("qr")->fld[i], TF(0.));
     }
 }
 #endif
