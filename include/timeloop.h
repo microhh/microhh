@@ -133,5 +133,7 @@ class Timeloop
         unsigned long iiotimeprec;
 
         const double ifactor;
+
+        std::vector<std::string> clip_list;
 };
 #endif
