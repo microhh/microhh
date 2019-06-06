@@ -833,9 +833,11 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "default";
+
     const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
-    const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
-    const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
+    const std::vector<std::string> stat_op_w = {"mean","2","3","4"};
+    const std::vector<std::string> stat_op_p = {"mean","2","w","grad"};
 
     // Add the profiles to te statistics
     if (stats.get_switch())
@@ -843,11 +845,11 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         for (auto& it : ap)
         {
             if(it.first=="w")
-                stats.add_profs(*it.second, "zh", stat_op_w);
+                stats.add_profs(*it.second, "zh", stat_op_w, group_name);
             else
-                stats.add_profs(*it.second, "z", stat_op_def);
+                stats.add_profs(*it.second, "z", stat_op_def, group_name);
         }
-        stats.add_profs(*sd.at("p"), "z", stat_op_p);
+        stats.add_profs(*sd.at("p"), "z", stat_op_p, group_name);
 
         // Covariances
         for (auto& it1 : ap)
@@ -859,6 +861,7 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
                     locstring = "zh";
                 else
                     locstring = "z";
+
                 stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }

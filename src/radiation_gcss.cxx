@@ -433,10 +433,12 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
 template<typename TF>
 void Radiation_gcss<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "radiation";
+
     if (stats.get_switch())
     {
-        stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z");
-        stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z");
+        stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z", group_name);
+        stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z", group_name);
         stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
     }
 }

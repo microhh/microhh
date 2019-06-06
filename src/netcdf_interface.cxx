@@ -477,6 +477,25 @@ bool Netcdf_handle::variable_exists(const std::string& name)
     return true;
 }
 
+bool Netcdf_handle::group_exists(const std::string& name)
+{
+    int nc_check_code = 0;
+    int grp_id;
+
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_ncid(ncid, name.c_str(), &grp_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 template<typename TF>
 TF Netcdf_handle::get_variable(
         const std::string& name)

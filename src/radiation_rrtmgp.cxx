@@ -667,10 +667,12 @@ void Radiation_rrtmgp<TF>::create_column(
         stats.add_dimension("p_rad", n_lev);
 
         // CvH, I put an vector copy here because radiation is always double.
+        const std::string group_name = "radiation";
+
         stats.add_fixed_prof_raw(
                 "p_rad",
                 "Pressure of radiation reference column",
-                "Pa", "p_rad",
+                "Pa", "p_rad", group_name,
                 std::vector<TF>(p_lev.v().begin(), p_lev.v().end()));
     }
 
@@ -746,16 +748,18 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
     // Save the reference profile fluxes in the stats.
     if (stats.get_switch())
     {
+        const std::string group_name = "radiation";
+
         // CvH, I put an vector copy here because radiation is always double.
         stats.add_fixed_prof_raw(
                 "lw_flux_up_ref",
                 "Longwave upwelling flux of reference column",
-                "W m-2", "p_rad",
+                "W m-2", "p_rad", group_name,
                 std::vector<TF>(lw_flux_up.v().begin(), lw_flux_up.v().end()));
         stats.add_fixed_prof_raw(
                 "lw_flux_dn_ref",
                 "Longwave downwelling flux of reference column",
-                "W m-2", "p_rad",
+                "W m-2", "p_rad", group_name,
                 std::vector<TF>(lw_flux_dn.v().begin(), lw_flux_dn.v().end()));
     }
 }
@@ -829,21 +833,23 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
     // Save the reference profile fluxes in the stats.
     if (stats.get_switch())
     {
+        const std::string group_name = "radiation";
+
         // CvH, I put an vector copy here because radiation is always double.
         stats.add_fixed_prof_raw(
                 "sw_flux_up_ref",
                 "Shortwave upwelling flux of reference column",
-                "W m-2", "p_rad",
+                "W m-2", "p_rad", group_name,
                 std::vector<TF>(sw_flux_up.v().begin(), sw_flux_up.v().end()));
         stats.add_fixed_prof_raw(
                 "sw_flux_dn_ref",
                 "Shortwave downwelling flux of reference column",
-                "W m-2", "p_rad",
+                "W m-2", "p_rad", group_name,
                 std::vector<TF>(sw_flux_dn.v().begin(), sw_flux_dn.v().end()));
         stats.add_fixed_prof_raw(
                 "sw_flux_dn_dir_ref",
                 "Shortwave direct downwelling flux of reference column",
-                "W m-2", "p_rad",
+                "W m-2", "p_rad", group_name,
                 std::vector<TF>(sw_flux_dn_dir.v().begin(), sw_flux_dn_dir.v().end()));
     }
 }
@@ -868,6 +874,8 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
         const Gas_concs<double>& gas_concs)
 {
+    const std::string group_name = "radiation";
+
     // Set up the gas optics classes for long and shortwave.
     kdist_lw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
@@ -878,8 +886,8 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
     // Set up the statistics.
     if (stats.get_switch())
     {
-        stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
-        stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
+        stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh", group_name);
+        stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh", group_name);
     }
 }
 
@@ -888,6 +896,8 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
         const Gas_concs<double>& gas_concs)
 {
+    const std::string group_name = "radiation";
+
     // Set up the gas optics classes for long and shortwave.
     kdist_sw = std::make_unique<Gas_optics<double>>(
             load_and_init_gas_optics(master, gas_concs, "coefficients_sw.nc"));
@@ -898,9 +908,9 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
     // Set up the statistics.
     if (stats.get_switch())
     {
-        stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
-        stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
-        stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+        stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh", group_name);
+        stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
+        stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
     }
 }
 

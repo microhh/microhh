@@ -144,13 +144,15 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 template<typename TF>
 void Boundary_surface_bulk<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
+    const std::string group_name = "default";
+
     Boundary<TF>::process_time_dependent(input, input_nc);
 
     // add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_time_series("ustar", "Surface friction velocity", "m s-1");
-        stats.add_time_series("obuk", "Obukhov length", "m");
+        stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
+        stats.add_time_series("obuk", "Obukhov length", "m", group_name);
     }
 }
 

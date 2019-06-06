@@ -655,6 +655,8 @@ int Thermo_vapor<TF>::get_bl_depth()
 template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "default";
+
     bs_stats = bs;
 
     // Add variables to the statistics
@@ -662,33 +664,33 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z" , group_name, fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", group_name, fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", group_name, bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
-            stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
-            stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
+            stats.add_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name);
+            stats.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name);
+            stats.add_prof("rho",  "Full level density",  "kg m-3", "z" , group_name);
+            stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh", group_name);
         }
         else
         {
-            stats.add_fixed_prof("phydro" , "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
+            stats.add_fixed_prof("phydro" , "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
         }
 
         auto b = fields.get_tmp();
         b->name = "b";
         b->longname = "Buoyancy";
         b->unit = "m s-2";
-        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
-        stats.add_time_series("zi", "Boundary Layer Depth", "m");
-        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+        stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
 }
 

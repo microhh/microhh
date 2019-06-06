@@ -113,23 +113,28 @@ class Stats
         // Interface functions.
         void add_dimension(const std::string&, const int);
         void add_mask(const std::string);
-        void add_prof(std::string, std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
-        void add_profs(const Field3d<TF>&, std::string, std::vector<std::string>);
-        void add_tendency(const Field3d<TF>&, const std::string&, const std::string&, const std::string&);
+        void add_prof(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&, const std::string&,
+                Stats_whitelist_type = Stats_whitelist_type::Default);
+        void add_profs(const Field3d<TF>&, const std::string&, std::vector<std::string>, const std::string&);
+        void add_tendency(const Field3d<TF>&, const std::string&, const std::string&, const std::string&, const std::string& group_name="tendencies");
 
-        void add_covariance(const Field3d<TF>&, const Field3d<TF>&, std::string);
+        void add_covariance(const Field3d<TF>&, const Field3d<TF>&, const std::string&, const std::string& group_name="covariances");
 
         void add_fixed_prof(
                 const std::string&, const std::string&,
-                const std::string&, const std::string&,
+                const std::string&, const std::string&, const std::string&,
                 const std::vector<TF>&);
 
         void add_fixed_prof_raw(
                 const std::string&, const std::string&,
-                const std::string&, const std::string&,
+                const std::string&, const std::string&, const std::string&,
                 const std::vector<TF>&);
 
-        void add_time_series(std::string, std::string, std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
+        void add_time_series(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&, Stats_whitelist_type=Stats_whitelist_type::Default);
 
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);

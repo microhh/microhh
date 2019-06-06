@@ -553,8 +553,8 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
     }
 
     // For each mask, add the area as a variable.
-    add_prof("area" , "Fractional area contained in mask", "-", "z");
-    add_prof("areah", "Fractional area contained in mask", "-", "zh");
+    add_prof("area" , "Fractional area contained in mask", "-", "z" , "default");
+    add_prof("areah", "Fractional area contained in mask", "-", "zh", "default");
 }
 
 template<typename TF>
@@ -701,7 +701,8 @@ void Stats<TF>::add_mask(const std::string maskname)
 
 // Add a new profile to each of the NetCDF files.
 template<typename TF>
-void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<std::string> operations)
+void Stats<TF>::add_profs(
+        const Field3d<TF>& var, const std::string& zloc, std::vector<std::string> operations, const std::string& group_name)
 {
     std::string zloc_alt;
     if (zloc == "z")
@@ -717,39 +718,39 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
     {
         if (it == "mean")
         {
-            add_prof(var.name, var.longname, var.unit, zloc, Stats_whitelist_type::White);
+            add_prof(var.name, var.longname, var.unit, zloc, group_name, Stats_whitelist_type::White);
         }
         else if (has_only_digits(it))
         {
-            add_prof(var.name + "_" + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",std::stoi(it)), zloc);
+            add_prof(var.name + "_" + it, "Moment " + it + " of the " + var.longname,fields.simplify_unit(var.unit, "",std::stoi(it)), zloc, group_name);
         }
         else if (it == "w")
         {
-            add_prof(var.name+"_w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_w", "Turbulent flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt, group_name);
         }
         else if (it == "grad")
         {
-            add_prof(var.name+"_grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt);
+            add_prof(var.name+"_grad", "Gradient of the " + var.longname, fields.simplify_unit(var.unit, "m-1"), zloc_alt, group_name);
         }
         else if (it == "flux")
         {
-            add_prof(var.name+"_flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_flux", "Total flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt, group_name);
         }
         else if (it == "diff")
         {
-            add_prof(var.name+"_diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt);
+            add_prof(var.name+"_diff", "Diffusive flux of the " + var.longname, fields.simplify_unit(var.unit, "m s-1"), zloc_alt, group_name);
         }
         else if (it == "frac")
         {
-            add_prof(var.name+"_frac", var.longname + " fraction", "-", zloc);
+            add_prof(var.name+"_frac", var.longname + " fraction", "-", zloc, group_name);
         }
         else if (it == "path")
         {
-            add_time_series(var.name+"_path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"));
+            add_time_series(var.name+"_path", var.longname + " path", fields.simplify_unit(var.unit, "kg m-2"), group_name);
         }
         else if (it == "cover")
         {
-            add_time_series(var.name+"_cover", var.longname + " cover", "-");
+            add_time_series(var.name+"_cover", var.longname + " cover", "-", group_name);
         }
         else
         {
@@ -761,11 +762,12 @@ void Stats<TF>::add_profs(const Field3d<TF>& var, std::string zloc, std::vector<
 // Add a new profile to each of the NetCDF files.
 template<typename TF>
 void Stats<TF>::add_tendency(
-        const Field3d<TF>& var, const std::string& zloc, const std::string& tend_name, const std::string& tend_longname)
+        const Field3d<TF>& var, const std::string& zloc,
+        const std::string& tend_name, const std::string& tend_longname, const std::string& group_name)
 {
     if (swstats && swtendency)
     {
-        add_prof(var.name + "_" + tend_name, tend_longname + " " + var.longname, var.unit, zloc);
+        add_prof(var.name + "_" + tend_name, tend_longname + " " + var.longname, var.unit, zloc, group_name);
         if (tendency_order.find(var.name) == tendency_order.end())
         {
             tendency_order[var.name];
@@ -775,7 +777,7 @@ void Stats<TF>::add_tendency(
 }
 
 template<typename TF>
-void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2, std::string zloc)
+void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2, const std::string& zloc, const std::string& group_name)
 {
     for (int pow1 = 1; pow1<5; ++pow1)
     {
@@ -786,7 +788,7 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
 
             std::string name = var1.name + "_" + spow1 + "_" + var2.name + "_" + spow2;
             std::string longname = "Covariance of " + var1.name + spow1 + " and " + var2.name + spow2;
-            add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, Stats_whitelist_type::Black);
+            add_prof(name, longname, fields.simplify_unit(var1.unit, var2.unit, pow1, pow2), zloc, group_name, Stats_whitelist_type::Black);
         }
     }
 
@@ -891,7 +893,10 @@ bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wlty
 
 // Add a new profile to each of the NetCDF files
 template<typename TF>
-void Stats<TF>::add_prof(std::string name, std::string longname, std::string unit, std::string zloc, Stats_whitelist_type wltype)
+void Stats<TF>::add_prof(
+        const std::string& name, const std::string& longname,
+        const std::string& unit, const std::string& zloc, const std::string& group_name,
+        Stats_whitelist_type wltype)
 {
     auto& gd = grid.get_grid_data();
 
@@ -907,14 +912,18 @@ void Stats<TF>::add_prof(std::string name, std::string longname, std::string uni
         level = Level_type::Full;
     else
         level = Level_type::Half;
+
     // Add profile to all the NetCDF files.
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
 
+        Netcdf_group group_handle =
+            m.data_file->group_exists(group_name) ? m.data_file->get_group(group_name) : m.data_file->add_group(group_name);
+
         // Create the NetCDF variable.
         // Create the profile variable and the vector at the appropriate size.
-        Prof_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
+        Prof_var<TF> tmp{group_handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
 
         m.profs.emplace(name, tmp);
         m.profs.at(name).ncvar.add_attribute("units", unit);
@@ -932,6 +941,7 @@ void Stats<TF>::add_fixed_prof(
         const std::string& longname,
         const std::string& unit,
         const std::string& zloc,
+        const std::string& group_name,
         const std::vector<TF>& prof)
 {
     auto& gd = grid.get_grid_data();
@@ -968,6 +978,7 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& longname,
         const std::string& unit,
         const std::string& dim,
+        const std::string& group_name,
         const std::vector<TF>& prof)
 {
     for (auto& mask : masks)
@@ -988,7 +999,9 @@ void Stats<TF>::add_fixed_prof_raw(
 }
 
 template<typename TF>
-void Stats<TF>::add_time_series(const std::string name, const std::string longname, const std::string unit, Stats_whitelist_type wltype)
+void Stats<TF>::add_time_series(
+        const std::string& name, const std::string& longname,
+        const std::string& unit, const std::string& group_name, Stats_whitelist_type wltype)
 {
     // Check whether variable is part of whitelist/blacklist.
     if (is_blacklisted(name, wltype))
@@ -1031,7 +1044,6 @@ void Stats<TF>::initialize_masks()
     for (int n=0; n<gd.ijcells; ++n)
         mfield_bot[n] = flagmax;
 }
-
 
 template<typename TF>
 void Stats<TF>::finalize_masks()
