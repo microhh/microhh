@@ -118,19 +118,19 @@ namespace Thermo_moist_functions
     {
         int niter = 0;
         int nitermax = 100;
-        TF ql, tl, tnr_old = 1.e9, tnr, qs=0;
+        TF ql, tl, tnr_old = TF(1.e9), tnr, qs=TF(0.);
         tl = thl * exn;
         Struct_sat_adjust<TF> ans;
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        ans.ql = 0;
+        ans.ql = TF(0.);
         ans.t = tl;
         ans.qs = qsat(p, tl);
-        if(qt-ans.qs <= 0)
+        if (qt-ans.qs <= TF(0.))
             return ans;
 
         tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
+        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
         {
             ++niter;
             tnr_old = tnr;
