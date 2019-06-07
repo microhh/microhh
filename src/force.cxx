@@ -356,7 +356,7 @@ template <typename TF>
 void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
 
     if (swlspres == Large_scale_pressure_type::fixed_flux)
     {

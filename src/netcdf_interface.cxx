@@ -2,6 +2,7 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <tuple>
 #include <netcdf.h>
 
 #include "netcdf_interface.h"
@@ -357,7 +358,7 @@ void Netcdf_handle::add_attribute(
     nc_check(master, nc_check_code, mpiid_to_write);
 }
 
-Netcdf_group Netcdf_handle::add_group(const std::string& name)
+Netcdf_group& Netcdf_handle::add_group(const std::string& name)
 {
     int group_ncid = -1;
     int nc_check_code = 0;
@@ -374,19 +375,31 @@ Netcdf_group Netcdf_handle::add_group(const std::string& name)
         nc_check_code = nc_enddef(root_ncid);
     nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid, dims, mpiid_to_write);
+    groups.emplace(std::piecewise_construct,
+                   std::forward_as_tuple(name),
+                   std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
+
+    return groups.at(name);
 }
 
-Netcdf_group Netcdf_handle::get_group(const std::string& name)
+Netcdf_group& Netcdf_handle::get_group(const std::string& name)
 {
-    int group_ncid = -1;
-    int nc_check_code = 0;
+    // In case the group is contained in the Netcdf_file, but not yet processed here, add it to the groups.
+    if (groups.count(name) == 0)
+    {
+        int group_ncid = -1;
+        int nc_check_code = 0;
 
-    if (master.get_mpiid() == mpiid_to_write)
-        nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
-    nc_check(master, nc_check_code, mpiid_to_write);
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
+        nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid, dims, mpiid_to_write);
+        groups.emplace(std::piecewise_construct,
+                std::forward_as_tuple(name),
+                std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
+    }
+
+    return groups.at(name);
 }
 
 int Netcdf_handle::get_dimension_size(const std::string& name)

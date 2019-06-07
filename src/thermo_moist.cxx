@@ -630,7 +630,7 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(bs.thl0, "thl", start, count);
     group_nc.get_variable(bs.qt0, "qt", start, count);
 
@@ -990,13 +990,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
            there the statistics are initialized before thermo->create() is called */
         stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z" , group_name, bs.rhoref );
         stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", group_name, bs.rhorefh);
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
+        stats.add_fixed_prof("thvref", "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
         stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", group_name, bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
             stats.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z" , group_name);
-            stats.add_prof("phydroh","Half level hydrostatic pressure", "Pa", "zh", group_name);
+            stats.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name);
             stats.add_prof("rho",  "Full level density", "kg m-3", "z" , group_name);
             stats.add_prof("rhoh", "Half level density", "kg m-3", "zh", group_name);
         }

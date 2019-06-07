@@ -752,7 +752,7 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
     add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,

@@ -399,7 +399,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(bs.thl0, "thl", start, count);
     group_nc.get_variable(bs.qt0, "qt", start, count);
 

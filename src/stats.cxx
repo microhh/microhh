@@ -918,7 +918,7 @@ void Stats<TF>::add_prof(
     {
         Mask<TF>& m = mask.second;
 
-        Netcdf_group group_handle =
+        Netcdf_group& group_handle =
             m.data_file->group_exists(group_name) ? m.data_file->get_group(group_name) : m.data_file->add_group(group_name);
 
         // Create the NetCDF variable.

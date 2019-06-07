@@ -652,7 +652,7 @@ void Radiation_rrtmgp<TF>::create_column(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     // 1. Load the available gas concentrations from the group of the netcdf file.
-    Netcdf_handle rad_nc = input_nc.get_group("radiation");
+    Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
     Gas_concs<double> gas_concs_col;
     load_gas_concs<double>(gas_concs_col, rad_nc, "lay");
@@ -859,7 +859,7 @@ void Radiation_rrtmgp<TF>::create_solver(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     // 1. Load the available gas concentrations from the group of the netcdf file.
-    Netcdf_handle rad_input_nc = input_nc.get_group("init");
+    Netcdf_handle& rad_input_nc = input_nc.get_group("init");
     load_gas_concs<double>(gas_concs, rad_input_nc, "z");
 
     // 2. Pass the gas concentrations to the solver initializers.

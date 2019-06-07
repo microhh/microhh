@@ -370,7 +370,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
         const std::vector<int> start = {0};
         const std::vector<int> count = {gd.ktot};
 
-        Netcdf_group group_nc = input_nc.get_group("init");
+        Netcdf_group& group_nc = input_nc.get_group("init");
         group_nc.get_variable(bs.thref, "th", start, count);
         // Shift the vector to take into account the ghost cells;
         std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());

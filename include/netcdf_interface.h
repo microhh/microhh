@@ -38,8 +38,8 @@ class Netcdf_handle
         Netcdf_handle(Master&);
         void add_dimension(const std::string&, const int dim_size = NC_UNLIMITED);
 
-        Netcdf_group add_group(const std::string&);
-        Netcdf_group get_group(const std::string&);
+        Netcdf_group& add_group(const std::string&);
+        Netcdf_group& get_group(const std::string&);
 
         int get_dimension_size(const std::string&);
 
@@ -104,6 +104,7 @@ class Netcdf_handle
         int ncid;
         int root_ncid;
         std::map<std::string, int> dims;
+        std::map<std::string, Netcdf_group> groups;
         int record_counter;
 };
 
@@ -120,5 +121,7 @@ class Netcdf_group : public Netcdf_handle
 {
     public:
         Netcdf_group(Master&, const int, const int, const std::map<std::string, int>&, const int);
+        Netcdf_group(const Netcdf_group&) = delete;
+        Netcdf_group& operator=(const Netcdf_group&) = delete;
 };
 #endif
