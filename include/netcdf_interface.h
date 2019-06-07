@@ -18,6 +18,8 @@ class Netcdf_variable
         Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<int>&);
         Netcdf_variable(const Netcdf_variable&) = delete;
         Netcdf_variable& operator=(const Netcdf_variable&) = delete;
+
+        // Enable the default move constructor to move initialized variables into containers.
         Netcdf_variable(Netcdf_variable&&) = default;
 
         void insert(const std::vector<T>&, const std::vector<int>);
@@ -39,8 +41,10 @@ class Netcdf_handle
 {
     public:
         Netcdf_handle(Master&);
-        Netcdf_handle(const Netcdf_group&) = delete;
-        Netcdf_handle& operator=(const Netcdf_group&) = delete;
+
+        // Do not allow copying or moving of handle.
+        Netcdf_handle(const Netcdf_handle&) = delete;
+        Netcdf_handle& operator=(const Netcdf_handle&) = delete;
 
         void add_dimension(const std::string&, const int dim_size = NC_UNLIMITED);
 
@@ -120,6 +124,11 @@ class Netcdf_file : public Netcdf_handle
         Netcdf_file(Master&, const std::string&, Netcdf_mode, const int mpiid_to_write_int=0);
         ~Netcdf_file();
 
+        // Do not allow copying or moving of file
+        Netcdf_file(const Netcdf_file&) = delete;
+        Netcdf_file& operator=(const Netcdf_file&) = delete;
+
+
         void sync();
 };
 
@@ -127,6 +136,8 @@ class Netcdf_group : public Netcdf_handle
 {
     public:
         Netcdf_group(Master&, const int, const int, const std::map<std::string, int>&, const int);
+
+        // Do not allow copying or moving of groups.
         Netcdf_group(const Netcdf_group&) = delete;
         Netcdf_group& operator=(const Netcdf_group&) = delete;
 };
