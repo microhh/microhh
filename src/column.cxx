@@ -25,6 +25,8 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <tuple>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -231,7 +233,8 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
         var.ncvar.add_attribute("long_name", longname);
 
         // Insert the variable into the container.
-        col.profs.emplace(name, var);
+        col.profs.emplace(
+                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(var)));
 
         col.data_file->sync();
     }

@@ -1037,13 +1037,16 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 template<typename TF>
 void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "default";
+
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean","2"});
+        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean", "2"}, group_name);
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+
         for (auto it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name, tend_longname);
     }

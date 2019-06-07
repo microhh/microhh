@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DRY
-#define THERMO_DRY
+#ifndef THERMO_DRY_H
+#define THERMO_DRY_H
 
 #include "boundary_cyclic.h"
 #include "timedep.h"
@@ -68,6 +68,9 @@ class Thermo_dry : public Thermo<TF>
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool);
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_T_bot(Field3d<TF>&, bool);

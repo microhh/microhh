@@ -235,7 +235,7 @@ void Model<TF>::load()
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
-    radiation->create(*thermo, *stats, *column, *cross, *dump);
+    radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
 
     cross->create(); // Cross needs to be called at the end!
@@ -521,9 +521,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
-        radiation->exec_stats(*stats, *thermo, *timeloop);
-        // Store the statistics data.
-        stats->exec(iteration, time, itime);
+        // radiation->exec_stats(*stats, *thermo, *timeloop);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -532,7 +530,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
-        radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
+        // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
         // boundary->exec_cross(iotime);
     }
 
@@ -542,9 +540,19 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
-        radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
+        // radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
     }
+
+    // Handle the routines that share computations between stats, cross, and dump.
+    radiation->exec_all_stats(
+            *stats, *cross, *dump,
+            *thermo, *timeloop,
+            itime, iotime);
+
+    if (stats->do_statistics(itime))
+        stats->exec(iteration, time, itime);
 }
+
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
 void Model<TF>::setup_stats()

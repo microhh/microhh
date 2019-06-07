@@ -50,33 +50,43 @@ class Radiation_gcss : public Radiation<TF>
         Radiation_gcss(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_gcss();
         void init();
-        void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(
+                Input&, Netcdf_handle&, Thermo<TF>&,
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
-        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
-        void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
-    private:
-        //cross sections
-        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-        bool swcross_rflx;
-        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        void exec_all_stats(
+                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Thermo<TF>&, Timeloop<TF>&,
+                const unsigned long, const int)
+        { throw std::runtime_error("Not implemented yet!"); }
 
+        void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
+
+    private:
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
-        std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
+
+        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
+        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
 
         using Radiation<TF>::swradiation;
         using Radiation<TF>::master;
         using Radiation<TF>::grid;
         using Radiation<TF>::fields;
         using Radiation<TF>::field3d_operators;
+
+        std::vector<std::string> available_masks;  // Vector with the masks
+
+        std::vector<std::string> crosslist;        ///< List with all crosses from ini file.
+        bool swcross_rflx;
+        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         TF lat;
         TF lon;
@@ -86,7 +96,6 @@ class Radiation_gcss : public Radiation<TF>
         TF div;
 
         const TF mu_min = 0.035;
-
 
         #ifdef USECUDA
         // GPU functions and variables

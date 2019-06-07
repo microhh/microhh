@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <memory>
 #include <cstdio>
 #include <cmath>
@@ -31,7 +32,9 @@
 #include "radiation.h"
 #include "radiation_disabled.h"
 #include "radiation_gcss.h"
-#include "radiation_rrtmg.h"
+#include "radiation_rrtmgp.h"
+
+#include "Optical_props.h"
 
 template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -57,9 +60,9 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
     std::string swradiation = inputin.get_item<std::string>("radiation", "swradiation", "", "0");
     if (swradiation == "0")
         return std::make_shared<Radiation_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swradiation == "rrtmg") //rrtmg - call fortran
-        return std::make_shared<Radiation_rrtmg<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swradiation == "gcss") //gcss - for Sc clouds
+    else if (swradiation == "rrtmgp")
+        return std::make_shared<Radiation_rrtmgp<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swradiation == "gcss") // gcss - for Sc clouds.
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {

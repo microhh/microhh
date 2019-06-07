@@ -116,6 +116,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
 
     if (sim_mode == Sim_mode::Init)
         input.flag_as_used("time", "starttime", "");
+
+    clip_list = input.get_list<std::string>("time", "clip_list", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -330,7 +332,7 @@ void Timeloop<TF>::exec()
     if (rkorder == 3)
     {
         for (auto& f : fields.at)
-            rk3<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
@@ -340,12 +342,17 @@ void Timeloop<TF>::exec()
     if (rkorder == 4)
     {
         for (auto& f : fields.at)
-            rk4<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 5;
     }
+
+    // Apply clipping (remove values below zero).
+    for (const std::string& clip_name : clip_list)
+        for (int n=0; n<gd.ncells; ++n)
+            fields.a.at(clip_name)->fld[n] = std::max(fields.a.at(clip_name)->fld[n], TF(0.));
 }
 #endif
 

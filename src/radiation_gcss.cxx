@@ -333,7 +333,9 @@ void Radiation_gcss<TF>::init()
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Radiation_gcss<TF>::create(
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Set up output classes
     create_stats(stats);
@@ -344,7 +346,7 @@ void Radiation_gcss<TF>::create(Thermo<TF>& thermo,Stats<TF>& stats, Column<TF>&
 
 #ifndef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
     auto lwp = fields.get_tmp();
@@ -390,7 +392,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         auto& gd = grid.get_grid_data();
         auto lwp = fields.get_tmp();
         auto ql  = fields.get_tmp();
-        thermo.get_thermo_field(*ql,"ql",false,false);
+        thermo.get_thermo_field(*ql, "ql", false, false);
 
         calc_gcss_rad_LW(
                 ql->fld.data(), fields.ap.at("qt")->fld.data(),
@@ -411,7 +413,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp();
-            thermo.get_thermo_field(*ql,"ql",false,false);
+            thermo.get_thermo_field(*ql, "ql", false, false);
             calc_gcss_rad_SW(
                     fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
                     fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
@@ -431,10 +433,12 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name,
 template<typename TF>
 void Radiation_gcss<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "radiation";
+
     if (stats.get_switch())
     {
-        stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z");
-        stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z");
+        stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z", group_name);
+        stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z", group_name);
         stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
     }
 }
@@ -456,7 +460,7 @@ void Radiation_gcss<TF>::create_cross(Cross<TF>& cross)
     if (cross.get_switch())
     {
         // Vectors with allowed cross variables for radiative flux
-        std::vector<std::string> allowed_crossvars_rflx = {"sflx","lflx"};
+        std::vector<std::string> allowed_crossvars_rflx = {"sflx", "lflx"};
 
         crosslist  = cross.get_enabled_variables(allowed_crossvars_rflx);
     }
@@ -495,10 +499,10 @@ void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timelo
     // calculate the mean
     auto tmp = fields.get_tmp();
 
-    get_radiation_field(*tmp,"lflx",thermo, timeloop);
+    get_radiation_field(*tmp, "lflx", thermo, timeloop);
     stats.calc_stats("lflx", *tmp, no_offset, no_threshold);
 
-    get_radiation_field(*tmp,"sflx",thermo, timeloop);
+    get_radiation_field(*tmp, "sflx", thermo, timeloop);
     stats.calc_stats("sflx", *tmp, no_offset, no_threshold);
 
     fields.release_tmp(tmp);
@@ -511,10 +515,10 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
     const TF no_offset = 0.;
 
     auto flx = fields.get_tmp();
-    get_radiation_field(*flx,"lflx",thermo,timeloop);
+    get_radiation_field(*flx, "lflx", thermo, timeloop);
     column.calc_column("lflx", flx->fld.data(), no_offset);
 
-    get_radiation_field(*flx,"sflx",thermo,timeloop);
+    get_radiation_field(*flx, "sflx", thermo, timeloop);
     column.calc_column("sflx", flx->fld.data(), no_offset);
 
     fields.release_tmp(flx);
@@ -522,20 +526,25 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 #endif
 
 template<typename TF>
-void Radiation_gcss<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec_cross(
+        Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     auto tmp = fields.get_tmp();
 
     for (auto& it : crosslist)
     {
         get_radiation_field(*tmp, it, thermo, timeloop);
-        cross.cross_simple(tmp->fld.data(), it, iotime);
+        // All cross sections possible in this class are at the sloc located.
+        cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
     }
     fields.release_tmp(tmp);
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec_dump(
+        Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     auto output = fields.get_tmp();
 

@@ -199,8 +199,8 @@ namespace
         std::string unit;
         int power;
 
-        int delim = s.find_first_of("-123456789");
-        if(delim == std::string::npos)
+        size_t delim = s.find_first_of("-123456789");
+        if (delim == std::string::npos)
         {
             unit  = s;
             power = pow;
@@ -536,7 +536,8 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 }
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_momentum_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -561,7 +562,8 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 }
 
 template<typename TF>
-void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_prognostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -586,7 +588,8 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 }
 
 template<typename TF>
-void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_diagnostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -752,7 +755,7 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
     add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
@@ -833,21 +836,23 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
-    const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
-    const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
-    const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
+    const std::string group_name = "default";
+
+    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux"};
+    const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
+    const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
 
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
         for (auto& it : ap)
         {
-            if(it.first=="w")
-                stats.add_profs(*it.second, "zh", stat_op_w);
+            if (it.first == "w")
+                stats.add_profs(*it.second, "zh", stat_op_w, group_name);
             else
-                stats.add_profs(*it.second, "z", stat_op_def);
+                stats.add_profs(*it.second, "z", stat_op_def, group_name);
         }
-        stats.add_profs(*sd.at("p"), "z", stat_op_p);
+        stats.add_profs(*sd.at("p"), "z", stat_op_p, group_name);
 
         // Covariances
         for (auto& it1 : ap)
@@ -855,10 +860,11 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
             for (auto& it2 : ap)
             {
                 std::string locstring;
-                if(it2.first == "w")
+                if (it2.first == "w")
                     locstring = "zh";
                 else
                     locstring = "z";
+
                 stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
@@ -1009,7 +1015,7 @@ template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime);
+        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
 
     for (auto& it : cross_lngrad)
         cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);

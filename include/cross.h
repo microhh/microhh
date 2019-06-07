@@ -49,7 +49,7 @@ class Cross
 
         bool do_cross(unsigned long);
 
-        int cross_simple(TF*, std::string, int);
+        int cross_simple(TF*, const std::string&, const int, const std::array<int,3>&);
         int cross_lngrad(TF*, std::string, int);
         int cross_plane (TF*, std::string, int);
         int cross_path  (TF*, std::string, int);

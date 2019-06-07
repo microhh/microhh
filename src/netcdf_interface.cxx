@@ -2,6 +2,7 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <tuple>
 #include <netcdf.h>
 
 #include "netcdf_interface.h"
@@ -27,10 +28,7 @@ namespace
     template<> nc_type netcdf_dtype<double>() { return NC_DOUBLE; }
     template<> nc_type netcdf_dtype<float>()  { return NC_FLOAT; }
     template<> nc_type netcdf_dtype<int>()    { return NC_INT; }
-}
 
-namespace
-{
     // Wrapper for the `nc_get_vara_TYPE` functions
     template<typename TF>
     int nc_get_vara_wrapper(
@@ -56,10 +54,14 @@ namespace
     {
         return nc_get_vara_int(ncid, var_id, start.data(), count.data(), values.data());
     }
-}
 
-namespace
-{
+    template<>
+    int nc_get_vara_wrapper(
+            int ncid, int var_id, const std::vector<size_t>& start, const std::vector<size_t>& count, std::vector<char>& values)
+    {
+        return nc_get_vara_text(ncid, var_id, start.data(), count.data(), values.data());
+    }
+
     // Wrapper for the `nc_put_vara_TYPE` functions
     template<typename TF>
     int nc_put_vara_wrapper(
@@ -116,6 +118,7 @@ namespace
 Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mode, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
+    parent = nullptr;
     mpiid_to_write = mpiid_to_write_in;
     int nc_check_code = 0;
 
@@ -160,6 +163,11 @@ void Netcdf_file::sync()
     nc_check(master, nc_check_code, mpiid_to_write);
 }
 
+int Netcdf_file::get_dim_id(const std::string& name)
+{
+    return dims.at(name);
+}
+
 void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_size)
 {
     int nc_check_code = 0;
@@ -194,7 +202,7 @@ void Netcdf_handle::add_dimension(const std::string& dim_name, const int dim_siz
 template<typename T>
 Netcdf_variable<T> Netcdf_handle::add_variable(
         const std::string& var_name,
-        const std::vector<std::string> dim_names)
+        const std::vector<std::string>& dim_names)
 {
     int nc_check_code = 0;
 
@@ -209,7 +217,11 @@ Netcdf_variable<T> Netcdf_handle::add_variable(
     std::vector<int> dim_ids;
 
     for (const std::string& dim_name : dim_names)
-        dim_ids.push_back(dims.at(dim_name));
+    {
+        const int dim_id = get_dim_id(dim_name);
+        // dim_ids.push_back(dims.at(dim_name));
+        dim_ids.push_back(dim_id);
+    }
 
     if (master.get_mpiid() == mpiid_to_write)
         nc_check_code = nc_def_var(ncid, var_name.c_str(), netcdf_dtype<T>(), ndims, dim_ids.data(), &var_id);
@@ -353,7 +365,7 @@ void Netcdf_handle::add_attribute(
     nc_check(master, nc_check_code, mpiid_to_write);
 }
 
-Netcdf_group Netcdf_handle::add_group(const std::string& name)
+Netcdf_group& Netcdf_handle::add_group(const std::string& name)
 {
     int group_ncid = -1;
     int nc_check_code = 0;
@@ -370,27 +382,53 @@ Netcdf_group Netcdf_handle::add_group(const std::string& name)
         nc_check_code = nc_enddef(root_ncid);
     nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid, mpiid_to_write);
+    groups.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple(master, this, group_ncid, root_ncid, mpiid_to_write));
+
+    return groups.at(name);
 }
 
-Netcdf_group Netcdf_handle::get_group(const std::string& name)
+Netcdf_group& Netcdf_handle::get_group(const std::string& name)
 {
-    int group_ncid = -1;
+    // In case the group is contained in the Netcdf_file, but not yet processed, add it to the groups.
+    if (groups.count(name) == 0)
+    {
+        int group_ncid = -1;
+        int nc_check_code = 0;
+
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
+        nc_check(master, nc_check_code, mpiid_to_write);
+
+        groups.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(name),
+                std::forward_as_tuple(master, this, group_ncid, root_ncid, mpiid_to_write));
+    }
+
+    return groups.at(name);
+}
+
+int Netcdf_handle::get_dimension_size(const std::string& name)
+{
     int nc_check_code = 0;
+    int dim_id;
 
     if (master.get_mpiid() == mpiid_to_write)
-        nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
+        nc_check_code = nc_inq_dimid(ncid, name.c_str(), &dim_id);
     nc_check(master, nc_check_code, mpiid_to_write);
 
-    return Netcdf_group(master, group_ncid, root_ncid, mpiid_to_write);
-}
+    size_t dim_len_size_t = 0;
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_inq_dimlen(ncid, dim_id, &dim_len_size_t);
+    nc_check(master, nc_check_code, mpiid_to_write);
 
-Netcdf_group::Netcdf_group(Master& master, const int ncid_in, const int root_ncid_in, const int mpiid_to_write_in) :
-    Netcdf_handle(master)
-{
-    mpiid_to_write = mpiid_to_write_in;
-    ncid = ncid_in;
-    root_ncid = root_ncid_in;
+    int dim_len = dim_len_size_t;
+    master.broadcast(&dim_len, 1);
+
+    return dim_len;
 }
 
 std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::string& name)
@@ -432,6 +470,103 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
     }
 
     return dims;
+}
+
+bool Netcdf_handle::variable_exists(const std::string& name)
+{
+    int nc_check_code = 0;
+    int var_id;
+
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool Netcdf_handle::group_exists(const std::string& name)
+{
+    // We check the file here, not the group array.
+    int nc_check_code = 0;
+    int grp_id;
+
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_grp_ncid(ncid, name.c_str(), &grp_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+template<typename TF>
+TF Netcdf_handle::get_variable(
+        const std::string& name)
+{
+    std::string message = "Retrieving from NetCDF (single value): " + name;
+    master.print_message(message);
+
+    int nc_check_code = 0;
+    int var_id;
+
+    if (master.get_mpiid() == 0)
+        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    TF value = 0;
+    if (master.get_mpiid() == 0)
+    {
+        std::vector<TF> values(1);
+        nc_check_code = nc_get_vara_wrapper(ncid, var_id, {0}, {1}, values);
+        value = values[0];
+    }
+    nc_check(master, nc_check_code, mpiid_to_write);
+    master.broadcast(&value, 1);
+
+    return value;
+}
+
+template<typename TF>
+std::vector<TF> Netcdf_handle::get_variable(
+        const std::string& name,
+        const std::vector<int>& i_count)
+{
+    std::string message = "Retrieving from NetCDF (full array): " + name;
+    master.print_message(message);
+
+    const std::vector<size_t> i_start_size_t(i_count.size());
+    const std::vector<size_t> i_count_size_t(i_count.begin(), i_count.end());
+
+    int nc_check_code = 0;
+    int var_id;
+
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+    nc_check(master, nc_check_code, mpiid_to_write);
+
+    int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
+    master.broadcast(&total_count, 1);
+    // CvH check needs to be added if total count matches multiplication of all dimensions.
+
+    std::vector<TF> values(total_count);
+    if (master.get_mpiid() == mpiid_to_write)
+        nc_check_code = nc_get_vara_wrapper(ncid, var_id, i_start_size_t, i_count_size_t, values);
+    nc_check(master, nc_check_code, mpiid_to_write);
+    master.broadcast(values.data(), total_count, mpiid_to_write);
+
+    return values;
 }
 
 template<typename TF>
@@ -482,16 +617,36 @@ void Netcdf_handle::get_variable(
     }
 }
 
+Netcdf_group::Netcdf_group(
+        Master& master, Netcdf_handle* parent_in,
+        const int ncid_in, const int root_ncid_in, const int mpiid_to_write_in) :
+    Netcdf_handle(master)
+{
+    parent = parent_in;
+    mpiid_to_write = mpiid_to_write_in;
+    ncid = ncid_in;
+    root_ncid = root_ncid_in;
+}
+
+int Netcdf_group::get_dim_id(const std::string& name)
+{
+    if (dims.count(name) == 0)
+        return parent->get_dim_id(name);
+
+    return dims.at(name);
+}
+
 // Variable does not communicate with NetCDF library directly.
 template<typename T>
-Netcdf_variable<T>::Netcdf_variable(Master& master, Netcdf_handle& nc_file, const int var_id, const std::vector<int>& dim_sizes) :
-    master(master), nc_file(nc_file), var_id(var_id), dim_sizes(dim_sizes)
+Netcdf_variable<T>::Netcdf_variable(
+        Master& master, Netcdf_handle& nc_handle, const int var_id, const std::vector<int>& dim_sizes) :
+    master(master), nc_handle(nc_handle), var_id(var_id), dim_sizes(dim_sizes)
 {}
 
 template<typename T>
 void Netcdf_variable<T>::insert(const std::vector<T>& values, const std::vector<int> i_start)
 {
-    nc_file.insert(values, var_id, i_start, dim_sizes);
+    nc_handle.insert(values, var_id, i_start, dim_sizes);
 }
 
 template<typename T>
@@ -500,36 +655,46 @@ void Netcdf_variable<T>::insert(
         const std::vector<int> i_start,
         const std::vector<int> i_count)
 {
-    nc_file.insert(values, var_id, i_start, i_count);
+    nc_handle.insert(values, var_id, i_start, i_count);
 }
 
 template<typename T>
 void Netcdf_variable<T>::insert(const T value, const std::vector<int> i_start)
 {
-    nc_file.insert(value, var_id, i_start, dim_sizes);
+    nc_handle.insert(value, var_id, i_start, dim_sizes);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const std::string& value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const double value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const float value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template class Netcdf_variable<double>;
 template class Netcdf_variable<float>;
 template class Netcdf_variable<int>;
+
+template std::vector<double> Netcdf_handle::get_variable<double>(const std::string&, const std::vector<int>&);
+template std::vector<float>  Netcdf_handle::get_variable<float> (const std::string&, const std::vector<int>&);
+template std::vector<int>    Netcdf_handle::get_variable<int>   (const std::string&, const std::vector<int>&);
+template std::vector<char>   Netcdf_handle::get_variable<char>  (const std::string&, const std::vector<int>&);
+
+template double Netcdf_handle::get_variable<double>(const std::string&);
+template float  Netcdf_handle::get_variable<float> (const std::string&);
+template int    Netcdf_handle::get_variable<int>   (const std::string&);
+template char   Netcdf_handle::get_variable<char>  (const std::string&);
 
 template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::get_variable<float> (std::vector<float>&,  const std::string&, const std::vector<int>&, const std::vector<int>&);
@@ -543,6 +708,6 @@ template void Netcdf_handle::insert<double>(const double, const int, const std::
 template void Netcdf_handle::insert<float> (const float,  const int, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::insert<int>   (const int,    const int, const std::vector<int>&, const std::vector<int>&);
 
-template Netcdf_variable<double> Netcdf_handle::add_variable<double> (const std::string&, const std::vector<std::string>);
-template Netcdf_variable<float>  Netcdf_handle::add_variable<float>  (const std::string&, const std::vector<std::string>);
-template Netcdf_variable<int>    Netcdf_handle::add_variable<int>    (const std::string&, const std::vector<std::string>);
+template Netcdf_variable<double> Netcdf_handle::add_variable<double> (const std::string&, const std::vector<std::string>&);
+template Netcdf_variable<float>  Netcdf_handle::add_variable<float>  (const std::string&, const std::vector<std::string>&);
+template Netcdf_variable<int>    Netcdf_handle::add_variable<int>    (const std::string&, const std::vector<std::string>&);

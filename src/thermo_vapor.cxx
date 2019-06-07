@@ -399,7 +399,7 @@ void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(bs.thl0, "thl", start, count);
     group_nc.get_variable(bs.qt0, "qt", start, count);
 
@@ -655,6 +655,8 @@ int Thermo_vapor<TF>::get_bl_depth()
 template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "thermo";
+
     bs_stats = bs;
 
     // Add variables to the statistics
@@ -662,33 +664,33 @@ void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields.rhoref);
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields.rhorefh);
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z" , group_name, fields.rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", group_name, fields.rhorefh);
+        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", group_name, bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("phydro",   "Full level hydrostatic pressure", "Pa",     "z" );
-            stats.add_prof("phydroh",  "Half level hydrostatic pressure", "Pa",     "zh");
-            stats.add_prof("rho",  "Full level density",  "kg m-3", "z" );
-            stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh");
+            stats.add_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name);
+            stats.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name);
+            stats.add_prof("rho",  "Full level density",  "kg m-3", "z" , group_name);
+            stats.add_prof("rhoh", "Half level density",  "kg m-3", "zh", group_name);
         }
         else
         {
-            stats.add_fixed_prof("phydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
+            stats.add_fixed_prof("phydro" , "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
         }
 
         auto b = fields.get_tmp();
         b->name = "b";
         b->longname = "Buoyancy";
         b->unit = "m s-2";
-        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
-        stats.add_time_series("zi", "Boundary Layer Depth", "m");
-        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+        stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
 }
 
@@ -697,9 +699,7 @@ void Thermo_vapor<TF>::create_column(Column<TF>& column)
 {
     // add the profiles to the columns
     if (column.get_switch())
-    {
         column.add_prof("b", "Buoyancy", "m s-2", "z");
-    }
 }
 
 template<typename TF>
@@ -771,8 +771,10 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     {
         stats.set_prof("phydro" , bs_stats.pref);
         stats.set_prof("phydroh", bs_stats.prefh);
-        stats.set_prof("rho"    , fields.rhoref);
-        stats.set_prof("rhoh"   , fields.rhorefh);
+
+        // CvH this is not the correct rho if the base state is on.
+        stats.set_prof("rho" , fields.rhoref);
+        stats.set_prof("rhoh", fields.rhorefh);
     }
     stats.set_timeseries("zi", gd.z[get_bl_depth()]);
 }
@@ -784,7 +786,7 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    get_thermo_field(*output, "b",false, true);
+    get_thermo_field(*output, "b", false, true);
     column.calc_column("b", output->fld.data(), no_offset);
 
     fields.release_tmp(output);
@@ -795,21 +797,24 @@ void Thermo_vapor<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+
     #ifndef USECUDA
     bs_stats = bs;
     #endif
 
     auto output = fields.get_tmp();
 
-    if(swcross_b)
+    if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
         get_buoyancy_fluxbot(*output, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime);
+            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
         else if (it == "bbot")

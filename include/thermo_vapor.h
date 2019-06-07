@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_VAPOR
-#define THERMO_VAPOR
+#ifndef THERMO_VAPOR_H
+#define THERMO_VAPOR_H
 
 #include "boundary_cyclic.h"
 #include "timedep.h"
@@ -66,6 +66,10 @@ class Thermo_vapor : public Thermo<TF>
 
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        // CvH the function below could be implemented for thermo vapor as the vapor is available.
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool);
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_T_bot(Field3d<TF>&, bool);

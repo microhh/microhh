@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_MOIST_FUNCTIONS
-#define THERMO_MOIST_FUNCTIONS
+#ifndef THERMO_MOIST_FUNCTIONS_H
+#define THERMO_MOIST_FUNCTIONS_H
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
@@ -118,19 +118,19 @@ namespace Thermo_moist_functions
     {
         int niter = 0;
         int nitermax = 100;
-        TF ql, tl, tnr_old = 1.e9, tnr, qs=0;
+        TF ql, tl, tnr_old = TF(1.e9), tnr, qs=TF(0.);
         tl = thl * exn;
         Struct_sat_adjust<TF> ans;
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        ans.ql = 0;
+        ans.ql = TF(0.);
         ans.t = tl;
         ans.qs = qsat(p, tl);
-        if(qt-ans.qs <= 0)
+        if (qt-ans.qs <= TF(0.))
             return ans;
 
         tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
+        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
         {
             ++niter;
             tnr_old = tnr;
@@ -139,7 +139,11 @@ namespace Thermo_moist_functions
         }
 
         if (niter == nitermax)
-            throw std::runtime_error("Non-converging saturation adjustment.");
+        {
+            std::string error = "Non-converging saturation adjustment: thl, qt, p = "
+                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+            throw std::runtime_error(error);
+        }
 
         ql = std::max(TF(0.), qt - qs);
 

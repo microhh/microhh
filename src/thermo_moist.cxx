@@ -484,8 +484,65 @@ namespace
         }
         return kinv;
     }
-}
 
+    template<typename TF>
+    void calc_radiation_fields(
+            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict clwp,
+            TF* restrict thlh, TF* restrict qth,
+            const TF* restrict thl, const TF* restrict qt,
+            const TF* restrict p, const TF* restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF ex = exner(p[k]);
+            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                    clwp[ijk_nogc] = ssa.ql * dpg;
+                    qv  [ijk_nogc] = qt[ijk] - ssa.ql;
+                    T   [ijk_nogc] = ssa.t;
+                }
+        }
+
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
+                }
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                }
+        }
+    }
+}
 
 template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -573,7 +630,7 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(bs.thl0, "thl", start, count);
     group_nc.get_variable(bs.qt0, "qt", start, count);
 
@@ -812,6 +869,25 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 }
 
 template<typename TF>
+void Thermo_moist<TF>::get_radiation_fields(
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& clwp) const
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_radiation_fields(
+            T.fld.data(), T_h.fld.data(), qv.fld.data(), clwp.fld.data(),
+            T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
+            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+            bs.pref.data(), bs.prefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.igc, gd.jgc, gd.kgc,
+            gd.icells, gd.ijcells,
+            gd.imax, gd.imax*gd.jmax);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
@@ -903,6 +979,8 @@ int Thermo_moist<TF>::get_bl_depth()
 template<typename TF>
 void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "thermo";
+
     bs_stats = bs;
 
     // Add variables to the statistics
@@ -910,40 +988,40 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  bs.rhoref );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", bs.rhorefh);
-        stats.add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", bs.thvref);
-        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", bs.thvrefh);
+        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z" , group_name, bs.rhoref );
+        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", group_name, bs.rhorefh);
+        stats.add_fixed_prof("thvref", "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
+        stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", group_name, bs.thvrefh);
 
         if (bs_stats.swupdatebasestate)
         {
-            stats.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z" );
-            stats.add_prof("phydroh","Half level hydrostatic pressure", "Pa", "zh");
-            stats.add_prof("rho",  "Full level density", "kg m-3", "z" );
-            stats.add_prof("rhoh", "Half level density", "kg m-3", "zh");
+            stats.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z" , group_name);
+            stats.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name);
+            stats.add_prof("rho",  "Full level density", "kg m-3", "z" , group_name);
+            stats.add_prof("rhoh", "Half level density", "kg m-3", "zh", group_name);
         }
         else
         {
-            stats.add_fixed_prof("pydroh",  "Full level hydrostatic pressure", "Pa", "z",  bs.pref);
-            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", bs.prefh);
+            stats.add_fixed_prof("pydroh",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
+            stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
         }
 
         auto b = fields.get_tmp();
         b->name = "b";
         b->longname = "Buoyancy";
         b->unit = "m s-2";
-        stats.add_profs(*b, "z", {"mean","2","3","4","w","grad","diff","flux"});
+        stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
         auto ql = fields.get_tmp();
         ql->name = "ql";
         ql->longname = "Liquid water";
         ql->unit = "kg kg-1";
-        stats.add_profs(*ql, "z", {"mean","frac","path","cover"});
+        stats.add_profs(*ql, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(ql);
 
-        stats.add_time_series("zi", "Boundary Layer Depth", "m");
-        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+        stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
 }
 
@@ -1073,7 +1151,9 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
 template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
-{
+{    
+    auto& gd = grid.get_grid_data();
+
     #ifndef USECUDA
     bs_stats = bs;
     #endif
@@ -1088,7 +1168,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime);
+            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
@@ -1104,7 +1184,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "ql")
-            cross.cross_simple(output->fld.data(), "ql", iotime);
+            cross.cross_simple(output->fld.data(), "ql", iotime, gd.sloc);
         if (it == "qlpath")
             cross.cross_path(output->fld.data(), "qlpath", iotime);
         if (it == "qlbase")
@@ -1120,8 +1200,9 @@ template<typename TF>
 void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 {
     #ifndef USECUDA
-        bs_stats = bs;
+    bs_stats = bs;
     #endif
+
     auto output = fields.get_tmp();
 
     for (auto& it : dumplist)
