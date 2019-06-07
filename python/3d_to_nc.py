@@ -1,102 +1,81 @@
-import numpy   as np
-import struct  as st
-import netCDF4 as nc4
+import microhh_tools as mht     # available in microhh/python directory
+import argparse
+import os
 
-# Settings -------
-variable   = 'w'
-nx         = 1024
-ny         = 1024
-nz         = 256
-starttime  = 0
-sampletime = 600
-endtime    = 10800
-iotimeprec = -2
-nxsave     = nx
-nysave     = ny
-nzsave     = nz
-endian     = 'little'
-savetype   = 'float'
-# End settings ---
+#Parse command line and namelist options
+parser = argparse.ArgumentParser(description='Convert MicroHH 3D binary to netCDF4 files.')
+parser.add_argument('-f', '--filename', help='ini file name')
+parser.add_argument('-v', '--vars', nargs='*', help='variable names')
+parser.add_argument('-p', '--precision', help='precision', choices = ['single', 'double'])
+parser.add_argument('-t0',    '--starttime', help='first time step to be parsed', type=float)
+parser.add_argument('-t1',    '--endtime', help='last time step to be parsed', type=float)
+parser.add_argument('-tstep', '--sampletime', help='time interval to be parsed', type=float)
+parser.add_argument('-s', '--perslice', help='read/write per horizontal slice', action='store_true')
 
-# Set the correct string for the endianness
-if (endian == 'little'):
-    en = '<'
-elif (endian == 'big'):
-    en = '>'
-else:
-    raise RuntimeError("Endianness has to be little or big")
+args = parser.parse_args()
 
-# Set the correct string for the savetype
-if (savetype == 'double'):
-    sa = 'f8'
-elif (savetype == 'float'):
-    sa = 'f4'
-else:
-    raise RuntimeError("The savetype has to be float or double")
+nl = mht.Read_namelist(args.filename)
+itot = nl['grid']['itot']
+jtot = nl['grid']['jtot']
+ktot = nl['grid']['ktot']
+starttime  = args.starttime  if args.starttime  is not None else nl['time']['starttime']
+endtime    = args.endtime    if args.endtime    is not None else nl['time']['endtime']
+sampletime = args.sampletime if args.sampletime is not None else nl['dump']['sampletime']
 
-# Calculate the number of time steps
-nt = int((endtime - starttime) / sampletime + 1)
+try:
+    iotimeprec = nl['time']['iotimeprec']
+except KeyError:
+    iotimeprec = 0.
 
-# Read grid properties from grid.0000000
-n   = nx*ny*nz
-fin = open("grid.{:07d}".format(0),"rb")
-raw = fin.read(nx*8)
-x   = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
-raw = fin.read(nx*8)
-xh  = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
-raw = fin.read(ny*8)
-#y   = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
-raw = fin.read(ny*8)
-#yh  = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
-raw = fin.read(nz*8)
-#z   = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
-raw = fin.read(nz*8)
-#zh  = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
-fin.close()
+variables = args.vars if args.vars is not None else nl['dump']['dumplist']
+precision = args.precision
+perslice  = args.perslice
 
-# Create netCDF file
-ncfile = nc4.Dataset("%s.nc"%variable, "w")
+#End option parsing
 
-if  (variable=='u'): loc = [1,0,0]
-elif(variable=='v'): loc = [0,1,0]
-elif(variable=='w'): loc = [0,0,1]
-else:                loc = [0,0,0]
+# calculate the number of iterations
+niter = int((endtime-starttime) / sampletime + 1)
 
-locx = 'x' if loc[0] == 0 else 'xh'
-locy = 'y' if loc[1] == 0 else 'yh'
-locz = 'z' if loc[2] == 0 else 'zh'
+grid = mht.Read_grid(itot, jtot, ktot)
 
-dim_x  = ncfile.createDimension(locx,  nxsave)
-dim_y  = ncfile.createDimension(locy,  nysave)
-dim_z  = ncfile.createDimension(locz,  nzsave)
-dim_t  = ncfile.createDimension('time', nt)
+# Loop over the different variables
+for variable in variables:
+        try:
+            filename = "{0}.nc".format(variable)
+            dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
+            if variable is 'u':
+                dim['xh'] = dim.pop('x')
+            if variable is 'v':
+                dim['yh'] = dim.pop('y')
+            if variable is 'w':
+                dim['zh'] = dim.pop('z')
 
-var_x  = ncfile.createVariable(locx, sa, (locx,))
-var_y  = ncfile.createVariable(locy, sa, (locy,))
-var_z  = ncfile.createVariable(locz, sa, (locz,))
-var_t  = ncfile.createVariable('time', 'i4', ('time',))
-var_3d = ncfile.createVariable(variable, sa, ('time',locz, locy, locx,))
+            ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
 
-var_t.units = "time units since start"
+            # Loop through the files and read 3d field
+            for t in range(niter):
+                otime = round((starttime + t*sampletime) / 10**iotimeprec)
+                f_in  = "{0:}.{1:07d}".format(variable, otime)
+                print(f_in)
 
-# Write grid properties to netCDF
-var_x[:] = x[:nxsave] if locx=='x' else xh[:nxsave]
-#var_y[:] = y[:nysave] if locy=='y' else yh[:nysave]
-#var_z[:] = z[:nzsave] if locz=='z' else zh[:nzsave]
+                try:
+                    fin = mht.Read_binary(grid, f_in)
+                except:
+                    print('Stopping: cannot find file {}'.format(f_in))
+                    ncfile.sync()
+                    stop = True
+                    break
 
-# Loop through the files and read 3d field
-for t in range(nt):
-    time = int((starttime + t*sampletime) / 10**iotimeprec)
-    print("Processing t={:07d}".format(time))
+                print("Processing %8s, time=%7i"%(variable, otime))
+                ncfile.dimvar['time'] = otime * 10**iotimeprec
+                if (perslice):
+                    for k in range(ktot):
+                        ncfile.var[t,k,:,:] = fin.read(itot * jtot)
+                else:
+                    ncfile.var[t,:,:,:] = fin.read(itot * jtot * ktot)
 
-    var_t[t] = time * 10**iotimeprec
-
-    fin = open("%s.%07i"%(variable, time),"rb")
-    for k in range(nzsave):
-        raw = fin.read(nx*ny*8)
-        tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
-        var_3d[t,k,:,:] = tmp.reshape((ny, nx))[:nysave,:nxsave]
-    fin.close()
-    ncfile.sync()
-
-ncfile.close()
+                fin.close()
+            ncfile.close()
+        except:
+            print("Failed to create %s"%filename)
+            ncfile.close()

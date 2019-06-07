@@ -1,173 +1,279 @@
 from pylab import *
-from taylorgreenfunc import *
+import sys
+import os
+from matplotlib.backends.backend_pdf import PdfPages
+import struct
+from numpy import *
 
-t    = 1
-time = 1.
-visc = (8.*pi**2. * 100.)**(-1.)
+class microhh:
+  def __init__(self, iter, itot, ktot, loadtype, path):
+    nx = itot
+    ny = 1
+    nz = ktot
 
-ns    = array([16, 32, 64, 128, 256])
-dxs   = 1./ns
+    n  = nx*nz
+    # Set the correct string for the endianness
+    en = '<'
 
-# 2nd order data
-data16_2nd  = microhh(t,  16,   8, 'taylorgreen16_2nd' )
-data32_2nd  = microhh(t,  32,  16, 'taylorgreen32_2nd' )
-data64_2nd  = microhh(t,  64,  32, 'taylorgreen64_2nd' )
-data128_2nd = microhh(t, 128,  64, 'taylorgreen128_2nd')
-data256_2nd = microhh(t, 256, 128, 'taylorgreen256_2nd')
+    # Set the correct string for the loadtype
+    if (loadtype == 'double'):
+        TF = 8
+        ra = 'd'
+    elif (loadtype == 'single'):
+        TF = 4
+        ra = 'f'
+    else:
+        raise RuntimeError("The savetype has to be single or double")
 
-ref16_2nd  = getref(data16_2nd .x, data16_2nd .xh, data16_2nd .z, data16_2nd .zh, visc, time)
-ref32_2nd  = getref(data32_2nd .x, data32_2nd .xh, data32_2nd .z, data32_2nd .zh, visc, time)
-ref64_2nd  = getref(data64_2nd .x, data64_2nd .xh, data64_2nd .z, data64_2nd .zh, visc, time)
-ref128_2nd = getref(data128_2nd.x, data128_2nd.xh, data128_2nd.z, data128_2nd.zh, visc, time)
-ref256_2nd = getref(data256_2nd.x, data256_2nd.xh, data256_2nd.z, data256_2nd.zh, visc, time)
+    fstring = '{0}{1}'+ra
 
-err16_2nd  = geterror(data16_2nd , ref16_2nd )
-err32_2nd  = geterror(data32_2nd , ref32_2nd )
-err64_2nd  = geterror(data64_2nd , ref64_2nd )
-err128_2nd = geterror(data128_2nd, ref128_2nd)
-err256_2nd = geterror(data256_2nd, ref256_2nd)
+    # Read grid properties from grid.0000000
+    n   = nx*ny*nz
+    fin = open("{0:s}/grid.{1:07d}".format(path, 0),"rb")
+    raw = fin.read(nx*TF)
+    self.x   = array(struct.unpack(fstring.format(en, nx), raw))
+    raw = fin.read(nx*TF)
+    self.xh  = array(struct.unpack(fstring.format(en, nx), raw))
+    raw = fin.read(ny*TF)
+    self.y   = array(struct.unpack(fstring.format(en, ny), raw))
+    raw = fin.read(ny*TF)
+    self.yh  = array(struct.unpack(fstring.format(en, ny), raw))
+    raw = fin.read(nz*TF)
+    self.z   = array(struct.unpack(fstring.format(en, nz), raw))
+    raw = fin.read(nz*TF)
+    self.zh  = array(struct.unpack(fstring.format(en, nz), raw))
+    fin.close()
 
-errsu_2nd = array([err16_2nd.u, err32_2nd.u, err64_2nd.u, err128_2nd.u, err256_2nd.u])
-errsw_2nd = array([err16_2nd.w, err32_2nd.w, err64_2nd.w, err128_2nd.w, err256_2nd.w])
-errsp_2nd = array([err16_2nd.p, err32_2nd.p, err64_2nd.p, err128_2nd.p, err256_2nd.p])
+    fin = open("{0:s}/u.xz.00000.{1:07d}".format(path, iter),"rb")
+    raw = fin.read(n*TF)
+    tmp = array(struct.unpack(fstring.format(en, n), raw))
+    del(raw)
+    self.u = tmp.reshape((nz, ny, nx))
+    del(tmp)
+    fin.close()
 
-print('errors p_2nd', errsp_2nd)
-if(t > 0):
-  print('convergence u_2nd', (log(errsu_2nd[-1])-log(errsu_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
-  print('convergence w_2nd', (log(errsw_2nd[-1])-log(errsw_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
-print('convergence p_2nd', (log(errsp_2nd[-1])-log(errsp_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
+    fin = open("{0:s}/w.xz.00000.{1:07d}".format(path, iter),"rb")
+    raw = fin.read(n*TF)
+    tmp = array(struct.unpack(fstring.format(en, n), raw))
+    del(raw)
+    self.w = tmp.reshape((nz, ny, nx))
+    del(tmp)
+    fin.close()
 
-# 42 order data
-data16_4m  = microhh(t,  16,   8, 'taylorgreen16_4m' )
-data32_4m  = microhh(t,  32,  16, 'taylorgreen32_4m' )
-data64_4m  = microhh(t,  64,  32, 'taylorgreen64_4m' )
-data128_4m = microhh(t, 128,  64, 'taylorgreen128_4m')
-data256_4m = microhh(t, 256, 128, 'taylorgreen256_4m')
+    fin = open("{0:s}/p.xz.00000.{1:07d}".format(path, iter),"rb")
+    raw = fin.read(n*TF)
+    tmp = array(struct.unpack(fstring.format(en, n), raw))
+    del(raw)
+    self.p = tmp.reshape((nz, ny, nx))
+    del(tmp)
+    fin.close()
 
-ref16_4m  = getref(data16_4m .x, data16_4m .xh, data16_4m .z, data16_4m .zh, visc, time)
-ref32_4m  = getref(data32_4m .x, data32_4m .xh, data32_4m .z, data32_4m .zh, visc, time)
-ref64_4m  = getref(data64_4m .x, data64_4m .xh, data64_4m .z, data64_4m .zh, visc, time)
-ref128_4m = getref(data128_4m.x, data128_4m.xh, data128_4m.z, data128_4m.zh, visc, time)
-ref256_4m = getref(data256_4m.x, data256_4m.xh, data256_4m.z, data256_4m.zh, visc, time)
+class getref:
+  def __init__(self, x, xh, z, zh, visc, time):
+    self.u = zeros((zh.size, 1, x .size))
+    self.w = zeros((z .size, 1, xh.size))
+    self.p = zeros((z .size, 1, x .size))
 
-err16_4m  = geterror(data16_4m , ref16_4m )
-err32_4m  = geterror(data32_4m , ref32_4m )
-err64_4m  = geterror(data64_4m , ref64_4m )
-err128_4m = geterror(data128_4m, ref128_4m)
-err256_4m = geterror(data256_4m, ref256_4m)
+    for k in range(z.size):
+      self.u[k,0,:] =  sin(2.*pi*xh)*cos(2.*pi*z [k])*exp(-8.*pi**2.*visc*time)
+      self.w[k,0,:] = -cos(2.*pi*x )*sin(2.*pi*zh[k])*exp(-8.*pi**2.*visc*time)
+      self.p[k,0,:] = (0.25*(cos(4.*pi*x) + cos(4.*pi*z[k]))-0.25)*(exp(-8.*pi**2.*visc*time)**2.)
 
-errsu_4m = array([err16_4m.u, err32_4m.u, err64_4m.u, err128_4m.u, err256_4m.u])
-errsw_4m = array([err16_4m.w, err32_4m.w, err64_4m.w, err128_4m.w, err256_4m.w])
-errsp_4m = array([err16_4m.p, err32_4m.p, err64_4m.p, err128_4m.p, err256_4m.p])
+class geterror:
+  def __init__(self, data, ref):
+    dx = 1.  / data.x.size
+    dz = 0.5 / data.z.size
 
-print('errors p_4thm', errsp_4m)
-if(t > 0):
-  print('convergence u_4thm', (log(errsu_4m[-1])-log(errsu_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
-  print('convergence w_4thm', (log(errsw_4m[-1])-log(errsw_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
-print('convergence p_4thm', (log(errsp_4m[-1])-log(errsp_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
+    self.u = 0.
+    self.w = 0.
+    self.p = 0.
 
-# 4th order data
-data16_4th  = microhh(t,  16,   8, 'taylorgreen16_4th' )
-data32_4th  = microhh(t,  32,  16, 'taylorgreen32_4th' )
-data64_4th  = microhh(t,  64,  32, 'taylorgreen64_4th' )
-data128_4th = microhh(t, 128,  64, 'taylorgreen128_4th')
-data256_4th = microhh(t, 256, 128, 'taylorgreen256_4th')
+    for k in range(data.z.size):
+      self.u = self.u + sum(dx*dz*abs(data.u[k,:] - ref.u[k,:]))
+      self.w = self.w + sum(dx*dz*abs(data.w[k,:] - ref.w[k,:]))
+      self.p = self.p + sum(dx*dz*abs(data.p[k,:] - ref.p[k,:]))
 
-ref16_4th  = getref(data16_4th .x, data16_4th .xh, data16_4th .z, data16_4th .zh, visc, time)
-ref32_4th  = getref(data32_4th .x, data32_4th .xh, data32_4th .z, data32_4th .zh, visc, time)
-ref64_4th  = getref(data64_4th .x, data64_4th .xh, data64_4th .z, data64_4th .zh, visc, time)
-ref128_4th = getref(data128_4th.x, data128_4th.xh, data128_4th.z, data128_4th.zh, visc, time)
-ref256_4th = getref(data256_4th.x, data256_4th.xh, data256_4th.z, data256_4th.zh, visc, time)
+def main(filename='results.pdf',float_type='double'):
 
-err16_4th  = geterror(data16_4th , ref16_4th )
-err32_4th  = geterror(data32_4th , ref32_4th )
-err64_4th  = geterror(data64_4th , ref64_4th )
-err128_4th = geterror(data128_4th, ref128_4th)
-err256_4th = geterror(data256_4th, ref256_4th)
+    t    = 1
+    time = 1.
+    visc = (8.*pi**2. * 100.)**(-1.)
 
-errsu_4th = array([err16_4th.u, err32_4th.u, err64_4th.u, err128_4th.u, err256_4th.u])
-errsw_4th = array([err16_4th.w, err32_4th.w, err64_4th.w, err128_4th.w, err256_4th.w])
-errsp_4th = array([err16_4th.p, err32_4th.p, err64_4th.p, err128_4th.p, err256_4th.p])
+    ns    = array([16, 32, 64, 128, 256])
+    dxs   = 1./ns
 
-print('errors p_4th', errsp_4th)
-if(t > 0):
-  print('convergence u_4th', (log(errsu_4th[-1])-log(errsu_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
-  print('convergence w_4th', (log(errsw_4th[-1])-log(errsw_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
-print('convergence p_4th', (log(errsp_4th[-1])-log(errsp_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
+    # 2nd order data
+    data16_2nd  = microhh(t,  16,   8, float_type, 'itot16swadvec2' )
+    data32_2nd  = microhh(t,  32,  16, float_type, 'itot32swadvec2' )
+    data64_2nd  = microhh(t,  64,  32, float_type, 'itot64swadvec2' )
+    data128_2nd = microhh(t, 128,  64, float_type, 'itot128swadvec2')
+    data256_2nd = microhh(t, 256, 128, float_type, 'itot256swadvec2')
 
-off2 = 0.01
-off4 = 0.002
-slope2 = off2*(dxs[:] / dxs[0])**2.
-slope4 = off4*(dxs[:] / dxs[0])**4.
+    ref16_2nd  = getref(data16_2nd .x, data16_2nd .xh, data16_2nd .z, data16_2nd .zh, visc, time)
+    ref32_2nd  = getref(data32_2nd .x, data32_2nd .xh, data32_2nd .z, data32_2nd .zh, visc, time)
+    ref64_2nd  = getref(data64_2nd .x, data64_2nd .xh, data64_2nd .z, data64_2nd .zh, visc, time)
+    ref128_2nd = getref(data128_2nd.x, data128_2nd.xh, data128_2nd.z, data128_2nd.zh, visc, time)
+    ref256_2nd = getref(data256_2nd.x, data256_2nd.xh, data256_2nd.z, data256_2nd.zh, visc, time)
 
-close('all')
+    err16_2nd  = geterror(data16_2nd , ref16_2nd )
+    err32_2nd  = geterror(data32_2nd , ref32_2nd )
+    err64_2nd  = geterror(data64_2nd , ref64_2nd )
+    err128_2nd = geterror(data128_2nd, ref128_2nd)
+    err256_2nd = geterror(data256_2nd, ref256_2nd)
 
-figure()
-if(t > 0):
-  loglog(dxs, errsu_2nd, 'bo-', label="u_2nd")
-  loglog(dxs, errsw_2nd, 'bv-', label="w_2nd")
-  loglog(dxs, errsu_4m , 'go-', label="u_4thm")
-  loglog(dxs, errsw_4m , 'gv-', label="w_4thm")
-  loglog(dxs, errsu_4th, 'ro-', label="u_4th")
-  loglog(dxs, errsw_4th, 'rv-', label="w_4th")
-loglog(dxs, errsp_2nd, 'b^-', label="p_2nd")
-loglog(dxs, errsp_4m , 'g^-', label="p_4thm")
-loglog(dxs, errsp_4th, 'r^-', label="p_4th")
-loglog(dxs, slope2, 'k--', label="2nd")
-loglog(dxs, slope4, 'k:' , label="4th")
-legend(loc=0, frameon=False)
+    errsu_2nd = array([err16_2nd.u, err32_2nd.u, err64_2nd.u, err128_2nd.u, err256_2nd.u])
+    errsw_2nd = array([err16_2nd.w, err32_2nd.w, err64_2nd.w, err128_2nd.w, err256_2nd.w])
+    errsp_2nd = array([err16_2nd.p, err32_2nd.p, err64_2nd.p, err128_2nd.p, err256_2nd.p])
 
-figure()
-subplot(121)
-pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.u[:,0,:]-ref256_2nd.u[:,0,:])
-xlim(min(data256_2nd.xh), max(data256_2nd.xh))
-ylim(min(data256_2nd.z ), max(data256_2nd.z ))
-xlabel('x')
-ylabel('z')
-title('u err_2nd')
-colorbar()
-subplot(122)
-pcolormesh(data256_4th.x, data256_4th.z, data256_4th.u[:,0,:]-ref256_4th.u[:,0,:])
-xlim(min(data256_4th.xh), max(data256_4th.xh))
-ylim(min(data256_4th.z ), max(data256_4th.z ))
-xlabel('x')
-ylabel('z')
-title('u err_4th')
-colorbar()
+    print('errors p_2nd', errsp_2nd)
+    if(t > 0):
+      print('convergence u_2nd', (log(errsu_2nd[-1])-log(errsu_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
+      print('convergence w_2nd', (log(errsw_2nd[-1])-log(errsw_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
+    print('convergence p_2nd', (log(errsp_2nd[-1])-log(errsp_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
 
-figure()
-subplot(121)
-pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.w[:,0,:]-ref256_2nd.w[:,0,:])
-xlim(min(data256_2nd.xh), max(data256_2nd.xh))
-ylim(min(data256_2nd.z ), max(data256_2nd.z ))
-xlabel('x')
-ylabel('z')
-title('w err_2nd')
-colorbar()
-subplot(122)
-pcolormesh(data256_4th.x, data256_4th.z, data256_4th.w[:,0,:]-ref256_4th.w[:,0,:])
-xlim(min(data256_4th.x ), max(data256_4th.x ))
-ylim(min(data256_4th.zh), max(data256_4th.zh))
-xlabel('x')
-ylabel('z')
-title('w err_4th')
-colorbar()
+    # 42 order data
+    data16_4m  = microhh(t,  16,   8, float_type, 'itot16swadvec4m' )
+    data32_4m  = microhh(t,  32,  16, float_type, 'itot32swadvec4m' )
+    data64_4m  = microhh(t,  64,  32, float_type, 'itot64swadvec4m' )
+    data128_4m = microhh(t, 128,  64, float_type, 'itot128swadvec4m')
+    data256_4m = microhh(t, 256, 128, float_type, 'itot256swadvec4m')
 
-figure()
-subplot(121)
-pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.p[:,0,:]-ref256_2nd.p[:,0,:])
-xlim(min(data256_2nd.x), max(data256_2nd.x))
-ylim(min(data256_2nd.z), max(data256_2nd.z))
-xlabel('x')
-ylabel('z')
-title('p err_2nd')
-colorbar()
-subplot(122)
-pcolormesh(data256_4th.x, data256_4th.z, data256_4th.p[:,0,:]-ref256_4th.p[:,0,:])
-xlim(min(data256_4th.x), max(data256_4th.x))
-ylim(min(data256_4th.z), max(data256_4th.z))
-xlabel('x')
-ylabel('z')
-title('p err_4th')
-colorbar()
+    ref16_4m  = getref(data16_4m .x, data16_4m .xh, data16_4m .z, data16_4m .zh, visc, time)
+    ref32_4m  = getref(data32_4m .x, data32_4m .xh, data32_4m .z, data32_4m .zh, visc, time)
+    ref64_4m  = getref(data64_4m .x, data64_4m .xh, data64_4m .z, data64_4m .zh, visc, time)
+    ref128_4m = getref(data128_4m.x, data128_4m.xh, data128_4m.z, data128_4m.zh, visc, time)
+    ref256_4m = getref(data256_4m.x, data256_4m.xh, data256_4m.z, data256_4m.zh, visc, time)
 
+    err16_4m  = geterror(data16_4m , ref16_4m )
+    err32_4m  = geterror(data32_4m , ref32_4m )
+    err64_4m  = geterror(data64_4m , ref64_4m )
+    err128_4m = geterror(data128_4m, ref128_4m)
+    err256_4m = geterror(data256_4m, ref256_4m)
+
+    errsu_4m = array([err16_4m.u, err32_4m.u, err64_4m.u, err128_4m.u, err256_4m.u])
+    errsw_4m = array([err16_4m.w, err32_4m.w, err64_4m.w, err128_4m.w, err256_4m.w])
+    errsp_4m = array([err16_4m.p, err32_4m.p, err64_4m.p, err128_4m.p, err256_4m.p])
+
+    print('errors p_4thm', errsp_4m)
+    if(t > 0):
+      print('convergence u_4thm', (log(errsu_4m[-1])-log(errsu_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
+      print('convergence w_4thm', (log(errsw_4m[-1])-log(errsw_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
+    print('convergence p_4thm', (log(errsp_4m[-1])-log(errsp_4m[0])) / (log(dxs[-1])-log(dxs[0])) )
+
+    # 4th order data
+    data16_4th  = microhh(t,  16,   8, float_type, 'itot16swadvec4' )
+    data32_4th  = microhh(t,  32,  16, float_type, 'itot32swadvec4' )
+    data64_4th  = microhh(t,  64,  32, float_type, 'itot64swadvec4' )
+    data128_4th = microhh(t, 128,  64, float_type, 'itot128swadvec4')
+    data256_4th = microhh(t, 256, 128, float_type, 'itot256swadvec4')
+
+    ref16_4th  = getref(data16_4th .x, data16_4th .xh, data16_4th .z, data16_4th .zh, visc, time)
+    ref32_4th  = getref(data32_4th .x, data32_4th .xh, data32_4th .z, data32_4th .zh, visc, time)
+    ref64_4th  = getref(data64_4th .x, data64_4th .xh, data64_4th .z, data64_4th .zh, visc, time)
+    ref128_4th = getref(data128_4th.x, data128_4th.xh, data128_4th.z, data128_4th.zh, visc, time)
+    ref256_4th = getref(data256_4th.x, data256_4th.xh, data256_4th.z, data256_4th.zh, visc, time)
+
+    err16_4th  = geterror(data16_4th , ref16_4th )
+    err32_4th  = geterror(data32_4th , ref32_4th )
+    err64_4th  = geterror(data64_4th , ref64_4th )
+    err128_4th = geterror(data128_4th, ref128_4th)
+    err256_4th = geterror(data256_4th, ref256_4th)
+
+    errsu_4th = array([err16_4th.u, err32_4th.u, err64_4th.u, err128_4th.u, err256_4th.u])
+    errsw_4th = array([err16_4th.w, err32_4th.w, err64_4th.w, err128_4th.w, err256_4th.w])
+    errsp_4th = array([err16_4th.p, err32_4th.p, err64_4th.p, err128_4th.p, err256_4th.p])
+
+    print('errors p_4th', errsp_4th)
+    if(t > 0):
+      print('convergence u_4th', (log(errsu_4th[-1])-log(errsu_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
+      print('convergence w_4th', (log(errsw_4th[-1])-log(errsw_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
+    print('convergence p_4th', (log(errsp_4th[-1])-log(errsp_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
+
+    off2 = 0.01
+    off4 = 0.002
+    slope2 = off2*(dxs[:] / dxs[0])**2.
+    slope4 = off4*(dxs[:] / dxs[0])**4.
+
+    close('all')
+    with PdfPages(filename) as pdf:
+        figure()
+        if(t > 0):
+          loglog(dxs, errsu_2nd, 'bo-', label="u_2nd")
+          loglog(dxs, errsw_2nd, 'bv-', label="w_2nd")
+          loglog(dxs, errsu_4m , 'go-', label="u_4thm")
+          loglog(dxs, errsw_4m , 'gv-', label="w_4thm")
+          loglog(dxs, errsu_4th, 'ro-', label="u_4th")
+          loglog(dxs, errsw_4th, 'rv-', label="w_4th")
+        loglog(dxs, errsp_2nd, 'b^-', label="p_2nd")
+        loglog(dxs, errsp_4m , 'g^-', label="p_4thm")
+        loglog(dxs, errsp_4th, 'r^-', label="p_4th")
+        loglog(dxs, slope2, 'k--', label="2nd")
+        loglog(dxs, slope4, 'k:' , label="4th")
+        legend(loc=0, frameon=False)
+
+        pdf.savefig()
+
+        figure()
+        subplot(121)
+        pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.u[:,0,:]-ref256_2nd.u[:,0,:])
+        xlim(min(data256_2nd.xh), max(data256_2nd.xh))
+        ylim(min(data256_2nd.z ), max(data256_2nd.z ))
+        xlabel('x')
+        ylabel('z')
+        title('u err_2nd')
+        colorbar()
+        subplot(122)
+        pcolormesh(data256_4th.x, data256_4th.z, data256_4th.u[:,0,:]-ref256_4th.u[:,0,:])
+        xlim(min(data256_4th.xh), max(data256_4th.xh))
+        ylim(min(data256_4th.z ), max(data256_4th.z ))
+        xlabel('x')
+        ylabel('z')
+        title('u err_4th')
+        colorbar()
+        pdf.savefig()
+
+        figure()
+        subplot(121)
+        pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.w[:,0,:]-ref256_2nd.w[:,0,:])
+        xlim(min(data256_2nd.xh), max(data256_2nd.xh))
+        ylim(min(data256_2nd.z ), max(data256_2nd.z ))
+        xlabel('x')
+        ylabel('z')
+        title('w err_2nd')
+        colorbar()
+        subplot(122)
+        pcolormesh(data256_4th.x, data256_4th.z, data256_4th.w[:,0,:]-ref256_4th.w[:,0,:])
+        xlim(min(data256_4th.x ), max(data256_4th.x ))
+        ylim(min(data256_4th.zh), max(data256_4th.zh))
+        xlabel('x')
+        ylabel('z')
+        title('w err_4th')
+        colorbar()
+        pdf.savefig()
+
+        figure()
+        subplot(121)
+        pcolormesh(data256_2nd.x, data256_2nd.z, data256_2nd.p[:,0,:]-ref256_2nd.p[:,0,:])
+        xlim(min(data256_2nd.x), max(data256_2nd.x))
+        ylim(min(data256_2nd.z), max(data256_2nd.z))
+        xlabel('x')
+        ylabel('z')
+        title('p err_2nd')
+        colorbar()
+        subplot(122)
+        pcolormesh(data256_4th.x, data256_4th.z, data256_4th.p[:,0,:]-ref256_4th.p[:,0,:])
+        xlim(min(data256_4th.x), max(data256_4th.x))
+        ylim(min(data256_4th.z), max(data256_4th.z))
+        xlabel('x')
+        ylabel('z')
+        title('p err_4th')
+        colorbar()
+        pdf.savefig()
+        # do whatever the script does
+
+
+if __name__ == "__main__":
+    if len(sys.argv)>1:
+        main(sys.argv[1:])
+    else:
+        main()

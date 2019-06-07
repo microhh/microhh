@@ -29,7 +29,7 @@ class Grid:
               stretch[k] = self.dz[k]/self.dz[k-1]
 
         zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
-        print('kmax=%i, zsize=%f'%(kmax,zsize))
+        #print('kmax=%i, zsize=%f'%(kmax,zsize))
 
 # Read the stage 3 driver file
 class read_driver:
@@ -64,7 +64,7 @@ outname = 'gabls4s3'
 s3 = read_driver()
 
 # Large domain (~1 km high):
-g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m 
+g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m
 g10l = Grid(512, 470, 30, 1, 12) # dz = 1 m
 
 # Restart domain (~200 m high):
@@ -104,7 +104,7 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot the different vertical grids:
-if(True):
+if(False):
     pl.figure()
     pl.plot(g20l.dz,  g20l.z, '-x', linewidth=1.5)
     pl.plot(g10l.dz,  g10l.z, '-x', linewidth=1.5)
@@ -125,7 +125,7 @@ if(False):
     pl.ylim(0,1100)
     pl.xlim(270,285)
     pl.legend(frameon=False, loc=2)
-    
+
     pl.subplot(222)
     pl.plot(u, g.z, 'k-', label='mhh')
     pl.plot(s3.u, s3.z, 'go', mfc='none', label='s3')
@@ -134,7 +134,7 @@ if(False):
     pl.ylim(0,1100)
     pl.xlim(0,10)
     pl.legend(frameon=False, loc=2)
-    
+
     pl.subplot(223)
     pl.plot(v, g.z, 'k-', label='mhh')
     pl.plot(s3.v, s3.z, 'go', mfc='none', label='s3')
@@ -143,7 +143,7 @@ if(False):
     pl.ylim(0,1100)
     pl.xlim(0,10)
     pl.legend(frameon=False, loc=2)
-    
+
     pl.subplot(224)
     pl.plot(s3.t, s3.ths, 'k-', label='s3')
     pl.legend(frameon=False, loc=2)

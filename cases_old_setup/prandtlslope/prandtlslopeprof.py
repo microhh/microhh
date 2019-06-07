@@ -16,7 +16,7 @@ r   = 1.01
 for t in range(0,50):
 	r = ( 1 - (zmax/dz1)*(1-r) )**(1.0/kmax)
 
-print(r)
+#print(r)
 
 # create array of dz values
 dz = numpy.zeros(kmax)
@@ -33,7 +33,7 @@ for k in range(1,kmax):
   z[k] = z[k-1] + 0.5*(dz[k-1]+dz[k])
 
 zsize = z[kmax-1] + 0.5*dz[kmax-1]
-print('zsize = ', zsize)
+#print('zsize = ', zsize)
 
 s = numpy.zeros(numpy.size(z))
 
