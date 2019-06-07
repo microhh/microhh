@@ -950,8 +950,11 @@ void Stats<TF>::add_fixed_prof(
     {
         Mask<TF>& m = mask.second;
 
+        Netcdf_group& group_handle =
+                m.data_file->group_exists(group_name) ? m.data_file->get_group(group_name) : m.data_file->add_group(group_name);
+
         // Create the NetCDF variable.
-        Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {zloc});
+        Netcdf_variable<TF> var = group_handle.add_variable<TF>(name, {zloc});
 
         var.add_attribute("units", unit.c_str());
         var.add_attribute("long_name", longname.c_str());
@@ -985,8 +988,11 @@ void Stats<TF>::add_fixed_prof_raw(
     {
         Mask<TF>& m = mask.second;
 
+        Netcdf_group& group_handle =
+                m.data_file->group_exists(group_name) ? m.data_file->get_group(group_name) : m.data_file->add_group(group_name);
+
         // Create the NetCDF variable.
-        Netcdf_variable<TF> var = m.data_file->template add_variable<TF>(name, {dim});
+        Netcdf_variable<TF> var = group_handle.add_variable<TF>(name, {dim});
 
         var.add_attribute("units", unit.c_str());
         var.add_attribute("long_name", longname.c_str());

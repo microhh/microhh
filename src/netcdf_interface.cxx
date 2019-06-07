@@ -375,9 +375,10 @@ Netcdf_group& Netcdf_handle::add_group(const std::string& name)
         nc_check_code = nc_enddef(root_ncid);
     nc_check(master, nc_check_code, mpiid_to_write);
 
-    groups.emplace(std::piecewise_construct,
-                   std::forward_as_tuple(name),
-                   std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
+    groups.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
 
     return groups.at(name);
 }
@@ -394,7 +395,8 @@ Netcdf_group& Netcdf_handle::get_group(const std::string& name)
             nc_check_code = nc_inq_ncid(ncid, name.c_str(), &group_ncid);
         nc_check(master, nc_check_code, mpiid_to_write);
 
-        groups.emplace(std::piecewise_construct,
+        groups.emplace(
+                std::piecewise_construct,
                 std::forward_as_tuple(name),
                 std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
     }

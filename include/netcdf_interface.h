@@ -36,6 +36,9 @@ class Netcdf_handle
 {
     public:
         Netcdf_handle(Master&);
+        Netcdf_handle(const Netcdf_group&) = delete;
+        Netcdf_handle& operator=(const Netcdf_group&) = delete;
+
         void add_dimension(const std::string&, const int dim_size = NC_UNLIMITED);
 
         Netcdf_group& add_group(const std::string&);

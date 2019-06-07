@@ -666,9 +666,9 @@ void Radiation_rrtmgp<TF>::create_column(
 
         stats.add_dimension("p_rad", n_lev);
 
-        // CvH, I put an vector copy here because radiation is always double.
         const std::string group_name = "radiation";
 
+        // CvH, I put an vector copy here because radiation is always double.
         stats.add_fixed_prof_raw(
                 "p_rad",
                 "Pressure of radiation reference column",
