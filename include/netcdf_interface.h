@@ -45,6 +45,7 @@ class Netcdf_handle
 {
     public:
         Netcdf_handle(Master&);
+        virtual ~Netcdf_handle() = default;
 
         // Do not allow copying or moving of handle.
         Netcdf_handle(const Netcdf_handle&) = delete;
@@ -65,7 +66,7 @@ class Netcdf_handle
         template<typename T>
         Netcdf_variable<T> add_variable(
                 const std::string&,
-                const std::vector<std::string>);
+                const std::vector<std::string>&);
 
         template<typename T>
         T get_variable(
@@ -112,6 +113,8 @@ class Netcdf_handle
                 const float,
                 const int);
 
+        virtual int get_dim_id(const std::string&) = 0;
+
     protected:
         Master& master;
         Netcdf_handle* parent;
@@ -127,11 +130,13 @@ class Netcdf_file : public Netcdf_handle
 {
     public:
         Netcdf_file(Master&, const std::string&, Netcdf_mode, const int mpiid_to_write_int=0);
-        ~Netcdf_file();
+        virtual ~Netcdf_file();
 
         // Do not allow copying or moving of file
         Netcdf_file(const Netcdf_file&) = delete;
         Netcdf_file& operator=(const Netcdf_file&) = delete;
+
+        int get_dim_id(const std::string&);
 
         void sync();
 };
@@ -146,5 +151,7 @@ class Netcdf_group : public Netcdf_handle
         // Do not allow copying or moving of groups.
         Netcdf_group(const Netcdf_group&) = delete;
         Netcdf_group& operator=(const Netcdf_group&) = delete;
+
+        int get_dim_id(const std::string&);
 };
 #endif
