@@ -536,7 +536,8 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 }
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_momentum_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -561,7 +562,8 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 }
 
 template<typename TF>
-void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_prognostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -586,7 +588,8 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 }
 
 template<typename TF>
-void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_diagnostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -835,16 +838,16 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
 {
     const std::string group_name = "default";
 
-    const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
-    const std::vector<std::string> stat_op_w = {"mean","2","3","4"};
-    const std::vector<std::string> stat_op_p = {"mean","2","w","grad"};
+    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux"};
+    const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
+    const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
 
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
         for (auto& it : ap)
         {
-            if(it.first=="w")
+            if (it.first == "w")
                 stats.add_profs(*it.second, "zh", stat_op_w, group_name);
             else
                 stats.add_profs(*it.second, "z", stat_op_def, group_name);
@@ -857,7 +860,7 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
             for (auto& it2 : ap)
             {
                 std::string locstring;
-                if(it2.first == "w")
+                if (it2.first == "w")
                     locstring = "zh";
                 else
                     locstring = "z";
