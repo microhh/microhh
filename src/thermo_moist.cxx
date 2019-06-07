@@ -979,7 +979,7 @@ int Thermo_moist<TF>::get_bl_depth()
 template<typename TF>
 void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 {
-    const std::string group_name = "default";
+    const std::string group_name = "thermo";
 
     bs_stats = bs;
 

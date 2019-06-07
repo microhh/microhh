@@ -520,7 +520,10 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         m.data_file->add_dimension("time");
 
         // Create variables belonging to dimensions.
-        m.iter_var = std::make_unique<Netcdf_variable<int>>(m.data_file->template add_variable<int>("iter", {"time"}));
+        Netcdf_handle& iter_handle =
+            m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
+
+        m.iter_var = std::make_unique<Netcdf_variable<int>>(iter_handle.add_variable<int>("iter", {"time"}));
         m.iter_var->add_attribute("units", "-");
         m.iter_var->add_attribute("long_name", "Iteration number");
 

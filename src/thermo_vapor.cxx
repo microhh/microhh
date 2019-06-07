@@ -655,7 +655,7 @@ int Thermo_vapor<TF>::get_bl_depth()
 template<typename TF>
 void Thermo_vapor<TF>::create_stats(Stats<TF>& stats)
 {
-    const std::string group_name = "default";
+    const std::string group_name = "thermo";
 
     bs_stats = bs;
 

@@ -118,7 +118,7 @@ class Stats
                 const std::string&, const std::string&, const std::string&,
                 Stats_whitelist_type = Stats_whitelist_type::Default);
         void add_profs(const Field3d<TF>&, const std::string&, std::vector<std::string>, const std::string&);
-        void add_tendency(const Field3d<TF>&, const std::string&, const std::string&, const std::string&, const std::string& group_name="tendencies");
+        void add_tendency(const Field3d<TF>&, const std::string&, const std::string&, const std::string&, const std::string& group_name="tend");
 
         void add_covariance(const Field3d<TF>&, const Field3d<TF>&, const std::string&, const std::string& group_name="covariances");
 

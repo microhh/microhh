@@ -584,7 +584,7 @@ int Thermo_dry<TF>::get_bl_depth()
 template <typename TF>
 void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
 {
-    const std::string group_name = "default";
+    const std::string group_name = "thermo";
 
     // Add the profiles to te statistics
     if (stats.get_switch())
