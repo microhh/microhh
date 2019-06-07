@@ -140,7 +140,8 @@ class Netcdf_group : public Netcdf_handle
 {
     public:
         Netcdf_group(
-                Master&, Netcdf_handle*, const int, const int, const std::map<std::string, int>&, const int);
+                Master&, Netcdf_handle*,
+                const int, const int, const int);
 
         // Do not allow copying or moving of groups.
         Netcdf_group(const Netcdf_group&) = delete;

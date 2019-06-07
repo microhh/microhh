@@ -379,14 +379,14 @@ Netcdf_group& Netcdf_handle::add_group(const std::string& name)
     groups.emplace(
             std::piecewise_construct,
             std::forward_as_tuple(name),
-            std::forward_as_tuple(master, this, group_ncid, root_ncid, dims, mpiid_to_write));
+            std::forward_as_tuple(master, this, group_ncid, root_ncid, mpiid_to_write));
 
     return groups.at(name);
 }
 
 Netcdf_group& Netcdf_handle::get_group(const std::string& name)
 {
-    // In case the group is contained in the Netcdf_file, but not yet processed here, add it to the groups.
+    // In case the group is contained in the Netcdf_file, but not yet processed, add it to the groups.
     if (groups.count(name) == 0)
     {
         int group_ncid = -1;
@@ -399,7 +399,7 @@ Netcdf_group& Netcdf_handle::get_group(const std::string& name)
         groups.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(name),
-                std::forward_as_tuple(master, this, group_ncid, root_ncid, dims, mpiid_to_write));
+                std::forward_as_tuple(master, this, group_ncid, root_ncid, mpiid_to_write));
     }
 
     return groups.at(name);
@@ -426,15 +426,14 @@ int Netcdf_handle::get_dimension_size(const std::string& name)
 }
 
 Netcdf_group::Netcdf_group(
-        Master& master, Netcdf_handle* parent_in, const int ncid_in, const int root_ncid_in,
-        const std::map<std::string, int>& dims_in, const int mpiid_to_write_in) :
+        Master& master, Netcdf_handle* parent_in,
+        const int ncid_in, const int root_ncid_in, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
     parent = parent_in;
     mpiid_to_write = mpiid_to_write_in;
     ncid = ncid_in;
     root_ncid = root_ncid_in;
-    dims = dims_in;
 }
 
 std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::string& name)
@@ -499,6 +498,7 @@ bool Netcdf_handle::variable_exists(const std::string& name)
 
 bool Netcdf_handle::group_exists(const std::string& name)
 {
+    // We check the file here, not the group array.
     int nc_check_code = 0;
     int grp_id;
 
