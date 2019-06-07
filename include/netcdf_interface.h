@@ -119,6 +119,6 @@ class Netcdf_file : public Netcdf_handle
 class Netcdf_group : public Netcdf_handle
 {
     public:
-        Netcdf_group(Master&, const int, const int, const int);
+        Netcdf_group(Master&, const int, const int, const std::map<std::string, int>&, const int);
 };
 #endif
