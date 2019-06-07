@@ -16,7 +16,10 @@ class Netcdf_variable
 {
     public:
         Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<int>&);
-        Netcdf_variable(const Netcdf_variable&) = default;
+        Netcdf_variable(const Netcdf_variable&) = delete;
+        Netcdf_variable& operator=(const Netcdf_variable&) = delete;
+        Netcdf_variable(Netcdf_variable&&) = default;
+
         void insert(const std::vector<T>&, const std::vector<int>);
         void insert(const std::vector<T>&, const std::vector<int>, const std::vector<int>);
         void insert(const T, const std::vector<int>);

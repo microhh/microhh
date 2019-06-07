@@ -925,7 +925,9 @@ void Stats<TF>::add_prof(
         // Create the profile variable and the vector at the appropriate size.
         Prof_var<TF> tmp{group_handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
 
-        m.profs.emplace(name, tmp);
+        m.profs.emplace(
+                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+
         m.profs.at(name).ncvar.add_attribute("units", unit);
         m.profs.at(name).ncvar.add_attribute("long_name", longname);
 
@@ -1024,7 +1026,9 @@ void Stats<TF>::add_time_series(
 
         // Create the NetCDF variable
         Time_series_var<TF> tmp{m.data_file->template add_variable<TF>(name, {"time"}), 0.};
-        m.tseries.emplace(name, tmp);
+
+        m.tseries.emplace(
+                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
 
         m.tseries.at(name).ncvar.add_attribute("units", unit);
         m.tseries.at(name).ncvar.add_attribute("long_name", longname);
