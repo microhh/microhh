@@ -121,6 +121,7 @@ namespace
 Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mode, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
+    parent = nullptr;
     mpiid_to_write = mpiid_to_write_in;
     int nc_check_code = 0;
 
@@ -378,7 +379,7 @@ Netcdf_group& Netcdf_handle::add_group(const std::string& name)
     groups.emplace(
             std::piecewise_construct,
             std::forward_as_tuple(name),
-            std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
+            std::forward_as_tuple(master, this, group_ncid, root_ncid, dims, mpiid_to_write));
 
     return groups.at(name);
 }
@@ -398,7 +399,7 @@ Netcdf_group& Netcdf_handle::get_group(const std::string& name)
         groups.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(name),
-                std::forward_as_tuple(master, group_ncid, root_ncid, dims, mpiid_to_write));
+                std::forward_as_tuple(master, this, group_ncid, root_ncid, dims, mpiid_to_write));
     }
 
     return groups.at(name);
@@ -425,10 +426,11 @@ int Netcdf_handle::get_dimension_size(const std::string& name)
 }
 
 Netcdf_group::Netcdf_group(
-        Master& master, const int ncid_in, const int root_ncid_in,
+        Master& master, Netcdf_handle* parent_in, const int ncid_in, const int root_ncid_in,
         const std::map<std::string, int>& dims_in, const int mpiid_to_write_in) :
     Netcdf_handle(master)
 {
+    parent = parent_in;
     mpiid_to_write = mpiid_to_write_in;
     ncid = ncid_in;
     root_ncid = root_ncid_in;
