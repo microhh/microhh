@@ -16,6 +16,8 @@ class Netcdf_variable
 {
     public:
         Netcdf_variable(Master&, Netcdf_handle&, const int, const std::vector<int>&);
+
+        // Do not allow copying of netcdf variable.
         Netcdf_variable(const Netcdf_variable&) = delete;
         Netcdf_variable& operator=(const Netcdf_variable&) = delete;
 
@@ -25,14 +27,16 @@ class Netcdf_variable
         void insert(const std::vector<T>&, const std::vector<int>);
         void insert(const std::vector<T>&, const std::vector<int>, const std::vector<int>);
         void insert(const T, const std::vector<int>);
+
         const std::vector<int> get_dim_sizes() { return dim_sizes; }
+
         void add_attribute(const std::string&, const std::string&);
         void add_attribute(const std::string&, const double);
         void add_attribute(const std::string&, const float);
 
     private:
         Master& master;
-        Netcdf_handle& nc_file;
+        Netcdf_handle& nc_handle;
         const int var_id;
         const std::vector<int> dim_sizes;
 };
@@ -127,7 +131,6 @@ class Netcdf_file : public Netcdf_handle
         // Do not allow copying or moving of file
         Netcdf_file(const Netcdf_file&) = delete;
         Netcdf_file& operator=(const Netcdf_file&) = delete;
-
 
         void sync();
 };

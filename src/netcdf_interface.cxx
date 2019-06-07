@@ -623,14 +623,14 @@ void Netcdf_handle::get_variable(
 // Variable does not communicate with NetCDF library directly.
 template<typename T>
 Netcdf_variable<T>::Netcdf_variable(
-        Master& master, Netcdf_handle& nc_file, const int var_id, const std::vector<int>& dim_sizes) :
-    master(master), nc_file(nc_file), var_id(var_id), dim_sizes(dim_sizes)
+        Master& master, Netcdf_handle& nc_handle, const int var_id, const std::vector<int>& dim_sizes) :
+    master(master), nc_handle(nc_handle), var_id(var_id), dim_sizes(dim_sizes)
 {}
 
 template<typename T>
 void Netcdf_variable<T>::insert(const std::vector<T>& values, const std::vector<int> i_start)
 {
-    nc_file.insert(values, var_id, i_start, dim_sizes);
+    nc_handle.insert(values, var_id, i_start, dim_sizes);
 }
 
 template<typename T>
@@ -639,31 +639,31 @@ void Netcdf_variable<T>::insert(
         const std::vector<int> i_start,
         const std::vector<int> i_count)
 {
-    nc_file.insert(values, var_id, i_start, i_count);
+    nc_handle.insert(values, var_id, i_start, i_count);
 }
 
 template<typename T>
 void Netcdf_variable<T>::insert(const T value, const std::vector<int> i_start)
 {
-    nc_file.insert(value, var_id, i_start, dim_sizes);
+    nc_handle.insert(value, var_id, i_start, dim_sizes);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const std::string& value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const double value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template<typename T>
 void Netcdf_variable<T>::add_attribute(const std::string& name, const float value)
 {
-    nc_file.add_attribute(name, value, var_id);
+    nc_handle.add_attribute(name, value, var_id);
 }
 
 template class Netcdf_variable<double>;
