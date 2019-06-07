@@ -57,7 +57,6 @@ def plot(filename='results.pdf'):
     tke800_4th  = data800_4th[:,8] / data800_4th[1,8]
     mass800_4th = data800_4th[:,9] / data800_4th[1,9]
 
-
     with PdfPages(filename) as pdf:
         plt.figure()
         plt.subplot(131)
@@ -126,12 +125,12 @@ def plot(filename='results.pdf'):
         plt.legend(loc=0, frameon=False)
         pdf.savefig()
 
-executable='microhh'
+executable = 'microhh'
 
 kwargs = {'rkorder' : [3, 4], 'dtmax' : [10, 5, 2.5, 1.25]}
-cases = mht.generator_parameter_change([mht.Case('conservation', casedir = '.', keep=True)], **kwargs )
+cases = mht.generator_parameter_change([mht.Case('conservation', casedir='.', keep=True)], **kwargs )
 
-mht.test_cases(cases,executable,outputfile='conservation.csv')
+mht.test_cases(cases, executable, outputfile='conservation.csv')
 
 plot('conservation.pdf')
 
