@@ -1080,6 +1080,12 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     Array<double,2> ciwp_a(
             std::vector<double>(ciwp->fld.begin(), ciwp->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
+    fields.release_tmp(t_lay);
+    fields.release_tmp(t_lev);
+    fields.release_tmp(h2o);
+    fields.release_tmp(clwp);
+    fields.release_tmp(ciwp);
+
     Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
     Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
     Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
@@ -1136,11 +1142,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     }
 
     fields.release_tmp(tmp);
-    fields.release_tmp(t_lay);
-    fields.release_tmp(t_lev);
-    fields.release_tmp(h2o);
-    fields.release_tmp(clwp);
-    fields.release_tmp(ciwp);
 }
 
 template<typename TF>
@@ -1259,11 +1260,14 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
 
                 // Limit the values between 2.5 and 60.
-                rel_value = std::max(rel_value, 2.5);
-                rel_value = std::min(rel_value, 60.);
+                rel_value = std::max(2.5, std::min(rel_value, 60.));
                 rel({icol, ilay}) = rel_value;
             }
         }
+
+        // Set the ice effective radius to a constant value of 25 micron.
+        for (int i=0; i<rei.size(); ++i)
+            rei.v()[i] = 25.;
 
         // Convert to g/m2.
         for (int i=0; i<clwp_subset.size(); ++i)
