@@ -82,21 +82,51 @@ namespace Thermo_moist_functions
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
     template<typename TF>
-    CUDA_MACRO inline TF esat(const TF T)
+    CUDA_MACRO inline TF esat_liq(const TF T)
     {
         #ifdef __CUDACC__
-        const TF x=fmax(TF(-75.), T-T0<TF>);
+        const TF x = fmax(TF(-75.), T-T0<TF>);
         #else
-        const TF x=std::max(TF(-75.), T-T0<TF>);
+        const TF x = std::max(TF(-75.), T-T0<TF>);
         #endif
 
         return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
     }
 
     template<typename TF>
+    CUDA_MACRO inline TF qsat_liq(const TF p, const TF T)
+    {
+        return ep<TF>*esat_liq(T)/(p-(TF(1.)-ep<TF>)*esat_liq(T));
+    }
+
+    // Saturation vapor pressure over ice, Arden Buck (1981) equation:
+    // es = 611.15 * exp(22.452 * Tc / (272.55 + Tc)), with Tc=T-T0
+    template<typename TF>
+    CUDA_MACRO inline TF esat_ice(const TF T)
+    {
+        const TF x = T-T0<TF>;
+        return TF(611.15)*std::exp(22.452*x / (272.55+x));
+    }
+
+    template<typename TF>
+    CUDA_MACRO inline TF qsat_ice(const TF p, const TF T)
+    {
+        return ep<TF>*esat_ice(T)/(p-(TF(1.)-ep<TF>)*esat_ice(T));
+    }
+
+    // Compute water fraction of condensate following Tomita, 2008.
+    template<typename TF>
+    CUDA_MACRO inline TF water_fraction(const TF T)
+    {
+        return std::max(TF(0.), std::min(T - TF(233.15) / TF(40.), TF(1.)));
+    }
+
+    // Combine the ice and water saturated specific humidities following Tomita, 2008.
+    template<typename TF>
     CUDA_MACRO inline TF qsat(const TF p, const TF T)
     {
-        return ep<TF>*esat(T)/(p-(TF(1.)-ep<TF>)*esat(T));
+        const TF alpha = water_fraction(T);
+        return alpha*qsat_liq(p, T) + (TF(1.)-alpha)*qsat_ice(p, T);
     }
 
     template<typename TF>
@@ -109,6 +139,7 @@ namespace Thermo_moist_functions
     struct Struct_sat_adjust
     {
         TF ql;
+        TF qi;
         TF t;
         TF qs;
     };
@@ -124,9 +155,10 @@ namespace Thermo_moist_functions
         TF tl = thl * exn;
         Struct_sat_adjust<TF> ans =
         {
-            TF(0.),     // ql
-            tl,         // t
-            qsat(p, tl) // qs
+            TF(0.), // ql
+            TF(0.), // qi
+            tl, // t
+            qsat_liq(p, tl) // qs
         };
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
@@ -149,9 +181,11 @@ namespace Thermo_moist_functions
             throw std::runtime_error(error);
         }
 
-        TF ql = std::max(TF(0.), qt - qs);
+        const TF alpha = water_fraction(tnr);
+        TF ql_qi = std::max(TF(0.), qt - qs);
 
-        ans.ql = ql;
+        ans.ql = alpha*ql_qi;
+        ans.qi = ql_qi - ans.ql;
         ans.t  = tnr;
         ans.qs = qs;
         return ans;

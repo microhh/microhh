@@ -280,6 +280,29 @@ namespace
     }
 
     template<typename TF>
+    void calc_ice_water(
+            TF* restrict qi, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qi[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qi;
+                }
+        }
+    }
+
+    template<typename TF>
     void calc_N2(TF* restrict N2, const TF* const restrict thl, const TF* const restrict dzi, TF* restrict thvref,
                  const int istart, const int iend,
                  const int jstart, const int jend,
@@ -841,6 +864,11 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
+    else if (name == "qi")
+    {
+        calc_ice_water(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
@@ -1043,22 +1071,30 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
     {
         swcross_b = false;
         swcross_ql = false;
+        swcross_qi = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water
         std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
         std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
+        std::vector<std::string> allowed_crossvars_qi = {"ql"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
+        std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
 
         if (bvars.size() > 0)
             swcross_b  = true;
+
         if (qlvars.size() > 0)
             swcross_ql = true;
+
+        if (qivars.size() > 0)
+            swcross_qi = true;
 
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
+        crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
     }
 }
 
@@ -1177,10 +1213,11 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(output->flux_bot.data(), "bfluxbot", iotime);
     }
 
-    if(swcross_ql)
+    if (swcross_ql)
     {
         get_thermo_field(*output, "ql", false, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "ql")
@@ -1193,6 +1230,17 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qltop", iotime);
     }
 
+    if (swcross_qi)
+    {
+        get_thermo_field(*output, "qi", false, true);
+    }
+
+    for (auto& it : crosslist)
+    {
+        if (it == "qi")
+            cross.cross_simple(output->fld.data(), "ql", iotime, gd.sloc);
+    }
+ 
     fields.release_tmp(output);
 }
 
