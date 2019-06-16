@@ -1048,6 +1048,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*ql, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(ql);
 
+        auto qi = fields.get_tmp();
+        qi->name = "qi";
+        qi->longname = "Ice";
+        qi->unit = "kg kg-1";
+        stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        fields.release_tmp(qi);
+
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
@@ -1153,6 +1160,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
     fields.release_tmp(ql);
+
+    // calculate the ice stats
+    auto qi = fields.get_tmp();
+    qi->loc = gd.sloc;
+
+    get_thermo_field(*qi, "qi", true, true);
+    stats.calc_stats("qi", *qi, no_offset, no_threshold);
+
+    fields.release_tmp(qi);
 
     if (bs_stats.swupdatebasestate)
     {
