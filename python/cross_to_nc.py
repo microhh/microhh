@@ -57,7 +57,6 @@ for mode in modes:
                 at_surface = True
             else:
                 at_surface = False
-            print("CvH", variable, mode)
 
             filename = "{0}.{1}.nc".format(variable, mode)
             if not at_surface:
