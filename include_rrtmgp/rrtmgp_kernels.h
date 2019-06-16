@@ -169,6 +169,15 @@ namespace rrtmgp_kernels
             FLOAT_TYPE* sfc_alb_dir_gpt, FLOAT_TYPE* sfc_alb_dif_gpt,
             FLOAT_TYPE* gpt_flux_up, FLOAT_TYPE* gpt_flux_dn, FLOAT_TYPE* gpt_flux_dir);
 
+    extern "C" void increment_2stream_by_2stream(
+            int* ncol, int* nlev, int* ngpt,
+            FLOAT_TYPE* tau_inout, FLOAT_TYPE* ssa_inout, FLOAT_TYPE* g_inout,
+            FLOAT_TYPE* tau_in, FLOAT_TYPE* ssa_in, FLOAT_TYPE* g_in);
+
+    extern "C" void increment_1scalar_by_1scalar(
+            int* ncol, int* nlev, int* ngpt,
+            FLOAT_TYPE* tau_inout, FLOAT_TYPE* tau_in);
+
     extern "C" void inc_2stream_by_2stream_bybnd(
             int* ncol, int* nlev, int* ngpt,
             FLOAT_TYPE* tau_inout, FLOAT_TYPE* ssa_inout, FLOAT_TYPE* g_inout,
