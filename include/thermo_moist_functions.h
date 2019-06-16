@@ -118,7 +118,7 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF water_fraction(const TF T)
     {
-        return std::max(TF(0.), std::min(T - TF(233.15) / TF(40.), TF(1.)));
+        return std::max(TF(0.), std::min((T - TF(233.15)) / TF(40.), TF(1.)));
     }
 
     // Combine the ice and water saturated specific humidities following Tomita, 2008.
