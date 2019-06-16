@@ -1,8 +1,9 @@
 import os
-import microhh_tools as mht     # available in microhh/python directory
+import microhh_tools as mht # available in microhh/python directory
 import argparse
+import collections
 
-#Parse command line and namelist options
+# Parse command line and namelist options
 cross_modes = ['xy', 'xz', 'yz']
 parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
 parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
@@ -23,9 +24,9 @@ nl = mht.Read_namelist(args.filename)
 itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
-starttime  = args.starttime  if args.starttime  is not None else nl['time']['starttime']
-endtime    = args.endtime    if args.endtime    is not None else nl['time']['endtime']
-sampletime = args.sampletime if args.sampletime is not None else nl['cross']['sampletime']
+starttime  = float(args.starttime)  if args.starttime  is not None else nl['time']['starttime']
+endtime    = float(args.endtime)    if args.endtime    is not None else nl['time']['endtime']
+sampletime = float(args.sampletime) if args.sampletime is not None else nl['cross']['sampletime']
 
 if args.modes is None:
     modes = list(nl['cross'].keys() & cross_modes)
@@ -49,22 +50,29 @@ grid = mht.Read_grid(itot, jtot, ktot)
 for mode in modes:
     for variable in variables:
         try:
-            otime = round(starttime / 10**iotimeprec)
+            otime = int(round(starttime / 10**iotimeprec))
             if os.path.isfile("{0}.xy.{1:07d}".format(variable, otime)):
-                if mode is not 'xy':
+                if mode != 'xy':
                     continue
                 at_surface = True
             else:
                 at_surface = False
+            print("CvH", variable, mode)
 
-            filename = "{0}.{1}.nc".format(variable,mode)
+            filename = "{0}.{1}.nc".format(variable, mode)
             if not at_surface:
                 if indexes == None:
                     indexes_local = mht.get_cross_indices(variable, mode)
                 else:
                     indexes_local = indexes
 
-            dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
+            #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
+            dim = collections.OrderedDict()
+            dim['time'] = range(niter)
+            dim['z'] = range(ktot)
+            dim['y'] = range(jtot)
+            dim['x'] = range(itot)
+
             if at_surface:
                 dim.pop('z')
                 n = itot * jtot
@@ -90,11 +98,11 @@ for mode in modes:
             for t in range(niter):
                 for k in range(len(indexes_local)):
                     index = indexes_local[k]
-                    otime = round((starttime + t*sampletime) / 10**iotimeprec)
+                    otime = int(round((starttime + t*sampletime) / 10**iotimeprec))
                     if at_surface:
-                        f_in  = "{0}.{1}.{2:07d}".format(variable, mode, otime)
+                        f_in = "{0}.{1}.{2:07d}".format(variable, mode, otime)
                     else:
-                        f_in  = "{0:}.{1}.{2:05d}.{3:07d}".format(variable, mode, index, otime)
+                        f_in = "{0:}.{1}.{2:05d}.{3:07d}".format(variable, mode, index, otime)
                     try:
                         fin = mht.Read_binary(grid, f_in)
                     except Exception as ex:
@@ -116,6 +124,7 @@ for mode in modes:
 
                     fin.close()
             ncfile.close()
+
         except Exception as ex:
             print(ex)
             print("Failed to create %s"%filename)
