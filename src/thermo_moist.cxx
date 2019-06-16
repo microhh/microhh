@@ -538,7 +538,7 @@ namespace
                     const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
                     clwp[ijk_nogc] = ssa.ql * dpg;
                     ciwp[ijk_nogc] = ssa.qi * dpg;
-                    qv  [ijk_nogc] = qt[ijk] - ssa.qs;
+                    qv  [ijk_nogc] = qt[ijk] - ssa.ql - ssa.qi;
                     T   [ijk_nogc] = ssa.t;
                 }
         }
