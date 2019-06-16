@@ -1484,6 +1484,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 dynamic_cast<Optical_props_2str<double>&>(*optical_props_subset_in),
                 dynamic_cast<Optical_props_2str<double>&>(*cloud_optical_props_in));
 
+        cloud_sw->cloud_optics(
+                cld_mask_liq, cld_mask_ice,
+                clwp_subset, ciwp_subset,
+                rel, rei,
+                *cloud_optical_props_in);
+
         // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
         Array<double,3> gpt_flux_dn    ({n_col_in, n_lev, n_gpt});
