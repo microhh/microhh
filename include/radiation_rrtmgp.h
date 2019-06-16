@@ -96,13 +96,13 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&);
+                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&);
 
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&);
+                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&);
 
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);

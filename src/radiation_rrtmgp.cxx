@@ -931,9 +931,10 @@ void Radiation_rrtmgp<TF>::exec(
         auto t_lev = fields.get_tmp();
         auto h2o   = fields.get_tmp();
         auto clwp  = fields.get_tmp();
+        auto ciwp  = fields.get_tmp();
 
         // Set the input to the radiation on a 3D grid without ghost cells.
-        thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp);
+        thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
 
         // Initialize arrays in double precision, cast when needed.
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
@@ -946,6 +947,8 @@ void Radiation_rrtmgp<TF>::exec(
                 std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
         Array<double,2> clwp_a(
                 std::vector<double>(clwp->fld.begin(), clwp->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+        Array<double,2> ciwp_a(
+                std::vector<double>(ciwp->fld.begin(), ciwp->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
         Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
         Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
@@ -956,7 +959,7 @@ void Radiation_rrtmgp<TF>::exec(
             exec_longwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a);
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
 
             calc_tendency(
                     fields.sd.at("thlt_rad")->fld.data(),
@@ -976,7 +979,7 @@ void Radiation_rrtmgp<TF>::exec(
             exec_shortwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a);
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
 
             calc_tendency(
                     fields.sd.at("thlt_rad")->fld.data(),
@@ -993,6 +996,7 @@ void Radiation_rrtmgp<TF>::exec(
         fields.release_tmp(t_lev);
         fields.release_tmp(h2o);
         fields.release_tmp(clwp);
+        fields.release_tmp(ciwp);
 
         // Increment the rad_time
         next_rad_time += dt_rad;
@@ -1057,9 +1061,10 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     auto t_lev = fields.get_tmp();
     auto h2o   = fields.get_tmp();
     auto clwp  = fields.get_tmp();
+    auto ciwp  = fields.get_tmp();
 
     // Set the input to the radiation on a 3D grid without ghost cells.
-    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp);
+    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
 
     // Initialize arrays in double precision, cast when needed.
     const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
@@ -1072,6 +1077,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> clwp_a(
             std::vector<double>(clwp->fld.begin(), clwp->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
+    Array<double,2> ciwp_a(
+            std::vector<double>(ciwp->fld.begin(), ciwp->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
 
     Array<double,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
     Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
@@ -1108,7 +1115,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         exec_longwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a);
+                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
 
         save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
         save_stats_and_cross(flux_dn, "lw_flux_dn", gd.wloc);
@@ -1121,7 +1128,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         exec_shortwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a);
+                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
 
         save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
         save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
@@ -1133,6 +1140,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     fields.release_tmp(t_lev);
     fields.release_tmp(h2o);
     fields.release_tmp(clwp);
+    fields.release_tmp(ciwp);
 }
 
 template<typename TF>
@@ -1140,7 +1148,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& clwp)
+        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1215,19 +1223,21 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 t_lev  .subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
         // 2. Solve the cloud optical properties.
-        // Assume no ice for now.
         Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-        Array<double,2> ciwp_subset({n_col_in, n_lay});
+        Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
-        // Set the masks. Assume no ice.
-        Array<int,2> cld_mask_liq({n_col_in, n_lay});
+        // Set the masks.
         constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
+
+        Array<int,2> cld_mask_liq({n_col_in, n_lay});
         for (int i=0; i<cld_mask_liq.size(); ++i)
             cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
 
         Array<int,2> cld_mask_ice({n_col_in, n_lay});
+        for (int i=0; i<cld_mask_ice.size(); ++i)
+            cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
 
-        // Compute the effective droplet radius. Assume no ice.
+        // Compute the effective droplet radius.
         Array<double,2> rel({n_col_in, n_lay});
         Array<double,2> rei({n_col_in, n_lay});
 
@@ -1258,6 +1268,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         // Convert to g/m2.
         for (int i=0; i<clwp_subset.size(); ++i)
             clwp_subset.v()[i] *= 1e3;
+
+        for (int i=0; i<ciwp_subset.size(); ++i)
+            ciwp_subset.v()[i] *= 1e3;
 
         cloud_lw->cloud_optics(
                 cld_mask_liq, cld_mask_ice,
@@ -1340,7 +1353,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_dn_dir, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& clwp)
+        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
