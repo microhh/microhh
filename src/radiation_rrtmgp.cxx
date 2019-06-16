@@ -1251,9 +1251,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
             for (int icol=1; icol<=n_col_in; ++icol)
             {
-                // Simple constant value of 10 microh.
-                // rel({ilay, icol}) = TF(10.)*cld_mask_liq({ilay, icol});
-
                 // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                 // CvH: Potentially better using moments from microphysics.
                 double rel_value = cld_mask_liq({icol, ilay}) * fac *
@@ -1433,34 +1430,54 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
         // 2. Solve the cloud optical properties.
-        // Assume no ice for now.
         Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+        Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
-        // Convert to g/m2.
-        for (int i=0; i<clwp_subset.size(); ++i)
-            clwp_subset.v()[i] *= 1000;
+        // Set the masks.
+        constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
 
-        Array<double,2> ciwp_subset({n_col_in, n_lay});
-
-        // Set the masks. Assume no ice
         Array<int,2> cld_mask_liq({n_col_in, n_lay});
-        constexpr double mask_min_value = 1e-20;
         for (int i=0; i<cld_mask_liq.size(); ++i)
             cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
 
         Array<int,2> cld_mask_ice({n_col_in, n_lay});
+        for (int i=0; i<cld_mask_ice.size(); ++i)
+            cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
 
-        // Compute the effective droplet radius. Assume no ice.
+        // Compute the effective droplet radius.
         Array<double,2> rel({n_col_in, n_lay});
         Array<double,2> rei({n_col_in, n_lay});
-        for (int i=0; i<rel.size(); ++i)
-            rel.v()[i] = TF(10.)*cld_mask_liq.v()[i];
 
-        cloud_sw->cloud_optics(
-                cld_mask_liq, cld_mask_ice,
-                clwp_subset, ciwp_subset,
-                rel, rei,
-                *cloud_optical_props_in);
+        const double sig_g = 1.34;
+        const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+        const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
+
+        for (int ilay=1; ilay<=n_lay; ++ilay)
+        {
+            const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+            for (int icol=1; icol<=n_col_in; ++icol)
+            {
+                // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
+                // CvH: Potentially better using moments from microphysics.
+                double rel_value = cld_mask_liq({icol, ilay}) * fac *
+                    std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
+
+                // Limit the values between 2.5 and 60.
+                rel_value = std::max(2.5, std::min(rel_value, 60.));
+                rel({icol, ilay}) = rel_value;
+            }
+        }
+
+        // Set the ice effective radius to a constant value of 25 micron.
+        for (int i=0; i<rei.size(); ++i)
+            rei.v()[i] = 25.;
+
+        // Convert to g/m2.
+        for (int i=0; i<clwp_subset.size(); ++i)
+            clwp_subset.v()[i] *= 1e3;
+
+        for (int i=0; i<ciwp_subset.size(); ++i)
+            ciwp_subset.v()[i] *= 1e3;
 
         // Add the cloud optical props to the gas optical properties.
         add_to(
