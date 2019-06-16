@@ -53,6 +53,10 @@ Cloud_optics<TF>::Cloud_optics(
     this->lut_asyliq = lut_asyliq;
 
     // Choose the smooth ice particle category.
+    this->lut_extice.set_dims({lut_extice.dim(1), lut_extice.dim(2)});
+    this->lut_ssaice.set_dims({lut_ssaice.dim(1), lut_ssaice.dim(2)});
+    this->lut_asyice.set_dims({lut_asyice.dim(1), lut_asyice.dim(2)});
+
     constexpr int icergh = 1;
     for (int ibnd=1; ibnd<=lut_extice.dim(2); ++ibnd)
         for (int isize=1; isize<=lut_extice.dim(1); ++isize)
@@ -156,6 +160,11 @@ void Cloud_optics<TF>::cloud_optics(
             for (int icol=1; icol<=ncol; ++icol)
                 clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
 
+    // Add the ice optical properties to those of the clouds.
+    add_to(
+            dynamic_cast<Optical_props_2str<double>&>(clouds_liq),
+            dynamic_cast<Optical_props_2str<double>&>(clouds_ice));
+
     // Process the calculated optical properties.
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
         for (int ilay=1; ilay<=nlay; ++ilay)
@@ -208,6 +217,11 @@ void Cloud_optics<TF>::cloud_optics(
             #pragma ivdep
             for (int icol=1; icol<=ncol; ++icol)
                 clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
+
+    // Add the ice optical properties to those of the clouds.
+    add_to(
+            dynamic_cast<Optical_props_1scl<double>&>(clouds_liq),
+            dynamic_cast<Optical_props_1scl<double>&>(clouds_ice));
 
     // Process the calculated optical properties.
     // CvH. I did not add the 1. - ssa multiplication as we do not combine 1scl and 2str.
