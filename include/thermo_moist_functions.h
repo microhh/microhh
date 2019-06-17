@@ -147,6 +147,8 @@ namespace Thermo_moist_functions
     template<typename TF>
     inline Struct_sat_adjust<TF> sat_adjust(const TF thl, const TF qt, const TF p, const TF exn)
     {
+        using Fast_math::pow2;
+
         int niter = 0;
         int nitermax = 100;
         TF tnr_old = TF(1.e9);
@@ -158,20 +160,21 @@ namespace Thermo_moist_functions
             TF(0.), // ql
             TF(0.), // qi
             tl, // t
-            qsat_liq(p, tl) // qs
+            qsat(p, tl) // qs
         };
 
-        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
+        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
         if (qt-ans.qs <= TF(0.))
             return ans;
 
+        // Saturation adjustment solver.
         TF tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-4) && niter < nitermax)
         {
             ++niter;
             tnr_old = tnr;
             qs = qsat(p, tnr);
-            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt) / (TF(1.)+(Fast_math::pow2(Lv<TF>)*qs) / (Rv<TF>*cp<TF>*Fast_math::pow2(tnr)));
+            tnr = tnr - (tnr + Lv<TF>/cp<TF>*(qs-qt) - tl) / (TF(1.) + pow2(Lv<TF>)*qs / (Rv<TF>*cp<TF>*pow2(tnr)));
         }
 
         if (niter == nitermax)
@@ -188,6 +191,7 @@ namespace Thermo_moist_functions
         ans.qi = ql_qi - ans.ql;
         ans.t  = tnr;
         ans.qs = qs;
+
         return ans;
     }
 
