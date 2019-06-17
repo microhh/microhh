@@ -13,7 +13,7 @@ def calc_p_q_T_thl_o3(z):
     q = q_0 * np.exp(-z/z_q1) * np.exp(-(z/z_q2)**2)
 
     # CvH hack to remove moisture jump.
-    q_t = q_0 * np.exp(-z_t/z_q1) * np.exp(-(z_t/z_q2)**2)
+    # q_t = q_0 * np.exp(-z_t/z_q1) * np.exp(-(z_t/z_q2)**2)
 
     i_above_zt = np.where(z > z_t)
     q[i_above_zt] = q_t
