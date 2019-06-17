@@ -1479,16 +1479,16 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         for (int i=0; i<ciwp_subset.size(); ++i)
             ciwp_subset.v()[i] *= 1e3;
 
-        // Add the cloud optical props to the gas optical properties.
-        add_to(
-                dynamic_cast<Optical_props_2str<double>&>(*optical_props_subset_in),
-                dynamic_cast<Optical_props_2str<double>&>(*cloud_optical_props_in));
-
         cloud_sw->cloud_optics(
                 cld_mask_liq, cld_mask_ice,
                 clwp_subset, ciwp_subset,
                 rel, rei,
                 *cloud_optical_props_in);
+
+        // Add the cloud optical props to the gas optical properties.
+        add_to(
+                dynamic_cast<Optical_props_2str<double>&>(*optical_props_subset_in),
+                dynamic_cast<Optical_props_2str<double>&>(*cloud_optical_props_in));
 
         // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});

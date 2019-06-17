@@ -225,6 +225,7 @@ void Cloud_optics<TF>::cloud_optics(
 
     // Process the calculated optical properties.
     // CvH. I did not add the 1. - ssa multiplication as we do not combine 1scl and 2str.
+    // CvH. This is a redundant copy, why not move the data in directly?
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
         for (int ilay=1; ilay<=nlay; ++ilay)
             #pragma ivdep
