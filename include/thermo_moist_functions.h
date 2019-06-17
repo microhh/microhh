@@ -30,6 +30,7 @@
 #  define CUDA_MACRO
 #endif
 
+#include <iostream>
 #include "constants.h"
 #include "fast_math.h"
 
@@ -174,12 +175,27 @@ namespace Thermo_moist_functions
          * Claussius-Clapeyron (desat/dT = Lv*esat / (Rv*T^2)).
          */
         TF tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-4) && niter < nitermax)
+        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
         {
             ++niter;
             tnr_old = tnr;
             qs = qsat(p, tnr);
-            tnr = tnr - (tnr + Lv<TF>/cp<TF>*(qs-qt) - tl) / (TF(1.) + pow2(Lv<TF>)*qs / (Rv<TF>*cp<TF>*pow2(tnr)));
+            const TF alpha_w = water_fraction(tnr);
+            const TF alpha_i = TF(1.) - alpha_w;
+            const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
+
+            const TF f =
+                tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt 
+                         + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+
+            const TF f_prime = TF(1.) 
+                - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
+                + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
+                + alpha_w*Lv<TF>*Lv<TF>*qs / (Rv<TF>*cp<TF>*pow2(tnr))
+                + alpha_i*Lv<TF>*Ls<TF>*qs / (Rv<TF>*cp<TF>*pow2(tnr));
+
+            // tnr = tnr - (tnr + Lv<TF>/cp<TF>*(qs-qt) - tl) / (TF(1.) + pow2(Lv<TF>)*qs / (Rv<TF>*cp<TF>*pow2(tnr)));
+            tnr -= f / f_prime;
         }
 
         if (niter == nitermax)
@@ -189,13 +205,20 @@ namespace Thermo_moist_functions
             throw std::runtime_error(error);
         }
 
-        const TF alpha = water_fraction(tnr);
-        TF ql_qi = std::max(TF(0.), qt - qs);
+        const TF alpha_w = water_fraction(tnr);
+        const TF alpha_i = TF(1.) - alpha_w;
 
-        ans.ql = alpha*ql_qi;
-        ans.qi = ql_qi - ans.ql;
+        const TF ql_qi = std::max(TF(0.), qt - qs);
+
+        ans.ql = alpha_w*ql_qi;
+        ans.qi = alpha_i*ql_qi;
         ans.t  = tnr;
         ans.qs = qs;
+
+        // std::cout << "CvH: " << alpha_w << ", " <<
+        //     tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt 
+        //              + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs
+        //              << std::endl;
 
         return ans;
     }
