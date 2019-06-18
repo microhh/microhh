@@ -185,10 +185,10 @@ namespace Thermo_moist_functions
             const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
 
             const TF f =
-                tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt 
+                tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
                          + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
 
-            const TF f_prime = TF(1.) 
+            const TF f_prime = TF(1.)
                 - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
                 + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
                 + alpha_w*Lv<TF>*Lv<TF>*qs / (Rv<TF>*cp<TF>*pow2(tnr))
@@ -215,10 +215,9 @@ namespace Thermo_moist_functions
         ans.t  = tnr;
         ans.qs = qs;
 
-        // std::cout << "CvH: " << alpha_w << ", " <<
-        //     tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt 
-        //              + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs
-        //              << std::endl;
+        // const TF error = tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
+        //      + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+        // if (error > 1.e-2) std::cout << "CvH: " << alpha_w << ", " << error << std::endl;
 
         return ans;
     }
