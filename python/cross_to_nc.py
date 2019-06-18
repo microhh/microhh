@@ -42,6 +42,11 @@ precision = args.precision
 # End option parsing
 
 # Calculate the number of iterations
+for time in range(starttime,endtime, sampletime):
+    otime = int(round(time / 10**iotimeprec))
+    if not glob.glob('*.{0:07d}'.format(otime))
+        endtime = time - sampletime
+        break
 niter = int((endtime-starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
