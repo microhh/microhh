@@ -280,7 +280,7 @@ namespace
     }
 
     template<typename TF>
-    void calc_ice_water(
+    void calc_ice(
             TF* restrict qi, TF* restrict thl, TF* restrict qt, TF* restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -298,6 +298,29 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     qi[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qi;
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_condensate(
+            TF* restrict qc, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qc[ijk] = qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs;
                 }
         }
     }
@@ -867,8 +890,13 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
     }
     else if (name == "qi")
     {
-        calc_ice_water(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
-                       gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_ice(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
+    else if (name == "ql_qi")
+    {
+        calc_condensate(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "N2")
     {
