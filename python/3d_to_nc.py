@@ -34,48 +34,53 @@ perslice  = args.perslice
 #End option parsing
 
 # calculate the number of iterations
+for time in range(starttime,endtime, sampletime):
+    otime = int(round(time / 10**iotimeprec))
+    if not glob.glob('*.{0:07d}'.format(otime))
+        endtime = time - sampletime
+        break
 niter = int((endtime-starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
 
 # Loop over the different variables
 for variable in variables:
-        try:
-            filename = "{0}.nc".format(variable)
-            dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
-            if variable is 'u':
-                dim['xh'] = dim.pop('x')
-            if variable is 'v':
-                dim['yh'] = dim.pop('y')
-            if variable is 'w':
-                dim['zh'] = dim.pop('z')
+    try:
+        filename = "{0}.nc".format(variable)
+        dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x': range(itot)}
+        if variable is 'u':
+            dim['xh'] = dim.pop('x')
+        if variable is 'v':
+            dim['yh'] = dim.pop('y')
+        if variable is 'w':
+            dim['zh'] = dim.pop('z')
 
-            ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
+        ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision)
 
-            # Loop through the files and read 3d field
-            for t in range(niter):
-                otime = round((starttime + t*sampletime) / 10**iotimeprec)
-                f_in  = "{0:}.{1:07d}".format(variable, otime)
-                print(f_in)
+        # Loop through the files and read 3d field
+        for t in range(niter):
+            otime = round((starttime + t*sampletime) / 10**iotimeprec)
+            f_in  = "{0:}.{1:07d}".format(variable, otime)
+            print(f_in)
 
-                try:
-                    fin = mht.Read_binary(grid, f_in)
-                except:
-                    print('Stopping: cannot find file {}'.format(f_in))
-                    ncfile.sync()
-                    stop = True
-                    break
+            try:
+                fin = mht.Read_binary(grid, f_in)
+            except:
+                print('Stopping: cannot find file {}'.format(f_in))
+                ncfile.sync()
+                stop = True
+                break
 
-                print("Processing %8s, time=%7i"%(variable, otime))
-                ncfile.dimvar['time'] = otime * 10**iotimeprec
-                if (perslice):
-                    for k in range(ktot):
-                        ncfile.var[t,k,:,:] = fin.read(itot * jtot)
-                else:
-                    ncfile.var[t,:,:,:] = fin.read(itot * jtot * ktot)
+            print("Processing %8s, time=%7i"%(variable, otime))
+            ncfile.dimvar['time'] = otime * 10**iotimeprec
+            if (perslice):
+                for k in range(ktot):
+                    ncfile.var[t,k,:,:] = fin.read(itot * jtot)
+            else:
+                ncfile.var[t,:,:,:] = fin.read(itot * jtot * ktot)
 
-                fin.close()
-            ncfile.close()
-        except:
-            print("Failed to create %s"%filename)
-            ncfile.close()
+            fin.close()
+        ncfile.close()
+    except:
+        print("Failed to create %s"%filename)
+        ncfile.close()
