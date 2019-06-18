@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,6 +31,7 @@
 #endif
 
 #include "constants.h"
+#include "fast_math.h"
 
 namespace Thermo_moist_functions
 {
@@ -104,7 +105,6 @@ namespace Thermo_moist_functions
         return pow((p/p0<TF>),(Rd<TF>/cp<TF>));
     }
 
-
     template<typename TF>
     struct Struct_sat_adjust
     {
@@ -118,24 +118,28 @@ namespace Thermo_moist_functions
     {
         int niter = 0;
         int nitermax = 100;
-        TF ql, tl, tnr_old = TF(1.e9), tnr, qs=TF(0.);
-        tl = thl * exn;
-        Struct_sat_adjust<TF> ans;
+        TF tnr_old = TF(1.e9);
+        TF qs = TF(0.);
+
+        TF tl = thl * exn;
+        Struct_sat_adjust<TF> ans =
+        {
+            TF(0.),     // ql
+            tl,         // t
+            qsat(p, tl) // qs
+        };
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        ans.ql = TF(0.);
-        ans.t = tl;
-        ans.qs = qsat(p, tl);
         if (qt-ans.qs <= TF(0.))
             return ans;
 
-        tnr = tl;
+        TF tnr = tl;
         while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
         {
             ++niter;
             tnr_old = tnr;
             qs = qsat(p, tnr);
-            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(std::pow(Lv<TF>, 2)*qs)/ (Rv<TF>*cp<TF>*std::pow(tnr, 2)));
+            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt) / (TF(1.)+(Fast_math::pow2(Lv<TF>)*qs) / (Rv<TF>*cp<TF>*Fast_math::pow2(tnr)));
         }
 
         if (niter == nitermax)
@@ -145,7 +149,7 @@ namespace Thermo_moist_functions
             throw std::runtime_error(error);
         }
 
-        ql = std::max(TF(0.), qt - qs);
+        TF ql = std::max(TF(0.), qt - qs);
 
         ans.ql = ql;
         ans.t  = tnr;
@@ -162,15 +166,13 @@ namespace Thermo_moist_functions
                          const int kstart, const int kend,
                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
     {
-        const TF thlsurf = TF(0.5)*(thlmean[kstart-1 ]+ thlmean[kstart]);
-        const TF qtsurf  = TF(0.5)*(qtmean[kstart-1] +  qtmean[kstart]);
-
-        TF ql;
+        const TF thlsurf = TF(0.5)*(thlmean[kstart-1] + thlmean[kstart]);
+        const TF qtsurf  = TF(0.5)*(qtmean [kstart-1] + qtmean[kstart]);
 
         // Calculate the values at the surface (half level == kstart)
         prefh[kstart] = pbot;
         exh[kstart]   = exner(prefh[kstart]);
-        ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
+        TF ql         = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
         thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
         rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
