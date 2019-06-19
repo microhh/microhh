@@ -198,7 +198,7 @@ class Read_binary:
         return np.array(st.unpack('{0}{1}{2}'.format(self.en, n, self.prec), self.file.read(n*self.TF)))
 
 class Create_ncfile():
-    def __init__(self, grid, filename, varname, dimensions, precision=''):
+    def __init__(self, grid, filename, varname, dimensions, precision='',compression=True):
         self.ncfile = nc.Dataset(filename, "w", clobber=False)
         if not precision:
             precision = 'f{}'.format(grid.TF)
@@ -229,7 +229,7 @@ class Create_ncfile():
             self.dimvar[key]    = self.ncfile.createVariable(key, precision, (key))
             if key is not 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
-        self.var = self.ncfile.createVariable(varname, precision, tuple(dimensions.keys()),zlib=True)
+        self.var = self.ncfile.createVariable(varname, precision, tuple(dimensions.keys()),zlib=compression)
 
     def sync(self):
         self.ncfile.sync()
