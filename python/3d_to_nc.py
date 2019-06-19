@@ -1,6 +1,7 @@
 import microhh_tools as mht     # available in microhh/python directory
 import argparse
 import os
+import glob
 
 #Parse command line and namelist options
 parser = argparse.ArgumentParser(description='Convert MicroHH 3D binary to netCDF4 files.')
@@ -36,9 +37,10 @@ perslice  = args.perslice
 # calculate the number of iterations
 for time in range(starttime,endtime, sampletime):
     otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime))
+    if not glob.glob('*.{0:07d}'.format(otime)):
         endtime = time - sampletime
         break
+
 niter = int((endtime-starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)

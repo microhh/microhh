@@ -2,6 +2,7 @@ import os
 import microhh_tools as mht # available in microhh/python directory
 import argparse
 import collections
+import glob
 
 # Parse command line and namelist options
 cross_modes = ['xy', 'xz', 'yz']
@@ -44,7 +45,7 @@ precision = args.precision
 # Calculate the number of iterations
 for time in range(starttime,endtime, sampletime):
     otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime))
+    if not glob.glob('*.{0:07d}'.format(otime)):
         endtime = time - sampletime
         break
 niter = int((endtime-starttime) / sampletime + 1)
