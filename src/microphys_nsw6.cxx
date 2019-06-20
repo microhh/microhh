@@ -21,9 +21,7 @@
  */
 
 #include <iostream>
-#include <cstdio>
 #include <cmath>
-#include <algorithm>
 
 #include "master.h"
 #include "grid.h"
@@ -38,6 +36,10 @@
 #include "microphys.h"
 #include "microphys_nsw6.h"
 
+// Constants, move out later.
+namespace
+{
+}
 
 namespace
 {
@@ -66,7 +68,6 @@ namespace
         for (int n=0; n<ncells; n++)
             field[n] = TF(0.);
     }
-
 }
 
 template<typename TF>
@@ -159,21 +160,31 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 {
     auto& gd = grid.get_grid_data();
 
-    // Remove spurious negative values from qr and nr fields
-    remove_negative_values(
-            fields.sp.at("qr")->fld.data(), gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
-
-    // Get cloud liquid water specific humidity from thermodynamics
+    // Get liquid water, ice and pressure variables before starting.
     auto ql = fields.get_tmp();
     auto qi = fields.get_tmp();
+
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    // Get pressure and exner function from thermodynamics
     const std::vector<TF>& p     = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
+    // CLOUD WATER -> RAIN
+    // CLOUD WATER -> SNOW
+    // CLOUD WATER -> GRAUPEL
+    // ICE -> SNOW
+    // ICE -> GRAUPEL
+    // RAIN -> VAPOR
+    // RAIN -> SNOW
+    // RAIN -> GRAUPEL
+    // SNOW <-> VAPOR
+    // SNOW -> RAIN
+    // SNOW -> GRAUPEL
+    // GRAUPEL -> RAIN
+    // GRAUPEL <-> VAPOR
+
+    // Release the temp fields and save statistics.
     fields.release_tmp(ql);
     fields.release_tmp(qi);
 
