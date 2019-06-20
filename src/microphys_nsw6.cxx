@@ -68,6 +68,49 @@ namespace
         for (int n=0; n<ncells; n++)
             field[n] = TF(0.);
     }
+
+    // Autoconversion.
+    template<typename TF>
+    void autoconversion(
+            TF* const restrict qrt,
+            TF* const restrict qtt, TF* const restrict thlt,
+            const TF* const restrict qr, const TF* const restrict ql,
+            const TF* const restrict rho, const TF* const restrict exner, const TF nc,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(nc / TF(2.e3));
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*nc / (D_d*rho[k]*ql[ijk]));
+
+                    const TF gamma_saut = TF(0.025);
+                    const TF gamma_gaut = TF(0.09);
+
+                    const TF q_icrt = TF(0.);
+                    const TF q_scrt = TF(6.e-4);
+
+                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut * (T - T0));
+                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut * (T - T0));
+
+                    const TF P_saut = beta_1*(qi[ijk] - q_icrt);
+                    const TF P_gaut = beta_2*(qs[ijk] - q_scrt);
+
+                    // Cloud to rain.
+                    qtt[ijk] -= P_saut;
+                    qrt[ijk] += P_saut;
+
+                    // Snow to graupel.
+                    qst[ijk] -= P_gaut;
+                    qgt[ijk] += P_gaut;
+                }
+    }
 }
 
 template<typename TF>
@@ -171,6 +214,13 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
     // CLOUD WATER -> RAIN
+    autoconversion(
+            fields.st.at("qr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
+
     // CLOUD WATER -> SNOW
     // CLOUD WATER -> GRAUPEL
     // ICE -> SNOW
