@@ -82,5 +82,8 @@ class Microphys_nsw6 : public Microphys<TF>
 
         const std::string tend_name = "micro";
         const std::string tend_longname = "Microphysics";
+
+        // Variables for microphysics.
+        TF N_d; // Number concentration of cloud water (cm-3)
 };
 #endif

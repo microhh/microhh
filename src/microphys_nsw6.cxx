@@ -39,6 +39,9 @@
 // Constants, move out later.
 namespace
 {
+    template<typename TF> constexpr TF N_0r = 8.e6; // Intercept parameter rain (m-4).
+    template<typename TF> constexpr TF N_0s = 3.e6; // Intercept parameter snow (m-4).
+    template<typename TF> constexpr TF N_0g = 4.e6; // Intercept parameter graupel (m-4).
 }
 
 namespace
@@ -72,15 +75,20 @@ namespace
     // Autoconversion.
     template<typename TF>
     void autoconversion(
-            TF* const restrict qrt,
+            TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
-            const TF* const restrict qr, const TF* const restrict ql,
-            const TF* const restrict rho, const TF* const restrict exner, const TF nc,
+            const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
+            const TF* const restrict qt, const TF* const restrict thl,
+            const TF* const restrict ql, const TF* const restrict qi,
+            const TF* const restrict rho, const TF* const restrict exner,
+            const TF N_d,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(nc / TF(2.e3));
+        using Fast_math::pow2;
+
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3));
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -88,29 +96,53 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*nc / (D_d*rho[k]*ql[ijk]));
 
-                    const TF gamma_saut = TF(0.025);
-                    const TF gamma_gaut = TF(0.09);
+                    // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
+                    const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
 
-                    const TF q_icrt = TF(0.);
-                    const TF q_scrt = TF(6.e-4);
+                    constexpr TF gamma_saut = TF(0.025);
+                    constexpr TF gamma_gaut = TF(0.09);
 
-                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut * (T - T0));
-                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut * (T - T0));
+                    constexpr TF q_icrt = TF(0.);
+                    constexpr TF q_scrt = TF(6.e-4);
 
+                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut * (T - T0<TF>));
+                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut * (T - T0<TF>));
+
+                    // Calculate the three autoconversion rates.
+                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
                     const TF P_saut = beta_1*(qi[ijk] - q_icrt);
                     const TF P_gaut = beta_2*(qs[ijk] - q_scrt);
 
                     // Cloud to rain.
+                    qtt[ijk] -= P_raut;
+                    qrt[ijk] += P_raut;
+
+                    // Ice to snow.
                     qtt[ijk] -= P_saut;
-                    qrt[ijk] += P_saut;
+                    qst[ijk] += P_saut;
 
                     // Snow to graupel.
                     qst[ijk] -= P_gaut;
                     qgt[ijk] += P_gaut;
                 }
     }
+
+    // Accretion.
+    /*
+    template<typename TF>
+    void accretion(
+            TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
+            TF* const restrict qtt, TF* const restrict thlt,
+            const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
+            const TF* const restrict ql, const TF* const restrict qi,
+            const TF* const restrict rho, const TF* const restrict exner, const TF nc,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+    }
+    */
 }
 
 template<typename TF>
@@ -123,7 +155,7 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     // cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    // Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "", 70e6);
+    N_d = inputin.get_item<TF>("micro", "Nd", "", 50); // CvH: cm-3 do we need conversion, or do we stick with Tomita?
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
@@ -210,13 +242,18 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    const std::vector<TF>& p     = thermo.get_p_vector();
+    const std::vector<TF>& p = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
     // CLOUD WATER -> RAIN
     autoconversion(
-            fields.st.at("qr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-            fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+            fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
+            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
+            fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
+            ql->fld.data(), qi->fld.data(),
+            fields.rhoref.data(), exner.data(),
+            this->N_d,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
