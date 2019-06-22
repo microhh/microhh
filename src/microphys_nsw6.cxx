@@ -405,7 +405,7 @@ namespace
 
                     // Tomita Eq. 64
                     const TF P_sdep = (delta_3 - TF(1.)) * P_sdep_ssub;
-                    const TF P_gdep = (delta_3 - TF(1.)) * P_gdep_ssub;
+                    const TF P_gdep = (delta_3 - TF(1.)) * P_gdep_gsub;
 
                     // Tomita Eq. 65
                     const TF P_ssub = delta_3 * P_sdep_ssub;
@@ -435,7 +435,7 @@ namespace
                     constexpr TF B_prime = TF(100.);
                     const TF P_gfrz =
                         TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
-                        * (std::exp(A_prime * (T0 - T)) - TF(1.)) / pow7(lambda_r);
+                        * (std::exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
 
                     // COMPUTE THE TENDENCIES.
                     // Flag the sign of the absolute temperature.
@@ -463,16 +463,36 @@ namespace
                     qgt[ijk] += P_raci_g + P_gaci;
 
                     // Rain to graupel.
-                    qrt[ijk] -= P_gacr + P_iacr_g + P_sacr_g * T_neg;
-                    qgt[ijk] += P_gacr + P_iacr_g + P_sacr_g * T_neg;
+                    qrt[ijk] -= P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                    qgt[ijk] += P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
 
                     // Rain to snow.
                     qrt[ijk] -= P_sacr_s * T_neg + P_iacr_s;
                     qst[ijk] += P_sacr_s * T_neg + P_iacr_s;
 
+                    // Rain to vapor.
+                    qrt[ijk] -= P_revp;
+                    qtt[ijk] += P_revp;
+
+                    // Snow to rain.
+                    qst[ijk] -= P_smlt * T_pos;
+                    qrt[ijk] += P_smlt * T_pos;
+
                     // Snow to graupel.
                     qst[ijk] -= P_gacs + P_racs;
                     qgt[ijk] += P_gacs + P_racs;
+
+                    // Snow to vapor.
+                    qst[ijk] -= P_sdep + P_ssub;
+                    qtt[ijk] += P_sdep + P_ssub;
+
+                    // Graupel to rain.
+                    qgt[ijk] -= P_gmlt * T_pos;
+                    qrt[ijk] += P_gmlt * T_pos;
+
+                    // Graupel to vapor.
+                    qst[ijk] -= P_gdep + P_gsub;
+                    qtt[ijk] += P_gdep + P_gsub;
                 }
         }
     }
