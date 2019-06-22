@@ -185,7 +185,7 @@ namespace
                     // Ice to snow.
                     qtt[ijk] -= P_saut;
                     qst[ijk] += P_saut;
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * P_saut;
 
                     // Snow to graupel.
                     qst[ijk] -= P_gaut;
@@ -554,7 +554,7 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     // cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    N_d = inputin.get_item<TF>("micro", "Nd", "", 50); // CvH: cm-3 do we need conversion, or do we stick with Tomita?
+    N_d = inputin.get_item<TF>("micro", "Nd", "", 50.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
@@ -654,7 +654,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     const std::vector<TF>& p = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
-    // CLOUD WATER -> RAIN
     autoconversion(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
