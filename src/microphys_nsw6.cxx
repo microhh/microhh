@@ -76,6 +76,11 @@ namespace
     template<typename TF> constexpr TF E_gr = 1.;  // Collection efficiency of graupel for rain.
 
     template<typename TF> constexpr TF M_i = 4.19e-13; // Mass of one cloud ice particle.
+
+    template<typename TF> constexpr TF gamma_sacr = 0.025;
+    template<typename TF> constexpr TF gamma_saut = 0.025;
+    template<typename TF> constexpr TF gamma_gacs = 0.09;
+    template<typename TF> constexpr TF gamma_gaut = 0.09;
 }
 
 namespace
@@ -134,14 +139,11 @@ namespace
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
 
-                    constexpr TF gamma_saut = TF(0.025);
-                    constexpr TF gamma_gaut = TF(0.09);
-
                     constexpr TF q_icrt = TF(0.);
                     constexpr TF q_scrt = TF(6.e-4);
 
-                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut * (T - T0<TF>));
-                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut * (T - T0<TF>));
+                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>));
+                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>));
 
                     // Calculate the three autoconversion rates.
                     const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
@@ -234,17 +236,40 @@ namespace
                     // * std::pow(lambda_r[k], TF(6.) + d_r<TF>))
                     const int ijk = i + j*jj + k*kk;
 
+                    // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
+                    const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
+
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
                             / (rho[k] * qr[ijk]),
                             TF(1.) / (b_r<TF> + TF(1.)) );
 
+                    const TF lambda_s = std::pow(
+                            a_s<TF> * N_0r<TF> * std::tgamma(b_s<TF> + TF(1.))
+                            / (rho[k] * qs[ijk]),
+                            TF(1.) / (b_s<TF> + TF(1.)) );
+
+                    const TF lambda_g = std::pow(
+                            a_g<TF> * N_0r<TF> * std::tgamma(b_g<TF> + TF(1.))
+                            / (rho[k] * qg[ijk]),
+                            TF(1.) / (b_g<TF> + TF(1.)) );
+
                     // Tomita Eq. 28
                     const TF V_Tr =
                         c_r<TF> * rho0_rho_sqrt
                         * std::tgamma(b_r<TF> + d_r<TF> + TF(1.)) / std::tgamma(b_r<TF> + TF(1.))
                         * std::pow(lambda_r, -d_r<TF>);
+
+                    const TF V_Ts =
+                        c_s<TF> * rho0_rho_sqrt
+                        * std::tgamma(b_s<TF> + d_s<TF> + TF(1.)) / std::tgamma(b_s<TF> + TF(1.))
+                        * std::pow(lambda_s, -d_s<TF>);
+
+                    const TF V_Tg =
+                        c_g<TF> * rho0_rho_sqrt
+                        * std::tgamma(b_g<TF> + d_g<TF> + TF(1.)) / std::tgamma(b_g<TF> + TF(1.))
+                        * std::pow(lambda_g, -d_g<TF>);
 
                     // Tomita Eq. 29
                     const TF P_iacr = fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
@@ -262,6 +287,18 @@ namespace
                     // Tomita Eq. 33
                     const TF P_raci_s = (TF(1.) - delta_1) * P_raci;
                     const TF P_raci_g = delta_1 * P_raci;
+
+                    // Tomita Eq. 34, 35
+                    const TF P_racw = fac_racw / std::pow(lambda_r, TF(3.) + d_r<TF>) * ql[ijk];
+                    const TF P_sacw = fac_sacw / std::pow(lambda_s, TF(3.) + d_s<TF>) * ql[ijk];
+
+                    // Tomita Eq. 39
+                    const TF E_si = std::exp(gamma_sacr<TF> * (T - T0<TF>));
+
+                    // Tomita Eq. 36 - 38
+                    const TF P_saci = fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
+                    const TF P_gacw = fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
+                    const TF P_gaci = fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
                 }
         }
     }
