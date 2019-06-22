@@ -197,6 +197,36 @@ namespace
                 / TF(4.)
                 * rho0_rho_sqrt;
 
+            // Part of Tomita Eq. 34
+            const TF fac_racw =
+                pi<TF> * E_rw<TF> * N_0r<TF> * c_r<TF> * std::tgamma(TF(3.) + d_r<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
+            // Part of Tomita Eq. 35
+            const TF fac_sacw =
+                pi<TF> * E_sw<TF> * N_0s<TF> * c_s<TF> * std::tgamma(TF(3.) + d_s<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
+            // Part of Tomita Eq. 36 (E_si is temperature dependent and missing therefore here).
+            const TF fac_saci =
+                pi<TF> * N_0s<TF> * c_s<TF> * std::tgamma(TF(3.) + d_s<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
+            // Part of Tomita Eq. 37
+            const TF fac_gacw =
+                pi<TF> * E_gw<TF> * N_0g<TF> * c_g<TF> * std::tgamma(TF(3.) + d_g<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
+            // Part of Tomita Eq. 38
+            const TF fac_gaci =
+                pi<TF> * E_gi<TF> * N_0g<TF> * c_g<TF> * std::tgamma(TF(3.) + d_g<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
