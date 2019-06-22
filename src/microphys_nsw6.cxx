@@ -446,44 +446,47 @@ namespace
                     // Cloud to rain.
                     qtt[ijk] -= P_racw + P_sacw * T_pos;
                     qrt[ijk] += P_racw + P_sacw * T_pos;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * (P_racw + P_sacw * T_pos);
 
                     // Cloud to graupel.
                     qtt[ijk] -= P_gacw;
                     qgt[ijk] += P_gacw;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * P_gacw;
 
                     // Cloud to snow.
                     qtt[ijk] -= P_sacw * T_neg;
                     qst[ijk] += P_sacw * T_neg;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * (P_sacw * T_neg);
 
                     // Ice to snow.
                     qtt[ijk] -= P_raci_s + P_saci;
                     qst[ijk] += P_raci_s + P_saci;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * (P_raci_s + P_saci);
 
                     // Ice to graupel.
                     qtt[ijk] -= P_raci_g + P_gaci;
                     qgt[ijk] += P_raci_g + P_gaci;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * (P_raci_g + P_gaci);
 
                     // Rain to graupel.
                     qrt[ijk] -= P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
                     qgt[ijk] += P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * (P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg);
 
                     // Rain to snow.
                     qrt[ijk] -= P_sacr_s * T_neg + P_iacr_s;
                     qst[ijk] += P_sacr_s * T_neg + P_iacr_s;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * (P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg);
 
                     // Rain to vapor.
                     qrt[ijk] -= P_revp;
                     qtt[ijk] += P_revp;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * P_revp;
 
                     // Snow to rain.
                     qst[ijk] -= P_smlt * T_pos;
                     qrt[ijk] += P_smlt * T_pos;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * P_smlt * T_pos;
 
                     // Snow to graupel.
                     qst[ijk] -= P_gacs + P_racs;
@@ -492,16 +495,17 @@ namespace
                     // Snow to vapor.
                     qst[ijk] -= P_sdep + P_ssub;
                     qtt[ijk] += P_sdep + P_ssub;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * (P_sdep + P_ssub);
 
                     // Graupel to rain.
                     qgt[ijk] -= P_gmlt * T_pos;
                     qrt[ijk] += P_gmlt * T_pos;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * (P_gmlt * T_pos);
 
                     // Graupel to vapor.
                     qst[ijk] -= P_gdep + P_gsub;
                     qtt[ijk] += P_gdep + P_gsub;
-                    // thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_saut;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * (P_gdep + P_gsub);
                 }
         }
     }
