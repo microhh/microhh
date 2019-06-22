@@ -299,6 +299,28 @@ namespace
                     const TF P_saci = fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
                     const TF P_gacw = fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
                     const TF P_gaci = fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
+
+                    // Accretion of falling hydrometeors.
+                    // Tomita Eq. 42
+                    const TF delta_2 = TF(1.) - TF( (qr[ijk] >= TF(1.e-4)) | (qs[ijk] >= TF(1.e-4)) );
+
+                    // Tomita Eq. 41
+                    const TF P_racs = (TF(1.) - delta_2)
+                        * pi<TF> * a_s<TF> * std::abs(V_Tr - V_Ts) * E_sr<TF> * N_0s<TF> * N_0r<TF> / (TF(4.)*rho[k])
+                        * (          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_s, b_s<TF> + TF(3.)) * lambda_r )
+                          + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_s, b_s<TF> + TF(2.)) * pow2(lambda_r) )
+                          +          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_s, b_s<TF> + TF(1.)) * pow3(lambda_r) ) );
+
+                    // Tomita Eq. 41
+                    const TF P_sacr =
+                          pi<TF> * a_r<TF> * std::abs(V_Ts - V_Tr) * E_sr<TF> * N_0r<TF> * N_0s<TF> / (TF(4.)*rho[k])
+                        * (          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_s) )
+                          + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_s) )
+                          +          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_s ) );
+
+                    // Tomita Eq. 43
+                    const TF P_sacr_g = (TF(1.) - delta_2) * P_sacr;
+                    const TF P_sacr_s = delta_2 * P_sacr;
                 }
         }
     }
