@@ -200,7 +200,6 @@ namespace
             const TF* const restrict qt, const TF* const restrict thl,
             const TF* const restrict ql, const TF* const restrict qi,
             const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
-            const TF N_d,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
@@ -496,6 +495,39 @@ namespace
                 }
         }
     }
+
+    // Bergeron.
+    template<typename TF>
+    void bergeron(
+            TF* const restrict qst,
+            TF* const restrict qtt, TF* const restrict thlt,
+            const TF* const restrict ql, const TF* const restrict qi,
+            const TF* const restrict rho, const TF* const restrict exner,
+            const TF delta_t,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        constexpr TF m_i40 = TF(2.46e-10);
+        constexpr TF m_i50 = TF(4.8e-10);
+        constexpr TF R_i50 = TF(5.e-5);
+
+        // constexpr TF a1 = 
+        // constexpr TF a2 = 
+
+        // constexpr TF delta_t1 =
+        //     ( std::pow(m_i50, TF(1.) - a_2) - std::pow(m_i40, TF(1.) - a_2) )
+        //     / (a_1 * (TF(1.) - a_2));
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    // To be filled in.
+                }
+    }
 }
 
 template<typename TF>
@@ -618,7 +650,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             fields.rhoref.data(), exner.data(),
             this->N_d,
             gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+            gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
     accretion_and_phase_changes(
@@ -628,33 +660,29 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
             ql->fld.data(), qi->fld.data(),
             fields.rhoref.data(), exner.data(), p.data(),
-            this->N_d,
             gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+            gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
-    // CLOUD WATER -> SNOW
-    // CLOUD WATER -> GRAUPEL
-    // ICE -> SNOW
-    // ICE -> GRAUPEL
-    // RAIN -> VAPOR
-    // RAIN -> SNOW
-    // RAIN -> GRAUPEL
-    // SNOW <-> VAPOR
-    // SNOW -> RAIN
-    // SNOW -> GRAUPEL
-    // GRAUPEL -> RAIN
-    // GRAUPEL <-> VAPOR
-
+    bergeron(
+            fields.st.at("qs")->fld.data(),
+            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+            ql->fld.data(), qi->fld.data(),
+            fields.rhoref.data(), exner.data(),
+            TF(dt),
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+    
     // Release the temp fields and save statistics.
     fields.release_tmp(ql);
     fields.release_tmp(qi);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
-    stats.calc_tend(*fields.st.at("qt"),  tend_name);
-    stats.calc_tend(*fields.st.at("qr"),  tend_name);
-    stats.calc_tend(*fields.st.at("qg"),  tend_name);
-    stats.calc_tend(*fields.st.at("qs"),  tend_name);
+    stats.calc_tend(*fields.st.at("qt" ), tend_name);
+    stats.calc_tend(*fields.st.at("qr" ), tend_name);
+    stats.calc_tend(*fields.st.at("qg" ), tend_name);
+    stats.calc_tend(*fields.st.at("qs" ), tend_name);
 }
 #endif
 
