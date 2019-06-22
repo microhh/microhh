@@ -178,11 +178,6 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        constexpr TF lambda_num_r = a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.));
-        constexpr TF lambda_num_s = a_s<TF> * N_0r<TF> * std::tgamma(b_s<TF> + TF(1.));
-        constexpr TF lambda_num_g = a_g<TF> * N_0r<TF> * std::tgamma(b_g<TF> + TF(1.));
-
-
         for (int k=kstart; k<kend; ++k)
         {
             const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
@@ -314,13 +309,66 @@ namespace
                     // Tomita Eq. 41
                     const TF P_sacr =
                           pi<TF> * a_r<TF> * std::abs(V_Ts - V_Tr) * E_sr<TF> * N_0r<TF> * N_0s<TF> / (TF(4.)*rho[k])
-                        * (          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_s) )
+                        * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_s) )
                           + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_s) )
-                          +          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_s ) );
+                          +          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_s ) );
 
                     // Tomita Eq. 43
                     const TF P_sacr_g = (TF(1.) - delta_2) * P_sacr;
                     const TF P_sacr_s = delta_2 * P_sacr;
+
+                    // Tomita Eq. 49
+                    const TF E_gs = std::min( TF(1.), std::exp(gamma_gacs<TF> * (T - T0<TF>)) );
+
+                    // Tomita Eq. 47
+                    const TF P_gacr =
+                          pi<TF> * a_r<TF> * std::abs(V_Tg - V_Tr) * E_gr<TF> * N_0g<TF> * N_0r<TF> / (TF(4.)*rho[k])
+                        * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_g) )
+                          + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_g) )
+                          +          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_g ) );
+
+                    // Tomita Eq. 48
+                    const TF P_gacs =
+                          pi<TF> * a_s<TF> * std::abs(V_Tg - V_Ts) * E_gs * N_0g<TF> * N_0s<TF> / (TF(4.)*rho[k])
+                        * (          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_s<TF> + TF(1.)) * pow3(lambda_g) )
+                          + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
+                          +          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_s<TF> + TF(3.)) * lambda_g ) );
+
+                    // Flag the sign of the absolute temperature.
+                    const TF T_pos = TF(T >= T0<TF>);
+                    const TF T_neg = TF(1.) - T_pos;
+
+                    // Cloud to rain.
+                    qtt[ijk] -= P_racw + P_sacw * T_pos;
+                    qrt[ijk] += P_racw + P_sacw * T_pos;
+
+                    // Cloud to graupel.
+                    qtt[ijk] -= P_gacw;
+                    qgt[ijk] += P_gacw;
+
+                    // Cloud to snow.
+                    qtt[ijk] -= P_sacw * T_neg;
+                    qst[ijk] += P_sacw * T_neg;
+
+                    // Ice to snow.
+                    qtt[ijk] -= P_raci_s + P_saci;
+                    qst[ijk] += P_raci_s + P_saci;
+
+                    // Ice to graupel.
+                    qtt[ijk] -= P_raci_g + P_gaci;
+                    qgt[ijk] += P_raci_g + P_gaci;
+
+                    // Rain to graupel.
+                    qrt[ijk] -= P_gacr + P_iacr_g + P_sacr_g * T_neg;
+                    qgt[ijk] += P_gacr + P_iacr_g + P_sacr_g * T_neg;
+
+                    // Rain to snow.
+                    qrt[ijk] -= P_sacr_s * T_neg + P_iacr_s;
+                    qst[ijk] += P_sacr_s * T_neg + P_iacr_s;
+
+                    // Snow to graupel.
+                    qst[ijk] -= P_gacs + P_racs;
+                    qgt[ijk] += P_gacs + P_racs;
                 }
         }
     }
@@ -371,9 +419,9 @@ void Microphys_nsw6<TF>::init()
 template<typename TF>
 void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
-    auto& gd = grid.get_grid_data();
+    // auto& gd = grid.get_grid_data();
 
-    const std::string group_name = "thermo";
+    // const std::string group_name = "thermo";
 
     /*
     // Add variables to the statistics
@@ -433,7 +481,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    const std::vector<TF>& p = thermo.get_p_vector();
+    // const std::vector<TF>& p = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
     // CLOUD WATER -> RAIN
@@ -514,9 +562,7 @@ bool Microphys_nsw6<TF>::has_mask(std::string name)
 template<typename TF>
 void Microphys_nsw6<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    auto& gd = grid.get_grid_data();
-
-    std::string message = "Double moment warm microphysics can not provide mask: \"" + mask_name +"\"";
+    std::string message = "NSW6 microphysics scheme can not provide mask: \"" + mask_name +"\"";
     throw std::runtime_error(message);
 }
 
