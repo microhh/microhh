@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <vector>
 
 #include "master.h"
 #include "grid.h"
@@ -39,15 +40,50 @@
 // Constants, move out later.
 namespace
 {
+    template<typename TF> constexpr TF pi = M_PI; // Pi constant.
+    template<typename TF> constexpr TF pi_2 = M_PI*M_PI; // Pi constant squared.
+
+    template<typename TF> constexpr TF rho_w = 1.e3; // Density of water.
+    template<typename TF> constexpr TF rho_s = 1.e2; // Density of snow.
+    template<typename TF> constexpr TF rho_g = 4.e2; // Density of snow.
+
     template<typename TF> constexpr TF N_0r = 8.e6; // Intercept parameter rain (m-4).
     template<typename TF> constexpr TF N_0s = 3.e6; // Intercept parameter snow (m-4).
     template<typename TF> constexpr TF N_0g = 4.e6; // Intercept parameter graupel (m-4).
+
+    template<typename TF> constexpr TF a_r = M_PI*rho_w<TF>/6.; // Empirical constant for m_r.
+    template<typename TF> constexpr TF a_s = M_PI*rho_s<TF>/6.; // Empirical constant for m_s.
+    template<typename TF> constexpr TF a_g = M_PI*rho_g<TF>/6.; // Empirical constant for m_g.
+
+    template<typename TF> constexpr TF b_r = 3.; // Empirical constant for m_r.
+    template<typename TF> constexpr TF b_s = 3.; // Empirical constant for m_s.
+    template<typename TF> constexpr TF b_g = 3.; // Empirical constant for m_g.
+
+    template<typename TF> constexpr TF c_r = 0.5;  // Empirical constant for v_r.
+    template<typename TF> constexpr TF c_s = 4.84; // Empirical constant for v_s.
+    template<typename TF> constexpr TF c_g = 82.5; // Empirical constant for v_g.
+
+    template<typename TF> constexpr TF d_r = 0.5;  // Empirical constant for v_r.
+    template<typename TF> constexpr TF d_s = 0.24; // Empirical constant for v_s.
+    template<typename TF> constexpr TF d_g = 0.24; // Empirical constant for v_g.
+
+    template<typename TF> constexpr TF E_ri = 1.;  // Collection efficiency of ice for rain.
+    template<typename TF> constexpr TF E_rw = 1.;  // Collection efficiency of rain for cloud water.
+    template<typename TF> constexpr TF E_sw = 1.;  // Collection efficiency of snow for cloud water.
+    template<typename TF> constexpr TF E_gw = 1.;  // Collection efficiency of graupel for cloud water.
+    template<typename TF> constexpr TF E_gi = 0.1; // Collection efficiency of graupel for cloud ice.
+    template<typename TF> constexpr TF E_sr = 1.;  // Collection efficiency of snow for rain.
+    template<typename TF> constexpr TF E_gr = 1.;  // Collection efficiency of graupel for rain.
+
+    template<typename TF> constexpr TF M_i = 4.19e-13; // Mass of one cloud ice particle.
 }
 
 namespace
 {
     using namespace Constants;
     using namespace Thermo_moist_functions;
+    using namespace Fast_math;
+
 
     template<typename TF>
     void remove_negative_values(TF* const restrict field,
@@ -86,8 +122,6 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        using Fast_math::pow2;
-
         const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3));
 
         for (int k=kstart; k<kend; k++)
@@ -129,20 +163,78 @@ namespace
     }
 
     // Accretion.
-    /*
     template<typename TF>
     void accretion(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
             const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
+            const TF* const restrict qt, const TF* const restrict thl,
             const TF* const restrict ql, const TF* const restrict qi,
-            const TF* const restrict rho, const TF* const restrict exner, const TF nc,
+            const TF* const restrict rho, const TF* const restrict exner,
+            const TF N_d,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
+        constexpr TF lambda_num_r = a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.));
+        constexpr TF lambda_num_s = a_s<TF> * N_0r<TF> * std::tgamma(b_s<TF> + TF(1.));
+        constexpr TF lambda_num_g = a_g<TF> * N_0r<TF> * std::tgamma(b_g<TF> + TF(1.));
+
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
+
+            // Part of Tomita Eq. 29
+            const TF fac_iacr =
+                pi_2<TF> * E_ri<TF> * N_0r<TF> * c_r<TF> * rho_w<TF> * std::tgamma(TF(6.) + d_r<TF>)
+                / (TF(24.) * M_i<TF>)
+                * rho0_rho_sqrt;
+
+            // Part of Tomita Eq. 32
+            const TF fac_raci =
+                pi<TF> * E_ri<TF> * N_0r<TF> * c_r<TF> * std::tgamma(TF(3.) + d_r<TF>)
+                / TF(4.)
+                * rho0_rho_sqrt;
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    // * std::pow(lambda_r[k], TF(6.) + d_r<TF>))
+                    const int ijk = i + j*jj + k*kk;
+
+                    // Tomita Eq. 27
+                    const TF lambda_r = std::pow(
+                            a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
+                            / (rho[k] * qr[ijk]),
+                            TF(1.) / (b_r<TF> + TF(1.)) );
+
+                    // Tomita Eq. 28
+                    const TF V_Tr =
+                        c_r<TF> * rho0_rho_sqrt
+                        * std::tgamma(b_r<TF> + d_r<TF> + TF(1.)) / std::tgamma(b_r<TF> + TF(1.))
+                        * std::pow(lambda_r, -d_r<TF>);
+
+                    // Tomita Eq. 29
+                    const TF P_iacr = fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
+
+                    // Tomita Eq. 30
+                    const TF delta_1 = TF(qr[ijk] >= TF(1.e-4));
+
+                    // Tomita Eq. 31
+                    const TF P_iacr_s = (TF(1.) - delta_1) * P_iacr;
+                    const TF P_iacr_g = delta_1 * P_iacr;
+
+                    // Tomita Eq. 32
+                    const TF P_raci = fac_raci / std::pow(lambda_r, TF(3.) + d_r<TF>) * qi[ijk];
+
+                    // Tomita Eq. 33
+                    const TF P_raci_s = (TF(1.) - delta_1) * P_raci;
+                    const TF P_raci_g = delta_1 * P_raci;
+                }
+        }
     }
-    */
 }
 
 template<typename TF>
@@ -159,8 +251,8 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
-    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", gd.sloc);
     fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", gd.sloc);
+    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -177,11 +269,21 @@ template<typename TF>
 void Microphys_nsw6<TF>::init()
 {
     auto& gd = grid.get_grid_data();
+
+    lambda_r.resize(gd.kcells);
+    lambda_s.resize(gd.kcells);
+    lambda_g.resize(gd.kcells);
+
+    V_r.resize(gd.kcells);
+    V_s.resize(gd.kcells);
+    V_g.resize(gd.kcells);
 }
 
 template<typename TF>
 void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
+    auto& gd = grid.get_grid_data();
+
     const std::string group_name = "thermo";
 
     /*
@@ -247,6 +349,18 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // CLOUD WATER -> RAIN
     autoconversion(
+            fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
+            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
+            fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
+            ql->fld.data(), qi->fld.data(),
+            fields.rhoref.data(), exner.data(),
+            this->N_d,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
+
+    accretion(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
             fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),

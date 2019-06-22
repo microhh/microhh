@@ -85,5 +85,15 @@ class Microphys_nsw6 : public Microphys<TF>
 
         // Variables for microphysics.
         TF N_d; // Number concentration of cloud water (cm-3)
+
+        // Slope parameters.
+        std::vector<TF> lambda_r;
+        std::vector<TF> lambda_s;
+        std::vector<TF> lambda_g;
+
+        // Terminal velocities.
+        std::vector<TF> V_r;
+        std::vector<TF> V_s;
+        std::vector<TF> V_g;
 };
 #endif
