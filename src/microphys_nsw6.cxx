@@ -67,6 +67,19 @@ namespace
     template<typename TF> constexpr TF d_s = 0.24; // Empirical constant for v_s.
     template<typename TF> constexpr TF d_g = 0.24; // Empirical constant for v_g.
 
+    template<typename TF> constexpr TF C_i = 2006.; // Specific heat of solid water.
+    template<typename TF> constexpr TF C_l = 4218.; // Specific heat of liquid water.
+    template<typename TF> constexpr TF C_vd = 717.6; // Specific heat of dry air (constant volume).
+    template<typename TF> constexpr TF C_vv = 1388.5; // Specific heat of water vapor (constant volume).
+
+    template<typename TF> constexpr TF f_1r = 0.78; // First coefficient of ventilation factor for rain.
+    template<typename TF> constexpr TF f_1s = 0.65; // First coefficient of ventilation factor for snow.
+    template<typename TF> constexpr TF f_1g = 0.78; // First coefficient of ventilation factor for graupel.
+
+    template<typename TF> constexpr TF f_2r = 0.27; // First coefficient of ventilation factor for rain.
+    template<typename TF> constexpr TF f_2s = 0.39; // First coefficient of ventilation factor for snow.
+    template<typename TF> constexpr TF f_2g = 0.27; // First coefficient of ventilation factor for graupel.
+
     template<typename TF> constexpr TF E_ri = 1.;  // Collection efficiency of ice for rain.
     template<typename TF> constexpr TF E_rw = 1.;  // Collection efficiency of rain for cloud water.
     template<typename TF> constexpr TF E_sw = 1.;  // Collection efficiency of snow for cloud water.
@@ -75,12 +88,17 @@ namespace
     template<typename TF> constexpr TF E_sr = 1.;  // Collection efficiency of snow for rain.
     template<typename TF> constexpr TF E_gr = 1.;  // Collection efficiency of graupel for rain.
 
+    template<typename TF> constexpr TF K_a = 2.43e-2;  // Thermal diffusion coefficient of air.
+    template<typename TF> constexpr TF K_d = 2.26e-5;  // Diffusion coefficient of water vapor in air.
+
     template<typename TF> constexpr TF M_i = 4.19e-13; // Mass of one cloud ice particle.
 
     template<typename TF> constexpr TF gamma_sacr = 0.025;
     template<typename TF> constexpr TF gamma_saut = 0.025;
     template<typename TF> constexpr TF gamma_gacs = 0.09;
     template<typename TF> constexpr TF gamma_gaut = 0.09;
+
+    template<typename TF> constexpr TF nu = 1.5e-5; // Kinematic viscosity of air.
 }
 
 namespace
@@ -88,7 +106,6 @@ namespace
     using namespace Constants;
     using namespace Thermo_moist_functions;
     using namespace Fast_math;
-
 
     template<typename TF>
     void remove_negative_values(TF* const restrict field,
@@ -142,14 +159,24 @@ namespace
                     constexpr TF q_icrt = TF(0.);
                     constexpr TF q_scrt = TF(6.e-4);
 
+                    // Tomita Eq. 53
                     const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>));
+
+                    // Tomita Eq. 54
                     const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>));
 
+                    // COMPUTE THE CONVERSION TERMS.
                     // Calculate the three autoconversion rates.
+                    // Tomita Eq. 50
                     const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
+
+                    // Tomita Eq. 52
                     const TF P_saut = beta_1*(qi[ijk] - q_icrt);
+
+                    // Tomita Eq. 54
                     const TF P_gaut = beta_2*(qs[ijk] - q_scrt);
 
+                    // COMPUTE THE TENDENCIES.
                     // Cloud to rain.
                     qtt[ijk] -= P_raut;
                     qrt[ijk] += P_raut;
@@ -166,13 +193,13 @@ namespace
 
     // Accretion.
     template<typename TF>
-    void accretion(
+    void accretion_and_phase_changes(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
             const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
             const TF* const restrict qt, const TF* const restrict thl,
             const TF* const restrict ql, const TF* const restrict qi,
-            const TF* const restrict rho, const TF* const restrict exner,
+            const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
             const TF N_d,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
@@ -266,6 +293,7 @@ namespace
                         * std::tgamma(b_g<TF> + d_g<TF> + TF(1.)) / std::tgamma(b_g<TF> + TF(1.))
                         * std::pow(lambda_g, -d_g<TF>);
 
+                    // COMPUTE THE CONVERSION TERMS.
                     // Tomita Eq. 29
                     const TF P_iacr = fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
 
@@ -334,6 +362,82 @@ namespace
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
                           +          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_s<TF> + TF(3.)) * lambda_g ) );
 
+                    // Compute evaporation and deposition
+                    // Tomita Eq. 57
+                    const TF G_w = TF(1.) / (
+                        Lv<TF> / (K_a<TF> * T) * (Lv<TF>/(Rv<TF> * T) - TF(1.))
+                        + Rv<TF>*T / (K_d<TF> * esat_liq(T)) );
+
+                    // Tomita Eq. 62
+                    const TF G_i = TF(1.) / (
+                        Ls<TF> / (K_a<TF> * T) * (Ls<TF>/(Rv<TF> * T) - TF(1.))
+                        + Rv<TF>*T / (K_d<TF> * esat_ice(T)) );
+
+                    const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p[k], T);
+                    const TF S_i = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_ice(p[k], T);
+
+                    // Tomita Eq. 63
+                    const TF delta_3 = TF( (S_i - TF(1.)) <= TF(0.) );
+
+                    // Tomita Eq. 59
+                    const TF P_revp = 
+                        - TF(2.)*pi<TF> * N_0r<TF> * (std::min(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
+                        * ( f_1r<TF> * std::tgamma(TF(2.)) / pow2(lambda_r)
+                          + f_2r<TF> * std::sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
+                          * std::tgamma( TF(0.5) * (TF(5.) + d_r<TF>) )
+                          / std::pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) );
+
+                    // Tomita Eq. 60
+                    const TF P_sdep_ssub = 
+                        TF(2.)*pi<TF> * N_0s<TF> * (S_i - TF(1.)) * G_i / rho[k]
+                        * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
+                          + f_2s<TF> * std::sqrt(c_s<TF> * rho0_rho_sqrt / nu<TF>)
+                          * std::tgamma( TF(0.5) * (TF(5.) + d_s<TF>) )
+                          / std::pow(lambda_s, TF(0.5) * (TF(5.) + d_s<TF>)) );
+
+                    // Tomita Eq. 51
+                    const TF P_gdep_gsub = 
+                        TF(2.)*pi<TF> * N_0g<TF> * (S_i - TF(1.)) * G_i / rho[k]
+                        * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
+                          + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
+                          * std::tgamma( TF(0.5) * (TF(5.) + d_g<TF>) )
+                          / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) );
+
+                    // Tomita Eq. 64
+                    const TF P_sdep = (delta_3 - TF(1.)) * P_sdep_ssub;
+                    const TF P_gdep = (delta_3 - TF(1.)) * P_gdep_ssub;
+
+                    // Tomita Eq. 65
+                    const TF P_ssub = delta_3 * P_sdep_ssub;
+                    const TF P_gsub = delta_3 * P_gdep_gsub;
+
+                    // Freezing and melting
+                    // Tomita Eq. 67, 68 combined.
+                    const TF P_smlt = 
+                        TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0s<TF> / (rho[k]*Lf<TF>)
+                        * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
+                          + f_2s<TF> * std::sqrt(c_s<TF> * rho0_rho_sqrt / nu<TF>)
+                          * std::tgamma( TF(0.5) * (TF(5.) + d_s<TF>) )
+                          / std::pow(lambda_s, TF(0.5) * (TF(5.) + d_s<TF>)) )
+                        + C_l<TF> * (T - T0<TF>) / Lf<TF> * (P_sacw + P_sacr);
+
+                    // Tomita Eq. 69
+                    const TF P_gmlt = 
+                        TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0g<TF> / (rho[k]*Lf<TF>)
+                        * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
+                          + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
+                          * std::tgamma( TF(0.5) * (TF(5.) + d_g<TF>) )
+                          / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) )
+                        + C_l<TF> * (T - T0<TF>) / Lf<TF> * (P_gacw + P_gacr);
+
+                    // Tomita Eq. 70
+                    constexpr TF A_prime = TF(0.66);
+                    constexpr TF B_prime = TF(100.);
+                    const TF P_gfrz =
+                        TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
+                        * (std::exp(A_prime * (T0 - T)) - TF(1.)) / pow7(lambda_r);
+
+                    // COMPUTE THE TENDENCIES.
                     // Flag the sign of the absolute temperature.
                     const TF T_pos = TF(T >= T0<TF>);
                     const TF T_neg = TF(1.) - T_pos;
@@ -481,7 +585,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    // const std::vector<TF>& p = thermo.get_p_vector();
+    const std::vector<TF>& p = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
     // CLOUD WATER -> RAIN
@@ -497,13 +601,13 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
 
-    accretion(
+    accretion_and_phase_changes(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
             fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
             fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
             ql->fld.data(), qi->fld.data(),
-            fields.rhoref.data(), exner.data(),
+            fields.rhoref.data(), exner.data(), p.data(),
             this->N_d,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,

@@ -48,5 +48,11 @@ namespace Fast_math
     {
         return a*a*a*a;
     }
+
+    template<typename TF>
+    CUDA_MACRO inline TF pow7(const TF a)
+    {
+        return a*a*a*a*a*a*a;
+    }
 }
 #endif
