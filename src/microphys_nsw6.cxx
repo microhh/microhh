@@ -444,6 +444,7 @@ namespace
                         thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
                     }
 
+                    /*
                     // COLD PROCESSES.
                     // Cloud to graupel.
                     if (has_liq)
@@ -542,6 +543,23 @@ namespace
                         qtt[ijk] += graupel_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
                     }
+
+                    cloud_to_rain
+                    rain_to_vapor
+                    rain_to_snow;
+                    snow_to_rain;
+                    graupel_to_rain;
+
+                    cloud_to_snow;
+                    ice_to_snow;
+                    snow_to_vapor;
+                    snow_to_graupel;
+
+                    cloud_to_graupel;
+                    ice_to_graupel;
+                    rain_to_graupel;
+                    graupel_to_vapor;
+                    */
                 }
         }
 
