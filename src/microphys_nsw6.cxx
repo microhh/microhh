@@ -66,7 +66,7 @@ namespace
     template<typename TF> constexpr TF b_s = 3.; // Empirical constant for m_s.
     template<typename TF> constexpr TF b_g = 3.; // Empirical constant for m_g.
 
-    template<typename TF> constexpr TF c_r = 130.; // Empirical constant for v_r.
+    template<typename TF> constexpr TF c_r = 130.; // Empirical constant for v_r (wrong value in Tomita's paper).
     template<typename TF> constexpr TF c_s = 4.84; // Empirical constant for v_s.
     template<typename TF> constexpr TF c_g = 82.5; // Empirical constant for v_g.
 
@@ -230,8 +230,6 @@ namespace
                     // Tomita Eq. 54
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                    // COMPUTE THE CONVERSION TERMS.
-                    // Calculate the three autoconversion rates.
                     // Tomita Eq. 50
                     const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
 
@@ -240,6 +238,7 @@ namespace
 
                     // Tomita Eq. 54
                     const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
+
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
@@ -247,12 +246,12 @@ namespace
                             TF(1.) / (b_r<TF> + TF(1.)) );
 
                     const TF lambda_s = std::pow(
-                            a_s<TF> * N_0r<TF> * std::tgamma(b_s<TF> + TF(1.))
+                            a_s<TF> * N_0s<TF> * std::tgamma(b_s<TF> + TF(1.))
                             / (rho[k] * qs[ijk]),
                             TF(1.) / (b_s<TF> + TF(1.)) );
 
                     const TF lambda_g = std::pow(
-                            a_g<TF> * N_0r<TF> * std::tgamma(b_g<TF> + TF(1.))
+                            a_g<TF> * N_0g<TF> * std::tgamma(b_g<TF> + TF(1.))
                             / (rho[k] * qg[ijk]),
                             TF(1.) / (b_g<TF> + TF(1.)) );
 
@@ -308,7 +307,7 @@ namespace
 
                     // Accretion of falling hydrometeors.
                     // Tomita Eq. 42
-                    const TF delta_2 = TF(1.) - TF( (qr[ijk] >= TF(1.e-4)) | (qs[ijk] >= TF(1.e-4)) );
+                    const TF delta_2 = TF(1.) - TF( (qr[ijk] >= TF(1.e-4)) || (qs[ijk] >= TF(1.e-4)) );
 
                     // Tomita Eq. 41
                     const TF P_racs = (TF(1.) - delta_2)
@@ -317,7 +316,7 @@ namespace
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_s, b_s<TF> + TF(2.)) * pow2(lambda_r) )
                           +          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_s, b_s<TF> + TF(1.)) * pow3(lambda_r) ) );
 
-                    // Tomita Eq. 41
+                    // Tomita Eq. 44
                     const TF P_sacr =
                           pi<TF> * a_r<TF> * std::abs(V_Ts - V_Tr) * E_sr<TF> * N_0r<TF> * N_0s<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_s) )
@@ -348,12 +347,12 @@ namespace
                     // Compute evaporation and deposition
                     // Tomita Eq. 57
                     const TF G_w = TF(1.) / (
-                        Lv<TF> / (K_a<TF> * T) * (Lv<TF>/(Rv<TF> * T) - TF(1.))
+                        Lv<TF> / (K_a<TF> * T) * (Lv<TF> / (Rv<TF> * T) - TF(1.))
                         + Rv<TF>*T / (K_d<TF> * esat_liq(T)) );
 
                     // Tomita Eq. 62
                     const TF G_i = TF(1.) / (
-                        Ls<TF> / (K_a<TF> * T) * (Ls<TF>/(Rv<TF> * T) - TF(1.))
+                        Ls<TF> / (K_a<TF> * T) * (Ls<TF> / (Rv<TF> * T) - TF(1.))
                         + Rv<TF>*T / (K_d<TF> * esat_ice(T)) );
 
                     const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p[k], T);
@@ -444,7 +443,6 @@ namespace
                         thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
                     }
 
-                    /*
                     // COLD PROCESSES.
                     // Cloud to graupel.
                     if (has_liq)
@@ -544,6 +542,7 @@ namespace
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
                     }
 
+                    /*
                     cloud_to_rain
                     rain_to_vapor
                     rain_to_snow;
