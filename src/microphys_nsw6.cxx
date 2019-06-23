@@ -173,10 +173,10 @@ namespace
                     constexpr TF q_scrt = TF(6.e-4);
 
                     // Tomita Eq. 53
-                    const TF beta_1 = TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>));
+                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 54
-                    const TF beta_2 = TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>));
+                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // COMPUTE THE CONVERSION TERMS.
                     // Calculate the three autoconversion rates.
@@ -809,6 +809,9 @@ void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<T
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
+        stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
+        stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
+
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
