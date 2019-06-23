@@ -257,7 +257,6 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    // * std::pow(lambda_r[k], TF(6.) + d_r<TF>))
                     const int ijk = i + j*jj + k*kk;
 
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
@@ -444,12 +443,20 @@ namespace
                     const TF T_pos = TF(T >= T0<TF>);
                     const TF T_neg = TF(1.) - T_pos;
 
+                    // WARM PROCESSES.
                     // Cloud to rain.
                     qtt[ijk] -= P_racw + P_sacw * T_pos;
                     qrt[ijk] += P_racw + P_sacw * T_pos;
                     thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * (P_racw + P_sacw * T_pos);
 
+                    // Rain to vapor.
+                    qrt[ijk] -= P_revp;
+                    qtt[ijk] += P_revp;
+                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * P_revp;
+
+                    // COLD PROCESSES.
                     // Cloud to graupel.
+                    /*
                     qtt[ijk] -= P_gacw;
                     qgt[ijk] += P_gacw;
                     thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * P_gacw;
@@ -479,11 +486,6 @@ namespace
                     qst[ijk] += P_sacr_s * T_neg + P_iacr_s;
                     thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * (P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg);
 
-                    // Rain to vapor.
-                    qrt[ijk] -= P_revp;
-                    qtt[ijk] += P_revp;
-                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * P_revp;
-
                     // Snow to rain.
                     qst[ijk] -= P_smlt * T_pos;
                     qrt[ijk] += P_smlt * T_pos;
@@ -507,6 +509,7 @@ namespace
                     qst[ijk] -= P_gdep + P_gsub;
                     qtt[ijk] += P_gdep + P_gsub;
                     thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * (P_gdep + P_gsub);
+                    */
                 }
         }
     }
@@ -667,7 +670,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
-    /*
     accretion_and_phase_changes(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
@@ -679,6 +681,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
+    /*
     bergeron(
             fields.st.at("qs")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),

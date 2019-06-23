@@ -699,7 +699,7 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-        if (!(cfl>=0. && cfl < 10.))
+        if (!(cfl>=0. && cfl < 10.) || (!std::isfinite(cfl)))
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);
