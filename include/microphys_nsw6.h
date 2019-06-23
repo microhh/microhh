@@ -89,5 +89,7 @@ class Microphys_nsw6 : public Microphys<TF>
         double cfl_max; // CFL due to precipitation.
 
         std::vector<TF> rr_bot; // Rain rate at the bottom.
+        std::vector<TF> rs_bot; // Snow rate at the bottom.
+        std::vector<TF> rg_bot; // Graupel rate at the bottom.
 };
 #endif

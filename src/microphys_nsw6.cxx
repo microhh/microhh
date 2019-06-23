@@ -41,8 +41,8 @@
 // Constants, move out later.
 namespace
 {
-    template<typename TF> constexpr TF ql_min = 1.e-12; // Threshold ql for calculating microphysical terms.
-    template<typename TF> constexpr TF qi_min = 1.e-12; // Threshold qi for calculating microphysical terms.
+    template<typename TF> constexpr TF ql_min = 1.e-7; // Threshold ql for calculating microphysical terms.
+    template<typename TF> constexpr TF qi_min = 1.e-7; // Threshold qi for calculating microphysical terms.
     template<typename TF> constexpr TF qr_min = 1.e-12; // Threshold qr for calculating microphysical terms.
     template<typename TF> constexpr TF qs_min = 1.e-12; // Threshold qs for calculating microphysical terms.
     template<typename TF> constexpr TF qg_min = 1.e-12; // Threshold qg for calculating microphysical terms.
@@ -163,8 +163,8 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = false; // qi[ijk] > qi_min<TF>;
-                    const bool has_snow = false; // qs[ijk] > qs_min<TF>;
+                    const bool has_ice = qi[ijk] > qi_min<TF>;
+                    const bool has_snow = qs[ijk] > qs_min<TF>;
 
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
@@ -289,10 +289,10 @@ namespace
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
 
                     const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = false; // qi[ijk] > qi_min<TF>;
+                    const bool has_ice = qi[ijk] > qi_min<TF>;
                     const bool has_rain = qr[ijk] > qr_min<TF>;
-                    const bool has_snow = false; // qs[ijk] > qs_min<TF>;
-                    const bool has_graupel = false; // qg[ijk] > qg_min<TF>;
+                    const bool has_snow = qs[ijk] > qs_min<TF>;
+                    const bool has_graupel = qg[ijk] > qg_min<TF>;
 
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
@@ -569,7 +569,7 @@ namespace
                     }
 
                     // Graupel to rain.
-                    if (has_snow)
+                    if (has_graupel)
                     {
                         qgt[ijk] -= P_gmlt * T_pos;
                         qrt[ijk] += P_gmlt * T_pos;
@@ -577,34 +577,12 @@ namespace
                     }
 
                     // Graupel to vapor.
-                    if (has_snow)
+                    if (has_graupel)
                     {
-                        qst[ijk] -= P_gdep + P_gsub;
+                        qgt[ijk] -= P_gdep + P_gsub;
                         qtt[ijk] += P_gdep + P_gsub;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * (P_gdep + P_gsub);
                     }
-
-                    // PRECIPITATION
-                    /*
-                    // CvH: I use advection notation with upwind gradient. This is not mass-conserving!
-                    if (has_rain)
-                    {
-                        const TF P_precip_r = V_Tr * (qr[ijk+kk] - qr[ijk]) * dzhi[k+1];
-                        qrt[ijk] += P_precip_r;
-                    }
-
-                    if (has_snow)
-                    {
-                        const TF P_precip_s = V_Ts * (qs[ijk+kk] - qs[ijk]) * dzhi[k+1];
-                        qst[ijk] += P_precip_s;
-                    }
-
-                    if (has_graupel)
-                    {
-                        const TF P_precip_g = V_Tg * (qg[ijk+kk] - qg[ijk]) * dzhi[k+1];
-                        qgt[ijk] += P_precip_g;
-                    }
-                    */
                 }
         }
 
@@ -647,12 +625,15 @@ namespace
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
     void sedimentation_ss08(
-            TF* const restrict qrt, TF* const restrict rr_bot,
-            TF* const restrict w_qr, TF* const restrict c_qr,
-            TF* const restrict slope_qr, TF* const restrict flux_qr,
-            const TF* const restrict qr,
+            TF* const restrict qct, TF* const restrict rc_bot,
+            TF* const restrict w_qc, TF* const restrict c_qc,
+            TF* const restrict slope_qc, TF* const restrict flux_qc,
+            const TF* const restrict qc,
             const TF* const restrict rho,
-            const TF* const restrict dzi, const TF* const restrict dz, const double dt,
+            const TF* const restrict dzi, const TF* const restrict dz,
+            const double dt,
+            const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
+            const TF qc_min,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
@@ -668,22 +649,22 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    if (qr[ijk] > qr_min<TF>)
+                    if (qc[ijk] > qc_min)
                     {
-                        const TF lambda_r = std::pow(
-                            a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
-                            / (rho[k] * qr[ijk]),
-                            TF(1.) / (b_r<TF> + TF(1.)) );
+                        const TF lambda_c = std::pow(
+                            a_c * N_0c * std::tgamma(b_c + TF(1.))
+                            / (rho[k] * qc[ijk]),
+                            TF(1.) / (b_c + TF(1.)) );
 
-                        const TF V_Tr =
-                            c_r<TF> * rho0_rho_sqrt
-                            * std::tgamma(b_r<TF> + d_r<TF> + TF(1.)) / std::tgamma(b_r<TF> + TF(1.))
-                            * std::pow(lambda_r, -d_r<TF>);
+                        const TF V_T =
+                            c_c * rho0_rho_sqrt
+                            * std::tgamma(b_c + d_c + TF(1.)) / std::tgamma(b_c + TF(1.))
+                            * std::pow(lambda_c, -d_c);
 
-                        w_qr[ijk] = V_Tr;
+                        w_qc[ijk] = V_T;
                     }
                     else
-                        w_qr[ijk] = TF(0.);
+                        w_qc[ijk] = TF(0.);
                 }
         }
 
@@ -693,8 +674,8 @@ namespace
             {
                 const int ijk_bot = i + j*jj + (kstart-1)*kk;
                 const int ijk_top = i + j*jj + (kend    )*kk;
-                w_qr[ijk_bot] = w_qr[ijk_bot+kk];
-                w_qr[ijk_top] = TF(0.);
+                w_qc[ijk_bot] = w_qc[ijk_bot+kk];
+                w_qc[ijk_top] = TF(0.);
             }
 
         // 2. Calculate CFL number using interpolated sedimentation velocity
@@ -704,7 +685,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    c_qr[ijk] = TF(0.25) * (w_qr[ijk-kk] + TF(2.)*w_qr[ijk] + w_qr[ijk+kk]) * dzi[k] * dt;
+                    c_qc[ijk] = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
                 }
 
         // 3. Calculate slopes
@@ -714,7 +695,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    slope_qr[ijk] = minmod(qr[ijk]-qr[ijk-kk], qr[ijk+kk]-qr[ijk]);
+                    slope_qc[ijk] = minmod(qc[ijk]-qc[ijk-kk], qc[ijk+kk]-qc[ijk]);
                 }
 
         // Calculate flux
@@ -723,7 +704,7 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + kend*kk;
-                flux_qr[ijk] = TF(0);
+                flux_qc[ijk] = TF(0.);
             }
 
         for (int k=kend-1; k>kstart-1; --k)
@@ -737,21 +718,21 @@ namespace
                     int kc = k; // current grid level
                     TF ftot = TF(0.); // cumulative 'flux' (kg m-2)
                     TF dzz = TF(0.); // distance from zh[k]
-                    TF cc = std::min(TF(1.), c_qr[ijk]);
+                    TF cc = std::min(TF(1.), c_qc[ijk]);
                     while (cc > 0 && kc < kend)
                     {
                         const int ijkc = i + j*jj+ kc*kk;
 
-                        ftot += rho[kc] * (qr[ijkc] + TF(0.5) * slope_qr[ijkc] * (TF(1.)-cc)) * cc * dz[kc];
+                        ftot += rho[kc] * (qc[ijkc] + TF(0.5) * slope_qc[ijkc] * (TF(1.)-cc)) * cc * dz[kc];
 
                         dzz += dz[kc];
                         kc += 1;
-                        cc = std::min(TF(1.), c_qr[ijkc] - dzz*dzi[kc]);
+                        cc = std::min(TF(1.), c_qc[ijkc] - dzz*dzi[kc]);
                     }
 
                     // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
-                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ijk+kk] * TF(dt));
-                    flux_qr[ijk] = -ftot / dt;
+                    ftot = std::min(ftot, rho[k] * dz[k] * qc[ijk] - flux_qc[ijk+kk] * TF(dt));
+                    flux_qc[ijk] = -ftot / dt;
                 }
 
         // Calculate tendency
@@ -761,7 +742,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    qrt[ijk] += -(flux_qr[ijk+kk] - flux_qr[ijk]) / rho[k] * dzi[k];
+                    qct[ijk] += -(flux_qc[ijk+kk] - flux_qc[ijk]) / rho[k] * dzi[k];
                 }
 
         // Store surface sedimentation flux
@@ -773,7 +754,7 @@ namespace
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
 
-                rr_bot[ij] = -flux_qr[ijk];
+                rc_bot[ij] = -flux_qc[ijk];
             }
     }
 }
@@ -812,7 +793,10 @@ template<typename TF>
 void Microphys_nsw6<TF>::init()
 {
     auto& gd = grid.get_grid_data();
+
     rr_bot.resize(gd.ijcells);
+    rs_bot.resize(gd.ijcells);
+    rg_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -875,7 +859,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
-
     /*
     bergeron(
             fields.st.at("qs")->fld.data(),
@@ -896,6 +879,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto tmp3 = fields.get_tmp();
     auto tmp4 = fields.get_tmp();
 
+    // Falling rain.
     sedimentation_ss08(
             fields.st.at("qr")->fld.data(), rr_bot.data(),
             tmp1->fld.data(), tmp2->fld.data(),
@@ -904,6 +888,38 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             fields.rhoref.data(),
             gd.dzi.data(), gd.dz.data(),
             dt,
+            a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
+            qr_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+
+    // Falling snow.
+    sedimentation_ss08(
+            fields.st.at("qs")->fld.data(), rs_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            tmp3->fld.data(), tmp4->fld.data(),
+            fields.sp.at("qs")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
+            qs_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+
+    // Falling graupel.
+    sedimentation_ss08(
+            fields.st.at("qg")->fld.data(), rg_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            tmp3->fld.data(), tmp4->fld.data(),
+            fields.sp.at("qg")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
+            qg_min<TF>,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
