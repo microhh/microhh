@@ -144,7 +144,8 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3));
+        // Tomita Eq. 51. N_d is converted to SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3 * 1.e6));
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -171,10 +172,10 @@ namespace
                     const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
 
                     // Tomita Eq. 52
-                    const TF P_saut = beta_1*(qi[ijk] - q_icrt);
+                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
 
                     // Tomita Eq. 54
-                    const TF P_gaut = beta_2*(qs[ijk] - q_scrt);
+                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
 
                     // COMPUTE THE TENDENCIES.
                     // Cloud to rain.
@@ -666,6 +667,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
+    /*
     accretion_and_phase_changes(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
@@ -686,6 +688,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
+            */
     
     // Release the temp fields and save statistics.
     fields.release_tmp(ql);
