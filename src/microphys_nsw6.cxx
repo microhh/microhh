@@ -138,86 +138,9 @@ namespace
             field[n] = TF(0.);
     }
 
-    // Autoconversion.
-    template<typename TF>
-    void autoconversion(
-            TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
-            TF* const restrict qtt, TF* const restrict thlt,
-            const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
-            const TF* const restrict qt, const TF* const restrict thl,
-            const TF* const restrict ql, const TF* const restrict qi,
-            const TF* const restrict rho, const TF* const restrict exner,
-            const TF N_d,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend,
-            const int jj, const int kk)
-    {
-        // Tomita Eq. 51. N_d is converted to SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3 * 1.e6));
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = qi[ijk] > qi_min<TF>;
-                    const bool has_snow = qs[ijk] > qs_min<TF>;
-
-                    // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
-                    const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
-
-                    constexpr TF q_icrt = TF(0.);
-                    constexpr TF q_scrt = TF(6.e-4);
-
-                    // Tomita Eq. 53
-                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
-
-                    // Tomita Eq. 54
-                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
-
-                    // COMPUTE THE CONVERSION TERMS.
-                    // Calculate the three autoconversion rates.
-                    // Tomita Eq. 50
-                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
-
-                    // Tomita Eq. 52
-                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
-
-                    // Tomita Eq. 54
-                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
-
-                    // COMPUTE THE TENDENCIES.
-                    // Cloud to rain.
-                    if (has_liq)
-                    {
-                        qtt[ijk] -= P_raut;
-                        qrt[ijk] += P_raut;
-                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * P_raut;
-                    }
-
-                    // Ice to snow.
-                    if (has_ice)
-                    {
-                        qtt[ijk] -= P_saut;
-                        qst[ijk] += P_saut;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * P_saut;
-                    }
-
-                    // Snow to graupel.
-                    if (has_snow)
-                    {
-                        qst[ijk] -= P_gaut;
-                        qgt[ijk] += P_gaut;
-                    }
-                }
-    }
-
     // Accretion.
     template<typename TF>
-    void accretion_and_phase_changes(
+    void conversion(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
             double& cfl_out,
@@ -226,12 +149,15 @@ namespace
             const TF* const restrict ql, const TF* const restrict qi,
             const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
             const TF* const restrict dzi, const TF* const restrict dzhi,
-            const TF dt,
+            const TF N_d, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
         TF cfl = TF(0.);
+
+        // Tomita Eq. 51. N_d is converted to SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3 * 1.e6));
 
         for (int k=kstart; k<kend; ++k)
         {
@@ -294,6 +220,26 @@ namespace
                     const bool has_snow = qs[ijk] > qs_min<TF>;
                     const bool has_graupel = qg[ijk] > qg_min<TF>;
 
+                    // AUTOCONVERSION.
+                    constexpr TF q_icrt = TF(0.);
+                    constexpr TF q_scrt = TF(6.e-4);
+
+                    // Tomita Eq. 53
+                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
+
+                    // Tomita Eq. 54
+                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
+
+                    // COMPUTE THE CONVERSION TERMS.
+                    // Calculate the three autoconversion rates.
+                    // Tomita Eq. 50
+                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
+
+                    // Tomita Eq. 52
+                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
+
+                    // Tomita Eq. 54
+                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
@@ -483,9 +429,9 @@ namespace
                     // Cloud to rain.
                     if (has_liq)
                     {
-                        qtt[ijk] -= P_racw + P_sacw * T_pos;
-                        qrt[ijk] += P_racw + P_sacw * T_pos;
-                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * (P_racw + P_sacw * T_pos);
+                        qtt[ijk] -= P_racw + P_sacw * T_pos - P_raut;
+                        qrt[ijk] += P_racw + P_sacw * T_pos - P_raut;
+                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * (P_racw + P_sacw * T_pos - P_raut);
                     }
 
                     // Rain to vapor.
@@ -516,9 +462,9 @@ namespace
                     // Ice to snow.
                     if (has_ice)
                     {
-                        qtt[ijk] -= P_raci_s + P_saci;
-                        qst[ijk] += P_raci_s + P_saci;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * (P_raci_s + P_saci);
+                        qtt[ijk] -= P_raci_s + P_saci + P_saut;
+                        qst[ijk] += P_raci_s + P_saci + P_saut;
+                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * (P_raci_s + P_saci + P_saut);
                     }
 
                     // Ice to graupel.
@@ -556,8 +502,8 @@ namespace
                     // Snow to graupel.
                     if (has_snow)
                     {
-                        qst[ijk] -= P_gacs + P_racs;
-                        qgt[ijk] += P_gacs + P_racs;
+                        qst[ijk] -= P_gacs + P_racs + P_gaut;
+                        qgt[ijk] += P_gacs + P_racs + P_gaut;
                     }
 
                     // Snow to vapor.
@@ -836,19 +782,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     const std::vector<TF>& p = thermo.get_p_vector();
     const std::vector<TF>& exner = thermo.get_exner_vector();
 
-    autoconversion(
-            fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
-            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-            fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
-            fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
-            ql->fld.data(), qi->fld.data(),
-            fields.rhoref.data(), exner.data(),
-            this->N_d,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
-
-    accretion_and_phase_changes(
+    conversion(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
             this->cfl,
@@ -857,7 +791,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             ql->fld.data(), qi->fld.data(),
             fields.rhoref.data(), exner.data(), p.data(),
             gd.dzi.data(), gd.dzhi.data(),
-            TF(dt),
+            this->N_d, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
