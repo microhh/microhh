@@ -3,6 +3,14 @@ import netCDF4 as nc
 
 float_type = "f8"
 
+def q_sat(T, p):
+    Tc = T - 273.15
+
+    # Arden-Buck equation.
+    e_sat = 611.21 * np.exp(17.502 * Tc / (240.97 + Tc))
+    Rd, Rv = 287.04, 461.5
+    return Rd/Rv * e_sat / p
+
 def calc_p_q_T_thl_o3(z):
     q_0 = 0.01864 # for 300 K SST.
     z_q1 = 4.0e3
@@ -30,6 +38,8 @@ def calc_p_q_T_thl_o3(z):
     Rd = 287.04
     cp = 1005.
     p0 = 101480.
+
+    print("q_sat at T_0 = ", q_sat(T_0, p0))
 
     p = p0 * (Tv / Tv_0)**(g/(Rd*gamma))
     
