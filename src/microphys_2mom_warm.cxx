@@ -38,13 +38,13 @@
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
 
-using namespace Constants;
-using namespace Thermo_moist_functions;
-using namespace Micro_2mom_warm_constants;
-using namespace Micro_2mom_warm_functions;
-
 namespace
 {
+    using namespace Constants;
+    using namespace Thermo_moist_functions;
+    using namespace Micro_2mom_warm_constants;
+    using namespace Micro_2mom_warm_functions;
+
     template<typename TF>
     void remove_negative_values(TF* const restrict field,
                                 const int istart, const int jstart, const int kstart,

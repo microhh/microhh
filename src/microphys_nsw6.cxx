@@ -36,6 +36,7 @@
 #include "constants.h"
 #include "microphys.h"
 #include "microphys_nsw6.h"
+#include "microphys_2mom_warm.h"
 
 // Constants, move out later.
 namespace
@@ -65,13 +66,13 @@ namespace
     template<typename TF> constexpr TF b_s = 3.; // Empirical constant for m_s.
     template<typename TF> constexpr TF b_g = 3.; // Empirical constant for m_g.
 
-    template<typename TF> constexpr TF c_r = 0.5;  // Empirical constant for v_r.
+    template<typename TF> constexpr TF c_r = 130.; // Empirical constant for v_r.
     template<typename TF> constexpr TF c_s = 4.84; // Empirical constant for v_s.
     template<typename TF> constexpr TF c_g = 82.5; // Empirical constant for v_g.
 
     template<typename TF> constexpr TF d_r = 0.5;  // Empirical constant for v_r.
-    template<typename TF> constexpr TF d_s = 0.24; // Empirical constant for v_s.
-    template<typename TF> constexpr TF d_g = 0.24; // Empirical constant for v_g.
+    template<typename TF> constexpr TF d_s = 0.25; // Empirical constant for v_s.
+    template<typename TF> constexpr TF d_g = 0.25; // Empirical constant for v_g.
 
     template<typename TF> constexpr TF C_i = 2006.; // Specific heat of solid water.
     template<typename TF> constexpr TF C_l = 4218.; // Specific heat of liquid water.
@@ -112,6 +113,7 @@ namespace
     using namespace Constants;
     using namespace Thermo_moist_functions;
     using namespace Fast_math;
+    using Micro_2mom_warm_functions::minmod;
 
     template<typename TF>
     void remove_negative_values(TF* const restrict field,
@@ -161,8 +163,8 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = qi[ijk] > qi_min<TF>;
-                    const bool has_snow = qs[ijk] > qs_min<TF>;
+                    const bool has_ice = false; // qi[ijk] > qi_min<TF>;
+                    const bool has_snow = false; // qs[ijk] > qs_min<TF>;
 
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
@@ -218,14 +220,19 @@ namespace
     void accretion_and_phase_changes(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
+            double& cfl_out,
             const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
             const TF* const restrict qt, const TF* const restrict thl,
             const TF* const restrict ql, const TF* const restrict qi,
             const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
+        TF cfl = TF(0.);
+
         for (int k=kstart; k<kend; ++k)
         {
             const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
@@ -282,10 +289,10 @@ namespace
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
 
                     const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = qi[ijk] > qi_min<TF>;
+                    const bool has_ice = false; // qi[ijk] > qi_min<TF>;
                     const bool has_rain = qr[ijk] > qr_min<TF>;
-                    const bool has_snow = qs[ijk] > qs_min<TF>;
-                    const bool has_graupel = qg[ijk] > qg_min<TF>;
+                    const bool has_snow = false; // qs[ijk] > qs_min<TF>;
+                    const bool has_graupel = false; // qg[ijk] > qg_min<TF>;
 
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
@@ -318,6 +325,10 @@ namespace
                         c_g<TF> * rho0_rho_sqrt
                         * std::tgamma(b_g<TF> + d_g<TF> + TF(1.)) / std::tgamma(b_g<TF> + TF(1.))
                         * std::pow(lambda_g, -d_g<TF>);
+
+                    cfl = (has_rain   ) ? std::max(V_Tr * dt * dzi[k], cfl) : cfl;
+                    cfl = (has_snow   ) ? std::max(V_Ts * dt * dzi[k], cfl) : cfl;
+                    cfl = (has_graupel) ? std::max(V_Tg * dt * dzi[k], cfl) : cfl;
 
                     // COMPUTE THE CONVERSION TERMS.
                     // Tomita Eq. 29
@@ -572,8 +583,32 @@ namespace
                         qtt[ijk] += P_gdep + P_gsub;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * (P_gdep + P_gsub);
                     }
+
+                    // PRECIPITATION
+                    /*
+                    // CvH: I use advection notation with upwind gradient. This is not mass-conserving!
+                    if (has_rain)
+                    {
+                        const TF P_precip_r = V_Tr * (qr[ijk+kk] - qr[ijk]) * dzhi[k+1];
+                        qrt[ijk] += P_precip_r;
+                    }
+
+                    if (has_snow)
+                    {
+                        const TF P_precip_s = V_Ts * (qs[ijk+kk] - qs[ijk]) * dzhi[k+1];
+                        qst[ijk] += P_precip_s;
+                    }
+
+                    if (has_graupel)
+                    {
+                        const TF P_precip_g = V_Tg * (qg[ijk+kk] - qg[ijk]) * dzhi[k+1];
+                        qgt[ijk] += P_precip_g;
+                    }
+                    */
                 }
         }
+
+        cfl_out = cfl;
     }
 
     // Bergeron.
@@ -608,6 +643,139 @@ namespace
                     // To be filled in.
                 }
     }
+
+    // Sedimentation from Stevens and Seifert (2008)
+    template<typename TF>
+    void sedimentation_ss08(
+            TF* const restrict qrt, TF* const restrict rr_bot,
+            TF* const restrict w_qr, TF* const restrict c_qr,
+            TF* const restrict slope_qr, TF* const restrict flux_qr,
+            const TF* const restrict qr,
+            const TF* const restrict rho,
+            const TF* const restrict dzi, const TF* const restrict dz, const double dt,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        // 1. Calculate sedimentation velocity at cell center
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    if (qr[ijk] > qr_min<TF>)
+                    {
+                        const TF lambda_r = std::pow(
+                            a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
+                            / (rho[k] * qr[ijk]),
+                            TF(1.) / (b_r<TF> + TF(1.)) );
+
+                        const TF V_Tr =
+                            c_r<TF> * rho0_rho_sqrt
+                            * std::tgamma(b_r<TF> + d_r<TF> + TF(1.)) / std::tgamma(b_r<TF> + TF(1.))
+                            * std::pow(lambda_r, -d_r<TF>);
+
+                        w_qr[ijk] = V_Tr;
+                    }
+                    else
+                        w_qr[ijk] = TF(0.);
+                }
+        }
+
+        // 1.1 Set one ghost cell to zero
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk_bot = i + j*jj + (kstart-1)*kk;
+                const int ijk_top = i + j*jj + (kend    )*kk;
+                w_qr[ijk_bot] = w_qr[ijk_bot+kk];
+                w_qr[ijk_top] = TF(0.);
+            }
+
+        // 2. Calculate CFL number using interpolated sedimentation velocity
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    c_qr[ijk] = TF(0.25) * (w_qr[ijk-kk] + TF(2.)*w_qr[ijk] + w_qr[ijk+kk]) * dzi[k] * dt;
+                }
+
+        // 3. Calculate slopes
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    slope_qr[ijk] = minmod(qr[ijk]-qr[ijk-kk], qr[ijk+kk]-qr[ijk]);
+                }
+
+        // Calculate flux
+        // Set the fluxes at the top of the domain (kend) to zero
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + kend*kk;
+                flux_qr[ijk] = TF(0);
+            }
+
+        for (int k=kend-1; k>kstart-1; --k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    // q_rain
+                    int kc = k; // current grid level
+                    TF ftot = TF(0.); // cumulative 'flux' (kg m-2)
+                    TF dzz = TF(0.); // distance from zh[k]
+                    TF cc = std::min(TF(1.), c_qr[ijk]);
+                    while (cc > 0 && kc < kend)
+                    {
+                        const int ijkc = i + j*jj+ kc*kk;
+
+                        ftot += rho[kc] * (qr[ijkc] + TF(0.5) * slope_qr[ijkc] * (TF(1.)-cc)) * cc * dz[kc];
+
+                        dzz += dz[kc];
+                        kc += 1;
+                        cc = std::min(TF(1.), c_qr[ijkc] - dzz*dzi[kc]);
+                    }
+
+                    // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
+                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ijk+kk] * TF(dt));
+                    flux_qr[ijk] = -ftot / dt;
+                }
+
+        // Calculate tendency
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qrt[ijk] += -(flux_qr[ijk+kk] - flux_qr[ijk]) / rho[k] * dzi[k];
+                }
+
+        // Store surface sedimentation flux
+        // Sedimentation flux is already multiplied with density (see flux div. calculation), so
+        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                rr_bot[ij] = -flux_qr[ijk];
+            }
+    }
 }
 
 template<typename TF>
@@ -619,7 +787,9 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    // cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    cfl = 0;
+
     N_d = inputin.get_item<TF>("micro", "Nd", "", 50.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
@@ -642,66 +812,25 @@ template<typename TF>
 void Microphys_nsw6<TF>::init()
 {
     auto& gd = grid.get_grid_data();
-
-    lambda_r.resize(gd.kcells);
-    lambda_s.resize(gd.kcells);
-    lambda_g.resize(gd.kcells);
-
-    V_r.resize(gd.kcells);
-    V_s.resize(gd.kcells);
-    V_g.resize(gd.kcells);
+    rr_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
 void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
-    // auto& gd = grid.get_grid_data();
+    const std::string group_name = "thermo";
 
-    // const std::string group_name = "thermo";
-
-    /*
     // Add variables to the statistics
     if (stats.get_switch())
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "path", "cover"}, group_name);
-
-        if (swmicrobudget)
-        {
-            // Microphysics tendencies for qr, nr, thl and qt
-            stats.add_prof("sed_qrt", "Sedimentation tendency of qr", "kg kg-1 s-1", "z", group_name);
-            stats.add_prof("sed_nrt", "Sedimentation tendency of nr", "m3 s-1", "z", group_name);
-
-            stats.add_prof("auto_qrt" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z", group_name);
-            stats.add_prof("auto_nrt" , "Autoconversion tendency nr",  "m-3 s-1", "z", group_name);
-            stats.add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z", group_name);
-            stats.add_prof("auto_qtt" , "Autoconversion tendency qt",  "kg kg-1 s-1", "z", group_name);
-
-            stats.add_prof("evap_qrt" , "Evaporation tendency qr",  "kg kg-1 s-1", "z", group_name);
-            stats.add_prof("evap_nrt" , "Evaporation tendency nr",  "m-3 s-1", "z", group_name);
-            stats.add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z", group_name);
-            stats.add_prof("evap_qtt" , "Evaporation tendency qt",  "kg kg-1 s-1", "z", group_name);
-
-            stats.add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z", group_name);
-
-            stats.add_prof("accr_qrt" , "Accretion tendency qr",  "kg kg-1 s-1", "z", group_name);
-            stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z", group_name);
-            stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z", group_name);
-        }
-
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("nr") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
     }
-
-    // Create cross sections
-    // 1. Variables that this class can calculate/provide:
-    std::vector<std::string> allowed_crossvars = {"rr_bot"};
-    // 2. Cross-reference with the variables requested in the .ini file:
-    crosslist = cross.get_enabled_variables(allowed_crossvars);
-    */
 }
 
 #ifndef USECUDA
@@ -735,13 +864,17 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     accretion_and_phase_changes(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
+            this->cfl,
             fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
             fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
             ql->fld.data(), qi->fld.data(),
             fields.rhoref.data(), exner.data(), p.data(),
+            gd.dzi.data(), gd.dzhi.data(),
+            TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
+
 
     /*
     bergeron(
@@ -754,10 +887,31 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
             */
-    
-    // Release the temp fields and save statistics.
+
     fields.release_tmp(ql);
     fields.release_tmp(qi);
+
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+    auto tmp3 = fields.get_tmp();
+    auto tmp4 = fields.get_tmp();
+
+    sedimentation_ss08(
+            fields.st.at("qr")->fld.data(), rr_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            tmp3->fld.data(), tmp4->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
+    fields.release_tmp(tmp3);
+    fields.release_tmp(tmp4);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
@@ -770,6 +924,9 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 template<typename TF>
 void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
+    // Time series
+    const TF no_offset = 0.;
+    stats.calc_stats_2d("rr", rr_bot, no_offset);
 }
 
 template<typename TF>
@@ -781,8 +938,12 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double dt)
 {
-    // return idt * cflmax / cfl;
-    return Constants::ulhuge;
+    // Prevent zero division.
+    this->cfl = std::max(this->cfl, 1.e-5);
+
+    if (this->cfl > this->cfl_max)
+        std::cout << "CvH: " << this->cfl << std::endl;
+    return idt * this->cfl_max / this->cfl;
 }
 #endif
 
