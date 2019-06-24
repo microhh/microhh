@@ -533,7 +533,7 @@ namespace
 
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict clwp, TF* restrict ciwp,
+            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict clwp, TF* restrict ciwp,
             TF* restrict thlh, TF* restrict qth,
             const TF* restrict thl, const TF* restrict qt,
             const TF* restrict p, const TF* restrict ph,
@@ -559,10 +559,14 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
                     const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+
                     clwp[ijk_nogc] = ssa.ql * dpg;
                     ciwp[ijk_nogc] = ssa.qi * dpg;
-                    qv  [ijk_nogc] = qt[ijk] - ssa.ql - ssa.qi;
-                    T   [ijk_nogc] = ssa.t;
+
+                    const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                    vmr_h2o[ijk_nogc] = qv / (ep<TF> - qv);
+
+                    T[ijk_nogc] = ssa.t;
                 }
         }
 
