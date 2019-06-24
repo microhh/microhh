@@ -929,7 +929,7 @@ void Radiation_rrtmgp<TF>::exec(
 
         auto t_lay = fields.get_tmp();
         auto t_lev = fields.get_tmp();
-        auto h2o   = fields.get_tmp();
+        auto h2o   = fields.get_tmp(); // This is the volume mixing ratio, not the specific humidity of vapor.
         auto clwp  = fields.get_tmp();
         auto ciwp  = fields.get_tmp();
 
@@ -1059,7 +1059,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     auto t_lay = fields.get_tmp();
     auto t_lev = fields.get_tmp();
-    auto h2o   = fields.get_tmp();
+    auto h2o   = fields.get_tmp(); // This is the volume mixing ratio, not the specific humidity of vapor.
     auto clwp  = fields.get_tmp();
     auto ciwp  = fields.get_tmp();
 
