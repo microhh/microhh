@@ -426,7 +426,7 @@ namespace
                     const TF T_neg = TF(1.) - T_pos;
 
                     // Limit the production terms to avoid instability.
-                    auto limit_tend = [](TF& tend, const TF tend_limit) { return std::min(tend, tend_limit); };
+                    auto limit_tend = [](TF& tend, const TF tend_limit) { tend = std::min(tend, tend_limit); };
 
                     const TF dqv_dt_max = (qt[ijk] - ql[ijk] - qi[ijk]) / dt;
                     const TF dqi_dt_max = qi[ijk] / dt;
@@ -464,13 +464,41 @@ namespace
                     limit_tend(P_gmlt  , dqg_dt_max);
                     limit_tend(P_gfrz  , dqr_dt_max);
 
+                    // P_iacr_s = 0;
+                    // P_iacr_g = 0;
+                    // P_raci_s = 0;
+                    // P_raci_g = 0;
+                    // P_racw   = 0;
+                    // P_sacw   = 0;
+                    // P_saci   = 0;
+                    // P_gacw   = 0;
+                    // P_gaci   = 0;
+                    // P_racs   = 0;
+                    // P_sacr_s = 0;
+                    // P_sacr_g = 0;
+                    // P_gacr   = 0;
+                    // P_gacs   = 0;
+
+                    // P_raut = 0;
+                    // P_saut = 0;
+                    // P_gaut = 0;
+
+                    // P_revp = 0;
+                    // P_sdep = 0;
+                    // P_ssub = 0;
+                    // P_gdep = 0;
+                    // P_gsub = 0;
+                    // P_smlt = 0;
+                    // P_gmlt = 0;
+                    // P_gfrz = 0;
+
                     // Bergeron....
 
                     // WARM PROCESSES.
                     // Cloud to rain.
                     if (has_liq)
                     {
-                        const TF cloud_to_rain = P_racw + P_sacw * T_pos - P_raut;
+                        const TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
                         qtt[ijk] -= cloud_to_rain;
                         qrt[ijk] += cloud_to_rain;
                         thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
