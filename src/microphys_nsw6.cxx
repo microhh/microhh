@@ -495,143 +495,110 @@ namespace
                     // P_gmlt = 0;
                     // P_gfrz = 0;
 
-                    // Bergeron....
-
-                    // WARM PROCESSES.
-                    // Cloud to rain.
+                    // Loss from cloud.
                     if (has_liq)
                     {
                         const TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
                         qtt[ijk] -= cloud_to_rain;
                         qrt[ijk] += cloud_to_rain;
                         thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
+
+                        const TF cloud_to_graupel = P_gacw;
+                        qtt[ijk] -= cloud_to_graupel;
+                        qgt[ijk] += cloud_to_graupel;
+                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
+
+                        const TF cloud_to_snow = P_sacw * T_neg;
+                        qtt[ijk] -= cloud_to_snow;
+                        qst[ijk] += cloud_to_snow;
+                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
+
+                        // if (cloud_to_rain + cloud_to_graupel + cloud_to_snow > dql_dt_max)
+                        //     std::cout << "CvH: depleting ql: "
+                        //               << cloud_to_rain << ", "
+                        //               << cloud_to_graupel << ", "
+                        //               << cloud_to_snow << ", "
+                        //               << dql_dt_max << std::endl;
                     }
 
-                    // Rain to vapor.
+                    // Loss from rain.
                     if (has_rain)
                     {
                         const TF rain_to_vapor = P_revp;
                         qrt[ijk] -= rain_to_vapor;
                         qtt[ijk] += rain_to_vapor;
                         thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
+
+                        const TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                        qrt[ijk] -= rain_to_graupel;
+                        qgt[ijk] += rain_to_graupel;
+                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
+
+                        const TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
+                        qrt[ijk] -= rain_to_snow;
+                        qst[ijk] += rain_to_snow;
+                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
+
+                        // if (rain_to_vapor + rain_to_graupel + rain_to_snow > dqr_dt_max)
+                        //     std::cout << "CvH: depleting qr: "
+                        //               << rain_to_vapor << ", "
+                        //               << rain_to_graupel << ", "
+                        //               << rain_to_snow << ", "
+                        //               << dqr_dt_max << std::endl;
                     }
 
-                    // COLD PROCESSES.
-                    // Cloud to graupel.
-                    if (has_liq)
-                    {
-                        const TF cloud_to_graupel = P_gacw;
-                        qtt[ijk] -= cloud_to_graupel;
-                        qgt[ijk] += cloud_to_graupel;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
-                    }
-
-                    // Cloud to snow.
-                    if (has_liq)
-                    {
-                        const TF cloud_to_snow = P_sacw * T_neg;
-                        qtt[ijk] -= cloud_to_snow;
-                        qst[ijk] += cloud_to_snow;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
-                    }
-
-                    // Ice to snow.
+                    // Loss from ice.
                     if (has_ice)
                     {
                         const TF ice_to_snow = P_raci_s + P_saci + P_saut;
                         qtt[ijk] -= ice_to_snow;
                         qst[ijk] += ice_to_snow;
                         thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
-                    }
 
-                    // Ice to graupel.
-                    if (has_ice)
-                    {
                         const TF ice_to_graupel = P_raci_g + P_gaci;
                         qtt[ijk] -= ice_to_graupel;
                         qgt[ijk] += ice_to_graupel;
                         thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
+
+                        // if (ice_to_snow + ice_to_graupel > dqi_dt_max)
+                        //     std::cout << "CvH: depleting qi" << std::endl;
                     }
 
-                    // Rain to graupel.
-                    if (has_rain)
-                    {
-                        const TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
-                        qrt[ijk] -= rain_to_graupel;
-                        qgt[ijk] += rain_to_graupel;
-                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
-                    }
-
-                    // Rain to snow.
-                    if (has_rain)
-                    {
-                        const TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
-                        qrt[ijk] -= rain_to_snow;
-                        qst[ijk] += rain_to_snow;
-                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
-                    }
-
-                    // Snow to rain.
-                    if (has_snow)
-                    {
-                        const TF snow_to_rain = P_smlt * T_pos;
-                        qst[ijk] -= snow_to_rain;
-                        qrt[ijk] += snow_to_rain;
-                        thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
-                    }
-
-                    // Snow to graupel.
+                    // Loss from snow.
                     if (has_snow)
                     {
                         const TF snow_to_graupel = P_gacs + P_racs + P_gaut;
                         qst[ijk] -= snow_to_graupel;
                         qgt[ijk] += snow_to_graupel;
-                    }
 
-                    // Snow to vapor.
-                    if (has_snow)
-                    {
                         const TF snow_to_vapor = P_sdep + P_ssub;
                         qst[ijk] -= snow_to_vapor;
                         qtt[ijk] += snow_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+
+                        // if (snow_to_graupel + snow_to_vapor > dqs_dt_max)
+                        //     std::cout << "CvH: depleting qs: "
+                        //               << snow_to_graupel << ", "
+                        //               << snow_to_vapor << ", "
+                        //               << dqs_dt_max << std::endl;
                     }
 
-                    // Graupel to rain.
+                    // Loss from graupel.
                     if (has_graupel)
                     {
                         const TF graupel_to_rain = P_gmlt * T_pos;
                         qgt[ijk] -= graupel_to_rain;
                         qrt[ijk] += graupel_to_rain;
                         thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
-                    }
 
-                    // Graupel to vapor.
-                    if (has_graupel)
-                    {
                         const TF graupel_to_vapor = P_gdep + P_gsub;
                         qgt[ijk] -= graupel_to_vapor;
                         qtt[ijk] += graupel_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
+
+                        // if (graupel_to_rain + graupel_to_vapor > dqg_dt_max)
+                        //     std::cout << "CvH: depleting qg" << std::endl;
                     }
-
-                    /*
-                    cloud_to_rain
-                    rain_to_vapor
-                    rain_to_snow;
-                    snow_to_rain;
-                    graupel_to_rain;
-
-                    cloud_to_snow;
-                    ice_to_snow;
-                    snow_to_vapor;
-                    snow_to_graupel;
-
-                    cloud_to_graupel;
-                    ice_to_graupel;
-                    rain_to_graupel;
-                    graupel_to_vapor;
-                    */
                 }
         }
 
