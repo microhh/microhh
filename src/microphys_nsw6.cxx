@@ -426,7 +426,10 @@ namespace
                     const TF T_neg = TF(1.) - T_pos;
 
                     // Limit the production terms to avoid instability.
-                    auto limit_tend = [](TF& tend, const TF tend_limit) { tend = std::min(tend, tend_limit); };
+                    auto limit_tend = [](TF& tend, const TF tend_limit)
+                    {
+                        tend = std::max(TF(0.), std::min(tend, tend_limit));
+                    };
 
                     const TF dqv_dt_max = (qt[ijk] - ql[ijk] - qi[ijk]) / dt;
                     const TF dqi_dt_max = qi[ijk] / dt;
@@ -993,9 +996,6 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
 {
     // Prevent zero division.
     this->cfl = std::max(this->cfl, 1.e-5);
-
-    if (this->cfl > this->cfl_max)
-        std::cout << "CvH: " << this->cfl << std::endl;
     return idt * this->cfl_max / this->cfl;
 }
 #endif
