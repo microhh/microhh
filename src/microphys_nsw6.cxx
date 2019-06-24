@@ -264,34 +264,34 @@ namespace
                     const TF delta_1 = TF(qr[ijk] >= TF(1.e-4));
 
                     // Tomita Eq. 31
-                    const TF P_iacr_s = (TF(1.) - delta_1) * P_iacr;
-                    const TF P_iacr_g = delta_1 * P_iacr;
+                    TF P_iacr_s = (TF(1.) - delta_1) * P_iacr;
+                    TF P_iacr_g = delta_1 * P_iacr;
 
                     // Tomita Eq. 32
                     const TF P_raci = fac_raci / std::pow(lambda_r, TF(3.) + d_r<TF>) * qi[ijk];
 
                     // Tomita Eq. 33
-                    const TF P_raci_s = (TF(1.) - delta_1) * P_raci;
-                    const TF P_raci_g = delta_1 * P_raci;
+                    TF P_raci_s = (TF(1.) - delta_1) * P_raci;
+                    TF P_raci_g = delta_1 * P_raci;
 
                     // Tomita Eq. 34, 35
-                    const TF P_racw = fac_racw / std::pow(lambda_r, TF(3.) + d_r<TF>) * ql[ijk];
-                    const TF P_sacw = fac_sacw / std::pow(lambda_s, TF(3.) + d_s<TF>) * ql[ijk];
+                    TF P_racw = fac_racw / std::pow(lambda_r, TF(3.) + d_r<TF>) * ql[ijk];
+                    TF P_sacw = fac_sacw / std::pow(lambda_s, TF(3.) + d_s<TF>) * ql[ijk];
 
                     // Tomita Eq. 39
                     const TF E_si = std::exp(gamma_sacr<TF> * (T - T0<TF>));
 
                     // Tomita Eq. 36 - 38
-                    const TF P_saci = fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
-                    const TF P_gacw = fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
-                    const TF P_gaci = fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
+                    TF P_saci = fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
+                    TF P_gacw = fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
+                    TF P_gaci = fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
 
                     // Accretion of falling hydrometeors.
                     // Tomita Eq. 42
                     const TF delta_2 = TF(1.) - TF( (qr[ijk] >= TF(1.e-4)) || (qs[ijk] >= TF(1.e-4)) );
 
                     // Tomita Eq. 41
-                    const TF P_racs = (TF(1.) - delta_2)
+                    TF P_racs = (TF(1.) - delta_2)
                         * pi<TF> * a_s<TF> * std::abs(V_Tr - V_Ts) * E_sr<TF> * N_0s<TF> * N_0r<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_s, b_s<TF> + TF(3.)) * lambda_r )
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_s, b_s<TF> + TF(2.)) * pow2(lambda_r) )
@@ -305,21 +305,21 @@ namespace
                           +          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_s ) );
 
                     // Tomita Eq. 43
-                    const TF P_sacr_g = (TF(1.) - delta_2) * P_sacr;
-                    const TF P_sacr_s = delta_2 * P_sacr;
+                    TF P_sacr_g = (TF(1.) - delta_2) * P_sacr;
+                    TF P_sacr_s = delta_2 * P_sacr;
 
                     // Tomita Eq. 49
                     const TF E_gs = std::min( TF(1.), std::exp(gamma_gacs<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 47
-                    const TF P_gacr =
+                    TF P_gacr =
                           pi<TF> * a_r<TF> * std::abs(V_Tg - V_Tr) * E_gr<TF> * N_0g<TF> * N_0r<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_g) )
                           + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_g) )
                           +          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_g ) );
 
                     // Tomita Eq. 48
-                    const TF P_gacs =
+                    TF P_gacs =
                           pi<TF> * a_s<TF> * std::abs(V_Tg - V_Ts) * E_gs * N_0g<TF> * N_0s<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_s<TF> + TF(1.)) * pow3(lambda_g) )
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
@@ -336,13 +336,13 @@ namespace
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 50
-                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
+                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
 
                     // Tomita Eq. 52
-                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
+                    TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
 
                     // Tomita Eq. 54
-                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
+                    TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
 
                     // PHASE CHANGES.
                     // Tomita Eq. 57
@@ -362,7 +362,7 @@ namespace
                     const TF delta_3 = TF( (S_i - TF(1.)) <= TF(0.) );
 
                     // Tomita Eq. 59
-                    const TF P_revp = 
+                    TF P_revp = 
                         - TF(2.)*pi<TF> * N_0r<TF> * (std::min(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
                         * ( f_1r<TF> * std::tgamma(TF(2.)) / pow2(lambda_r)
                           + f_2r<TF> * std::sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
@@ -386,16 +386,16 @@ namespace
                           / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) );
 
                     // Tomita Eq. 64
-                    const TF P_sdep = (delta_3 - TF(1.)) * P_sdep_ssub;
-                    const TF P_gdep = (delta_3 - TF(1.)) * P_gdep_gsub;
+                    TF P_sdep = (delta_3 - TF(1.)) * P_sdep_ssub;
+                    TF P_gdep = (delta_3 - TF(1.)) * P_gdep_gsub;
 
                     // Tomita Eq. 65
-                    const TF P_ssub = delta_3 * P_sdep_ssub;
-                    const TF P_gsub = delta_3 * P_gdep_gsub;
+                    TF P_ssub = delta_3 * P_sdep_ssub;
+                    TF P_gsub = delta_3 * P_gdep_gsub;
 
                     // Freezing and melting
                     // Tomita Eq. 67, 68 combined.
-                    const TF P_smlt = 
+                    TF P_smlt = 
                         TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0s<TF> / (rho[k]*Lf<TF>)
                         * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
                           + f_2s<TF> * std::sqrt(c_s<TF> * rho0_rho_sqrt / nu<TF>)
@@ -404,7 +404,7 @@ namespace
                         + C_l<TF> * (T - T0<TF>) / Lf<TF> * (P_sacw + P_sacr);
 
                     // Tomita Eq. 69
-                    const TF P_gmlt = 
+                    TF P_gmlt = 
                         TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0g<TF> / (rho[k]*Lf<TF>)
                         * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
                           + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
@@ -415,7 +415,8 @@ namespace
                     // Tomita Eq. 70
                     constexpr TF A_prime = TF(0.66);
                     constexpr TF B_prime = TF(100.);
-                    const TF P_gfrz =
+
+                    TF P_gfrz =
                         TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
                         * (std::exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
 
@@ -425,7 +426,45 @@ namespace
                     const TF T_neg = TF(1.) - T_pos;
 
                     // Limit the production terms to avoid instability.
-                    // P_racw = std::min(P_racw, dqr_dt);
+                    auto limit_tend = [](TF& tend, const TF tend_limit) { return std::min(tend, tend_limit); };
+
+                    const TF dqv_dt_max = (qt[ijk] - ql[ijk] - qi[ijk]) / dt;
+                    const TF dqi_dt_max = qi[ijk] / dt;
+                    const TF dql_dt_max = ql[ijk] / dt;
+                    const TF dqr_dt_max = qr[ijk] / dt;
+                    const TF dqs_dt_max = qs[ijk] / dt;
+                    const TF dqg_dt_max = qg[ijk] / dt;
+
+                    // Limit on the availability of the source.
+                    limit_tend(P_iacr_s, dqr_dt_max);
+                    limit_tend(P_iacr_g, dqr_dt_max);
+                    limit_tend(P_raci_s, dqi_dt_max);
+                    limit_tend(P_raci_g, dqi_dt_max);
+                    limit_tend(P_racw  , dql_dt_max);
+                    limit_tend(P_sacw  , dql_dt_max);
+                    limit_tend(P_saci  , dqi_dt_max);
+                    limit_tend(P_gacw  , dql_dt_max);
+                    limit_tend(P_gaci  , dqi_dt_max);
+                    limit_tend(P_racs  , dqs_dt_max);
+                    limit_tend(P_sacr_s, dqr_dt_max);
+                    limit_tend(P_sacr_g, dqr_dt_max);
+                    limit_tend(P_gacr  , dqr_dt_max);
+                    limit_tend(P_gacs  , dqs_dt_max);
+
+                    limit_tend(P_raut  , dql_dt_max);
+                    limit_tend(P_saut  , dqi_dt_max);
+                    limit_tend(P_gaut  , dqs_dt_max);
+
+                    limit_tend(P_revp  , dqr_dt_max);
+                    limit_tend(P_sdep  , dqv_dt_max);
+                    limit_tend(P_ssub  , dqs_dt_max);
+                    limit_tend(P_gdep  , dqv_dt_max);
+                    limit_tend(P_gsub  , dqg_dt_max);
+                    limit_tend(P_smlt  , dqs_dt_max);
+                    limit_tend(P_gmlt  , dqg_dt_max);
+                    limit_tend(P_gfrz  , dqr_dt_max);
+
+                    // Bergeron....
 
                     // WARM PROCESSES.
                     // Cloud to rain.
