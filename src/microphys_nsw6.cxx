@@ -220,25 +220,6 @@ namespace
                     const bool has_snow = qs[ijk] > qs_min<TF>;
                     const bool has_graupel = qg[ijk] > qg_min<TF>;
 
-                    // AUTOCONVERSION.
-                    constexpr TF q_icrt = TF(0.);
-                    constexpr TF q_scrt = TF(6.e-4);
-
-                    // Tomita Eq. 53
-                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
-
-                    // Tomita Eq. 54
-                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
-
-                    // Tomita Eq. 50
-                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
-
-                    // Tomita Eq. 52
-                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
-
-                    // Tomita Eq. 54
-                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
-
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
@@ -275,7 +256,7 @@ namespace
                     cfl = (has_snow   ) ? std::max(V_Ts * dt * dzi[k], cfl) : cfl;
                     cfl = (has_graupel) ? std::max(V_Tg * dt * dzi[k], cfl) : cfl;
 
-                    // COMPUTE THE CONVERSION TERMS.
+                    // ACCRETION
                     // Tomita Eq. 29
                     const TF P_iacr = fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
 
@@ -344,7 +325,26 @@ namespace
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
                           +          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_s<TF> + TF(3.)) * lambda_g ) );
 
-                    // Compute evaporation and deposition
+                    // AUTOCONVERSION.
+                    constexpr TF q_icrt = TF(0.);
+                    constexpr TF q_scrt = TF(6.e-4);
+
+                    // Tomita Eq. 53
+                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
+
+                    // Tomita Eq. 54
+                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
+
+                    // Tomita Eq. 50
+                    const TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
+
+                    // Tomita Eq. 52
+                    const TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
+
+                    // Tomita Eq. 54
+                    const TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
+
+                    // PHASE CHANGES.
                     // Tomita Eq. 57
                     const TF G_w = TF(1.) / (
                         Lv<TF> / (K_a<TF> * T) * (Lv<TF> / (Rv<TF> * T) - TF(1.))
@@ -423,6 +423,9 @@ namespace
                     // Flag the sign of the absolute temperature.
                     const TF T_pos = TF(T >= T0<TF>);
                     const TF T_neg = TF(1.) - T_pos;
+
+                    // Limit the production terms to avoid instability.
+                    // P_racw = std::min(P_racw, dqr_dt);
 
                     // WARM PROCESSES.
                     // Cloud to rain.
