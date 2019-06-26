@@ -37,6 +37,7 @@
 namespace Thermo_moist_functions
 {
     using namespace Constants;
+    using Fast_math::pow2;
 
     // INLINE FUNCTIONS
     template<typename TF>
@@ -119,7 +120,7 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF water_fraction(const TF T)
     {
-        return std::max(TF(0.), std::min((T - TF(233.15)) / TF(40.), TF(1.)));
+        return std::max(TF(0.), std::min((T - TF(233.15)) / TF(273.15 - 233.15), TF(1.)));
     }
 
     // Combine the ice and water saturated specific humidities following Tomita, 2008.
@@ -131,9 +132,23 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
+    CUDA_MACRO inline TF dqsatdT_liq(const TF p, const TF T)
+    {
+        const TF den = p - esat_liq(T)*(TF(1.) - ep<TF>);
+        return (ep<TF>/den - (TF(1.) + ep<TF>)*ep<TF>*esat_liq(T)/pow2(den)) * Lv<TF>*esat_liq(T) / (Rv<TF>*pow2(T));
+    }
+
+    template<typename TF>
+    CUDA_MACRO inline TF dqsatdT_ice(const TF p, const TF T)
+    {
+        const TF den = p - esat_ice(T)*(TF(1.) - ep<TF>);
+        return (ep<TF>/den + (TF(1.) - ep<TF>)*ep<TF>*esat_ice(T)/pow2(den)) * Ls<TF>*esat_ice(T) / (Rv<TF>*pow2(T));
+    }
+
+    template<typename TF>
     CUDA_MACRO inline TF exner(const TF p)
     {
-        return pow((p/p0<TF>),(Rd<TF>/cp<TF>));
+        return pow((p/p0<TF>), (Rd<TF>/cp<TF>));
     }
 
     template<typename TF>
@@ -183,6 +198,8 @@ namespace Thermo_moist_functions
             const TF alpha_w = water_fraction(tnr);
             const TF alpha_i = TF(1.) - alpha_w;
             const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
+            const TF dqsatdT_w = dqsatdT_liq(p, tnr);
+            const TF dqsatdT_i = dqsatdT_ice(p, tnr);
 
             const TF f =
                 tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
@@ -191,10 +208,9 @@ namespace Thermo_moist_functions
             const TF f_prime = TF(1.)
                 - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
                 + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
-                + alpha_w*Lv<TF>*Lv<TF>*qs / (Rv<TF>*cp<TF>*pow2(tnr))
-                + alpha_i*Lv<TF>*Ls<TF>*qs / (Rv<TF>*cp<TF>*pow2(tnr));
+                + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
+                + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
 
-            // tnr = tnr - (tnr + Lv<TF>/cp<TF>*(qs-qt) - tl) / (TF(1.) + pow2(Lv<TF>)*qs / (Rv<TF>*cp<TF>*pow2(tnr)));
             tnr -= f / f_prime;
         }
 
@@ -217,7 +233,7 @@ namespace Thermo_moist_functions
 
         // const TF error = tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
         //      + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
-        // if (error > 1.e-2) std::cout << "CvH: " << alpha_w << ", " << error << std::endl;
+        // std::cout << "CvH: " << (tnr - tnr_old)/tnr_old << std::endl;
 
         return ans;
     }

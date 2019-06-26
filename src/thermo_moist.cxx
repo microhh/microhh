@@ -1074,6 +1074,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
+        auto T = fields.get_tmp();
+        T->name = "T";
+        T->longname = "Absolute temperature";
+        T->unit = "K";
+        stats.add_profs(*T, "z", {"mean", "2"}, group_name);
+        fields.release_tmp(T);
+
         auto ql = fields.get_tmp();
         ql->name = "ql";
         ql->longname = "Liquid water";
@@ -1184,6 +1191,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
+
+    // calculate the absolute temperature stats.
+    auto T = fields.get_tmp();
+    T->loc = gd.sloc;
+
+    get_thermo_field(*T, "T", true, true);
+    stats.calc_stats("T", *T, no_offset, no_threshold);
+
+    fields.release_tmp(T);
 
     // calculate the liquid water stats
     auto ql = fields.get_tmp();
