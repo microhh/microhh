@@ -409,7 +409,7 @@ namespace
                         * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
                           + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
                           * std::tgamma( TF(0.5) * (TF(5.) + d_g<TF>) )
-                          / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) );
+                          / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) )
                         + C_l<TF> * (T - T0<TF>) / Lf<TF> * (P_gacw + P_gacr);
 
                     // Tomita Eq. 70
@@ -492,7 +492,7 @@ namespace
                     // P_gdep = 0;
                     // P_gsub = 0;
                     // P_smlt = 0;
-                    P_gmlt = 0;
+                    // P_gmlt = 0;
                     // P_gfrz = 0;
 
                     const TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
