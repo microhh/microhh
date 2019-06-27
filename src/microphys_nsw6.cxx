@@ -685,6 +685,9 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
+        constexpr TF V_Tmin = TF(0.1);
+        constexpr TF V_Tmax = TF(10.);
+
         // 1. Calculate sedimentation velocity at cell center
         for (int k=kstart; k<kend; ++k)
         {
@@ -703,10 +706,13 @@ namespace
                             / (rho[k] * qc[ijk]),
                             TF(1.) / (b_c + TF(1.)) );
 
-                        const TF V_T =
+                        TF V_T =
                             c_c * rho0_rho_sqrt
                             * std::tgamma(b_c + d_c + TF(1.)) / std::tgamma(b_c + TF(1.))
                             * std::pow(lambda_c, -d_c);
+
+                        // Constrain the terminal velocity between 0.1 and 10.
+                        V_T = std::max(V_Tmin, std::min(V_T, V_Tmax));
 
                         w_qc[ijk] = V_T;
                     }
@@ -981,6 +987,8 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     // Time series
     const TF no_offset = 0.;
     stats.calc_stats_2d("rr", rr_bot, no_offset);
+    stats.calc_stats_2d("rs", rs_bot, no_offset);
+    stats.calc_stats_2d("rg", rg_bot, no_offset);
 }
 
 template<typename TF>
