@@ -220,6 +220,9 @@ namespace
                     const bool has_snow = qs[ijk] > qs_min<TF>;
                     const bool has_graupel = qg[ijk] > qg_min<TF>;
 
+                    if (! (has_liq || has_ice || has_rain || has_snow || has_graupel) )
+                        continue;
+
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
@@ -495,42 +498,72 @@ namespace
                     // P_gmlt = 0;
                     // P_gfrz = 0;
 
-                    const TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
-                    const TF cloud_to_graupel = P_gacw;
-                    const TF cloud_to_snow = P_sacw * T_neg;
-                    const TF rain_to_vapor = P_revp;
-                    const TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
-                    const TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
-                    const TF ice_to_snow = P_raci_s + P_saci + P_saut;
-                    const TF ice_to_graupel = P_raci_g + P_gaci;
-                    const TF snow_to_graupel = P_gacs + P_racs + P_gaut;
-                    const TF snow_to_vapor = P_sdep + P_ssub;
-                    const TF graupel_to_rain = P_gmlt * T_pos;
-                    const TF graupel_to_vapor = P_gdep + P_gsub;
+                    TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
+                    TF cloud_to_graupel = P_gacw;
+                    TF cloud_to_snow = P_sacw * T_neg;
 
-                    TF dql_dt =
+                    TF rain_to_vapor = P_revp;
+                    TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                    TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
+
+                    TF ice_to_snow = P_raci_s + P_saci + P_saut;
+                    TF ice_to_graupel = P_raci_g + P_gaci;
+
+                    TF snow_to_graupel = P_gacs + P_racs + P_gaut;
+                    TF snow_to_vapor = P_sdep + P_ssub;
+
+                    TF graupel_to_rain = P_gmlt * T_pos;
+                    TF graupel_to_vapor = P_gdep + P_gsub;
+
+                    const TF dql_dt =
                         - cloud_to_rain - cloud_to_graupel - cloud_to_snow;
 
-                    TF dqi_dt =
+                    const TF dqi_dt =
                         - ice_to_snow - ice_to_graupel;
 
-                    TF dqr_dt =
+                    const TF dqr_dt =
                         + graupel_to_rain
                         - rain_to_vapor - rain_to_graupel - rain_to_snow;
 
-                    TF dqs_dt =
+                    const TF dqs_dt =
                         + cloud_to_snow + ice_to_snow
                         - snow_to_graupel - snow_to_vapor;
 
-                    TF dqg_dt =
+                    const TF dqg_dt =
                         + cloud_to_graupel + rain_to_graupel + ice_to_graupel
                         - graupel_to_rain - graupel_to_vapor;
 
-                    limit_tend(dql_dt, dql_dt_max);
-                    limit_tend(dqi_dt, dqi_dt_max);
-                    limit_tend(dqr_dt, dqr_dt_max);
-                    limit_tend(dqs_dt, dqs_dt_max);
-                    limit_tend(dqg_dt, dqg_dt_max);
+                    // Limit the production terms to avoid instability.
+                    auto limit_factor = [](const TF tend, const TF tend_limit)
+                    {
+                        if ( tend < TF(0.) )
+                            return std::min(-tend/tend_limit, TF(1.));
+                        else
+                            return TF(1.);
+                    };
+
+                    const TF dql_dt_fac = limit_factor(dql_dt, dql_dt_max);
+                    const TF dqi_dt_fac = limit_factor(dqi_dt, dqi_dt_max);
+                    const TF dqr_dt_fac = limit_factor(dqr_dt, dqr_dt_max);
+                    const TF dqs_dt_fac = limit_factor(dqs_dt, dqs_dt_max);
+                    const TF dqg_dt_fac = limit_factor(dqg_dt, dqg_dt_max);
+
+                    cloud_to_rain    *= dql_dt_fac * dqr_dt_fac;
+                    cloud_to_graupel *= dql_dt_fac * dqg_dt_fac;
+                    cloud_to_snow    *= dql_dt_fac * dqs_dt_fac;
+
+                    rain_to_vapor    *= dqr_dt_fac;
+                    rain_to_graupel  *= dqr_dt_fac * dqg_dt_fac;
+                    rain_to_snow     *= dqr_dt_fac * dqs_dt_fac;
+
+                    ice_to_snow      *= dqi_dt_fac * dqs_dt_fac;
+                    ice_to_graupel   *= dqi_dt_fac * dqg_dt_fac;
+
+                    snow_to_graupel  *= dqs_dt_fac * dqg_dt_fac;
+                    snow_to_vapor    *= dqs_dt_fac;
+
+                    graupel_to_rain *= dqg_dt_fac * dqr_dt_fac;
+                    graupel_to_vapor *= dqg_dt_fac;
 
                     // Loss from cloud.
                     if (has_liq)
@@ -546,13 +579,6 @@ namespace
                         qtt[ijk] -= cloud_to_snow;
                         qst[ijk] += cloud_to_snow;
                         thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
-
-                        // if (cloud_to_rain + cloud_to_graupel + cloud_to_snow > dql_dt_max)
-                        //     std::cout << "CvH: depleting ql: "
-                        //               << cloud_to_rain << ", "
-                        //               << cloud_to_graupel << ", "
-                        //               << cloud_to_snow << ", "
-                        //               << dql_dt_max << std::endl;
                     }
 
                     // Loss from rain.
@@ -569,13 +595,6 @@ namespace
                         qrt[ijk] -= rain_to_snow;
                         qst[ijk] += rain_to_snow;
                         thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
-
-                        // if (rain_to_vapor + rain_to_graupel + rain_to_snow > dqr_dt_max)
-                        //     std::cout << "CvH: depleting qr: "
-                        //               << rain_to_vapor << ", "
-                        //               << rain_to_graupel << ", "
-                        //               << rain_to_snow << ", "
-                        //               << dqr_dt_max << std::endl;
                     }
 
                     // Loss from ice.
@@ -588,12 +607,6 @@ namespace
                         qtt[ijk] -= ice_to_graupel;
                         qgt[ijk] += ice_to_graupel;
                         thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
-
-                        // if (ice_to_snow + ice_to_graupel > dqi_dt_max)
-                        //     std::cout << "CvH: depleting qi: "
-                        //               << ice_to_snow << ", "
-                        //               << ice_to_graupel << ", "
-                        //               << dqi_dt_max << std::endl;
                     }
 
                     // Loss from snow.
@@ -605,12 +618,6 @@ namespace
                         qst[ijk] -= snow_to_vapor;
                         qtt[ijk] += snow_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
-
-                        // if (snow_to_graupel + snow_to_vapor > dqs_dt_max)
-                        //     std::cout << "CvH: depleting qs: "
-                        //               << snow_to_graupel << ", "
-                        //               << snow_to_vapor << ", "
-                        //               << dqs_dt_max << std::endl;
                     }
 
                     // Loss from graupel.
@@ -623,12 +630,6 @@ namespace
                         qgt[ijk] -= graupel_to_vapor;
                         qtt[ijk] += graupel_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
-
-                        // if (graupel_to_rain + graupel_to_vapor > dqg_dt_max)
-                        //     std::cout << "CvH: depleting qg"
-                        //               << graupel_to_rain << ", "
-                        //               << graupel_to_vapor << ", "
-                        //               << dqg_dt_max << std::endl;
                     }
                 }
         }
