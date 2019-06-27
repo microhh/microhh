@@ -184,10 +184,8 @@ namespace Thermo_moist_functions
             return ans;
 
         /* Saturation adjustment solver.
-         * Root finding function is f(T) = T - tnr - Lv/cp*qt + Lv/cp*qs(T)
-         * Derivative needed for Newton Raphson is f'(T) = 1 + Lv/cp * dqsat/dT
-         * Lv/cp * dqsat/dT can be written into 1 + Lv^2*qs / (Rv*cp*T^2) using
-         * Claussius-Clapeyron (desat/dT = Lv*esat / (Rv*T^2)).
+         * Root finding function is f(T) = T - tnr - Lv/cp*qt + alpha * Lv/cp*qs(T) + (1-alpha)*Ls/cp*qs(T)
+         * Lv/cp * dqsat/dT can be rewritten using Claussius-Clapeyron (desat/dT = Lv*esat / (Rv*T^2)).
          */
         TF tnr = tl;
         while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
