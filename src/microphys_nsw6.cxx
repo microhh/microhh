@@ -156,8 +156,8 @@ namespace
     {
         TF cfl = TF(0.);
 
-        // Tomita Eq. 51. N_d is converted to SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log(N_d / TF(2.e3 * 1.e6));
+        // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log( (N_d*TF(1.e-6)) / TF(2.e3));
 
         for (int k=kstart; k<kend; ++k)
         {
@@ -339,7 +339,7 @@ namespace
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
-                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5 * 1e-6)*N_d/(D_d*rho[k]*ql[ijk]));
+                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
 
                     // Tomita Eq. 52
                     TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
