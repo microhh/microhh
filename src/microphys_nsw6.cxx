@@ -513,6 +513,7 @@ namespace
                     TF ice_to_graupel = P_raci_g + P_gaci;
 
                     TF snow_to_graupel = P_gacs + P_racs + P_gaut;
+                    TF snow_to_rain = P_smlt;
                     TF snow_to_vapor = P_ssub;
 
                     TF graupel_to_rain = P_gmlt * T_pos;
@@ -528,12 +529,12 @@ namespace
                         - ice_to_snow - ice_to_graupel;
 
                     const TF dqr_dt =
-                        + graupel_to_rain
+                        + cloud_to_rain + snow_to_rain + graupel_to_rain
                         - rain_to_vapor - rain_to_graupel - rain_to_snow;
 
                     const TF dqs_dt =
                         + cloud_to_snow + ice_to_snow + vapor_to_snow
-                        - snow_to_graupel - snow_to_vapor;
+                        - snow_to_graupel - snow_to_vapor - snow_to_rain;
 
                     const TF dqg_dt =
                         + cloud_to_graupel + rain_to_graupel + ice_to_graupel + vapor_to_graupel
@@ -542,10 +543,7 @@ namespace
                     // Limit the production terms to avoid instability.
                     auto limit_factor = [](const TF tend, const TF tend_limit)
                     {
-                        if ( tend < TF(0.) )
-                            return std::min(-tend/tend_limit, TF(1.));
-                        else
-                            return TF(1.);
+                        return (tend < TF(0.)) ? std::min(-tend/tend_limit, TF(1.)) : TF(1.);
                     };
 
                     const TF dqv_dt_fac = limit_factor(dqv_dt, dqv_dt_max);
@@ -562,7 +560,7 @@ namespace
                     cloud_to_graupel *= dql_dt_fac * dqg_dt_fac;
                     cloud_to_snow    *= dql_dt_fac * dqs_dt_fac;
 
-                    rain_to_vapor    *= dqr_dt_fac;
+                    rain_to_vapor    *= dqr_dt_fac * dqv_dt_fac;
                     rain_to_graupel  *= dqr_dt_fac * dqg_dt_fac;
                     rain_to_snow     *= dqr_dt_fac * dqs_dt_fac;
 
@@ -570,10 +568,11 @@ namespace
                     ice_to_graupel   *= dqi_dt_fac * dqg_dt_fac;
 
                     snow_to_graupel  *= dqs_dt_fac * dqg_dt_fac;
-                    snow_to_vapor    *= dqs_dt_fac;
+                    snow_to_vapor    *= dqs_dt_fac * dqv_dt_fac;
+                    snow_to_rain     *= dqs_dt_fac * dqr_dt_fac;
 
                     graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
-                    graupel_to_vapor *= dqg_dt_fac;
+                    graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
 
                     // Loss from cloud.
                     if (has_liq)
@@ -628,6 +627,10 @@ namespace
                         qst[ijk] -= snow_to_vapor;
                         qtt[ijk] += snow_to_vapor;
                         thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+
+                        qst[ijk] -= snow_to_rain;
+                        qrt[ijk] += snow_to_rain;
+                        thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
                     }
 
                     // Loss from graupel.
