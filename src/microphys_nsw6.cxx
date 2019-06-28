@@ -157,7 +157,7 @@ namespace
         TF cfl = TF(0.);
 
         // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log( (N_d*TF(1.e-6)) / TF(2.e3));
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((N_d*TF(1.e-6)) / TF(2.e3));
 
         for (int k=kstart; k<kend; ++k)
         {
@@ -498,6 +498,9 @@ namespace
                     // P_gmlt = 0;
                     // P_gfrz = 0;
 
+                    TF vapor_to_snow = P_sdep;
+                    TF vapor_to_graupel = P_gdep;
+
                     TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
                     TF cloud_to_graupel = P_gacw;
                     TF cloud_to_snow = P_sacw * T_neg;
@@ -510,10 +513,13 @@ namespace
                     TF ice_to_graupel = P_raci_g + P_gaci;
 
                     TF snow_to_graupel = P_gacs + P_racs + P_gaut;
-                    TF snow_to_vapor = P_sdep + P_ssub;
+                    TF snow_to_vapor = P_ssub;
 
                     TF graupel_to_rain = P_gmlt * T_pos;
-                    TF graupel_to_vapor = P_gdep + P_gsub;
+                    TF graupel_to_vapor = P_gsub;
+
+                    const TF dqv_dt =
+                        - vapor_to_snow - vapor_to_graupel;
 
                     const TF dql_dt =
                         - cloud_to_rain - cloud_to_graupel - cloud_to_snow;
@@ -526,11 +532,11 @@ namespace
                         - rain_to_vapor - rain_to_graupel - rain_to_snow;
 
                     const TF dqs_dt =
-                        + cloud_to_snow + ice_to_snow
+                        + cloud_to_snow + ice_to_snow + vapor_to_snow
                         - snow_to_graupel - snow_to_vapor;
 
                     const TF dqg_dt =
-                        + cloud_to_graupel + rain_to_graupel + ice_to_graupel
+                        + cloud_to_graupel + rain_to_graupel + ice_to_graupel + vapor_to_graupel
                         - graupel_to_rain - graupel_to_vapor;
 
                     // Limit the production terms to avoid instability.
@@ -542,11 +548,15 @@ namespace
                             return TF(1.);
                     };
 
+                    const TF dqv_dt_fac = limit_factor(dqv_dt, dqv_dt_max);
                     const TF dql_dt_fac = limit_factor(dql_dt, dql_dt_max);
                     const TF dqi_dt_fac = limit_factor(dqi_dt, dqi_dt_max);
                     const TF dqr_dt_fac = limit_factor(dqr_dt, dqr_dt_max);
                     const TF dqs_dt_fac = limit_factor(dqs_dt, dqs_dt_max);
                     const TF dqg_dt_fac = limit_factor(dqg_dt, dqg_dt_max);
+
+                    vapor_to_snow    *= dqv_dt_fac * dqs_dt_fac;
+                    vapor_to_graupel *= dqv_dt_fac * dqg_dt_fac;
 
                     cloud_to_rain    *= dql_dt_fac * dqr_dt_fac;
                     cloud_to_graupel *= dql_dt_fac * dqg_dt_fac;
@@ -562,7 +572,7 @@ namespace
                     snow_to_graupel  *= dqs_dt_fac * dqg_dt_fac;
                     snow_to_vapor    *= dqs_dt_fac;
 
-                    graupel_to_rain *= dqg_dt_fac * dqr_dt_fac;
+                    graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
                     graupel_to_vapor *= dqg_dt_fac;
 
                     // Loss from cloud.
