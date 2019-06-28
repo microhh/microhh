@@ -71,13 +71,14 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
-                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                                TF* restrict ql, TF* restrict thvrefh,
-                                const int istart, const int iend,
-                                const int jstart, const int jend,
-                                const int kstart, const int kend,
-                                const int jj, const int kk)
+    void calc_buoyancy_tend_2nd(
+            TF* restrict wt, TF* restrict thl, TF* restrict qt,
+            TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+            TF* restrict ql, TF* restrict qi, TF* restrict thvrefh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; k++)
@@ -98,7 +99,9 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ij  = i + j*jj;
-                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                    ql[ij] = ssa.ql;
+                    qi[ij] = ssa.qi;
                 }
 
             for (int j=jstart; j<jend; j++)
@@ -107,18 +110,19 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
 
     template<typename TF>
-    void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
-                       TF* restrict p, TF* restrict ql, TF* restrict thvref,
-                       const int istart, const int iend,
-                       const int jstart, const int jend,
-                       const int kstart, const int kend,
-                       const int kcells, const int jj, const int kk)
+    void calc_buoyancy(
+            TF* restrict b, TF* restrict thl, TF* restrict qt,
+            TF* restrict p, TF* restrict ql, TF* restrict qi, TF* restrict thvref,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int kcells, const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=0; k<kcells; k++)
@@ -131,7 +135,9 @@ namespace
                     for (int i=istart; i<iend; i++)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                        ql[ijk] = ssa.ql;
+                        qi[ijk] = ssa.qi;
                     }
             }
             else
@@ -142,6 +148,7 @@ namespace
                     {
                         const int ijk  = i + j*jj+k*kk;
                         ql[ijk] = 0.;
+                        qi[ijk] = 0.;
                     }
 
             }
@@ -150,14 +157,15 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], thvref[k]);
+                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
                 }
         }
     }
 
     template<typename TF>
     void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
-                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth,
+                         TF* restrict ql, TF* restrict qi,
                          const int istart, const int iend,
                          const int jstart, const int jend,
                          const int kstart, const int kend,
@@ -187,7 +195,9 @@ namespace
                     for (int i=istart; i<iend; i++)
                     {
                         const int ij  = i + j*jj;
-                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                        ql[ij] = ssa.ql;
+                        qi[ij] = ssa.qi;
                     }
             }
             else
@@ -198,6 +208,7 @@ namespace
                     {
                         const int ij  = i + j*jj;
                         ql[ij] = 0.;
+                        qi[ij] = 0.;
                     }
             }
             for (int j=jstart; j<jend; j++)
@@ -207,7 +218,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
 
-                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
@@ -748,7 +759,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     // extend later for gravity vector not normal to surface
     calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
                            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], bs.thvrefh.data(),
+                           &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                            gd.icells, gd.ijcells);
 
@@ -867,17 +878,22 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 
     if (name == "b")
     {
-        auto tmp = fields.get_tmp();
-        calc_buoyancy(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(),
-                      gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.kcells, gd.icells, gd.ijcells);
-        fields.release_tmp(tmp);
+        auto tmp  = fields.get_tmp();
+        auto tmp2 = fields.get_tmp();
+        calc_buoyancy(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                tmp->fld.data(), tmp2->fld.data(), base.thvref.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.kcells, gd.icells, gd.ijcells);
+        fields.release_tmp(tmp );
+        fields.release_tmp(tmp2);
     }
     else if (name == "b_h")
     {
         auto tmp = fields.get_tmp();
-        calc_buoyancy_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(),
-                        &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells],
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_buoyancy_h(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(),
+                &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells],
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     else if (name == "ql")
@@ -1228,9 +1244,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     }
 
     stats.set_timeseries("zi", gd.z[get_bl_depth()]);
-
 }
-
 
 #ifndef USECUDA
 template<typename TF>

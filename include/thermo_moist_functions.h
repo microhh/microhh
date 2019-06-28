@@ -41,15 +41,15 @@ namespace Thermo_moist_functions
 
     // INLINE FUNCTIONS
     template<typename TF>
-    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF thvref)
+    CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi)
     {
-        return grav<TF> * ((thl + Lv<TF>*ql/(cp<TF>*exn)) * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql) - thvref) / thvref;
+        return (thl + Lv<TF>*ql/(cp<TF>*exn)) * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql);
     }
 
     template<typename TF>
-    CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql)
+    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF thvref)
     {
-        return (thl + Lv<TF>*ql/(cp<TF>*exn)) * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*ql);
+        return grav<TF> * (virtual_temperature(exn, thl, qt, ql, qi) - thvref) / thvref;
     }
 
     template<typename TF>
@@ -251,9 +251,13 @@ namespace Thermo_moist_functions
         // Calculate the values at the surface (half level == kstart)
         prefh[kstart] = pbot;
         exh[kstart]   = exner(prefh[kstart]);
-        TF ql         = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]).ql;
-        thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
-        rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
+
+        Struct_sat_adjust<TF> ssa = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
+        TF ql = ssa.ql;
+        TF qi = ssa.qi;
+
+        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql, qi);
+        rhoh[kstart] = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
         pref[kstart]  = prefh[kstart] * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * exh[kstart] * thvh[kstart]));
@@ -262,8 +266,10 @@ namespace Thermo_moist_functions
         {
             // 1. Calculate remaining values (thv and rho) at full-level[k-1]
             ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]).ql;
-            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
+            ssa      = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
+            ql       = ssa.ql;
+            qi       = ssa.qi;
+            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql, qi);
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
@@ -273,9 +279,12 @@ namespace Thermo_moist_functions
             // 3. Use interpolated conserved quantities to calculate half-level[k] values
             const TF thli = TF(0.5)*(thlmean[k-1] + thlmean[k]);
             const TF qti  = TF(0.5)*(qtmean [k-1] + qtmean [k]);
-            const TF qli  = sat_adjust(thli, qti, prefh[k], exh[k]).ql;
 
-            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
+            ssa = sat_adjust(thli, qti, prefh[k], exh[k]);
+            const TF qli = ssa.ql;
+            const TF qii = ssa.qi;
+
+            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli, qii);
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
