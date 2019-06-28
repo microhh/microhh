@@ -338,8 +338,8 @@ namespace
                     // Tomita Eq. 54
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                    // Tomita Eq. 50
-                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5)*N_d/(D_d*rho[k]*ql[ijk]));
+                    // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
+                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5 * 1e-6)*N_d/(D_d*rho[k]*ql[ijk]));
 
                     // Tomita Eq. 52
                     TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
