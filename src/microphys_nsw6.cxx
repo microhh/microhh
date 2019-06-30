@@ -461,17 +461,19 @@ namespace
                     limit_tend(P_gacs  , dqs_dt_max);
 
                     // Limit autoconversion terms.
-                    limit_tend(P_raut  , dql_dt_max);
-                    limit_tend(P_saut  , dqi_dt_max);
-                    limit_tend(P_gaut  , dqs_dt_max);
-                    limit_tend(P_revp  , dqr_dt_max);
-                    limit_tend(P_sdep  , dqv_dt_max);
-                    limit_tend(P_ssub  , dqs_dt_max);
-                    limit_tend(P_gdep  , dqv_dt_max);
-                    limit_tend(P_gsub  , dqg_dt_max);
-                    limit_tend(P_smlt  , dqs_dt_max);
-                    limit_tend(P_gmlt  , dqg_dt_max);
-                    limit_tend(P_gfrz  , dqr_dt_max);
+                    limit_tend(P_raut, dql_dt_max);
+                    limit_tend(P_saut, dqi_dt_max);
+                    limit_tend(P_gaut, dqs_dt_max);
+
+                    // Limit phase changes.
+                    limit_tend(P_revp, dqr_dt_max);
+                    limit_tend(P_sdep, dqv_dt_max);
+                    limit_tend(P_ssub, dqs_dt_max);
+                    limit_tend(P_gdep, dqv_dt_max);
+                    limit_tend(P_gsub, dqg_dt_max);
+                    limit_tend(P_smlt, dqs_dt_max);
+                    limit_tend(P_gmlt, dqg_dt_max);
+                    limit_tend(P_gfrz, dqr_dt_max);
 
                     // P_iacr_s = 0;
                     // P_iacr_g = 0;
@@ -993,8 +995,8 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
     stats.calc_tend(*fields.st.at("qr" ), tend_name);
-    stats.calc_tend(*fields.st.at("qg" ), tend_name);
     stats.calc_tend(*fields.st.at("qs" ), tend_name);
+    stats.calc_tend(*fields.st.at("qg" ), tend_name);
 }
 #endif
 
