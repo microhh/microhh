@@ -41,8 +41,8 @@
 // Constants, move out later.
 namespace
 {
-    template<typename TF> constexpr TF ql_min = 1.e-7; // Threshold ql for calculating microphysical terms.
-    template<typename TF> constexpr TF qi_min = 1.e-7; // Threshold qi for calculating microphysical terms.
+    template<typename TF> constexpr TF ql_min = 1.e-6; // Threshold ql for calculating microphysical terms.
+    template<typename TF> constexpr TF qi_min = 1.e-6; // Threshold qi for calculating microphysical terms.
     template<typename TF> constexpr TF qr_min = 1.e-12; // Threshold qr for calculating microphysical terms.
     template<typename TF> constexpr TF qs_min = 1.e-12; // Threshold qs for calculating microphysical terms.
     template<typename TF> constexpr TF qg_min = 1.e-12; // Threshold qg for calculating microphysical terms.
@@ -100,10 +100,10 @@ namespace
 
     template<typename TF> constexpr TF M_i = 4.19e-13; // Mass of one cloud ice particle.
 
-    template<typename TF> constexpr TF gamma_sacr = 0.025;
-    template<typename TF> constexpr TF gamma_saut = 0.025;
-    template<typename TF> constexpr TF gamma_gacs = 0.09;
-    template<typename TF> constexpr TF gamma_gaut = 0.09;
+    template<typename TF> constexpr TF gamma_sacr = 25.e-3;
+    template<typename TF> constexpr TF gamma_saut = 60.e-3; // Tomita's code in SCALE is different than paper (0.025).
+    template<typename TF> constexpr TF gamma_gacs = 90.e-3;
+    template<typename TF> constexpr TF gamma_gaut = 90.e-3;
 
     template<typename TF> constexpr TF nu = 1.5e-5; // Kinematic viscosity of air.
 }
@@ -214,11 +214,16 @@ namespace
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
 
-                    const bool has_liq = ql[ijk] > ql_min<TF>;
-                    const bool has_ice = qi[ijk] > qi_min<TF>;
-                    const bool has_rain = qr[ijk] > qr_min<TF>;
-                    const bool has_snow = qs[ijk] > qs_min<TF>;
-                    const bool has_graupel = qg[ijk] > qg_min<TF>;
+                    // Flag the sign of the absolute temperature.
+                    const TF T_pos = TF(T >= T0<TF>);
+                    const TF T_neg = TF(1.) - T_pos;
+
+                    // Check which species are present.
+                    const bool has_liq     = (ql[ijk] > ql_min<TF>);
+                    const bool has_ice     = (qi[ijk] > qi_min<TF>);
+                    const bool has_rain    = (qr[ijk] > qr_min<TF>);
+                    const bool has_snow    = (qs[ijk] > qs_min<TF>);
+                    const bool has_graupel = (qg[ijk] > qg_min<TF>);
 
                     if (! (has_liq || has_ice || has_rain || has_snow || has_graupel) )
                         continue;
@@ -362,7 +367,7 @@ namespace
                     const TF S_i = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_ice(p[k], T);
 
                     // Tomita Eq. 63
-                    const TF delta_3 = TF( (S_i - TF(1.)) <= TF(0.) );
+                    const TF delta_3 = TF(S_i <= TF(1.)); // Subsaturated, then delta_3 = 1.
 
                     // Tomita Eq. 59
                     TF P_revp = 
@@ -372,7 +377,7 @@ namespace
                           * std::tgamma( TF(0.5) * (TF(5.) + d_r<TF>) )
                           / std::pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) );
 
-                    // Tomita Eq. 60
+                    // Tomita Eq. 60. Negative for sublimation, positive for deposition.
                     const TF P_sdep_ssub = 
                         TF(2.)*pi<TF> * N_0s<TF> * (S_i - TF(1.)) * G_i / rho[k]
                         * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
@@ -389,12 +394,13 @@ namespace
                           / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) );
 
                     // Tomita Eq. 64
-                    TF P_sdep = (delta_3 - TF(1.)) * P_sdep_ssub;
-                    TF P_gdep = (delta_3 - TF(1.)) * P_gdep_gsub;
+                    TF P_sdep = (TF(1.) - delta_3) * P_sdep_ssub;
+                    TF P_gdep = (TF(1.) - delta_3) * P_gdep_gsub;
 
                     // Tomita Eq. 65
-                    TF P_ssub = delta_3 * P_sdep_ssub;
-                    TF P_gsub = delta_3 * P_gdep_gsub;
+                    // CvH: I swapped the sign with respect to Tomita, the term should be positive.
+                    TF P_ssub = - delta_3 * P_sdep_ssub;
+                    TF P_gsub = - delta_3 * P_gdep_gsub;
 
                     // Freezing and melting
                     // Tomita Eq. 67, 68 combined.
@@ -424,10 +430,6 @@ namespace
                         * (std::exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
 
                     // COMPUTE THE TENDENCIES.
-                    // Flag the sign of the absolute temperature.
-                    const TF T_pos = TF(T >= T0<TF>);
-                    const TF T_neg = TF(1.) - T_pos;
-
                     // Limit the production terms to avoid instability.
                     auto limit_tend = [](TF& tend, const TF tend_limit)
                     {
@@ -442,6 +444,7 @@ namespace
                     const TF dqg_dt_max = qg[ijk] / dt;
 
                     // Limit on the availability of the source.
+                    // Limit accretion terms.
                     limit_tend(P_iacr_s, dqr_dt_max);
                     limit_tend(P_iacr_g, dqr_dt_max);
                     limit_tend(P_raci_s, dqi_dt_max);
@@ -457,10 +460,10 @@ namespace
                     limit_tend(P_gacr  , dqr_dt_max);
                     limit_tend(P_gacs  , dqs_dt_max);
 
+                    // Limit autoconversion terms.
                     limit_tend(P_raut  , dql_dt_max);
                     limit_tend(P_saut  , dqi_dt_max);
                     limit_tend(P_gaut  , dqs_dt_max);
-
                     limit_tend(P_revp  , dqr_dt_max);
                     limit_tend(P_sdep  , dqv_dt_max);
                     limit_tend(P_ssub  , dqs_dt_max);
