@@ -612,75 +612,60 @@ namespace
                     graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
 
                     // Loss from cloud.
-                    if (has_liq)
-                    {
-                        qtt[ijk] -= cloud_to_rain;
-                        qrt[ijk] += cloud_to_rain;
-                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
+                    qtt[ijk] -= cloud_to_rain;
+                    qrt[ijk] += cloud_to_rain;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
 
-                        qtt[ijk] -= cloud_to_graupel;
-                        qgt[ijk] += cloud_to_graupel;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
+                    qtt[ijk] -= cloud_to_graupel;
+                    qgt[ijk] += cloud_to_graupel;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
 
-                        qtt[ijk] -= cloud_to_snow;
-                        qst[ijk] += cloud_to_snow;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
-                    }
+                    qtt[ijk] -= cloud_to_snow;
+                    qst[ijk] += cloud_to_snow;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
 
                     // Loss from rain.
-                    if (has_rain)
-                    {
-                        qrt[ijk] -= rain_to_vapor;
-                        qtt[ijk] += rain_to_vapor;
-                        thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
+                    qrt[ijk] -= rain_to_vapor;
+                    qtt[ijk] += rain_to_vapor;
+                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
 
-                        qrt[ijk] -= rain_to_graupel;
-                        qgt[ijk] += rain_to_graupel;
-                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
+                    qrt[ijk] -= rain_to_graupel;
+                    qgt[ijk] += rain_to_graupel;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
 
-                        qrt[ijk] -= rain_to_snow;
-                        qst[ijk] += rain_to_snow;
-                        thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
-                    }
+                    qrt[ijk] -= rain_to_snow;
+                    qst[ijk] += rain_to_snow;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
 
                     // Loss from ice.
-                    if (has_ice)
-                    {
-                        qtt[ijk] -= ice_to_snow;
-                        qst[ijk] += ice_to_snow;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
+                    qtt[ijk] -= ice_to_snow;
+                    qst[ijk] += ice_to_snow;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
 
-                        qtt[ijk] -= ice_to_graupel;
-                        qgt[ijk] += ice_to_graupel;
-                        thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
-                    }
+                    qtt[ijk] -= ice_to_graupel;
+                    qgt[ijk] += ice_to_graupel;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
 
                     // Loss from snow.
-                    if (has_snow)
-                    {
-                        qst[ijk] -= snow_to_graupel;
-                        qgt[ijk] += snow_to_graupel;
+                    qst[ijk] -= snow_to_graupel;
+                    qgt[ijk] += snow_to_graupel;
 
-                        qst[ijk] -= snow_to_vapor;
-                        qtt[ijk] += snow_to_vapor;
-                        thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+                    qst[ijk] -= snow_to_vapor;
+                    qtt[ijk] += snow_to_vapor;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
 
-                        qst[ijk] -= snow_to_rain;
-                        qrt[ijk] += snow_to_rain;
-                        thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
-                    }
+                    qst[ijk] -= snow_to_rain;
+                    qrt[ijk] += snow_to_rain;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
 
                     // Loss from graupel.
-                    if (has_graupel)
-                    {
-                        qgt[ijk] -= graupel_to_rain;
-                        qrt[ijk] += graupel_to_rain;
-                        thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
+                    qgt[ijk] -= graupel_to_rain;
+                    qrt[ijk] += graupel_to_rain;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
 
-                        qgt[ijk] -= graupel_to_vapor;
-                        qtt[ijk] += graupel_to_vapor;
-                        thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
-                    }
+                    qgt[ijk] -= graupel_to_vapor;
+                    qtt[ijk] += graupel_to_vapor;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
                 }
         }
 
