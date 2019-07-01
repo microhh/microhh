@@ -585,7 +585,7 @@ namespace
                     // Limit the production terms to avoid instability.
                     auto limit_factor = [](const TF tend, const TF tend_limit)
                     {
-                        return (tend < TF(0.)) ? std::min(-tend/tend_limit, TF(1.)) : TF(1.);
+                        return (tend < TF(0.)) ? std::min(-tend_limit/tend, TF(1.)) : TF(1.);
                     };
 
                     const TF dqv_dt_fac = limit_factor(dqv_dt, dqv_dt_max);
