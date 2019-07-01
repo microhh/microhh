@@ -41,12 +41,13 @@
 // Constants, move out later.
 namespace
 {
-    template<typename TF> constexpr TF ql_min = 1.e-6; // Threshold ql for calculating microphysical terms.
-    template<typename TF> constexpr TF qi_min = 1.e-6; // Threshold qi for calculating microphysical terms.
+    template<typename TF> constexpr TF qv_min = 1.e-7; // Threshold qv for calculating microphysical terms.
+    template<typename TF> constexpr TF ql_min = 1.e-7; // Threshold ql for calculating microphysical terms.
+    template<typename TF> constexpr TF qi_min = 1.e-7; // Threshold qi for calculating microphysical terms.
     template<typename TF> constexpr TF qr_min = 1.e-12; // Threshold qr for calculating microphysical terms.
     template<typename TF> constexpr TF qs_min = 1.e-12; // Threshold qs for calculating microphysical terms.
     template<typename TF> constexpr TF qg_min = 1.e-12; // Threshold qg for calculating microphysical terms.
-    template<typename TF> constexpr TF q_tiny = 1.e-12; // Threshold qg for calculating microphysical terms.
+    template<typename TF> constexpr TF q_tiny = 1.e-15; // Threshold qg for calculating microphysical terms.
 
     template<typename TF> constexpr TF pi = M_PI; // Pi constant.
     template<typename TF> constexpr TF pi_2 = M_PI*M_PI; // Pi constant squared.
@@ -214,12 +215,14 @@ namespace
 
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
                     const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
+                    const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
 
                     // Flag the sign of the absolute temperature.
                     const TF T_pos = TF(T >= T0<TF>);
                     const TF T_neg = TF(1.) - T_pos;
 
                     // Check which species are present.
+                    const bool has_vapor   = (qv      > qv_min<TF>);
                     const bool has_liq     = (ql[ijk] > ql_min<TF>);
                     const bool has_ice     = (qi[ijk] > qi_min<TF>);
                     const bool has_rain    = (qr[ijk] > qr_min<TF>);
@@ -424,8 +427,10 @@ namespace
                           / std::pow(lambda_g, TF(0.5) * (TF(5.) + d_g<TF>)) );
 
                     // Tomita Eq. 64
-                    TF P_sdep = (TF(1.) - delta_3) * P_sdep_ssub;
-                    TF P_gdep = (TF(1.) - delta_3) * P_gdep_gsub;
+                    TF P_sdep = !(has_vapor) ? TF(0.) :
+                        (TF(1.) - delta_3) * P_sdep_ssub;
+                    TF P_gdep = !(has_vapor) ? TF(0.) :
+                        (TF(1.) - delta_3) * P_gdep_gsub;
 
                     // Tomita Eq. 65
                     // CvH: I swapped the sign with respect to Tomita, the term should be positive.
@@ -463,12 +468,12 @@ namespace
 
                     // COMPUTE THE TENDENCIES.
                     // Limit the production terms to avoid instability.
-                    auto limit_tend = [](TF& tend, const TF tend_limit)
+                    auto limit_tend = [&](TF& tend, const TF tend_limit)
                     {
                         tend = std::max(TF(0.), std::min(tend, tend_limit));
                     };
 
-                    const TF dqv_dt_max = (qt[ijk] - ql[ijk] - qi[ijk]) / dt;
+                    const TF dqv_dt_max = qv      / dt;
                     const TF dqi_dt_max = qi[ijk] / dt;
                     const TF dql_dt_max = ql[ijk] / dt;
                     const TF dqr_dt_max = qr[ijk] / dt;
@@ -590,26 +595,26 @@ namespace
                     const TF dqs_dt_fac = limit_factor(dqs_dt, dqs_dt_max);
                     const TF dqg_dt_fac = limit_factor(dqg_dt, dqg_dt_max);
 
-                    vapor_to_snow    *= dqv_dt_fac * dqs_dt_fac;
-                    vapor_to_graupel *= dqv_dt_fac * dqg_dt_fac;
+                    vapor_to_snow    *= std::min(dqv_dt_fac, dqs_dt_fac);
+                    vapor_to_graupel *= std::min(dqv_dt_fac, dqg_dt_fac);
 
-                    cloud_to_rain    *= dql_dt_fac * dqr_dt_fac;
-                    cloud_to_graupel *= dql_dt_fac * dqg_dt_fac;
-                    cloud_to_snow    *= dql_dt_fac * dqs_dt_fac;
+                    cloud_to_rain    *= std::min(dql_dt_fac, dqr_dt_fac);
+                    cloud_to_graupel *= std::min(dql_dt_fac, dqg_dt_fac);
+                    cloud_to_snow    *= std::min(dql_dt_fac, dqs_dt_fac);
 
-                    rain_to_vapor    *= dqr_dt_fac * dqv_dt_fac;
-                    rain_to_graupel  *= dqr_dt_fac * dqg_dt_fac;
-                    rain_to_snow     *= dqr_dt_fac * dqs_dt_fac;
+                    rain_to_vapor    *= std::min(dqr_dt_fac, dqv_dt_fac);
+                    rain_to_graupel  *= std::min(dqr_dt_fac, dqg_dt_fac);
+                    rain_to_snow     *= std::min(dqr_dt_fac, dqs_dt_fac);
 
-                    ice_to_snow      *= dqi_dt_fac * dqs_dt_fac;
-                    ice_to_graupel   *= dqi_dt_fac * dqg_dt_fac;
+                    ice_to_snow      *= std::min(dqi_dt_fac, dqs_dt_fac);
+                    ice_to_graupel   *= std::min(dqi_dt_fac, dqg_dt_fac);
 
-                    snow_to_graupel  *= dqs_dt_fac * dqg_dt_fac;
-                    snow_to_vapor    *= dqs_dt_fac * dqv_dt_fac;
-                    snow_to_rain     *= dqs_dt_fac * dqr_dt_fac;
+                    snow_to_graupel  *= std::min(dqs_dt_fac, dqg_dt_fac);
+                    snow_to_vapor    *= std::min(dqs_dt_fac, dqv_dt_fac);
+                    snow_to_rain     *= std::min(dqs_dt_fac, dqr_dt_fac);
 
-                    graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
-                    graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
+                    graupel_to_rain  *= std::min(dqg_dt_fac, dqr_dt_fac);
+                    graupel_to_vapor *= std::min(dqg_dt_fac, dqv_dt_fac);
 
                     // Loss from cloud.
                     qtt[ijk] -= cloud_to_rain;
