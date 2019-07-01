@@ -87,13 +87,16 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF esat_liq(const TF T)
     {
-        #ifdef __CUDACC__
-        const TF x = fmax(TF(-75.), T-T0<TF>);
-        #else
-        const TF x = std::max(TF(-75.), T-T0<TF>);
-        #endif
+        // #ifdef __CUDACC__
+        // const TF x = fmax(TF(-75.), T-T0<TF>);
+        // #else
+        // const TF x = std::max(TF(-75.), T-T0<TF>);
+        // #endif
 
-        return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
+        // return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
+
+        const TF x = T-T0<TF>;
+        return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
     }
 
     template<typename TF>
@@ -229,10 +232,6 @@ namespace Thermo_moist_functions
         ans.qi = alpha_i*ql_qi;
         ans.t  = tnr;
         ans.qs = qs;
-
-        // const TF error = tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
-        //      + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
-        // std::cout << "CvH: " << (tnr - tnr_old)/tnr_old << std::endl;
 
         return ans;
     }
