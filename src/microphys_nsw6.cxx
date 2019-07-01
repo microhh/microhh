@@ -46,6 +46,7 @@ namespace
     template<typename TF> constexpr TF qr_min = 1.e-12; // Threshold qr for calculating microphysical terms.
     template<typename TF> constexpr TF qs_min = 1.e-12; // Threshold qs for calculating microphysical terms.
     template<typename TF> constexpr TF qg_min = 1.e-12; // Threshold qg for calculating microphysical terms.
+    template<typename TF> constexpr TF q_tiny = 1.e-12; // Threshold qg for calculating microphysical terms.
 
     template<typename TF> constexpr TF pi = M_PI; // Pi constant.
     template<typename TF> constexpr TF pi_2 = M_PI*M_PI; // Pi constant squared.
@@ -231,17 +232,17 @@ namespace
                     // Tomita Eq. 27
                     const TF lambda_r = std::pow(
                             a_r<TF> * N_0r<TF> * std::tgamma(b_r<TF> + TF(1.))
-                            / (rho[k] * qr[ijk]),
+                            / (rho[k] * (qr[ijk] + q_tiny<TF>)),
                             TF(1.) / (b_r<TF> + TF(1.)) );
 
                     const TF lambda_s = std::pow(
                             a_s<TF> * N_0s<TF> * std::tgamma(b_s<TF> + TF(1.))
-                            / (rho[k] * qs[ijk]),
+                            / (rho[k] * (qs[ijk] + q_tiny<TF>)),
                             TF(1.) / (b_s<TF> + TF(1.)) );
 
                     const TF lambda_g = std::pow(
                             a_g<TF> * N_0g<TF> * std::tgamma(b_g<TF> + TF(1.))
-                            / (rho[k] * qg[ijk]),
+                            / (rho[k] * (qg[ijk] + q_tiny<TF>)),
                             TF(1.) / (b_g<TF> + TF(1.)) );
 
                     // Tomita Eq. 28
@@ -266,7 +267,8 @@ namespace
 
                     // ACCRETION
                     // Tomita Eq. 29
-                    const TF P_iacr = fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
+                    const TF P_iacr = !(has_rain && has_ice) ? TF(0.) :
+                        fac_iacr / std::pow(lambda_r, TF(6.) + d_r<TF>) * qi[ijk];
 
                     // Tomita Eq. 30
                     const TF delta_1 = TF(qr[ijk] >= TF(1.e-4));
@@ -276,37 +278,44 @@ namespace
                     TF P_iacr_g = delta_1 * P_iacr;
 
                     // Tomita Eq. 32
-                    const TF P_raci = fac_raci / std::pow(lambda_r, TF(3.) + d_r<TF>) * qi[ijk];
+                    const TF P_raci = !(has_rain && has_ice) ? TF(0.) :
+                        fac_raci / std::pow(lambda_r, TF(3.) + d_r<TF>) * qi[ijk];
 
                     // Tomita Eq. 33
                     TF P_raci_s = (TF(1.) - delta_1) * P_raci;
                     TF P_raci_g = delta_1 * P_raci;
 
                     // Tomita Eq. 34, 35
-                    TF P_racw = fac_racw / std::pow(lambda_r, TF(3.) + d_r<TF>) * ql[ijk];
-                    TF P_sacw = fac_sacw / std::pow(lambda_s, TF(3.) + d_s<TF>) * ql[ijk];
+                    TF P_racw = !(has_liq && has_rain) ? TF(0.) :
+                        fac_racw / std::pow(lambda_r, TF(3.) + d_r<TF>) * ql[ijk];
+                    TF P_sacw = !(has_liq && has_snow) ? TF(0.) :
+                        fac_sacw / std::pow(lambda_s, TF(3.) + d_s<TF>) * ql[ijk];
 
                     // Tomita Eq. 39
                     const TF E_si = std::exp(gamma_sacr<TF> * (T - T0<TF>));
 
                     // Tomita Eq. 36 - 38
-                    TF P_saci = fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
-                    TF P_gacw = fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
-                    TF P_gaci = fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
+                    TF P_saci = !(has_snow && has_ice) ? TF(0.) :
+                        fac_saci * E_si / std::pow(lambda_s, TF(3.) + d_s<TF>) * qi[ijk];
+                    TF P_gacw = !(has_graupel && has_liq) ? TF(0.) :
+                        fac_gacw / std::pow(lambda_g, TF(3.) + d_g<TF>) * ql[ijk];
+                    TF P_gaci = !(has_graupel && has_ice) ? TF(0.) :
+                        fac_gaci / std::pow(lambda_g, TF(3.) + d_g<TF>) * qi[ijk];
 
                     // Accretion of falling hydrometeors.
                     // Tomita Eq. 42
                     const TF delta_2 = TF(1.) - TF( (qr[ijk] >= TF(1.e-4)) || (qs[ijk] >= TF(1.e-4)) );
 
                     // Tomita Eq. 41
-                    TF P_racs = (TF(1.) - delta_2)
+                    TF P_racs = !(has_rain && has_snow) ? TF(0.) :
+                        (TF(1.) - delta_2)
                         * pi<TF> * a_s<TF> * std::abs(V_Tr - V_Ts) * E_sr<TF> * N_0s<TF> * N_0r<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_s, b_s<TF> + TF(3.)) * lambda_r )
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_s, b_s<TF> + TF(2.)) * pow2(lambda_r) )
                           +          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_s, b_s<TF> + TF(1.)) * pow3(lambda_r) ) );
 
                     // Tomita Eq. 44
-                    const TF P_sacr =
+                    const TF P_sacr = !(has_snow && has_rain) ? TF(0.) :
                           pi<TF> * a_r<TF> * std::abs(V_Ts - V_Tr) * E_sr<TF> * N_0r<TF> * N_0s<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_s) )
                           + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_s) )
@@ -320,14 +329,14 @@ namespace
                     const TF E_gs = std::min( TF(1.), std::exp(gamma_gacs<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 47
-                    TF P_gacr =
+                    TF P_gacr = !(has_graupel && has_rain) ? TF(0.) :
                           pi<TF> * a_r<TF> * std::abs(V_Tg - V_Tr) * E_gr<TF> * N_0g<TF> * N_0r<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_r<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_r<TF> + TF(1.)) * pow3(lambda_g) )
                           + TF(2.) * std::tgamma(b_r<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_r<TF> + TF(2.)) * pow2(lambda_g) )
                           +          std::tgamma(b_r<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_r<TF> + TF(3.)) * lambda_g ) );
 
                     // Tomita Eq. 48
-                    TF P_gacs =
+                    TF P_gacs = !(has_graupel && has_snow) ? TF(0.) :
                           pi<TF> * a_s<TF> * std::abs(V_Tg - V_Ts) * E_gs * N_0g<TF> * N_0s<TF> / (TF(4.)*rho[k])
                         * (          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_s<TF> + TF(1.)) * pow3(lambda_g) )
                           + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
@@ -344,7 +353,8 @@ namespace
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
-                    TF P_raut = TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                    TF P_raut = !(has_liq) ? TF(0.) :
+                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
 
                     // Kharoutdinov and Kogan autoconversion.
                     // TF P_raut = (has_liq) ?
@@ -365,10 +375,12 @@ namespace
                     // TF P_raut = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) * (TF(1.) + phi_au / pow2(TF(1.)-tau)); // SB06, eq 4
 
                     // Tomita Eq. 52
-                    TF P_saut = std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
+                    TF P_saut = !(has_ice) ? TF(0.) :
+                        std::max(beta_1*(qi[ijk] - q_icrt), TF(0.));
 
                     // Tomita Eq. 54
-                    TF P_gaut = std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
+                    TF P_gaut = !(has_snow) ? TF(0.) :
+                        std::max(beta_2*(qs[ijk] - q_scrt), TF(0.));
 
                     // PHASE CHANGES.
                     // Tomita Eq. 57
@@ -388,7 +400,7 @@ namespace
                     const TF delta_3 = TF(S_i <= TF(1.)); // Subsaturated, then delta_3 = 1.
 
                     // Tomita Eq. 59
-                    TF P_revp = 
+                    TF P_revp = !(has_rain) ? TF(0.) :
                         - TF(2.)*pi<TF> * N_0r<TF> * (std::min(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
                         * ( f_1r<TF> * std::tgamma(TF(2.)) / pow2(lambda_r)
                           + f_2r<TF> * std::sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
@@ -417,12 +429,14 @@ namespace
 
                     // Tomita Eq. 65
                     // CvH: I swapped the sign with respect to Tomita, the term should be positive.
-                    TF P_ssub = - delta_3 * P_sdep_ssub;
-                    TF P_gsub = - delta_3 * P_gdep_gsub;
+                    TF P_ssub = !(has_snow) ? TF(0.) :
+                        - delta_3 * P_sdep_ssub;
+                    TF P_gsub = !(has_graupel) ? TF(0.) :
+                        - delta_3 * P_gdep_gsub;
 
                     // Freezing and melting
                     // Tomita Eq. 67, 68 combined.
-                    TF P_smlt = 
+                    TF P_smlt = !(has_snow) ? TF(0.) :
                         TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0s<TF> / (rho[k]*Lf<TF>)
                         * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
                           + f_2s<TF> * std::sqrt(c_s<TF> * rho0_rho_sqrt / nu<TF>)
@@ -431,7 +445,7 @@ namespace
                         + C_l<TF> * (T - T0<TF>) / Lf<TF> * (P_sacw + P_sacr);
 
                     // Tomita Eq. 69
-                    TF P_gmlt = 
+                    TF P_gmlt = !(has_graupel) ? TF(0.) :
                         TF(2.)*pi<TF> * K_a<TF> * (T - T0<TF>) * N_0g<TF> / (rho[k]*Lf<TF>)
                         * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
                           + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
@@ -443,7 +457,7 @@ namespace
                     constexpr TF A_prime = TF(0.66);
                     constexpr TF B_prime = TF(100.);
 
-                    TF P_gfrz =
+                    TF P_gfrz = !(has_rain) ? TF(0.) :
                         TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
                         * (std::exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
 
