@@ -705,6 +705,120 @@ namespace
                 }
     }
 
+    // Sedimentation using substepping.
+    template<typename TF>
+    void sedimentation(
+            TF* const restrict qct, TF* const restrict rc_bot,
+            TF* const restrict flux_qc, TF* const restrict qc_sub,
+            const TF* const restrict qc,
+            const TF* const restrict rho,
+            const TF* const restrict dzi, const TF* const restrict dz,
+            const double dt,
+            const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
+            const TF qc_min,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        constexpr TF V_Tmin = TF(0. );
+        constexpr TF V_Tmax = TF(10.);
+
+        constexpr int n_sub = 20;
+        const TF dt_sub = dt / n_sub;
+
+        // Assign the value of qc to qc_sub.
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qc_sub[ijk] = qc[ijk];
+                }
+
+        // Take n_sub substeps;
+        for (int n=0; n<n_sub; ++n)
+        {
+            // 1. Calculate sedimentation flux
+            for (int k=kstart; k<kend; ++k)
+            {
+                const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
+
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+
+                        if (qc[ijk] > qc_min)
+                        {
+                            const TF lambda_c = std::pow(
+                                a_c * N_0c * std::tgamma(b_c + TF(1.))
+                                / (rho[k] * qc[ijk]),
+                                TF(1.) / (b_c + TF(1.)) );
+
+                            TF V_T =
+                                c_c * rho0_rho_sqrt
+                                * std::tgamma(b_c + d_c + TF(1.)) / std::tgamma(b_c + TF(1.))
+                                * std::pow(lambda_c, -d_c);
+
+                            // Constrain the terminal velocity between 0.1 and 10.
+                            V_T = std::max(V_Tmin, std::min(V_T, V_Tmax));
+
+                            // Terminal velocity is oriented in negative z direction.
+                            flux_qc[ijk] = - rho[k]*V_T*qc[ijk];
+                        }
+                        else
+                            flux_qc[ijk] = TF(0.);
+                    }
+            }
+
+            // Set the top flux gradient to zero.
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + kend*kk;
+                    flux_qc[ijk] = flux_qc[ijk-kk];
+                }
+
+            // Time integrate the value.
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+
+                        // Use an upwind discretization.
+                        const TF qc_tend = -(flux_qc[ijk+kk] - flux_qc[ijk]) / rho[k] * dzi[k];
+                        qc_sub[ijk] += dt_sub * qc_tend;
+                    }
+        }
+
+        // Compute the sedimentation tendency.
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qct[ijk] += (qc_sub[ijk] - qc[ijk]) / dt;
+                }
+
+        // Store surface sedimentation flux
+        // Sedimentation flux is already multiplied with density (see flux div. calculation), so
+        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                rc_bot[ij] = -flux_qc[ijk];
+            }
+    }
+
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
     void sedimentation_ss08(
@@ -959,7 +1073,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto tmp3 = fields.get_tmp();
     auto tmp4 = fields.get_tmp();
 
-    // Falling rain.
     sedimentation_ss08(
             fields.st.at("qr")->fld.data(), rr_bot.data(),
             tmp1->fld.data(), tmp2->fld.data(),
@@ -1003,6 +1116,50 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
+
+    /*
+    // Falling rain.
+    sedimentation(
+            fields.st.at("qr")->fld.data(), rr_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
+            qr_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+
+    // Falling snow.
+    sedimentation(
+            fields.st.at("qs")->fld.data(), rs_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            fields.sp.at("qs")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
+            qs_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+
+    // Falling graupel.
+    sedimentation(
+            fields.st.at("qg")->fld.data(), rg_bot.data(),
+            tmp1->fld.data(), tmp2->fld.data(),
+            fields.sp.at("qg")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
+            qg_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+            */
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
