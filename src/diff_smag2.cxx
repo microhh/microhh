@@ -637,8 +637,7 @@ namespace
                   const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                   const int jj, const int kk)
     {
-        const TF one = 1.;
-        const TF tPrfac = std::min(one, tPr);
+        const TF tPrfac = std::min(TF(1.), tPr);
         TF dnmul = 0;
 
         // get the maximum time step for diffusion
@@ -648,10 +647,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
+                    dnmul = std::max(dnmul, std::abs(evisc[ijk]/tPrfac*(dxidxi + dyidyi + dzi[k]*dzi[k])));
                 }
-
-        // get_max(&dnmul);
 
         return dnmul;
     }
