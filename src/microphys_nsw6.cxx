@@ -102,6 +102,9 @@ namespace
 
     template<typename TF> constexpr TF M_i = 4.19e-13; // Mass of one cloud ice particle.
 
+    template<typename TF> constexpr TF beta_saut = 6.e-3; // Values from SCALE-LES model.
+    template<typename TF> constexpr TF beta_gaut = 0.e-3; // Values from SCALE-LES model.
+
     template<typename TF> constexpr TF gamma_sacr = 25.e-3;
     template<typename TF> constexpr TF gamma_saut = 60.e-3; // Tomita's code in SCALE is different than paper (0.025).
     template<typename TF> constexpr TF gamma_gacs = 90.e-3;
@@ -350,21 +353,21 @@ namespace
                     constexpr TF q_scrt = TF(6.e-4);
 
                     // Tomita Eq. 53
-                    const TF beta_1 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
+                    const TF beta_1 = std::min( beta_saut<TF>, beta_saut<TF>*std::exp(gamma_saut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 54
-                    const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
+                    const TF beta_2 = std::min( beta_gaut<TF>, beta_gaut<TF>*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
-                    // TF P_raut = !(has_liq) ? TF(0.) :
-                    //     TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                    TF P_raut = !(has_liq) ? TF(0.) :
+                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
 
-                    // Kharoutdinov and Kogan autoconversion.
-                    TF P_raut = (has_liq) ?
-                        TF(1350.)
-                        * std::pow(ql[ijk], TF(2.47))
-                        * std::pow(N_d * TF(1.e-6), TF(-1.79))
-                        : TF(0.);
+                    // // Kharoutdinov and Kogan autoconversion.
+                    // TF P_raut = (has_liq) ?
+                    //     TF(1350.)
+                    //     * std::pow(ql[ijk], TF(2.47))
+                    //     * std::pow(N_d * TF(1.e-6), TF(-1.79))
+                    //     : TF(0.);
 
                     // Seifert and Beheng autoconversion.
                     // const TF x_star = TF(2.6e-10); // SB06, list of symbols, same as UCLA-LES
