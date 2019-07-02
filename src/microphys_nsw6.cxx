@@ -356,15 +356,15 @@ namespace
                     const TF beta_2 = std::min( TF(1.e-3), TF(1.e-3)*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
                     // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
-                    TF P_raut = !(has_liq) ? TF(0.) :
-                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                    // TF P_raut = !(has_liq) ? TF(0.) :
+                    //     TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.6e-5) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
 
                     // Kharoutdinov and Kogan autoconversion.
-                    // TF P_raut = (has_liq) ?
-                    //     TF(1350.)
-                    //     * std::exp( std::log(ql[ijk]) * TF(2.47) )
-                    //     * std::exp( std::log(N_d * TF(1.e-6)) * TF(-1.79) )
-                    //     : TF(0.);
+                    TF P_raut = (has_liq) ?
+                        TF(1350.)
+                        * std::pow(ql[ijk], TF(2.47))
+                        * std::pow(N_d * TF(1.e-6), TF(-1.79))
+                        : TF(0.);
 
                     // Seifert and Beheng autoconversion.
                     // const TF x_star = TF(2.6e-10); // SB06, list of symbols, same as UCLA-LES
