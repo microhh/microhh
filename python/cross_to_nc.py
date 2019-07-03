@@ -7,11 +7,6 @@ import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
-for time in range(starttime,endtime, sampletime):
-    otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime))
-        endtime = time - sampletime
-        break
     # Loop over the different variables and crosssections
     for variable in variables:
         for mode in modes:
