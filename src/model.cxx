@@ -176,7 +176,7 @@ void Model<TF>::init()
     force->init();
     thermo->init();
     microphys->init();
-    radiation->init();
+    radiation->init(timeloop->get_ifactor());
     decay->init(*input);
     budget->init();
 

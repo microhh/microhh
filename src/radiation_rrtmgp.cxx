@@ -33,6 +33,7 @@
 #include "stats.h"
 #include "cross.h"
 #include "constants.h"
+#include "timeloop.h"
 
 // RRTMGP headers.
 #include "Array.h"
@@ -584,7 +585,6 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
-    next_rad_time = 0.;
 
 	t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
     emis_sfc    = inputin.get_item<double>("radiation", "emis_sfc"   , "");
@@ -602,8 +602,9 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 }
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::init()
+void Radiation_rrtmgp<TF>::init(const double ifactor)
 {
+    idt_rad = static_cast<unsigned long>(ifactor * dt_rad + 0.5);
 }
 
 template<typename TF>
@@ -922,7 +923,9 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    if (time >= next_rad_time)
+    const bool do_radiation = (timeloop.get_itime() % idt_rad == 0);
+
+    if (do_radiation)
     {
         // Set the tendency to zero.
         std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), TF(0.));
@@ -997,9 +1000,6 @@ void Radiation_rrtmgp<TF>::exec(
         fields.release_tmp(h2o);
         fields.release_tmp(clwp);
         fields.release_tmp(ciwp);
-
-        // Increment the rad_time
-        next_rad_time += dt_rad;
     }
 
     // Always add the tendency.

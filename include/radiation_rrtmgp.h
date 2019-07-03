@@ -51,7 +51,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 		bool check_field_exists(std::string name)
         { throw std::runtime_error("Not implemented"); }
 
-        void init();
+        void init(const double);
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
@@ -114,7 +114,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_longwave;
         bool sw_shortwave;
         double dt_rad;
-        double next_rad_time;
+        unsigned long idt_rad;
 
         std::vector<std::string> crosslist;
 
