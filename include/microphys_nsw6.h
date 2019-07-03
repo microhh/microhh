@@ -85,7 +85,6 @@ class Microphys_nsw6 : public Microphys<TF>
 
         // Variables for microphysics.
         TF N_d; // Number concentration of cloud water (cm-3)
-        double cfl; // Maximum CFL due to precipitation.
         double cfl_max; // CFL due to precipitation.
 
         std::vector<TF> rr_bot; // Rain rate at the bottom.

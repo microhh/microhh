@@ -933,7 +933,6 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    cfl = 0;
 
     N_d = inputin.get_item<TF>("micro", "Nd", "", 50.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
@@ -1113,6 +1112,8 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
 
     auto tmp = fields.get_tmp();
 
+    double cfl = 0.;
+
     // Compute CFL for rain.
     const double cfl_r = calc_cfl_ss08(
             tmp->fld.data(),
@@ -1125,7 +1126,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
-    this->cfl = cfl_r;
+    cfl = cfl_r;
 
     // Compute CFL for snow.
     const double cfl_s = calc_cfl_ss08(
@@ -1139,7 +1140,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
-    this->cfl = std::max(this->cfl, cfl_s);
+    cfl = std::max(cfl, cfl_s);
 
     // Compute CFL for graupel.
     const double cfl_g = calc_cfl_ss08(
@@ -1153,13 +1154,13 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
-    this->cfl = std::max(this->cfl, cfl_g);
+    cfl = std::max(cfl, cfl_g);
 
     fields.release_tmp(tmp);
 
     // Prevent zero division.
-    this->cfl = std::max(this->cfl, 1.e-5);
-    return idt * this->cfl_max / this->cfl;
+    cfl = std::max(cfl, 1.e-5);
+    return idt * this->cfl_max / cfl;
 }
 #endif
 
