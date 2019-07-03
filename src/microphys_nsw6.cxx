@@ -74,7 +74,7 @@ namespace
 
     template<typename TF> constexpr TF d_r = 0.5;  // Empirical constant for v_r.
     template<typename TF> constexpr TF d_s = 0.25; // Empirical constant for v_s.
-    template<typename TF> constexpr TF d_g = 0.25; // Empirical constant for v_g.
+    template<typename TF> constexpr TF d_g = 0.5;  // Empirical constant for v_g.
 
     template<typename TF> constexpr TF C_i = 2006.; // Specific heat of solid water.
     template<typename TF> constexpr TF C_l = 4218.; // Specific heat of liquid water.
