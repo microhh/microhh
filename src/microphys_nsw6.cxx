@@ -148,7 +148,6 @@ namespace
     void conversion(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
             TF* const restrict qtt, TF* const restrict thlt,
-            double& cfl_out,
             const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
             const TF* const restrict qt, const TF* const restrict thl,
             const TF* const restrict ql, const TF* const restrict qi,
@@ -159,8 +158,6 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        TF cfl = TF(0.);
-
         // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
         const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((N_d*TF(1.e-6)) / TF(2.e3));
 
@@ -266,10 +263,6 @@ namespace
                         c_g<TF> * rho0_rho_sqrt
                         * std::tgamma(b_g<TF> + d_g<TF> + TF(1.)) / std::tgamma(b_g<TF> + TF(1.))
                         * std::pow(lambda_g, -d_g<TF>);
-
-                    cfl = (has_rain   ) ? std::max(V_Tr * dt * dzi[k], cfl) : cfl;
-                    cfl = (has_snow   ) ? std::max(V_Ts * dt * dzi[k], cfl) : cfl;
-                    cfl = (has_graupel) ? std::max(V_Tg * dt * dzi[k], cfl) : cfl;
 
                     // ACCRETION
                     // Tomita Eq. 29
@@ -676,8 +669,6 @@ namespace
                     thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
                 }
         }
-
-        cfl_out = cfl;
     }
 
     // Bergeron.
@@ -711,120 +702,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     // To be filled in.
                 }
-    }
-
-    // Sedimentation using substepping.
-    template<typename TF>
-    void sedimentation(
-            TF* const restrict qct, TF* const restrict rc_bot,
-            TF* const restrict flux_qc, TF* const restrict qc_sub,
-            const TF* const restrict qc,
-            const TF* const restrict rho,
-            const TF* const restrict dzi, const TF* const restrict dz,
-            const double dt,
-            const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
-            const TF qc_min,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend,
-            const int jj, const int kk)
-    {
-        constexpr TF V_Tmin = TF(0. );
-        constexpr TF V_Tmax = TF(10.);
-
-        constexpr int n_sub = 20;
-        const TF dt_sub = dt / n_sub;
-
-        // Assign the value of qc to qc_sub.
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qc_sub[ijk] = qc[ijk];
-                }
-
-        // Take n_sub substeps;
-        for (int n=0; n<n_sub; ++n)
-        {
-            // 1. Calculate sedimentation flux
-            for (int k=kstart; k<kend; ++k)
-            {
-                const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
-
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ijk = i + j*jj + k*kk;
-
-                        if (qc[ijk] > qc_min)
-                        {
-                            const TF lambda_c = std::pow(
-                                a_c * N_0c * std::tgamma(b_c + TF(1.))
-                                / (rho[k] * qc[ijk]),
-                                TF(1.) / (b_c + TF(1.)) );
-
-                            TF V_T =
-                                c_c * rho0_rho_sqrt
-                                * std::tgamma(b_c + d_c + TF(1.)) / std::tgamma(b_c + TF(1.))
-                                * std::pow(lambda_c, -d_c);
-
-                            // Constrain the terminal velocity between 0.1 and 10.
-                            V_T = std::max(V_Tmin, std::min(V_T, V_Tmax));
-
-                            // Terminal velocity is oriented in negative z direction.
-                            flux_qc[ijk] = - rho[k]*V_T*qc[ijk];
-                        }
-                        else
-                            flux_qc[ijk] = TF(0.);
-                    }
-            }
-
-            // Set the top flux gradient to zero.
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + kend*kk;
-                    flux_qc[ijk] = flux_qc[ijk-kk];
-                }
-
-            // Time integrate the value.
-            for (int k=kstart; k<kend; ++k)
-                for (int j=jstart; j<jend; ++j)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; ++i)
-                    {
-                        const int ijk = i + j*jj + k*kk;
-
-                        // Use an upwind discretization.
-                        const TF qc_tend = -(flux_qc[ijk+kk] - flux_qc[ijk]) / rho[k] * dzi[k];
-                        qc_sub[ijk] += dt_sub * qc_tend;
-                    }
-        }
-
-        // Compute the sedimentation tendency.
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qct[ijk] += (qc_sub[ijk] - qc[ijk]) / dt;
-                }
-
-        // Store surface sedimentation flux
-        // Sedimentation flux is already multiplied with density (see flux div. calculation), so
-        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
-        for (int j=jstart; j<jend; ++j)
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                rc_bot[ij] = -flux_qc[ijk];
-            }
     }
 
     // Sedimentation from Stevens and Seifert (2008)
@@ -968,6 +845,82 @@ namespace
                 rc_bot[ij] = -flux_qc[ijk];
             }
     }
+
+    // Sedimentation from Stevens and Seifert (2008)
+    template<typename TF>
+    TF calc_cfl_ss08(
+            TF* const restrict w_qc,
+            const TF* const restrict qc,
+            const TF* const restrict rho,
+            const TF* const restrict dzi, const TF* const restrict dz,
+            const double dt,
+            const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
+            const TF qc_min,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        TF cfl_max = TF(0.);
+
+        constexpr TF V_Tmin = TF(0.1);
+        constexpr TF V_Tmax = TF(10.);
+
+        // 1. Calculate sedimentation velocity at cell center
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    if (qc[ijk] > qc_min)
+                    {
+                        const TF lambda_c = std::pow(
+                            a_c * N_0c * std::tgamma(b_c + TF(1.))
+                            / (rho[k] * qc[ijk]),
+                            TF(1.) / (b_c + TF(1.)) );
+
+                        TF V_T =
+                            c_c * rho0_rho_sqrt
+                            * std::tgamma(b_c + d_c + TF(1.)) / std::tgamma(b_c + TF(1.))
+                            * std::pow(lambda_c, -d_c);
+
+                        // Constrain the terminal velocity between 0.1 and 10.
+                        V_T = std::max(V_Tmin, std::min(V_T, V_Tmax));
+
+                        w_qc[ijk] = V_T;
+                    }
+                    else
+                        w_qc[ijk] = TF(0.);
+                }
+        }
+
+        // 1.1 Set one ghost cell to zero
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk_bot = i + j*jj + (kstart-1)*kk;
+                const int ijk_top = i + j*jj + (kend    )*kk;
+                w_qc[ijk_bot] = w_qc[ijk_bot+kk];
+                w_qc[ijk_top] = TF(0.);
+            }
+
+        // 2. Calculate CFL number using interpolated sedimentation velocity
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const TF cfl = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
+                    cfl_max = std::max(cfl, cfl_max);
+                }
+
+        return cfl_max;
+    }
 }
 
 template<typename TF>
@@ -1050,7 +1003,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     conversion(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
             fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-            this->cfl,
             fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
             fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
             ql->fld.data(), qi->fld.data(),
@@ -1125,50 +1077,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
-    /*
-    // Falling rain.
-    sedimentation(
-            fields.st.at("qr")->fld.data(), rr_bot.data(),
-            tmp1->fld.data(), tmp2->fld.data(),
-            fields.sp.at("qr")->fld.data(),
-            fields.rhoref.data(),
-            gd.dzi.data(), gd.dz.data(),
-            dt,
-            a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
-            qr_min<TF>,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
-
-    // Falling snow.
-    sedimentation(
-            fields.st.at("qs")->fld.data(), rs_bot.data(),
-            tmp1->fld.data(), tmp2->fld.data(),
-            fields.sp.at("qs")->fld.data(),
-            fields.rhoref.data(),
-            gd.dzi.data(), gd.dz.data(),
-            dt,
-            a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
-            qs_min<TF>,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
-
-    // Falling graupel.
-    sedimentation(
-            fields.st.at("qg")->fld.data(), rg_bot.data(),
-            tmp1->fld.data(), tmp2->fld.data(),
-            fields.sp.at("qg")->fld.data(),
-            fields.rhoref.data(),
-            gd.dzi.data(), gd.dz.data(),
-            dt,
-            a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
-            qg_min<TF>,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
-            */
-
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
     fields.release_tmp(tmp3);
@@ -1201,6 +1109,54 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double dt)
 {
+    auto& gd = grid.get_grid_data();
+
+    auto tmp = fields.get_tmp();
+
+    // Compute CFL for rain.
+    const double cfl_r = calc_cfl_ss08(
+            tmp->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
+            qr_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+    this->cfl = cfl_r;
+
+    // Compute CFL for snow.
+    const double cfl_s = calc_cfl_ss08(
+            tmp->fld.data(),
+            fields.sp.at("qs")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
+            qs_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+    this->cfl = std::max(this->cfl, cfl_s);
+
+    // Compute CFL for graupel.
+    const double cfl_g = calc_cfl_ss08(
+            tmp->fld.data(),
+            fields.sp.at("qg")->fld.data(),
+            fields.rhoref.data(),
+            gd.dzi.data(), gd.dz.data(),
+            dt,
+            a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
+            qg_min<TF>,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
+            gd.icells, gd.ijcells);
+    this->cfl = std::max(this->cfl, cfl_g);
+
+    fields.release_tmp(tmp);
+
     // Prevent zero division.
     this->cfl = std::max(this->cfl, 1.e-5);
     return idt * this->cfl_max / this->cfl;
