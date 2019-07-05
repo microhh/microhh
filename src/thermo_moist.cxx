@@ -331,7 +331,7 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    qc[ijk] = qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs;
+                    qc[ijk] = std::max(qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(0.));
                 }
         }
     }

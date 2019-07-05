@@ -71,17 +71,6 @@ namespace Thermo_moist_functions
         return grav<TF>/thvref * (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
-    //CUDA_MACRO inline TF esat(const TF T)
-    //{
-    //    #ifdef __CUDACC__
-    //    const TF x=fmax(-80.,T-T0);
-    //    #else
-    //    const TF x=std::max(-80.,T-T0);
-    //    #endif
-
-    //    return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
-    //}
-
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
     template<typename TF>
@@ -93,9 +82,8 @@ namespace Thermo_moist_functions
         const TF x = std::max(TF(-75.), T-T0<TF>);
         #endif
 
-        // return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
-
-        return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
+        // return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
+        return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
     }
 
     template<typename TF>
@@ -128,7 +116,7 @@ namespace Thermo_moist_functions
     template<typename TF>
     CUDA_MACRO inline TF water_fraction(const TF T)
     {
-        return std::max(TF(0.), std::min((T - TF(233.15)) / TF(273.15 - 233.15), TF(1.)));
+        return std::max(TF(0.), std::min((T - TF(233.15)) / (T0<TF> - TF(233.15)), TF(1.)));
     }
 
     // Combine the ice and water saturated specific humidities following Tomita, 2008.
@@ -174,17 +162,18 @@ namespace Thermo_moist_functions
         using Fast_math::pow2;
 
         int niter = 0;
-        int nitermax = 100;
+        int nitermax = 10;
         TF tnr_old = TF(1.e9);
-        TF qs = TF(0.);
 
-        TF tl = thl * exn;
+        const TF tl = thl * exn;
+        TF qs = qsat_liq(p, tl);
+
         Struct_sat_adjust<TF> ans =
         {
             TF(0.), // ql
             TF(0.), // qi
             tl, // t
-            qsat(p, tl) // qs
+            qs, // qs
         };
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
@@ -192,32 +181,70 @@ namespace Thermo_moist_functions
             return ans;
 
         /* Saturation adjustment solver.
-         * Root finding function is f(T) = T - tnr - Lv/cp*qt + alpha * Lv/cp*qs(T) + (1-alpha)*Ls/cp*qs(T)
-         * Lv/cp * dqsat/dT can be rewritten using Claussius-Clapeyron (desat/dT = Lv*esat / (Rv*T^2)).
+         * Root finding function is f(T) = T - tnr - Lv/cp*qt + alpha_w * Lv/cp*qs(T) + alpha_i*Ls/cp*qs(T)
+         * dq_sat/dT derivatives can be rewritten using Claussius-Clapeyron (desat/dT = L{v,s}*esat / (Rv*T^2)).
          */
+
         TF tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+
+        // Warm adjustment.
+        if (tl >= T0<TF>)
         {
-            ++niter;
-            tnr_old = tnr;
-            qs = qsat(p, tnr);
+            while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+            {
+                ++niter;
+                tnr_old = tnr;
+                qs = qsat_liq(p, tnr);
+                const TF f =
+                    tnr - tl - Lv<TF>/cp<TF>*(qt - qs);
+
+                const TF f_prime = TF(1.) + Lv<TF>/cp<TF>*dqsatdT_liq(p, tnr);
+
+                tnr -= f / f_prime;
+            }
+
+            qs = qsat_liq(p, tnr);
+            ans.ql = std::max(TF(0.), qt - qs);
+            ans.t  = tnr;
+            ans.qs = qs;
+        }
+        // Cold adjustment.
+        else
+        {
+            while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+            {
+                ++niter;
+                tnr_old = tnr;
+                qs = qsat(p, tnr);
+                const TF alpha_w = water_fraction(tnr);
+                const TF alpha_i = TF(1.) - alpha_w;
+                const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
+                const TF dqsatdT_w = dqsatdT_liq(p, tnr);
+                const TF dqsatdT_i = dqsatdT_ice(p, tnr);
+
+                const TF f =
+                    tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
+                             + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+
+                const TF f_prime = TF(1.)
+                    - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
+                    + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
+                    + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
+                    + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
+
+                tnr -= f / f_prime;
+            }
+
             const TF alpha_w = water_fraction(tnr);
             const TF alpha_i = TF(1.) - alpha_w;
-            const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
-            const TF dqsatdT_w = dqsatdT_liq(p, tnr);
-            const TF dqsatdT_i = dqsatdT_ice(p, tnr);
 
-            const TF f =
-                tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
-                         + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+            qs = qsat(p, tnr);
+            const TF ql_qi = std::max(TF(0.), qt - qs);
 
-            const TF f_prime = TF(1.)
-                - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
-                + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
-                + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
-                + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
-
-            tnr -= f / f_prime;
+            ans.ql = alpha_w*ql_qi;
+            ans.qi = alpha_i*ql_qi;
+            ans.t  = tnr;
+            ans.qs = qs;
         }
 
         if (niter == nitermax)
@@ -226,16 +253,6 @@ namespace Thermo_moist_functions
                 + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
             throw std::runtime_error(error);
         }
-
-        const TF alpha_w = water_fraction(tnr);
-        const TF alpha_i = TF(1.) - alpha_w;
-
-        const TF ql_qi = std::max(TF(0.), qt - qs);
-
-        ans.ql = alpha_w*ql_qi;
-        ans.qi = alpha_i*ql_qi;
-        ans.t  = tnr;
-        ans.qs = qs;
 
         return ans;
     }
