@@ -548,6 +548,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
                 microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
+            else if (ib->has_mask(mask_name))
+                ib->get_mask(*stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -619,6 +621,8 @@ void Model<TF>::setup_stats()
                 microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
+            else if (ib->has_mask(mask_name))
+                ib->get_mask(*stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -674,6 +678,8 @@ void Model<TF>::add_statistics_masks()
         else if (microphys->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (decay->has_mask(mask_name))
+            stats->add_mask(mask_name);
+        else if (ib->has_mask(mask_name))
             stats->add_mask(mask_name);
         else
         {

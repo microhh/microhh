@@ -31,6 +31,7 @@
 #include "input.h"
 #include "immersed_boundary.h"
 #include "fast_math.h"
+#include "stats.h"
 
 namespace
 {
@@ -448,6 +449,33 @@ namespace
             }
         }
     }
+
+
+    template<typename TF>
+    void calc_mask(
+            TF* const restrict mask, TF* const restrict maskh,
+            const TF* const restrict z_dem,
+            const TF* const restrict z, const TF* const restrict zh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+
+                    const int is_not_ib   = z [k] > z_dem[ij];
+                    const int is_not_ib_h = zh[k] > z_dem[ij];
+
+                    mask[ijk]  = static_cast<TF>(is_not_ib);
+                    maskh[ijk] = static_cast<TF>(is_not_ib_h);
+                }
+    }
 }
 
 template<typename TF>
@@ -476,6 +504,9 @@ Immersed_boundary<TF>::Immersed_boundary(Master& masterin, Grid<TF>& gridin, Fie
 
         // Read additional settings
         n_idw_points = inputin.get_item<int>("IB", "n_idw_points", "");
+
+        // Set available masks
+        available_masks.insert(available_masks.end(), {"ib"});
     }
 }
 
@@ -541,7 +572,7 @@ void Immersed_boundary<TF>::exec_scalars()
                 ghost.at("s").ip_i.data(), ghost.at("s").ip_j.data(), ghost.at("s").ip_k.data(),
                 sbcbot, it.second->visc, ghost.at("s").i.size(), n_idw_points,
                 gd.icells, gd.ijcells);
-    
+
         boundary_cyclic.exec(it.second->fld.data());
     }
 }
@@ -674,6 +705,35 @@ void Immersed_boundary<TF>::create()
         }
     }
 }
+
+template<typename TF>
+bool Immersed_boundary<TF>::has_mask(std::string mask_name)
+{
+    if (std::find(available_masks.begin(), available_masks.end(), mask_name) != available_masks.end())
+        return true;
+    else
+        return false;
+}
+
+template<typename TF>
+void Immersed_boundary<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+{
+    auto& gd = grid.get_grid_data();
+
+    auto mask  = fields.get_tmp();
+    auto maskh = fields.get_tmp();
+
+    calc_mask(
+            mask->fld.data(), maskh->fld.data(), dem.data(), gd.z.data(), gd.zh.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    stats.set_mask_thres("ib", *mask, *maskh, TF(0.5), Stats_mask_type::Plus);
+
+    fields.release_tmp(mask );
+    fields.release_tmp(maskh);
+}
+
 
 template class Immersed_boundary<double>;
 template class Immersed_boundary<float>;

@@ -121,8 +121,12 @@ class Immersed_boundary
 
         void init(Input&);
         void create();
+
         void exec_momentum();
         void exec_scalars();
+
+        bool has_mask(std::string);
+        void get_mask(Stats<TF>&, std::string);
 
         void prepare_device();
         void clear_device();
@@ -145,16 +149,11 @@ class Immersed_boundary
         // IB input from DEM
         std::vector<TF> dem;
 
-        // Structs with the ghost cell properties
-        //Ghost_cells<TF> ghost_u;
-        //Ghost_cells<TF> ghost_v;
-        //Ghost_cells<TF> ghost_w;
-        //Ghost_cells<TF> ghost_s;
-
-        // Vector with all ghost cell structs
-        //std::vector<Ghost_cells<TF>> ghost_structs;
-
+        // All ghost cell properties
         std::map<std::string, Ghost_cells<TF>> ghost;
+
+        // Statistics
+        std::vector<std::string> available_masks;
 };
 
 #endif
