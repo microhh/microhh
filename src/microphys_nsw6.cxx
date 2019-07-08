@@ -839,7 +839,7 @@ namespace
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
-                const int ij = i + j*jj;
+                const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
 
                 rc_bot[ij] = -flux_qc[ijk];
@@ -1012,18 +1012,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
 
-    /*
-    bergeron(
-            fields.st.at("qs")->fld.data(),
-            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-            ql->fld.data(), qi->fld.data(),
-            fields.rhoref.data(), exner.data(),
-            TF(dt),
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
-            */
-
     fields.release_tmp(ql);
     fields.release_tmp(qi);
 
@@ -1032,6 +1020,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto tmp3 = fields.get_tmp();
     auto tmp4 = fields.get_tmp();
 
+    // Falling rain.
     sedimentation_ss08(
             fields.st.at("qr")->fld.data(), rr_bot.data(),
             tmp1->fld.data(), tmp2->fld.data(),
