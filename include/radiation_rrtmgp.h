@@ -96,13 +96,15 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&);
+                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
+                const bool);
 
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&);
+                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
+                const bool);
 
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
@@ -113,6 +115,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         bool sw_longwave;
         bool sw_shortwave;
+        bool sw_clear_sky_stats;
         double dt_rad;
         unsigned long idt_rad;
 

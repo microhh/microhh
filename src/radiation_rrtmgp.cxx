@@ -584,6 +584,8 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
 
+    sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
+
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
 	t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
@@ -637,12 +639,25 @@ void Radiation_rrtmgp<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_up");
         allowed_crossvars_radiation.push_back("sw_flux_dn");
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
+        
+        if (sw_clear_sky_stats)
+        {
+            allowed_crossvars_radiation.push_back("sw_flux_up_clear");
+            allowed_crossvars_radiation.push_back("sw_flux_dn_clear");
+            allowed_crossvars_radiation.push_back("sw_flux_dn_dir_clear");
+        }
     }
 
     if (sw_longwave)
     {
         allowed_crossvars_radiation.push_back("lw_flux_up");
         allowed_crossvars_radiation.push_back("lw_flux_dn");
+
+        if (sw_clear_sky_stats)
+        {
+            allowed_crossvars_radiation.push_back("lw_flux_up_clear");
+            allowed_crossvars_radiation.push_back("lw_flux_dn_clear");
+        }
     }
 
     crosslist = cross.get_enabled_variables(allowed_crossvars_radiation);
@@ -890,6 +905,12 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
     {
         stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh", group_name);
         stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh", group_name);
+
+        if (sw_clear_sky_stats)
+        {
+            stats.add_prof("lw_flux_up_clear", "Clear-sky longwave upwelling flux"  , "W m-2", "zh", group_name);
+            stats.add_prof("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "zh", group_name);
+        }
     }
 }
 
@@ -913,6 +934,13 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
+
+        if (sw_clear_sky_stats)
+        {
+            stats.add_prof("sw_flux_up_clear"    , "Clear-sky shortwave upwelling flux"         , "W m-2", "zh", group_name);
+            stats.add_prof("sw_flux_dn_clear"    , "Clear-sky shortwave downwelling flux"       , "W m-2", "zh", group_name);
+            stats.add_prof("sw_flux_dn_dir_clear", "Clear-sky shortwave direct downwelling flux", "W m-2", "zh", group_name);
+        }
     }
 }
 
@@ -957,12 +985,15 @@ void Radiation_rrtmgp<TF>::exec(
         Array<double,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
         Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
+        const bool compute_clouds = true;
+
         if (sw_longwave)
         {
             exec_longwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds);
 
             calc_tendency(
                     fields.sd.at("thlt_rad")->fld.data(),
@@ -982,7 +1013,8 @@ void Radiation_rrtmgp<TF>::exec(
             exec_shortwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds);
 
             calc_tendency(
                     fields.sd.at("thlt_rad")->fld.data(),
@@ -1092,6 +1124,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     auto tmp = fields.get_tmp();
 
+    const bool compute_clouds = true;
+
     // Use a lambda function to avoid code repetition.
     auto save_stats_and_cross = [&](
             const Array<double,2>& array, const std::string& name, const std::array<int,3>& loc)
@@ -1121,10 +1155,23 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         exec_longwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
+                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                compute_clouds);
 
         save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
         save_stats_and_cross(flux_dn, "lw_flux_dn", gd.wloc);
+
+        if (sw_clear_sky_stats)
+        {
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    !compute_clouds);
+
+            save_stats_and_cross(flux_up, "lw_flux_up_clear", gd.wloc);
+            save_stats_and_cross(flux_dn, "lw_flux_dn_clear", gd.wloc);
+        }
     }
 
     if (sw_shortwave)
@@ -1134,11 +1181,25 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         exec_shortwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_dn_dir, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a);
+                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                compute_clouds);
 
         save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
         save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
         save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
+
+        if (sw_clear_sky_stats)
+        {
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    !compute_clouds);
+
+            save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
+            save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
+            save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
+        }
     }
 
     fields.release_tmp(tmp);
@@ -1149,7 +1210,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp)
+        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp,
+        const bool compute_clouds)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1224,65 +1286,68 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 t_lev  .subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
         // 2. Solve the cloud optical properties.
-        Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-        Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-
-        // Set the masks.
-        constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
-
-        Array<int,2> cld_mask_liq({n_col_in, n_lay});
-        for (int i=0; i<cld_mask_liq.size(); ++i)
-            cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
-
-        Array<int,2> cld_mask_ice({n_col_in, n_lay});
-        for (int i=0; i<cld_mask_ice.size(); ++i)
-            cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
-
-        // Compute the effective droplet radius.
-        Array<double,2> rel({n_col_in, n_lay});
-        Array<double,2> rei({n_col_in, n_lay});
-
-        const double sig_g = 1.34;
-        const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
-        const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
-
-        for (int ilay=1; ilay<=n_lay; ++ilay)
+        if (compute_clouds)
         {
-            const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
-            for (int icol=1; icol<=n_col_in; ++icol)
+            Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+            // Set the masks.
+            constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
+
+            Array<int,2> cld_mask_liq({n_col_in, n_lay});
+            for (int i=0; i<cld_mask_liq.size(); ++i)
+                cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
+
+            Array<int,2> cld_mask_ice({n_col_in, n_lay});
+            for (int i=0; i<cld_mask_ice.size(); ++i)
+                cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
+
+            // Compute the effective droplet radius.
+            Array<double,2> rel({n_col_in, n_lay});
+            Array<double,2> rei({n_col_in, n_lay});
+
+            const double sig_g = 1.34;
+            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+            const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
+
+            for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
-                // CvH: Potentially better using moments from microphysics.
-                double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                    std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
+                const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                for (int icol=1; icol<=n_col_in; ++icol)
+                {
+                    // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
+                    // CvH: Potentially better using moments from microphysics.
+                    double rel_value = cld_mask_liq({icol, ilay}) * fac *
+                        std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
 
-                // Limit the values between 2.5 and 60.
-                rel_value = std::max(2.5, std::min(rel_value, 60.));
-                rel({icol, ilay}) = rel_value;
+                    // Limit the values between 2.5 and 60.
+                    rel_value = std::max(2.5, std::min(rel_value, 60.));
+                    rel({icol, ilay}) = rel_value;
+                }
             }
+
+            // Set the ice effective radius to a constant value of 25 micron.
+            for (int i=0; i<rei.size(); ++i)
+                rei.v()[i] = 25.;
+
+            // Convert to g/m2.
+            for (int i=0; i<clwp_subset.size(); ++i)
+                clwp_subset.v()[i] *= 1e3;
+
+            for (int i=0; i<ciwp_subset.size(); ++i)
+                ciwp_subset.v()[i] *= 1e3;
+
+            cloud_lw->cloud_optics(
+                    cld_mask_liq, cld_mask_ice,
+                    clwp_subset, ciwp_subset,
+                    rel, rei,
+                    *cloud_optical_props_in);
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_1scl<double>&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_1scl<double>&>(*cloud_optical_props_in));
         }
-
-        // Set the ice effective radius to a constant value of 25 micron.
-        for (int i=0; i<rei.size(); ++i)
-            rei.v()[i] = 25.;
-
-        // Convert to g/m2.
-        for (int i=0; i<clwp_subset.size(); ++i)
-            clwp_subset.v()[i] *= 1e3;
-
-        for (int i=0; i<ciwp_subset.size(); ++i)
-            ciwp_subset.v()[i] *= 1e3;
-
-        cloud_lw->cloud_optics(
-                cld_mask_liq, cld_mask_ice,
-                clwp_subset, ciwp_subset,
-                rel, rei,
-                *cloud_optical_props_in);
-
-        // Add the cloud optical props to the gas optical properties.
-        add_to(
-                dynamic_cast<Optical_props_1scl<double>&>(*optical_props_subset_in),
-                dynamic_cast<Optical_props_1scl<double>&>(*cloud_optical_props_in));
 
         Array<double,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
         Array<double,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
@@ -1354,7 +1419,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_dn_dir, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev,
-        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp)
+        const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp,
+        const bool compute_clouds)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1430,65 +1496,68 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
         // 2. Solve the cloud optical properties.
-        Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-        Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-
-        // Set the masks.
-        constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
-
-        Array<int,2> cld_mask_liq({n_col_in, n_lay});
-        for (int i=0; i<cld_mask_liq.size(); ++i)
-            cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
-
-        Array<int,2> cld_mask_ice({n_col_in, n_lay});
-        for (int i=0; i<cld_mask_ice.size(); ++i)
-            cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
-
-        // Compute the effective droplet radius.
-        Array<double,2> rel({n_col_in, n_lay});
-        Array<double,2> rei({n_col_in, n_lay});
-
-        const double sig_g = 1.34;
-        const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
-        const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
-
-        for (int ilay=1; ilay<=n_lay; ++ilay)
+        if (compute_clouds)
         {
-            const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
-            for (int icol=1; icol<=n_col_in; ++icol)
+            Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+            // Set the masks.
+            constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
+
+            Array<int,2> cld_mask_liq({n_col_in, n_lay});
+            for (int i=0; i<cld_mask_liq.size(); ++i)
+                cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
+
+            Array<int,2> cld_mask_ice({n_col_in, n_lay});
+            for (int i=0; i<cld_mask_ice.size(); ++i)
+                cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
+
+            // Compute the effective droplet radius.
+            Array<double,2> rel({n_col_in, n_lay});
+            Array<double,2> rei({n_col_in, n_lay});
+
+            const double sig_g = 1.34;
+            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+            const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
+
+            for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
-                // CvH: Potentially better using moments from microphysics.
-                double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                    std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
+                const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                for (int icol=1; icol<=n_col_in; ++icol)
+                {
+                    // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
+                    // CvH: Potentially better using moments from microphysics.
+                    double rel_value = cld_mask_liq({icol, ilay}) * fac *
+                        std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
 
-                // Limit the values between 2.5 and 60.
-                rel_value = std::max(2.5, std::min(rel_value, 60.));
-                rel({icol, ilay}) = rel_value;
+                    // Limit the values between 2.5 and 60.
+                    rel_value = std::max(2.5, std::min(rel_value, 60.));
+                    rel({icol, ilay}) = rel_value;
+                }
             }
+
+            // Set the ice effective radius to a constant value of 25 micron.
+            for (int i=0; i<rei.size(); ++i)
+                rei.v()[i] = 25.;
+
+            // Convert to g/m2.
+            for (int i=0; i<clwp_subset.size(); ++i)
+                clwp_subset.v()[i] *= 1e3;
+
+            for (int i=0; i<ciwp_subset.size(); ++i)
+                ciwp_subset.v()[i] *= 1e3;
+
+            cloud_sw->cloud_optics(
+                    cld_mask_liq, cld_mask_ice,
+                    clwp_subset, ciwp_subset,
+                    rel, rei,
+                    *cloud_optical_props_in);
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str<double>&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str<double>&>(*cloud_optical_props_in));
         }
-
-        // Set the ice effective radius to a constant value of 25 micron.
-        for (int i=0; i<rei.size(); ++i)
-            rei.v()[i] = 25.;
-
-        // Convert to g/m2.
-        for (int i=0; i<clwp_subset.size(); ++i)
-            clwp_subset.v()[i] *= 1e3;
-
-        for (int i=0; i<ciwp_subset.size(); ++i)
-            ciwp_subset.v()[i] *= 1e3;
-
-        cloud_sw->cloud_optics(
-                cld_mask_liq, cld_mask_ice,
-                clwp_subset, ciwp_subset,
-                rel, rei,
-                *cloud_optical_props_in);
-
-        // Add the cloud optical props to the gas optical properties.
-        add_to(
-                dynamic_cast<Optical_props_2str<double>&>(*optical_props_subset_in),
-                dynamic_cast<Optical_props_2str<double>&>(*cloud_optical_props_in));
 
         // 3. Solve the fluxes.
         Array<double,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
