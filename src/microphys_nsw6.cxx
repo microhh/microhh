@@ -1156,10 +1156,13 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.icells, gd.ijcells);
     cfl = std::max(cfl, cfl_g);
 
+    // Get maximum CFL across all MPI tasks
+    master.max(&cfl, 1);
     fields.release_tmp(tmp);
 
     // Prevent zero division.
     cfl = std::max(cfl, 1.e-5);
+
     return idt * this->cfl_max / cfl;
 }
 #endif
