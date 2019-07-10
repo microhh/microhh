@@ -1,5 +1,6 @@
 # Annuna GPU nodes
-# Tested with:
+
+# salloc --gres=gpu:1 --constraint=V100 -t 1:00:00 -p ESG_Std --reservation=GPU
 
 # module load cuda
 # module load netcdf/gcc/64/4.6.1
