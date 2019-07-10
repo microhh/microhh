@@ -40,8 +40,102 @@ namespace
     using namespace Finite_difference::O2;
     using namespace Thermo_moist_functions;
 
+    template<typename TF>
+    inline __device__ Struct_sat_adjust<TF> sat_adjust_g(
+            const TF thl, const TF qt, const TF p, const TF exn)
+    {
+        using Fast_math::pow2;
+
+        TF tnr_old = TF(1.e9);
+
+        const TF tl = thl * exn;
+        TF qs = qsat_liq(p, tl);
+
+        Struct_sat_adjust<TF> ans =
+        {
+            TF(0.), // ql
+            TF(0.), // qi
+            tl, // t
+            qs, // qs
+        };
+
+        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
+        if (qt-ans.qs <= TF(0.))
+            return ans;
+
+        /* Saturation adjustment solver.
+         * Root finding function is f(T) = T - tnr - Lv/cp*qt + alpha_w * Lv/cp*qs(T) + alpha_i*Ls/cp*qs(T)
+         * dq_sat/dT derivatives can be rewritten using Claussius-Clapeyron (desat/dT = L{v,s}*esat / (Rv*T^2)).
+         */
+
+        TF tnr = tl;
+
+        // Warm adjustment.
+        if (tl >= T0<TF>)
+        {
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            {
+                tnr_old = tnr;
+                qs = qsat_liq(p, tnr);
+                const TF f =
+                    tnr - tl - Lv<TF>/cp<TF>*(qt - qs);
+
+                const TF f_prime = TF(1.) + Lv<TF>/cp<TF>*dqsatdT_liq(p, tnr);
+
+                tnr -= f / f_prime;
+            }
+
+            qs = qsat_liq(p, tnr);
+            ans.ql = fmax(TF(0.), qt - qs);
+            ans.t  = tnr;
+            ans.qs = qs;
+        }
+        // Cold adjustment.
+        else
+        {
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            {
+                tnr_old = tnr;
+                qs = qsat(p, tnr);
+                const TF alpha_w = water_fraction(tnr);
+                const TF alpha_i = TF(1.) - alpha_w;
+                const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
+                const TF dqsatdT_w = dqsatdT_liq(p, tnr);
+                const TF dqsatdT_i = dqsatdT_ice(p, tnr);
+
+                const TF f =
+                    tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
+                             + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+
+                const TF f_prime = TF(1.)
+                    - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
+                    + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
+                    + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
+                    + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
+
+                tnr -= f / f_prime;
+            }
+
+            const TF alpha_w = water_fraction(tnr);
+            const TF alpha_i = TF(1.) - alpha_w;
+
+            qs = qsat(p, tnr);
+            const TF ql_qi = fmax(TF(0.), qt - qs);
+
+            ans.ql = alpha_w*ql_qi;
+            ans.qi = alpha_i*ql_qi;
+            ans.t  = tnr;
+            ans.qs = qs;
+        }
+
+        return ans;
+    }
+
+    /*
     // CvH: THE SAT ADJUST IS ONLY WARM STILL, EDIT...
-    template<typename TF> __device__ TF sat_adjust_g(const TF s, const TF qt,
+    template<typename TF>
+    __device__ TF sat_adjust_g(
+            const TF s, const TF qt,
                                    const TF p, const TF exn)
     {
         TF tl = s * exn;  // Liquid water temperature
@@ -63,6 +157,7 @@ namespace
         ql = fmax(TF(0.),qt-qs);
         return ql;
     }
+    */
 
     template<typename TF> __global__
     void calc_buoyancy_tend_2nd_g(TF* __restrict__ wt, TF* __restrict__ th, TF* __restrict__ qt,
@@ -80,14 +175,16 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             // Half level temperature and moisture content
-            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
-            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
-            const TF ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]); // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
+
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
+            const TF ql = ssa.ql;     // Half level liquid water content
+            const TF qi = ssa.qi;     // Half level liquid water content
 
             // Calculate tendency.
-            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
             if (ql > 0)
-                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, TF(0.), thvrefh[k]);
+                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, qi, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -112,12 +209,14 @@ namespace
         }
         else if (i < iend && j < jend && k < kcells)
         {
-            const int ijk   = i + j*jj + k*kk;
-            const TF ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
+            const int ijk = i + j*jj + k*kk;
 
-            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
+            const TF ql = ssa.ql;
+            const TF qi = ssa.qi;
+
             if (ql > 0)
-                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, TF(0.), thvref[k]);
+                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, qi, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
@@ -143,12 +242,14 @@ namespace
             // Half level temperature and moisture content
             const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
-            const TF ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
+            const TF ql = ssa.ql;
+            const TF qi = ssa.qi;
 
             // Calculate tendency
-            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
             if (ql > 0)
-                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, TF(0.), thvrefh[k]);
+                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, qi, thvrefh[k]);
             else
                 bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -228,7 +329,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            ql[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
+            ql[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).ql;
         }
     }
 
@@ -250,11 +351,13 @@ namespace
 
             const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
-            qlh[ijk]     = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+            qlh[ijk]     = sat_adjust_g(thh, qth, ph[k], exnh[k]).ql; // Half level liquid water content
         }
     }
 
+    /*
     // BvS: no longer used, base state is calculated at the host
+    // CvH: This unused code does not take into account ice
     template <typename TF> __global__
     void calc_base_state_g(TF* __restrict__ pref,     TF* __restrict__ prefh,
                            TF* __restrict__ rho,      TF* __restrict__ rhoh,
@@ -273,7 +376,7 @@ namespace
 
         // Calculate surface (half=kstart) values
         exh[kstart]   = exner(pbot);
-        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]);
+        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]).ql;
         thvh[kstart]  = (ssurf + Lv<TF>*ql/(cp<TF>*exh[kstart])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtsurf - Rv<TF>/Rd<TF>*ql);
         prefh[kstart] = pbot;
         rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
@@ -285,7 +388,7 @@ namespace
         {
             // 1. Calculate values at full level below zh[k]
             ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
+            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]).ql;
             thv[k-1] = (thlmean[k-1] + Lv<TF>*ql/(cp<TF>*ex[k-1])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtmean[k-1] - Rv<TF>/Rd<TF>*ql);
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
@@ -297,7 +400,7 @@ namespace
             qti    = interp2(qtmean[k-1],qtmean[k]);
 
             exh[k]   = exner(prefh[k]);
-            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
+            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]).ql;
             thvh[k]  = (si + Lv<TF>*qli/(cp<TF>*exh[k])) * (1. - (1. - Rv<TF>/Rd<TF>)*qti - Rv<TF>/Rd<TF>*qli);
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
@@ -327,7 +430,7 @@ namespace
         const TF qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
         // Calculate surface (half=kstart) values
-        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]);
+        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]).ql;
         thvh          = (ssurf + Lv<TF>*ql/(cp<TF>*exh[kstart])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtsurf - Rv<TF>/Rd<TF>*ql);
         prefh[kstart] = pbot;
 
@@ -338,7 +441,7 @@ namespace
         {
             // 1. Calculate values at full level below zh[k]
             ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
+            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]).ql;
             thv      = (thlmean[k-1] + Lv<TF>*ql/(cp<TF>*ex[k-1])) * (1. - (1. - Rv<TF>/Rd<TF>)*qtmean[k-1] - Rv<TF>/Rd<TF>*ql);
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
@@ -349,7 +452,7 @@ namespace
             qti    = interp2(qtmean[k-1],qtmean[k]);
 
             exh[k]   = exner(prefh[k]);
-            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
+            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]).ql;
             thvh     = (si + Lv<TF>*qli/(cp<TF>*exh[k])) * (1. - (1. - Rv<TF>/Rd<TF>)*qti - Rv<TF>/Rd<TF>*qli);
 
             // 4. Calculate full level pressure at z[k]
@@ -360,7 +463,7 @@ namespace
         pref[kstart-1] = static_cast<TF>(2.)*prefh[kstart] - pref[kstart];
         pref[kend]     = static_cast<TF>(2.)*prefh[kend]   - pref[kend-1];
     }
-
+    */
 } // end name    space
 
 template<typename TF>
