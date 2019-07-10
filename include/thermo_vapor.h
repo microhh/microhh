@@ -65,7 +65,7 @@ class Thermo_vapor : public Thermo<TF>
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         // CvH the function below could be implemented for thermo vapor as the vapor is available.
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
@@ -87,7 +87,7 @@ class Thermo_vapor : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);

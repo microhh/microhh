@@ -67,7 +67,8 @@ class Thermo_dry : public Thermo<TF>
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_thermo_field(
+                Field3d<TF>&, const std::string&, const bool, const bool);
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
         { throw std::runtime_error("Function get_radiation_fields not implemented"); }

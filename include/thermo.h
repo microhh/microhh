@@ -67,7 +67,8 @@ class Thermo
 
         // Interfacing functions to get buoyancy properties from other classes.
         virtual bool check_field_exists(std::string name) = 0;
-        virtual void get_thermo_field(Field3d<TF>&, std::string, bool, bool) = 0;
+        virtual void get_thermo_field(
+                Field3d<TF>&, const std::string&, const bool, const bool) = 0;
         virtual void get_buoyancy_surf(Field3d<TF>&, bool) = 0;
         virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
         virtual void get_T_bot(Field3d<TF>&, bool) = 0;
@@ -88,7 +89,7 @@ class Thermo
         virtual void clear_device() = 0;
         virtual void forward_device() = 0;
         virtual void backward_device() = 0;
-        virtual void get_thermo_field_g(Field3d<TF>&, std::string, bool) = 0;
+        virtual void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool) = 0;
         virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
         virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
         virtual TF* get_basestate_fld_g(std::string) = 0;

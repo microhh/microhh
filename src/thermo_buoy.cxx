@@ -395,7 +395,8 @@ unsigned long Thermo_buoy<TF>::get_time_limit(unsigned long idt, const double dt
 }
 
 template<typename TF>
-void Thermo_buoy<TF>::get_thermo_field(Field3d<TF>& b, std::string name, bool cyclic, bool is_stat)
+void Thermo_buoy<TF>::get_thermo_field(
+        Field3d<TF>& b, const std::string& name, const bool cyclic, const bool is_stat)
 {
     auto& gd = grid.get_grid_data();
 
