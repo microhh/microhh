@@ -33,19 +33,21 @@
 #include "stats.h"
 #include "thermo_moist_functions.h"
 #include <iostream>
+
 namespace
 {
     using namespace Constants;
     using namespace Finite_difference::O2;
     using namespace Thermo_moist_functions;
 
+    // CvH: THE SAT ADJUST IS ONLY WARM STILL, EDIT...
     template<typename TF> __device__ TF sat_adjust_g(const TF s, const TF qt,
                                    const TF p, const TF exn)
     {
         TF tl = s * exn;  // Liquid water temperature
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        if(qt-qsat(p, tl) <= 0)
+        if (qt-qsat_liq(p, tl) <= 0)
             return 0.;
 
         int niter = 0; //, nitermax = 5;
@@ -55,7 +57,7 @@ namespace
         {
             ++niter;
             tnr_old = tnr;
-            qs = qsat(p,tnr);
+            qs = qsat_liq(p,tnr);
             tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,TF(2))*qs)/ (Rv<TF>*cp<TF>*pow(tnr,TF(2))));
         }
         ql = fmax(TF(0.),qt-qs);
@@ -82,9 +84,10 @@ namespace
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
             const TF ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
 
-            // Calculate tendency
+            // Calculate tendency.
+            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
             if (ql > 0)
-                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, thvrefh[k]);
+                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, TF(0.), thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -112,8 +115,9 @@ namespace
             const int ijk   = i + j*jj + k*kk;
             const TF ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
+            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
             if (ql > 0)
-                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, thvref[k]);
+                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, TF(0.), thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
@@ -142,8 +146,9 @@ namespace
             const TF ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
 
             // Calculate tendency
+            // CvH: FOR NOW PUT 0 FOR QI, EDIT ASAP.
             if (ql > 0)
-                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, thvrefh[k]);
+                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, TF(0.), thvrefh[k]);
             else
                 bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }

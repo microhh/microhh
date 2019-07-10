@@ -40,7 +40,6 @@ template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
 
-
 /**
  * Class for the dry thermodynamics.
  * This class is responsible for the computation of the right hand side term related to
@@ -89,7 +88,8 @@ class Thermo_dry : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(
+                Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
