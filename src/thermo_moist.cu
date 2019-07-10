@@ -131,34 +131,6 @@ namespace
         return ans;
     }
 
-    /*
-    // CvH: THE SAT ADJUST IS ONLY WARM STILL, EDIT...
-    template<typename TF>
-    __device__ TF sat_adjust_g(
-            const TF s, const TF qt,
-                                   const TF p, const TF exn)
-    {
-        TF tl = s * exn;  // Liquid water temperature
-
-        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        if (qt-qsat_liq(p, tl) <= 0)
-            return 0.;
-
-        int niter = 0; //, nitermax = 5;
-        TF ql, tnr_old = 1.e9, tnr, qs;
-        tnr = tl;
-        while (fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
-        {
-            ++niter;
-            tnr_old = tnr;
-            qs = qsat_liq(p,tnr);
-            tnr = tnr - (tnr+(Lv<TF>/cp<TF>)*qs-tl-(Lv<TF>/cp<TF>)*qt)/(1+(pow(Lv<TF>,TF(2))*qs)/ (Rv<TF>*cp<TF>*pow(tnr,TF(2))));
-        }
-        ql = fmax(TF(0.),qt-qs);
-        return ql;
-    }
-    */
-
     template<typename TF> __global__
     void calc_buoyancy_tend_2nd_g(TF* __restrict__ wt, TF* __restrict__ th, TF* __restrict__ qt,
                                   TF* __restrict__ thvrefh, TF* __restrict__ exnh, TF* __restrict__ ph,
@@ -179,8 +151,8 @@ namespace
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
-            const TF ql = ssa.ql;     // Half level liquid water content
-            const TF qi = ssa.qi;     // Half level liquid water content
+            const TF ql = ssa.ql; // Half level liquid water content
+            const TF qi = ssa.qi; // Half level ice content
 
             // Calculate tendency.
             if (ql > 0)
@@ -240,8 +212,8 @@ namespace
             const int kk  = i + j*jj;
 
             // Half level temperature and moisture content
-            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
-            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
+            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]); // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
             const TF ql = ssa.ql;
