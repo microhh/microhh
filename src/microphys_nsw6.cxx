@@ -120,30 +120,7 @@ namespace
     using namespace Fast_math;
     using Micro_2mom_warm_functions::minmod;
 
-    template<typename TF>
-    void remove_negative_values(TF* const restrict field,
-                                const int istart, const int jstart, const int kstart,
-                                const int iend,   const int jend,   const int kend,
-                                const int jj,     const int kk)
-    {
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    field[ijk] = std::max(TF(0.), field[ijk]);
-                }
-    }
-
-    template<typename TF>
-    void zero_field(TF* const restrict field, const int ncells)
-    {
-        for (int n=0; n<ncells; n++)
-            field[n] = TF(0.);
-    }
-
-    // Accretion.
+    // Compute all microphysical tendencies.
     template<typename TF>
     void conversion(
             TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
@@ -337,9 +314,9 @@ namespace
                     // Tomita Eq. 48
                     TF P_gacs = !(has_graupel && has_snow) ? TF(0.) :
                           pi<TF> * a_s<TF> * std::abs(V_Tg - V_Ts) * E_gs * N_0g<TF> * N_0s<TF> / (TF(4.)*rho[k])
-                        * (          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_r, b_s<TF> + TF(1.)) * pow3(lambda_g) )
-                          + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_r, b_s<TF> + TF(2.)) * pow2(lambda_g) )
-                          +          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_r, b_s<TF> + TF(3.)) * lambda_g ) );
+                        * (          std::tgamma(b_s<TF> + TF(1.)) * std::tgamma(TF(3.)) / ( std::pow(lambda_s, b_s<TF> + TF(1.)) * pow3(lambda_g) )
+                          + TF(2.) * std::tgamma(b_s<TF> + TF(2.)) * std::tgamma(TF(2.)) / ( std::pow(lambda_s, b_s<TF> + TF(2.)) * pow2(lambda_g) )
+                          +          std::tgamma(b_s<TF> + TF(3.)) * std::tgamma(TF(1.)) / ( std::pow(lambda_s, b_s<TF> + TF(3.)) * lambda_g ) );
 
                     // AUTOCONVERSION.
                     constexpr TF q_icrt = TF(0.);
@@ -704,7 +681,7 @@ namespace
                 }
     }
 
-    // Sedimentation from Stevens and Seifert (2008)
+    // Sedimentation based on Stevens and Seifert (2008)
     template<typename TF>
     void sedimentation_ss08(
             TF* const restrict qct, TF* const restrict rc_bot,
