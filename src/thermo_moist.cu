@@ -151,12 +151,10 @@ namespace
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
-            const TF ql = ssa.ql; // Half level liquid water content
-            const TF qi = ssa.qi; // Half level ice content
 
             // Calculate tendency.
-            if (ql > 0)
-                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, qi, thvrefh[k]);
+            if (ssa.ql > 0)
+                wt[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -184,11 +182,9 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
-            const TF ql = ssa.ql;
-            const TF qi = ssa.qi;
 
-            if (ql > 0)
-                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, qi, thvref[k]);
+            if (ssa.ql > 0)
+                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ssa.ql, ssa.qi, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
@@ -216,12 +212,10 @@ namespace
             const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
-            const TF ql = ssa.ql;
-            const TF qi = ssa.qi;
 
             // Calculate tendency
-            if (ql > 0)
-                bh[ijk] += buoyancy(exnh[k], thh, qth, ql, qi, thvrefh[k]);
+            if (ssa.ql > 0)
+                bh[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -321,9 +315,9 @@ namespace
             const int ijk = i + j*jj + k*kk;
             const int kk  = i + j*jj;
 
-            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
-            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
-            qlh[ijk]     = sat_adjust_g(thh, qth, ph[k], exnh[k]).ql; // Half level liquid water content
+            const TF thh = static_cast<TF>(0.5) * (th[ijk-kk] + th[ijk]); // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
+            qlh[ijk] = sat_adjust_g(thh, qth, ph[k], exnh[k]).ql; // Half level liquid water content
         }
     }
 
@@ -542,8 +536,8 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
             fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
-            gd.istart,  gd.jstart, gd.kstart+1,
-            gd.iend,    gd.jend,   gd.kend,
+            gd.istart, gd.jstart, gd.kstart+1,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
