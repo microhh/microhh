@@ -43,7 +43,7 @@ using namespace Finite_difference::O2;
 namespace
 {
     template<typename TF>
-    void add_pressure_gradient(
+    void add_pressure_force(
             TF* restrict ut, const TF fbody,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
@@ -69,7 +69,7 @@ namespace
     {
         const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
 
-        add_pressure_gradient(ut, fbody, istart, iend, jstart, jend, kstart, kend, jj, kk);
+        add_pressure_force(ut, fbody, istart, iend, jstart, jend, kstart, kend, jj, kk);
     }
 
 
@@ -498,7 +498,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     else if (swlspres == Large_scale_pressure_type::pressure_gradient)
     {
-        add_pressure_gradient<TF>(
+        add_pressure_force<TF>(
                 fields.at.at("u")->fld.data(), dpdx,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }

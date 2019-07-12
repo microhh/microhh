@@ -40,25 +40,7 @@ using namespace Finite_difference::O2;
 namespace
 {
     template<typename TF> __global__
-    void flux_step_1_g(TF* const __restrict__ aSum, const TF* const __restrict__ a,
-                       const TF* const __restrict__ dz,
-                       const int jj, const int kk,
-                       const int istart, const int jstart, const int kstart,
-                       const int iend,   const int jend,   const int kend)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            aSum [ijk] = a[ijk]*dz[k];
-        }
-    }
-
-    template<typename TF> __global__
-    void flux_step_2_g(TF* const __restrict__ ut,
+    void add_pressure_force_g(TF* const __restrict__ ut,
                        const TF fbody,
                        const int jj, const int kk,
                        const int istart, const int jstart, const int kstart,
@@ -338,16 +320,26 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         const TF fbody = (uflux - uavg - grid.utrans) / dt - utavg;
 
-        flux_step_2_g<TF><<<gridGPU, blockGPU>>>(
-            fields.mt.at("u")->fld_g,
-            fbody,
+        add_pressure_force_g<TF><<<gridGPU, blockGPU>>>(
+            fields.mt.at("u")->fld_g, fbody,
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend);
+
+        cuda_check_error();
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
+
+    }
+    else if (swlspres == Large_scale_pressure_type::pressure_gradient)
+    {
+        add_pressure_force_g<TF><<<gridGPU, blockGPU>>>(
+            fields.mt.at("u")->fld_g, dpdx,
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
         cudaDeviceSynchronize();
-        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
-
     }
     else if (swlspres == Large_scale_pressure_type::geo_wind)
     {
