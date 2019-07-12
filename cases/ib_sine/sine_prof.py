@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     # Create initial profiles:
     z = grid.z
-    u = ini['force']['uflux'] * np.ones(z.size)
+    u = 0.0137 * np.ones(z.size)
     s = z
 
     # Write the data to a .nc file for MicroHH
