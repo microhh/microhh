@@ -23,9 +23,9 @@
 
 template<typename TF>
 Radiation_disabled<TF>::Radiation_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-	Radiation<TF>(masterin, gridin, fieldsin, inputin)
+    Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
-	swradiation = "0";
+    swradiation = "0";
 }
 
 template<typename TF>
@@ -36,8 +36,8 @@ Radiation_disabled<TF>::~Radiation_disabled()
 template<typename TF>
 bool Radiation_disabled<TF>::check_field_exists(std::string name)
 {
- return false;  // always returns error
+    return false;  // always returns error
 }
 
- template class Radiation_disabled<double>;
- template class Radiation_disabled<float>;
+template class Radiation_disabled<double>;
+template class Radiation_disabled<float>;

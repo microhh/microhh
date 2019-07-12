@@ -316,8 +316,8 @@ Thermo<TF>(masterin, gridin, fieldsin, inputin)
     bs.n2 = inputin.get_item<TF>("thermo", "N2"   , "", 0.);
     fields.sp.at("b")->visc = inputin.get_item<TF>("fields", "svisc", "th");
 
-	bs.has_slope = std::abs(bs.alpha) > 0.;
-	bs.has_N2 = std::abs(bs.n2) > 0.;
+    bs.has_slope = std::abs(bs.alpha) > 0.;
+    bs.has_N2 = std::abs(bs.n2) > 0.;
 
     if (bs.has_slope || bs.has_N2)
         master.print_message("Slope-enabled thermodynamics is activated\n");
@@ -345,15 +345,15 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
     auto& gd = grid.get_grid_data();
     if (grid.get_spatial_order() == Grid_order::Second)
     {
-	    if (bs.has_slope || bs.has_N2)
-	    {
+        if (bs.has_slope || bs.has_N2)
+        {
             calc_buoyancy_tend_u_2nd(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_b_2nd(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
         else
         {
-	        calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
 
         if (swbaroclinic)
@@ -365,16 +365,16 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
     }
     else if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-	    if (bs.has_slope || bs.has_N2)
-	    {
-		    calc_buoyancy_tend_u_4th(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        if (bs.has_slope || bs.has_N2)
+        {
+            calc_buoyancy_tend_u_4th(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_b_4th(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(),  bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-	    }
-	    else
-	    {
-		    calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-	    }
+        }
+        else
+        {
+            calc_buoyancy_tend_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        }
 
         if (swbaroclinic)
             calc_baroclinic_4th(

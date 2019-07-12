@@ -422,7 +422,7 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "",        crosslist_global, &cross_simple);
             check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
         }
-   }
+    }
 }
 
 template<typename TF>

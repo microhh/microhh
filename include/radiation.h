@@ -45,10 +45,10 @@ class Radiation
     public:
         Radiation(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation();
-		static std::shared_ptr<Radiation> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
-		std::string get_switch();
+        static std::shared_ptr<Radiation> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        std::string get_switch();
 
-		//functions that the derived class has to implement
+        //functions that the derived class has to implement
         virtual void init() = 0;
         virtual void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
@@ -65,6 +65,6 @@ class Radiation
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
-		std::string swradiation;
+        std::string swradiation;
 };
 #endif

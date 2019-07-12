@@ -50,118 +50,118 @@ using namespace Thermo_moist_functions;
 namespace
 {
 
-   template<typename TF>
-   void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0,
-                         const TF* const z, const TF* const zh,
-                         const TF* const dzhi,
-                         const int kstart, const int kend)
-   {
-       // Calculate surface and model top values thl and qt
-       TF thl0s, qt0s, thl0t, qt0t;
-       thl0s = thl0[kstart] - z[kstart]*(thl0[kstart+1]-thl0[kstart])*dzhi[kstart+1];
-       qt0s  = qt0[kstart]  - z[kstart]*(qt0[kstart+1] -qt0[kstart] )*dzhi[kstart+1];
-       thl0t = thl0[kend-1] + (zh[kend]-z[kend-1])*(thl0[kend-1]-thl0[kend-2])*dzhi[kend-1];
-       qt0t  = qt0[kend-1]  + (zh[kend]-z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*dzhi[kend-1];
+    template<typename TF>
+    void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0,
+                          const TF* const z, const TF* const zh,
+                          const TF* const dzhi,
+                          const int kstart, const int kend)
+    {
+        // Calculate surface and model top values thl and qt
+        TF thl0s, qt0s, thl0t, qt0t;
+        thl0s = thl0[kstart] - z[kstart]*(thl0[kstart+1]-thl0[kstart])*dzhi[kstart+1];
+        qt0s  = qt0[kstart]  - z[kstart]*(qt0[kstart+1] -qt0[kstart] )*dzhi[kstart+1];
+        thl0t = thl0[kend-1] + (zh[kend]-z[kend-1])*(thl0[kend-1]-thl0[kend-2])*dzhi[kend-1];
+        qt0t  = qt0[kend-1]  + (zh[kend]-z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*dzhi[kend-1];
 
-       // Set the ghost cells for the reference temperature and moisture
-       thl0[kstart-1]  = TF(2.)*thl0s - thl0[kstart];
-       thl0[kend]      = TF(2.)*thl0t - thl0[kend-1];
-       qt0[kstart-1]   = TF(2.)*qt0s  - qt0[kstart];
-       qt0[kend]       = TF(2.)*qt0t  - qt0[kend-1];
+        // Set the ghost cells for the reference temperature and moisture
+        thl0[kstart-1]  = TF(2.)*thl0s - thl0[kstart];
+        thl0[kend]      = TF(2.)*thl0t - thl0[kend-1];
+        qt0[kstart-1]   = TF(2.)*qt0s  - qt0[kstart];
+        qt0[kend]       = TF(2.)*qt0t  - qt0[kend-1];
     }
 
-   template<typename TF>
-   void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
-                               TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                               TF* restrict ql, TF* restrict thvrefh,
-                               const int istart, const int iend,
-                               const int jstart, const int jend,
-                               const int kstart, const int kend,
-                               const int jj, const int kk)
-   {
-       #pragma omp parallel for
-       for (int k=kstart+1; k<kend; k++)
-       {
-           const TF exnh = exner(ph[k]);
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
-                   thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                   qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-               }
+    template<typename TF>
+    void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
+                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+                                TF* restrict ql, TF* restrict thvrefh,
+                                const int istart, const int iend,
+                                const int jstart, const int jend,
+                                const int kstart, const int kend,
+                                const int jj, const int kk)
+    {
+        #pragma omp parallel for
+        for (int k=kstart+1; k<kend; k++)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                }
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ij  = i + j*jj;
-                   ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-               }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jj;
+                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                }
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
-                   wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-               }
-       }
-   }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                }
+        }
+    }
 
-   template<typename TF>
-   void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
-                      TF* restrict p, TF* restrict ql, TF* restrict thvref,
-                      const int istart, const int iend,
-                      const int jstart, const int jend,
-                      const int kstart, const int kend,
-                      const int kcells, const int jj, const int kk)
-   {
-       #pragma omp parallel for
-       for (int k=0; k<kcells; k++)
-       {
-           const TF ex = exner(p[k]);
-           if (k >= kstart && k < kend)
-           {
-               for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ijk = i + j*jj + k*kk;
-                       ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
-                   }
-           }
-           else
-           {
-                for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ijk  = i + j*jj+k*kk;
-                       ql[ijk] = 0.;
-                   }
-
-           }
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], thvref[k]);
-               }
-       }
-   }
-
-  template<typename TF>
-  void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
-                       TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+    template<typename TF>
+    void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
+                       TF* restrict p, TF* restrict ql, TF* restrict thvref,
                        const int istart, const int iend,
                        const int jstart, const int jend,
                        const int kstart, const int kend,
-                       const int jj, const int kk)
+                       const int kcells, const int jj, const int kk)
+    {
+        #pragma omp parallel for
+        for (int k=0; k<kcells; k++)
+        {
+            const TF ex = exner(p[k]);
+            if (k >= kstart && k < kend)
+            {
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
+                    }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; j++)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk  = i + j*jj+k*kk;
+                        ql[ijk] = 0.;
+                    }
+
+            }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], thvref[k]);
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
+                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+                         const int istart, const int iend,
+                         const int jstart, const int jend,
+                         const int kstart, const int kend,
+                         const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -193,12 +193,12 @@ namespace
             else
             {
                 for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ij  = i + j*jj;
-                       ql[ij] = 0.;
-                   }
+                    #pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        ql[ij] = 0.;
+                    }
             }
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -210,260 +210,260 @@ namespace
                     bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
                 }
         }
-   }
+    }
 
-   template<typename TF>
-   void calc_liquid_water(TF* restrict ql, TF* restrict thl, TF* restrict qt, TF* restrict p,
-                          const int istart, const int iend,
-                          const int jstart, const int jend,
-                          const int kstart, const int kend,
-                          const int jj, const int kk)
-   {
-       // Calculate the ql field
-       #pragma omp parallel for
-       for (int k=kstart; k<kend; k++)
-       {
-           const TF ex = exner(p[k]);
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
-               }
-       }
-   }
-
-  template<typename TF>
-  void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
-                           TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+    template<typename TF>
+    void calc_liquid_water(TF* restrict ql, TF* restrict thl, TF* restrict qt, TF* restrict p,
                            const int istart, const int iend,
                            const int jstart, const int jend,
                            const int kstart, const int kend,
                            const int jj, const int kk)
-   {
-       using Finite_difference::O2::interp2;
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
+                }
+        }
+    }
 
-       for (int k=kstart+1; k<kend+1; k++)
-       {
-           const TF exnh = exner(ph[k]);
+    template<typename TF>
+    void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
+                             TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+                             const int istart, const int iend,
+                             const int jstart, const int jend,
+                             const int kstart, const int kend,
+                             const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   const int ij  = i + j*jj;
+        for (int k=kstart+1; k<kend+1; k++)
+        {
+            const TF exnh = exner(ph[k]);
 
-                   thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                   qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-               }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ij  = i + j*jj;
-                   const int ijk  = i + j*jj+k*kk;
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                }
 
-                   qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-               }
-       }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk  = i + j*jj+k*kk;
 
-       for (int j=jstart; j<jend; j++)
-           #pragma ivdep
-           for (int i=istart; i<iend; i++)
-           {
-               const int ijk  = i + j*jj+kstart*kk;
-               qlh[ijk] = 0.;
-           }
-   }
+                    qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                }
+        }
 
-   template<typename TF>
-   void calc_N2(TF* restrict N2, const TF* const restrict thl, const TF* const restrict dzi, TF* restrict thvref,
-                const int istart, const int iend,
-                const int jstart, const int jend,
-                const int kstart, const int kend,
-                const int jj, const int kk)
-   {
-       #pragma omp parallel for
-       for (int k=kstart; k<kend; ++k)
-           for (int j=jstart; j<jend; ++j)
-               #pragma ivdep
-               for (int i=istart; i<iend; ++i)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
-               }
-   }
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk  = i + j*jj+kstart*kk;
+                qlh[ijk] = 0.;
+            }
+    }
 
-   template<typename TF>
-   void calc_T(TF* const restrict T, const TF* const restrict thl, const TF* const restrict qt,
-               const TF* const restrict pref, const TF* const restrict exnref,
-               const int istart, const int iend,
-               const int jstart, const int jend,
-               const int kstart, const int kend,
-               const int jj, const int kk)
-   {
-       #pragma omp parallel for
-       for (int k=kstart; k<kend; ++k)
-       {
-           for (int j=jstart; j<jend; ++j)
-               #pragma ivdep
-               for (int i=istart; i<iend; ++i)
-               {
-                   const int ijk = i + j*jj+ k*kk;
-                   T[ijk] = sat_adjust(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
-               }
-       }
-   }
-
-   template<typename TF>
-   void calc_T_h(TF* restrict Th, TF* restrict thl,  TF* restrict qt,
-                 TF* restrict ph, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+    template<typename TF>
+    void calc_N2(TF* restrict N2, const TF* const restrict thl, const TF* const restrict dzi, TF* restrict thvref,
                  const int istart, const int iend,
                  const int jstart, const int jend,
                  const int kstart, const int kend,
                  const int jj, const int kk)
-     {
-           using Finite_difference::O2::interp2;
-
-           for (int k=kstart+1; k<kend+1; k++)
-           {
-               const TF exnh = exner(ph[k]);
-               for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ijk = i + j*jj + k*kk;
-                       const int ij  = i + j*jj;
-
-                       thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                       qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                   }
-               for (int j=jstart; j<jend; j++)
-                   #pragma ivdep
-                   for (int i=istart; i<iend; i++)
-                   {
-                       const int ij  = i + j*jj;
-                       const int ijk  = i + j*jj+k*kk;
-
-                       Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
-                    }
-           }
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
+                }
     }
 
-   template<typename TF>
-   void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
-                   const TF* const restrict exnrefh, const TF* const restrict threfh,
-                   const int istart, const int iend, const int jstart, const int jend, const int kstart,
-                   const int jj, const int kk)
-   {
-       using Finite_difference::O2::interp2;
+    template<typename TF>
+    void calc_T(TF* const restrict T, const TF* const restrict thl, const TF* const restrict qt,
+                const TF* const restrict pref, const TF* const restrict exnref,
+                const int istart, const int iend,
+                const int jstart, const int jend,
+                const int kstart, const int kend,
+                const int jj, const int kk)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj+ k*kk;
+                    T[ijk] = sat_adjust(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
+                }
+        }
+    }
 
-       for (int j=jstart; j<jend; ++j)
-           #pragma ivdep
-           for (int i=istart; i<iend; ++i)
-           {
-               const int ij = i + j*jj;
-               const int ijk = i + j*jj + kstart*kk;
-               T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
-           }
-   }
+    template<typename TF>
+    void calc_T_h(TF* restrict Th, TF* restrict thl,  TF* restrict qt,
+                  TF* restrict ph, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+                  const int istart, const int iend,
+                  const int jstart, const int jend,
+                  const int kstart, const int kend,
+                  const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
 
-   template<typename TF>
-   void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
-                          TF* restrict thl,    TF* restrict thlbot,
-                          TF* restrict qt,     TF* restrict qtbot,
-                          TF* restrict thvref, TF* restrict thvrefh,
-                          const int icells, const int jcells,
-                          const int ijcells, const int kstart)
-   {
-       // assume no liquid water at the lowest model level
-       for (int j=0; j<jcells; j++)
-           #pragma ivdep
-           for (int i=0; i<icells; i++)
-           {
-               const int ij  = i + j*icells;
-               const int ijk = i + j*icells + kstart*ijcells;
-               bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
-               b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
-           }
-   }
+        for (int k=kstart+1; k<kend+1; k++)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
 
-   template<typename TF>
-   void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
-                              TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
-                              const int icells, const int jcells, const int kstart,
-                              const int ijcells)
-   {
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                }
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk  = i + j*jj+k*kk;
 
-       // Assume no liquid water at the lowest model level.
-       // Pass the temperature and moisture of the first model level, because the surface values are
-       // unknown before the surface layer solver.
-       for (int j=0; j<jcells; j++)
-           #pragma ivdep
-           for (int i=0; i<icells; i++)
-           {
-               const int ij  = i + j*icells;
-               const int ijk = i + j*icells + kstart*ijcells;
-               bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
-           }
-   }
+                    Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                }
+        }
+    }
 
-   template<typename TF>
-   void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
-                               TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                               TF* restrict ql, TF* restrict thvrefh,
-                               const int istart, const int iend,
-                               const int jstart, const int jend,
-                               const int kstart, const int kend,
-                               const int icells, const int ijcells)
-   {
-       const int jj  = icells;
-       const int kk1 = 1*ijcells;
-       const int kk2 = 2*ijcells;
+    template<typename TF>
+    void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
+                    const TF* const restrict exnrefh, const TF* const restrict threfh,
+                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
+                    const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
 
-       for (int k=kstart+1; k<kend; k++)
-       {
-           const TF exnh = exner(ph[k]);
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk1;
-                   const int ij  = i + j*jj;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+            }
+    }
 
-                   thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                   qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
-                   const TF tl = thlh[ij] * exnh;
+    template<typename TF>
+    void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
+                           TF* restrict thl,    TF* restrict thlbot,
+                           TF* restrict qt,     TF* restrict qtbot,
+                           TF* restrict thvref, TF* restrict thvrefh,
+                           const int icells, const int jcells,
+                           const int ijcells, const int kstart)
+    {
+        // assume no liquid water at the lowest model level
+        for (int j=0; j<jcells; j++)
+            #pragma ivdep
+            for (int i=0; i<icells; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+                bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
+                b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
+            }
+    }
 
-                   // Calculate first estimate of ql using Tl
-                   // if ql(Tl)>0, saturation adjustment routine needed
-                   ql[ij]  = qth[ij]-qsat(ph[k], tl);
-               }
+    template<typename TF>
+    void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
+                               TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
+                               const int icells, const int jcells, const int kstart,
+                               const int ijcells)
+    {
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ij = i + j*jj;
+        // Assume no liquid water at the lowest model level.
+        // Pass the temperature and moisture of the first model level, because the surface values are
+        // unknown before the surface layer solver.
+        for (int j=0; j<jcells; j++)
+            #pragma ivdep
+            for (int i=0; i<icells; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+                bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
+            }
+    }
 
-                   if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
-                       ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                   else
-                       ql[ij] = 0.;
-               }
+    template<typename TF>
+    void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
+                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+                                TF* restrict ql, TF* restrict thvrefh,
+                                const int istart, const int iend,
+                                const int jstart, const int jend,
+                                const int kstart, const int kend,
+                                const int icells, const int ijcells)
+    {
+        const int jj  = icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
 
-           for (int j=jstart; j<jend; j++)
-               #pragma ivdep
-               for (int i=istart; i<iend; i++)
-               {
-                   const int ijk = i + j*jj + k*kk1;
-                   const int ij  = i + j*jj;
+        for (int k=kstart+1; k<kend; k++)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    const int ij  = i + j*jj;
 
-                   wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-               }
+                    thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+                    qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+                    const TF tl = thlh[ij] * exnh;
+
+                    // Calculate first estimate of ql using Tl
+                    // if ql(Tl)>0, saturation adjustment routine needed
+                    ql[ij]  = qth[ij]-qsat(ph[k], tl);
+                }
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jj;
+
+                    if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
+                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    else
+                        ql[ij] = 0.;
+                }
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk1;
+                    const int ij  = i + j*jj;
+
+                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                }
         }
     }
 

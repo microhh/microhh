@@ -49,13 +49,13 @@ namespace
             const int jj, const int kk)
     {
         for (int k=kstart; k<kend; ++k)
-           for (int j=jstart; j<jend; ++j)
-               #pragma ivdep
-               for (int i=istart; i<iend; ++i)
-               {
-                   const int ijk = i + j*jj + k*kk;
-                   ut[ijk] += fbody;
-               }
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    ut[ijk] += fbody;
+                }
     }
 
 
