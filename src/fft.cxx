@@ -56,10 +56,12 @@ void FFT<float>::init()
 {
     auto& gd = grid.get_grid_data();
 
+    #ifdef FLOAT_SINGLE
     fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
     fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
     fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
     fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
+    #endif
 
     transpose.init();
 }
@@ -86,6 +88,7 @@ FFT<double>::~FFT()
 template<>
 FFT<float>::~FFT()
 {
+    #ifdef FLOAT_SINGLE
     if (has_fftw_plan)
     {
         fftwf_destroy_plan(iplanff);
@@ -100,6 +103,7 @@ FFT<float>::~FFT()
     fftwf_free(fftoutj);
 
     fftwf_cleanup();
+    #endif
 }
 
 template<>
@@ -150,6 +154,7 @@ void FFT<double>::load()
 template<>
 void FFT<float>::load()
 {
+    #ifdef FLOAT_SINGLE
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
 
@@ -189,6 +194,7 @@ void FFT<float>::load()
     has_fftw_plan = true;
 
     fftwf_forget_wisdom();
+    #endif
 }
 
 
@@ -246,6 +252,7 @@ void FFT<double>::save()
 template<>
 void FFT<float>::save()
 {
+    #ifdef FLOAT_SINGLE
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
     auto& gd = grid.get_grid_data();
@@ -292,6 +299,7 @@ void FFT<float>::save()
 
     if (nerror)
         throw std::runtime_error("Error saving FFTW plan");
+    #endif
 }
 
 namespace
@@ -307,7 +315,9 @@ namespace
     template<>
     void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
     {
+    	#ifdef FLOAT_SINGLE
         fftwf_execute(pf);
+        #endif
     }
 
     #ifndef USEMPI
