@@ -54,7 +54,7 @@ namespace
 
     template<typename TF> constexpr TF rho_w = 1.e3; // Density of water.
     template<typename TF> constexpr TF rho_s = 1.e2; // Density of snow.
-    template<typename TF> constexpr TF rho_g = 4.e2; // Density of snow.
+    template<typename TF> constexpr TF rho_g = 4.e2; // Density of graupel.
 
     template<typename TF> constexpr TF N_0r = 8.e6; // Intercept parameter rain (m-4).
     template<typename TF> constexpr TF N_0s = 3.e6; // Intercept parameter snow (m-4).
@@ -78,8 +78,6 @@ namespace
 
     template<typename TF> constexpr TF C_i = 2006.; // Specific heat of solid water.
     template<typename TF> constexpr TF C_l = 4218.; // Specific heat of liquid water.
-    template<typename TF> constexpr TF C_vd = 717.6; // Specific heat of dry air (constant volume).
-    template<typename TF> constexpr TF C_vv = 1388.5; // Specific heat of water vapor (constant volume).
 
     template<typename TF> constexpr TF f_1r = 0.78; // First coefficient of ventilation factor for rain.
     template<typename TF> constexpr TF f_1s = 0.65; // First coefficient of ventilation factor for snow.
@@ -226,17 +224,17 @@ namespace
                             TF(1.) / (b_g<TF> + TF(1.)) );
 
                     // Tomita Eq. 28
-                    const TF V_Tr =
+                    const TF V_Tr = !(has_rain) ? TF(0.) :
                         c_r<TF> * rho0_rho_sqrt
                         * std::tgamma(b_r<TF> + d_r<TF> + TF(1.)) / std::tgamma(b_r<TF> + TF(1.))
                         * std::pow(lambda_r, -d_r<TF>);
 
-                    const TF V_Ts =
+                    const TF V_Ts = !(has_snow) ? TF(0.) :
                         c_s<TF> * rho0_rho_sqrt
                         * std::tgamma(b_s<TF> + d_s<TF> + TF(1.)) / std::tgamma(b_s<TF> + TF(1.))
                         * std::pow(lambda_s, -d_s<TF>);
 
-                    const TF V_Tg =
+                    const TF V_Tg = !(has_graupel) ? TF(0.) :
                         c_g<TF> * rho0_rho_sqrt
                         * std::tgamma(b_g<TF> + d_g<TF> + TF(1.)) / std::tgamma(b_g<TF> + TF(1.))
                         * std::pow(lambda_g, -d_g<TF>);
@@ -552,7 +550,8 @@ namespace
                         - snow_to_graupel - snow_to_vapor - snow_to_rain;
 
                     const TF dqg_dt =
-                        + cloud_to_graupel + rain_to_graupel + ice_to_graupel + vapor_to_graupel
+                        + cloud_to_graupel + rain_to_graupel + ice_to_graupel
+                        + vapor_to_graupel + snow_to_graupel
                         - graupel_to_rain - graupel_to_vapor;
 
                     // Limit the production terms to avoid instability.
@@ -568,26 +567,26 @@ namespace
                     const TF dqs_dt_fac = limit_factor(dqs_dt, dqs_dt_max);
                     const TF dqg_dt_fac = limit_factor(dqg_dt, dqg_dt_max);
 
-                    vapor_to_snow    *= std::min(dqv_dt_fac, dqs_dt_fac);
-                    vapor_to_graupel *= std::min(dqv_dt_fac, dqg_dt_fac);
+                    vapor_to_snow    *= dqv_dt_fac * dqs_dt_fac;
+                    vapor_to_graupel *= dqv_dt_fac * dqg_dt_fac;
 
-                    cloud_to_rain    *= std::min(dql_dt_fac, dqr_dt_fac);
-                    cloud_to_graupel *= std::min(dql_dt_fac, dqg_dt_fac);
-                    cloud_to_snow    *= std::min(dql_dt_fac, dqs_dt_fac);
+                    cloud_to_rain    *= dql_dt_fac * dqr_dt_fac;
+                    cloud_to_graupel *= dql_dt_fac * dqg_dt_fac;
+                    cloud_to_snow    *= dql_dt_fac * dqs_dt_fac;
 
-                    rain_to_vapor    *= std::min(dqr_dt_fac, dqv_dt_fac);
-                    rain_to_graupel  *= std::min(dqr_dt_fac, dqg_dt_fac);
-                    rain_to_snow     *= std::min(dqr_dt_fac, dqs_dt_fac);
+                    rain_to_vapor    *= dqr_dt_fac * dqv_dt_fac;
+                    rain_to_graupel  *= dqr_dt_fac * dqg_dt_fac;
+                    rain_to_snow     *= dqr_dt_fac * dqs_dt_fac;
 
-                    ice_to_snow      *= std::min(dqi_dt_fac, dqs_dt_fac);
-                    ice_to_graupel   *= std::min(dqi_dt_fac, dqg_dt_fac);
+                    ice_to_snow      *= dqi_dt_fac * dqs_dt_fac;
+                    ice_to_graupel   *= dqi_dt_fac * dqg_dt_fac;
 
-                    snow_to_graupel  *= std::min(dqs_dt_fac, dqg_dt_fac);
-                    snow_to_vapor    *= std::min(dqs_dt_fac, dqv_dt_fac);
-                    snow_to_rain     *= std::min(dqs_dt_fac, dqr_dt_fac);
+                    snow_to_graupel  *= dqs_dt_fac * dqg_dt_fac;
+                    snow_to_vapor    *= dqs_dt_fac * dqv_dt_fac;
+                    snow_to_rain     *= dqs_dt_fac * dqr_dt_fac;
 
-                    graupel_to_rain  *= std::min(dqg_dt_fac, dqr_dt_fac);
-                    graupel_to_vapor *= std::min(dqg_dt_fac, dqv_dt_fac);
+                    graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
+                    graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
 
                     // Loss from cloud.
                     qtt[ijk] -= cloud_to_rain;
