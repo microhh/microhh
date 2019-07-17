@@ -93,7 +93,8 @@ namespace
     template<typename TF> constexpr TF E_gw = 1.;  // Collection efficiency of graupel for cloud water.
     template<typename TF> constexpr TF E_gi = 0.1; // Collection efficiency of graupel for cloud ice.
     template<typename TF> constexpr TF E_sr = 1.;  // Collection efficiency of snow for rain.
-    template<typename TF> constexpr TF E_gr = 1.;  // Collection efficiency of graupel for rain.
+    // template<typename TF> constexpr TF E_gr = 1.;  // Collection efficiency of graupel for rain.
+    template<typename TF> constexpr TF E_gr = 0.1; // CvH: I reduced the value as the current convection is too active in cold pools, leading to conversion from rain to graupel that extends too far to the surface.
 
     template<typename TF> constexpr TF K_a = 2.43e-2;  // Thermal diffusion coefficient of air.
     template<typename TF> constexpr TF K_d = 2.26e-5;  // Diffusion coefficient of water vapor in air.
