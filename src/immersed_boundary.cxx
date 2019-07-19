@@ -55,7 +55,7 @@ namespace
     template<typename TF>
     TF interp2_dem(
             const TF x_goal, const TF y_goal,
-            std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& dem,
+            const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& dem,
             const TF dx, const TF dy,
             const int icells, const int jcells,
             const int mpi_offset_x, const int mpi_offset_y)
@@ -405,7 +405,7 @@ namespace
 
     template<typename TF>
     void set_ghost_cells(
-            TF* const restrict fld, const TF boundary_value,
+            TF* const restrict fld, const TF* const restrict boundary_value,
             const TF* const restrict c_idw, const TF* const restrict c_idw_sum,
             const TF* const restrict di,
             const int* const restrict gi, const int* const restrict gj, const int* const restrict gk,
@@ -432,20 +432,20 @@ namespace
             if (bc == Boundary_type::Dirichlet_type)
             {
                 const int ii = n_idw-1 + n*n_idw;
-                vI += c_idw[ii] * boundary_value;
+                vI += c_idw[ii] * boundary_value[n];
             }
 
             vI /= c_idw_sum[n];
 
             // Set the ghost cells, depending on the IB boundary conditions
             if (bc == Boundary_type::Dirichlet_type)
-                fld[ijkg] = 2*boundary_value - vI;         // Image value reflected across IB
+                fld[ijkg] = 2*boundary_value[n] - vI;       // Image value reflected across IB
             else if (bc == Boundary_type::Neumann_type)
-                fld[ijkg] = vI - boundary_value * di[n];   // Image value minus gradient times distance
+                fld[ijkg] = vI - boundary_value[n] * di[n]; // Image value minus gradient times distance
             else if (bc == Boundary_type::Flux_type)
             {
-                const TF grad = -boundary_value / visc;
-                fld[ijkg] = vI - grad * di[n];             // Image value minus gradient times distance
+                const TF grad = -boundary_value[n] / visc;
+                fld[ijkg] = vI - grad * di[n];              // Image value minus gradient times distance
             }
         }
     }
@@ -524,10 +524,8 @@ void Immersed_boundary<TF>::exec_momentum()
 
     auto& gd = grid.get_grid_data();
 
-    TF noslip_bc = TF(0);
-
     set_ghost_cells(
-            fields.mp.at("u")->fld.data(), noslip_bc,
+            fields.mp.at("u")->fld.data(), ghost.at("u").mbot.data(),
             ghost.at("u").c_idw.data(), ghost.at("u").c_idw_sum.data(), ghost.at("u").di.data(),
             ghost.at("u").i.data(), ghost.at("u").j.data(), ghost.at("u").k.data(),
             ghost.at("u").ip_i.data(), ghost.at("u").ip_j.data(), ghost.at("u").ip_k.data(),
@@ -535,7 +533,7 @@ void Immersed_boundary<TF>::exec_momentum()
             gd.icells, gd.ijcells);
 
     set_ghost_cells(
-            fields.mp.at("v")->fld.data(), noslip_bc,
+            fields.mp.at("v")->fld.data(), ghost.at("v").mbot.data(),
             ghost.at("v").c_idw.data(), ghost.at("v").c_idw_sum.data(), ghost.at("v").di.data(),
             ghost.at("v").i.data(), ghost.at("v").j.data(), ghost.at("v").k.data(),
             ghost.at("v").ip_i.data(), ghost.at("v").ip_j.data(), ghost.at("v").ip_k.data(),
@@ -543,7 +541,7 @@ void Immersed_boundary<TF>::exec_momentum()
             gd.icells, gd.ijcells);
 
     set_ghost_cells(
-            fields.mp.at("w")->fld.data(), noslip_bc,
+            fields.mp.at("w")->fld.data(), ghost.at("w").mbot.data(),
             ghost.at("w").c_idw.data(), ghost.at("w").c_idw_sum.data(), ghost.at("w").di.data(),
             ghost.at("w").i.data(), ghost.at("w").j.data(), ghost.at("w").k.data(),
             ghost.at("w").ip_i.data(), ghost.at("w").ip_j.data(), ghost.at("w").ip_k.data(),
@@ -566,7 +564,7 @@ void Immersed_boundary<TF>::exec_scalars()
     for (auto& it : fields.sp)
     {
         set_ghost_cells(
-                it.second->fld.data(), sbc.at(it.first),
+                it.second->fld.data(), ghost.at("s").sbot.at(it.first).data(),
                 ghost.at("s").c_idw.data(), ghost.at("s").c_idw_sum.data(), ghost.at("s").di.data(),
                 ghost.at("s").i.data(), ghost.at("s").j.data(), ghost.at("s").k.data(),
                 ghost.at("s").ip_i.data(), ghost.at("s").ip_j.data(), ghost.at("s").ip_k.data(),
@@ -609,6 +607,9 @@ void Immersed_boundary<TF>::init(Input& inputin)
             // Process boundary values per scalar
             for (auto& it : fields.sp)
                 sbc.emplace(it.first, inputin.get_item<TF>("IB", "sbot", it.first));
+
+            // Read the scalars with spatial patterns
+            sbot_spatial_list = inputin.get_list<std::string>("IB", "sbot_spatial", "", std::vector<std::string>());
         }
     }
 }
@@ -689,6 +690,15 @@ void Immersed_boundary<TF>::create()
         print_statistics(ghost.at("v").i, std::string("v"), master);
         print_statistics(ghost.at("w").i, std::string("w"), master);
 
+        // Momentum boundary condition
+        ghost.at("u").mbot.resize(ghost.at("u").nghost);
+        ghost.at("v").mbot.resize(ghost.at("v").nghost);
+        ghost.at("w").mbot.resize(ghost.at("w").nghost);
+
+        std::fill(ghost.at("u").mbot.begin(), ghost.at("u").mbot.begin(), 0.);
+        std::fill(ghost.at("v").mbot.begin(), ghost.at("v").mbot.begin(), 0.);
+        std::fill(ghost.at("w").mbot.begin(), ghost.at("w").mbot.begin(), 0.);
+
         if (fields.sp.size() > 0)
         {
             ghost.emplace("s", Ghost_cells<TF>());
@@ -702,6 +712,45 @@ void Immersed_boundary<TF>::create()
                     mpi_offset_x, mpi_offset_y);
 
             print_statistics(ghost.at("s").i, std::string("s"), master);
+
+            // Read spatially varying boundary conditions (if necessary)
+            for (auto& scalar : fields.sp)
+            {
+                ghost.at("s").sbot.emplace(scalar.first, std::vector<TF>(ghost.at("s").nghost));
+
+                if (std::find(sbot_spatial_list.begin(), sbot_spatial_list.end(), scalar.first) != sbot_spatial_list.end())
+                {
+                    // Read 2D sbot into tmp field
+                    auto tmp = fields.get_tmp();
+
+                    std::string sbot_file = scalar.first + "_sbot.0000000";
+                    master.print_message("Loading \"%s\" ... ", sbot_file.c_str());
+
+                    if (field3d_io.load_xy_slice(tmp->fld_bot.data(), tmp->fld.data(), sbot_file.c_str()))
+                    {
+                        master.print_message("FAILED\n");
+                        throw std::runtime_error("Reading input sbot field failed");
+                    }
+                    else
+                        master.print_message("OK\n");
+
+                    // Interpolate 2D sbot onto the ghost cell boundary locations
+
+                    for (int i=0; i<ghost.at("s").nghost; ++i)
+                    {
+                        ghost.at("s").sbot.at(scalar.first)[i] =
+                            interp2_dem(ghost.at("s").xb[i], ghost.at("s").yb[i],
+                                   gd.x, gd.y, tmp->fld_bot, gd.dx, gd.dy,
+                                   gd.icells, gd.jcells, mpi_offset_x, mpi_offset_y);
+                    }
+                }
+                else
+                {
+                    for (int i=0; i<ghost.at("s").nghost; ++i)
+                        ghost.at("s").sbot.at(scalar.first)[i] = sbc.at(scalar.first);
+                }
+            }
+
         }
     }
 }

@@ -54,8 +54,8 @@ if __name__ == "__main__":
 
     # Create stretched grid
     #grid = Grid(16, 40, 5, 0.0008, 0.0015)
-    grid = Grid(96, 40, 5, 0.0004, 0.0007)
-    #grid = Grid(128, 40, 5, 0.0002, 0.0005373)
+    #grid = Grid(96, 40, 5, 0.0004, 0.0007)
+    grid = Grid(128, 40, 5, 0.0002, 0.0005373)
     #grid = Grid(256, 122, 10, 0.0001, 0.000322)
     #grid = Grid(384, 180, 20, 0.00006, 0.00021831)
     #grid.plot()
@@ -68,13 +68,14 @@ if __name__ == "__main__":
 
     # Create initial profiles:
     z = grid.z
-    u = 0.0137 * np.ones(z.size)
+    u = 0.00137 * np.ones(z.size)
+    #u = 0.0 * np.ones(z.size)
     s = z
 
     # Write the data to a .nc file for MicroHH
     float_type = 'f8' if tf==np.float64 else 'f4'
 
-    nc_file = nc.Dataset("sine_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+    nc_file = nc.Dataset("sine_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
     nc_file.createDimension("z", grid.kmax)
     nc_z  = nc_file.createVariable("z" , float_type, ("z"))
 
@@ -111,3 +112,16 @@ if __name__ == "__main__":
         pl.plot(np.ones_like(z)*x[i], z, 'k:')
 
     dem.T.tofile('dem.0000000')
+
+    # Create example spatially varying sbot files
+    mask = dem > dem.mean()
+
+    ch4 = np.zeros_like(dem)
+    b = np.zeros_like(dem)
+
+    ch4[mask]  = 0.1
+    b[~mask] = -0.1
+    b[mask] = 0.1
+
+    ch4.T.tofile('ch4_sbot.0000000')
+    b.T.tofile('b_sbot.0000000')

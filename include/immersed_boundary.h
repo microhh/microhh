@@ -69,6 +69,10 @@ struct Ghost_cells
     // Interpolation coefficients
     std::vector<TF> c_idw;     // size = number of ghost cells x n_idw_points
     std::vector<TF> c_idw_sum; // size = number of ghost cells
+
+    // Spatially varying scalar (and momentum..) boundary conditions
+    std::map<std::string, std::vector<TF>> sbot;
+    std::vector<TF> mbot;
     
     //
     // GPU 
@@ -145,6 +149,7 @@ class Immersed_boundary
         // Boundary conditions for scalars
         Boundary_type sbcbot;
         std::map<std::string, TF> sbc;
+        std::vector<std::string> sbot_spatial_list;
 
         // IB input from DEM
         std::vector<TF> dem;
