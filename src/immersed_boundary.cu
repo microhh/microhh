@@ -31,7 +31,7 @@ namespace
 {
     template<typename TF> __global__
     void set_ghost_cells_g(
-            TF* const __restrict__ fld, const TF boundary_value,
+            TF* const __restrict__ fld, const TF* const __restrict__ boundary_value,
             const TF* const __restrict__ c_idw, const TF* const __restrict__ c_idw_sum,
             const TF* const __restrict__ di,
             const int* const __restrict__ gi,  const int* const __restrict__ gj,  const int* const __restrict__ gk,
@@ -59,19 +59,19 @@ namespace
             if (bc == Boundary_type::Dirichlet_type)
             {
                 const int ii = n_idw-1 + n*n_idw;
-                vI += c_idw[ii] * boundary_value;
+                vI += c_idw[ii] * boundary_value[n];
             }
 
             vI /= c_idw_sum[n];
 
             // Set the ghost cells, depending on the IB boundary conditions
             if (bc == Boundary_type::Dirichlet_type)
-                fld[ijkg] = 2*boundary_value - vI;         // Image value reflected across IB
+                fld[ijkg] = 2*boundary_value[n] - vI;         // Image value reflected across IB
             else if (bc == Boundary_type::Neumann_type)
-                fld[ijkg] = vI - boundary_value * di[n];   // Image value minus gradient times distance
+                fld[ijkg] = vI - boundary_value[n] * di[n];   // Image value minus gradient times distance
             else if (bc == Boundary_type::Flux_type)
             {
-                const TF grad = -boundary_value / visc;
+                const TF grad = -boundary_value[n] / visc;
                 fld[ijkg] = vI - grad * di[n];             // Image value minus gradient times distance
             }
         }
@@ -103,10 +103,9 @@ void Immersed_boundary<TF>::exec_momentum()
 
     dim3 blockGPU(blocki);
 
-    TF noslip_bc = TF(0);
 
     set_ghost_cells_g<TF><<<gridGPU_u, blockGPU>>>(
-            fields.mp.at("u")->fld_g, noslip_bc,
+            fields.mp.at("u")->fld_g, ghost.at("u").mbot_g, 
             ghost.at("u").c_idw_g, ghost.at("u").c_idw_sum_g, ghost.at("u").di_g,
             ghost.at("u").i_g, ghost.at("u").j_g, ghost.at("u").k_g,
             ghost.at("u").ip_i_g, ghost.at("u").ip_j_g, ghost.at("u").ip_k_g,
@@ -115,7 +114,7 @@ void Immersed_boundary<TF>::exec_momentum()
     cuda_check_error();
 
     set_ghost_cells_g<TF><<<gridGPU_v, blockGPU>>>(
-            fields.mp.at("v")->fld_g, noslip_bc,
+            fields.mp.at("v")->fld_g, ghost.at("v").mbot_g,
             ghost.at("v").c_idw_g, ghost.at("v").c_idw_sum_g, ghost.at("v").di_g,
             ghost.at("v").i_g, ghost.at("v").j_g, ghost.at("v").k_g,
             ghost.at("v").ip_i_g, ghost.at("v").ip_j_g, ghost.at("v").ip_k_g,
@@ -124,7 +123,7 @@ void Immersed_boundary<TF>::exec_momentum()
     cuda_check_error();
 
     set_ghost_cells_g<TF><<<gridGPU_w, blockGPU>>>(
-            fields.mp.at("w")->fld_g, noslip_bc,
+            fields.mp.at("w")->fld_g, ghost.at("w").mbot_g,
             ghost.at("w").c_idw_g, ghost.at("w").c_idw_sum_g, ghost.at("w").di_g,
             ghost.at("w").i_g, ghost.at("w").j_g, ghost.at("w").k_g,
             ghost.at("w").ip_i_g, ghost.at("w").ip_j_g, ghost.at("w").ip_k_g,
@@ -157,7 +156,7 @@ void Immersed_boundary<TF>::exec_scalars()
         for (auto& it : fields.sp)
         {
             set_ghost_cells_g<TF><<<gridGPU, blockGPU>>>(
-                    it.second->fld_g, sbc.at(it.first),
+                    it.second->fld_g, ghost.at("s").sbot_g.at(it.first),
                     ghost.at("s").c_idw_g, ghost.at("s").c_idw_sum_g, ghost.at("s").di_g,
                     ghost.at("s").i_g, ghost.at("s").j_g, ghost.at("s").k_g,
                     ghost.at("s").ip_i_g, ghost.at("s").ip_j_g, ghost.at("s").ip_k_g,
@@ -212,6 +211,12 @@ void Immersed_boundary<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&g.second.c_idw_g, fmemsize_2d));
         cuda_safe_call(cudaMalloc(&g.second.c_idw_sum_g, fmemsize_1d));
 
+        if (g.first == "u" || g.first == "v" || g.first == "w")
+            cuda_safe_call(cudaMalloc(&g.second.mbot_g, fmemsize_1d));
+        else
+            for (auto& it : g.second.sbot)
+                cuda_safe_call(cudaMalloc(&g.second.sbot_g[it.first], fmemsize_1d));
+
         // Forward copy
         cuda_safe_call(cudaMemcpy(g.second.i_g, g.second.i.data(), imemsize_1d, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(g.second.j_g, g.second.j.data(), imemsize_1d, cudaMemcpyHostToDevice));
@@ -234,7 +239,14 @@ void Immersed_boundary<TF>::prepare_device()
 
         cuda_safe_call(cudaMemcpy(g.second.c_idw_g, g.second.c_idw.data(), fmemsize_2d, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(g.second.c_idw_sum_g, g.second.c_idw_sum.data(), fmemsize_1d, cudaMemcpyHostToDevice));
-    }
+
+        if (g.first == "u" || g.first == "v" || g.first == "w")
+            cuda_safe_call(cudaMemcpy(g.second.mbot_g, g.second.mbot.data(), fmemsize_1d, cudaMemcpyHostToDevice));
+        else
+            for (auto& it : g.second.sbot)
+                cuda_safe_call(cudaMemcpy(g.second.sbot_g.at(it.first), g.second.sbot.at(it.first).data(), 
+                               fmemsize_1d, cudaMemcpyHostToDevice));
+    }    
 }
 
 template <typename TF>

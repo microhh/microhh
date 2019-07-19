@@ -104,6 +104,10 @@ struct Ghost_cells
     // Interpolation coefficients
     TF* c_idw_g;
     TF* c_idw_sum_g;
+
+    // Spatially varying scalar (and momentum..) boundary conditions
+    std::map<std::string, TF*> sbot_g;
+    TF* mbot_g;
 };
 
 // Convenience struct to simplify sorting
