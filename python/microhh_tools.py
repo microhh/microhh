@@ -229,13 +229,19 @@ class Create_ncfile():
             self.dimvar[key]    = self.ncfile.createVariable(key, precision, (key))
             if key is not 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
-        self.var = self.ncfile.createVariable(varname, precision, tuple(dimensions.keys()),zlib=compression)
+        self.var = self.ncfile.createVariable(varname, precision, tuple(self.sortdims(dimensions.keys())),zlib=compression)
 
     def sync(self):
+        print('a')
         self.ncfile.sync()
 
     def close(self):
         self.ncfile.close()
+    
+    def sortdims(self, lst = []):
+      ordered_dims = ['time','z','zh', 'y','yh', 'x','xh']
+      lst_out = [value for value in ordered_dims if value in lst] 
+      return lst_out
 
 def get_cross_indices(variable, mode):
     """ Find the cross-section indices given a variable name and mode (in 'xy','xz','yz') """

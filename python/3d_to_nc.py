@@ -17,9 +17,7 @@ def convert_to_nc(variables):
                 dim['yh'] = dim.pop('y')
             if variable is 'w':
                 dim['zh'] = dim.pop('z')
-
             ncfile = mht.Create_ncfile(grid, filename, variable, dim, precision, compression)
-
             # Loop through the files and read 3d field
             for t in range(niter):
                 otime = round((starttime + t*sampletime) / 10**iotimeprec)
@@ -35,7 +33,7 @@ def convert_to_nc(variables):
                     break
 
                 print("Processing %8s, time=%7i"%(variable, otime))
-                ncfile.dimvar['time'] = otime * 10**iotimeprec
+                ncfile.dimvar['time'][t] = otime * 10**iotimeprec
                 if (perslice):
                     for k in range(ktot):
                         ncfile.var[t,k,:,:] = fin.read(itot * jtot)
