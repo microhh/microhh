@@ -575,7 +575,7 @@ namespace
                     ciwp[ijk_nogc] = ssa.qi * dpg;
 
                     const TF qv = qt[ijk] - ssa.ql - ssa.qi;
-                    vmr_h2o[ijk_nogc] = qv / (ep<TF> - qv);
+                    vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
 
                     T[ijk_nogc] = ssa.t;
                 }
