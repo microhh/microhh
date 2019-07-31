@@ -354,12 +354,11 @@ namespace
 
     template<typename TF>
     void calc_path(
-            TF& path, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
+            TF& path, int& nmask_proj, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
             const unsigned int* const mask, const unsigned int flag, const int* const nmask,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        int nmask_proj = 0.;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -373,20 +372,19 @@ namespace
                         break;
                     }
                 }
-            }
-
-        double tmp = 0.;
-        if (nmask_proj > 0)
-        {
-            for (int k=kstart; k<kend; ++k)
-            {
-                if (nmask[k])
+                if (nmask_proj > 0)
                 {
-                    tmp += data[k]*rho[k]*dz[k]*nmask[k];
+                    for (int k=kstart; k<kend; ++k)
+                    {
+                        const int ijk  = i + j*icells + k*ijcells;
+                        if (in_mask<bool>(mask[ijk], flag))
+                        {
+                            path += data[ijk]*rho[k]*dz[k];
+                        }
+                    }
                 }
             }
-            path = tmp / nmask_proj;
-        }
+       
 
     }
 
@@ -1295,12 +1293,15 @@ void Stats<TF>::calc_stats(
     {
         for (auto& m : masks)
         {
+            int nmask_proj = 0;
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
-            calc_path(m.second.tseries.at(name).data, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
+            calc_path(m.second.tseries.at(name).data, nmask_proj, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
                     mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
             master.sum(&m.second.tseries.at(name).data, 1);
+            master.sum(&nmask_proj, 1);
+            m.second.tseries.at(name).data /= nmask_proj;
         }
     }
 
