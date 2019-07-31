@@ -597,7 +597,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     const double sza = inputin.get_item<double>("radiation", "sza", "");
     mu0 = std::cos(sza);
 
-    Nc0 = inputin.get_item<double>("microphysics", "Nc0", "", 70e6);
+    // Nc0 = inputin.get_item<double>("microphysics", "Nc0", "", 70e6);
 
     auto& gd = grid.get_grid_data();
     fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", gd.sloc);
@@ -1308,7 +1308,13 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             const double sig_g = 1.34;
             const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+
+            // CvH: Numbers according to RCEMIP.
+            const double Nc0 = 100.e6;
+            const double Ni0 = 1.e5;
+
             const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
+            const double four_pi_Ni0_rho_i = 4.*M_PI*Ni0*Constants::rho_i<double>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
@@ -1323,12 +1329,16 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     // Limit the values between 2.5 and 60.
                     rel_value = std::max(2.5, std::min(rel_value, 60.));
                     rel({icol, ilay}) = rel_value;
+
+                    // Calculate the effective radius of ice from the mass and the number concentration.
+                    double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
+                        std::pow(3.*(ciwp_subset({icol, ilay})/layer_mass) / four_pi_Ni0_rho_i, (1./3.));
+
+                    // Limit the values between 2.5 and 200.
+                    rei_value = std::max(2.5, std::min(rei_value, 200.));
+                    rei({icol, ilay}) = rei_value;
                 }
             }
-
-            // Set the ice effective radius to a constant value of 25 micron.
-            for (int i=0; i<rei.size(); ++i)
-                rei.v()[i] = 25.;
 
             // Convert to g/m2.
             for (int i=0; i<clwp_subset.size(); ++i)
@@ -1518,7 +1528,13 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             const double sig_g = 1.34;
             const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+
+            // CvH: Numbers according to RCEMIP.
+            const double Nc0 = 100.e6;
+            const double Ni0 = 1.e5;
+
             const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
+            const double four_pi_Ni0_rho_i = 4.*M_PI*Ni0*Constants::rho_i<double>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
@@ -1533,12 +1549,16 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     // Limit the values between 2.5 and 60.
                     rel_value = std::max(2.5, std::min(rel_value, 60.));
                     rel({icol, ilay}) = rel_value;
+
+                    // Calculate the effective radius of ice from the mass and the number concentration.
+                    double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
+                        std::pow(3.*(ciwp_subset({icol, ilay})/layer_mass) / four_pi_Ni0_rho_i, (1./3.));
+
+                    // Limit the values between 2.5 and 200.
+                    rei_value = std::max(2.5, std::min(rei_value, 200.));
+                    rei({icol, ilay}) = rei_value;
                 }
             }
-
-            // Set the ice effective radius to a constant value of 25 micron.
-            for (int i=0; i<rei.size(); ++i)
-                rei.v()[i] = 25.;
 
             // Convert to g/m2.
             for (int i=0; i<clwp_subset.size(); ++i)

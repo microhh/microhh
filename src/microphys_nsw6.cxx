@@ -909,9 +909,9 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
 
-    N_d = inputin.get_item<TF>("micro", "Nd", "", 50.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
+    N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
