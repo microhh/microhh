@@ -27,16 +27,19 @@
 
 namespace Constants
 {
-    template<typename TF> constexpr TF kappa = 0.4;        // von Karman constant
-    template<typename TF> constexpr TF grav  = 9.81;       // Gravitational acceleration [m s-2]
-    template<typename TF> constexpr TF Rd    = 287.04;     // Gas constant for dry air [J K-1 kg-1]
-    template<typename TF> constexpr TF Rv    = 461.5;      // Gas constant for water vapor [J K-1 kg-1]
-    template<typename TF> constexpr TF cp    = 1005;       // Specific heat of air at constant pressure [J kg-1 K-1]
-    template<typename TF> constexpr TF Lv    = 2.5e6;      // Latent heat of condensation or vaporization [J kg-1]
-    template<typename TF> constexpr TF T0    = 273.15;     // Freezing / melting temperature [K]
-    template<typename TF> constexpr TF p0    = 1.e5;       // Reference pressure [Pa]
+    template<typename TF> constexpr TF kappa = 0.4;           // von Karman constant
+    template<typename TF> constexpr TF grav  = 9.81;          // Gravitational acceleration [m s-2]
+    template<typename TF> constexpr TF Rd    = 287.04;        // Gas constant for dry air [J K-1 kg-1]
+    template<typename TF> constexpr TF Rv    = 461.5;         // Gas constant for water vapor [J K-1 kg-1]
+    template<typename TF> constexpr TF cp    = 1005;          // Specific heat of air at constant pressure [J kg-1 K-1]
+    template<typename TF> constexpr TF Lv    = 2.501e6;       // Latent heat of vaporization [J kg-1]
+    template<typename TF> constexpr TF Lf    = 3.337e5;       // Latent heat of fusion [J kg-1]
+    template<typename TF> constexpr TF Ls    = Lv<TF>+Lf<TF>; // Latent heat of sublimation [J kg-1]
+    template<typename TF> constexpr TF T0    = 273.15;        // Freezing / melting temperature [K]
+    template<typename TF> constexpr TF p0    = 1.e5;          // Reference pressure [Pa]
     template<typename TF> constexpr TF ep    = Rd<TF>/Rv<TF>;
-    template<typename TF> constexpr TF rho_w = 1.e3;       // Density of water [kg m-3]
+    template<typename TF> constexpr TF rho_w = 1.e3;          // Density of water [kg m-3]
+    template<typename TF> constexpr TF rho_i = 7.e2;          // Density of ice   [kg m-3]
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)

@@ -156,10 +156,10 @@ namespace micro
                 const TF dr = calc_rain_diameter(mr);
 
                 const TF T   = thl[ijk] * exner[k] + (Lv<TF> * ql[ijk]) / (cp<TF> * exner[k]); // Absolute temperature [K]
-                const TF Glv = pow(Rv<TF> * T / (esat(T) * D_v<TF>) +
+                const TF Glv = pow(Rv<TF> * T / (esat_liq(T) * D_v<TF>) +
                                    (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - TF(1)), TF(-1)); // Cond/evap rate (kg m-1 s-1)?
 
-                const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - TF(1); // Saturation
+                const TF S   = (qt[ijk] - ql[ijk]) / qsat_liq(p[k], T) - TF(1); // Saturation
                 const TF F   = TF(1.); // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
                 const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];

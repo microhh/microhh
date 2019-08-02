@@ -123,7 +123,11 @@ if(NOT HASCACHE)
 
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
-      "Flags used by NVCC." FORCE)
+      "Flags used by NVCC during all build types." FORCE)
+    set(CUDA_NVCC_FLAGS_DEBUG ${USER_CUDA_NVCC_FLAGS_DEBUG} CACHE STRING
+      "Flags used by NVCC during debug builds." FORCE)
+    set(CUDA_NVCC_FLAGS_RELEASE ${USER_CUDA_NVCC_FLAGS_RELEASE} CACHE STRING
+      "Flags used by NVCC during release builds." FORCE)
   endif()
 
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
@@ -144,8 +148,10 @@ if(USECUDA)
   # Add CUDA debug definition, to enforce CUDA API and kernel checks.
   if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
     add_definitions("-DCUDACHECKS")
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
+  else()
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
   endif()
-  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
 endif()
 
 add_subdirectory(src)

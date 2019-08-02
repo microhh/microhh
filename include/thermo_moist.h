@@ -68,9 +68,9 @@ class Thermo_moist : public Thermo<TF>
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         void get_radiation_fields(
-                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_buoyancy_surf(Field3d<TF>&, bool);
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_T_bot(Field3d<TF>&, bool);
@@ -88,7 +88,7 @@ class Thermo_moist : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
@@ -113,6 +113,7 @@ class Thermo_moist : public Thermo<TF>
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         bool swcross_b;
         bool swcross_ql;
+        bool swcross_qi;
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.

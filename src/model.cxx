@@ -176,7 +176,7 @@ void Model<TF>::init()
     force->init();
     thermo->init();
     microphys->init();
-    radiation->init();
+    radiation->init(timeloop->get_ifactor());
     decay->init(*input);
     budget->init();
 
@@ -333,7 +333,7 @@ void Model<TF>::exec()
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_sub_time_step(), *stats);
+                microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
@@ -699,7 +699,7 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-        if (!(cfl>=0. && cfl < 10.))
+        if (!(cfl>=0. && cfl < 10.) || (!std::isfinite(cfl)))
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);

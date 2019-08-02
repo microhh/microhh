@@ -70,8 +70,8 @@ class Cloud_optics : public Optical_props<TF>
         Array<TF,2> lut_extliq;
         Array<TF,2> lut_ssaliq;
         Array<TF,2> lut_asyliq;
-        Array<TF,3> lut_extice;
-        Array<TF,3> lut_ssaice;
-        Array<TF,3> lut_asyice;
+        Array<TF,2> lut_extice;
+        Array<TF,2> lut_ssaice;
+        Array<TF,2> lut_asyice;
 };
 #endif

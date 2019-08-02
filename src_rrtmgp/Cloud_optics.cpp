@@ -51,9 +51,20 @@ Cloud_optics<TF>::Cloud_optics(
     this->lut_extliq = lut_extliq;
     this->lut_ssaliq = lut_ssaliq;
     this->lut_asyliq = lut_asyliq;
-    this->lut_extice = lut_extice;
-    this->lut_ssaice = lut_ssaice;
-    this->lut_asyice = lut_asyice;
+
+    // Choose the intermediately rough ice particle category (icergh = 2).
+    this->lut_extice.set_dims({lut_extice.dim(1), lut_extice.dim(2)});
+    this->lut_ssaice.set_dims({lut_ssaice.dim(1), lut_ssaice.dim(2)});
+    this->lut_asyice.set_dims({lut_asyice.dim(1), lut_asyice.dim(2)});
+
+    constexpr int icergh = 2;
+    for (int ibnd=1; ibnd<=lut_extice.dim(2); ++ibnd)
+        for (int isize=1; isize<=lut_extice.dim(1); ++isize)
+        {
+            this->lut_extice({isize, ibnd}) = lut_extice({isize, ibnd, icergh});
+            this->lut_ssaice({isize, ibnd}) = lut_ssaice({isize, ibnd, icergh});
+            this->lut_asyice({isize, ibnd}) = lut_asyice({isize, ibnd, icergh});
+        }
 }
 
 template<typename TF>
@@ -97,6 +108,7 @@ void Cloud_optics<TF>::cloud_optics(
     const int nbnd = this->get_nband();
 
     Optical_props_2str<TF> clouds_liq(ncol, nlay, optical_props);
+    Optical_props_2str<TF> clouds_ice(ncol, nlay, optical_props);
 
     // Liquid water.
     compute_from_table(
@@ -123,7 +135,35 @@ void Cloud_optics<TF>::cloud_optics(
             for (int icol=1; icol<=ncol; ++icol)
                 clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
 
-    // Add ice as soon as ice microphysics are added.
+    // Ice.
+    compute_from_table(
+            ncol, nlay, nbnd, icemsk, reice,
+            this->ice_nsteps, this->ice_step_size,
+            this->radice_lwr, this->lut_extice,
+            clouds_ice.get_tau());
+
+    compute_from_table(
+            ncol, nlay, nbnd, icemsk, reice,
+            this->ice_nsteps, this->ice_step_size,
+            this->radice_lwr, this->lut_ssaice,
+            clouds_ice.get_ssa());
+
+    compute_from_table(
+            ncol, nlay, nbnd, icemsk, reice,
+            this->ice_nsteps, this->ice_step_size,
+            this->radice_lwr, this->lut_asyice,
+            clouds_ice.get_g());
+
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+                clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
+
+    // Add the ice optical properties to those of the clouds.
+    add_to(
+            dynamic_cast<Optical_props_2str<double>&>(clouds_liq),
+            dynamic_cast<Optical_props_2str<double>&>(clouds_ice));
 
     // Process the calculated optical properties.
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
@@ -150,6 +190,7 @@ void Cloud_optics<TF>::cloud_optics(
     const int nbnd = this->get_nband();
 
     Optical_props_1scl<TF> clouds_liq(ncol, nlay, optical_props);
+    Optical_props_1scl<TF> clouds_ice(ncol, nlay, optical_props);
 
     // Liquid water.
     compute_from_table(
@@ -164,9 +205,27 @@ void Cloud_optics<TF>::cloud_optics(
             for (int icol=1; icol<=ncol; ++icol)
                 clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
 
-    // Add ice as soon as ice microphysics are added.
+    // Ice.
+    compute_from_table(
+            ncol, nlay, nbnd, icemsk, reice,
+            this->ice_nsteps, this->ice_step_size,
+            this->radice_lwr, this->lut_extice,
+            clouds_ice.get_tau());
+
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            #pragma ivdep
+            for (int icol=1; icol<=ncol; ++icol)
+                clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
+
+    // Add the ice optical properties to those of the clouds.
+    add_to(
+            dynamic_cast<Optical_props_1scl<double>&>(clouds_liq),
+            dynamic_cast<Optical_props_1scl<double>&>(clouds_ice));
 
     // Process the calculated optical properties.
+    // CvH. I did not add the 1. - ssa multiplication as we do not combine 1scl and 2str.
+    // CvH. This is a redundant copy, why not move the data in directly?
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
         for (int ilay=1; ilay<=nlay; ++ilay)
             #pragma ivdep

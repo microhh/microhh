@@ -503,7 +503,8 @@ void Thermo_vapor<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
+void Thermo_vapor<TF>::get_thermo_field(
+        Field3d<TF>& fld, const std::string& name, const bool cyclic, const bool is_stat)
 {
     auto& gd = grid.get_grid_data();
 

@@ -50,7 +50,7 @@ class Radiation
         std::string get_switch();
 
         //functions that the derived class has to implement
-        virtual void init() = 0;
+        virtual void init(const double) = 0;
         virtual void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
@@ -69,6 +69,7 @@ class Radiation
                 const unsigned long, const int) = 0;
 
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
+
     protected:
         Master& master;
         Grid<TF>& grid;

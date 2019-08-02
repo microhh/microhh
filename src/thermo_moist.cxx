@@ -71,13 +71,14 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_2nd(TF* restrict wt, TF* restrict thl, TF* restrict qt,
-                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                                TF* restrict ql, TF* restrict thvrefh,
-                                const int istart, const int iend,
-                                const int jstart, const int jend,
-                                const int kstart, const int kend,
-                                const int jj, const int kk)
+    void calc_buoyancy_tend_2nd(
+            TF* restrict wt, TF* restrict thl, TF* restrict qt,
+            TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+            TF* restrict ql, TF* restrict qi, TF* restrict thvrefh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; k++)
@@ -98,7 +99,9 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ij  = i + j*jj;
-                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                    ql[ij] = ssa.ql;
+                    qi[ij] = ssa.qi;
                 }
 
             for (int j=jstart; j<jend; j++)
@@ -107,18 +110,19 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
 
     template<typename TF>
-    void calc_buoyancy(TF* restrict b, TF* restrict thl, TF* restrict qt,
-                       TF* restrict p, TF* restrict ql, TF* restrict thvref,
-                       const int istart, const int iend,
-                       const int jstart, const int jend,
-                       const int kstart, const int kend,
-                       const int kcells, const int jj, const int kk)
+    void calc_buoyancy(
+            TF* restrict b, TF* restrict thl, TF* restrict qt,
+            TF* restrict p, TF* restrict ql, TF* restrict qi, TF* restrict thvref,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int kcells, const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=0; k<kcells; k++)
@@ -131,7 +135,9 @@ namespace
                     for (int i=istart; i<iend; i++)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                        ql[ijk] = ssa.ql;
+                        qi[ijk] = ssa.qi;
                     }
             }
             else
@@ -142,6 +148,7 @@ namespace
                     {
                         const int ijk  = i + j*jj+k*kk;
                         ql[ijk] = 0.;
+                        qi[ijk] = 0.;
                     }
 
             }
@@ -150,14 +157,15 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], thvref[k]);
+                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
                 }
         }
     }
 
     template<typename TF>
     void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
-                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
+                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth,
+                         TF* restrict ql, TF* restrict qi,
                          const int istart, const int iend,
                          const int jstart, const int jend,
                          const int kstart, const int kend,
@@ -187,7 +195,9 @@ namespace
                     for (int i=istart; i<iend; i++)
                     {
                         const int ij  = i + j*jj;
-                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                        ql[ij] = ssa.ql;
+                        qi[ij] = ssa.qi;
                     }
             }
             else
@@ -198,6 +208,7 @@ namespace
                     {
                         const int ij  = i + j*jj;
                         ql[ij] = 0.;
+                        qi[ij] = 0.;
                     }
             }
             for (int j=jstart; j<jend; j++)
@@ -207,7 +218,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
 
-                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
@@ -277,6 +288,52 @@ namespace
                 const int ijk  = i + j*jj+kstart*kk;
                 qlh[ijk] = 0.;
             }
+    }
+
+    template<typename TF>
+    void calc_ice(
+            TF* restrict qi, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qi[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qi;
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_condensate(
+            TF* restrict qc, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qc[ijk] = std::max(qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(0.));
+                }
+        }
     }
 
     template<typename TF>
@@ -487,7 +544,7 @@ namespace
 
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict qv, TF* restrict clwp,
+            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict clwp, TF* restrict ciwp,
             TF* restrict thlh, TF* restrict qth,
             const TF* restrict thl, const TF* restrict qt,
             const TF* restrict p, const TF* restrict ph,
@@ -513,9 +570,14 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
                     const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+
                     clwp[ijk_nogc] = ssa.ql * dpg;
-                    qv  [ijk_nogc] = qt[ijk] - ssa.ql;
-                    T   [ijk_nogc] = ssa.t;
+                    ciwp[ijk_nogc] = ssa.qi * dpg;
+
+                    const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                    vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
+
+                    T[ijk_nogc] = ssa.t;
                 }
         }
 
@@ -697,7 +759,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     // extend later for gravity vector not normal to surface
     calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
                            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], bs.thvrefh.data(),
+                           &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                            gd.icells, gd.ijcells);
 
@@ -793,7 +855,8 @@ void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool cyclic, bool is_stat)
+void Thermo_moist<TF>::get_thermo_field(
+        Field3d<TF>& fld, const std::string& name, const bool cyclic, const bool is_stat)
 {
     auto& gd = grid.get_grid_data();
 
@@ -816,17 +879,22 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 
     if (name == "b")
     {
-        auto tmp = fields.get_tmp();
-        calc_buoyancy(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(), tmp->fld.data(), base.thvref.data(),
-                      gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.kcells, gd.icells, gd.ijcells);
-        fields.release_tmp(tmp);
+        auto tmp  = fields.get_tmp();
+        auto tmp2 = fields.get_tmp();
+        calc_buoyancy(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                tmp->fld.data(), tmp2->fld.data(), base.thvref.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.kcells, gd.icells, gd.ijcells);
+        fields.release_tmp(tmp );
+        fields.release_tmp(tmp2);
     }
     else if (name == "b_h")
     {
         auto tmp = fields.get_tmp();
-        calc_buoyancy_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(),
-                        &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells],
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        calc_buoyancy_h(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), base.thvrefh.data(),
+                &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells], &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells],
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
     else if (name == "ql")
@@ -840,6 +908,16 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
         calc_liquid_water_h(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.prefh.data(), &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
+    }
+    else if (name == "qi")
+    {
+        calc_ice(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
+    else if (name == "ql_qi")
+    {
+        calc_condensate(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "N2")
     {
@@ -870,12 +948,12 @@ void Thermo_moist<TF>::get_thermo_field(Field3d<TF>& fld, std::string name, bool
 
 template<typename TF>
 void Thermo_moist<TF>::get_radiation_fields(
-        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& clwp) const
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& clwp, Field3d<TF>& ciwp) const
 {
     auto& gd = grid.get_grid_data();
 
     calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(), clwp.fld.data(),
+            T.fld.data(), T_h.fld.data(), qv.fld.data(), clwp.fld.data(), ciwp.fld.data(),
             T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
             fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
             bs.pref.data(), bs.prefh.data(),
@@ -1013,12 +1091,26 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
+        auto T = fields.get_tmp();
+        T->name = "T";
+        T->longname = "Absolute temperature";
+        T->unit = "K";
+        stats.add_profs(*T, "z", {"mean", "2"}, group_name);
+        fields.release_tmp(T);
+
         auto ql = fields.get_tmp();
         ql->name = "ql";
         ql->longname = "Liquid water";
         ql->unit = "kg kg-1";
         stats.add_profs(*ql, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(ql);
+
+        auto qi = fields.get_tmp();
+        qi->name = "qi";
+        qi->longname = "Ice";
+        qi->unit = "kg kg-1";
+        stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        fields.release_tmp(qi);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
@@ -1043,22 +1135,30 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
     {
         swcross_b = false;
         swcross_ql = false;
+        swcross_qi = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water
         std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
         std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
+        std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
+        std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
 
         if (bvars.size() > 0)
             swcross_b  = true;
+
         if (qlvars.size() > 0)
             swcross_ql = true;
+
+        if (qivars.size() > 0)
+            swcross_qi = true;
 
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
+        crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
     }
 }
 
@@ -1109,6 +1209,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(b);
 
+    // calculate the absolute temperature stats.
+    auto T = fields.get_tmp();
+    T->loc = gd.sloc;
+
+    get_thermo_field(*T, "T", true, true);
+    stats.calc_stats("T", *T, no_offset, no_threshold);
+
+    fields.release_tmp(T);
+
     // calculate the liquid water stats
     auto ql = fields.get_tmp();
     ql->loc = gd.sloc;
@@ -1117,6 +1226,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
     fields.release_tmp(ql);
+
+    // calculate the ice stats
+    auto qi = fields.get_tmp();
+    qi->loc = gd.sloc;
+
+    get_thermo_field(*qi, "qi", true, true);
+    stats.calc_stats("qi", *qi, no_offset, no_threshold);
+
+    fields.release_tmp(qi);
 
     if (bs_stats.swupdatebasestate)
     {
@@ -1127,9 +1245,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     }
 
     stats.set_timeseries("zi", gd.z[get_bl_depth()]);
-
 }
-
 
 #ifndef USECUDA
 template<typename TF>
@@ -1177,10 +1293,11 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(output->flux_bot.data(), "bfluxbot", iotime);
     }
 
-    if(swcross_ql)
+    if (swcross_ql)
     {
         get_thermo_field(*output, "ql", false, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "ql")
@@ -1193,6 +1310,19 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qltop", iotime);
     }
 
+    if (swcross_qi)
+    {
+        get_thermo_field(*output, "qi", false, true);
+    }
+
+    for (auto& it : crosslist)
+    {
+        if (it == "qi")
+            cross.cross_simple(output->fld.data(), "qi", iotime, gd.sloc);
+        if (it == "qipath")
+            cross.cross_path(output->fld.data(), "qipath", iotime);
+    }
+ 
     fields.release_tmp(output);
 }
 
