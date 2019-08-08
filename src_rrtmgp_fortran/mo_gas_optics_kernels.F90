@@ -16,12 +16,7 @@
 
 module mo_gas_optics_kernels
   use mo_rte_kind,      only : wp, wl
-  ! use mo_util_string,   only : string_loc_in_array
   implicit none
-
-  interface zero_array
-    module procedure zero_array_3D, zero_array_4D
-  end interface
 contains
   ! --------------------------------------------------------------------------------------
   ! Compute interpolation coefficients
@@ -775,39 +770,4 @@ contains
       end do
     end do
   end subroutine combine_and_reorder_nstr
-  ! ----------------------------------------------------------
-  pure subroutine zero_array_3D(ni, nj, nk, array) bind(C, name="zero_array_3D")
-    integer, intent(in) :: ni, nj, nk
-    real(wp), dimension(ni, nj, nk), intent(out) :: array
-    ! -----------------------
-    integer :: i,j,k
-    ! -----------------------
-    do k = 1, nk
-      do j = 1, nj
-        do i = 1, ni
-          array(i,j,k) = 0.0_wp
-        end do
-      end do
-    end do
-
-  end subroutine zero_array_3D
-  ! ----------------------------------------------------------
-  pure subroutine zero_array_4D(ni, nj, nk, nl, array) bind(C, name="zero_array_4D")
-    integer, intent(in) :: ni, nj, nk, nl
-    real(wp), dimension(ni, nj, nk, nl), intent(out) :: array
-    ! -----------------------
-    integer :: i,j,k,l
-    ! -----------------------
-    do l = 1, nl
-      do k = 1, nk
-        do j = 1, nj
-          do i = 1, ni
-            array(i,j,k,l) = 0.0_wp
-          end do
-        end do
-      end do
-    end do
-
-  end subroutine zero_array_4D
-  ! ----------------------------------------------------------
 end module mo_gas_optics_kernels
