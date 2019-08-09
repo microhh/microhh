@@ -269,6 +269,29 @@ namespace
     }
 
     template<typename TF>
+    void calc_relative_humidity(
+            TF* restrict rh, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    rh[ijk] = std::min( qt[ijk] / sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(1.));
+                }
+        }
+    }
+
+    template<typename TF>
     void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
                              TF* restrict ph, TF* restrict thlh, TF* restrict qth,
                              const int istart, const int iend,
@@ -948,6 +971,12 @@ void Thermo_moist<TF>::get_thermo_field(
                 fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
+    else if (name == "rh")
+    {
+        calc_relative_humidity(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
@@ -1148,6 +1177,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*qsat, "z", {"mean", "path"}, group_name);
         fields.release_tmp(qsat);
 
+        auto rh = fields.get_tmp();
+        rh->name = "rh";
+        rh->longname = "Relative humidity";
+        rh->unit = "-";
+        stats.add_profs(*rh, "z", {"mean"}, group_name);
+        fields.release_tmp(rh);
+
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
@@ -1281,6 +1317,14 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(qsat);
 
+    // calculate the relative humidity
+    auto rh = fields.get_tmp();
+    rh->loc = gd.sloc;
+
+    get_thermo_field(*rh, "rh", true, true);
+    stats.calc_stats("rh", *rh, no_offset, no_threshold);
+
+    fields.release_tmp(rh);
 
     if (bs_stats.swupdatebasestate)
     {
