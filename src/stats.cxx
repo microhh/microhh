@@ -353,30 +353,34 @@ namespace
     }
 
     template<typename TF>
-    void calc_path(
-            TF& path, int& nmask_proj, const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
+    std::pair<TF, int> calc_path(
+            const TF* const restrict data, const TF* const restrict dz, const TF* const restrict rho,
             const unsigned int* const mask, const unsigned int flag, const int* const nmask,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int icells, const int ijcells)
+            const int jj, const int kk)
     {
+        int nmask_proj = 0;
+        TF path = TF(0.);
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 for (int k=kstart; k<kend; ++k)
                 {
-                    const int ijk  = i + j*icells + k*ijcells;
+                    const int ijk = i + j*jj + k*kk;
                     if (in_mask<bool>(mask[ijk], flag))
                     {
                         ++nmask_proj;
                         break;
                     }
                 }
+
                 if (nmask_proj > 0)
                 {
                     for (int k=kstart; k<kend; ++k)
                     {
-                        const int ijk  = i + j*icells + k*ijcells;
+                        const int ijk = i + j*jj + k*kk;
                         if (in_mask<bool>(mask[ijk], flag))
                         {
                             path += data[ijk]*rho[k]*dz[k];
@@ -385,7 +389,7 @@ namespace
                 }
             }
        
-
+        return std::make_pair(path, nmask_proj);
     }
 
     template<typename TF>
@@ -1293,15 +1297,18 @@ void Stats<TF>::calc_stats(
     {
         for (auto& m : masks)
         {
-            int nmask_proj = 0;
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
-            calc_path(m.second.tseries.at(name).data, nmask_proj, m.second.profs.at(varname).data.data(), gd.dz.data(), fields.rhoref.data(),
-                    mfield.data(), flag, nmask, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            std::pair<TF, int> path = calc_path(
+                    fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
 
-            master.sum(&m.second.tseries.at(name).data, 1);
-            master.sum(&nmask_proj, 1);
-            m.second.tseries.at(name).data /= nmask_proj;
+            master.sum(&path.first, 1);
+            master.sum(&path.second, 1);
+
+            m.second.tseries.at(name).data = path.first / path.second;
         }
     }
 
