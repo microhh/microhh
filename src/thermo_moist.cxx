@@ -246,6 +246,29 @@ namespace
     }
 
     template<typename TF>
+    void calc_saturated_water_vapor(
+            TF* restrict qsat, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the ql field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qsat[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs;
+                }
+        }
+    }
+
+    template<typename TF>
     void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
                              TF* restrict ph, TF* restrict thlh, TF* restrict qth,
                              const int istart, const int iend,
@@ -919,6 +942,12 @@ void Thermo_moist<TF>::get_thermo_field(
         calc_condensate(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
+    else if (name == "qsat")
+    {
+        calc_saturated_water_vapor(
+                fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
@@ -1112,6 +1141,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(qi);
 
+        auto qsat = fields.get_tmp();
+        qsat->name = "qsat";
+        qsat->longname = "Saturated water vapor";
+        qsat->unit = "kg kg-1";
+        stats.add_profs(*qsat, "z", {"mean", "path"}, group_name);
+        fields.release_tmp(qsat);
+
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
@@ -1236,6 +1272,16 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(qi);
 
+    // calculate the saturated water vapor stats
+    auto qsat = fields.get_tmp();
+    qsat->loc = gd.sloc;
+
+    get_thermo_field(*qsat, "qsat", true, true);
+    stats.calc_stats("qsat", *qsat, no_offset, no_threshold);
+
+    fields.release_tmp(qsat);
+
+
     if (bs_stats.swupdatebasestate)
     {
         stats.set_prof("phydro" , bs_stats.pref);
@@ -1276,7 +1322,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     auto output = fields.get_tmp();
 
-    if(swcross_b)
+    if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
         get_buoyancy_fluxbot(*output, true);
