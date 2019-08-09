@@ -838,7 +838,7 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
 {
     const std::string group_name = "default";
 
-    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux"};
+    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux", "path"};
     const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
     const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
 
