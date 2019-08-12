@@ -490,7 +490,7 @@ removes the cross-sections that the class can and should provide from crosslist,
 and returns a vector containing those variables (difficult explanation...)
 */
 template<typename TF>
-std::vector<std::string> Cross<TF>::get_enabled_variables(std::vector<std::string> allowed_variables)
+std::vector<std::string> Cross<TF>::get_enabled_variables(const std::vector<std::string>& allowed_variables)
 {
     std::vector<std::string> variables_to_return;
 

@@ -1210,9 +1210,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_qi = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water
-        std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
-        std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
-        std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
+        const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
+        const std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
+        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
