@@ -292,6 +292,38 @@ namespace
     }
 
     template<typename TF>
+    void calc_w500hpa(
+            TF* restrict w500, const TF* restrict w, const TF* restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Find the first index that is above 500 hPa.
+        int index500 = 0;
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            if (ph[k] <= 5.e4)
+            {
+                index500 = k;
+                break;
+            }
+        }
+        if (index500 == 0 || index500 == kend)
+            throw std::runtime_error("calc_w500hPa cannot find pressure level inside of domain");
+
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + index500*kk;
+                w500[ij] = w[ijk];
+            }
+    }
+
+    template<typename TF>
     void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
                              TF* restrict ph, TF* restrict thlh, TF* restrict qth,
                              const int istart, const int iend,
@@ -1208,15 +1240,20 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_b = false;
         swcross_ql = false;
         swcross_qi = false;
+        swcross_qsat = false;
 
-        // Vectors with allowed cross variables for buoyancy and liquid water
+        // Vectors with allowed cross variables for buoyancy and liquid water.
         const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
         const std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
+        const std::vector<std::string> allowed_crossvars_qsat = {"qsatpath"};
+        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
         std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
+        std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
+        std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
 
         if (bvars.size() > 0)
             swcross_b  = true;
@@ -1227,10 +1264,15 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         if (qivars.size() > 0)
             swcross_qi = true;
 
+        if (qsatvars.size() > 0)
+            swcross_qsat = true;
+
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
         crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
+        crosslist.insert(crosslist.end(), qsatvars.begin(), qsatvars.end());
+        crosslist.insert(crosslist.end(), miscvars.begin(), miscvars.end());
     }
 }
 
@@ -1371,6 +1413,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         get_thermo_field(*output, "b", false, true);
         get_buoyancy_fluxbot(*output, true);
     }
+
     for (auto& it : crosslist)
     {
         if (it == "b")
@@ -1384,9 +1427,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 
     if (swcross_ql)
-    {
         get_thermo_field(*output, "ql", false, true);
-    }
 
     for (auto& it : crosslist)
     {
@@ -1401,9 +1442,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 
     if (swcross_qi)
-    {
         get_thermo_field(*output, "qi", false, true);
-    }
 
     for (auto& it : crosslist)
     {
@@ -1412,7 +1451,29 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         if (it == "qipath")
             cross.cross_path(output->fld.data(), "qipath", iotime);
     }
- 
+
+    if (swcross_qsat)
+        get_thermo_field(*output, "qsat", false, true);
+
+    for (auto& it : crosslist)
+    {
+        if (it == "qsatpath")
+            cross.cross_path(output->fld.data(), "qsatpath", iotime);
+    }
+
+    for (auto& it : crosslist)
+    {
+        if (it == "w500hpa")
+        {
+            calc_w500hpa(
+                    output->fld_bot.data(), fields.mp.at("w")->fld.data(), bs_stats.prefh.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            cross.cross_plane(output->fld_bot.data(), "w500hpa", iotime);
+        }
+    }
+
     fields.release_tmp(output);
 }
 
