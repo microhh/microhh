@@ -3,6 +3,15 @@ import netCDF4 as nc
 
 float_type = "f8"
 
+#T_0 = 295.
+#q_0 = 0.01200 # for 295 K SST.
+
+T_0 = 300.
+q_0 = 0.01864 # for 300 K SST.
+
+#T_0 = 305.
+#q_0 = 0.02400 # for 305 K SST.
+
 def q_sat(T, p):
     Tc = T - 273.15
 
@@ -12,7 +21,6 @@ def q_sat(T, p):
     return Rd/Rv * e_sat / (p - (1. - Rd/Rv)*e_sat)
 
 def calc_p_q_T_thl_o3(z):
-    q_0 = 0.01864 # for 300 K SST.
     z_q1 = 4.0e3
     z_q2 = 7.5e3
     z_t = 15.e3
@@ -27,7 +35,6 @@ def calc_p_q_T_thl_o3(z):
     i_above_zt = np.where(z > z_t)
     q[i_above_zt] = q_t
     
-    T_0 = 300.
     gamma = 6.7e-3
     Tv_0 = (1. + 0.608*q_0)*T_0
     Tv = Tv_0 - gamma*z
