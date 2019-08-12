@@ -958,6 +958,13 @@ void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<T
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
     }
+
+    // Create cross sections
+    // 1. Variables that this class can calculate/provide:
+    const std::vector<std::string> allowed_crossvars = {"rr_bot", "rs_bot", "rg_bot"};
+
+    // 2. Cross-reference with the variables requested in the .ini file:
+    crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
 #ifndef USECUDA
@@ -1068,6 +1075,20 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    if (cross.get_switch())
+    {
+        for (auto& it : crosslist)
+        {
+            if (it == "rr_bot")
+                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+
+            if (it == "rs_bot")
+                cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
+
+            if (it == "rg_bot")
+                cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
+        }
+    }
 }
 
 #ifndef USECUDA
