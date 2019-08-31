@@ -10,7 +10,7 @@ from pylab import *
 rcParams['text.usetex'] = True
 
 # read statistics file
-stats = nc.Dataset('prandtlslope.default.0000000.nc')
+stats = nc.Dataset('prandtlslope_default.0000000.nc')
 
 # grab variables from statistics file
 ucom = stats.variables['u'][:]
