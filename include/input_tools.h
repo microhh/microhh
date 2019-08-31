@@ -34,7 +34,9 @@ namespace Input_tools
     template<>
     inline std::string get_item_from_stream(std::istringstream& ss)
     {
-        return ss.str();
+        std::string item_string = ss.str();
+        boost::trim(item_string);
+        return item_string;
     }
 
     inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
