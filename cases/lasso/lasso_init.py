@@ -29,7 +29,8 @@ with open('testbed.tmp') as f:
       zsize = float(line.split('=')[1])
 
 dz = zsize / kmax
-
+zstretch=5800.
+stretch=1.04
 #Read WRF Namelist
 fnml = "config/namelist.input"
 nml = f90nml.read(fnml)
@@ -71,8 +72,19 @@ ntnudge =tnudge.size
 #
 #interpolate onto Microhh grid
 ntnudge = timestr.shape[0]
-z     = np.linspace(0.5*dz,dz*(kmax-0.5),kmax)
-zh    = np.linspace(dz,dz*(kmax),kmax)
+# non-equidistant grid
+
+z = np.zeros(kmax)
+z[0] = 0.5*dz
+for k in range(1,kmax):
+  z[k] = z[k-1] + 0.5*dz
+  if z[k] > zstretch:
+      dz   *= stretch
+  z[k] += 0.5*dz
+
+zh = np.zeros(kmax)
+zh[:-1] = (z[1:]+z[:-1])/2
+zh[-1]  = 2*z[-1]-zh[-2]
 u     = np.zeros((ntnudge, z.size))
 v     = np.zeros(np.shape(u))
 thl   = np.zeros(np.shape(u))
@@ -112,7 +124,9 @@ inifile.write("#Converted from LASSO WRF" + "\n")
 #inifile.write("#Stop Date = "  + timestr[-1]+"\n")
 with open('testbed.tmp') as f:
   for line_in in f:
-    if(line_in.split('=')[0]=='pbot'):
+    if(line_in.split('=')[0]=='zsize'):
+      line = "zsize={0:f}\n".format(zh[-1]) 
+    elif(line_in.split('=')[0]=='pbot'):
       line = "pbot={0:f}\n".format(p_sbot[0]) 
     else:
       line=line_in
