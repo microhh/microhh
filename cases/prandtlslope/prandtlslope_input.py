@@ -7,7 +7,7 @@ float_type = "f8"
 # set the height (ktot = 512)
 kmax = 512
 dn   = 1./kmax
-n = np.linspace(dn, 1.-dn, kmax)
+n = np.linspace(dn, 1., kmax)
 
 dz1 = 0.001
 r   = 1.01
@@ -20,6 +20,8 @@ for k in range(0,kmax):
 	dz[k] = dz1 * r**k
 
 z = np.zeros(dz.size)
+
+z[0] = 0.5*dz[0]
 
 for k in range(1,kmax):
   z[k] = z[k-1] + 0.5*(dz[k-1]+dz[k])
