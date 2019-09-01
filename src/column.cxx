@@ -185,7 +185,8 @@ template<typename TF>
 void Column<TF>::exec(int iteration, double time, unsigned long itime)
 {
     // Write message in case stats is triggered.
-    master.print_message("Saving columns for time %f\n", time);
+    if (isampletime > 0)
+        master.print_message("Saving columns for time %f\n", time);
 
     auto& gd = grid.get_grid_data();
 
