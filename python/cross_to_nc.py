@@ -88,7 +88,7 @@ def convert_to_nc(variables):
             except Exception as ex:
                 print(ex)
                 print("Failed to create %s"%filename)
-                
+      
                 
                 
 # Parse command line and namelist options
@@ -96,6 +96,7 @@ cross_modes = ['xy', 'xz', 'yz']
 parser = argparse.ArgumentParser(description='Convert MicroHH binary cross-sections to netCDF4 files.')
 parser.add_argument('-m', '--modes', nargs='*', help = 'mode of the cross section', choices = cross_modes)
 parser.add_argument('-f', '--filename', help='ini file name')
+parser.add_argument('-d', '--directory', help='directory')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
 parser.add_argument('-x', '--index', nargs='*', help='indices')
 parser.add_argument('-t0', '--starttime', help='first time step to be parsed')
@@ -106,6 +107,9 @@ parser.add_argument('-n', '--nprocs', help='Number of processes', type=int, defa
 parser.add_argument('-c', '--nocompression', help='do not compress the netcdf file', action='store_true')
 
 args = parser.parse_args()
+ 
+if args.directory is not None:
+    os.chdir(args.directory)
 
 modes = args.modes
 indexes = args.index
@@ -129,7 +133,7 @@ except KeyError:
 
 variables = args.vars if args.vars is not None else nl['cross']['crosslist']
 precision = args.precision
-nprocs    = args.nprocs
+nprocs    = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
 # End option parsing
 
