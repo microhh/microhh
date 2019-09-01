@@ -110,6 +110,7 @@ class Model
         void print_status();
         void calculate_statistics(int, double, unsigned long, int, double);
         void setup_stats();
+        void calc_masks();
         void set_time_step();
 
         void prepare_gpu();

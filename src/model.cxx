@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <iostream>
 #include <string>
 #include <cstdio>
 #include <algorithm>
@@ -515,6 +515,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     if (stats->do_statistics(itime))
     {
         // Calculate statistics
+        if (!stats->do_tendency())
+            calc_masks();
+
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
@@ -570,34 +573,41 @@ void Model<TF>::setup_stats()
             thermo  ->backward_device();
         }
         #endif
-        // Prepare all the masks.
-        const std::vector<std::string>& mask_list = stats->get_mask_list();
-
-        stats->initialize_masks();
-        for (auto& mask_name : mask_list)
-        {
-            // Get the mask from one of the mask providing classes
-            if (fields->has_mask(mask_name))
-                fields->get_mask(*stats, mask_name);
-            else if (thermo->has_mask(mask_name))
-                thermo->get_mask(*stats, mask_name);
-            else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*stats, mask_name);
-            else if (decay->has_mask(mask_name))
-                decay->get_mask(*stats, mask_name);
-            else
-            {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-                throw std::runtime_error(error_message);
-            }
-        }
-        stats->finalize_masks();
         if (stats->do_tendency())
         {
+            calc_masks();
             cpu_up_to_date = false;
             stats->set_tendency(true);
         }
     }
+}
+
+// Calculate the statistics for all classes that have a statistics function.
+template<typename TF>
+void Model<TF>::calc_masks()
+{
+    // Prepare all the masks.
+    const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+    stats->initialize_masks();
+    for (auto& mask_name : mask_list)
+    {
+        // Get the mask from one of the mask providing classes
+        if (fields->has_mask(mask_name))
+            fields->get_mask(*stats, mask_name);
+        else if (thermo->has_mask(mask_name))
+            thermo->get_mask(*stats, mask_name);
+        else if (microphys->has_mask(mask_name))
+            microphys->get_mask(*stats, mask_name);
+        else if (decay->has_mask(mask_name))
+            decay->get_mask(*stats, mask_name);
+        else
+        {
+            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            throw std::runtime_error(error_message);
+        }
+    }
+    stats->finalize_masks();
 }
 
 template<typename TF>
