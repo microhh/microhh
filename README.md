@@ -67,7 +67,7 @@ To start one of the included test cases, go back to the main directory and  open
 
 First, we have to create the vertical profiles for our prognostic variables:
 
-    python drycbllesprof.py
+    python drycblles_input.py
 
 Then, we have to copy or link the microhh executable to the current directory. Here we assume the executable is in the build directory that we have created before.
 
