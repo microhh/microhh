@@ -37,7 +37,7 @@ template<typename> class Timedep;
 
 class Input;
 
-enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
+enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
 
 /**
