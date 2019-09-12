@@ -562,6 +562,13 @@ const std::vector<TF>& Thermo_dry<TF>::get_exner_vector() const
 }
 
 template<typename TF>
+TF Thermo_dry<TF>::get_db_ref() const
+{
+    auto& gd = grid.get_grid_data();
+    return Constants::grav<TF>/bs.thref[gd.kstart]*(bs.thref[gd.kstart] - bs.threfh[gd.kstart]);
+}
+
+template<typename TF>
 void Thermo_dry<TF>::get_prog_vars(std::vector<std::string>& list)
 {
     list.push_back("th");

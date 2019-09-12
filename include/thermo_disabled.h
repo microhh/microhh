@@ -95,6 +95,7 @@ class Thermo_disabled : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
+        TF get_db_ref() const { throw std::runtime_error("Function get_db_ref not implemented"); }
 
     private:
         using Thermo<TF>::swthermo;

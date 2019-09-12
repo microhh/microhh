@@ -76,6 +76,8 @@ class Thermo_vapor : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        TF get_db_ref() const;
+
         int get_bl_depth();
         TF get_buoyancy_diffusivity();
 

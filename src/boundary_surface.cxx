@@ -722,15 +722,18 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         auto tmp = fields.get_tmp();
 
         thermo.get_buoyancy_surf(*buoy, false);
-        stability(ustar.data(), obuk.data(), buoy->flux_bot.data(),
-                  fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                  fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                  tmp->fld.data(), gd.z.data(),
-                  zL_sl.data(), f_sl.data(), nobuk.data(),
-                  z0m, z0h,
-                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                  gd.icells, gd.jcells, gd.ijcells,
-                  mbcbot, thermobc, boundary_cyclic);
+        const TF db_ref = thermo.get_db_ref();
+
+        stability(
+                ustar.data(), obuk.data(), buoy->flux_bot.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                tmp->fld.data(), gd.z.data(),
+                zL_sl.data(), f_sl.data(), nobuk.data(),
+                z0m, z0h,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                mbcbot, thermobc, boundary_cyclic);
 
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);
