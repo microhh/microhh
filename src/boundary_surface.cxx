@@ -127,7 +127,7 @@ namespace
                    TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
                    TF* restrict dutot, const TF* restrict z,
                    const float* zL_sl, const float* f_sl, int* nobuk,
-                   const TF z0m, const TF z0h,
+                   const TF z0m, const TF z0h, const TF db_ref,
                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
                    const int icells, const int jcells, const int kk,
                    Boundary_type mbcbot, Boundary_type thermobc,
@@ -188,7 +188,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    const TF db = b[ijk] - bbot[ij];
+                    const TF db = b[ijk] - bbot[ij] + db_ref;
                     obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
@@ -730,7 +730,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                 tmp->fld.data(), gd.z.data(),
                 zL_sl.data(), f_sl.data(), nobuk.data(),
-                z0m, z0h,
+                z0m, z0h, db_ref,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                 gd.icells, gd.jcells, gd.ijcells,
                 mbcbot, thermobc, boundary_cyclic);
