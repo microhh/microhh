@@ -1,10 +1,16 @@
 import netCDF4 as nc
 import numpy as np
 
-nc_file = nc.Dataset("rcemip_default_vert_300.nc", "r")
+nc_file = nc.Dataset('rcemip_default_0000000.nc', 'r')
 itot = 96
 jtot = 96
 ktot = 144
+timetot = nc_file.variables['time'].shape[0]
+
+Lv = 2.45e6
+cp = 1004.
+Rd = 287.
+p0 = 1e5
 
 """
 # Add the 0D variables.
@@ -25,11 +31,9 @@ pr_avg = nc_file.groups["thermo"].variables["rr"][:]
 add_0d_variable(pr_avg, "pr_avg", "domain avg. surface precipitation rate", "kg m-2 s-1")
 del(pr_avg)
 
-Lv = 2.45e6
 hfls_avg = nc_file.groups["default"].variables["qt_flux"][:,0] * nc_file.groups["thermo"].variables["rhoh"][:,0] * Lv
 add_0d_variable(hfls_avg, "hfls_avg", "domain avg. surface upward latent heat flux", "W m-2")
 
-cp = 1004.
 hfss_avg = nc_file.groups["default"].variables["thl_flux"][:,0] * nc_file.groups["thermo"].variables["rhoh"][:,0] * cp
 add_0d_variable(hfss_avg, "hfss_avg", "domain avg. surface upward sensible heat flux", "W m-2")
 
@@ -85,13 +89,14 @@ nc_0d.close()
 #########################
 # Add the 1D variables. #
 #########################
+
 nc_1d = nc.Dataset("microhh_vert_300_1d.nc", "w")
-nc_1d.createDimension("time", 100*24+1)
+nc_1d.createDimension("time", timetot)
 nc_1d.createDimension("z" , ktot  )
 nc_1d.createDimension("zh", ktot+1)
 
 time_var = nc_1d.createVariable("time", np.float32, ("time"))
-time_var[:] = nc_file.variables["time"][::4] / 86400.
+time_var[:] = nc_file.variables["time"][:] / 86400. # Convert to days.
 
 z_var = nc_1d.createVariable("z", np.float32, ("z"))
 z_var[:] = nc_file.variables["z"][:]
@@ -101,9 +106,10 @@ zh_var[:] = nc_file.variables["zh"][:]
 
 def add_1d_variable(data_in, name, long_name, units, z_name):
     nc_var = nc_1d.createVariable(name, np.float32, ("time", z_name))
-    nc_var[0,:] = data_in[0,:]
     ktot_loc = ktot if z_name == "z" else ktot+1
-    nc_var[1:] = (data_in[1:].reshape(100*24, 4, ktot_loc)).mean(axis=1)
+    #nc_var[0,:] = data_in[0,:]
+    #nc_var[1:] = (data_in[1:].reshape(100*24, 4, ktot_loc)).mean(axis=1)
+    nc_var[:,:] = data_in[:,:]
     nc_var.units = units
     nc_var.long_name = long_name
 
@@ -123,3 +129,47 @@ add_1d_variable(hus_avg, "hus_avg", "domain avg. specific humidity profile", "kg
 add_1d_variable(hur_avg, "hur_avg", "domain avg. relative humidity profile", "%", "z")
 del(hus_avg, hur_avg)
 
+clw_avg = nc_file.groups["thermo"].variables["ql"][:,:]
+cli_avg = nc_file.groups["thermo"].variables["qi"][:,:]
+plw_avg = nc_file.groups["default"].variables["qr"][:,:]
+pli_avg = nc_file.groups["default"].variables["qs"][:,:] + nc_file.groups["default"].variables["qg"][:,:]
+add_1d_variable(clw_avg, "clw_avg", "domain avg. mass fraction of the cloud liquid water profile", "kg kg-1", "z")
+add_1d_variable(cli_avg, "cli_avg", "domain avg. mass fraction of the cloud ice profile", "kg kg-1", "z")
+add_1d_variable(plw_avg, "plw_avg", "domain avg. mass fraction of the precipitating liquid water profile", "kg kg-1", "z")
+add_1d_variable(pli_avg, "pli_avg", "domain avg. mass fraction of the precipitating ice profile", "kg kg-1", "z")
+del(clw_avg, cli_avg, plw_avg, pli_avg)
+
+exner = (nc_file.groups["thermo"].variables["phydro"][:,:] / p0)**(Rd/cp)
+theta_avg = nc_file.groups["thermo"].variables["T"][:,:] / exner
+qv_avg = nc_file.groups["default"].variables["qt"][:,:] - nc_file.groups["thermo"].variables["ql"][:,:] - nc_file.groups["thermo"].variables["qi"][:,:]
+thetae_avg = (nc_file.groups["thermo"].variables["T"][:,:] + Lv/cp*qv_avg) / exner
+add_1d_variable(theta_avg, "theta_avg", "domain avg. potential temperature profile", "K", "z")
+add_1d_variable(thetae_avg, "thetae_avg", "domain avg. equivalent potential temperature profile", "K", "z")
+del(theta_avg, thetae_avg, exner, qv_avg)
+
+cldfrac_avg = np.maximum(nc_file.groups["thermo"].variables["ql_frac"][:,:], nc_file.groups["thermo"].variables["qi_frac"][:,:])
+add_1d_variable(cldfrac_avg, "cldfrac_avg", "global cloud fraction profile", "-", "z")
+del(cldfrac_avg)
+
+
+sw_flux_up = nc_file.groups["radiation"].variables["sw_flux_up"][:,:]
+sw_flux_dn = nc_file.groups["radiation"].variables["sw_flux_dn"][:,:]
+lw_flux_up = nc_file.groups["radiation"].variables["lw_flux_up"][:,:]
+lw_flux_dn = nc_file.groups["radiation"].variables["lw_flux_dn"][:,:]
+sw_clear_flux_up = nc_file.groups["radiation"].variables["sw_flux_up_clear"][:,:]
+sw_clear_flux_dn = nc_file.groups["radiation"].variables["sw_flux_dn_clear"][:,:]
+lw_clear_flux_up = nc_file.groups["radiation"].variables["lw_flux_up_clear"][:,:]
+lw_clear_flux_dn = nc_file.groups["radiation"].variables["lw_flux_dn_clear"][:,:]
+
+dz = nc_file.variables["zh"][1:] - nc_file.variables["zh"][:-1]
+fac = - 1./(nc_file.groups["thermo"].variables["rho"][:,:] * cp * dz[None, :])
+sw_heating_rate = fac * (sw_flux_up[:,1:] - sw_flux_up[:,:-1] - sw_flux_dn[:,1:] + sw_flux_dn[:,:-1])
+lw_heating_rate = fac * (lw_flux_up[:,1:] - lw_flux_up[:,:-1] - lw_flux_dn[:,1:] + lw_flux_dn[:,:-1])
+sw_clear_heating_rate = fac * (sw_clear_flux_up[:,1:] - sw_clear_flux_up[:,:-1] - sw_clear_flux_dn[:,1:] + sw_clear_flux_dn[:,:-1])
+lw_clear_heating_rate = fac * (lw_clear_flux_up[:,1:] - lw_clear_flux_up[:,:-1] - lw_clear_flux_dn[:,1:] + lw_clear_flux_dn[:,:-1])
+
+add_1d_variable(sw_heating_rate, "tntrs_avg", "domain avg. shortwave radiative heating rate profile", "K s-1", "z")
+add_1d_variable(lw_heating_rate, "tntrl_avg", "domain avg. longwave radiative heating rate profile", "K s-1", "z")
+add_1d_variable(sw_clear_heating_rate, "tntrscs_avg", "domain avg. shortwave radiative heating rate profile", "K s-1", "z")
+add_1d_variable(lw_clear_heating_rate, "tntrlcs_avg", "domain avg. longwave radiative heating rate profile", "K s-1", "z")
+del(dz, fac, sw_heating_rate, lw_heating_rate, sw_clear_heating_rate, lw_clear_heating_rate)
