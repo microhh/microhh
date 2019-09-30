@@ -12,18 +12,21 @@ cp = 1004.
 Rd = 287.
 p0 = 1e5
 
-"""
-# Add the 0D variables.
+
+#########################
+# Add the 0D variables. #
+#########################
 nc_0d = nc.Dataset("microhh_vert_300_0d.nc", "w")
-nc_0d.createDimension("time", 100*24+1)
+nc_0d.createDimension("time", timetot)
 
 time_var = nc_0d.createVariable("time", np.float32, ("time"))
-time_var[:] = nc_file.variables["time"][::4] / 86400.
+time_var[:] = nc_file.variables["time"][:] / 86400.
 
 def add_0d_variable(data_in, name, long_name, units):
     nc_var = nc_0d.createVariable(name, np.float32, ("time"))
-    nc_var[0] = data_in[0]
-    nc_var[1:] = (data_in[1:].reshape(100*24, 4)).mean(axis=-1)
+    #nc_var[0] = data_in[0]
+    #nc_var[1:] = (data_in[1:].reshape(100*24, 4)).mean(axis=-1)
+    nc_var[:] = data_in[:]
     nc_var.units = units
     nc_var.long_name = long_name
 
@@ -84,12 +87,11 @@ add_0d_variable(rsutcs_avg, "rsutcs_avg", "domain avg. TOA upwelling shortwave f
 del(rlutcs_avg, rsutcs_avg)
 
 nc_0d.close()
-"""
+
 
 #########################
 # Add the 1D variables. #
 #########################
-
 nc_1d = nc.Dataset("microhh_vert_300_1d.nc", "w")
 nc_1d.createDimension("time", timetot)
 nc_1d.createDimension("z" , ktot  )
@@ -173,3 +175,9 @@ add_1d_variable(lw_heating_rate, "tntrl_avg", "domain avg. longwave radiative he
 add_1d_variable(sw_clear_heating_rate, "tntrscs_avg", "domain avg. shortwave radiative heating rate profile", "K s-1", "z")
 add_1d_variable(lw_clear_heating_rate, "tntrlcs_avg", "domain avg. longwave radiative heating rate profile", "K s-1", "z")
 del(dz, fac, sw_heating_rate, lw_heating_rate, sw_clear_heating_rate, lw_clear_heating_rate)
+
+
+#########################
+# Add the 2D variables. #
+#########################
+
