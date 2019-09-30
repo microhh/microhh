@@ -1,11 +1,15 @@
 import netCDF4 as nc
 import numpy as np
+import shutil
+import subprocess
 
 nc_file = nc.Dataset('rcemip_default_0000000.nc', 'r')
 itot = 96
 jtot = 96
 ktot = 144
 timetot = nc_file.variables['time'].shape[0]
+
+case_name = "vert_300"
 
 Lv = 2.45e6
 cp = 1004.
@@ -16,7 +20,7 @@ p0 = 1e5
 #########################
 # Add the 0D variables. #
 #########################
-nc_0d = nc.Dataset("microhh_vert_300_0d.nc", "w")
+nc_0d = nc.Dataset("microhh_{}_0d.nc".format(case_name), "w")
 nc_0d.createDimension("time", timetot)
 
 time_var = nc_0d.createVariable("time", np.float32, ("time"))
@@ -92,7 +96,7 @@ nc_0d.close()
 #########################
 # Add the 1D variables. #
 #########################
-nc_1d = nc.Dataset("microhh_vert_300_1d.nc", "w")
+nc_1d = nc.Dataset("microhh_{}_1d.nc".format(case_name), "w")
 nc_1d.createDimension("time", timetot)
 nc_1d.createDimension("z" , ktot  )
 nc_1d.createDimension("zh", ktot+1)
@@ -180,4 +184,58 @@ del(dz, fac, sw_heating_rate, lw_heating_rate, sw_clear_heating_rate, lw_clear_h
 #########################
 # Add the 2D variables. #
 #########################
+
+rho = nc_file.groups["thermo"].variables["rhoh"][:,0]
+
+var_in  = "rr_bot"
+var_out = "pr"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "kg m-2 s-1"
+nc_2d_var.long_name = "surface precipitation rate"
+nc_2d.close()
+
+var_in  = "qtfluxbot"
+var_out = "hfls"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upward latent heat flux"
+nc_2d_var[:,:,:] *= Lv * rho[:,None,None]
+nc_2d.close()
+
+var_in  = "thlfluxbot"
+var_out = "hfss"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upward sensible heat flux"
+nc_2d_var[:,:,:] *= cp * rho[:,None,None]
+nc_2d.close()
+
+#ncea -d level,6,6 -F hgt.mon.mean.nc hgt500.mon.mean.nc
+var_in  = "lw_flux_dn"
+var_out = "rlds"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface downwelling longwave flux"
+nc_2d.close()
+
 
