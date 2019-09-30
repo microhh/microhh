@@ -388,3 +388,112 @@ nc_2d_var = nc_2d.variables[var_out]
 nc_2d_var.units = "W m-2"
 nc_2d_var.long_name = "TOA upwelling longwave flux - clear sky"
 nc_2d.close()
+
+
+
+var_in = "qlpath"
+var_out = "clwvi"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d_ql = nc.Dataset(nc_file_out, "r+")
+nc_2d_ql.renameVariable(var_in, var_out)
+nc_2d_ql_var = nc_2d_ql.variables[var_out]
+nc_2d_ql_var.units = "kg m-2"
+nc_2d_ql_var.long_name = "condensed water path"
+
+var_in = "qipath"
+var_out = "clivi"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d_qi = nc.Dataset(nc_file_out, "r+")
+nc_2d_qi.renameVariable(var_in, var_out)
+nc_2d_qi_var = nc_2d_qi.variables[var_out]
+nc_2d_qi_var.units = "kg m-2"
+nc_2d_qi_var.long_name = "ice water path"
+
+var_in = "qtpath"
+var_out = "prw"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "kg m-2"
+nc_2d_var.long_name = "ice water path"
+nc_2d_var[:,:,:] -= nc_2d_ql_var[:,:,:]
+nc_2d_var[:,:,:] -= nc_2d_qi_var[:,:,:]
+
+nc_2d_ql.close()
+nc_2d_qi.close()
+nc_2d.close()
+
+var_in = "qsatpath"
+var_out = "sprw"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "kg m-2"
+nc_2d_var.long_name = "saturated water vapor path"
+nc_2d.close()
+
+
+
+exner0 = (nc_file.groups["thermo"].variables["phydro"][:,0] / p0)**(Rd/cp)
+var_in  = "thl"
+var_out = "tabot"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "K"
+nc_2d_var.long_name = "air temperature at lowest model level"
+nc_2d_var[:,0,:,:] *= exner0[:, None, None]
+nc_2d.close()
+del(exner0)
+
+var_in  = "u"
+var_out = "uabot"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "m s-1"
+nc_2d_var.long_name = "eastward wind at lowest model level"
+nc_2d.close()
+
+var_in  = "v"
+var_out = "vabot"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "m s-1"
+nc_2d_var.long_name = "northward wind at lowest model level"
+nc_2d.close()
+
+
+
+var_in = "w500hpa"
+var_out = "wap500"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+shutil.copy(nc_file_in, nc_file_out)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "m s-1"
+nc_2d_var.long_name = "vertical velocity at 500 hPa"
+nc_2d.close()
+
