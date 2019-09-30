@@ -225,7 +225,8 @@ nc_2d_var.long_name = "surface upward sensible heat flux"
 nc_2d_var[:,:,:] *= cp * rho[:,None,None]
 nc_2d.close()
 
-#ncea -d level,6,6 -F hgt.mon.mean.nc hgt500.mon.mean.nc
+
+
 var_in  = "lw_flux_dn"
 var_out = "rlds"
 nc_file_in = "{}.xy.nc".format(var_in)
@@ -238,4 +239,152 @@ nc_2d_var.units = "W m-2"
 nc_2d_var.long_name = "surface downwelling longwave flux"
 nc_2d.close()
 
+var_in  = "lw_flux_up"
+var_out = "rlus"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upwelling longwave flux"
+nc_2d.close()
 
+var_in  = "sw_flux_dn"
+var_out = "rsds"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface downwelling shortwave flux"
+nc_2d.close()
+
+var_in  = "sw_flux_up"
+var_out = "rsus"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upwelling shortwave flux"
+nc_2d.close()
+
+
+
+var_in  = "lw_flux_dn_clear"
+var_out = "rldscs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface downwelling longwave flux - clear sky"
+nc_2d.close()
+
+var_in  = "lw_flux_up_clear"
+var_out = "rluscs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upwelling longwave flux - clear sky"
+nc_2d.close()
+
+var_in  = "sw_flux_dn_clear"
+var_out = "rsdscs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface downwelling shortwave flux - clear sky"
+nc_2d.close()
+
+var_in  = "sw_flux_up_clear"
+var_out = "rsuscs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "surface upwelling shortwave flux - clear sky"
+nc_2d.close()
+
+
+
+var_in  = "sw_flux_dn"
+var_out = "rsdt"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "TOA downwelling shortwave flux"
+nc_2d.close()
+
+var_in  = "sw_flux_up"
+var_out = "rsut"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "TOA upwelling shortwave flux"
+nc_2d.close()
+
+var_in  = "lw_flux_up"
+var_out = "rlut"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "TOA upwelling longwave flux"
+nc_2d.close()
+
+
+
+var_in  = "sw_flux_up_clear"
+var_out = "rsutcs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "TOA upwelling shortwave flux - clear sky"
+nc_2d.close()
+
+var_in  = "lw_flux_up_clear"
+var_out = "rlutcs"
+nc_file_in = "{}.xy.nc".format(var_in)
+nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
+subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+nc_2d = nc.Dataset(nc_file_out, "r+")
+nc_2d.renameVariable(var_in, var_out)
+nc_2d_var = nc_2d.variables[var_out]
+nc_2d_var.units = "W m-2"
+nc_2d_var.long_name = "TOA upwelling longwave flux - clear sky"
+nc_2d.close()
