@@ -89,6 +89,136 @@ namespace
                 }
         }
     }
+
+    /**
+     * Calculate the budget terms arrising from the advection term:
+     * shear production (-2 u_i*u_j * d<u_i>/dx_j) and turbulent transport (-d(u_i^2*u_j)/dx_j)
+     */
+    template<typename TF>
+    void calc_advection_terms(
+            TF* const restrict u2_shear, TF* const restrict v2_shear,
+            TF* const restrict tke_shear,
+            TF* const restrict uw_shear, TF* const restrict vw_shear,
+            TF* const restrict u2_turb,  TF* const restrict v2_turb,
+            TF* const restrict w2_turb, TF* const restrict tke_turb,
+            TF* const restrict uw_turb, TF* const restrict vw_turb,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            TF* const restrict wx, TF* const restrict wy,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        // Interpolate the vertical velocity to {xh,y,zh} (wx, below u) and {x,yh,zh} (wy, below v)
+        const int wloc [3] = {0,0,1};
+        const int wxloc[3] = {1,0,1};
+        const int wyloc[3] = {0,1,1};
+    
+        interpolate_2nd(wx, w, wloc, wxloc);
+        interpolate_2nd(wy, w, wloc, wyloc);
+    
+        const int jj = icells;
+        const int kk = ijcells;
+    
+        // Calculate shear terms (-2u_iw d<u_i>/dz)
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF dudz = (interp2(umean[k], umean[k+1]) - interp2(umean[k-1], umean[k]) ) * dzi[k];
+            const TF dvdz = (interp2(vmean[k], vmean[k+1]) - interp2(vmean[k-1], vmean[k]) ) * dzi[k];
+    
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    u2_shear[ijk] = -2 * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
+                    v2_shear[ijk] = -2 * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
+    
+                    uw_shear[ijk] = -pow(wx[ijk], 2) * (umean[k] - umean[k-1]) * dzhi[k];
+                    vw_shear[ijk] = -pow(wy[ijk], 2) * (vmean[k] - vmean[k-1]) * dzhi[k];
+
+                    tke_shear[ijk] = 0.5*(u2_shear[ijk] + v2_shear[ijk]);
+                }
+        }
+    
+        // Calculate turbulent transport terms (-d(u_i^2*w)/dz)
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    u2_turb[ijk] = - ( pow(interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]), 2) * wx[ijk+kk]
+                                     - pow(interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1]), 2) * wx[ijk   ] ) * dzi[k];
+    
+                    v2_turb[ijk] = - ( pow(interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]), 2) * wy[ijk+kk]
+                                     - pow(interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]), 2) * wy[ijk   ] ) * dzi[k];
+    
+                    tke_turb[ijk] = - TF(0.5) * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k]
+                                    + TF(0.5) * (u2_turb[ijk] + v2_turb[ijk]);
+                }
+        }
+    
+        // Lower boundary kstart (z=0)
+        int k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+    
+                // w^3 @ full level below sfc == -w^3 @ full level above sfc
+                w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk+kk]), 3) * dzhi[k];
+    
+                // w^2 @ full level below sfc == w^2 @ full level above sfc
+                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
+                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+    
+                vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
+                                 - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+            }
+    
+        // Top boundary kstart (z=zsize)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+    
+                // w^3 @ full level above top == -w^3 @ full level below top
+                w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk-kk]), 3) * dzhi[k];
+    
+                // w^2 @ full level above top == w^2 @ full level below top
+                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2)
+                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+    
+                // w^2 @ full level above top == w^2 @ full level below top
+                vw_turb[ijk] =  - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2)
+                                  - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+            }
+    
+        // Inner domain
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    w2_turb[ijk] = - ( pow(interp2(w[ijk], w[ijk+kk]), 3)
+                                     - pow(interp2(w[ijk], w[ijk-kk]), 3) ) * dzhi[k];
+    
+                    uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
+                                     - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+    
+                    vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
+                                     - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+                }
+    }
 }
 
 template<typename TF>
@@ -132,7 +262,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
     stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
     stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
 
-    /*
     // Add the profiles for the kinetic energy budget to the statistics.
     stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" , group_name);
     stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" , group_name);
@@ -147,6 +276,7 @@ void Budget_2<TF>::create(Stats<TF>& stats)
     stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh", group_name);
     stats.add_prof("vw_turb" , "Turbulent transport term in VW budget" , "m2 s-3", "zh", group_name);
 
+    /*
     if (diff.get_switch() != Diffusion_type::Disabled)
     {
         stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" , group_name);
@@ -342,15 +472,6 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         fields.u->data, fields.v->data, fields.w->data, fields.sd.at("p")->data, umodel, vmodel,
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
     */
-}
-
-namespace
-{
-    // Double linear interpolation
-    inline double interp2_4(const double a, const double b, const double c, const double d)
-    {
-        return 0.25 * (a + b + c + d);
-    }
 }
 
 template class Budget_2<double>;
