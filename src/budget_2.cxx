@@ -20,7 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#include <iostream>
 #include <cmath>
 #include "master.h"
 #include "grid.h"
@@ -96,27 +96,18 @@ namespace
      */
     template<typename TF>
     void calc_advection_terms(
-            TF* const restrict u2_shear, TF* const restrict v2_shear,
-            TF* const restrict tke_shear,
+            TF* const restrict u2_shear, TF* const restrict v2_shear, TF* const restrict tke_shear,
             TF* const restrict uw_shear, TF* const restrict vw_shear,
             TF* const restrict u2_turb,  TF* const restrict v2_turb,
             TF* const restrict w2_turb, TF* const restrict tke_turb,
             TF* const restrict uw_turb, TF* const restrict vw_turb,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict umean, const TF* const restrict vmean,
-            TF* const restrict wx, TF* const restrict wy,
+            const TF* const restrict wx, const TF* const restrict wy,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        // Interpolate the vertical velocity to {xh,y,zh} (wx, below u) and {x,yh,zh} (wy, below v)
-        const int wloc [3] = {0,0,1};
-        const int wxloc[3] = {1,0,1};
-        const int wyloc[3] = {0,1,1};
-    
-        interpolate_2nd(wx, w, wloc, wxloc);
-        interpolate_2nd(wy, w, wloc, wyloc);
-    
         const int jj = icells;
         const int kk = ijcells;
     
@@ -379,8 +370,69 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("ke" , *ke , no_offset, no_threshold);
     stats.calc_stats("tke", *tke, no_offset, no_threshold);
 
-    fields.release_tmp(ke );
-    fields.release_tmp(tke);
+    auto wx = std::move(ke );
+    auto wy = std::move(tke);
+
+    // Interpolate w to the locations of u and v.
+    const int wloc [3] = {0,0,1};
+    const int wxloc[3] = {1,0,1};
+    const int wyloc[3] = {0,1,1};
+
+    grid.interpolate_2nd(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
+    grid.interpolate_2nd(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
+
+    auto u2_shear = fields.get_tmp();
+    auto v2_shear = fields.get_tmp();
+    auto tke_shear = fields.get_tmp();
+    auto uw_shear = fields.get_tmp();
+    auto vw_shear = fields.get_tmp();
+    auto u2_turb = fields.get_tmp();
+    auto v2_turb = fields.get_tmp();
+    auto w2_turb = fields.get_tmp();
+    auto tke_turb = fields.get_tmp();
+    auto uw_turb = fields.get_tmp();
+    auto vw_turb = fields.get_tmp();
+
+    calc_advection_terms(
+            u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(),
+            uw_shear->fld.data(), vw_shear->fld.data(),
+            u2_turb->fld.data(), v2_turb->fld.data(),
+            w2_turb->fld.data(), tke_turb->fld.data(),
+            uw_turb->fld.data(), vw_turb->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+            umodel.data(), vmodel.data(),
+            wx->fld.data(), wy->fld.data(),
+            gd.dzi.data(), gd.dzhi.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
+    stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
+    stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
+    stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
+    stats.calc_stats("vw_shear" , *vw_shear , no_offset, no_threshold);
+
+    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
+    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
+    stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
+    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
+    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
+    stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
+
+    fields.release_tmp(wx);
+    fields.release_tmp(wy);
+
+    fields.release_tmp(u2_shear);
+    fields.release_tmp(v2_shear);
+    fields.release_tmp(tke_shear);
+    fields.release_tmp(uw_shear);
+    fields.release_tmp(vw_shear);
+    fields.release_tmp(u2_turb);
+    fields.release_tmp(v2_turb);
+    fields.release_tmp(w2_turb);
+    fields.release_tmp(tke_turb);
+    fields.release_tmp(uw_turb);
+    fields.release_tmp(vw_turb);
 
     /*
     // Calculate the shear production and turbulent transport terms
