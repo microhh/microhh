@@ -91,16 +91,12 @@ namespace
     }
 
     /**
-     * Calculate the budget terms arrising from the advection term:
-     * shear production (-2 u_i*u_j * d<u_i>/dx_j) and turbulent transport (-d(u_i^2*u_j)/dx_j)
+     * Calculate the budget terms related to shear production (-2 u_i*u_j * d<u_i>/dx_j)
      */
     template<typename TF>
-    void calc_advection_terms(
+    void calc_shear_terms(
             TF* const restrict u2_shear, TF* const restrict v2_shear, TF* const restrict tke_shear,
             TF* const restrict uw_shear, TF* const restrict vw_shear,
-            TF* const restrict u2_turb,  TF* const restrict v2_turb,
-            TF* const restrict w2_turb, TF* const restrict tke_turb,
-            TF* const restrict uw_turb, TF* const restrict vw_turb,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict umean, const TF* const restrict vmean,
             const TF* const restrict wx, const TF* const restrict wy,
@@ -132,6 +128,25 @@ namespace
                     tke_shear[ijk] = 0.5*(u2_shear[ijk] + v2_shear[ijk]);
                 }
         }
+    }
+
+    /**
+     * Calculate the budget terms related to turbulent transport (-d(u_i^2*u_j)/dx_j)
+     */
+    template<typename TF>
+    void calc_turb_terms(
+            TF* const restrict u2_turb,  TF* const restrict v2_turb,
+            TF* const restrict w2_turb, TF* const restrict tke_turb,
+            TF* const restrict uw_turb, TF* const restrict vw_turb,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict wx, const TF* const restrict wy,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
     
         // Calculate turbulent transport terms (-d(u_i^2*w)/dz)
         for (int k=kstart; k<kend; ++k)
@@ -219,7 +234,7 @@ Budget_2<TF>::Budget_2(
     Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin),
     field3d_operators(masterin, gridin, fieldsin)
 {
-    // The LES flux budget requires one additional ghost cell in the horizontal
+    // The LES flux budget requires one additional ghost cell in the horizontal.
     if (diff.get_switch() == Diffusion_type::Diff_smag2)
     {
         const int igc = 2;
@@ -386,19 +401,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     auto tke_shear = fields.get_tmp();
     auto uw_shear = fields.get_tmp();
     auto vw_shear = fields.get_tmp();
-    auto u2_turb = fields.get_tmp();
-    auto v2_turb = fields.get_tmp();
-    auto w2_turb = fields.get_tmp();
-    auto tke_turb = fields.get_tmp();
-    auto uw_turb = fields.get_tmp();
-    auto vw_turb = fields.get_tmp();
 
-    calc_advection_terms(
+    calc_shear_terms(
             u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(),
             uw_shear->fld.data(), vw_shear->fld.data(),
-            u2_turb->fld.data(), v2_turb->fld.data(),
-            w2_turb->fld.data(), tke_turb->fld.data(),
-            uw_turb->fld.data(), vw_turb->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
             umodel.data(), vmodel.data(),
             wx->fld.data(), wy->fld.data(),
@@ -412,6 +418,24 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
     stats.calc_stats("vw_shear" , *vw_shear , no_offset, no_threshold);
 
+    auto u2_turb = std::move(u2_shear);
+    auto v2_turb = std::move(v2_shear);
+    auto w2_turb = fields.get_tmp();
+    auto tke_turb = std::move(tke_shear);
+    auto uw_turb = std::move(uw_shear);
+    auto vw_turb = std::move(vw_shear);
+
+    calc_turb_terms(
+            u2_turb->fld.data(), v2_turb->fld.data(),
+            w2_turb->fld.data(), tke_turb->fld.data(),
+            uw_turb->fld.data(), vw_turb->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+            umodel.data(), vmodel.data(),
+            wx->fld.data(), wy->fld.data(),
+            gd.dzi.data(), gd.dzhi.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
     stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
     stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
     stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
@@ -422,11 +446,6 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(wx);
     fields.release_tmp(wy);
 
-    fields.release_tmp(u2_shear);
-    fields.release_tmp(v2_shear);
-    fields.release_tmp(tke_shear);
-    fields.release_tmp(uw_shear);
-    fields.release_tmp(vw_shear);
     fields.release_tmp(u2_turb);
     fields.release_tmp(v2_turb);
     fields.release_tmp(w2_turb);
