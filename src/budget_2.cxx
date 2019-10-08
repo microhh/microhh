@@ -44,11 +44,9 @@ template<typename TF>
 Budget_2<TF>::Budget_2(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Input& inputin) :
-    Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin)
+    Budget<TF>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin),
+    field3d_operators(masterin, gridin, fieldsin)
 {
-//     umodel = 0;
-//     vmodel = 0;
-
     // The LES flux budget requires one additional ghost cell in the horizontal
     if (diff.get_switch() == Diffusion_type::Diff_smag2)
     {
@@ -63,21 +61,15 @@ Budget_2<TF>::Budget_2(
 template<typename TF>
 Budget_2<TF>::~Budget_2()
 {
-//     delete[] umodel;
-//     delete[] vmodel;
 }
 
 template<typename TF>
 void Budget_2<TF>::init()
 {
-//     umodel = new double[grid.kcells];
-//     vmodel = new double[grid.kcells];
-// 
-//     for (int k=0; k<grid.kcells; ++k)
-//     {
-//         umodel[k] = 0.;
-//         vmodel[k] = 0.;
-//     }
+    auto& gd = grid.get_grid_data();
+
+    umodel.resize(gd.kcells);
+    vmodel.resize(gd.kcells);
 }
 
 template<typename TF>
@@ -180,12 +172,13 @@ void Budget_2<TF>::create(Stats<TF>& stats)
 template<typename TF>
 void Budget_2<TF>::exec_stats(Stats<TF>& stats)
 {
+    auto& gd = grid.get_grid_data();
+
+    // Calculate the mean of the fields.
+    field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
+    field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
+
     /*
-    // Calculate the mean of the fields
-    grid.calc_mean(umodel, fields.u->data, grid.kcells);
-    grid.calc_mean(vmodel, fields.v->data, grid.kcells);
-
-
     // Calculate kinetic and turbulent kinetic energy
     calc_kinetic_energy(m->profs["ke"].data, m->profs["tke"].data,
                         fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, grid.utrans, grid.vtrans);
