@@ -225,6 +225,50 @@ namespace
                                      - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
                 }
     }
+
+    /**
+     * Calculate the budget terms related to coriolis force.
+     */
+    template<typename TF>
+    void calc_coriolis_terms(
+            TF* const restrict u2_cor, TF* const restrict v2_cor,
+            TF* const restrict uw_cor, TF* const restrict vw_cor,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF fc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+    
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    u2_cor[ijk] = TF( 2.) * (u[ijk]-umean[k]) * (interp22(v[ijk-ii], v[ijk], v[ijk-ii+jj], v[ijk+jj])-vmean[k]) * fc;
+                    v2_cor[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * (interp22(u[ijk-jj], u[ijk], u[ijk+ii-jj], u[ijk+ii])-umean[k]) * fc;
+                }
+    
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    uw_cor[ijk] = interp2(w[ijk], w[ijk-ii]) *
+                        interp2(interp22(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),
+                                interp22(v[ijk+jj]-vmean[k], v[ijk-ii+jj]-vmean[k], v[ijk-ii+jj-kk]-vmean[k-1], v[ijk+jj-kk]-vmean[k-1])) * fc;
+    
+                    vw_cor[ijk] = interp2(w[ijk], w[ijk-jj]) *
+                        interp2(interp22(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),
+                                interp22(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;
+                }
+    }
 }
 
 template<typename TF>
@@ -282,6 +326,14 @@ void Budget_2<TF>::create(Stats<TF>& stats)
     stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh", group_name);
     stats.add_prof("vw_turb" , "Turbulent transport term in VW budget" , "m2 s-3", "zh", group_name);
 
+    if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
+    {
+        stats.add_prof("u2_cor", "Coriolis term in U2 budget", "m2 s-3", "z" , group_name);
+        stats.add_prof("v2_cor", "Coriolis term in V2 budget", "m2 s-3", "z" , group_name);
+        stats.add_prof("uw_cor", "Coriolis term in UW budget", "m2 s-3", "zh", group_name);
+        stats.add_prof("vw_cor", "Coriolis term in VW budget", "m2 s-3", "zh", group_name);
+    }
+
     /*
     if (diff.get_switch() != Diffusion_type::Disabled)
     {
@@ -311,13 +363,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         }
     }
 
-    if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
-    {
-        stats.add_prof("u2_cor", "Coriolis term in U2 budget", "m2 s-3", "z" , group_name);
-        stats.add_prof("v2_cor", "Coriolis term in V2 budget", "m2 s-3", "z" , group_name);
-        stats.add_prof("uw_cor", "Coriolis term in UW budget", "m2 s-3", "zh", group_name);
-        stats.add_prof("vw_cor", "Coriolis term in VW budget", "m2 s-3", "zh", group_name);
-    }
 
     if (thermo.get_switch() != "0")
     {
@@ -453,15 +498,34 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(uw_turb);
     fields.release_tmp(vw_turb);
 
-    /*
-    // Calculate the shear production and turbulent transport terms
-    calc_advection_terms(m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data,
-                         m->profs["uw_shear"].data, m->profs["vw_shear"].data,
-                         m->profs["u2_turb"].data,  m->profs["v2_turb"].data,  m->profs["w2_turb"].data, m->profs["tke_turb"].data,
-                         m->profs["uw_turb"].data, m->profs["vw_turb"].data,
-                         fields.u->data, fields.v->data, fields.w->data, umodel, vmodel,
-                         fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
+    if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
+    {
+        auto u2_cor = fields.get_tmp();
+        auto v2_cor = fields.get_tmp();
+        auto uw_cor = fields.get_tmp();
+        auto vw_cor = fields.get_tmp();
 
+        const TF fc = force.get_coriolis_parameter();
+        calc_coriolis_terms(
+                u2_cor->fld.data(), v2_cor->fld.data(),
+                uw_cor->fld.data(), vw_cor->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), fc,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("u2_cor", *u2_cor, no_offset, no_threshold);
+        stats.calc_stats("v2_cor", *v2_cor, no_offset, no_threshold);
+        stats.calc_stats("uw_cor", *uw_cor, no_offset, no_threshold);
+        stats.calc_stats("vw_cor", *vw_cor, no_offset, no_threshold);
+
+        fields.release_tmp(u2_cor);
+        fields.release_tmp(v2_cor);
+        fields.release_tmp(uw_cor);
+        fields.release_tmp(vw_cor);
+    }
+
+    /*
     if(diff.get_switch() != "0")
     {
         // Calculate the diffusive transport and dissipation terms
@@ -524,15 +588,6 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                                    fields.atmp["tmp1"]->data, fields.sd.at("p")->data,
                                    fields.atmp["tmp1"]->datamean, fields.sd.at("p")->datamean,
                                    grid.dzi, grid.dzhi);
-    }
-
-    if(force.get_switch_lspres() == "geo")
-    {
-        const double fc = force.get_coriolis_parameter();
-        calc_coriolis_terms(m->profs["u2_cor"].data, m->profs["v2_cor"].data,
-                            m->profs["uw_cor"].data, m->profs["vw_cor"].data,
-                            fields.u->data, fields.v->data, fields.w->data,
-                            umodel, vmodel, fc);
     }
 
     // Calculate the pressure transport and redistribution terms
