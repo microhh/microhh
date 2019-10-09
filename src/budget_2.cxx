@@ -644,6 +644,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
+    stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
+    stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
+    stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
+    stats.calc_stats("vw_pres" , *vw_pres , no_offset, no_threshold);
+
     auto u2_rdstr = std::move(u2_turb);
     auto v2_rdstr = std::move(v2_turb);
     auto w2_rdstr = std::move(w2_pres);
@@ -659,6 +664,12 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
+    stats.calc_stats("u2_rdstr", *u2_rdstr , no_offset, no_threshold);
+    stats.calc_stats("v2_rdstr", *v2_rdstr , no_offset, no_threshold);
+    stats.calc_stats("w2_rdstr", *w2_rdstr , no_offset, no_threshold);
+    stats.calc_stats("uw_rdstr", *uw_rdstr , no_offset, no_threshold);
+    stats.calc_stats("vw_rdstr", *vw_rdstr , no_offset, no_threshold);
 
     fields.release_tmp(u2_rdstr);
     fields.release_tmp(v2_rdstr);
