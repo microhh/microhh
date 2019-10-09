@@ -271,15 +271,12 @@ namespace
     }
 
     /**
-     * Calculate the budget terms arrising from pressure:
-     * pressure transport (-2*dpu_i/dxi) and redistribution (2p*dui/dxi)
+     * Calculate the budget terms related to pressure transport (-2*dpu_i/dxi)
      */
     template<typename TF>
     void calc_pressure_terms(
             TF* const restrict w2_pres,  TF* const restrict tke_pres,
             TF* const restrict uw_pres,  TF* const restrict vw_pres,
-            TF* const restrict u2_rdstr, TF* const restrict v2_rdstr, TF* const restrict w2_rdstr,
-            TF* const restrict uw_rdstr, TF* const restrict vw_rdstr,
             const TF* const restrict u, const TF* const restrict v,
             const TF* const restrict w, const TF* const restrict p,
             const TF* const restrict umean, const TF* const restrict vmean,
@@ -342,6 +339,25 @@ namespace
                     w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
                                                interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
                 }
+    }
+
+    /**
+     * Calculate the budget terms related to redistribution (2p*dui/dxi)
+     */
+    template<typename TF>
+    void calc_pressure_terms(
+            TF* const restrict u2_rdstr, TF* const restrict v2_rdstr, TF* const restrict w2_rdstr,
+            TF* const restrict uw_rdstr, TF* const restrict vw_rdstr,
+            const TF* const restrict u, const TF* const restrict v,
+            const TF* const restrict w, const TF* const restrict p,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict dzi, const TF* const restrict dzhi, const TF dxi, const TF dyi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
 
         // Pressure redistribution term (2p*dui/dxi)
         for (int k=kstart; k<kend; ++k)
@@ -367,7 +383,7 @@ namespace
                 }
 
         // Lower boundary (z=0)
-        k = kstart;
+        int k = kstart;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
