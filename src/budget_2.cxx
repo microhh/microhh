@@ -59,7 +59,7 @@ namespace
         const int ii = 1;
         const int jj = icells;
         const int kk = ijcells;
-    
+
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -67,24 +67,24 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     const TF u2 = pow2(interp2(u[ijk]+utrans, u[ijk+ii]+utrans));
                     const TF v2 = pow2(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans));
                     const TF w2 = pow2(interp2(w[ijk]       , w[ijk+kk]       ));
-    
+
                     ke[ijk] = 0.5 * (u2 + v2 + w2);
                 }
-    
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     const TF u2 = pow2(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]));
                     const TF v2 = pow2(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]));
                     const TF w2 = pow2(interp2(w[ijk]          , w[ijk+kk]          ));
-    
+
                     tke[ijk] = TF(0.5) * (u2 + v2 + w2);
                 }
         }
@@ -106,22 +106,22 @@ namespace
     {
         const int jj = icells;
         const int kk = ijcells;
-    
+
         // Calculate shear terms (-2u_iw d<u_i>/dz)
         for (int k=kstart; k<kend; ++k)
         {
             const TF dudz = (interp2(umean[k], umean[k+1]) - interp2(umean[k-1], umean[k]) ) * dzi[k];
             const TF dvdz = (interp2(vmean[k], vmean[k+1]) - interp2(vmean[k-1], vmean[k]) ) * dzi[k];
-    
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     u2_shear[ijk] = -2 * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
                     v2_shear[ijk] = -2 * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
-    
+
                     uw_shear[ijk] = -pow(wx[ijk], 2) * (umean[k] - umean[k-1]) * dzhi[k];
                     vw_shear[ijk] = -pow(wy[ijk], 2) * (vmean[k] - vmean[k-1]) * dzhi[k];
 
@@ -147,7 +147,7 @@ namespace
     {
         const int jj = icells;
         const int kk = ijcells;
-    
+
         // Calculate turbulent transport terms (-d(u_i^2*w)/dz)
         for (int k=kstart; k<kend; ++k)
         {
@@ -156,18 +156,18 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     u2_turb[ijk] = - ( pow(interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]), 2) * wx[ijk+kk]
                                      - pow(interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1]), 2) * wx[ijk   ] ) * dzi[k];
-    
+
                     v2_turb[ijk] = - ( pow(interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]), 2) * wy[ijk+kk]
                                      - pow(interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]), 2) * wy[ijk   ] ) * dzi[k];
-    
+
                     tke_turb[ijk] = - TF(0.5) * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k]
                                     + TF(0.5) * (u2_turb[ijk] + v2_turb[ijk]);
                 }
         }
-    
+
         // Lower boundary kstart (z=0)
         int k = kstart;
         for (int j=jstart; j<jend; ++j)
@@ -175,18 +175,18 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-    
+
                 // w^3 @ full level below sfc == -w^3 @ full level above sfc
                 w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk+kk]), 3) * dzhi[k];
-    
+
                 // w^2 @ full level below sfc == w^2 @ full level above sfc
                 uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
                                  - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
-    
+
                 vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
                                  - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
             }
-    
+
         // Top boundary kstart (z=zsize)
         k = kend;
         for (int j=jstart; j<jend; ++j)
@@ -194,19 +194,19 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-    
+
                 // w^3 @ full level above top == -w^3 @ full level below top
                 w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk-kk]), 3) * dzhi[k];
-    
+
                 // w^2 @ full level above top == w^2 @ full level below top
                 uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2)
                                  - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
-    
+
                 // w^2 @ full level above top == w^2 @ full level below top
                 vw_turb[ijk] =  - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2)
                                   - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
             }
-    
+
         // Inner domain
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -214,13 +214,13 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     w2_turb[ijk] = - ( pow(interp2(w[ijk], w[ijk+kk]), 3)
                                      - pow(interp2(w[ijk], w[ijk-kk]), 3) ) * dzhi[k];
-    
+
                     uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
                                      - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
-    
+
                     vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
                                      - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
                 }
@@ -241,32 +241,153 @@ namespace
         const int ii = 1;
         const int jj = icells;
         const int kk = ijcells;
-    
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     u2_cor[ijk] = TF( 2.) * (u[ijk]-umean[k]) * (interp22(v[ijk-ii], v[ijk], v[ijk-ii+jj], v[ijk+jj])-vmean[k]) * fc;
                     v2_cor[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * (interp22(u[ijk-jj], u[ijk], u[ijk+ii-jj], u[ijk+ii])-umean[k]) * fc;
                 }
-    
+
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     uw_cor[ijk] = interp2(w[ijk], w[ijk-ii]) *
                         interp2(interp22(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),
                                 interp22(v[ijk+jj]-vmean[k], v[ijk-ii+jj]-vmean[k], v[ijk-ii+jj-kk]-vmean[k-1], v[ijk+jj-kk]-vmean[k-1])) * fc;
-    
+
                     vw_cor[ijk] = interp2(w[ijk], w[ijk-jj]) *
                         interp2(interp22(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),
                                 interp22(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;
+                }
+    }
+
+    /**
+     * Calculate the budget terms arrising from pressure:
+     * pressure transport (-2*dpu_i/dxi) and redistribution (2p*dui/dxi)
+     */
+    template<typename TF>
+    void calc_pressure_terms(
+            TF* const restrict w2_pres,  TF* const restrict tke_pres,
+            TF* const restrict uw_pres,  TF* const restrict vw_pres,
+            TF* const restrict u2_rdstr, TF* const restrict v2_rdstr, TF* const restrict w2_rdstr,
+            TF* const restrict uw_rdstr, TF* const restrict vw_rdstr,
+            const TF* const restrict u, const TF* const restrict v,
+            const TF* const restrict w, const TF* const restrict p,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict dzi, const TF* const restrict dzhi, const TF dxi, const TF dyi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // Pressure transport term (-2*dpu_i/dxi)
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    tke_pres[ijk] = - ( interp2(p[ijk], p[ijk+kk]) * w[ijk+kk] -
+                                        interp2(p[ijk], p[ijk-kk]) * w[ijk   ] ) * dzi[k];
+
+                    uw_pres[ijk] = - ( interp2(p[ijk   ], p[ijk-kk   ]) * w[ijk    ] -
+                                       interp2(p[ijk-ii], p[ijk-ii-kk]) * w[ijk-ii ] ) * dxi +
+                                     ( interp2(p[ijk   ], p[ijk-ii   ]) * (u[ijk   ]-umean[k  ]) -
+                                       interp2(p[ijk-kk], p[ijk-ii-kk]) * (u[ijk-kk]-umean[k-1]) ) * dzhi[k];
+
+                    vw_pres[ijk] = - ( interp2(p[ijk-kk   ], p[ijk   ]) * w[ijk    ]  -
+                                       interp2(p[ijk-jj-kk], p[ijk-jj]) * w[ijk-jj ] ) * dyi +
+                                     ( interp2(p[ijk-jj   ], p[ijk   ]) * (v[ijk   ]-vmean[k  ]) -
+                                       interp2(p[ijk-jj-kk], p[ijk-kk]) * (v[ijk-kk]-vmean[k-1]) ) * dzhi[k];
+                }
+        }
+
+        // Lower boundary (z=0)
+        int k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // w @ full level below sfc == -w @ full level above sfc
+                w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
+                                         - interp2(w[ijk], w[ijk+kk]) * p[ijk-kk] ) * dzhi[k];
+            }
+
+        // Top boundary (z=zsize)
+        // TODO: what to do with w2_pres and uw_pres at the top boundary? Pressure at k=kend is undefined?
+
+        // Inner domain
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
+                                               interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
+                }
+
+        // Pressure redistribution term (2p*dui/dxi)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    u2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-ii]) *
+                        ( interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k]) -
+                          interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k]) ) * dxi;
+
+                    v2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-jj]) *
+                        ( interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k]) -
+                          interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;
+
+                    uw_rdstr[ijk] = interp2_4(p[ijk], p[ijk-kk], p[ijk-ii-kk], p[ijk-ii]) *
+                         ( ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi );
+
+                    vw_rdstr[ijk] = interp2_4(p[ijk], p[ijk-kk], p[ijk-jj-kk], p[ijk-jj]) *
+                         ( ((v[ijk]-vmean[k]) - (v[ijk-kk]-vmean[k-1])) * dzhi[k] + (w[ijk] - w[ijk-jj]) * dyi );
+                }
+
+        // Lower boundary (z=0)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // with w[kstart] == 0, dw/dz at surface equals (w[kstart+1] - w[kstart]) / dzi
+                w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
+            }
+
+
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) *
+                        ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];
                 }
     }
 }
