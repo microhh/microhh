@@ -274,7 +274,7 @@ namespace
      * Calculate the budget terms related to pressure transport (-2*dpu_i/dxi)
      */
     template<typename TF>
-    void calc_pressure_terms(
+    void calc_pressure_transport_terms(
             TF* const restrict w2_pres,  TF* const restrict tke_pres,
             TF* const restrict uw_pres,  TF* const restrict vw_pres,
             const TF* const restrict u, const TF* const restrict v,
@@ -345,7 +345,7 @@ namespace
      * Calculate the budget terms related to redistribution (2p*dui/dxi)
      */
     template<typename TF>
-    void calc_pressure_terms(
+    void calc_pressure_redistribution_terms(
             TF* const restrict u2_rdstr, TF* const restrict v2_rdstr, TF* const restrict w2_rdstr,
             TF* const restrict uw_rdstr, TF* const restrict vw_rdstr,
             const TF* const restrict u, const TF* const restrict v,
@@ -375,10 +375,10 @@ namespace
                         ( interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k]) -
                           interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;
 
-                    uw_rdstr[ijk] = interp2_4(p[ijk], p[ijk-kk], p[ijk-ii-kk], p[ijk-ii]) *
+                    uw_rdstr[ijk] = interp22(p[ijk], p[ijk-kk], p[ijk-ii-kk], p[ijk-ii]) *
                          ( ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi );
 
-                    vw_rdstr[ijk] = interp2_4(p[ijk], p[ijk-kk], p[ijk-jj-kk], p[ijk-jj]) *
+                    vw_rdstr[ijk] = interp22(p[ijk], p[ijk-kk], p[ijk-jj-kk], p[ijk-jj]) *
                          ( ((v[ijk]-vmean[k]) - (v[ijk-kk]-vmean[k-1])) * dzhi[k] + (w[ijk] - w[ijk-jj]) * dyi );
                 }
 
@@ -463,6 +463,17 @@ void Budget_2<TF>::create(Stats<TF>& stats)
     stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh", group_name);
     stats.add_prof("vw_turb" , "Turbulent transport term in VW budget" , "m2 s-3", "zh", group_name);
 
+    stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("vw_pres" , "Pressure transport term in VW budget" , "m2 s-3", "zh", group_name);
+
+    stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh", group_name);
+    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh", group_name);
+    stats.add_prof("vw_rdstr", "Pressure redistribution term in VW budget", "m2 s-3", "zh", group_name);
+
     if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
     {
         stats.add_prof("u2_cor", "Coriolis term in U2 budget", "m2 s-3", "z" , group_name);
@@ -527,16 +538,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh", group_name);
     }
 
-    stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh", group_name);
-    stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" , group_name);
-    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh", group_name);
-    stats.add_prof("vw_pres" , "Pressure transport term in VW budget" , "m2 s-3", "zh", group_name);
-
-    stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" , group_name);
-    stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" , group_name);
-    stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh", group_name);
-    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh", group_name);
-    stats.add_prof("vw_rdstr", "Pressure redistribution term in VW budget", "m2 s-3", "zh", group_name);
     */
 }
 
@@ -628,12 +629,43 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(wx);
     fields.release_tmp(wy);
 
-    fields.release_tmp(u2_turb);
-    fields.release_tmp(v2_turb);
-    fields.release_tmp(w2_turb);
-    fields.release_tmp(tke_turb);
-    fields.release_tmp(uw_turb);
-    fields.release_tmp(vw_turb);
+    auto w2_pres = std::move(w2_turb);
+    auto tke_pres = std::move(tke_turb);
+    auto uw_pres = std::move(uw_turb);
+    auto vw_pres = std::move(vw_turb);
+
+    calc_pressure_transport_terms(
+            w2_pres->fld.data(), tke_pres->fld.data(),
+            uw_pres->fld.data(), vw_pres->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+            fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+            umodel.data(), vmodel.data(),
+            gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    auto u2_rdstr = std::move(u2_turb);
+    auto v2_rdstr = std::move(v2_turb);
+    auto w2_rdstr = std::move(w2_pres);
+    auto uw_rdstr = std::move(uw_pres);
+    auto vw_rdstr = std::move(vw_pres);
+
+    calc_pressure_redistribution_terms(
+            u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(),
+            uw_rdstr->fld.data(), vw_rdstr->fld.data(),
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+            fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+            umodel.data(), vmodel.data(),
+            gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    fields.release_tmp(u2_rdstr);
+    fields.release_tmp(v2_rdstr);
+    fields.release_tmp(w2_rdstr);
+    fields.release_tmp(uw_rdstr);
+    fields.release_tmp(vw_rdstr);
+    fields.release_tmp(tke_pres);
 
     if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
     {
