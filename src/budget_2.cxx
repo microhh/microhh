@@ -406,6 +406,238 @@ namespace
                         ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];
                 }
     }
+
+    /**
+     * Calculate the budget terms arrising from diffusion, for a fixed viscosity
+     * molecular diffusion (nu*d/dxj(dui^2/dxj)) and dissipation (-2*nu*(dui/dxj)^2)
+     */
+    template<typename TF>
+    void calc_diffusion_terms_dns(
+            TF* const restrict u2_visc, TF* const restrict v2_visc,
+            TF* const restrict w2_visc, TF* const restrict tke_visc, TF* const restrict uw_visc,
+            TF* const restrict u2_diss, TF* const restrict v2_diss,
+            TF* const restrict w2_diss, TF* const restrict tke_diss, TF* const restrict uw_diss,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            TF* const restrict wz, TF* const restrict wx, TF* const restrict wy,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const TF dxi, const TF dyi, const TF visc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // Calculate w at full levels (grid center)
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    wz[ijk] = interp2(w[ijk], w[ijk+kk]);
+                }
+
+        // Set ghost cells such that the velocity interpolated to the boundaries is zero
+        int ks = kstart;
+        int ke = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijks = i + j*jj + ks*kk;
+                const int ijke = i + j*jj + ke*kk;
+                wz[ijks-kk] = -wz[ijks];
+                wz[ijke+kk] = -wz[ijke];
+            }
+
+        // Molecular diffusion term (nu*d/dxj(dui^2/dxj))
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    // visc * d/dz(du^2/dz)
+                    u2_visc[ijk] = visc * ( (pow(u[ijk+kk]-umean[k+1], 2) - pow(u[ijk   ]-umean[k  ], 2)) * dzhi[k+1] -
+                                            (pow(u[ijk   ]-umean[k  ], 2) - pow(u[ijk-kk]-umean[k-1], 2)) * dzhi[k  ] ) * dzi[k];
+
+                    // visc * d/dz(dv^2/dz)
+                    v2_visc[ijk] = visc * ( (pow(v[ijk+kk]-vmean[k+1], 2) - pow(v[ijk   ]-vmean[k  ], 2)) * dzhi[k+1] -
+                                            (pow(v[ijk   ]-vmean[k  ], 2) - pow(v[ijk-kk]-vmean[k-1], 2)) * dzhi[k  ] ) * dzi[k];
+
+                    // visc * d/dz(dw^2/dz)
+                    tke_visc[ijk] = TF(0.5) * visc * ( (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] -
+                                                       (pow(wz[ijk   ], 2) - pow(wz[ijk-kk], 2)) * dzhi[k  ] ) * dzi[k]
+                                  + TF(0.5) * (u2_visc[ijk] + v2_visc[ijk]);
+                }
+        }
+
+        // Lower boundary (z=0)
+        int k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // visc * d/dz(dw^2/dz)
+                // w[kstart-1] = -w[kstart+1]
+                w2_visc[ijk] = visc * ( (pow(w[ijk+kk], 2) - pow( w[ijk   ], 2)) * dzi[k  ] -
+                                        (pow(w[ijk   ], 2) - pow(-w[ijk+kk], 2)) * dzi[k-1] ) * dzhi[k];
+
+                // visc * d/dz(duw/dz)
+                // wx[kstart-1] = -wx[kstart+1]
+                // Calculate u at dz below surface, extrapolating gradient between u[kstart] and u[kstart-1]
+                const TF utmp = TF(1.5)*(u[ijk-kk]-umean[k-1]) - TF(0.5)*(u[ijk]-umean[k]);
+                uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) *  wx[ijk+kk] -
+                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] -
+                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] -
+                                          utmp                                                   * -wx[ijk+kk] ) * dzi[k-1] ) * dzhi[k];
+            }
+
+        // Top boundary (z=zsize)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // visc * d/dz(dw^2/dz)
+                // w[kend+1] = -w[kend-1]
+                w2_visc[ijk] = visc * ( (pow(-w[ijk-kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] -
+                                        (pow( w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k];
+
+                // visc * d/dz(duw/dz)
+                // wx[kend+1] = -wx[kend-1]
+                // Calculate u at dz above top, extrapolating gradient between u[kend] and u[kend-1]
+                const TF utmp = TF(1.5)*(u[ijk]-umean[k]) - TF(0.5)*(u[ijk-kk]-umean[k-1]);
+                uw_visc[ijk] = visc * ( ( utmp                                                   * -wx[ijk-kk] -
+                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] -
+                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] -
+                                          interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) *  wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
+            }
+
+        // Interior
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    // visc * d/dz(dw^2/dz)
+                    w2_visc[ijk] = visc * ( (pow(w[ijk+kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] -
+                                            (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k];
+
+                    // visc * d/dz(duw/dz)
+                    uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) * wx[ijk+kk] -
+                                              interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] ) * dzi[k  ] -
+                                            ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] -
+                                              interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) * wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
+                }
+
+        // Dissipation term (-2*nu*(dui/dxj)^2)
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    // -2 * visc * ((du/dx)^2 + (du/dy)^2 + (du/dz)^2)
+                    u2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k  ])) * dxi,    2) +
+                                                      pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-jj]-umean[k  ])) * dyi,    2) +
+                                                      pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1])) * dzi[k], 2) );
+
+                    // -2 * visc * ((dv/dx)^2 + (dv/dy)^2 + (dv/dz)^2)
+                    v2_diss[ijk] = TF(2.) * visc * ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
+                                                     pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
+                                                     pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) );
+
+                    // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
+                    tke_diss[ijk] = - visc * ( pow( (w[ijk+ii] - w[ijk]) * dxi,    2) +
+                                               pow( (w[ijk+jj] - w[ijk]) * dyi,    2) +
+                                               pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2) )
+                                  + TF(0.5) * (u2_diss[ijk] + v2_diss[ijk]);
+
+                    // -2 * visc * du/dx * dw/dx
+                    uw_diss[ijk] = TF(-2.) * visc * ( interp22(u[ijk]-umean[k], u[ijk+ii]-umean[k], u[ijk+ii-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
+                                                      interp22(u[ijk]-umean[k], u[ijk-ii]-umean[k], u[ijk-ii-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dxi *
+                                                    ( w[ijk] - w[ijk-ii] ) * dxi;
+
+                    // -2 * visc * du/dy * dw/dy
+                    uw_diss[ijk] = TF(-2.) * visc * ( interp22(u[ijk]-umean[k], u[ijk+jj]-umean[k], u[ijk+jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
+                                                      interp22(u[ijk]-umean[k], u[ijk-jj]-umean[k], u[ijk-jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dyi *
+                                                    ( interp22(w[ijk]         , w[ijk+jj]         , w[ijk+jj-ii]           , w[ijk-ii]           ) -
+                                                      interp22(w[ijk]         , w[ijk-jj]         , w[ijk-jj-ii]           , w[ijk-ii]           ) ) * dyi;
+                }
+        }
+
+        // Bottom boundary (z=0)
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
+                // w @ full level kstart-1 = -w @ full level kstart+1
+                w2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
+                                                  pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
+                                                  pow( (TF(2.)*interp2(w[ijk], w[ijk+kk])                           ) * dzhi[k], 2) );
+
+                // -2 * visc * du/dz * dw/dz
+                // w @ full level kstart-1 = -w @ full level kstart+1
+                uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
+                                         TF(2.)*interp22(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]) * dzhi[k];
+            }
+
+        // Top boundary (z=zsize)
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
+                // w @ full level kend = -w @ full level kend-1
+                w2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
+                                                  pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
+                                                  pow( (                   TF(-2.) * interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) );
+
+                // -2 * visc * du/dz * dw/dz
+                // w @ full level kend = - w @ full level kend-1
+                uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
+                                         - TF(2.)*interp22(w[ijk], w[ijk-kk], w[ijk-kk-ii], w[ijk-ii]) * dzhi[k];
+            }
+
+        // Interior
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
+                    w2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
+                                                      pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
+                                                      pow( (interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) );
+
+                    // -2 * visc * du/dz * dw/dz
+                    uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
+                                             ( interp22(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]) -
+                                               interp22(w[ijk], w[ijk-kk], w[ijk-kk-ii], w[ijk-ii]) ) * dzhi[k];
+                }
+    }
 }
 
 template<typename TF>
@@ -482,7 +714,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         stats.add_prof("vw_cor", "Coriolis term in VW budget", "m2 s-3", "zh", group_name);
     }
 
-    /*
     if (diff.get_switch() != Diffusion_type::Disabled)
     {
         stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" , group_name);
@@ -511,7 +742,7 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         }
     }
 
-
+    /*
     if (thermo.get_switch() != "0")
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
@@ -626,6 +857,78 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
     stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
 
+    if (diff.get_switch() != Diffusion_type::Disabled)
+    {
+        // Calculate the diffusive transport and dissipation terms
+        if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
+        {
+            auto u2_visc = fields.get_tmp();
+            auto v2_visc = fields.get_tmp();
+            auto w2_visc = fields.get_tmp();
+            auto tke_visc = fields.get_tmp();
+            auto uw_visc = fields.get_tmp();
+
+            auto u2_diss = fields.get_tmp();
+            auto v2_diss = fields.get_tmp();
+            auto w2_diss = fields.get_tmp();
+            auto tke_diss = fields.get_tmp();
+            auto uw_diss = fields.get_tmp();
+
+            auto wz = fields.get_tmp();
+
+            calc_diffusion_terms_dns(
+                    u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
+                    u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                    wx->fld.data(), wy->fld.data(), wz->fld.data(),
+                    umodel.data(), vmodel.data(),
+                    gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
+            stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
+            stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
+            stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
+            stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
+
+            stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
+            stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
+            stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
+            stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
+            stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
+
+            fields.release_tmp(u2_visc);
+            fields.release_tmp(v2_visc);
+            fields.release_tmp(w2_visc);
+            fields.release_tmp(tke_visc);
+            fields.release_tmp(uw_visc);
+
+            fields.release_tmp(u2_diss);
+            fields.release_tmp(v2_diss);
+            fields.release_tmp(w2_diss);
+            fields.release_tmp(tke_diss);
+            fields.release_tmp(uw_diss);
+
+            fields.release_tmp(wz);
+        }
+
+        /*
+        else if(diff.get_switch() == "smag2")
+            calc_diffusion_terms_LES(m->profs["u2_diss"].data,  m->profs["v2_diss"].data, m->profs["w2_diss"].data,
+                                     m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
+                                     m->profs["u2_visc"].data,  m->profs["v2_visc"].data, m->profs["w2_visc"].data,
+                                     m->profs["tke_visc"].data, m->profs["uw_visc"].data, m->profs["vw_visc"].data,
+                                     m->profs["u2_diff"].data,  m->profs["v2_diff"].data, m->profs["w2_diff"].data,
+                                     m->profs["tke_diff"].data, m->profs["uw_diff"].data, m->profs["vw_diff"].data,
+                                     fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data,
+                                     fields.u->data, fields.v->data, fields.w->data,
+                                     fields.u->datafluxbot, fields.v->datafluxbot,
+                                     fields.sd.at("evisc")->data, umodel, vmodel,
+                                     grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
+                                     */
+    }
+
     fields.release_tmp(wx);
     fields.release_tmp(wy);
 
@@ -704,30 +1007,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(uw_cor);
         fields.release_tmp(vw_cor);
     }
-
     /*
-    if(diff.get_switch() != "0")
-    {
-        // Calculate the diffusive transport and dissipation terms
-        if(diff.get_switch() == "2" || diff.get_switch() == "4")
-            calc_diffusion_terms_DNS(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data, m->profs["uw_visc"].data,
-                                     m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data,
-                                     fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data, fields.u->data, fields.v->data, fields.w->data, umodel, vmodel,
-                                     grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
-        else if(diff.get_switch() == "smag2")
-            calc_diffusion_terms_LES(m->profs["u2_diss"].data,  m->profs["v2_diss"].data, m->profs["w2_diss"].data,
-                                     m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
-                                     m->profs["u2_visc"].data,  m->profs["v2_visc"].data, m->profs["w2_visc"].data,
-                                     m->profs["tke_visc"].data, m->profs["uw_visc"].data, m->profs["vw_visc"].data,
-                                     m->profs["u2_diff"].data,  m->profs["v2_diff"].data, m->profs["w2_diff"].data,
-                                     m->profs["tke_diff"].data, m->profs["uw_diff"].data, m->profs["vw_diff"].data,
-                                     fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data,
-                                     fields.u->data, fields.v->data, fields.w->data,
-                                     fields.u->datafluxbot, fields.v->datafluxbot,
-                                     fields.sd.at("evisc")->data, umodel, vmodel,
-                                     grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
-    }
-
     if(thermo.get_switch() != "0")
     {
         // Get the buoyancy diffusivity from the thermo class
@@ -769,14 +1049,6 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                                    fields.atmp["tmp1"]->datamean, fields.sd.at("p")->datamean,
                                    grid.dzi, grid.dzhi);
     }
-
-    // Calculate the pressure transport and redistribution terms
-    calc_pressure_terms(m->profs["w2_pres"].data,     m->profs["tke_pres"].data,
-                        m->profs["uw_pres"].data,     m->profs["vw_pres"].data,
-                        m->profs["u2_rdstr"].data,    m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data,
-                        m->profs["uw_rdstr"].data,    m->profs["vw_rdstr"].data,
-                        fields.u->data, fields.v->data, fields.w->data, fields.sd.at("p")->data, umodel, vmodel,
-                        grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
     */
 }
 
