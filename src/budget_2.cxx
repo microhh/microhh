@@ -412,11 +412,9 @@ namespace
      * molecular diffusion (nu*d/dxj(dui^2/dxj)) and dissipation (-2*nu*(dui/dxj)^2)
      */
     template<typename TF>
-    void calc_diffusion_terms_dns(
+    void calc_diffusion_transport_terms_dns(
             TF* const restrict u2_visc, TF* const restrict v2_visc,
             TF* const restrict w2_visc, TF* const restrict tke_visc, TF* const restrict uw_visc,
-            TF* const restrict u2_diss, TF* const restrict v2_diss,
-            TF* const restrict w2_diss, TF* const restrict tke_diss, TF* const restrict uw_diss,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             TF* const restrict wz, TF* const restrict wx, TF* const restrict wy,
             const TF* const restrict umean, const TF* const restrict vmean,
@@ -425,7 +423,6 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        const int ii = 1;
         const int jj = icells;
         const int kk = ijcells;
 
@@ -540,6 +537,25 @@ namespace
                                             ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] -
                                               interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) * wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
                 }
+    }
+
+    /**
+     * Calculate the budget terms related to dissipation (-2*nu*(dui/dxj)^2)
+     */
+    template<typename TF>
+    void calc_diffusion_dissipation_terms_dns(
+            TF* const restrict u2_diss, TF* const restrict v2_diss,
+            TF* const restrict w2_diss, TF* const restrict tke_diss, TF* const restrict uw_diss,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const TF dxi, const TF dyi, const TF visc,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
 
         // Dissipation term (-2*nu*(dui/dxj)^2)
         for (int k=kstart; k<kend; ++k)
@@ -580,7 +596,7 @@ namespace
         }
 
         // Bottom boundary (z=0)
-        k = kstart;
+        int k = kstart;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -857,6 +873,13 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
     stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
 
+    fields.release_tmp(u2_turb);
+    fields.release_tmp(v2_turb);
+    fields.release_tmp(w2_turb);
+    fields.release_tmp(tke_turb);
+    fields.release_tmp(uw_turb);
+    fields.release_tmp(vw_turb);
+
     if (diff.get_switch() != Diffusion_type::Disabled)
     {
         // Calculate the diffusive transport and dissipation terms
@@ -868,17 +891,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             auto tke_visc = fields.get_tmp();
             auto uw_visc = fields.get_tmp();
 
-            auto u2_diss = fields.get_tmp();
-            auto v2_diss = fields.get_tmp();
-            auto w2_diss = fields.get_tmp();
-            auto tke_diss = fields.get_tmp();
-            auto uw_diss = fields.get_tmp();
-
             auto wz = fields.get_tmp();
 
-            calc_diffusion_terms_dns(
+            calc_diffusion_transport_terms_dns(
                     u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
-                    u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                     wx->fld.data(), wy->fld.data(), wz->fld.data(),
                     umodel.data(), vmodel.data(),
@@ -892,17 +908,25 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
             stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
 
+            auto u2_diss = std::move(u2_visc);
+            auto v2_diss = std::move(v2_visc);
+            auto w2_diss = std::move(w2_visc);
+            auto tke_diss = std::move(tke_visc);
+            auto uw_diss = std::move(uw_visc);
+
+            calc_diffusion_dissipation_terms_dns(
+                    u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                    umodel.data(), vmodel.data(),
+                    gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
             stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
             stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
             stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
             stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
             stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
-
-            fields.release_tmp(u2_visc);
-            fields.release_tmp(v2_visc);
-            fields.release_tmp(w2_visc);
-            fields.release_tmp(tke_visc);
-            fields.release_tmp(uw_visc);
 
             fields.release_tmp(u2_diss);
             fields.release_tmp(v2_diss);
@@ -932,10 +956,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(wx);
     fields.release_tmp(wy);
 
-    auto w2_pres = std::move(w2_turb);
-    auto tke_pres = std::move(tke_turb);
-    auto uw_pres = std::move(uw_turb);
-    auto vw_pres = std::move(vw_turb);
+    auto w2_pres = fields.get_tmp();
+    auto tke_pres = fields.get_tmp();
+    auto uw_pres = fields.get_tmp();
+    auto vw_pres = fields.get_tmp();
 
     calc_pressure_transport_terms(
             w2_pres->fld.data(), tke_pres->fld.data(),
@@ -952,8 +976,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
     stats.calc_stats("vw_pres" , *vw_pres , no_offset, no_threshold);
 
-    auto u2_rdstr = std::move(u2_turb);
-    auto v2_rdstr = std::move(v2_turb);
+    auto u2_rdstr = fields.get_tmp();
+    auto v2_rdstr = std::move(tke_pres);
     auto w2_rdstr = std::move(w2_pres);
     auto uw_rdstr = std::move(uw_pres);
     auto vw_rdstr = std::move(vw_pres);
@@ -979,7 +1003,6 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(w2_rdstr);
     fields.release_tmp(uw_rdstr);
     fields.release_tmp(vw_rdstr);
-    fields.release_tmp(tke_pres);
 
     if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
     {
