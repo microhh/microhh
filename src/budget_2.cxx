@@ -1094,22 +1094,25 @@ void Budget_2<TF>::create(Stats<TF>& stats)
 
     if (diff.get_switch() != Diffusion_type::Disabled)
     {
-        stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" , group_name);
-        stats.add_prof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" , group_name);
-        stats.add_prof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh", group_name);
-        stats.add_prof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" , group_name);
-        stats.add_prof("uw_diss" , "Dissipation term in UW budget" , "m2 s-3", "zh", group_name);
-        stats.add_prof("vw_diss" , "Dissipation term in VW budget" , "m2 s-3", "zh", group_name);
+        if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
+        {
+            stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" , group_name);
+            stats.add_prof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" , group_name);
+            stats.add_prof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh", group_name);
+            stats.add_prof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" , group_name);
+            stats.add_prof("uw_diss" , "Dissipation term in UW budget" , "m2 s-3", "zh", group_name);
+            stats.add_prof("vw_diss" , "Dissipation term in VW budget" , "m2 s-3", "zh", group_name);
 
-        stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" , group_name);
-        stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" , group_name);
-        stats.add_prof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh", group_name);
-        stats.add_prof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" , group_name);
-        stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh", group_name);
-        stats.add_prof("vw_visc" , "Viscous transport term in VW budget" , "m2 s-3", "zh", group_name);
+            stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" , group_name);
+            stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" , group_name);
+            stats.add_prof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh", group_name);
+            stats.add_prof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" , group_name);
+            stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh", group_name);
+            stats.add_prof("vw_visc" , "Viscous transport term in VW budget" , "m2 s-3", "zh", group_name);
+        }
 
-        // For LES, add the total diffusive budget terms, which (unlike diss + visc) close
-        if (diff.get_switch() == Diffusion_type::Diff_smag2)
+        // For LES, add only the total diffusive budget terms, which (unlike diss + visc) close
+        else if (diff.get_switch() == Diffusion_type::Diff_smag2)
         {
             stats.add_prof("u2_diff" , "Total diffusive term in U2 budget" , "m2 s-3", "z" , group_name);
             stats.add_prof("v2_diff" , "Total diffusive term in V2 budget" , "m2 s-3", "z" , group_name);
@@ -1323,17 +1326,13 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     gd.dxi, gd.dyi,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells);
-            //         m->profs["u2_diss"].data,  m->profs["v2_diss"].data, m->profs["w2_diss"].data,
-            //         m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
-            //         m->profs["u2_visc"].data,  m->profs["v2_visc"].data, m->profs["w2_visc"].data,
-            //         m->profs["tke_visc"].data, m->profs["uw_visc"].data, m->profs["vw_visc"].data,
-            //         m->profs["u2_diff"].data,  m->profs["v2_diff"].data, m->profs["w2_diff"].data,
-            //         m->profs["tke_diff"].data, m->profs["uw_diff"].data, m->profs["vw_diff"].data,
-            //         fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data,
-            //         fields.u->data, fields.v->data, fields.w->data,
-            //         fields.u->datafluxbot, fields.v->datafluxbot,
-            //         fields.sd.at("evisc")->data, umodel, vmodel,
-            //         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
+
+            stats.calc_stats("u2_diff" , *u2_diff , no_offset, no_threshold);
+            stats.calc_stats("v2_diff" , *v2_diff , no_offset, no_threshold);
+            stats.calc_stats("w2_diff" , *w2_diff , no_offset, no_threshold);
+            stats.calc_stats("tke_diff", *tke_diff, no_offset, no_threshold);
+            stats.calc_stats("uw_diff" , *uw_diff , no_offset, no_threshold);
+            stats.calc_stats("vw_diff" , *vw_diff , no_offset, no_threshold);
 
             fields.release_tmp(u2_diff);
             fields.release_tmp(v2_diff);
