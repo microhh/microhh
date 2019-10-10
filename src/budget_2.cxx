@@ -72,7 +72,7 @@ namespace
                     const TF v2 = pow2(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans));
                     const TF w2 = pow2(interp2(w[ijk]       , w[ijk+kk]       ));
 
-                    ke[ijk] = 0.5 * (u2 + v2 + w2);
+                    ke[ijk] = TF(0.5) * (u2 + v2 + w2);
                 }
 
             for (int j=jstart; j<jend; ++j)
@@ -119,13 +119,13 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    u2_shear[ijk] = -2 * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
-                    v2_shear[ijk] = -2 * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
+                    u2_shear[ijk] = TF(-2.) * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
+                    v2_shear[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
 
                     uw_shear[ijk] = -pow(wx[ijk], 2) * (umean[k] - umean[k-1]) * dzhi[k];
                     vw_shear[ijk] = -pow(wy[ijk], 2) * (vmean[k] - vmean[k-1]) * dzhi[k];
 
-                    tke_shear[ijk] = 0.5*(u2_shear[ijk] + v2_shear[ijk]);
+                    tke_shear[ijk] = TF(0.5)*(u2_shear[ijk] + v2_shear[ijk]);
                 }
         }
     }
@@ -572,9 +572,9 @@ namespace
                                                       pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1])) * dzi[k], 2) );
 
                     // -2 * visc * ((dv/dx)^2 + (dv/dy)^2 + (dv/dz)^2)
-                    v2_diss[ijk] = TF(2.) * visc * ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
-                                                     pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
-                                                     pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) );
+                    v2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
+                                                      pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
+                                                      pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) );
 
                     // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
                     tke_diss[ijk] = - visc * ( pow( (w[ijk+ii] - w[ijk]) * dxi,    2) +
@@ -1166,8 +1166,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     auto ke  = fields.get_tmp();
     auto tke = fields.get_tmp();
 
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
+    constexpr TF no_offset = 0.;
+    constexpr TF no_threshold = 0.;
 
     calc_kinetic_energy(
             ke->fld.data(), tke->fld.data(),
@@ -1184,9 +1184,9 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     auto wy = std::move(tke);
 
     // Interpolate w to the locations of u and v.
-    const int wloc [3] = {0,0,1};
-    const int wxloc[3] = {1,0,1};
-    const int wyloc[3] = {0,1,1};
+    constexpr int wloc [3] = {0,0,1};
+    constexpr int wxloc[3] = {1,0,1};
+    constexpr int wyloc[3] = {0,1,1};
 
     grid.interpolate_2nd(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
     grid.interpolate_2nd(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
