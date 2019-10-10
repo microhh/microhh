@@ -4,6 +4,9 @@ import os
 from matplotlib.backends.backend_pdf import PdfPages
 import struct
 from numpy import *
+import shutil
+sys.path.append('../../python/')
+import microhh_tools as mht
 
 class microhh:
   def __init__(self, iter, itot, ktot, loadtype, path):
@@ -16,14 +19,14 @@ class microhh:
     en = '<'
 
     # Set the correct string for the loadtype
-    if (loadtype == 'double'):
+    if (loadtype == 'dp'):
         TF = 8
         ra = 'd'
-    elif (loadtype == 'single'):
+    elif (loadtype == 'sp'):
         TF = 4
         ra = 'f'
     else:
-        raise RuntimeError("The savetype has to be single or double")
+        raise RuntimeError("The savetype has to be sp or dp")
 
     fstring = '{0}{1}'+ra
 
@@ -93,7 +96,7 @@ class geterror:
       self.w = self.w + sum(dx*dz*abs(data.w[k,:] - ref.w[k,:]))
       self.p = self.p + sum(dx*dz*abs(data.p[k,:] - ref.p[k,:]))
 
-def main(filename='results.pdf',float_type='double'):
+def plot(filename='results.pdf',float_type='dp'):
 
     t    = 1
     time = 1.
@@ -271,6 +274,30 @@ def main(filename='results.pdf',float_type='double'):
         pdf.savefig()
         # do whatever the script does
 
+
+def main(executable='microhh', float_type='dp', casedir='.'):
+    kwargs = {'itot' : [16, 32, 64, 128, 256], 'swadvec' : ['2', '4', '4m']}
+    cases = mht.generator_parameter_change([Case('taylorgreen', casedir=casedir, keep=True)], **kwargs )
+    for case in cases:
+        options = copy.deepcopy(case.options)
+        for key, value in options.items():
+            if key == 'itot':
+                case.options.update({'ktot' : int(value/2)})
+            elif key == 'swadvec':
+                if value == '2':
+                    case.options.update({'swspatialorder' : 2})
+                else:
+                    case.options.update({'swspatialorder' : 4})
+
+    mht.test_cases(cases,executable,outputfile='taylorgreen.csv')
+    cwd = os.getcwd()
+    os.chdir(casedir)
+    plot(filename=cwd+'taylorgreen_{}.pdf'.format(executable),float_type=float_type)
+
+    for case in cases:
+        if case.success:
+            shutil.rmtree(case.rundir)
+    os.chdir(cwd)
 
 if __name__ == "__main__":
     if len(sys.argv)>1:
