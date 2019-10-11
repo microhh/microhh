@@ -60,6 +60,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -108,6 +109,7 @@ namespace
         const int kk = ijcells;
 
         // Calculate shear terms (-2u_iw d<u_i>/dz)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             const TF dudz = (interp2(umean[k], umean[k+1]) - interp2(umean[k-1], umean[k]) ) * dzi[k];
@@ -149,6 +151,7 @@ namespace
         const int kk = ijcells;
 
         // Calculate turbulent transport terms (-d(u_i^2*w)/dz)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -208,6 +211,7 @@ namespace
             }
 
         // Inner domain
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -242,6 +246,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -253,6 +258,7 @@ namespace
                     v2_cor[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * (interp22(u[ijk-jj], u[ijk], u[ijk+ii-jj], u[ijk+ii])-umean[k]) * fc;
                 }
 
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -289,6 +295,7 @@ namespace
         const int kk = ijcells;
 
         // Pressure transport term (-2*dpu_i/dxi)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -329,6 +336,7 @@ namespace
         // TODO: what to do with w2_pres and uw_pres at the top boundary? Pressure at k=kend is undefined?
 
         // Inner domain
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -360,6 +368,7 @@ namespace
         const int kk = ijcells;
 
         // Pressure redistribution term (2p*dui/dxi)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -394,7 +403,7 @@ namespace
                 w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
             }
 
-
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -427,6 +436,7 @@ namespace
         const int kk = ijcells;
 
         // Calculate w at full levels (grid center)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -450,6 +460,7 @@ namespace
             }
 
         // Molecular diffusion term (nu*d/dxj(dui^2/dxj))
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -520,6 +531,7 @@ namespace
             }
 
         // Interior
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -558,6 +570,7 @@ namespace
         const int kk = ijcells;
 
         // Dissipation term (-2*nu*(dui/dxj)^2)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -636,6 +649,7 @@ namespace
             }
 
         // Interior
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -683,6 +697,7 @@ namespace
         const int kk2 = 2*ijcells;
 
         // Calculate w at full levels (center)
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
@@ -706,6 +721,7 @@ namespace
             }
 
         // Calculate evisc at half-half-half level
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -722,6 +738,7 @@ namespace
         // Test: directly calculate diffusion terms as 2 ui * d/dxj(visc * dui/dx + visc * duj/dxi)
         // Term is stored in xx_diss; xx_visc=0
         // -----------------------------
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -801,6 +818,7 @@ namespace
                                                 interp2(evisc[ijk], evisc[ijk-jj]) * (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
                 }
 
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
@@ -1035,6 +1053,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1046,6 +1065,7 @@ namespace
                     tke_buoy[ijk] = interp2(w[ijk], w[ijk+kk]) * (b[ijk] - bmean[k]);
                 }
 
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1081,6 +1101,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1107,6 +1128,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             const TF dsdz  = (interp2(smean[k], smean[k+1]) - interp2(smean[k], smean[k-1])) * dzi[k];
@@ -1150,6 +1172,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1186,6 +1209,7 @@ namespace
                 bw_diss[ijk] = TF(-2.) * visc * (w[ijk]-w[ijk-kk]) * dzi[k-1] * ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k];
             }
 
+        #pragma omp parallel for
         for (int k=kstart+1; k<kend-1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -1239,6 +1263,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
