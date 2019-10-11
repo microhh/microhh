@@ -1016,6 +1016,56 @@ namespace
                 // uw_diff is zero at surface for no-slip case, unequal for free-slip...
             }
     }
+
+    /**
+     * Calculate the budget related to buoyancy.
+     */
+    template<typename TF>
+    void calc_buoyancy_terms(
+            TF* const restrict w2_buoy, TF* const restrict tke_buoy,
+            TF* const restrict uw_buoy, TF* const restrict vw_buoy,
+            const TF* const restrict u, const TF* const restrict v,
+            const TF* const restrict w, const TF* const restrict b,
+            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict bmean,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+    
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    // w'b'
+                    tke_buoy[ijk] = interp2(w[ijk], w[ijk+kk]) * (b[ijk] - bmean[k]);
+                }
+    
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+    
+                    // w'b'
+                    w2_buoy[ijk] = TF(2.) * interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1]) * w[ijk];
+    
+                    // u'b'
+                    uw_buoy[ijk] = interp2 (u[ijk]-umean[k], u[ijk-kk]-umean[k-1]) *
+                                   interp22(b[ijk]-bmean[k], b[ijk-ii]-bmean[k], b[ijk-ii-kk]-bmean[k-1], b[ijk-kk]-bmean[k-1]);
+    
+                    // v'b'
+                    vw_buoy[ijk] = interp2 (v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]) *
+                                   interp22(b[ijk]-bmean[k], b[ijk-jj]-bmean[k], b[ijk-jj-kk]-bmean[k-1], b[ijk-kk]-bmean[k-1]);
+    
+                }
+    }
 }
 
 template<typename TF>
@@ -1123,7 +1173,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         }
     }
 
-    /*
     if (thermo.get_switch() != "0")
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
@@ -1136,7 +1185,10 @@ void Budget_2<TF>::create(Stats<TF>& stats)
 
         stats.add_prof("bw_shear", "Shear production term in B2 budget"   , "m2 s-4", "zh", group_name);
         stats.add_prof("bw_turb" , "Turbulent transport term in B2 budget", "m2 s-4", "zh", group_name);
+    }
 
+    /*
+    {
         if (diff.get_switch() != Diffusion_type::Disabled)
         {
             stats.add_prof("b2_visc" , "Viscous transport term in B2 budget", "m2 s-5", "z" , group_name);
@@ -1422,25 +1474,47 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(uw_cor);
         fields.release_tmp(vw_cor);
     }
-    /*
-    if(thermo.get_switch() != "0")
+
+    if (thermo.get_switch() != "0")
     {
         // Get the buoyancy diffusivity from the thermo class
         const TF diff_b = thermo.get_buoyancy_diffusivity();
 
-        // Store the buoyancy in the tmp1 field
-        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b", true);
+        // Acquire the buoyancy, cyclic=true, is_stat=true.
+        auto b = fields.get_tmp();
+        thermo.get_thermo_field(*b, "b", true, true);
 
-        // Calculate mean fields
-        grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);
-        grid.calc_mean(fields.sd.at("p")->datamean, fields.sd.at("p")->data, grid.kcells);
+        // Calculate the mean of the fields.
+        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+        field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), fields.sd.at("p")->fld.data());
+
+        auto w2_buoy = fields.get_tmp();
+        auto tke_buoy = fields.get_tmp();
+        auto uw_buoy = fields.get_tmp();
+        auto vw_buoy = fields.get_tmp();
 
         // Calculate buoyancy terms
-        calc_buoyancy_terms(m->profs["w2_buoy"].data, m->profs["tke_buoy"].data,
-                            m->profs["uw_buoy"].data, m->profs["vw_buoy"].data,
-                            fields.u->data, fields.v->data, fields.w->data, fields.atmp["tmp1"]->data,
-                            umodel, vmodel, fields.atmp["tmp1"]->datamean);
+        calc_buoyancy_terms(
+                w2_buoy->fld.data(), tke_buoy->fld.data(),
+                uw_buoy->fld.data(), vw_buoy->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(), b->fld.data(),
+                umodel.data(), vmodel.data(),
+                b->fld_mean.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
+        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
+        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
+        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
+        stats.calc_stats("vw_buoy" , *vw_buoy , no_offset, no_threshold);
+
+        fields.release_tmp(w2_buoy);
+        fields.release_tmp(tke_buoy);
+        fields.release_tmp(uw_buoy);
+        fields.release_tmp(vw_buoy);
+
+        /*
         // Buoyancy variance and flux budgets
         calc_buoyancy_terms_scalar(m->profs["bw_buoy"].data,
                                    fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->data,
@@ -1463,8 +1537,9 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                                    fields.atmp["tmp1"]->data, fields.sd.at("p")->data,
                                    fields.atmp["tmp1"]->datamean, fields.sd.at("p")->datamean,
                                    grid.dzi, grid.dzhi);
+        */
+        fields.release_tmp(b);
     }
-    */
 }
 
 template class Budget_2<double>;
