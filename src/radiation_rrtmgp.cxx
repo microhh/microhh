@@ -1052,13 +1052,14 @@ namespace
             TF* restrict out, const double* restrict in,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int kstart, const int kend,
+            const int kstart, const int kend_field,
             const int igc, const int jgc, const int kgc,
             const int jj, const int kk,
             const int jj_nogc, const int kk_nogc)
     {
+        // Value of kend_field is either kend or kend+1.
         #pragma omp parallel for
-        for (int k=kstart; k<kend; ++k)
+        for (int k=kstart; k<kend_field; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -1123,6 +1124,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     Array<double,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
     auto tmp = fields.get_tmp();
+    tmp->loc = gd.wloc;
 
     const bool compute_clouds = true;
 
@@ -1131,14 +1133,18 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             const Array<double,2>& array, const std::string& name, const std::array<int,3>& loc)
     {
         if (do_stats || do_cross)
+        {
+            // Make sure that the top boundary is taken into account in case of fluxes.
+            const int kend = gd.kstart + array.dim(2) + 1;
             add_ghost_cells(
                     tmp->fld.data(), array.ptr(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, kend,
                     gd.igc, gd.jgc, gd.kgc,
                     gd.icells, gd.ijcells,
                     gd.imax, gd.imax*gd.jmax);
+        }
 
         if (do_stats)
             stats.calc_stats(name, *tmp, no_offset, no_threshold);
