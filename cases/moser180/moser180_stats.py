@@ -2,7 +2,7 @@ import numpy as np
 import netCDF4 as nc
 from matplotlib.pyplot import *
 
-sample_size = 30
+sample_size = 60
 plotens = True
 
 stats = nc.Dataset("moser180_default_0000000.nc","r")
@@ -345,3 +345,4 @@ ylabel('uflux')
 legend(loc=0, frameon=False)
 grid()
 axis([0., 2., -1.1, 1.1])
+show()

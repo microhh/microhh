@@ -1,14 +1,14 @@
-import numpy
-import struct
+import numpy as np
 import netCDF4
 
 from pylab import *
 
-stats = netCDF4.Dataset("drycbl_default_0000000.nc","r")
+#stats = netCDF4.Dataset("drycbl_default_0000000.nc", "r")
+stats = netCDF4.Dataset("oink.nc", "r")
 
 t = stats.variables["time"][:]
 end   = t.size
-start = t.size-5
+start = t.size-10
 dt = t[1] - t[0]
 
 z  = stats.variables["z"][:]
@@ -23,50 +23,50 @@ benct = henct*N2
 wenct = (B0*henct)**(1./3.)
 tenct = henct/(B0/N2**1.5)**.5
 
-henc  = numpy.mean(henct[start:end])
-benc  = numpy.mean(benct[start:end])
-wenc  = numpy.mean(wenct[start:end])
+henc  = np.mean(henct[start:end])
+benc  = np.mean(benct[start:end])
+wenc  = np.mean(wenct[start:end])
 
-u2_turb  = average(stats.variables["u2_turb" ][start:end,:], 0)
-u2_visc  = average(stats.variables["u2_visc" ][start:end,:], 0)
-u2_rdstr = average(stats.variables["u2_rdstr"][start:end,:], 0)
-u2_diss  = average(stats.variables["u2_diss" ][start:end,:], 0)
+u2_turb  = average(stats.groups["budget"].variables["u2_turb" ][start:end,:], 0)
+u2_visc  = average(stats.groups["budget"].variables["u2_visc" ][start:end,:], 0)
+u2_rdstr = average(stats.groups["budget"].variables["u2_rdstr"][start:end,:], 0)
+u2_diss  = average(stats.groups["budget"].variables["u2_diss" ][start:end,:], 0)
 u2_sum = u2_turb + u2_visc + u2_rdstr + u2_diss
 
-v2_turb  = average(stats.variables["v2_turb" ][start:end,:], 0)
-v2_visc  = average(stats.variables["v2_visc" ][start:end,:], 0)
-v2_rdstr = average(stats.variables["v2_rdstr"][start:end,:], 0)
-v2_diss  = average(stats.variables["v2_diss" ][start:end,:], 0)
+v2_turb  = average(stats.groups["budget"].variables["v2_turb" ][start:end,:], 0)
+v2_visc  = average(stats.groups["budget"].variables["v2_visc" ][start:end,:], 0)
+v2_rdstr = average(stats.groups["budget"].variables["v2_rdstr"][start:end,:], 0)
+v2_diss  = average(stats.groups["budget"].variables["v2_diss" ][start:end,:], 0)
 v2_sum = v2_turb + v2_visc + v2_rdstr + v2_diss
 
-w2_turb  = average(stats.variables["w2_turb" ][start:end,:], 0)
-w2_visc  = average(stats.variables["w2_visc" ][start:end,:], 0)
-w2_pres  = average(stats.variables["w2_pres" ][start:end,:], 0)
-w2_rdstr = average(stats.variables["w2_rdstr"][start:end,:], 0)
-w2_diss  = average(stats.variables["w2_diss" ][start:end,:], 0)
-w2_buoy  = average(stats.variables["w2_buoy" ][start:end,:], 0)
+w2_turb  = average(stats.groups["budget"].variables["w2_turb" ][start:end,:], 0)
+w2_visc  = average(stats.groups["budget"].variables["w2_visc" ][start:end,:], 0)
+w2_pres  = average(stats.groups["budget"].variables["w2_pres" ][start:end,:], 0)
+w2_rdstr = average(stats.groups["budget"].variables["w2_rdstr"][start:end,:], 0)
+w2_diss  = average(stats.groups["budget"].variables["w2_diss" ][start:end,:], 0)
+w2_buoy  = average(stats.groups["budget"].variables["w2_buoy" ][start:end,:], 0)
 w2_sum = w2_turb + w2_visc + w2_pres + w2_rdstr + w2_diss + w2_buoy
 
-tke_turb = average(stats.variables["tke_turb"][start:end,:], 0)
-tke_visc = average(stats.variables["tke_visc"][start:end,:], 0)
-tke_pres = average(stats.variables["tke_pres"][start:end,:], 0)
-tke_diss = average(stats.variables["tke_diss"][start:end,:], 0)
-tke_buoy = average(stats.variables["tke_buoy"][start:end,:], 0)
+tke_turb = average(stats.groups["budget"].variables["tke_turb"][start:end,:], 0)
+tke_visc = average(stats.groups["budget"].variables["tke_visc"][start:end,:], 0)
+tke_pres = average(stats.groups["budget"].variables["tke_pres"][start:end,:], 0)
+tke_diss = average(stats.groups["budget"].variables["tke_diss"][start:end,:], 0)
+tke_buoy = average(stats.groups["budget"].variables["tke_buoy"][start:end,:], 0)
 tke_sum = tke_turb + tke_visc + tke_pres + tke_diss + tke_buoy
 
-b2_shear = average(stats.variables["b2_shear"][start:end,:], 0)
-b2_turb  = average(stats.variables["b2_turb" ][start:end,:], 0)
-b2_visc  = average(stats.variables["b2_visc" ][start:end,:], 0)
-b2_diss  = average(stats.variables["b2_diss" ][start:end,:], 0)
+b2_shear = average(stats.groups["budget"].variables["b2_shear"][start:end,:], 0)
+b2_turb  = average(stats.groups["budget"].variables["b2_turb" ][start:end,:], 0)
+b2_visc  = average(stats.groups["budget"].variables["b2_visc" ][start:end,:], 0)
+b2_diss  = average(stats.groups["budget"].variables["b2_diss" ][start:end,:], 0)
 b2_sum = b2_shear + b2_turb + b2_visc + b2_diss
 
-bw_shear = average(stats.variables["bw_shear"][start:end,:], 0)
-bw_turb  = average(stats.variables["bw_turb" ][start:end,:], 0)
-bw_visc  = average(stats.variables["bw_visc" ][start:end,:], 0)
-bw_buoy  = average(stats.variables["bw_buoy" ][start:end,:], 0)
-bw_rdstr = average(stats.variables["bw_rdstr"][start:end,:], 0)
-bw_diss  = average(stats.variables["bw_diss" ][start:end,:], 0)
-bw_pres  = average(stats.variables["bw_pres" ][start:end,:], 0)
+bw_shear = average(stats.groups["budget"].variables["bw_shear"][start:end,:], 0)
+bw_turb  = average(stats.groups["budget"].variables["bw_turb" ][start:end,:], 0)
+bw_visc  = average(stats.groups["budget"].variables["bw_visc" ][start:end,:], 0)
+bw_buoy  = average(stats.groups["budget"].variables["bw_buoy" ][start:end,:], 0)
+bw_rdstr = average(stats.groups["budget"].variables["bw_rdstr"][start:end,:], 0)
+bw_diss  = average(stats.groups["budget"].variables["bw_diss" ][start:end,:], 0)
+bw_pres  = average(stats.groups["budget"].variables["bw_pres" ][start:end,:], 0)
 bw_sum = bw_shear + bw_turb + bw_visc + bw_buoy + bw_rdstr + bw_diss + bw_pres
 
 
@@ -148,4 +148,4 @@ xlabel(r'$dw^\prime b^\prime /dt / B_0$')
 ylabel(r'$z/h_{enc}$')
 legend(loc=0, frameon=False)
 ylim(0,zlim)
-
+show()
