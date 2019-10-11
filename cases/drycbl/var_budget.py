@@ -3,8 +3,7 @@ import netCDF4
 
 from pylab import *
 
-#stats = netCDF4.Dataset("drycbl_default_0000000.nc", "r")
-stats = netCDF4.Dataset("oink.nc", "r")
+stats = netCDF4.Dataset("drycbl_default_0000000.nc", "r")
 
 t = stats.variables["time"][:]
 end   = t.size
