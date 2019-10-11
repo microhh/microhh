@@ -1066,6 +1066,70 @@ namespace
     
                 }
     }
+
+    /**
+     * Calculate the scalar budget terms arising from buoyancy
+     */
+    template<typename TF>
+    void calc_buoyancy_terms_scalar(
+            TF* const restrict sw_buoy,
+            const TF* const restrict s, const TF* const restrict b,
+            const TF* const restrict smean, const TF* const restrict bmean,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+    
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    sw_buoy[ijk] = interp2(s[ijk]-smean[k], s[ijk-kk]-smean[k-1]) * interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1]);
+                }
+    }
+
+    /**
+     * Calculate the scalar budget terms arising from the advection term
+     */
+    template<typename TF>
+    void calc_advection_terms_scalar(
+            TF* const restrict s2_shear, TF* const restrict s2_turb,
+            TF* const restrict sw_shear, TF* const restrict sw_turb,
+            const TF* const restrict w, const TF* const restrict s,
+            const TF* const restrict smean,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+    
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF dsdz  = (interp2(smean[k], smean[k+1]) - interp2(smean[k], smean[k-1])) * dzi[k];
+            const TF dsdzh = (smean[k] - smean[k-1]) * dzhi[k];
+    
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    s2_shear[ijk] = - TF(2.) * (s[ijk] - smean[k]) * interp2(w[ijk], w[ijk+kk]) * dsdz;
+    
+                    s2_turb[ijk]  = - ((pow(interp2(s[ijk]-smean[k], s[ijk+kk]-smean[k+1]), 2) * w[ijk+kk]) -
+                                       (pow(interp2(s[ijk]-smean[k], s[ijk-kk]-smean[k-1]), 2) * w[ijk   ])) * dzi[k];
+    
+                    sw_shear[ijk] = - pow(w[ijk], 2) * dsdzh;
+    
+                    sw_turb[ijk]  = - ((pow(interp2(w[ijk], w[ijk+kk]), 2) * (s[ijk   ]-smean[k  ]))-
+                                       (pow(interp2(w[ijk], w[ijk-kk]), 2) * (s[ijk-kk]-smean[k-1]))) * dzhi[k];
+                }
+        }
+    }
 }
 
 template<typename TF>
@@ -1201,7 +1265,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh", group_name);
         stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh", group_name);
     }
-
     */
 }
 
@@ -1512,20 +1575,47 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(w2_buoy);
         fields.release_tmp(tke_buoy);
         fields.release_tmp(uw_buoy);
-        fields.release_tmp(vw_buoy);
+        auto bw_buoy = std::move(vw_buoy);
+
+        // Buoyancy variance and flux budgets
+        calc_buoyancy_terms_scalar(
+                bw_buoy->fld.data(),
+                b->fld.data(), b->fld.data(),
+                b->fld_mean.data(), b->fld_mean.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("bw_buoy", *bw_buoy, no_offset, no_threshold);
+        fields.release_tmp(bw_buoy);
+
+        if (advec.get_switch() != Advection_type::Disabled)
+        {
+            auto b2_shear = fields.get_tmp();
+            auto b2_turb = fields.get_tmp();
+            auto bw_shear = fields.get_tmp();
+            auto bw_turb = fields.get_tmp();
+
+            calc_advection_terms_scalar(
+                    b2_shear->fld.data(), b2_turb->fld.data(),
+                    bw_shear->fld.data(), bw_turb->fld.data(),
+                    fields.mp.at("w")->fld.data(), b->fld.data(),
+                    b->fld_mean.data(),
+                    gd.dzi.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
+            stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
+            stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
+            stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
+
+            fields.release_tmp(b2_shear);
+            fields.release_tmp(b2_turb );
+            fields.release_tmp(bw_shear);
+            fields.release_tmp(bw_turb );
+        }
 
         /*
-        // Buoyancy variance and flux budgets
-        calc_buoyancy_terms_scalar(m->profs["bw_buoy"].data,
-                                   fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->data,
-                                   fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->datamean);
-
-        if (advec.get_switch() != "0")
-            calc_advection_terms_scalar(m->profs["b2_shear"].data, m->profs["b2_turb"].data,
-                                        m->profs["bw_shear"].data, m->profs["bw_turb"].data,
-                                        fields.atmp["tmp1"]->data, fields.w->data, fields.atmp["tmp1"]->datamean,
-                                        grid.dzi, grid.dzhi);
-
         if (diff.get_switch() == "2" || diff.get_switch() == "4")
             calc_diffusion_terms_scalar_DNS(m->profs["b2_visc"].data, m->profs["b2_diss"].data,
                                             m->profs["bw_visc"].data, m->profs["bw_diss"].data,

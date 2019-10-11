@@ -47,6 +47,7 @@ class Advec_2i3 : public Advec<TF>
         double get_cfl(double); ///< Get the CFL number.
 
         void get_advec_flux(Field3d<TF>&, const Field3d<TF>&);
+        Advection_type get_switch() const { return Advection_type::Advec_2i3; }
 
     private:
         using Advec<TF>::master;
