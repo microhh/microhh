@@ -477,7 +477,7 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    //We don't have to do anything for the default mask
+    // We don't have to do anything for the default mask
     if (mask_name == "default")
         return;
 
