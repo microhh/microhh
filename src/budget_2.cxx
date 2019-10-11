@@ -1219,9 +1219,35 @@ namespace
                 const int ijk_start = i + j*jj + kstart*kk;
                 const int ijk_end = i + j*jj + kend*kk;
 
-                bw_visc[ijk_start] = bw_visc[kstart+kk];
-                bw_visc[ijk_end  ] = bw_visc[kend-kk  ];
+                bw_visc[ijk_start] = bw_visc[ijk_start+kk];
+                bw_visc[ijk_end  ] = bw_visc[ijk_end  -kk];
             }
+    }
+
+    /**
+     * Calculate the scalar budget terms arising from pressure
+     */
+    template<typename TF>
+    void calc_pressure_terms_scalar(
+            TF* const restrict sw_pres, TF* const restrict sw_rdstr,
+            const TF* const restrict s, const TF* const restrict p,
+            const TF* const restrict smean, const TF* const restrict pmean,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    sw_pres[ijk] = - ((p[ijk]-pmean[k]) * (s[ijk]-smean[k]) - (p[ijk-kk]-pmean[k-1]) * (s[ijk-kk]-smean[k-1])) * dzhi[k];
+                    sw_rdstr[ijk] = interp2(p[ijk]-pmean[k], p[ijk-kk]-pmean[k-1]) * ((s[ijk]-smean[k])-(s[ijk-kk]-smean[k-1])) * dzhi[k];
+                }
     }
 }
 
@@ -1732,12 +1758,22 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             fields.release_tmp(bw_diss);
         }
 
-        /*
-        calc_pressure_terms_scalar(m->profs["bw_pres"].data,  m->profs["bw_rdstr"].data,
-                                   fields.atmp["tmp1"]->data, fields.sd.at("p")->data,
-                                   fields.atmp["tmp1"]->datamean, fields.sd.at("p")->datamean,
-                                   grid.dzi, grid.dzhi);
-        */
+        auto bw_pres = fields.get_tmp();
+        auto bw_rdstr = fields.get_tmp();
+
+        calc_pressure_terms_scalar(
+                bw_pres->fld.data(), bw_rdstr->fld.data(),
+                b->fld.data(), fields.sd.at("p")->fld.data(),
+                b->fld_mean.data(), fields.sd.at("p")->fld_mean.data(),
+                gd.dzi.data(), gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("bw_pres", *bw_pres, no_offset, no_threshold);
+        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+
+        fields.release_tmp(bw_pres);
+        fields.release_tmp(bw_rdstr);
         fields.release_tmp(b);
     }
 }
