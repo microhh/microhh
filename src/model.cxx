@@ -678,8 +678,8 @@ void Model<TF>::print_status()
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
             std::fprintf(
-                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
-                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE");
         }
         first = false;
     }
@@ -698,14 +698,13 @@ void Model<TF>::print_status()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
         TF mom  = fields->check_momentum();
         TF tke  = fields->check_tke();
-        TF mass = fields->check_mass();
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 
         if (master.get_mpiid() == 0)
         {
-            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
-                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke);
             std::fflush(dnsout);
         }
 
