@@ -110,7 +110,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
     try
     {
         grid      = std::make_shared<Grid<TF>>(master, *input);
-        fields    = std::make_shared<Fields<TF>>(master, *grid, *input, sim_mode);
+        fields    = std::make_shared<Fields<TF>>(master, *grid, *input);
         timeloop  = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
         fft       = std::make_shared<FFT<TF>>(master, *grid);
 
@@ -165,7 +165,7 @@ void Model<TF>::init()
     master.init(*input);
 
     grid->init();
-    fields->init(*dump, *cross);
+    fields->init(*input, *dump, *cross, sim_mode);
 
     fft->init();
 

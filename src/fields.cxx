@@ -231,7 +231,7 @@ namespace
 }
 
 template<typename TF>
-Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input, const Sim_mode sim_mode) :
+Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin),
     grid(gridin),
     field3d_io(master, grid),
@@ -272,19 +272,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input, const Sim_m
 
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
-
-    // Remove the data from the input that is not used outside of Init mode.
-    if (sim_mode != Sim_mode::Init)
-    {
-        input.flag_as_used("fields", "rndamp", "");
-        input.flag_as_used("fields", "rndexp", "");
-        input.flag_as_used("fields", "rndseed", "");
-        input.flag_as_used("fields", "rndz", "");
-
-        input.flag_as_used("fields", "vortexnpair", "");
-        input.flag_as_used("fields", "vortexamp", "");
-        input.flag_as_used("fields", "vortexaxis", "" );
-    }
 }
 
 template<typename TF>
@@ -293,7 +280,7 @@ Fields<TF>::~Fields()
 }
 
 template<typename TF>
-void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
+void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_mode sim_mode)
 {
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
@@ -351,8 +338,20 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     // Set up output classes
     create_dump(dump);
     create_cross(cross);
-}
 
+    // Flag the data from the input that is not used outside of Init mode.
+    if (sim_mode != Sim_mode::Init)
+    {
+        input.flag_as_used("fields", "rndamp", "");
+        input.flag_as_used("fields", "rndexp", "");
+        input.flag_as_used("fields", "rndseed", "");
+        input.flag_as_used("fields", "rndz", "");
+
+        input.flag_as_used("fields", "vortexnpair", "");
+        input.flag_as_used("fields", "vortexamp", "");
+        input.flag_as_used("fields", "vortexaxis", "" );
+    }
+}
 
 #ifndef USECUDA
 template<typename TF>

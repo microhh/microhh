@@ -56,10 +56,10 @@ template<typename TF>
 class Fields
 {
     public:
-        Fields(Master&, Grid<TF>&, Input&, const Sim_mode); ///< Constructor of the fields class.
+        Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
-        void init(Dump<TF>&,Cross<TF>&);  ///< Initialization of the field arrays.
+        void init(Input&, Dump<TF>&, Cross<TF>&, const Sim_mode);  ///< Initialization of the field arrays.
         void create(Input&, Netcdf_file&); ///< Initialization of the fields (random perturbations, vortices).
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
