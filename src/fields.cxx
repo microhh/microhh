@@ -344,8 +344,17 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     {
         input.flag_as_used("fields", "rndamp", "");
         input.flag_as_used("fields", "rndexp", "");
+        input.flag_as_used("fields", "rndz"  , "");
+
+        // Also, flag the subspecified items.
+        for (const auto& a : ap)
+        {
+            input.flag_as_used("fields", "rndamp", a.first);
+            input.flag_as_used("fields", "rndexp", a.first);
+            input.flag_as_used("fields", "rndz"  , a.first);
+        }
+
         input.flag_as_used("fields", "rndseed", "");
-        input.flag_as_used("fields", "rndz", "");
 
         input.flag_as_used("fields", "vortexnpair", "");
         input.flag_as_used("fields", "vortexamp", "");
