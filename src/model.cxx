@@ -119,7 +119,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
         pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
-        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
+        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 

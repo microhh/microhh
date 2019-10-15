@@ -53,14 +53,15 @@ const std::string& Thermo<TF>::get_switch() const
 }
 
 template<typename TF>
-std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
+std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const Sim_mode sim_mode)
 {
     std::string swthermo = inputin.get_item<std::string>("thermo", "swthermo", "", "0");
 
     if (swthermo == "0")
         return std::make_shared<Thermo_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "dry")
-        return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin, sim_mode);
     else if (swthermo == "moist")
         return std::make_shared<Thermo_moist<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "vapor")

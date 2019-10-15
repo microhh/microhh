@@ -301,9 +301,10 @@ namespace
 }
 
 template<typename TF>
-Thermo_dry<TF>::Thermo_dry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-Thermo<TF>(masterin, gridin, fieldsin, inputin),
-boundary_cyclic(masterin, gridin)
+Thermo_dry<TF>::Thermo_dry(
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const Sim_mode sim_mode) :
+    Thermo<TF>(masterin, gridin, fieldsin, inputin),
+    boundary_cyclic(masterin, gridin)
 {
     auto& gd = grid.get_grid_data();
 
@@ -333,7 +334,11 @@ boundary_cyclic(masterin, gridin)
 
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
-
+    // Flag the options that are not read in init mode.
+    if (bs.swbasestate == Basestate_type::boussinesq && sim_mode == Sim_mode::Init)
+        inputin.flag_as_used("thermo", "thref0", "");
+    else if (bs.swbasestate == Basestate_type::anelastic && sim_mode == Sim_mode::Init)
+        inputin.flag_as_used("thermo", "pbot", "");
 }
 
 template<typename TF>
@@ -358,10 +363,10 @@ template<typename TF>
 void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
+
     /* Setup base state:
        For anelastic setup, calculate reference density and temperature from input sounding
        For boussinesq, reference density and temperature are fixed */
-
     if (bs.swbasestate == Basestate_type::anelastic)
     {
         bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
@@ -372,6 +377,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
         Netcdf_group& group_nc = input_nc.get_group("init");
         group_nc.get_variable(bs.thref, "th", start, count);
+
         // Shift the vector to take into account the ghost cells;
         std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());
 

@@ -36,6 +36,8 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
 
+enum class Sim_mode;
+
 /**
  * Base class for the thermo scheme. This class is abstract and only
  * derived classes can be instantiated. Derived classes are
@@ -47,7 +49,7 @@ class Thermo
     public:
         Thermo(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Thermo();
-        static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode);
         const std::string& get_switch() const;
 
         // Below are the functions that the derived class has to implement.
