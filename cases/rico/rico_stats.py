@@ -3,7 +3,7 @@ import matplotlib.pyplot as pl
 
 pl.close('all')
 
-f = xr.open_dataset('rico.default.0000000.nc')
+f = xr.open_dataset('cases/rico/rico_default_0000000.nc', decode_times=False) # !! CHANGED FROM rico.default.0000000.nc
 
 # Colors in plot
 c_sedi = 'C0'    # Sedimentation
