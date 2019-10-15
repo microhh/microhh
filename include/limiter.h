@@ -48,6 +48,9 @@ class Limiter
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        std::vector<std::string> field_list;
+        std::vector<std::string> limit_list;
+
+        const std::string tend_name = "limit";
+        const std::string tend_longname = "Limiter";
 };
 #endif
