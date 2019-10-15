@@ -117,6 +117,5 @@ class Model
         void clear_gpu();
 
         void add_statistics_masks();
-
 };
 #endif

@@ -231,7 +231,7 @@ namespace
 }
 
 template<typename TF>
-Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
+Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
     field3d_io(master, grid),
@@ -273,20 +273,18 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
 
-    // Remove the data from the input that is not used in run mode, to avoid warnings.
-    /*
-    if (master.mode == "run")
+    // Remove the data from the input that is not used outside of Init mode.
+    if (sim_mode != Sim_mode::Init)
     {
-        input.flag_as_used("fields", "rndamp");
-        input.flag_as_used("fields", "rndexp");
-        input.flag_as_used("fields", "rndseed");
-        input.flag_as_used("fields", "rndz");
+        input.flag_as_used("fields", "rndamp", "");
+        input.flag_as_used("fields", "rndexp", "");
+        input.flag_as_used("fields", "rndseed", "");
+        input.flag_as_used("fields", "rndz", "");
 
-        input.flag_as_used("fields", "vortexnpair");
-        input.flag_as_used("fields", "vortexamp"  );
-        input.flag_as_used("fields", "vortexaxis" );
+        input.flag_as_used("fields", "vortexnpair", "");
+        input.flag_as_used("fields", "vortexamp", "");
+        input.flag_as_used("fields", "vortexaxis", "" );
     }
-    */
 }
 
 template<typename TF>

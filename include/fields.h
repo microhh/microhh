@@ -56,7 +56,7 @@ template<typename TF>
 class Fields
 {
     public:
-        Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
+        Fields(Master&, Grid<TF>&, Input&, const Sim_mode); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
         void init(Dump<TF>&,Cross<TF>&);  ///< Initialization of the field arrays.
