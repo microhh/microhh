@@ -32,7 +32,10 @@
 template <typename TF>
 void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 {
-    throw std::runtime_error("Limiter not implemented on GPU yet");
+    if (limit_list.empty())
+        return;
+    else
+        throw std::runtime_error("Limiter not implemented on GPU yet");
 }
 #endif
 
