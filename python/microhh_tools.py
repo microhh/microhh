@@ -593,7 +593,7 @@ def generator_restart(cases):
     return cases_out
 
 
-def primeFactors(n):
+def prime_factors(n):
     import math
 
     result = []
@@ -625,7 +625,7 @@ def generator_scaling(cases, procs, type='strong', dir='y'):
             elif dir == 'y':
                 option = {'npy': proc}
             elif dir == 'xy':
-                primes = primeFactors(proc)
+                primes = prime_factors(proc)
                 npy = 1
                 npx = 1
                 for i in range(0, len(primes), 2):
@@ -653,7 +653,7 @@ def generator_parameter_change(cases, **kwargs):
             key, value = list(kwargs.items())[0]
             for val in value:
                 new_case = copy.deepcopy(case)
-                new_case.options.update({key: val})
+                new_case.options.update({key : val})
                 new_case.rundir += (key + str(val)).replace('.', '')
 
                 cases_out.append(new_case)
@@ -679,17 +679,17 @@ class Case:
             files=[],
             keep=False):
 
-        self.name = name        # Case name
-        self.options = options     # Override existing namelist options
+        self.name = name       # Case name
+        self.options = options # Override existing namelist options
         self.pre = pre         # List of pre-processing python scripts
-        self.post = post        # List of post-processing python scripts
-        self.phases = phases      # List of the run phases we have to go through
-        self.casedir = casedir     # Directory of the case; self.name by default
-        self.rundir = rundir      # Relative run directory
-        self.files = files       # List of files necessary to run the case
-        self.success = None        # Whether the entire case was run succesfully or not
-        self.time = None        # Duration of the last phase (usually run)
-        self.keep = keep        # Whether to keep the results of succefull simulations afterwards
+        self.post = post       # List of post-processing python scripts
+        self.phases = phases   # List of the run phases we have to go through
+        self.casedir = casedir # Directory of the case; self.name by default
+        self.rundir = rundir   # Relative run directory
+        self.files = files     # List of files necessary to run the case
+        self.success = None    # Whether the entire case was run succesfully or not
+        self.time = None       # Duration of the last phase (usually run)
+        self.keep = keep       # Whether to keep the results of succefull simulations afterwards
 
         # By default; run {name}_input.py in preprocessing phase
         self.pre = pre if pre else {'{}_input.py'.format(name): None}
