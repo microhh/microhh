@@ -674,13 +674,22 @@ def generator_parameter_permutations(base_case, lists):
     lists_permutations = list(itertools.product(*lists))
 
     for lp in lists_permutations:
-        print("CASE")
         case = copy.deepcopy(base_case)
-        list_of_dicts = list(lp)
-        for ld in list_of_dicts:
-            for group, pair in ld.items():
+
+        # Construct the directory name from tuple names.
+        name = ''
+        for name_dict in lp:
+            name += name_dict[0] + '_'
+        name = name[:-1]
+
+        # Unpack all dictonaries and construct a set of tuples.
+        options = []
+        for name_dict in lp:
+            for group, pair in name_dict[1].items():
                 for item, value in pair.items():
-                    print(group, item, value)
+                    options.append((group, item, value))
+
+        case.options = options
 
         cases_out.append(case)
 
