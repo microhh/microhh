@@ -852,7 +852,7 @@ namespace
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z + kstart;
-        TF cfl_max = TF(0.);
+        TF cflmax = TF(0.);
 
         
         constexpr TF V_Tmin = TF(0.1);
@@ -903,10 +903,10 @@ namespace
             {
                 const int ijk = i + j*jj + k*kk;
                 const TF cfl = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
-                cfl_max = max(cfl, cfl_max);
+                cflmax = max(cfl, cflmax);
             }
 
-        return cfl_max;
+        return cflmax;
     }
 */
 
@@ -1015,7 +1015,7 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
 
     N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
@@ -1077,7 +1077,7 @@ void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<T
 
 // must create the respective kernels.
 
-#ifdef USECUDA // why not ifdef in cxx???
+#ifdef USECUDA 
 template<typename TF>  
 void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
 {
@@ -1187,35 +1187,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 }
 #endif
 
-
-template<typename TF>
-void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
-{
-    // Time series
-    const TF no_offset = 0.;
-    stats.calc_stats_2d("rr", rr_bot, no_offset);
-    stats.calc_stats_2d("rs", rs_bot, no_offset);
-    stats.calc_stats_2d("rg", rg_bot, no_offset);
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
-{
-    if (cross.get_switch())
-    {
-        for (auto& it : crosslist)
-        {
-            if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
-
-            if (it == "rs_bot")
-                cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
-
-            if (it == "rg_bot")
-                cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
-        }
-    }
-}
 
 
 #ifdef USECUDA
@@ -1392,8 +1363,8 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
 
     // Prevent zero division.
     cfl = fmax(cfl, 1.e-5);
-
-    return idt * this->cfl_max / cfl;
+    const unsigned long idt_lim = idt * cflmax / cfl;
+    return idt_lim;
 }
 #endif
 

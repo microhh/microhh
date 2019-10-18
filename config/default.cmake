@@ -1,7 +1,10 @@
 # Ubuntu 18.04
 
 set(USER_CXX_FLAGS "-g -std=c++14")
-set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native -DNDEBUG -Wno-unused-result")
+#set(USER_CXX_FLAGS_RELEASE "-O2 -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -ftree-loop-vectorize -ftree-loop-distribution -ftree-loop-distribute-patterns\
+# -floop-interchange -floop-unroll-and-jam -fsplit-paths -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre -fpeel-loops -fipa-cp-clone \
+#-ffast-math -mtune=native -march=native -DNDEBUG -Wno-unused-result")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -fvect-cost-model=cheap -ffast-math -mtune=native -march=native -DNDEBUG -Wno-unused-result")
 set(USER_CXX_FLAGS_DEBUG "-O0 -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/include")
@@ -19,17 +22,16 @@ if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
   set(CUDALIBS "-rdynamic /usr/local/cuda/lib64/libcufft.so")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-  set(USER_CUDA_NVCC_FLAGS "-arch=sm_70")
-  list(APPEND CUDA_NVCC_FLAGS "-std=c++14")
+  set(USER_CUDA_NVCC_FLAGS "-arch=sm_70 -std=c++14 -ccbin /usr/bin/g++")
   if(CMAKE_BUILD_TYPE=DEBUG)
-    list(APPEND CUDA_NVCC_FLAGS "-G")
+    list(APPEND USER_CUDA_NVCC_FLAGS " -G")
   else()
-    
-  endif()  
+
+  endif()
 endif()
 if(USEMPI)
   set(ENV{CC}  mpicc ) # C compiler for parallel build
-  set(ENV{CXX} mpicxx) # C++ compiler for parallel build
+  set(ENV{CXX} mpic++) # C++ compiler for parallel build
 else()
   set(ENV{CC}  gcc) # C compiler for serial build
   set(ENV{CXX} g++) # C++ compiler for serial build

@@ -163,7 +163,6 @@ template<typename TF>
 void Model<TF>::init()
 {
     master.init(*input);
-
     grid->init();
     fields->init(*dump, *cross);
 
@@ -266,6 +265,7 @@ void Model<TF>::save()
 template<typename TF>
 void Model<TF>::exec()
 {
+
     if (sim_mode == Sim_mode::Init)
         return;
 
@@ -274,23 +274,31 @@ void Model<TF>::exec()
     #endif
 
     master.print_message("Starting time integration\n");
+std::cout << "a\n";
 
     // Update the time dependent parameters.
     boundary->update_time_dependent(*timeloop);
+std::cout << "a\n";
     thermo  ->update_time_dependent(*timeloop);
+std::cout << "a\n";
     force   ->update_time_dependent(*timeloop);
+std::cout << "a\n";
 
     // Set the boundary conditions.
     boundary->exec(*thermo);
+std::cout << "A\n";
 
     // Calculate the field means, in case needed.
     fields->exec();
+std::cout << "a\n";
 
     // Get the viscosity to be used in diffusion.
     diff->exec_viscosity(*thermo);
+std::cout << "a\n";
 
     // Set the time step.
     set_time_step();
+std::cout << "B\n";
 
     // Print the initial status information.
     print_status();
@@ -307,6 +315,7 @@ void Model<TF>::exec()
         const int nthreads_out=1;
         #endif
     #endif
+std::cout << "a\n";
 
     #pragma omp parallel num_threads(nthreads_out)
     {
@@ -317,6 +326,7 @@ void Model<TF>::exec()
             {
                 // Determine the time step.
                 set_time_step();
+std::cout << "A\n";
 
                 // Calculate stat masks and begin tendency calculation, if necessary
                 setup_stats();
@@ -325,36 +335,46 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 advec->exec(*stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+std::cout << "a\n";
 
                 // Calculate the diffusion tendency.
                 diff->exec(*stats);
+std::cout << "a\n";
 
                 // Calculate the thermodynamics and the buoyancy tendency.
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
+std::cout << "b\n";
 
                 // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_dt(), *stats);
+                // microphys->exec(*thermo, timeloop->get_dt(), *stats);
+std::cout << "a\n";
 
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
+std::cout << "a\n";
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
+std::cout << "a\n";
 
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
+std::cout << "a\n";
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
+std::cout << "a\n";
 
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+std::cout << "a\n";
 
                 //Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
                     stats->calc_tend(*it.second,"total");
+std::cout << "c\n";
 
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
@@ -440,6 +460,7 @@ void Model<TF>::exec()
                     timeloop->load(timeloop->get_iotime());
                     fields  ->load(timeloop->get_iotime());
                 }
+std::cout << "a\n";
 
                 // Update the time dependent parameters.
                 boundary->update_time_dependent(*timeloop);
@@ -454,6 +475,7 @@ void Model<TF>::exec()
 
                 // Get the viscosity to be used in diffusion.
                 diff->exec_viscosity(*thermo);
+std::cout << "a\n";
 
                 // Write status information to disk.
                 print_status();
@@ -692,15 +714,24 @@ void Model<TF>::print_status()
         end     = master.get_wall_clock_time();
         cputime = end - start;
         start   = end;
+std::cout << "d\n";
 
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+std::cout << "d\n";
         const TF div = pres->check_divergence();
+std::cout << "d\n";
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+std::cout << "d\n";
         TF mom  = fields->check_momentum();
+std::cout << "d\n";
         TF tke  = fields->check_tke();
+std::cout << "r\n";
         TF mass = fields->check_mass();
+std::cout << "d\n";
         TF cfl  = advec->get_cfl(timeloop->get_dt());
+std::cout << "d\n";
         TF dn   = diff->get_dn(timeloop->get_dt());
+std::cout << "D\n";
 
         if (master.get_mpiid() == 0)
         {
