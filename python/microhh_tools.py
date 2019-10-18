@@ -13,6 +13,7 @@ import timeit
 import csv
 import copy
 import datetime
+import itertools
 
 # -------------------------
 # General help functions
@@ -93,20 +94,22 @@ class Read_namelist:
         return 'Available groups:\n{}'.format(', '.join(self.groups.keys()))
 
 
-def replace_namelist_value(variable, new_value, namelist_file=None):
+def replace_namelist_value(variable, new_value, group=None, namelist_file=None):
     """ Replace a variables value in an existing namelist """
     if namelist_file is None:
         namelist_file = _find_namelist_file()
-
     with open(namelist_file, "r") as source:
         lines = source.readlines()
     with open(namelist_file, "w") as source:
+        current_group = None
         for line in lines:
-            source.write(
-                re.sub(
-                    r'({}).*'.format(variable),
-                    r'\1={}'.format(new_value),
-                    line))
+            lstrip = line.strip()
+            if len(lstrip)>0 and lstrip[0] == '[' and lstrip[-1] == ']':
+                current_group = lstrip[1:-1]
+            if group is None or group==current_group:
+                source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
+            else:
+                source.write(line)
 
 
 def determine_mode():
@@ -513,8 +516,7 @@ def test_cases(cases, executable, outputfile=''):
             # Update .ini file for testing
             for variable, value in case.options.items():
                 replace_namelist_value(
-                    variable, value, '{0}.ini'.format(
-                        case.name))
+                    variable, value, '{0}.ini'.format(case.name))
             mode, ntasks = determine_mode()
 
             # Create input data, and do other pre-processing
@@ -664,6 +666,27 @@ def generator_parameter_change(cases, **kwargs):
     return cases_out
 
 
+def generator_parameter_permutations(base_case, lists):
+    """ Function to permutate lists of dictionaries to generate cases to run """
+    cases_out = []
+
+    # Create permutation of all lists. Each item contains 1 value of each list.
+    lists_permutations = list(itertools.product(*lists))
+
+    for lp in lists_permutations:
+        print("CASE")
+        case = copy.deepcopy(base_case)
+        list_of_dicts = list(lp)
+        for ld in list_of_dicts:
+            for group, pair in ld.items():
+                for item, value in pair.items():
+                    print(group, item, value)
+
+        cases_out.append(case)
+
+    return cases_out
+
+
 class Case:
     def __init__(
             self,
@@ -671,16 +694,14 @@ class Case:
             options={},
             pre={},
             post={},
-            phases=[
-                'init',
-                'run'],
+            phases=['init', 'run'],
             casedir='',
             rundir='',
             files=[],
             keep=False):
 
         self.name = name       # Case name
-        self.options = options # Override existing namelist options
+        self.options = options # List of options to override
         self.pre = pre         # List of pre-processing python scripts
         self.post = post       # List of post-processing python scripts
         self.phases = phases   # List of the run phases we have to go through
