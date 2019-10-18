@@ -94,8 +94,8 @@ class Read_namelist:
         return 'Available groups:\n{}'.format(', '.join(self.groups.keys()))
 
 
-def replace_namelist_value(variable, new_value, group=None, namelist_file=None):
-    """ Replace a variables value in an existing namelist """
+def replace_namelist_value(item, new_value, group=None, namelist_file=None):
+    """ Replace a item value in an existing namelist """
     if namelist_file is None:
         namelist_file = _find_namelist_file()
     with open(namelist_file, "r") as source:
@@ -107,7 +107,7 @@ def replace_namelist_value(variable, new_value, group=None, namelist_file=None):
             if len(lstrip)>0 and lstrip[0] == '[' and lstrip[-1] == ']':
                 current_group = lstrip[1:-1]
             if group is None or group==current_group:
-                source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
+                source.write(re.sub(r'({}).*'.format(item), r'\1={}'.format(new_value), line))
             else:
                 source.write(line)
 
@@ -514,9 +514,9 @@ def test_cases(cases, executable, outputfile=''):
 
         try:
             # Update .ini file for testing
-            for variable, value in case.options.items():
+            for group, item, value in case.options:
                 replace_namelist_value(
-                    variable, value, '{0}.ini'.format(case.name))
+                    item, value, group=group, namelist_file='{0}.ini'.format(case.name))
             mode, ntasks = determine_mode()
 
             # Create input data, and do other pre-processing
@@ -680,7 +680,7 @@ def generator_parameter_permutations(base_case, lists):
         name = ''
         for name_dict in lp:
             name += name_dict[0] + '_'
-        name = name[:-1]
+        case.rundir = name[:-1]
 
         # Unpack all dictonaries and construct a set of tuples.
         options = []
