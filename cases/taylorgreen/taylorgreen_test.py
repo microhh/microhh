@@ -7,27 +7,24 @@ sys.path.append('../../python/')
 import microhh_tools as mht
 
 list_resolution = [
-        { 'grid' : { 'itot' :  16, 'ktot' :   8 } },
-        { 'grid' : { 'itot' :  32, 'ktot' :  16 } },
-        { 'grid' : { 'itot' :  64, 'ktot' :  32 } },
-        { 'grid' : { 'itot' : 128, 'ktot' :  64 } },
-        { 'grid' : { 'itot' : 256, 'ktot' : 128 } } ]
+        ('itot016', { 'grid': { 'itot':  16, 'ktot':   8 } }),
+        ('itot032', { 'grid': { 'itot':  32, 'ktot':  16 } }),
+        ('itot064', { 'grid': { 'itot':  64, 'ktot':  32 } }),
+        ('itot128', { 'grid': { 'itot': 128, 'ktot':  64 } }),
+        ('itot256', { 'grid': { 'itot': 256, 'ktot': 128 } }) ]
 
 list_order = [
-        { 'grid' : { 'swspatialorder' : 2 }, 'advec' : { 'swadvec' : '2'  } },
-        { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4'  } },
-        { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4m' } } ]
+        ('swadvec2' , { 'grid' : { 'swspatialorder' : 2 }, 'advec' : { 'swadvec' : '2'  } }),
+        ('swadvec4' , { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4'  } }),
+        ('swadvec4m', { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4m' } }) ]
 
 def run_test(executable='microhh', float_type='dp', casedir='.'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ list_resolution, list_order ])
+    mht.test_cases(cases, executable, outputfile='taylorgreen.csv')
 
-    for case in cases:
-        print(case)
-    # mht.test_cases(cases, executable, outputfile='taylorgreen.csv')
-
-if __name__ == "__main__":
-    if len(sys.argv)>1:
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
         run_test(sys.argv[1:])
     else:
         run_test()
