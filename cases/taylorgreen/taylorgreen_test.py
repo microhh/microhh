@@ -14,9 +14,9 @@ list_resolution = [
         ('itot256', { 'grid': { 'itot': 256, 'ktot': 128 } }) ]
 
 list_order = [
-        ('swadvec2' , { 'grid' : { 'swspatialorder' : 2 }, 'advec' : { 'swadvec' : '2'  } }),
-        ('swadvec4' , { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4'  } }),
-        ('swadvec4m', { 'grid' : { 'swspatialorder' : 4 }, 'advec' : { 'swadvec' : '4m' } }) ]
+        ('swadvec2' , { 'grid': { 'swspatialorder': 2 }, 'advec' : { 'swadvec': '2'  } }),
+        ('swadvec4' , { 'grid': { 'swspatialorder': 4 }, 'advec' : { 'swadvec': '4'  } }),
+        ('swadvec4m', { 'grid': { 'swspatialorder': 4 }, 'advec' : { 'swadvec': '4m' } }) ]
 
 def run_test(executable='microhh', float_type='dp', casedir='.'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
