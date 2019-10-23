@@ -670,8 +670,16 @@ def generator_parameter_permutations(base_case, lists):
     """ Function to permutate lists of dictionaries to generate cases to run """
     cases_out = []
 
+    # Convert the dictionaries into tuples to enable to permutate the list.
+    tuple_lists = []
+    for l in lists:
+        tuple_list = []
+        for name, name_dict in l.items():
+            tuple_list.append((name, name_dict))
+        tuple_lists.append(tuple_list)
+
     # Create permutation of all lists. Each item contains 1 value of each list.
-    lists_permutations = list(itertools.product(*lists))
+    lists_permutations = list(itertools.product(*tuple_lists))
 
     for lp in lists_permutations:
         case = copy.deepcopy(base_case)
