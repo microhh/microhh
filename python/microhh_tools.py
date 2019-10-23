@@ -504,7 +504,7 @@ def test_cases(cases, executable, outputfile=''):
             except BaseException:
                 print_warning(
                     case.name +
-                    ': Cannot find {} for copying,  skipping case!'.format(
+                    ': Cannot find {} for copying, skipping case!'.format(
                         casedir +
                         fname))
                 os.chdir(rootdir)
@@ -705,7 +705,7 @@ class Case:
             post={},
             phases=['init', 'run'],
             casedir='',
-            rundir='',
+            rundir='default_run',
             files=[],
             keep=False):
 
@@ -715,7 +715,7 @@ class Case:
         self.post = post       # List of post-processing python scripts
         self.phases = phases   # List of the run phases we have to go through
         self.casedir = casedir # Directory of the case; self.name by default
-        self.rundir = rundir   # Relative run directory
+        self.rundir = rundir   # Relative run directory, defaults to `default_run`
         self.files = files     # List of files necessary to run the case
         self.success = None    # Whether the entire case was run succesfully or not
         self.time = None       # Duration of the last phase (usually run)
