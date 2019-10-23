@@ -28,4 +28,3 @@ if __name__ == '__main__':
         run_test(sys.argv[1:])
     else:
         run_test()
-

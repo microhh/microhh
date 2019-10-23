@@ -470,6 +470,9 @@ def execute(command):
 
 
 def test_cases(cases, executable, outputfile=''):
+    """
+    Function that iterates over a list of cases and runs all of them
+    """
 
     if not os.path.exists(executable):
         raise Exception(
@@ -527,17 +530,19 @@ def test_cases(cases, executable, outputfile=''):
                 if mode == 'serial':
                     execute('{} {} {}'.format(executable, phase, case.name))
                 elif mode == 'parallel':
-                    execute('mpirun -n {} {} {} {}'.format(ntasks,
-                                                           executable, phase, case.name))
+                    execute('mpirun -n {} {} {} {}'.format(
+                        ntasks, executable, phase, case.name))
                 case.time = timeit.default_timer() - case.time
 
             # Run the post-processing steps
             run_scripts(case.post)
             case.success = True
+
         except Exception as e:
             print(str(e))
             print_warning('Case Failed!')
             case.success = False
+
         finally:
             # Go back to root of all cases
             os.chdir(rootdir)
@@ -667,7 +672,9 @@ def generator_parameter_change(cases, **kwargs):
 
 
 def generator_parameter_permutations(base_case, lists):
-    """ Function to permutate lists of dictionaries to generate cases to run """
+    """
+    Function to permutate lists of dictionaries to generate cases to run
+    """
     cases_out = []
 
     # Convert the dictionaries into tuples to enable to permutate the list.
@@ -705,6 +712,9 @@ def generator_parameter_permutations(base_case, lists):
 
 
 class Case:
+    """
+    Class that contains a case to run with the required runtime settings
+    """
     def __init__(
             self,
             name,
