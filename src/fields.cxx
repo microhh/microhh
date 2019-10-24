@@ -272,21 +272,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
-
-    // Remove the data from the input that is not used in run mode, to avoid warnings.
-    /*
-    if (master.mode == "run")
-    {
-        input.flag_as_used("fields", "rndamp");
-        input.flag_as_used("fields", "rndexp");
-        input.flag_as_used("fields", "rndseed");
-        input.flag_as_used("fields", "rndz");
-
-        input.flag_as_used("fields", "vortexnpair");
-        input.flag_as_used("fields", "vortexamp"  );
-        input.flag_as_used("fields", "vortexaxis" );
-    }
-    */
 }
 
 template<typename TF>
@@ -295,7 +280,7 @@ Fields<TF>::~Fields()
 }
 
 template<typename TF>
-void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
+void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_mode sim_mode)
 {
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
@@ -353,8 +338,29 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     // Set up output classes
     create_dump(dump);
     create_cross(cross);
-}
 
+    // Flag the data from the input that is not used outside of Init mode.
+    if (sim_mode != Sim_mode::Init)
+    {
+        input.flag_as_used("fields", "rndamp", "");
+        input.flag_as_used("fields", "rndexp", "");
+        input.flag_as_used("fields", "rndz"  , "");
+
+        // Also, flag the subspecified items.
+        for (const auto& a : ap)
+        {
+            input.flag_as_used("fields", "rndamp", a.first);
+            input.flag_as_used("fields", "rndexp", a.first);
+            input.flag_as_used("fields", "rndz"  , a.first);
+        }
+
+        input.flag_as_used("fields", "rndseed", "");
+
+        input.flag_as_used("fields", "vortexnpair", "");
+        input.flag_as_used("fields", "vortexamp", "");
+        input.flag_as_used("fields", "vortexaxis", "" );
+    }
+}
 
 #ifndef USECUDA
 template<typename TF>
@@ -477,7 +483,7 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    //We don't have to do anything for the default mask
+    // We don't have to do anything for the default mask
     if (mask_name == "default")
         return;
 

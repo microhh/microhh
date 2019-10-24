@@ -44,6 +44,7 @@
 #include "radiation.h"
 #include "microphys.h"
 #include "decay.h"
+#include "limiter.h"
 #include "stats.h"
 #include "budget.h"
 #include "column.h"
@@ -109,23 +110,25 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid      = std::make_shared<Grid<TF>>(master, *input);
-        fields    = std::make_shared<Fields<TF>>(master, *grid, *input);
+        grid      = std::make_shared<Grid<TF>>    (master, *input);
+        fields    = std::make_shared<Fields<TF>>  (master, *grid, *input);
         timeloop  = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>(master, *grid);
+        fft       = std::make_shared<FFT<TF>>     (master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
 
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
         pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
-        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
+        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer<TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay <TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+
         stats     = std::make_shared<Stats <TF>>(master, *grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
         dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
@@ -164,7 +167,7 @@ void Model<TF>::init()
 {
     master.init(*input);
     grid->init();
-    fields->init(*dump, *cross);
+    fields->init(*input, *dump, *cross, sim_mode);
 
     fft->init();
 
@@ -236,6 +239,7 @@ void Model<TF>::load()
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
+    limiter->create(*stats);
 
     cross->create(); // Cross needs to be called at the end!
 
@@ -346,15 +350,17 @@ void Model<TF>::exec()
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
-
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
-                //Calculate the total tendency statistics, if necessary
+                // Apply the limiter as the last tendency.
+                limiter->exec(timeloop->get_sub_time_step(), *stats);
+
+                // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
-                    stats->calc_tend(*it.second,"total");
+                    stats->calc_tend(*it.second, "total");
 
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
@@ -678,8 +684,8 @@ void Model<TF>::print_status()
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
             std::fprintf(
-                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
-                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE");
         }
         first = false;
     }
@@ -698,14 +704,13 @@ void Model<TF>::print_status()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
         TF mom  = fields->check_momentum();
         TF tke  = fields->check_tke();
-        TF mass = fields->check_mass();
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 
         if (master.get_mpiid() == 0)
         {
-            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
-                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke);
             std::fflush(dnsout);
         }
 

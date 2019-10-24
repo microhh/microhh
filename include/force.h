@@ -45,10 +45,10 @@ template<typename> class Thermo;
  * assigned to all scalars.
  */
 
-enum class Large_scale_pressure_type {disabled, fixed_flux, geo_wind};
-enum class Large_scale_tendency_type {disabled, enabled};
-enum class Large_scale_subsidence_type {disabled, enabled};
-enum class Nudging_type {disabled, enabled};
+enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind};
+enum class Large_scale_tendency_type {Disabled, Enabled};
+enum class Large_scale_subsidence_type {Disabled, Enabled};
+enum class Nudging_type {Disabled, Enabled};
 
 template<typename TF>
 class Force
@@ -78,8 +78,8 @@ class Force
         std::map<std::string, TF*> nudgeprofs_g; ///< Map of nudging profiles stored by its name.
 
         // Accessor functions
-        //std::string get_switch_lspres()      { return swlspres; }
-        //TF      get_coriolis_parameter() { return fc;       }
+        Large_scale_pressure_type get_switch_lspres() { return swlspres; }
+        TF get_coriolis_parameter() const { return fc; }
 
 
     private:

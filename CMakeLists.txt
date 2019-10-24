@@ -150,7 +150,7 @@ if(USECUDA)
     add_definitions("-DCUDACHECKS")
     message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
   else()
-    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_RELEASE})
   endif()
 endif()
 

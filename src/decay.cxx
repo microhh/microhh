@@ -65,12 +65,13 @@ Decay<TF>::~Decay()
 template <typename TF>
 void Decay<TF>::init(Input& inputin)
 {
-    std::string type;
     for (auto& it : fields.st)
     {
-        type = inputin.get_item<std::string>("decay", "swdecay", it.first, "0");
+        const std::string type = inputin.get_item<std::string>("decay", "swdecay", it.first, "0");
         if (type == "0")
         {
+            // Cycle to avoid reading unneeded namelist options.
+            continue;
         }
         else if (type == "exponential")
         {
@@ -79,11 +80,11 @@ void Decay<TF>::init(Input& inputin)
         }
         else
             throw std::runtime_error("Invalid option for \"decay type\"");
-
-        nstd_couvreux = inputin.get_item<TF>("decay", "nstd_couvreux", "", 1.);
-
     }
 
+    // Read the setting only if map is not empty.
+    if (!dmap.empty())
+        nstd_couvreux = inputin.get_item<TF>("decay", "nstd_couvreux", "", 1.);
 }
 
 template <typename TF>

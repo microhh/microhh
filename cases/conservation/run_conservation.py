@@ -125,16 +125,24 @@ def plot(filename='results.pdf'):
         plt.legend(loc=0, frameon=False)
         pdf.savefig()
 
-executable = 'microhh'
+def main(executable='microhh', casedir='.'):
+    kwargs = {'rkorder' : [3, 4], 'dtmax' : [10, 5, 2.5, 1.25]}
+    cases = mht.generator_parameter_change([mht.Case('conservation', casedir=casedir, keep=True)], **kwargs )
 
-kwargs = {'rkorder' : [3, 4], 'dtmax' : [10, 5, 2.5, 1.25]}
-cases = mht.generator_parameter_change([mht.Case('conservation', casedir='.', keep=True)], **kwargs )
+    mht.test_cases(cases, executable, outputfile='conservation.csv')
 
-mht.test_cases(cases, executable, outputfile='conservation.csv')
+    cwd = os.getcwd()
+    os.chdir(casedir)
+    plot(cwd+'conservation.pdf')
 
-plot('conservation.pdf')
+    for case in cases:
+        if case.success:
+            shutil.rmtree(case.rundir)
+    os.chdir(cwd)
 
-for case in cases:
-    if case.success:
-        shutil.rmtree(case.rundir)
 
+if __name__ == "__main__":
+    if len(sys.argv)>1:
+        main(sys.argv[1:])
+    else:
+        main()
