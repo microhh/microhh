@@ -693,7 +693,7 @@ namespace
     // Sedimentation based on Stevens and Seifert (2008)
     template<typename TF> __global__
     void sedimentation_ss08(
-            TF* const restrict qct, TF* const restrict rc_bot,
+            TF* const restrict qct,
             TF* const restrict w_qc, TF* const restrict c_qc,
             TF* const restrict slope_qc, TF* const restrict flux_qc,
             const TF* const restrict qc,
@@ -818,18 +818,6 @@ namespace
             qct[ijk] += -(flux_qc[ijk+kk] - flux_qc[ijk]) / rho[k] * dzi[k];
         }
             
-
-        // Store surface sedimentation flux
-        // Sedimentation flux is already multiplied with density (see flux div. calculation), so
-        // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
-        
-        if (i < iend && j < jend)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                rc_bot[ij] = -flux_qc[ijk];
-            }
     }
 
 
@@ -912,7 +900,7 @@ namespace
 
 // we create a kernel that calculates the velocity.
     template<typename TF> __global__
-    void calc_velocity_NEW(TF* const __restrict__ w_qc,
+    void calc_velocity_g(TF* const __restrict__ w_qc,
                          const TF* const __restrict__ qc, 
                          const TF* const __restrict__ rho,
                          const double dt,
@@ -986,7 +974,7 @@ namespace
 
     // we create a kernel that calculates the cfl val
     template<typename TF> __global__
-    void calc_cfl_NEW(TF* const __restrict__ cfl, const TF* const __restrict__ w,
+    void calc_cfl_g(TF* const __restrict__ cfl, const TF* const __restrict__ w,
                     const TF* const __restrict__ dzi, const TF dt,
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend,
@@ -1006,75 +994,6 @@ namespace
     }
 }
 
-template<typename TF>
-Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Microphys<TF>(masterin, gridin, fieldsin, inputin)
-{
-    auto& gd = grid.get_grid_data();
-    swmicrophys = Microphys_type::Nsw6;
-
-    // Read microphysics switches and settings
-    // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
-
-    N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
-
-    // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", gd.sloc);
-    fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", gd.sloc);
-    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", gd.sloc);
-
-    // Load the viscosity for both fields.
-    fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
-    fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
-    fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
-}           
-
-template<typename TF>
-Microphys_nsw6<TF>::~Microphys_nsw6()
-{
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::init()
-{
-    auto& gd = grid.get_grid_data();
-
-    rr_bot.resize(gd.ijcells);
-    rs_bot.resize(gd.ijcells);
-    rg_bot.resize(gd.ijcells);
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
-{
-    const std::string group_name = "thermo";
-
-    // Add variables to the statistics
-    if (stats.get_switch())
-    {
-        // Time series
-        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
-        stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
-
-        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
-    }
-
-    // Create cross sections
-    // 1. Variables that this class can calculate/provide:
-    const std::vector<std::string> allowed_crossvars = {"rr_bot", "rs_bot", "rg_bot"};
-
-    // 2. Cross-reference with the variables requested in the .ini file:
-    crosslist = cross.get_enabled_variables(allowed_crossvars);
-}
-
-
-
 // must create the respective kernels.
 
 #ifdef USECUDA 
@@ -1091,25 +1010,24 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     dim3 gridGPU (gridi, gridj, gd.kmax+1);
     dim3 blockGPU(blocki, blockj, 1);
     
-    auto ql = fields.get_tmp();
-    auto qi = fields.get_tmp();
+    auto ql = fields.get_tmp_g();
+    auto qi = fields.get_tmp_g();
 
-    thermo.get_thermo_field(*ql, "ql", false, false);
-    thermo.get_thermo_field(*qi, "qi", false, false);
+    thermo.get_thermo_field_g(*ql, "ql", false);
+    thermo.get_thermo_field_g(*qi, "qi", false);
 
-    const std::vector<TF>& p = thermo.get_p_vector();
-    const std::vector<TF>& exner = thermo.get_exner_vector();
+    TF* p     = thermo.get_basestate_fld_g("pref");
+    TF* exner = thermo.get_basestate_fld_g("exner");
 
     // converted to a kernel launch
-
     conversion<<<gridGPU, blockGPU>>>(
-        fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
-        fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-        fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
-        fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
-        ql->fld.data(), qi->fld.data(),
-        fields.rhoref.data(), exner.data(), p.data(),
-        gd.dzi.data(), gd.dzhi.data(),
+        fields.st.at("qr")->fld_g, fields.st.at("qs")->fld_g, fields.st.at("qg")->fld_g,
+        fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
+        fields.sp.at("qr")->fld_g, fields.sp.at("qs")->fld_g, fields.sp.at("qg")->fld_g,
+        fields.sp.at("qt")->fld_g, fields.sp.at("thl")->fld_g,
+        ql->fld_g, qi->fld_g,
+        fields.rhoref_g, exner, p,
+        gd.dzi_g, gd.dzhi_g,
         this->N_d, TF(dt),
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.kend,
@@ -1117,67 +1035,67 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     cuda_check_error();
 
-    fields.release_tmp(ql);
-    fields.release_tmp(qi);
+    fields.release_tmp_g(ql);
+    fields.release_tmp_g(qi);
 
-    auto tmp1 = fields.get_tmp();
-    auto tmp2 = fields.get_tmp();
-    auto tmp3 = fields.get_tmp();
-    auto tmp4 = fields.get_tmp();
+    // auto tmp1 = fields.get_tmp_g();
+    // auto tmp2 = fields.get_tmp_g();
+    // auto tmp3 = fields.get_tmp_g();
+    // auto tmp4 = fields.get_tmp_g();
 
     // Falling rain.
-    sedimentation_ss08<<<gridGPU, blockGPU>>>(
-        fields.st.at("qr")->fld.data(), rr_bot.data(),
-        tmp1->fld.data(), tmp2->fld.data(),
-        tmp3->fld.data(), tmp4->fld.data(),
-        fields.sp.at("qr")->fld.data(),
-        fields.rhoref.data(),
-        gd.dzi.data(), gd.dz.data(),
-        dt,
-        a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
-        qr_min<TF>,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend,
-        gd.icells, gd.ijcells);
+    // sedimentation_ss08<<<gridGPU, blockGPU>>>(
+    //     fields.st.at("qr")->fld_g,
+    //     tmp1->fld_g, tmp2->fld_g,
+    //     tmp3->fld_g, tmp4->fld_g,
+    //     fields.sp.at("qr")->fld_g,
+    //     fields.rhoref_g,
+    //     gd.dzi_g, gd.dz_g,
+    //     dt,
+    //     a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>,
+    //     qr_min<TF>,
+    //     gd.istart, gd.jstart, gd.kstart,
+    //     gd.iend, gd.jend, gd.kend,
+    //     gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Falling snow.
-    sedimentation_ss08<<<gridGPU, blockGPU>>>(
-        fields.st.at("qs")->fld.data(), rs_bot.data(),
-        tmp1->fld.data(), tmp2->fld.data(),
-        tmp3->fld.data(), tmp4->fld.data(),
-        fields.sp.at("qs")->fld.data(),
-        fields.rhoref.data(),
-        gd.dzi.data(), gd.dz.data(),
-        dt,
-        a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
-        qs_min<TF>,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend,
-        gd.icells, gd.ijcells);
+    // sedimentation_ss08<<<gridGPU, blockGPU>>>(
+    //     fields.st.at("qs")->fld_g,
+    //     tmp1->fld_g, tmp2->fld_g,
+    //     tmp3->fld_g, tmp4->fld_g,
+    //     fields.sp.at("qs")->fld_g,
+    //     fields.rhoref_g,
+    //     gd.dzi_g, gd.dz_g,
+    //     dt,
+    //     a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
+    //     qs_min<TF>,
+    //     gd.istart, gd.jstart, gd.kstart,
+    //     gd.iend, gd.jend, gd.kend,
+    //     gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Falling graupel.
-    sedimentation_ss08<<<gridGPU, blockGPU>>>(
-        fields.st.at("qg")->fld.data(), rg_bot.data(),
-        tmp1->fld.data(), tmp2->fld.data(),
-        tmp3->fld.data(), tmp4->fld.data(),
-        fields.sp.at("qg")->fld.data(),
-        fields.rhoref.data(),
-        gd.dzi.data(), gd.dz.data(),
-        dt,
-        a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
-        qg_min<TF>,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend,
-        gd.icells, gd.ijcells);
-    cuda_check_error();
+    // sedimentation_ss08<<<gridGPU, blockGPU>>>(
+    //     fields.st.at("qg")->fld_g,
+    //     tmp1->fld_g, tmp2->fld_g,
+    //     tmp3->fld_g, tmp4->fld_g,
+    //     fields.sp.at("qg")->fld_g,
+    //     fields.rhoref_g,
+    //     gd.dzi_g, gd.dz_g,
+    //     dt,
+    //     a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
+    //     qg_min<TF>,
+    //     gd.istart, gd.jstart, gd.kstart,
+    //     gd.iend, gd.jend, gd.kend,
+    //     gd.icells, gd.ijcells);
+    // cuda_check_error();
 
 
-    fields.release_tmp(tmp1);
-    fields.release_tmp(tmp2);
-    fields.release_tmp(tmp3);
-    fields.release_tmp(tmp4);
+    // fields.release_tmp_g(tmp1);
+    // fields.release_tmp_g(tmp2);
+    // fields.release_tmp_g(tmp3);
+    // fields.release_tmp_g(tmp4);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
@@ -1205,15 +1123,16 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
 
-    double cfl = 0.;
+    TF cfl_val = 0.;
 
     // Compute CFL for rain.
     
-    // create temporary array for velocity
-    auto w_qr = fields.get_tmp_g();
+    // create temporary array for velocity and cfl
+    auto w_sed = fields.get_tmp_g();
+    auto cfl = fields.get_tmp_g();
 
-    calc_velocity_NEW<<<gridGPU, blockGPU>>>( // correct namespace?
-            w_qr->fld_g, 
+    calc_velocity_g<<<gridGPU, blockGPU>>>( // correct namespace?
+            w_sed->fld_g, 
             fields.sp.at("qr")->fld_g, 
             fields.rhoref_g,
             dt,
@@ -1222,38 +1141,35 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.jcells); // note: jj equiv to icells in calculation of ijk
-    // now should have the array w_qr with velocity values
+    // now should have the array w_sed with velocity values
     
     //set top and velocity ghost cells 
     set_bc_g<<<grid2dGPU, block2dGPU>>>(
-        w_qr->fld_g,
+        w_sed->fld_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
     
     // set temporary array for cfl sedimentation
-    auto cfl_r = fields.get_tmp();
 
-    calc_cfl_NEW<<<gridGPU, blockGPU>>>(
-            cfl_r->fld_g,
-            w_qr->fld_g, // not sure. instead should be w_qr
+    calc_cfl_g<<<gridGPU, blockGPU>>>(
+            cfl->fld_g,
+            w_sed->fld_g, // not sure. instead should be w_sed
             gd.dzi_g, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    fields.release_tmp_g(w_qr); // release array
-    // !!! cfl = fmax(cfl, cfl_r);
-    fields.release_tmp(cfl_r);
+    cfl_val = field3d_operators.calc_max_g(cfl->fld_g);
+
 
     /*
     // create temporary array for velocity
-    auto w_qs = fields.get_tmp_g();
 
-    calc_velocity_NEW<<<gridGPU, blockGPU>>>(
-            w_qs->fld_g, 
+    calc_velocity_g<<<gridGPU, blockGPU>>>(
+            w_sed->fld_g, 
             fields.sp.at("qs")->fld_g, 
             fields.rhoref_g,
             dt,
@@ -1262,35 +1178,32 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.jcells); // note: jj equiv to icells in calculation of ijk
-    // now should have the array w_qs with velocity values
+    // now should have the array w_sed with velocity values
     
     //set top and velocity ghost cells 
     set_bc_g<<<grid2dGPU, block2dGPU>>>(
-        w_qs->fld_g,
+        w_sed->fld_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
     
     // set temporary array for cfl sedimentation
-    auto cfl_s = fields.get_tmp();
 
-    calc_cfl_NEW<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<<<gridGPU, blockGPU>>>(
             cfl_s->fld_g,
-            w_qs->fld_g,
+            w_sed->fld_g,
             gd.dzi_g, TF(dt), // should be dzi_s  and dzi_r?
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    fields.release_tmp_g(w_qs); // release array
         
     // GRAUPEL
-    auto w_qg = fields.get_tmp_g();
 
-    calc_velocity_NEW<<<gridGPU, blockGPU>>>( 
-            w_qg->fld_g, 
+    calc_velocity_g<<<gridGPU, blockGPU>>>( 
+            w_sed->fld_g, 
             fields.sp.at("qg")->fld_g, 
             fields.rhoref_g,
             dt,
@@ -1299,36 +1212,34 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.jcells); // note: jj equiv to icells in calculation of ijk
-    // now should have the array w_qr with velocity values
+    // now should have the array w_sed with velocity values
     
     //set top and velocity ghost cells 
     set_bc_g<<<grid2dGPU, block2dGPU>>>(
-        w_qg->fld_g,
+        w_sed->fld_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
     
     // set temporary array for cfl sedimentation
-    auto cfl_g = fields.get_tmp();
 
-    calc_cfl_NEW<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<<<gridGPU, blockGPU>>>(
             cfl_g->fld_g,
-            w_qg->fld_g, // not sure. instead should be w_qr
+            w_sed->fld_g, // not sure. instead should be w_sed
             gd.dzi_g, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    fields.release_tmp_g(w_qg); // release array
 
     // Compute CFL for snow.
     const double cfl_s = calc_cfl_ss08(
-        tmp->fld.data(),
-        fields.sp.at("qs")->fld.data(),
-        fields.rhoref.data(),
-        gd.dzi.data(), gd.dz.data(),
+        tmp->fld_g,
+        fields.sp.at("qs")->fld_g,
+        fields.rhoref_g,
+        gd.dzi_g, gd.dz_g,
         dt,
         a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>,
         qs_min<TF>,
@@ -1341,10 +1252,10 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     
     // Compute CFL for graupel.
     const double cfl_g = calc_cfl_ss08(
-        tmp->fld.data(),
-        fields.sp.at("qg")->fld.data(),
-        fields.rhoref.data(),
-        gd.dzi.data(), gd.dz.data(),
+        tmp->fld_g,
+        fields.sp.at("qg")->fld_g,
+        fields.rhoref_g,
+        gd.dzi_g, gd.dz_g,
         dt,
         a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>,
         qg_min<TF>,
@@ -1357,13 +1268,16 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     
     */
 
+    fields.release_tmp_g(w_sed); // release array
+    fields.release_tmp_g(cfl);
+
+
     // Get maximum CFL across all MPI tasks
-    master.max(&cfl, 1);
-
-
+    master.max(&cfl_val, 1);
     // Prevent zero division.
-    cfl = fmax(cfl, 1.e-5);
-    const unsigned long idt_lim = idt * cflmax / cfl;
+    cfl_val = fmax(cfl_val, 1.e-5);
+    
+    const unsigned long idt_lim = idt * cflmax / cfl_val;
     return idt_lim;
 }
 #endif
