@@ -324,12 +324,11 @@ def plot(filename='results.pdf', float_type='dp'):
         pdf.savefig()
 
 
-def main(executable='microhh', float_type='dp', casedir='.'):
+def plot_test(executable='microhh', float_type='dp', casedir='.'):
     cwd = os.getcwd()
     os.chdir(casedir)
-    print(cwd)
-    plot(filename=cwd+'/taylorgreen_{}.pdf'.format(executable), float_type=float_type)
-
+    plot(filename='taylorgreen_{}.pdf'.format(executable), float_type=float_type)
+    os.chdir(cwd)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
