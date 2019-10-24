@@ -21,7 +21,7 @@ dict_order = {
 def run_test(executable='microhh', float_type='dp', casedir='.'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
-    mht.test_cases(cases, executable, outputfile='taylorgreen.csv')
+    mht.test_cases(cases, executable, outputfile='{}/taylorgreen_{}.csv'.format(casedir, executable))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
