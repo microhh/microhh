@@ -332,6 +332,6 @@ def plot_test(executable='microhh', float_type='dp', casedir='.'):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        main(sys.argv[1:])
+        plot_test(sys.argv[1:])
     else:
-        main()
+        plot_test()
