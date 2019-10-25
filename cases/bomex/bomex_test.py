@@ -27,7 +27,7 @@ def run_restart_test(executable='microhh', float_type='dp', mode='cpu', casedir=
         base_case = mht.generator_parameter_permutations(base_case, experiment, [dict_mpi])[0]
 
     cases = mht.generator_restart(base_case, experiment, 1800.)
-
+    print(executable)
     mht.run_cases(
             cases,
             executable,
@@ -36,7 +36,8 @@ def run_restart_test(executable='microhh', float_type='dp', mode='cpu', casedir=
 
 
 if __name__ == '__main__':
+    print(sys.argv[2:])
     if len(sys.argv) > 1:
-        run_test(sys.argv[1:])
+        globals()[sys.argv[1]](*(*sys.argv[2:],))
     else:
         run_test()
