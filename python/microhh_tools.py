@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def test_cases(cases, executable, outputfile='', experiment='default'):
+def test_cases(cases, executable, experiment, outputfile=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
