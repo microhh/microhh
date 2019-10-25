@@ -4,6 +4,7 @@ sys.path.append('../python/')
 import microhh_tools as mht
 
 import taylorgreen.taylorgreen_test as taylorgreen
+import moser180.moser180_test as moser180
 import drycblles.drycblles_test as drycblles
 import bomex.bomex_test as bomex
 
@@ -18,12 +19,15 @@ for prec in precs:
         microhh_exec = 'microhh_{}_{}'.format(prec, mode)
         experiment = '{}_{}'.format(prec, mode)
 
-        taylorgreen.run_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
-        taylorgreen.plot_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
+        # taylorgreen.run_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
+        # taylorgreen.plot_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
 
-        drycblles.run_test(microhh_exec, prec, mode, 'drycblles', experiment)
+        # moser180.run_test(microhh_exec, prec, mode, 'moser180', experiment)
+        moser180.run_restart_test(microhh_exec, prec, mode, 'moser180', experiment)
+
+        # drycblles.run_test(microhh_exec, prec, mode, 'drycblles', experiment)
         drycblles.run_restart_test(microhh_exec, prec, mode, 'drycblles', experiment)
 
-        bomex.run_test(microhh_exec, prec, mode, 'bomex', experiment)
+        # bomex.run_test(microhh_exec, prec, mode, 'bomex', experiment)
         bomex.run_restart_test(microhh_exec, prec, mode, 'bomex', experiment)
 

@@ -542,7 +542,7 @@ def run_cases(cases, executable, mode, outputfile=''):
 
         except Exception as e:
             print(str(e))
-            print_warning('Case Failed!')
+            print_error('Case Failed!')
             case.success = False
 
         finally:
