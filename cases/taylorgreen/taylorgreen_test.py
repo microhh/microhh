@@ -22,16 +22,23 @@ dict_order = {
         'swadvec4' : { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4'  } },
         'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
 
-def run_test(executable='microhh', float_type='dp', casedir='.'):
+def run_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
-    mht.test_cases(cases, executable, outputfile='{}/taylorgreen_{}.csv'.format(casedir, executable))
+    mht.test_cases(
+            cases,
+            executable,
+            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment),
+            experiment=experiment)
 
 
-def plot_test(executable='microhh', float_type='dp', casedir='.'):
+def plot_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
     cwd = os.getcwd()
     os.chdir(casedir)
-    plot(filename='taylorgreen_{}.pdf'.format(executable), float_type=float_type)
+    filename = 'taylorgreen'
+    if experiment:
+        filename += '_{}'.format(experiment)
+    plot(filename=filename, float_type=float_type, experiment=experiment)
     os.chdir(cwd)
 
 
@@ -129,7 +136,7 @@ class geterror:
             self.p = self.p + sum(dx*dz*abs(data.p[k, :] - ref.p[k, :]))
 
 
-def plot(filename='results.pdf', float_type='dp'):
+def plot(filename='results.pdf', float_type='dp', experiment=''):
     t = 1
     time = 1.
     visc = (8.*pi**2. * 100.)**(-1.)
@@ -138,11 +145,11 @@ def plot(filename='results.pdf', float_type='dp'):
     dxs = 1./ns
 
     # 2nd order data
-    data16_2nd = microhh(t,  16,   8, float_type, 'itot016_swadvec2')
-    data32_2nd = microhh(t,  32,  16, float_type, 'itot032_swadvec2')
-    data64_2nd = microhh(t,  64,  32, float_type, 'itot064_swadvec2')
-    data128_2nd = microhh(t, 128,  64, float_type, 'itot128_swadvec2')
-    data256_2nd = microhh(t, 256, 128, float_type, 'itot256_swadvec2')
+    data16_2nd = microhh(t,  16,   8, float_type, 'itot016_swadvec2_{}'.format(experiment))
+    data32_2nd = microhh(t,  32,  16, float_type, 'itot032_swadvec2_{}'.format(experiment))
+    data64_2nd = microhh(t,  64,  32, float_type, 'itot064_swadvec2_{}'.format(experiment))
+    data128_2nd = microhh(t, 128,  64, float_type, 'itot128_swadvec2_{}'.format(experiment))
+    data256_2nd = microhh(t, 256, 128, float_type, 'itot256_swadvec2_{}'.format(experiment))
 
     ref16_2nd = getref(data16_2nd .x, data16_2nd .xh,
                        data16_2nd .z, data16_2nd .zh, visc, time)
@@ -178,11 +185,11 @@ def plot(filename='results.pdf', float_type='dp'):
           (log(errsp_2nd[-1])-log(errsp_2nd[0])) / (log(dxs[-1])-log(dxs[0])))
 
     # 42 order data
-    data16_4m = microhh(t,  16,   8, float_type, 'itot016_swadvec4m')
-    data32_4m = microhh(t,  32,  16, float_type, 'itot032_swadvec4m')
-    data64_4m = microhh(t,  64,  32, float_type, 'itot064_swadvec4m')
-    data128_4m = microhh(t, 128,  64, float_type, 'itot128_swadvec4m')
-    data256_4m = microhh(t, 256, 128, float_type, 'itot256_swadvec4m')
+    data16_4m = microhh(t,  16,   8, float_type, 'itot016_swadvec4m_{}'.format(experiment))
+    data32_4m = microhh(t,  32,  16, float_type, 'itot032_swadvec4m_{}'.format(experiment))
+    data64_4m = microhh(t,  64,  32, float_type, 'itot064_swadvec4m_{}'.format(experiment))
+    data128_4m = microhh(t, 128,  64, float_type, 'itot128_swadvec4m_{}'.format(experiment))
+    data256_4m = microhh(t, 256, 128, float_type, 'itot256_swadvec4m_{}'.format(experiment))
 
     ref16_4m = getref(data16_4m .x, data16_4m .xh,
                       data16_4m .z, data16_4m .zh, visc, time)
@@ -218,11 +225,11 @@ def plot(filename='results.pdf', float_type='dp'):
           (log(errsp_4m[-1])-log(errsp_4m[0])) / (log(dxs[-1])-log(dxs[0])))
 
     # 4th order data
-    data16_4th = microhh(t,  16,   8, float_type, 'itot016_swadvec4')
-    data32_4th = microhh(t,  32,  16, float_type, 'itot032_swadvec4')
-    data64_4th = microhh(t,  64,  32, float_type, 'itot064_swadvec4')
-    data128_4th = microhh(t, 128,  64, float_type, 'itot128_swadvec4')
-    data256_4th = microhh(t, 256, 128, float_type, 'itot256_swadvec4')
+    data16_4th = microhh(t,  16,   8, float_type, 'itot016_swadvec4_{}'.format(experiment))
+    data32_4th = microhh(t,  32,  16, float_type, 'itot032_swadvec4_{}'.format(experiment))
+    data64_4th = microhh(t,  64,  32, float_type, 'itot064_swadvec4_{}'.format(experiment))
+    data128_4th = microhh(t, 128,  64, float_type, 'itot128_swadvec4_{}'.format(experiment))
+    data256_4th = microhh(t, 256, 128, float_type, 'itot256_swadvec4_{}'.format(experiment))
 
     ref16_4th = getref(data16_4th .x, data16_4th .xh,
                        data16_4th .z, data16_4th .zh, visc, time)
