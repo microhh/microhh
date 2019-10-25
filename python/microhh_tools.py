@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def test_cases(cases, executable, outputfile='', experiment_suffix=''):
+def test_cases(cases, executable, outputfile='', experiment=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
@@ -490,6 +490,7 @@ def test_cases(cases, executable, outputfile='', experiment_suffix=''):
 
         # Move to working directory
         rootdir = os.getcwd()
+        experiment_suffix = '_{}'.format(experiment) if experiment else ''
         rundir = rootdir + '/' + case.casedir + '/' + case.rundir + experiment_suffix + '/'
 
         casedir = rootdir + '/' + case.casedir + '/'
@@ -549,13 +550,13 @@ def test_cases(cases, executable, outputfile='', experiment_suffix=''):
 
     # Write the output file and remove unnecssary dirs
     if outputfile is not '':
-        with open(outputfile, 'w') as csv_file:
-            write = csv.writer(csv_file)
+        with open(outputfile, 'w') as csvFile:
+            write = csv.writer(csvFile)
             write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
             for case in cases:
                 write.writerow(
                     [case.name, case.rundir, case.success, case.time, case.options])
-        csv_file.close()
+        csvFile.close()
 
     for case in cases:
         if case.success and not case.keep:
