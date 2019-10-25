@@ -11,7 +11,7 @@ def run_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
     mht.test_cases(
             [ base_case ],
             executable,
-            outputfile='{}/drycblles_{}.csv'.format(casedir, experiment),
+            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment),
             experiment=experiment)
 
 if __name__ == '__main__':
