@@ -9,9 +9,9 @@ import microhh_tools as mht
 dict_mpi = { 'default_run': { 'master': { 'npx': 2, 'npy': 4 } } }
 
 def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
-    base_case = mht.Case('drycblles', casedir=casedir, keep=True)
+    base_case = mht.Case('drycblles', casedir=casedir, rundir='default_run_{}'.format(experiment))
     if mode == 'cpumpi':
-        cases = mht.generator_parameter_permutations(base_case, [dict_mpi])
+        cases = mht.generator_parameter_permutations(base_case, experiment, [dict_mpi])
     else:
         cases = [base_case]
 
@@ -19,8 +19,21 @@ def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', exp
             cases,
             executable,
             mode,
-            experiment,
             outputfile='{}/drycblles_{}.csv'.format(casedir, experiment))
+
+
+def run_restart_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
+    base_case = mht.Case('drycblles', casedir=casedir)
+    if mode == 'cpumpi':
+        base_case = mht.generator_parameter_permutations(base_case, experiment, [dict_mpi])[0]
+
+    cases = mht.generator_restart(base_case, experiment, 600.)
+
+    mht.run_cases(
+            cases,
+            executable,
+            mode,
+            outputfile='{}/drycblles_restart_{}.csv'.format(casedir, experiment))
 
 
 if __name__ == '__main__':
