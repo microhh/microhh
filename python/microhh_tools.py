@@ -413,12 +413,10 @@ def restart_pre(origin, timestr):
 
 
 def restart_post(origin, timestr):
-    # Write a real function that compares relevant files between dir1 and dir2
-
-    fnames = glob.glob('*.' + timestr)
-    for file in fnames:
-        if not filecmp.cmp('../' + origin + '/' + file, file):
-            raise Warning(file + ' is not identical')
+    file_names = glob.glob('*.' + timestr)
+    for file_name in file_names:
+        if not filecmp.cmp('../' + origin + '/' + file_name, file_name):
+            raise Warning(file_name + ' is not identical')
 
 
 def compare(origin, file, starttime=-1, vars={}):
@@ -621,7 +619,7 @@ def generator_restart(case, experiment, endtime):
     case_init.rundir = 'init_{}'.format(experiment)
 
     case_init.options.append(('time', 'savetime', savetime))
-    case_init.options.append(('time', 'endtime', savetime))
+    case_init.options.append(('time', 'endtime', endtime))
 
     case_restart = copy.deepcopy(case)
     case_restart.rundir = 'restart_{}'.format(experiment)
@@ -632,6 +630,7 @@ def generator_restart(case, experiment, endtime):
         ['restart_post', case_init.rundir, endtimestr]]}
 
     case_restart.options.append(('time', 'starttime', savetime))
+    case_restart.options.append(('time', 'savetime', savetime))
     case_restart.options.append(('time', 'endtime', endtime))
 
     cases_out.append(case_init)
