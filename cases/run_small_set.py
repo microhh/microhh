@@ -14,5 +14,5 @@ for prec in ['sp', 'dp']:
         taylorgreen.run_test(microhh_exec, prec, 'taylorgreen', experiment)
         taylorgreen.plot_test(microhh_exec, prec, 'taylorgreen', experiment)
 
-        drycblles.run_test(microhh_exec, prec, 'drycblles', experiment)
+        #drycblles.run_test(microhh_exec, prec, 'drycblles', experiment)
 

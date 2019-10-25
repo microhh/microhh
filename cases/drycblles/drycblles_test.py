@@ -6,13 +6,14 @@ import shutil
 sys.path.append('../../python/')
 import microhh_tools as mht
 
-def run_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
+
+def run_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
     base_case = mht.Case('drycblles', casedir=casedir, keep=True)
     mht.test_cases(
             [ base_case ],
             executable,
-            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment),
-            experiment=experiment)
+            experiment,
+            outputfile='{}/drycblles_{}.csv'.format(casedir, experiment))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
