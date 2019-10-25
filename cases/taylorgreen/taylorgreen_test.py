@@ -24,7 +24,7 @@ dict_order = {
         'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
 
 
-def run_test(executable='microhh', float_type='dp', casedir='.', experiment='default'):
+def run_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
     mht.test_cases(
@@ -34,7 +34,7 @@ def run_test(executable='microhh', float_type='dp', casedir='.', experiment='def
             outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
 
 
-def plot_test(executable='microhh', float_type='dp', casedir='.', experiment='default'):
+def plot_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
     cwd = os.getcwd()
     os.chdir(casedir)
     filename = 'taylorgreen_{}.pdf'.format(experiment)
@@ -362,5 +362,5 @@ if __name__ == '__main__':
         run_test(sys.argv[1:])
         plot_test(sys.argv[1:])
     else:
-        #run_test()
+        run_test()
         plot_test()
