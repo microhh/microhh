@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def test_cases(cases, executable, experiment, outputfile=''):
+def run_cases(cases, executable, experiment, outputfile=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
@@ -485,7 +485,7 @@ def test_cases(cases, executable, experiment, outputfile=''):
 
     for case in cases:
         print_header(
-            'Testing case \'{}\' for executable \'{}\''.format(
+            'Running case \'{}\' for executable \'{}\''.format(
                 case.name, executable_rel))
 
         # Move to working directory

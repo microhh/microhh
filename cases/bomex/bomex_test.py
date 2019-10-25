@@ -8,12 +8,12 @@ import microhh_tools as mht
 
 
 def run_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
-    base_case = mht.Case('drycblles', casedir=casedir, keep=True)
+    base_case = mht.Case('bomex', casedir=casedir, keep=True)
     mht.run_cases(
             [ base_case ],
             executable,
             experiment,
-            outputfile='{}/drycblles_{}.csv'.format(casedir, experiment))
+            outputfile='{}/bomex_{}.csv'.format(casedir, experiment))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

@@ -27,7 +27,7 @@ dict_order = {
 def run_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
-    mht.test_cases(
+    mht.run_cases(
             cases,
             executable,
             experiment=experiment,
