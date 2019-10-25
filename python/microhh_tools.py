@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def test_cases(cases, executable, outputfile=''):
+def test_cases(cases, executable, outputfile='', experiment=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
@@ -487,11 +487,12 @@ def test_cases(cases, executable, outputfile=''):
         print_header(
             'Testing case \'{}\' for executable \'{}\''.format(
                 case.name, executable_rel))
-        # Determine whether to run serial or parallel
 
         # Move to working directory
         rootdir = os.getcwd()
-        rundir = rootdir + '/' + case.casedir + '/' + case.rundir + '/'
+        experiment_suffix = '_{}'.format(experiment) if experiment else ''
+        rundir = rootdir + '/' + case.casedir + '/' + case.rundir + experiment_suffix + '/'
+
         casedir = rootdir + '/' + case.casedir + '/'
         if case.rundir is not '':
             try:
