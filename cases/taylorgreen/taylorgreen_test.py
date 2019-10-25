@@ -269,7 +269,6 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
     slope2 = off2*(dxs[:] / dxs[0])**2.
     slope4 = off4*(dxs[:] / dxs[0])**4.
 
-    print("CvH", filename)
     close('all')
     with PdfPages(filename) as pdf:
         figure()
