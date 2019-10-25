@@ -29,17 +29,20 @@ def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', exp
         print('MPI mode not supported')
         return
 
-    base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
-    cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
+    base_case = mht.Case('taylorgreen', casedir=casedir)
+    cases = mht.generator_parameter_permutations(base_case, experiment, [ dict_resolution, dict_order ])
     mht.run_cases(
             cases,
             executable,
             mode,
-            experiment=experiment,
             outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
 
 
-def plot_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
+def plot_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
+    if mode == 'cpumpi':
+        print('MPI mode not supported')
+        return
+
     cwd = os.getcwd()
     os.chdir(casedir)
     filename = 'taylorgreen_{}.pdf'.format(experiment)

@@ -371,7 +371,7 @@ def run_scripts(scripts):
     def exec_function(lib, function, *args):
         rc = getattr(lib, function)(*args)
 
-        if rc != 0:
+        if (rc is not None) and (rc != 0):
             raise Exception(
                 '{}: {}() returned {}'.format(
                     script, function, rc))
@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def run_cases(cases, executable, mode, experiment, outputfile=''):
+def run_cases(cases, executable, mode, outputfile=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
@@ -490,8 +490,7 @@ def run_cases(cases, executable, mode, experiment, outputfile=''):
 
         # Move to working directory
         rootdir = os.getcwd()
-        experiment_suffix = '_{}'.format(experiment) if experiment else ''
-        rundir = rootdir + '/' + case.casedir + '/' + case.rundir + experiment_suffix + '/'
+        rundir = rootdir + '/' + case.casedir + '/' + case.rundir + '/'
 
         casedir = rootdir + '/' + case.casedir + '/'
         if case.rundir is not '':
@@ -524,6 +523,7 @@ def run_cases(cases, executable, mode, experiment, outputfile=''):
             ntasks = determine_ntasks()
 
             # Create input data, and do other pre-processing
+            print(case.pre)
             run_scripts(case.pre)
 
             for phase in case.phases:
@@ -566,7 +566,7 @@ def run_cases(cases, executable, mode, experiment, outputfile=''):
             rundir = rootdir + '/' + case.name + '/' + case.rundir + '/'
             shutil.rmtree(rundir)
 
-
+"""
 def generator_restart(cases):
     cases_out = []
     for case in cases:
@@ -600,6 +600,42 @@ def generator_restart(cases):
 
         cases_out.append(case_init)
         cases_out.append(case_restart)
+
+    return cases_out
+"""
+
+def generator_restart(case, experiment, endtime):
+    cases_out = []
+    nl = Read_namelist('{}/{}.ini'.format(case.casedir, case.name))
+
+    iotimeprec = nl['time']['iotimeprec'] if 'iotimeprec' in nl['time'] else 0
+    savetime = endtime/2
+
+    savetime_io = int(round(savetime * 10**(-iotimeprec)))
+    endtime_io = int(round(endtime * 10**(-iotimeprec)))
+
+    endtimestr = '{0:07d}'.format(endtime_io)
+    savetimestr = '{0:07d}'.format(savetime_io)
+
+    case_init = copy.deepcopy(case)
+    case_init.rundir = 'init_{}'.format(experiment)
+
+    case_init.options.append(('time', 'savetime', savetime))
+    case_init.options.append(('time', 'endtime', savetime))
+
+    case_restart = copy.deepcopy(case)
+    case_restart.rundir = 'restart_{}'.format(experiment)
+    case_restart.phases = ['run']
+    case_restart.pre = {__file__: [
+        ['restart_pre', case_init.rundir, savetimestr]]}
+    case_restart.post = {__file__: [
+        ['restart_post', case_init.rundir, endtimestr]]}
+
+    case_restart.options.append(('time', 'starttime', savetime))
+    case_restart.options.append(('time', 'endtime', endtime))
+
+    cases_out.append(case_init)
+    cases_out.append(case_restart)
 
     return cases_out
 
@@ -675,7 +711,7 @@ def generator_parameter_change(cases, **kwargs):
     return cases_out
 
 
-def generator_parameter_permutations(base_case, lists):
+def generator_parameter_permutations(base_case, experiment, lists):
     """
     Function to permutate lists of dictionaries to generate cases to run
     """
@@ -699,7 +735,7 @@ def generator_parameter_permutations(base_case, lists):
         name = ''
         for name_dict in lp:
             name += name_dict[0] + '_'
-        case.rundir = name[:-1]
+        case.rundir = name + experiment
 
         # Unpack all dictonaries and construct a set of tuples.
         options = []
@@ -722,7 +758,7 @@ class Case:
     def __init__(
             self,
             name,
-            options={},
+            options=[],
             pre={},
             post={},
             phases=['init', 'run'],
