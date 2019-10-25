@@ -10,6 +10,7 @@ from numpy import *
 sys.path.append('../../python/')
 import microhh_tools as mht
 
+
 dict_resolution = {
         'itot016': { 'grid': { 'itot':  16, 'ktot':   8 } },
         'itot032': { 'grid': { 'itot':  32, 'ktot':  16 } },
@@ -22,22 +23,21 @@ dict_order = {
         'swadvec4' : { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4'  } },
         'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
 
-def run_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
+
+def run_test(executable='microhh', float_type='dp', casedir='.', experiment='default'):
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
     mht.test_cases(
             cases,
             executable,
-            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment),
-            experiment=experiment)
+            experiment=experiment,
+            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
 
 
-def plot_test(executable='microhh', float_type='dp', casedir='.', experiment=''):
+def plot_test(executable='microhh', float_type='dp', casedir='.', experiment='default'):
     cwd = os.getcwd()
     os.chdir(casedir)
-    filename = 'taylorgreen'
-    if experiment:
-        filename += '_{}'.format(experiment)
+    filename = 'taylorgreen_{}.pdf'.format(experiment)
     plot(filename=filename, float_type=float_type, experiment=experiment)
     os.chdir(cwd)
 
@@ -269,6 +269,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
     slope2 = off2*(dxs[:] / dxs[0])**2.
     slope4 = off4*(dxs[:] / dxs[0])**4.
 
+    print("CvH", filename)
     close('all')
     with PdfPages(filename) as pdf:
         figure()
@@ -360,5 +361,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         run_test(sys.argv[1:])
+        plot_test(sys.argv[1:])
     else:
-        run_test()
+        #run_test()
+        plot_test()
