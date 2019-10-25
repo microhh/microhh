@@ -24,12 +24,17 @@ dict_order = {
         'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
 
 
-def run_test(executable='microhh', float_type='dp', casedir='.', experiment='local'):
+def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
+    if mode == 'cpumpi':
+        print('MPI mode not supported')
+        return
+
     base_case = mht.Case('taylorgreen', casedir=casedir, keep=True)
     cases = mht.generator_parameter_permutations(base_case, [ dict_resolution, dict_order ])
     mht.run_cases(
             cases,
             executable,
+            mode,
             experiment=experiment,
             outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
 

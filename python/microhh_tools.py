@@ -112,13 +112,13 @@ def replace_namelist_value(item, new_value, group=None, namelist_file=None):
                 source.write(line)
 
 
-def determine_mode():
+def determine_ntasks():
     namelist = Read_namelist()['master']
 
     npx = namelist['npx'] if 'npx' in namelist.keys() else 1
     npy = namelist['npy'] if 'npy' in namelist.keys() else 1
-    mode = 'serial' if npx * npy == 1 else 'parallel'
-    return mode, npx * npy
+
+    return npx * npy
 
 
 class Read_statistics:
@@ -469,7 +469,7 @@ def execute(command):
                 command, sp.returncode))
 
 
-def run_cases(cases, executable, experiment, outputfile=''):
+def run_cases(cases, executable, mode, experiment, outputfile=''):
     """
     Function that iterates over a list of cases and runs all of them
     """
@@ -521,18 +521,21 @@ def run_cases(cases, executable, experiment, outputfile=''):
             for group, item, value in case.options:
                 replace_namelist_value(
                     item, value, group=group, namelist_file='{0}.ini'.format(case.name))
-            mode, ntasks = determine_mode()
+            ntasks = determine_ntasks()
 
             # Create input data, and do other pre-processing
             run_scripts(case.pre)
 
             for phase in case.phases:
                 case.time = timeit.default_timer()
-                if mode == 'serial':
+                if mode == 'cpu' or mode == 'gpu':
                     execute('{} {} {}'.format(executable, phase, case.name))
-                elif mode == 'parallel':
-                    execute('mpirun -n {} {} {} {}'.format(
+                elif mode == 'cpumpi':
+                    execute('mpirun --oversubscribe -n {} {} {} {}'.format(
                         ntasks, executable, phase, case.name))
+                else:
+                    raise ValueError('{} is an illegal value for mode'.format(mode))
+
                 case.time = timeit.default_timer() - case.time
 
             # Run the post-processing steps
