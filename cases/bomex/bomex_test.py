@@ -39,4 +39,4 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         run_test(sys.argv[1:])
     else:
-        run_restart_test(mode='cpumpi')
+        run_test()
