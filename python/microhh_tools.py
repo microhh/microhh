@@ -729,7 +729,7 @@ class Case:
             casedir='',
             rundir='default_run',
             files=[],
-            keep=False):
+            keep=True):
 
         self.name = name       # Case name
         self.options = options # List of options to override
