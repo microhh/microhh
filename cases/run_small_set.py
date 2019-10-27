@@ -29,4 +29,3 @@ for prec in precs:
 
         # bomex.run(microhh_exec, mode, 'bomex', experiment)
         bomex.run_restart(microhh_exec, mode, 'bomex', experiment)
-

@@ -12,30 +12,32 @@ import microhh_tools as mht
 
 
 dict_resolution = {
-        'itot016': { 'grid': { 'itot':  16, 'ktot':   8 } },
-        'itot032': { 'grid': { 'itot':  32, 'ktot':  16 } },
-        'itot064': { 'grid': { 'itot':  64, 'ktot':  32 } },
-        'itot128': { 'grid': { 'itot': 128, 'ktot':  64 } },
-        'itot256': { 'grid': { 'itot': 256, 'ktot': 128 } } }
+    'itot016': {'grid': {'itot': 16, 'ktot': 8}},
+    'itot032': {'grid': {'itot': 32, 'ktot': 16}},
+    'itot064': {'grid': {'itot': 64, 'ktot': 32}},
+    'itot128': {'grid': {'itot': 128, 'ktot': 64}},
+    'itot256': {'grid': {'itot': 256, 'ktot': 128}}}
 
 dict_order = {
-        'swadvec2' : { 'grid': { 'swspatialorder': 2 }, 'advec': { 'swadvec': '2'  } },
-        'swadvec4' : { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4'  } },
-        'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
+    'swadvec2': {'grid': {'swspatialorder': 2}, 'advec': {'swadvec': '2'}},
+    'swadvec4': {'grid': {'swspatialorder': 4}, 'advec': {'swadvec': '4'}},
+    'swadvec4m': {'grid': {'swspatialorder': 4}, 'advec': {'swadvec': '4m'}}}
 
 
-def run(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
+def run(executable='microhh', float_type='dp',
+        mode='cpu', casedir='.', experiment='local'):
     if mode == 'cpumpi':
         print('MPI mode not supported')
         return
 
     base_case = mht.Case('taylorgreen', casedir=casedir)
-    cases = mht.generator_parameter_permutations(base_case, experiment, [ dict_resolution, dict_order ])
+    cases = mht.generator_parameter_permutations(
+        base_case, experiment, [dict_resolution, dict_order])
     mht.run_cases(
-            cases,
-            executable,
-            mode,
-            outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
+        cases,
+        executable,
+        mode,
+        outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
 
     cwd = os.getcwd()
     os.chdir(casedir)
@@ -50,7 +52,7 @@ class microhh:
         ny = 1
         nz = ktot
 
-        n = nx*nz
+        n = nx * nz
         # Set the correct string for the endianness
         en = '<'
 
@@ -64,27 +66,27 @@ class microhh:
         else:
             raise RuntimeError("The savetype has to be sp or dp")
 
-        fstring = '{0}{1}'+ra
+        fstring = '{0}{1}' + ra
 
         # Read grid properties from grid.0000000
-        n = nx*ny*nz
+        n = nx * ny * nz
         fin = open("{0:s}/grid.{1:07d}".format(path, 0), "rb")
-        raw = fin.read(nx*TF)
+        raw = fin.read(nx * TF)
         self.x = array(struct.unpack(fstring.format(en, nx), raw))
-        raw = fin.read(nx*TF)
+        raw = fin.read(nx * TF)
         self.xh = array(struct.unpack(fstring.format(en, nx), raw))
-        raw = fin.read(ny*TF)
+        raw = fin.read(ny * TF)
         self.y = array(struct.unpack(fstring.format(en, ny), raw))
-        raw = fin.read(ny*TF)
+        raw = fin.read(ny * TF)
         self.yh = array(struct.unpack(fstring.format(en, ny), raw))
-        raw = fin.read(nz*TF)
+        raw = fin.read(nz * TF)
         self.z = array(struct.unpack(fstring.format(en, nz), raw))
-        raw = fin.read(nz*TF)
+        raw = fin.read(nz * TF)
         self.zh = array(struct.unpack(fstring.format(en, nz), raw))
         fin.close()
 
         fin = open("{0:s}/u.xz.00000.{1:07d}".format(path, iter), "rb")
-        raw = fin.read(n*TF)
+        raw = fin.read(n * TF)
         tmp = array(struct.unpack(fstring.format(en, n), raw))
         del(raw)
         self.u = tmp.reshape((nz, ny, nx))
@@ -92,7 +94,7 @@ class microhh:
         fin.close()
 
         fin = open("{0:s}/w.xz.00000.{1:07d}".format(path, iter), "rb")
-        raw = fin.read(n*TF)
+        raw = fin.read(n * TF)
         tmp = array(struct.unpack(fstring.format(en, n), raw))
         del(raw)
         self.w = tmp.reshape((nz, ny, nx))
@@ -100,7 +102,7 @@ class microhh:
         fin.close()
 
         fin = open("{0:s}/p.xz.00000.{1:07d}".format(path, iter), "rb")
-        raw = fin.read(n*TF)
+        raw = fin.read(n * TF)
         tmp = array(struct.unpack(fstring.format(en, n), raw))
         del(raw)
         self.p = tmp.reshape((nz, ny, nx))
@@ -115,12 +117,12 @@ class getref:
         self.p = zeros((z .size, 1, x .size))
 
         for k in range(z.size):
-            self.u[k, 0, :] = sin(2.*pi*xh)*cos(2.*pi*z[k]) * \
-                exp(-8.*pi**2.*visc*time)
-            self.w[k, 0, :] = -cos(2.*pi*x) * \
-                sin(2.*pi*zh[k])*exp(-8.*pi**2.*visc*time)
+            self.u[k, 0, :] = sin(2. * pi * xh) * cos(2. * pi * z[k]) * \
+                exp(-8. * pi**2. * visc * time)
+            self.w[k, 0, :] = -cos(2. * pi * x) * \
+                sin(2. * pi * zh[k]) * exp(-8. * pi**2. * visc * time)
             self.p[k, 0, :] = (
-                0.25*(cos(4.*pi*x) + cos(4.*pi*z[k]))-0.25)*(exp(-8.*pi**2.*visc*time)**2.)
+                0.25 * (cos(4. * pi * x) + cos(4. * pi * z[k])) - 0.25) * (exp(-8. * pi**2. * visc * time)**2.)
 
 
 class geterror:
@@ -133,25 +135,50 @@ class geterror:
         self.p = 0.
 
         for k in range(data.z.size):
-            self.u = self.u + sum(dx*dz*abs(data.u[k, :] - ref.u[k, :]))
-            self.w = self.w + sum(dx*dz*abs(data.w[k, :] - ref.w[k, :]))
-            self.p = self.p + sum(dx*dz*abs(data.p[k, :] - ref.p[k, :]))
+            self.u = self.u + sum(dx * dz * abs(data.u[k, :] - ref.u[k, :]))
+            self.w = self.w + sum(dx * dz * abs(data.w[k, :] - ref.w[k, :]))
+            self.p = self.p + sum(dx * dz * abs(data.p[k, :] - ref.p[k, :]))
 
 
 def plot(filename='results.pdf', float_type='dp', experiment=''):
     t = 1
     time = 1.
-    visc = (8.*pi**2. * 100.)**(-1.)
+    visc = (8. * pi**2. * 100.)**(-1.)
 
     ns = array([16, 32, 64, 128, 256])
-    dxs = 1./ns
+    dxs = 1. / ns
 
     # 2nd order data
-    data16_2nd = microhh(t,  16,   8, float_type, 'itot016_swadvec2_{}'.format(experiment))
-    data32_2nd = microhh(t,  32,  16, float_type, 'itot032_swadvec2_{}'.format(experiment))
-    data64_2nd = microhh(t,  64,  32, float_type, 'itot064_swadvec2_{}'.format(experiment))
-    data128_2nd = microhh(t, 128,  64, float_type, 'itot128_swadvec2_{}'.format(experiment))
-    data256_2nd = microhh(t, 256, 128, float_type, 'itot256_swadvec2_{}'.format(experiment))
+    data16_2nd = microhh(
+        t,
+        16,
+        8,
+        float_type,
+        'itot016_swadvec2_{}'.format(experiment))
+    data32_2nd = microhh(
+        t,
+        32,
+        16,
+        float_type,
+        'itot032_swadvec2_{}'.format(experiment))
+    data64_2nd = microhh(
+        t,
+        64,
+        32,
+        float_type,
+        'itot064_swadvec2_{}'.format(experiment))
+    data128_2nd = microhh(
+        t,
+        128,
+        64,
+        float_type,
+        'itot128_swadvec2_{}'.format(experiment))
+    data256_2nd = microhh(
+        t,
+        256,
+        128,
+        float_type,
+        'itot256_swadvec2_{}'.format(experiment))
 
     ref16_2nd = getref(data16_2nd .x, data16_2nd .xh,
                        data16_2nd .z, data16_2nd .zh, visc, time)
@@ -180,18 +207,43 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
     print('errors p_2nd', errsp_2nd)
     if(t > 0):
         print('convergence u_2nd', (log(
-            errsu_2nd[-1])-log(errsu_2nd[0])) / (log(dxs[-1])-log(dxs[0])))
+            errsu_2nd[-1]) - log(errsu_2nd[0])) / (log(dxs[-1]) - log(dxs[0])))
         print('convergence w_2nd', (log(
-            errsw_2nd[-1])-log(errsw_2nd[0])) / (log(dxs[-1])-log(dxs[0])))
+            errsw_2nd[-1]) - log(errsw_2nd[0])) / (log(dxs[-1]) - log(dxs[0])))
     print('convergence p_2nd',
-          (log(errsp_2nd[-1])-log(errsp_2nd[0])) / (log(dxs[-1])-log(dxs[0])))
+          (log(errsp_2nd[-1]) - log(errsp_2nd[0])) / (log(dxs[-1]) - log(dxs[0])))
 
     # 42 order data
-    data16_4m = microhh(t,  16,   8, float_type, 'itot016_swadvec4m_{}'.format(experiment))
-    data32_4m = microhh(t,  32,  16, float_type, 'itot032_swadvec4m_{}'.format(experiment))
-    data64_4m = microhh(t,  64,  32, float_type, 'itot064_swadvec4m_{}'.format(experiment))
-    data128_4m = microhh(t, 128,  64, float_type, 'itot128_swadvec4m_{}'.format(experiment))
-    data256_4m = microhh(t, 256, 128, float_type, 'itot256_swadvec4m_{}'.format(experiment))
+    data16_4m = microhh(
+        t,
+        16,
+        8,
+        float_type,
+        'itot016_swadvec4m_{}'.format(experiment))
+    data32_4m = microhh(
+        t,
+        32,
+        16,
+        float_type,
+        'itot032_swadvec4m_{}'.format(experiment))
+    data64_4m = microhh(
+        t,
+        64,
+        32,
+        float_type,
+        'itot064_swadvec4m_{}'.format(experiment))
+    data128_4m = microhh(
+        t,
+        128,
+        64,
+        float_type,
+        'itot128_swadvec4m_{}'.format(experiment))
+    data256_4m = microhh(
+        t,
+        256,
+        128,
+        float_type,
+        'itot256_swadvec4m_{}'.format(experiment))
 
     ref16_4m = getref(data16_4m .x, data16_4m .xh,
                       data16_4m .z, data16_4m .zh, visc, time)
@@ -220,18 +272,43 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
     print('errors p_4thm', errsp_4m)
     if(t > 0):
         print('convergence u_4thm',
-              (log(errsu_4m[-1])-log(errsu_4m[0])) / (log(dxs[-1])-log(dxs[0])))
+              (log(errsu_4m[-1]) - log(errsu_4m[0])) / (log(dxs[-1]) - log(dxs[0])))
         print('convergence w_4thm',
-              (log(errsw_4m[-1])-log(errsw_4m[0])) / (log(dxs[-1])-log(dxs[0])))
+              (log(errsw_4m[-1]) - log(errsw_4m[0])) / (log(dxs[-1]) - log(dxs[0])))
     print('convergence p_4thm',
-          (log(errsp_4m[-1])-log(errsp_4m[0])) / (log(dxs[-1])-log(dxs[0])))
+          (log(errsp_4m[-1]) - log(errsp_4m[0])) / (log(dxs[-1]) - log(dxs[0])))
 
     # 4th order data
-    data16_4th = microhh(t,  16,   8, float_type, 'itot016_swadvec4_{}'.format(experiment))
-    data32_4th = microhh(t,  32,  16, float_type, 'itot032_swadvec4_{}'.format(experiment))
-    data64_4th = microhh(t,  64,  32, float_type, 'itot064_swadvec4_{}'.format(experiment))
-    data128_4th = microhh(t, 128,  64, float_type, 'itot128_swadvec4_{}'.format(experiment))
-    data256_4th = microhh(t, 256, 128, float_type, 'itot256_swadvec4_{}'.format(experiment))
+    data16_4th = microhh(
+        t,
+        16,
+        8,
+        float_type,
+        'itot016_swadvec4_{}'.format(experiment))
+    data32_4th = microhh(
+        t,
+        32,
+        16,
+        float_type,
+        'itot032_swadvec4_{}'.format(experiment))
+    data64_4th = microhh(
+        t,
+        64,
+        32,
+        float_type,
+        'itot064_swadvec4_{}'.format(experiment))
+    data128_4th = microhh(
+        t,
+        128,
+        64,
+        float_type,
+        'itot128_swadvec4_{}'.format(experiment))
+    data256_4th = microhh(
+        t,
+        256,
+        128,
+        float_type,
+        'itot256_swadvec4_{}'.format(experiment))
 
     ref16_4th = getref(data16_4th .x, data16_4th .xh,
                        data16_4th .z, data16_4th .zh, visc, time)
@@ -260,16 +337,16 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
     print('errors p_4th', errsp_4th)
     if(t > 0):
         print('convergence u_4th', (log(
-            errsu_4th[-1])-log(errsu_4th[0])) / (log(dxs[-1])-log(dxs[0])))
+            errsu_4th[-1]) - log(errsu_4th[0])) / (log(dxs[-1]) - log(dxs[0])))
         print('convergence w_4th', (log(
-            errsw_4th[-1])-log(errsw_4th[0])) / (log(dxs[-1])-log(dxs[0])))
+            errsw_4th[-1]) - log(errsw_4th[0])) / (log(dxs[-1]) - log(dxs[0])))
     print('convergence p_4th',
-          (log(errsp_4th[-1])-log(errsp_4th[0])) / (log(dxs[-1])-log(dxs[0])))
+          (log(errsp_4th[-1]) - log(errsp_4th[0])) / (log(dxs[-1]) - log(dxs[0])))
 
     off2 = 0.01
     off4 = 0.002
-    slope2 = off2*(dxs[:] / dxs[0])**2.
-    slope4 = off4*(dxs[:] / dxs[0])**4.
+    slope2 = off2 * (dxs[:] / dxs[0])**2.
+    slope4 = off4 * (dxs[:] / dxs[0])**4.
 
     close('all')
     with PdfPages(filename) as pdf:
@@ -295,7 +372,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         figure()
         subplot(121)
         pcolormesh(data256_2nd.x, data256_2nd.z,
-                   data256_2nd.u[:, 0, :]-ref256_2nd.u[:, 0, :], rasterized=True)
+                   data256_2nd.u[:, 0, :] - ref256_2nd.u[:, 0, :], rasterized=True)
         xlim(min(data256_2nd.xh), max(data256_2nd.xh))
         ylim(min(data256_2nd.z), max(data256_2nd.z))
         xlabel('x')
@@ -304,7 +381,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         colorbar()
         subplot(122)
         pcolormesh(data256_4th.x, data256_4th.z,
-                   data256_4th.u[:, 0, :]-ref256_4th.u[:, 0, :], rasterized=True)
+                   data256_4th.u[:, 0, :] - ref256_4th.u[:, 0, :], rasterized=True)
         xlim(min(data256_4th.xh), max(data256_4th.xh))
         ylim(min(data256_4th.z), max(data256_4th.z))
         xlabel('x')
@@ -317,7 +394,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         figure()
         subplot(121)
         pcolormesh(data256_2nd.x, data256_2nd.z,
-                   data256_2nd.w[:, 0, :]-ref256_2nd.w[:, 0, :], rasterized=True)
+                   data256_2nd.w[:, 0, :] - ref256_2nd.w[:, 0, :], rasterized=True)
         xlim(min(data256_2nd.xh), max(data256_2nd.xh))
         ylim(min(data256_2nd.z), max(data256_2nd.z))
         xlabel('x')
@@ -326,7 +403,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         colorbar()
         subplot(122)
         pcolormesh(data256_4th.x, data256_4th.z,
-                   data256_4th.w[:, 0, :]-ref256_4th.w[:, 0, :], rasterized=True)
+                   data256_4th.w[:, 0, :] - ref256_4th.w[:, 0, :], rasterized=True)
         xlim(min(data256_4th.x), max(data256_4th.x))
         ylim(min(data256_4th.zh), max(data256_4th.zh))
         xlabel('x')
@@ -339,7 +416,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         figure()
         subplot(121)
         pcolormesh(data256_2nd.x, data256_2nd.z,
-                   data256_2nd.p[:, 0, :]-ref256_2nd.p[:, 0, :], rasterized=True)
+                   data256_2nd.p[:, 0, :] - ref256_2nd.p[:, 0, :], rasterized=True)
         xlim(min(data256_2nd.x), max(data256_2nd.x))
         ylim(min(data256_2nd.z), max(data256_2nd.z))
         xlabel('x')
@@ -348,7 +425,7 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
         colorbar()
         subplot(122)
         pcolormesh(data256_4th.x, data256_4th.z,
-                   data256_4th.p[:, 0, :]-ref256_4th.p[:, 0, :], rasterized=True)
+                   data256_4th.p[:, 0, :] - ref256_4th.p[:, 0, :], rasterized=True)
         xlim(min(data256_4th.x), max(data256_4th.x))
         ylim(min(data256_4th.z), max(data256_4th.z))
         xlabel('x')
