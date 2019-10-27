@@ -483,8 +483,8 @@ def run_cases(cases, executable, mode, outputfile=''):
 
     for case in cases:
         print_header(
-            'Running case \'{}\' for executable \'{}\''.format(
-                case.name, executable_rel))
+            'Running case \'{}\' for executable \'{}\' in dir \'{}\''.format(
+                case.name, executable_rel, case.rundir))
 
         # Move to working directory
         rootdir = os.getcwd()
@@ -521,7 +521,6 @@ def run_cases(cases, executable, mode, outputfile=''):
             ntasks = determine_ntasks()
 
             # Create input data, and do other pre-processing
-            print(case.pre)
             run_scripts(case.pre)
 
             for phase in case.phases:
@@ -544,6 +543,8 @@ def run_cases(cases, executable, mode, outputfile=''):
             print(str(e))
             print_error('Case Failed!')
             case.success = False
+        else:
+            print_message('Success!')
 
         finally:
             # Go back to root of all cases
@@ -602,7 +603,7 @@ def generator_restart(cases):
     return cases_out
 """
 
-def generator_restart(case, experiment, endtime):
+def generator_restart(case, endtime):
     cases_out = []
     nl = Read_namelist('{}/{}.ini'.format(case.casedir, case.name))
 
@@ -616,13 +617,13 @@ def generator_restart(case, experiment, endtime):
     savetimestr = '{0:07d}'.format(savetime_io)
 
     case_init = copy.deepcopy(case)
-    case_init.rundir = 'init_{}'.format(experiment)
+    case_init.rundir = case.rundir + '_init'
 
     case_init.options.append(('time', 'savetime', savetime))
     case_init.options.append(('time', 'endtime', endtime))
 
     case_restart = copy.deepcopy(case)
-    case_restart.rundir = 'restart_{}'.format(experiment)
+    case_restart.rundir = case.rundir + '_restart'
     case_restart.phases = ['run']
     case_restart.pre = {__file__: [
         ['restart_pre', case_init.rundir, savetimestr]]}
@@ -710,7 +711,7 @@ def generator_parameter_change(cases, **kwargs):
     return cases_out
 
 
-def generator_parameter_permutations(base_case, experiment, lists):
+def generator_parameter_permutations(base_case, lists):
     """
     Function to permutate lists of dictionaries to generate cases to run
     """
@@ -731,10 +732,8 @@ def generator_parameter_permutations(base_case, experiment, lists):
         case = copy.deepcopy(base_case)
 
         # Construct the directory name from tuple names.
-        name = ''
         for name_dict in lp:
-            name += name_dict[0] + '_'
-        case.rundir = name + experiment
+            case.rundir += '_' + name_dict[0]
 
         # Unpack all dictonaries and construct a set of tuples.
         options = []
@@ -743,7 +742,7 @@ def generator_parameter_permutations(base_case, experiment, lists):
                 for item, value in pair.items():
                     options.append((group, item, value))
 
-        case.options = options
+        case.options.extend(options)
 
         cases_out.append(case)
 
@@ -780,8 +779,6 @@ class Case:
 
         # By default; run {name}_input.py in preprocessing phase
         self.pre = pre if pre else {'{}_input.py'.format(name): None}
-        print(self.name, files)
         self.files = files if files else [
             '{0}.ini'.format(name), '{}_input.py'.format(name)]
-        print(self.files)
         self.casedir = casedir if casedir else name

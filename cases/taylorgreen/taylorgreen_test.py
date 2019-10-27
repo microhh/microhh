@@ -24,7 +24,7 @@ dict_order = {
         'swadvec4m': { 'grid': { 'swspatialorder': 4 }, 'advec': { 'swadvec': '4m' } } }
 
 
-def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
+def run(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
     if mode == 'cpumpi':
         print('MPI mode not supported')
         return
@@ -36,12 +36,6 @@ def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', exp
             executable,
             mode,
             outputfile='{}/taylorgreen_{}.csv'.format(casedir, experiment))
-
-
-def plot_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
-    if mode == 'cpumpi':
-        print('MPI mode not supported')
-        return
 
     cwd = os.getcwd()
     os.chdir(casedir)
@@ -367,8 +361,6 @@ def plot(filename='results.pdf', float_type='dp', experiment=''):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        run_test(sys.argv[1:])
-        plot_test(sys.argv[1:])
+        run(sys.argv[1:])
     else:
-        run_test()
-        plot_test()
+        run()

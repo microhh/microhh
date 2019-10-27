@@ -6,16 +6,15 @@ import shutil
 sys.path.append('../../python/')
 import microhh_tools as mht
 
-dict_mpi = { 'default_run': { 'master': { 'npx': 2, 'npy': 4 } } }
-dict_mpi_small = { 'default_run': { 'master': { 'npx': 2, 'npy': 4 }, 'grid': { 'itot': 64, 'jtot': 48, 'ktot': 32 } } }
-dict_small = { 'default_run': { 'grid': { 'itot': 64, 'jtot': 48, 'ktot': 32 } } }
+opt_mpi = [('master', 'npx', 2),('master', 'npy', 4 )]
+dict_par = [{'default':{}, 'advec': { 'advec':{'swadvec':0}}, 'diff': { 'diff':{'swdiff':0}}}]
+opt_small = [('grid', 'itot', 64), ('grid','jtot' , 48), ('grid','ktot' , 32)]
 
-def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
-    base_case = mht.Case('moser180', casedir=casedir, rundir='default_run_{}'.format(experiment))
+def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
+    options = []
     if mode == 'cpumpi':
-        cases = mht.generator_parameter_permutations(base_case, experiment, [dict_mpi])
-    else:
-        cases = [base_case]
+        options.extend(opt_mpi)
+    cases = [mht.Case('moser180', casedir=casedir, rundir=experiment,options=options )]
 
     mht.run_cases(
             cases,
@@ -23,15 +22,24 @@ def run_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', exp
             mode,
             outputfile='{}/moser180_{}.csv'.format(casedir, experiment))
 
-
-def run_restart_test(executable='microhh', float_type='dp', mode='cpu', casedir='.', experiment='local'):
-    base_case = mht.Case('moser180', casedir=casedir)
+def run_small(executable='microhh', mode='cpu', casedir='.', experiment='local'):
+    options = opt_small
     if mode == 'cpumpi':
-        base_case = mht.generator_parameter_permutations(base_case, experiment, [dict_mpi_small])[0]
-    else:
-        base_case = mht.generator_parameter_permutations(base_case, experiment, [dict_small])[0]
+        options.extend(opt_mpi)
+    cases = [mht.Case('moser180', casedir=casedir, rundir='{}_small'.format(experiment),options=options )]
 
-    cases = mht.generator_restart(base_case, experiment, 600.)
+    mht.run_cases(
+            cases,
+            executable,
+            mode,
+            outputfile='{}/moser180_small_{}.csv'.format(casedir, experiment))
+
+def run_restart(executable='microhh', mode='cpu', casedir='.', experiment='local'):
+    options = opt_small
+    if mode == 'cpumpi':
+        options.extend(opt_mpi)
+    base_case = mht.Case('moser180', casedir=casedir, rundir=experiment,options=options )
+    cases = mht.generator_restart(base_case, 60.)
 
     mht.run_cases(
             cases,
@@ -41,7 +49,8 @@ def run_restart_test(executable='microhh', float_type='dp', mode='cpu', casedir=
 
 
 if __name__ == '__main__':
+    kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
     if len(sys.argv) > 1:
-        run_test(sys.argv[1:])
+        globals()[sys.argv[1]](**kwargs)
     else:
-        run_test()
+        run()
