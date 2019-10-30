@@ -289,6 +289,7 @@ namespace
         int kinv = kstart;
         for (int k=kstart+1; k<kend; ++k)
         {
+            std::cout << "calc_zi " << k << " " << fldmean[k] << "\n";
             grad = plusminus * (fldmean[k] - fldmean[k-1]);
             if (grad > maxgrad)
             {
@@ -363,6 +364,7 @@ template<typename TF>
 void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
+    fields.set_calc_mean_profs(true);
 
     /* Setup base state:
        For anelastic setup, calculate reference density and temperature from input sounding
