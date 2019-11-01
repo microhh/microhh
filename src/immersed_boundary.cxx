@@ -501,43 +501,6 @@ void Immersed_boundary::create()
                     grid->icells);
             grid->boundary_cyclic_2d(k_dem.data());
 
-            // Read out 2D fields for scalars in case desired.
-            for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
-            {
-                // Check whether spatial pattern is desired.
-                if (std::find(sbot_spatial_list.begin(), sbot_spatial_list.end(), it->first) != sbot_spatial_list.end())
-                {
-                    // Set up the file name
-                    std::string sbot_file = it->first + "bot_ib.0000000";
-                    model->master->print_message("Loading \"%s\" ... ", sbot_file.c_str());
-                    
-                    // Create a temporary vector for loading the data.
-                    std::vector<double> sbot_spatial(grid->ijcells);
-
-                    // Read the data from disk.
-                    if (grid->load_xy_slice(sbot_spatial.data(), fields->atmp["tmp1"]->data, sbot_file.c_str()))
-                    {
-                        model->master->print_message("FAILED\n");
-                        throw 1;
-                    }
-                    else
-                        model->master->print_message("OK\n");
-                    grid->boundary_cyclic_2d(sbot_spatial.data());
-
-                    // Interpolate the sbot_ib field to the ghost cells.
-                    for (auto& gc : ghost_cells_s)
-                        gc.sbot[it->first] = interp2_dem(
-                                gc.xB, gc.yB, grid->x, grid->y, sbot_spatial.data(), grid->dx, grid->dy,
-                                grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
-                                model->master->mpicoordx, model->master->mpicoordy);
-                }
-                else
-                {
-                    // Interpolate the sbot_ib field to the ghost cells.
-                    for (auto& gc : ghost_cells_s)
-                        gc.sbot[it->first] = sbc[it->first]->bot;
-                }
-            }
         }
 
         if (ib_type == Flat_type)
@@ -604,6 +567,45 @@ void Immersed_boundary::create()
             }
         }
     }
+
+    // Read out 2D fields for scalars in case desired.
+    for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+    {
+        // Check whether spatial pattern is desired.
+        if (std::find(sbot_spatial_list.begin(), sbot_spatial_list.end(), it->first) != sbot_spatial_list.end())
+        {
+            // Set up the file name
+            std::string sbot_file = it->first + "bot_ib.0000000";
+            model->master->print_message("Loading \"%s\" ... ", sbot_file.c_str());
+
+            // Create a temporary vector for loading the data.
+            std::vector<double> sbot_spatial(grid->ijcells);
+
+            // Read the data from disk.
+            if (grid->load_xy_slice(sbot_spatial.data(), fields->atmp["tmp1"]->data, sbot_file.c_str()))
+            {
+                model->master->print_message("FAILED\n");
+                throw 1;
+            }
+            else
+                model->master->print_message("OK\n");
+            grid->boundary_cyclic_2d(sbot_spatial.data());
+
+            // Interpolate the sbot_ib field to the ghost cells.
+            for (auto& gc : ghost_cells_s)
+                gc.sbot[it->first] = interp2_dem(
+                        gc.xB, gc.yB, grid->x, grid->y, sbot_spatial.data(), grid->dx, grid->dy,
+                        grid->igc, grid->jgc, grid->icells, grid->imax, grid->jmax,
+                        model->master->mpicoordx, model->master->mpicoordy);
+        }
+        else
+        {
+            // Interpolate the sbot_ib field to the ghost cells.
+            for (auto& gc : ghost_cells_s)
+                gc.sbot[it->first] = sbc[it->first]->bot;
+        }
+    }
+
 
     // Print some debugging output
     int n_ghost_u = ghost_cells_u.size();
