@@ -9,10 +9,10 @@ import drycblles.drycblles_test as drycblles
 import bomex.bomex_test as bomex
 
 
-modes = ['cpu', 'cpumpi', 'gpu']
+# modes = ['cpu', 'cpumpi', 'gpu']
 
 precs = ['dp', 'sp']
-# modes = ['cpu', 'cpumpi']
+modes = ['cpu', 'cpumpi']
 
 for prec in precs:
     for mode in modes:

@@ -6,21 +6,33 @@ import shutil
 sys.path.append('../../python/')
 import microhh_tools as mht
 
-opt_mpi = [('master', 'npx', 2), ('master', 'npy', 4)]
-dict_par = [{'default': {},
-             'advec': {'advec': {'swadvec': 0}},
-             'diff': {'diff': {'swdiff': 0}},
-             'thermo': {'thermo': {'swthermo': '0'}},
-             'basestate': {'thermo': {'swupdatebasestate': 0}},
-             'buffer': {'buffer': {'swbuffer': 0}}}]
-opt_small = [('grid', 'itot', 8), ('grid', 'jtot', 8),
-             ('time', 'endtime', 7200)]
+# Case configuration dicts
+opt_mpi = {
+        'grid': {'itot': 65666, 'jtot': 8},
+        'master': {'npx': 2, 'npy': 4}}
+
+opt_small = {
+        'grid': {'itot': 8, 'jtot': 8},
+        'time': {'endtime': 7200}}
+
+# Case configuration dicts with name label for permutations.
+dict_opts = {
+        'all_enabled': {},
+        'advec': {'advec': {'swadvec': 0}},
+        'diff': {'diff': {'swdiff': 0}},
+        'thermo': {'thermo': {'swthermo': '0'}},
+        'basestate': {'thermo': {'swupdatebasestate': 0}},
+        'buffer': {'buffer': {'swbuffer': 0}}}
+
+list_permutations = [ dict_opts ]
 
 
 def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
+
     options = []
     if mode == 'cpumpi':
         options.extend(opt_mpi)
+
     cases = [
         mht.Case(
             'bomex',
@@ -37,9 +49,12 @@ def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
 
 def run_small(executable='microhh', mode='cpu',
               casedir='.', experiment='local'):
+
+    # Deep copy the reference case.
     options = opt_small.copy()
     if mode == 'cpumpi':
-        options.extend(opt_mpi)
+        mht.merge_options(options, opt_mpi)
+
     cases = [
         mht.Case(
             'bomex',
@@ -56,15 +71,20 @@ def run_small(executable='microhh', mode='cpu',
 
 def run_restart(executable='microhh', mode='cpu',
                 casedir='.', experiment='local'):
+
+    # Deep copy the small version of the reference case.
     options = opt_small.copy()
+
     if mode == 'cpumpi':
-        options.extend(opt_mpi)
+        mht.merge_options(options, opt_mpi)
+
     base_case = mht.Case(
         'bomex',
         casedir=casedir,
         rundir=experiment,
         options=options)
-    base_cases = mht.generator_parameter_permutations(base_case, dict_par)
+
+    base_cases = mht.generator_parameter_permutations(base_case, list_permutations)
     cases = []
     for case in base_cases:
         cases.extend(mht.generator_restart(case, 1800.))
