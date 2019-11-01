@@ -630,8 +630,7 @@ def generator_restart(case, endtime):
     case_init = copy.deepcopy(case)
     case_init.rundir = case.rundir + '_init'
 
-    case_init.options.append(('time', 'savetime', savetime))
-    case_init.options.append(('time', 'endtime', endtime))
+    merge_options(case_init.options, {'time': {'savetime': savetime, 'endtime': endtime}})
 
     case_restart = copy.deepcopy(case)
     case_restart.rundir = case.rundir + '_restart'
@@ -641,9 +640,7 @@ def generator_restart(case, endtime):
     case_restart.post = {__file__: [
         ['restart_post', case_init.rundir, endtimestr]]}
 
-    case_restart.options.append(('time', 'starttime', savetime))
-    case_restart.options.append(('time', 'savetime', savetime))
-    case_restart.options.append(('time', 'endtime', endtime))
+    merge_options(case_restart.options, {'time': {'starttime': savetime, 'savetime': savetime, 'endtime': endtime}})
 
     cases_out.append(case_init)
     cases_out.append(case_restart)
@@ -746,14 +743,8 @@ def generator_parameter_permutations(base_case, lists):
         for name_dict in lp:
             case.rundir += '_' + name_dict[0]
 
-        # Unpack all dictonaries and construct a set of tuples.
-        options = []
         for name_dict in lp:
-            for group, pair in name_dict[1].items():
-                for item, value in pair.items():
-                    options.append((group, item, value))
-
-        case.options.extend(options)
+            merge_options(case.options, name_dict[1])
 
         cases_out.append(case)
 

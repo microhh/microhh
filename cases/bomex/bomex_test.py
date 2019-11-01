@@ -8,7 +8,6 @@ import microhh_tools as mht
 
 # Case configuration dicts
 opt_mpi = {
-        'grid': {'itot': 65666, 'jtot': 8},
         'master': {'npx': 2, 'npy': 4}}
 
 opt_small = {
