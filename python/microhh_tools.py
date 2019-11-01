@@ -526,9 +526,12 @@ def run_cases(cases, executable, mode, outputfile=''):
 
         try:
             # Update .ini file for testing
-            for group, item, value in case.options:
-                replace_namelist_value(
-                    item, value, group=group, namelist_file='{0}.ini'.format(case.name))
+            for group, group_dict in case.options.items():
+                for item, value in group_dict.items():
+                    print("Replace:", group, item, value)
+                    replace_namelist_value(
+                            item, value, group=group, namelist_file='{0}.ini'.format(case.name))
+
             ntasks = determine_ntasks()
 
             # Create input data, and do other pre-processing
