@@ -528,7 +528,6 @@ def run_cases(cases, executable, mode, outputfile=''):
             # Update .ini file for testing
             for group, group_dict in case.options.items():
                 for item, value in group_dict.items():
-                    print("Replace:", group, item, value)
                     replace_namelist_value(
                             item, value, group=group, namelist_file='{0}.ini'.format(case.name))
 
