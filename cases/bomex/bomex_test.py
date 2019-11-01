@@ -14,12 +14,15 @@ opt_small = {
         'grid': {'itot': 8, 'jtot': 8},
         'time': {'endtime': 7200}}
 
+opt_nostats = {
+        'stats': {'swstats': 0}}
+
 # Case configuration dicts with name label for permutations.
 dict_opts = {
         'all_enabled': {},
         'advec': {'advec': {'swadvec': 0}},
         'diff': {'diff': {'swdiff': 0}},
-        'thermo': {'thermo': {'swthermo': '0'}},
+        'thermo': {'thermo': {'swthermo': 0}, 'fields': {'slist': 'thl,qt'}},
         'basestate': {'thermo': {'swupdatebasestate': 0}},
         'buffer': {'buffer': {'swbuffer': 0}}}
 
@@ -71,8 +74,9 @@ def run_small(executable='microhh', mode='cpu',
 def run_restart(executable='microhh', mode='cpu',
                 casedir='.', experiment='local'):
 
-    # Deep copy the small version of the reference case.
+    # Deep copy the small version of the reference case and disable stats.
     options = opt_small.copy()
+    mht.merge_options(options, opt_nostats)
 
     if mode == 'cpumpi':
         mht.merge_options(options, opt_mpi)
