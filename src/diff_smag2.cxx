@@ -637,8 +637,7 @@ namespace
                   const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                   const int jj, const int kk)
     {
-        const TF one = 1.;
-        const TF tPrfac = std::min(one, tPr);
+        const TF tPrfac = std::min(TF(1.), tPr);
         TF dnmul = 0;
 
         // get the maximum time step for diffusion
@@ -648,10 +647,8 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
+                    dnmul = std::max(dnmul, std::abs(evisc[ijk]/tPrfac*(dxidxi + dyidyi + dzi[k]*dzi[k])));
                 }
-
-        // get_max(&dnmul);
 
         return dnmul;
     }
@@ -1037,13 +1034,16 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 template<typename TF>
 void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
 {
+    const std::string group_name = "default";
+
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean","2"});
+        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean", "2"}, group_name);
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+
         for (auto it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name, tend_longname);
     }

@@ -4,12 +4,12 @@ if(USECUDA)
   set(CUDALIBS "-rdynamic /usr/local/cuda/8.0.61/lib64/libcufft.so")
   set(USER_CUDA_NVCC_FLAGS "-arch=sm_60")
   add_definitions(-DRESTRICTKEYWORD=__restrict__)
-  list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++14")
   set(USER_C_FLAGS "")
   set(USER_C_FLAGS_RELEASE "-O3 -mtune=native -march=native")
   set(USER_C_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
-  set(USER_CXX_FLAGS "-traceback -restrict -DMPICH_IGNORE_CXX_SEEK -std=c++11 -lpthread")
+  set(USER_CXX_FLAGS "-traceback -restrict -DMPICH_IGNORE_CXX_SEEK -std=c++14 -lpthread")
   set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -xHOST -fno-alias -restrict")
   set(USER_CXX_FLAGS_DEBUG "-g -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
 
@@ -20,7 +20,7 @@ else()
   set(USER_C_FLAGS_RELEASE "-O3 -mtune=native -march=native")
   set(USER_C_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
-  set(USER_CXX_FLAGS "-traceback -restrict -DMPICH_IGNORE_CXX_SEEK -std=c++11")
+  set(USER_CXX_FLAGS "-traceback -restrict -DMPICH_IGNORE_CXX_SEEK -std=c++14")
   set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -xHOST -fno-alias -restrict")
   set(USER_CXX_FLAGS_DEBUG "-check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
 

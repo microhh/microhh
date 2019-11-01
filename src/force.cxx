@@ -255,21 +255,21 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     // Large-scale pressure forcing.
     if (swlspres_in == "0")
     {
-        swlspres = Large_scale_pressure_type::disabled;
+        swlspres = Large_scale_pressure_type::Disabled;
     }
     else if (swlspres_in == "uflux")
     {
-        swlspres = Large_scale_pressure_type::fixed_flux;
+        swlspres = Large_scale_pressure_type::Fixed_flux;
         uflux = inputin.get_item<TF>("force", "uflux", "");
     }
     else if (swlspres_in == "dpdx")
     {
-        swlspres = Large_scale_pressure_type::pressure_gradient;
+        swlspres = Large_scale_pressure_type::Pressure_gradient;
         dpdx = inputin.get_item<TF>("force", "dpdx", "");
     }
     else if (swlspres_in == "geo")
     {
-        swlspres = Large_scale_pressure_type::geo_wind;
+        swlspres = Large_scale_pressure_type::Geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
@@ -281,10 +281,10 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Large-scale tendencies due to advection and other processes.
     if (swls_in == "0")
-        swls = Large_scale_tendency_type::disabled;
+        swls = Large_scale_tendency_type::Disabled;
     else if (swls_in == "1")
     {
-        swls = Large_scale_tendency_type::enabled;
+        swls = Large_scale_tendency_type::Enabled;
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
 
         if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
@@ -301,10 +301,10 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Large-scale subsidence.
     if (swwls_in == "0")
-        swwls = Large_scale_subsidence_type::disabled;
+        swwls = Large_scale_subsidence_type::Disabled;
     else if (swwls_in == "1")
     {
-        swwls = Large_scale_subsidence_type::enabled;
+        swwls = Large_scale_subsidence_type::Enabled;
         fields.set_calc_mean_profs(true);
     }
     else
@@ -315,10 +315,10 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     // Nudging.
     if (swnudge_in == "0")
-        swnudge = Nudging_type::disabled;
+        swnudge = Nudging_type::Disabled;
     else if (swnudge_in == "1")
     {
-        swnudge = Nudging_type::enabled;
+        swnudge = Nudging_type::Enabled;
         nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
         scalednudgelist = inputin.get_list<std::string>("force", "scalednudgelist", "", std::vector<std::string>());
 
@@ -346,21 +346,21 @@ void Force<TF>::init()
 {
     auto& gd = grid.get_grid_data();
 
-    if (swlspres == Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
         ug.resize(gd.kcells);
         vg.resize(gd.kcells);
     }
 
-    if (swls == Large_scale_tendency_type::enabled)
+    if (swls == Large_scale_tendency_type::Enabled)
     {
         for (auto& it : lslist)
             lsprofs[it] = std::vector<TF>(gd.kcells);
     }
-    if (swwls == Large_scale_subsidence_type::enabled)
+    if (swwls == Large_scale_subsidence_type::Enabled)
         wls.resize(gd.kcells);
 
-    if (swnudge == Nudging_type::enabled)
+    if (swnudge == Nudging_type::Enabled)
     {
         nudge_factor.resize(gd.kcells);
         for (auto& it : nudgelist)
@@ -373,13 +373,13 @@ template <typename TF>
 void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
 
-    if (swlspres == Large_scale_pressure_type::fixed_flux)
+    if (swlspres == Large_scale_pressure_type::Fixed_flux)
     {
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_pres, tend_longname_pres);
     }
-    else if (swlspres == Large_scale_pressure_type::geo_wind)
+    else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
 
         group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
@@ -395,7 +395,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
     }
 
-    if (swls == Large_scale_tendency_type::enabled)
+    if (swls == Large_scale_tendency_type::Enabled)
     {
         // Check whether the fields in the list exist in the prognostic fields.
         for (std::string& it : lslist)
@@ -421,7 +421,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             stats.add_tendency(*fields.at.at(it), "z", tend_name_ls, tend_longname_ls);
     }
 
-    if (swnudge == Nudging_type::enabled)
+    if (swnudge == Nudging_type::Enabled)
     {
         // Get profile with nudging factor as function of height
         group_nc.get_variable(nudge_factor, "nudgefac", {0}, {gd.ktot});
@@ -466,7 +466,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
 
     // Get the large scale vertical velocity from the input
-    if (swwls == Large_scale_subsidence_type::enabled)
+    if (swwls == Large_scale_subsidence_type::Enabled)
     {
         group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
@@ -484,7 +484,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    if (swlspres == Large_scale_pressure_type::fixed_flux)
+    if (swlspres == Large_scale_pressure_type::Fixed_flux)
     {
         const TF u_mean  = field3d_operators.calc_mean(fields.ap.at("u")->fld.data());
         const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
@@ -496,14 +496,14 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
     }
 
-    else if (swlspres == Large_scale_pressure_type::pressure_gradient)
+    else if (swlspres == Large_scale_pressure_type::Pressure_gradient)
     {
         add_pressure_force<TF>(
                 fields.at.at("u")->fld.data(), dpdx,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
 
-    else if (swlspres == Large_scale_pressure_type::geo_wind)
+    else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
@@ -524,7 +524,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     }
 
-    if (swls == Large_scale_tendency_type::enabled)
+    if (swls == Large_scale_tendency_type::Enabled)
     {
         for (auto& it : lslist)
         {
@@ -538,7 +538,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     }
 
-    if (swwls == Large_scale_subsidence_type::enabled)
+    if (swwls == Large_scale_subsidence_type::Enabled)
     {
         for (auto& it : fields.st)
         {
@@ -550,7 +550,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         }
     }
 
-    if (swnudge == Nudging_type::enabled)
+    if (swnudge == Nudging_type::Enabled)
     {
         for (auto& it : nudgelist)
         {
@@ -577,25 +577,25 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 template <typename TF>
 void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    if (swls == Large_scale_tendency_type::enabled)
+    if (swls == Large_scale_tendency_type::Enabled)
     {
         for (auto& it : tdep_ls)
             it.second->update_time_dependent_prof(lsprofs.at(it.first), timeloop);
     }
 
-    if (swnudge == Nudging_type::enabled)
+    if (swnudge == Nudging_type::Enabled)
     {
         for (auto& it : tdep_nudge)
             it.second->update_time_dependent_prof(nudgeprofs.at(it.first), timeloop);
     }
 
-    if (swlspres == Large_scale_pressure_type::geo_wind)
+    if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
         tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
         tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
-    if (swwls == Large_scale_subsidence_type::enabled)
+    if (swwls == Large_scale_subsidence_type::Enabled)
         tdep_wls->update_time_dependent_prof(wls, timeloop);
 }
 #endif

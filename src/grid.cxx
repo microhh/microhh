@@ -112,7 +112,7 @@ void Grid<TF>::init()
         throw std::runtime_error(msg);
     }
     // Check this one only when npy > 1, since the transpose in that direction only happens then.
-    if (gd.jtot % md.npx != 0)
+    if (gd.jtot % md.npx != 0 && md.npy > 1)
     {
         std::string msg = "jtot = " + std::to_string(gd.jtot) +  " is not a multiple of npx = " + std::to_string(md.npx);
         throw std::runtime_error(msg);

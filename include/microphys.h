@@ -35,7 +35,7 @@ template<typename> class Cross;
 template<typename> class Thermo;
 template<typename> class Field3d;
 
-enum class Microphys_type {Disabled, Warm_2mom};
+enum class Microphys_type {Disabled, Warm_2mom, Nsw6};
 
 /**
  * Base class for the microphysics scheme. This class is abstract and only
@@ -48,6 +48,7 @@ class Microphys
     public:
         Microphys(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys();
+
         static std::shared_ptr<Microphys> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         Microphys_type get_switch();
 

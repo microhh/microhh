@@ -42,7 +42,6 @@
 // #include "boundary_surface_patch.h"
 // #include "boundary_patch.h"
 
-
 namespace
 {
     template<typename TF>
@@ -169,10 +168,10 @@ void Boundary<TF>::process_bcs(Input& input)
         // set the bottom bc
         if (swbot == "dirichlet")
             sbc.at(it.first).bcbot = Boundary_type::Dirichlet_type;
-        else if (swbot == "neumann")
-            sbc.at(it.first).bcbot = Boundary_type::Neumann_type;
         else if (swbot == "flux")
             sbc.at(it.first).bcbot = Boundary_type::Flux_type;
+        else if (swbot == "neumann")
+            sbc.at(it.first).bcbot = Boundary_type::Neumann_type;
         else
         {
             std::string msg = swbot + " is an illegal value for sbcbot";
@@ -186,6 +185,8 @@ void Boundary<TF>::process_bcs(Input& input)
             sbc.at(it.first).bctop = Boundary_type::Neumann_type;
         else if (swtop == "flux")
             sbc.at(it.first).bctop = Boundary_type::Flux_type;
+        else if (swtop == "off")
+            sbc.at(it.first).bctop = Boundary_type::Off_type;
         else
         {
             std::string msg = swbot + " is an illegal value for sbctop";
@@ -376,8 +377,20 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        if (boundary_type == Boundary_type::Dirichlet_type)
+        if (boundary_type == Boundary_type::Dirichlet_type || boundary_type == Boundary_type::Off_type)
         {
+            if (boundary_type == Boundary_type::Off_type)
+            {
+                for (int j=0; j<jcells; ++j)
+                    #pragma ivdep
+                    for (int i=0; i<icells; ++i)
+                    {
+                        const int ij  = i + j*jj;
+                        const int ijk = i + j*jj + (kend-1)*kk;
+                        atop[ij] = TF(3./2.)*a[ijk] - TF(1./2.)*a[ijk-kk];
+                    }
+            }
+
             for (int j=0; j<jcells; ++j)
                 #pragma ivdep
                 for (int i=0; i<icells; ++i)

@@ -127,7 +127,7 @@ namespace
                    TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
                    TF* restrict dutot, const TF* restrict z,
                    const float* zL_sl, const float* f_sl, int* nobuk,
-                   const TF z0m, const TF z0h,
+                   const TF z0m, const TF z0h, const TF db_ref,
                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
                    const int icells, const int jcells, const int kk,
                    Boundary_type mbcbot, Boundary_type thermobc,
@@ -188,7 +188,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    const TF db = b[ijk] - bbot[ij];
+                    const TF db = b[ijk] - bbot[ij] + db_ref;
                     obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
@@ -427,13 +427,14 @@ Boundary_surface<TF>::~Boundary_surface()
 template<typename TF>
 void Boundary_surface<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
+    const std::string group_name = "default";
     Boundary<TF>::process_time_dependent(input, input_nc);
 
     // add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_time_series("ustar", "Surface friction velocity", "m s-1");
-        stats.add_time_series("obuk", "Obukhov length", "m");
+        stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
+        stats.add_time_series("obuk", "Obukhov length", "m", group_name);
     }
 }
 
@@ -721,15 +722,18 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         auto tmp = fields.get_tmp();
 
         thermo.get_buoyancy_surf(*buoy, false);
-        stability(ustar.data(), obuk.data(), buoy->flux_bot.data(),
-                  fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                  fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                  tmp->fld.data(), gd.z.data(),
-                  zL_sl.data(), f_sl.data(), nobuk.data(),
-                  z0m, z0h,
-                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                  gd.icells, gd.jcells, gd.ijcells,
-                  mbcbot, thermobc, boundary_cyclic);
+        const TF db_ref = thermo.get_db_ref();
+
+        stability(
+                ustar.data(), obuk.data(), buoy->flux_bot.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                tmp->fld.data(), gd.z.data(),
+                zL_sl.data(), f_sl.data(), nobuk.data(),
+                z0m, z0h, db_ref,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                mbcbot, thermobc, boundary_cyclic);
 
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);

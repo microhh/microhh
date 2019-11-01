@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_BUOY
-#define THERMO_BUOY
+#ifndef THERMO_BUOY_H
+#define THERMO_BUOY_H
 
 #include "thermo.h"
 
@@ -59,10 +59,15 @@ class Thermo_buoy : public Thermo<TF>
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);           ///< Compute the bottom buoyancy flux for usage in another routine.
         void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool); ///< Compute the buoyancy for usage in another routine.
+        void get_thermo_field(
+                Field3d<TF>&, const std::string&, const bool, const bool); ///< Compute the buoyancy for usage in another routine.
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+                { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
+        TF get_db_ref() const { return bs.n2; }
         int get_bl_depth();
         TF get_buoyancy_diffusivity();
 
@@ -82,7 +87,7 @@ class Thermo_buoy : public Thermo<TF>
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };

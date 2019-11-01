@@ -33,18 +33,23 @@ void Column<TF>::calc_column(
         std::string profname, const TF* const restrict data, const TF offset)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
-    // CvH : This does not work in case CUDA is combined with MPI.
     for (auto& col : columns)
     {
-        const int kbeg = col.coord[0] + col.coord[1]*gd.icells;
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+        {
+            const int i_col = col.coord[0] % gd.imax + gd.istart;
+            const int j_col = col.coord[1] % gd.jmax + gd.jstart;
+            const int kbeg  = i_col + j_col * gd.icells;
 
-        cuda_safe_call(cudaMemcpy2D(
-                    col.profs.at(profname).data.data(),
-                    sizeof(TF), &data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kcells, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy2D(
+                        col.profs.at(profname).data.data(),
+                        sizeof(TF), &data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kcells, cudaMemcpyDeviceToHost));
 
-        for (int k=0; k<gd.kcells; ++k)
-            col.profs.at(profname).data[k] += offset;
+            for (int k=0; k<gd.kcells; ++k)
+                col.profs.at(profname).data[k] += offset;
+        }
     }
 }
 #endif

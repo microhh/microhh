@@ -47,17 +47,26 @@ class Radiation_disabled : public Radiation<TF>
         virtual ~Radiation_disabled();
 
         bool check_field_exists(std::string name);
-        void init() {};
-        void create(Thermo<TF>&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&){};
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&){};
+        void init(const double) {};
+        void create(
+                Input&, Netcdf_handle&, Thermo<TF>&,
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) {};
 
         // Empty functions that should throw
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&){throw 1;};
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&){};
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
-        virtual void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&){};
-        virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&){};
+        // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
+        // void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+        // void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
+
+        void exec_all_stats(
+                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Thermo<TF>&, Timeloop<TF>&,
+                const unsigned long, const int) {};
+
+        void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
+
     private:
         using Radiation<TF>::swradiation;
 };

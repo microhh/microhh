@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <iostream>
 #include <string>
 #include <cstdio>
 #include <algorithm>
@@ -45,6 +45,7 @@
 #include "radiation.h"
 #include "microphys.h"
 #include "decay.h"
+#include "limiter.h"
 #include "stats.h"
 #include "budget.h"
 #include "column.h"
@@ -110,25 +111,27 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid      = std::make_shared<Grid<TF>>(master, *input);
-        fields    = std::make_shared<Fields<TF>>(master, *grid, *input);
+        grid      = std::make_shared<Grid<TF>>    (master, *input);
+        fields    = std::make_shared<Fields<TF>>  (master, *grid, *input);
         timeloop  = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>(master, *grid);
+        fft       = std::make_shared<FFT<TF>>     (master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
 
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
         pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
-        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input);
+        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
+        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer<TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay <TF>>(master, *grid, *fields, *input);
+
         stats     = std::make_shared<Stats <TF>>(master, *grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
         dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
@@ -168,7 +171,7 @@ void Model<TF>::init()
     master.init(*input);
 
     grid->init();
-    fields->init(*dump, *cross);
+    fields->init(*input, *dump, *cross, sim_mode);
 
     fft->init();
 
@@ -180,7 +183,7 @@ void Model<TF>::init()
     force->init();
     thermo->init();
     microphys->init();
-    radiation->init();
+    radiation->init(timeloop->get_ifactor());
     decay->init(*input);
     budget->init();
 
@@ -240,8 +243,9 @@ void Model<TF>::load()
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
-    radiation->create(*thermo, *stats, *column, *cross, *dump);
+    radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
+    limiter->create(*stats);
 
     cross->create(); // Cross needs to be called at the end!
 
@@ -344,7 +348,7 @@ void Model<TF>::exec()
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_sub_time_step(), *stats);
+                microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
@@ -366,9 +370,12 @@ void Model<TF>::exec()
                 pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
-                //Calculate the total tendency statistics, if necessary
+                // Apply the limiter as the last tendency.
+                limiter->exec(timeloop->get_sub_time_step(), *stats);
+
+                // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
-                    stats->calc_tend(*it.second,"total");
+                    stats->calc_tend(*it.second, "total");
 
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
@@ -376,7 +383,6 @@ void Model<TF>::exec()
                     if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
                         dump->do_dump(timeloop->get_itime()))
                     {
-                        #pragma omp taskwait
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -422,7 +428,6 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
-                        #pragma omp taskwait
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -433,7 +438,6 @@ void Model<TF>::exec()
                             thermo  ->backward_device();
                         }
                         #endif
-
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
@@ -533,41 +537,17 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Do the statistics.
     if (stats->do_statistics(itime))
     {
-        // Prepare all the masks.
-        const std::vector<std::string>& mask_list = stats->get_mask_list();
-
-        stats->initialize_masks();
-        for (auto& mask_name : mask_list)
-        {
-            // Get the mask from one of the mask providing classes
-            if (fields->has_mask(mask_name))
-                fields->get_mask(*stats, mask_name);
-            else if (thermo->has_mask(mask_name))
-                thermo->get_mask(*stats, mask_name);
-            else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*stats, mask_name);
-            else if (decay->has_mask(mask_name))
-                decay->get_mask(*stats, mask_name);
-            else if (ib->has_mask(mask_name))
-                ib->get_mask(*stats, mask_name);
-            else
-            {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
-                throw std::runtime_error(error_message);
-            }
-        }
-        stats->finalize_masks();
-
         // Calculate statistics
+        if (!stats->do_tendency())
+            calc_masks();
+
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
-        radiation->exec_stats(*stats, *thermo, *timeloop);
-        // Store the statistics data.
-        stats->exec(iteration, time, itime);
+        // radiation->exec_stats(*stats, *thermo, *timeloop);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -576,7 +556,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
-        radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
+        // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
         // boundary->exec_cross(iotime);
     }
 
@@ -586,8 +566,17 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
-        radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
+        // radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
     }
+
+    // Handle the routines that share computations between stats, cross, and dump.
+    radiation->exec_all_stats(
+            *stats, *cross, *dump,
+            *thermo, *timeloop,
+            itime, iotime);
+
+    if (stats->do_statistics(itime))
+        stats->exec(iteration, time, itime);
 }
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
@@ -621,8 +610,6 @@ void Model<TF>::setup_stats()
                 microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
-            else if (ib->has_mask(mask_name))
-                ib->get_mask(*stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -632,10 +619,39 @@ void Model<TF>::setup_stats()
         stats->finalize_masks();
         if (stats->do_tendency())
         {
+            calc_masks();
             cpu_up_to_date = false;
             stats->set_tendency(true);
         }
     }
+}
+
+// Calculate the statistics for all classes that have a statistics function.
+template<typename TF>
+void Model<TF>::calc_masks()
+{
+    // Prepare all the masks.
+    const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+    stats->initialize_masks();
+    for (auto& mask_name : mask_list)
+    {
+        // Get the mask from one of the mask providing classes
+        if (fields->has_mask(mask_name))
+            fields->get_mask(*stats, mask_name);
+        else if (thermo->has_mask(mask_name))
+            thermo->get_mask(*stats, mask_name);
+        else if (microphys->has_mask(mask_name))
+            microphys->get_mask(*stats, mask_name);
+        else if (decay->has_mask(mask_name))
+            decay->get_mask(*stats, mask_name);
+        else
+        {
+            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            throw std::runtime_error(error_message);
+        }
+    }
+    stats->finalize_masks();
 }
 
 template<typename TF>
@@ -708,8 +724,8 @@ void Model<TF>::print_status()
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
             std::fprintf(
-                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
-                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE");
         }
         first = false;
     }
@@ -734,12 +750,12 @@ void Model<TF>::print_status()
 
         if (master.get_mpiid() == 0)
         {
-            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
-                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke);
             std::fflush(dnsout);
         }
 
-        if (!(cfl>=0. && cfl < 10.))
+        if (!(cfl>=0. && cfl < 10.) || (!std::isfinite(cfl)))
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);

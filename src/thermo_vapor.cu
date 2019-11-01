@@ -260,7 +260,8 @@ void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 
 #ifdef USECUDA
 template<typename TF>
-void Thermo_vapor<TF>::get_thermo_field_g(Field3d<TF>& fld, std::string name, bool cyclic )
+void Thermo_vapor<TF>::get_thermo_field_g(
+        Field3d<TF>& fld, const std::string& name, const bool cyclic )
 {
     auto& gd = grid.get_grid_data();
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_MOIST
-#define THERMO_MOIST
+#ifndef THERMO_MOIST_H
+#define THERMO_MOIST_H
 
 #include "boundary_cyclic.h"
 #include "timedep.h"
@@ -68,13 +68,17 @@ class Thermo_moist : public Thermo<TF>
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_buoyancy_surf(Field3d<TF>&, bool);
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_T_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        TF get_db_ref() const;
+
         int get_bl_depth();
         TF get_buoyancy_diffusivity();
 
@@ -86,7 +90,7 @@ class Thermo_moist : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
@@ -111,6 +115,9 @@ class Thermo_moist : public Thermo<TF>
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         bool swcross_b;
         bool swcross_ql;
+        bool swcross_qi;
+        bool swcross_qsat;
+
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.

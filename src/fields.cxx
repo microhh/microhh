@@ -199,8 +199,8 @@ namespace
         std::string unit;
         int power;
 
-        int delim = s.find_first_of("-123456789");
-        if(delim == std::string::npos)
+        size_t delim = s.find_first_of("-123456789");
+        if (delim == std::string::npos)
         {
             unit  = s;
             power = pow;
@@ -272,21 +272,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
-
-    // Remove the data from the input that is not used in run mode, to avoid warnings.
-    /*
-    if (master.mode == "run")
-    {
-        input.flag_as_used("fields", "rndamp");
-        input.flag_as_used("fields", "rndexp");
-        input.flag_as_used("fields", "rndseed");
-        input.flag_as_used("fields", "rndz");
-
-        input.flag_as_used("fields", "vortexnpair");
-        input.flag_as_used("fields", "vortexamp"  );
-        input.flag_as_used("fields", "vortexaxis" );
-    }
-    */
 }
 
 template<typename TF>
@@ -295,7 +280,7 @@ Fields<TF>::~Fields()
 }
 
 template<typename TF>
-void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
+void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_mode sim_mode)
 {
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
@@ -353,8 +338,29 @@ void Fields<TF>::init(Dump<TF>& dump, Cross<TF>& cross)
     // Set up output classes
     create_dump(dump);
     create_cross(cross);
-}
 
+    // Flag the data from the input that is not used outside of Init mode.
+    if (sim_mode != Sim_mode::Init)
+    {
+        input.flag_as_used("fields", "rndamp", "");
+        input.flag_as_used("fields", "rndexp", "");
+        input.flag_as_used("fields", "rndz"  , "");
+
+        // Also, flag the subspecified items.
+        for (const auto& a : ap)
+        {
+            input.flag_as_used("fields", "rndamp", a.first);
+            input.flag_as_used("fields", "rndexp", a.first);
+            input.flag_as_used("fields", "rndz"  , a.first);
+        }
+
+        input.flag_as_used("fields", "rndseed", "");
+
+        input.flag_as_used("fields", "vortexnpair", "");
+        input.flag_as_used("fields", "vortexamp", "");
+        input.flag_as_used("fields", "vortexaxis", "" );
+    }
+}
 
 #ifndef USECUDA
 template<typename TF>
@@ -477,7 +483,7 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-    //We don't have to do anything for the default mask
+    // We don't have to do anything for the default mask
     if (mask_name == "default")
         return;
 
@@ -536,7 +542,8 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 }
 
 template<typename TF>
-void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_momentum_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -561,7 +568,8 @@ void Fields<TF>::init_momentum_field(std::string fldname, std::string longname, 
 }
 
 template<typename TF>
-void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_prognostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -586,7 +594,8 @@ void Fields<TF>::init_prognostic_field(std::string fldname, std::string longname
 }
 
 template<typename TF>
-void Fields<TF>::init_diagnostic_field(std::string fldname,std::string longname, std::string unit, const std::array<int,3>& loc)
+void Fields<TF>::init_diagnostic_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -752,7 +761,7 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
-    Netcdf_group group_nc = input_nc.get_group("init");
+    Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
     add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
@@ -833,21 +842,23 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
-    const std::vector<std::string> stat_op_def = {"mean","2","3","4","w","grad","diff","flux"};
-    const std::vector<std::string> stat_op_w   = {"mean","2","3","4"};
-    const std::vector<std::string> stat_op_p   = {"mean","2","w","grad"};
+    const std::string group_name = "default";
+
+    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux", "path"};
+    const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
+    const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
 
     // Add the profiles to te statistics
     if (stats.get_switch())
     {
         for (auto& it : ap)
         {
-            if(it.first=="w")
-                stats.add_profs(*it.second, "zh", stat_op_w);
+            if (it.first == "w")
+                stats.add_profs(*it.second, "zh", stat_op_w, group_name);
             else
-                stats.add_profs(*it.second, "z", stat_op_def);
+                stats.add_profs(*it.second, "z", stat_op_def, group_name);
         }
-        stats.add_profs(*sd.at("p"), "z", stat_op_p);
+        stats.add_profs(*sd.at("p"), "z", stat_op_p, group_name);
 
         // Covariances
         for (auto& it1 : ap)
@@ -855,10 +866,11 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
             for (auto& it2 : ap)
             {
                 std::string locstring;
-                if(it2.first == "w")
+                if (it2.first == "w")
                     locstring = "zh";
                 else
                     locstring = "z";
+
                 stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
@@ -1009,7 +1021,7 @@ template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime);
+        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
 
     for (auto& it : cross_lngrad)
         cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);

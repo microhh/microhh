@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2019 Chiel van Heerwaarden
+ * Copyright (c) 2011-2019 Thijs Heus
+ * Copyright (c) 2014-2019 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DISABLED
-#define THERMO_DISABLED
+#ifndef THERMO_DISABLED_H
+#define THERMO_DISABLED_H
 
 #include "thermo.h"
 
@@ -37,8 +37,6 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
-
-
 
 template<typename TF>
 class Thermo_disabled : public Thermo<TF>
@@ -58,8 +56,8 @@ class Thermo_disabled : public Thermo<TF>
         void exec(const double, Stats<TF>&) {};
         void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
-        virtual void exec_dump(Dump<TF>&, unsigned long) {};
-        virtual void exec_cross(Cross<TF>&, unsigned long) {};
+        void exec_dump(Dump<TF>&, unsigned long) {};
+        void exec_cross(Cross<TF>&, unsigned long) {};
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
@@ -75,7 +73,7 @@ class Thermo_disabled : public Thermo<TF>
         void clear_device() {};
         void forward_device() {};
         void backward_device() {};
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool) {};
+        void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool) {};
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
@@ -83,13 +81,21 @@ class Thermo_disabled : public Thermo<TF>
         #endif
 
         // Empty functions that shall throw.
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool) { throw 1; }
-        void get_buoyancy_surf(Field3d<TF>&, bool) { throw 1; }
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool) { throw 1; }
+        void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool)
+        { throw std::runtime_error("Function get_thermo_field not implemented"); }
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_buoyancy_surf(Field3d<TF>&, bool)
+        { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool)
+        { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented"); }
+
         void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
+        TF get_db_ref() const { throw std::runtime_error("Function get_db_ref not implemented"); }
 
     private:
         using Thermo<TF>::swthermo;

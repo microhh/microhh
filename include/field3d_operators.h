@@ -38,6 +38,7 @@ class Field3d_operators
         ~Field3d_operators();
 
         void calc_mean_profile(TF* const, const TF* const); // Calculate mean profile into fld_mean
+        void calc_mean_profile_nogc(TF* const, const TF* const, bool); // Calculate mean profile into fld_mean
         void subtract_mean_profile(TF* const, const TF* const); // Calculate mean profile into fld_mean
         TF calc_mean(const TF* const); // Calculate volume-weighted mean.
         TF calc_max(const TF* const);

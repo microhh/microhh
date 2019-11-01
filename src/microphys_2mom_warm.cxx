@@ -38,13 +38,13 @@
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
 
-using namespace Constants;
-using namespace Thermo_moist_functions;
-using namespace Micro_2mom_warm_constants;
-using namespace Micro_2mom_warm_functions;
-
 namespace
 {
+    using namespace Constants;
+    using namespace Thermo_moist_functions;
+    using namespace Micro_2mom_warm_constants;
+    using namespace Micro_2mom_warm_functions;
+
     template<typename TF>
     void remove_negative_values(TF* const restrict field,
                                 const int istart, const int jstart, const int kstart,
@@ -296,10 +296,10 @@ namespace mp2d
                     const TF dr  = rain_diameter[ik];
 
                     const TF T   = thl[ijk] * exner[k] + (Lv<TF> * ql[ijk]) / (cp<TF> * exner[k]); // Absolute temperature [K]
-                    const TF Glv = pow(Rv<TF> * T / (esat(T) * D_v<TF>) +
+                    const TF Glv = pow(Rv<TF> * T / (esat_liq(T) * D_v<TF>) +
                                        (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
 
-                    const TF S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                    const TF S   = (qt[ijk] - ql[ijk]) / qsat_liq(p[k], T) - 1; // Saturation
                     const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
                     const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
@@ -568,6 +568,8 @@ void Microphys_2mom_warm<TF>::init()
 template<typename TF>
 void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
 {
+    const std::string group_name = "thermo";
+
     // BvS: for now I have left the init of statistics and cross-sections here
     // If this gets out of hand, move initialisation to separate function like in e.g. thermo_moist
 
@@ -575,30 +577,30 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, St
     if (stats.get_switch())
     {
         // Time series
-        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1");
-        stats.add_profs(*fields.sp.at("qr"), "z", {"frac","path","cover"});
+        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
+        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "path", "cover"}, group_name);
 
         if (swmicrobudget)
         {
             // Microphysics tendencies for qr, nr, thl and qt
-            stats.add_prof("sed_qrt",  "Sedimentation tendency of qr", "kg kg-1 s-1", "z");
-            stats.add_prof("sed_nrt",  "Sedimentation tendency of nr", "m3 s-1", "z");
+            stats.add_prof("sed_qrt", "Sedimentation tendency of qr", "kg kg-1 s-1", "z", group_name);
+            stats.add_prof("sed_nrt", "Sedimentation tendency of nr", "m3 s-1", "z", group_name);
 
-            stats.add_prof("auto_qrt" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z");
-            stats.add_prof("auto_nrt" , "Autoconversion tendency nr",  "m-3 s-1", "z");
-            stats.add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z");
-            stats.add_prof("auto_qtt" , "Autoconversion tendency qt",  "kg kg-1 s-1", "z");
+            stats.add_prof("auto_qrt" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z", group_name);
+            stats.add_prof("auto_nrt" , "Autoconversion tendency nr",  "m-3 s-1", "z", group_name);
+            stats.add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z", group_name);
+            stats.add_prof("auto_qtt" , "Autoconversion tendency qt",  "kg kg-1 s-1", "z", group_name);
 
-            stats.add_prof("evap_qrt" , "Evaporation tendency qr",  "kg kg-1 s-1", "z");
-            stats.add_prof("evap_nrt" , "Evaporation tendency nr",  "m-3 s-1", "z");
-            stats.add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z");
-            stats.add_prof("evap_qtt" , "Evaporation tendency qt",  "kg kg-1 s-1", "z");
+            stats.add_prof("evap_qrt" , "Evaporation tendency qr",  "kg kg-1 s-1", "z", group_name);
+            stats.add_prof("evap_nrt" , "Evaporation tendency nr",  "m-3 s-1", "z", group_name);
+            stats.add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z", group_name);
+            stats.add_prof("evap_qtt" , "Evaporation tendency qt",  "kg kg-1 s-1", "z", group_name);
 
-            stats.add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z");
+            stats.add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z", group_name);
 
-            stats.add_prof("accr_qrt" , "Accretion tendency qr",  "kg kg-1 s-1", "z");
-            stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
-            stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z");
+            stats.add_prof("accr_qrt" , "Accretion tendency qr",  "kg kg-1 s-1", "z", group_name);
+            stats.add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z", group_name);
+            stats.add_prof("accr_qtt" , "Accretion tendency qt",  "kg kg-1 s-1", "z", group_name);
         }
 
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);

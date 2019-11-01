@@ -31,12 +31,16 @@ else()
   string(TOLOWER ${FLOAT_TYPE} FLOAT_TYPE)
   if(FLOAT_TYPE STREQUAL "single")
     add_definitions("-DFLOAT_SINGLE")
+    # Single precision RRTMGP is disabled as it is unsupported.
+    # add_definitions("-DFLOAT_SINGLE_RRTMGP")
     message(STATUS "Precision: Single (32-bits floats)")
   elseif(FLOAT_TYPE STREQUAL "double")
     message(STATUS "Precision: Double (64-bits floats)")
   else()
     message(FATAL_ERROR "Illegal FLOAT_TYPE specified.")
   endif()
+  # Set the RRTMGP float type always to double as single is not supported.
+  set(FLOAT_TYPE_RRTMGP "double")
 endif()
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
@@ -119,7 +123,11 @@ if(NOT HASCACHE)
 
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
-      "Flags used by NVCC." FORCE)
+      "Flags used by NVCC during all build types." FORCE)
+    set(CUDA_NVCC_FLAGS_DEBUG ${USER_CUDA_NVCC_FLAGS_DEBUG} CACHE STRING
+      "Flags used by NVCC during debug builds." FORCE)
+    set(CUDA_NVCC_FLAGS_RELEASE ${USER_CUDA_NVCC_FLAGS_RELEASE} CACHE STRING
+      "Flags used by NVCC during release builds." FORCE)
   endif()
 
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
@@ -140,11 +148,13 @@ if(USECUDA)
   # Add CUDA debug definition, to enforce CUDA API and kernel checks.
   if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
     add_definitions("-DCUDACHECKS")
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
+  else()
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_RELEASE})
   endif()
-  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
 endif()
 
 add_subdirectory(src)
-#add_subdirectory(src_rrtmg)
-#add_subdirectory(src_rrtmgp)
+add_subdirectory(src_rrtmgp)
+add_subdirectory(src_rrtmgp_fortran)
 add_subdirectory(main)

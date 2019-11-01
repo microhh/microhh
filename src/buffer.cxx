@@ -130,7 +130,7 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
             const std::vector<int> start = {0};
             const std::vector<int> count = {gd.ktot};
 
-            Netcdf_group group_nc = input_nc.get_group("init");
+            Netcdf_group& group_nc = input_nc.get_group("init");
             group_nc.get_variable(bufferprofs.at("u"), "u", start, count);
             group_nc.get_variable(bufferprofs.at("v"), "v", start, count);
             std::rotate(bufferprofs.at("u").rbegin(), bufferprofs.at("u").rbegin() + gd.kstart, bufferprofs.at("u").rend());

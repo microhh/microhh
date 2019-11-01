@@ -330,7 +330,7 @@ void Timeloop<TF>::exec()
     if (rkorder == 3)
     {
         for (auto& f : fields.at)
-            rk3<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
@@ -340,7 +340,7 @@ void Timeloop<TF>::exec()
     if (rkorder == 4)
     {
         for (auto& f : fields.at)
-            rk4<TF>(fields.ap[f.first]->fld.data(), f.second->fld.data(), substep, dt,
+            rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 

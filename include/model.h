@@ -48,6 +48,7 @@ template<typename> class Microphys;
 template<typename> class Radiation;
 
 template<typename> class Decay;
+template<typename> class Limiter;
 
 template<typename> class Stats;
 template<typename> class Budget;
@@ -94,6 +95,7 @@ class Model
         std::shared_ptr<Radiation<TF>> radiation;
 
         std::shared_ptr<Decay<TF>> decay;
+        std::shared_ptr<Limiter<TF>> limiter;
 
         std::shared_ptr<Stats<TF>> stats;
         std::shared_ptr<Budget<TF>> budget;
@@ -112,12 +114,12 @@ class Model
         void print_status();
         void calculate_statistics(int, double, unsigned long, int, double);
         void setup_stats();
+        void calc_masks();
         void set_time_step();
 
         void prepare_gpu();
         void clear_gpu();
 
         void add_statistics_masks();
-
 };
 #endif

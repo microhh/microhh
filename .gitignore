@@ -1,1 +1,7 @@
 # Files to be kept under a git clean -f
+.code-workspace.code-workspace
+.gitignore
+.vscode
+build*
+.*
+__pycache__

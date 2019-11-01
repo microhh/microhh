@@ -22,10 +22,10 @@ Ri = N2 * delta**2 / du**2
 Re = delta * du / visc
 fac = numpy.pi**.5 / delta
 
-print('delta', delta)
-print('N2', N2)
-print('Ri', Ri)
-print('Re', Re)
+#print('delta', delta)
+#print('N2', N2)
+#print('Ri', Ri)
+#print('Re', Re)
 
 for k in range(kmax):
   u[k] = 0.5*math.erf(fac*(z[k] - 0.5*zsize))

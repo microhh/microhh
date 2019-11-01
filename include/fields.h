@@ -59,7 +59,7 @@ class Fields
         Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
-        void init(Dump<TF>&,Cross<TF>&);  ///< Initialization of the field arrays.
+        void init(Input&, Dump<TF>&, Cross<TF>&, const Sim_mode);  ///< Initialization of the field arrays.
         void create(Input&, Netcdf_file&); ///< Initialization of the fields (random perturbations, vortices).
         void create_stats(Stats<TF>&);    ///< Initialization of the fields statistics.
         void create_column(Column<TF>&);  ///< Initialization of the single column output.
@@ -71,9 +71,10 @@ class Fields
         void exec_stats(Stats<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
-        void init_momentum_field  (std::string, std::string, std::string, const std::array<int,3>&);
-        void init_prognostic_field(std::string, std::string, std::string, const std::array<int,3>&);
-        void init_diagnostic_field(std::string, std::string, std::string, const std::array<int,3>&);
+        void init_momentum_field  (const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
+        void init_prognostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
+        void init_diagnostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
+
         std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
 
@@ -95,16 +96,16 @@ class Fields
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
 
-        Field_map<TF> a;  ///< Map containing all field3d instances
-        Field_map<TF> ap; ///< Map containing all prognostic field3d instances
-        Field_map<TF> at; ///< Map containing all tendency field3d instances
+        Field_map<TF> a;  ///< Map containing all field3d instances.
+        Field_map<TF> ap; ///< Map containing all prognostic field3d instances.
+        Field_map<TF> at; ///< Map containing all tendency field3d instances.
 
-        Field_map<TF> mp; ///< Map containing all momentum field3d instances
-        Field_map<TF> mt; ///< Map containing all momentum tendency field3d instances
+        Field_map<TF> mp; ///< Map containing all momentum field3d instances.
+        Field_map<TF> mt; ///< Map containing all momentum tendency field3d instances.
 
-        Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances
-        Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances
-        Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances
+        Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances.
+        Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances.
+        Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances.
 
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);

@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DRY
-#define THERMO_DRY
+#ifndef THERMO_DRY_H
+#define THERMO_DRY_H
 
 #include "boundary_cyclic.h"
 #include "timedep.h"
@@ -40,26 +40,23 @@ template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
 
-
 /**
  * Class for the dry thermodynamics.
  * This class is responsible for the computation of the right hand side term related to
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-
-
 template<typename TF>
 class Thermo_dry : public Thermo<TF>
 {
     public:
-        Thermo_dry(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_dry(); ///< Destructor of the dry thermodynamics class.
+        Thermo_dry(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode); // Constructor of the dry thermodynamics class.
+        virtual ~Thermo_dry(); // Destructor of the dry thermodynamics class.
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
-        unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
+        void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
+        unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
 
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -67,17 +64,23 @@ class Thermo_dry : public Thermo<TF>
         void exec_column(Column<TF>&);
 
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d<TF>&, std::string, bool, bool);
+        void get_thermo_field(
+                Field3d<TF>&, const std::string&, const bool, const bool);
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool);
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_T_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        TF get_db_ref() const;
+
         int get_bl_depth();
         TF get_buoyancy_diffusivity();
 
-        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
+        void get_prog_vars(std::vector<std::string>&); // Retrieve a list of prognostic variables.
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -85,7 +88,8 @@ class Thermo_dry : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
-        void get_thermo_field_g(Field3d<TF>&, std::string, bool);
+        void get_thermo_field_g(
+                Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
@@ -106,23 +110,23 @@ class Thermo_dry : public Thermo<TF>
         Boundary_cyclic<TF> boundary_cyclic;
 
         // cross sections
-        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+        std::vector<std::string> crosslist;        // List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
         bool swcross_b;
-        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        std::vector<std::string> dumplist;         // List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
-        void create_column(Column<TF>&); ///< Initialization of the single column output.
-        void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
-        void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
+        void create_stats(Stats<TF>&);   // Initialization of the statistics.
+        void create_column(Column<TF>&); // Initialization of the single column output.
+        void create_dump(Dump<TF>&);     // Initialization of the single column output.
+        void create_cross(Cross<TF>&);   // Initialization of the single column output.
 
         enum class Basestate_type {anelastic, boussinesq};
         struct background_state
         {
             Basestate_type swbasestate;
 
-            TF pbot;   ///< Surface pressure.
-            TF thref0; ///< Reference potential temperature in case of Boussinesq
+            TF pbot;   // Surface pressure.
+            TF thref0; // Reference potential temperature in case of Boussinesq
 
             std::vector<TF> thref;
             std::vector<TF> threfh;
@@ -148,6 +152,5 @@ class Thermo_dry : public Thermo<TF>
         std::unique_ptr<Timedep<TF>> tdep_pbot;
         const std::string tend_name = "buoy";
         const std::string tend_longname = "Buoyancy";
-
 };
 #endif

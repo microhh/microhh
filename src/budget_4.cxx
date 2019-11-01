@@ -2697,63 +2697,65 @@ void Budget_4<TF>::init()
 template<typename TF>
 void Budget_4<TF>::create(Stats<TF>& stats)
 {
+    const std::string group_name = "budget";
+
     // Add the profiles for the kinetic energy to the statistics.
-    stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z");
-    stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z");
+    stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
+    stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
 
     // Add the profiles for the kinetic energy budget to the statistics.
-    stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" );
-    stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" );
-    stats.add_prof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z" );
-    stats.add_prof("uw_shear" , "Shear production term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_shear" , "Shear production term in UW budget" , "m2 s-3", "zh", group_name);
 
-    stats.add_prof("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" );
-    stats.add_prof("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" );
-    stats.add_prof("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh");
-    stats.add_prof("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" );
-    stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh", group_name);
 
-    stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" );
-    stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" );
-    stats.add_prof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh");
-    stats.add_prof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" );
-    stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh", group_name);
 
-    stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" );
-    stats.add_prof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" );
-    stats.add_prof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh");
-    stats.add_prof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" );
-    stats.add_prof("uw_diss" , "Dissipation term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" , group_name);
+    stats.add_prof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_diss" , "Dissipation term in UW budget" , "m2 s-3", "zh", group_name);
 
-    stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
-    stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" );
-    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh", group_name);
+    stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh", group_name);
 
-    stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
-    stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
-    stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
-    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh");
+    stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" , group_name);
+    stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh", group_name);
+    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh", group_name);
 
     if (thermo.get_switch() != "0")
     {
-        stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
-        stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
-        stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh");
+        stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
+        stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" , group_name);
+        stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh", group_name);
 
-        stats.add_prof("b2_shear", "Shear production term in B2 budget"   , "m2 s-5", "z");
-        stats.add_prof("b2_turb" , "Turbulent transport term in B2 budget", "m2 s-5", "z");
-        stats.add_prof("b2_visc" , "Viscous transport term in B2 budget"  , "m2 s-5", "z");
-        stats.add_prof("b2_diss" , "Dissipation term in B2 budget"        , "m2 s-5", "z");
+        stats.add_prof("b2_shear", "Shear production term in B2 budget"   , "m2 s-5", "z", group_name);
+        stats.add_prof("b2_turb" , "Turbulent transport term in B2 budget", "m2 s-5", "z", group_name);
+        stats.add_prof("b2_visc" , "Viscous transport term in B2 budget"  , "m2 s-5", "z", group_name);
+        stats.add_prof("b2_diss" , "Dissipation term in B2 budget"        , "m2 s-5", "z", group_name);
 
-        stats.add_prof("bw_shear", "Shear production term in BW budget"   , "m2 s-4", "zh");
-        stats.add_prof("bw_turb" , "Turbulent transport term in BW budget", "m2 s-4", "zh");
-        stats.add_prof("bw_visc" , "Viscous transport term in BW budget"  , "m2 s-4", "zh");
-        stats.add_prof("bw_rdstr", "Redistribution term in BW budget"     , "m2 s-4", "zh");
-        stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh");
-        stats.add_prof("bw_diss" , "Dissipation term in BW budget"        , "m2 s-4", "zh");
-        stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh");
+        stats.add_prof("bw_shear", "Shear production term in BW budget"   , "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_turb" , "Turbulent transport term in BW budget", "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_visc" , "Viscous transport term in BW budget"  , "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_rdstr", "Redistribution term in BW budget"     , "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_diss" , "Dissipation term in BW budget"        , "m2 s-4", "zh", group_name);
+        stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh", group_name);
 
-        stats.add_prof("b_sort", "Sorted buoyancy", "m s-2", "z");
+        stats.add_prof("b_sort", "Sorted buoyancy", "m s-2", "z", group_name);
     }
 
     /*
