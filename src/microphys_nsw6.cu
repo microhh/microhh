@@ -759,17 +759,17 @@ namespace
         // 2. Calculate CFL number using interpolated sedimentation velocity
 
         if (i < iend && j < jend && k < kend)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    c_qc[ijk] = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
-                }
+            {
+                const int ijk = i + j*jj + k*kk;
+                c_qc[ijk] = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
+            }
 
         // 3. Calculate slopes
 
         if (i < iend && j < jend && k < kend)
             {
-                    const int ijk = i + j*jj + k*kk;
-                    slope_qc[ijk] = minmod(qc[ijk]-qc[ijk-kk], qc[ijk+kk]-qc[ijk]);
+                const int ijk = i + j*jj + k*kk;
+                slope_qc[ijk] = minmod(qc[ijk]-qc[ijk-kk], qc[ijk+kk]-qc[ijk]);
             }
         // Calculate flux
         // Set the fluxes at the top of the domain (kend) to zero
@@ -988,7 +988,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*icells + k*ijcells;
-            cfl[ijk] = TF(0.25) * (w[ijk-kk] + w[ijk] + w[ijk] + w[ijk+kk]) * dzi[k] * dt;
+            cfl[ijk] = max(1e-5, TF(0.25) * (w[ijk-kk] + w[ijk] + w[ijk] + w[ijk+kk]) * dzi[k] * dt);
             //cfl = 0; , cfl[ijk] = max(cfl, TF(0.25) * (w[ijk-kk] + w[ijk] + w[ijk] + w[ijk+kk]) * dzi[k] * dt);
         }
     }
@@ -1123,7 +1123,11 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
 
+<<<<<<< Updated upstream
     TF cfl_val = 0.;
+=======
+    double cfl = 1e-5;
+>>>>>>> Stashed changes
 
     // Compute CFL for rain.
     
