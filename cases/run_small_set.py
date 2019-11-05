@@ -25,7 +25,7 @@ for prec in precs:
         moser180.run_restart(microhh_exec, mode, 'moser180', experiment)
 
         # drycblles.run(microhh_exec, mode, 'drycblles', experiment)
-        drycblles.run_restart(microhh_exec, mode, 'drycblles', experiment)
+        # drycblles.run_restart(microhh_exec, mode, 'drycblles', experiment)
 
         # bomex.run(microhh_exec, mode, 'bomex', experiment)
         bomex.run_restart(microhh_exec, mode, 'bomex', experiment)

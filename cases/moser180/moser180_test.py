@@ -6,8 +6,20 @@ import shutil
 sys.path.append('../../python/')
 import microhh_tools as mht
 
-opt_mpi = [('master', 'npx', 2), ('master', 'npy', 4)]
-opt_small = [('grid', 'itot', 64), ('grid', 'jtot', 48), ('grid', 'ktot', 32)]
+# Case configuration dicts
+opt_mpi = {
+        'master': {'npx': 2, 'npy': 2}}
+
+opt_small = {
+        'grid': {'itot': 64, 'jtot': 48, 'ktot': 32}}
+
+# Case configuration dicts with name label for permutations.
+dict_opts = {
+        'all_enabled': {},
+        'advec': {'advec': {'swadvec': 0}},
+        'diff': {'diff': {'swdiff': 0}}}
+
+list_permutations = [ dict_opts ]
 
 
 def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
@@ -49,22 +61,29 @@ def run_small(executable='microhh', mode='cpu',
 
 def run_restart(executable='microhh', mode='cpu',
                 casedir='.', experiment='local'):
+
+    # Deep copy the small version of the reference case and disable stats.
     options = opt_small.copy()
+
     if mode == 'cpumpi':
-        options.extend(opt_mpi)
+        mht.merge_options(options, opt_mpi)
+
     base_case = mht.Case(
         'moser180',
         casedir=casedir,
         rundir=experiment,
         options=options)
-    cases = mht.generator_restart(base_case, 60.)
+
+    base_cases = mht.generator_parameter_permutations(base_case, list_permutations)
+    cases = []
+    for case in base_cases:
+        cases.extend(mht.generator_restart(case, 300.))
 
     mht.run_cases(
         cases,
         executable,
         mode,
-        outputfile='{}/moser180_restart_{}.csv'.format(casedir, experiment))
-
+        outputfile='{}/bomex_restart_{}.csv'.format(casedir, experiment))
 
 if __name__ == '__main__':
     kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
