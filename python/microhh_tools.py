@@ -106,10 +106,13 @@ def replace_namelist_value(item, new_value, group=None, namelist_file=None):
             lstrip = line.strip()
             if len(lstrip)>0 and lstrip[0] == '[' and lstrip[-1] == ']':
                 current_group = lstrip[1:-1]
-            if group is None or group==current_group:
+            if (group==current_group) and (lstrip==''):
+                source.write('{0}={1}\n\n'.format(item,new_value))
+            elif group is None or group==current_group:
                 source.write(re.sub(r'({}).*'.format(item), r'\1={}'.format(new_value), line))
             else:
                 source.write(line)
+
 
 
 def determine_ntasks():
