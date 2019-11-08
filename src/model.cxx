@@ -176,7 +176,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
-    ib->init(*input);
+    ib->init(*input, *cross);
     buffer->init();
     diff->init();
     pres->init();
@@ -556,6 +556,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
+        ib       ->exec_cross(*cross, iotime);
         // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
         // boundary->exec_cross(iotime);
     }
@@ -610,6 +611,8 @@ void Model<TF>::setup_stats()
                 microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
+            else if (ib->has_mask(mask_name))
+                ib->get_mask(*stats, mask_name);
             else
             {
                 std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -645,6 +648,8 @@ void Model<TF>::calc_masks()
             microphys->get_mask(*stats, mask_name);
         else if (decay->has_mask(mask_name))
             decay->get_mask(*stats, mask_name);
+        else if (ib->has_mask(mask_name))
+            ib->get_mask(*stats, mask_name);
         else
         {
             std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";

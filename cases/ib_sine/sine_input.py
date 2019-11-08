@@ -28,6 +28,7 @@ class Grid:
               self.z [k] = self.z[k-1] + 0.5*(self.dz[k-1]+self.dz[k])
               stretch[k] = self.dz[k]/self.dz[k-1]
 
+        self.zh = np.insert(np.cumsum(self.dz), 0, 0)
         self.zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
         print('kmax={0:}, zsize={1:.4f}'.format(kmax,self.zsize))
 
@@ -39,6 +40,7 @@ class Grid:
 
 if __name__ == "__main__":
     pl.close('all')
+    pl.ion()
 
     # MicroHH-mode (np.float32 (single) or np.float64 (double) precision)
     tf = np.float64
@@ -69,8 +71,7 @@ if __name__ == "__main__":
     # Create initial profiles:
     z = grid.z
     u = 0.00137 * np.ones(z.size)
-    #u = 0.0 * np.ones(z.size)
-    s = z
+    b = z
 
     # Write the data to a .nc file for MicroHH
     float_type = 'f8' if tf==np.float64 else 'f4'
@@ -81,11 +82,11 @@ if __name__ == "__main__":
 
     nc_group_init = nc_file.createGroup("init");
     nc_u  = nc_group_init.createVariable("u" , float_type, ("z"))
-    nc_s  = nc_group_init.createVariable("s" , float_type, ("z"))
+    nc_b  = nc_group_init.createVariable("b" , float_type, ("z"))
 
     nc_z[:] = grid.z [:]
     nc_u[:] = u[:]
-    nc_s[:] = s[:]
+    nc_b[:] = b[:]
 
     nc_file.close()
 
@@ -105,23 +106,24 @@ if __name__ == "__main__":
         dem[:,j] = z_offset + amplitude + amplitude * np.sin(2*np.pi*x/wavelength_x)
 
     pl.figure()
+    ax=pl.subplot(111, aspect='equal')
     pl.plot(x, dem[:,0])
+
+
     for k in range(z.size):
-        pl.plot(x, np.ones_like(x)*z[k], 'k:')
+        pl.plot(xh, np.ones_like(xh)*grid.zh[k], 'k-', linewidth=0.5)
+        pl.scatter(x, np.ones_like(x)*grid.z[k], s=1, color='r')
     for i in range(x.size):
-        pl.plot(np.ones_like(z)*x[i], z, 'k:')
+        pl.plot(np.ones_like(grid.zh)*xh[i], grid.zh, 'k-', linewidth=0.5)
+
 
     dem.T.tofile('dem.0000000')
 
     # Create example spatially varying sbot files
     mask = dem > dem.mean()
+    b    = np.zeros_like(dem)
 
-    ch4 = np.zeros_like(dem)
-    b = np.zeros_like(dem)
+    b[mask]  = -0.1
+    b[~mask] = 0.1
 
-    ch4[mask]  = 0.1
-    b[~mask] = -0.1
-    b[mask] = 0.1
-
-    ch4.T.tofile('ch4_sbot.0000000')
     b.T.tofile('b_sbot.0000000')

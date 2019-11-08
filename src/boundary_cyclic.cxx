@@ -505,6 +505,7 @@ void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
             }
     }
 }
+
 template<typename TF>
 void Boundary_cyclic<TF>::exec(unsigned int* restrict data, Edge edge)
 {

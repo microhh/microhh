@@ -32,6 +32,7 @@
 #include "immersed_boundary.h"
 #include "fast_math.h"
 #include "stats.h"
+#include "cross.h"
 
 namespace
 {
@@ -49,6 +50,14 @@ namespace
     {
         return a.distance < b.distance;
     }
+
+    bool has_ending(const std::string& full_string, const std::string& ending)
+    {
+        if (full_string.length() >= ending.length())
+            return (0 == full_string.compare(full_string.length() - ending.length(), ending.length(), ending));
+        else
+            return false;
+    };
 
     /* Bi-linear interpolation of the 2D IB DEM
      * onto the requested (`x_goal`, `y_goal`) location */
@@ -132,30 +141,44 @@ namespace
             //        return true;
             //}
 
+            //// NEW METHOD
+            //for (int dj = -1; dj <= 1; ++dj)
+            //{
+            //    // Interpolate DEM to account for half-level locations x,y
+            //    const TF zdem = interp2_dem(
+            //            x[i], y[j+dj], x, y, dem, dx, dy,
+            //            icells, jcells, mpi_offset_x, mpi_offset_y);
+
+            //    for (int dk = -1; dk <= 1; ++dk)
+            //        if (z[k + dk] > zdem)
+            //            return true;
+            //}
+
+            //for (int di = -1; di <= 1; ++di)
+            //{
+            //    // Interpolate DEM to account for half-level locations x,y
+            //    const TF zdem = interp2_dem(
+            //            x[i+di], y[j], x, y, dem, dx, dy,
+            //            icells, jcells, mpi_offset_x, mpi_offset_y);
+
+            //    for (int dk = -1; dk <= 1; ++dk)
+            //        if (z[k + dk] > zdem)
+            //            return true;
+            //}
+
             // NEW METHOD
             for (int dj = -1; dj <= 1; ++dj)
-            {
-                // Interpolate DEM to account for half-level locations x,y
-                const TF zdem = interp2_dem(
-                        x[i], y[j+dj], x, y, dem, dx, dy,
-                        icells, jcells, mpi_offset_x, mpi_offset_y);
+                for (int di = -1; di <= 1; ++di)
+                {
+                    // Interpolate DEM to account for half-level locations x,y
+                    const TF zdem = interp2_dem(
+                            x[i+di], y[j+dj], x, y, dem, dx, dy,
+                            icells, jcells, mpi_offset_x, mpi_offset_y);
 
-                for (int dk = -1; dk <= 1; ++dk)
-                    if (z[k + dk] > zdem)
-                        return true;
-            }
-
-            for (int di = -1; di <= 1; ++di)
-            {
-                // Interpolate DEM to account for half-level locations x,y
-                const TF zdem = interp2_dem(
-                        x[i+di], y[j], x, y, dem, dx, dy,
-                        icells, jcells, mpi_offset_x, mpi_offset_y);
-
-                for (int dk = -1; dk <= 1; ++dk)
-                    if (z[k + dk] > zdem)
-                        return true;
-            }
+                    for (int dk = -1; dk <= 1; ++dk)
+                        if (z[k + dk] > zdem)
+                            return true;
+                }
         }
 
         return false;
@@ -213,12 +236,14 @@ namespace
         const int dk0 = std::max(-2, kstart-k);
 
         // Find neighbouring grid points outside IB
-        for (int dk=dk0; dk<3; ++dk)
+        for (int dk=dk0; dk<4; ++dk)
             for (int dj=-1; dj<2; ++dj)
                 for (int di=-1; di<2; ++di)
                 {
+                    const TF zd = interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
+
                     // Check if grid point is outside IB
-                    if (z[k+dk] > interp2_dem(x[i+di], y[j+dj], x, y, dem, dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y))
+                    if (z[k+dk] > zd)
                     {
                         // Calculate distance to IB
                         TF xb, yb, zb;
@@ -239,6 +264,13 @@ namespace
 
         // Sort them on distance
         std::sort(neighbours.begin(), neighbours.end(), compare_value<TF>);
+
+        if (neighbours.size() < n_idw)
+        {
+           std::cout << "ERROR: only found " << neighbours.size() << " interpolation points @ ";
+           std::cout << "i=" << i << ", j=" << j << ", k=" << k << std::endl; 
+           throw 1;
+        }
 
         // Save `n_idw` nearest neighbours
         for (int ii=0; ii<n_idw; ++ii)
@@ -476,6 +508,92 @@ namespace
                     maskh[ijk] = static_cast<TF>(is_not_ib_h);
                 }
     }
+
+
+    template<typename TF>
+    void find_k_dem(
+            unsigned int* const restrict k_dem,
+            const TF* const restrict dem,
+            const TF* const restrict z,
+            const int istart, const int iend, 
+            const int jstart, const int jend, 
+            const int kstart, const int kend,
+            const int jj)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                int k = -1;
+                for (k=kstart; k<kend; ++k)
+                {
+                    if (z[k] > dem[ij])
+                        break;
+                }
+                k_dem[ij] = k;
+            }
+    }
+
+
+    template<typename TF>
+    void calc_fluxes(
+            TF* const restrict flux,
+            const unsigned int* const restrict k_dem,
+            const TF* restrict s,
+            const TF dx, const TF dy, const TF* const restrict dz,
+            const TF dxi, const TF dyi, const TF* const restrict dzhi,
+            const TF svisc,
+            const int istart, const int iend, 
+            const int jstart, const int jend, 
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii = 1;
+
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                // Weight all fluxes by the respective area of the face through which they go.
+                // Fluxes are only exchanged with neighbors that are a ghost cell. This requires
+                // a drawing...
+
+                // Add the vertical flux.
+                const int ij  = i + j*jj;
+                {
+                    const int ijk = i + j*jj + k_dem[ij]*kk;
+                    flux[ij] = -svisc*(s[ijk]-s[ijk-kk])*dzhi[k_dem[ij]] * dx*dy;
+                }
+
+                // West flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-ii]; ++k)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-ii])*dxi * dy*dz[k];
+                }
+                // East flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+ii]; ++k)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += svisc*(s[ijk+ii]-s[ijk])*dxi * dy*dz[k];
+                }
+                // South flux.
+                for (int k=k_dem[ij]; k<k_dem[ij-jj]; ++k)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += -svisc*(s[ijk]-s[ijk-jj])*dyi * dx*dz[k];
+                }
+                // North flux.
+                for (int k=k_dem[ij]; k<k_dem[ij+jj]; ++k)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    flux[ij] += svisc*(s[ijk+jj]-s[ijk])*dyi * dx*dz[k];
+                }
+
+                // Normalize the fluxes back to the correct units.
+                flux[ij] /= dx*dy;
+            }
+    }
+
 }
 
 template<typename TF>
@@ -577,40 +695,68 @@ void Immersed_boundary<TF>::exec_scalars()
 #endif
 
 template <typename TF>
-void Immersed_boundary<TF>::init(Input& inputin)
+void Immersed_boundary<TF>::init(Input& inputin, Cross<TF>& cross)
 {
     auto& gd = grid.get_grid_data();
 
-    if (sw_ib == IB_type::DEM)
-        dem.resize(gd.ijcells);
-
-    if (sw_ib != IB_type::Disabled)
+    if (sw_ib == IB_type::Disabled)
+        return;
+    else if (sw_ib == IB_type::DEM)
     {
-        // Process the boundary conditions for scalars
-        if (fields.sp.size() > 0)
+        dem  .resize(gd.ijcells);
+        k_dem.resize(gd.ijcells);
+    }
+
+    // Process the boundary conditions for scalars
+    if (fields.sp.size() > 0)
+    {
+        // All scalars have the same boundary type (for now)
+        std::string swbot = inputin.get_item<std::string>("IB", "sbcbot", "");
+
+        if (swbot == "flux")
+            sbcbot = Boundary_type::Flux_type;
+        else if (swbot == "dirichlet")
+            sbcbot = Boundary_type::Dirichlet_type;
+        else if (swbot == "neumann")
+            sbcbot = Boundary_type::Neumann_type;
+        else
         {
-            // All scalars have the same boundary type (for now)
-            std::string swbot = inputin.get_item<std::string>("IB", "sbcbot", "");
-
-            if (swbot == "flux")
-                sbcbot = Boundary_type::Flux_type;
-            else if (swbot == "dirichlet")
-                sbcbot = Boundary_type::Dirichlet_type;
-            else if (swbot == "neumann")
-                sbcbot = Boundary_type::Neumann_type;
-            else
-            {
-                std::string error = "IB sbcbot=" + swbot + " is not a valid choice (options: dirichlet, neumann, flux)";
-                throw std::runtime_error(error);
-            }
-
-            // Process boundary values per scalar
-            for (auto& it : fields.sp)
-                sbc.emplace(it.first, inputin.get_item<TF>("IB", "sbot", it.first));
-
-            // Read the scalars with spatial patterns
-            sbot_spatial_list = inputin.get_list<std::string>("IB", "sbot_spatial", "", std::vector<std::string>());
+            std::string error = "IB sbcbot=" + swbot + " is not a valid choice (options: dirichlet, neumann, flux)";
+            throw std::runtime_error(error);
         }
+
+        // Process boundary values per scalar
+        for (auto& it : fields.sp)
+            sbc.emplace(it.first, inputin.get_item<TF>("IB", "sbot", it.first));
+
+        // Read the scalars with spatial patterns
+        sbot_spatial_list = inputin.get_list<std::string>("IB", "sbot_spatial", "", std::vector<std::string>());
+    }
+
+    // Check input list of cross variables (crosslist)
+    std::vector<std::string> *crosslist_global = cross.get_crosslist();
+    std::vector<std::string>::iterator it = crosslist_global->begin();
+    while (it != crosslist_global->end())
+    {
+        const std::string fluxbot_ib_string = "fluxbot_ib";
+        if (has_ending(*it, fluxbot_ib_string))
+        {
+            // Strip the ending.
+            std::string scalar = *it;
+            scalar.erase(it->length() - fluxbot_ib_string.length());
+
+            // Check if array is exists, else cycle.
+            if (fields.sp.find(scalar) != fields.sp.end())
+            {
+                // Remove variable from global list, put in local list
+                crosslist.push_back(*it);
+                crosslist_global->erase(it); // erase() returns iterator of next element..
+            }
+            else
+                ++it;
+        }
+        else
+            ++it;
     }
 }
 
@@ -658,6 +804,7 @@ void Immersed_boundary<TF>::create()
         ghost.emplace("v", Ghost_cells<TF>());
         ghost.emplace("w", Ghost_cells<TF>());
 
+        master.print_message("Calculating ghost cells u\n");
         calc_ghost_cells(
                 ghost.at("u"), dem, gd.xh, gd.y, gd.z,
                 Boundary_type::Dirichlet_type,
@@ -667,6 +814,7 @@ void Immersed_boundary<TF>::create()
                 gd.icells, gd.jcells, gd.ijcells,
                 mpi_offset_x, mpi_offset_y);
 
+        master.print_message("Calculating ghost cells v\n");
         calc_ghost_cells(
                 ghost.at("v"), dem, gd.x, gd.yh, gd.z,
                 Boundary_type::Dirichlet_type,
@@ -676,6 +824,7 @@ void Immersed_boundary<TF>::create()
                 gd.icells, gd.jcells, gd.ijcells,
                 mpi_offset_x, mpi_offset_y);
 
+        master.print_message("Calculating ghost cells w\n");
         calc_ghost_cells(
                 ghost.at("w"), dem, gd.x, gd.y, gd.zh,
                 Boundary_type::Dirichlet_type,
@@ -703,6 +852,7 @@ void Immersed_boundary<TF>::create()
         {
             ghost.emplace("s", Ghost_cells<TF>());
 
+            master.print_message("Calculating ghost cells s\n");
             calc_ghost_cells(
                     ghost.at("s"), dem, gd.x, gd.y, gd.z, sbcbot,
                     gd.dx, gd.dy, gd.dz, n_idw_points,
@@ -752,6 +902,16 @@ void Immersed_boundary<TF>::create()
             }
 
         }
+
+        // Create the array with vertical indices that give the first cell above the DEM. 
+        find_k_dem(
+                k_dem.data(), dem.data(), gd.z.data(),
+                gd.istart, gd.iend, 
+                gd.jstart, gd.jend, 
+                gd.kstart, gd.kend,
+                gd.icells);
+
+        boundary_cyclic.exec_2d(k_dem.data());
     }
 }
 
@@ -781,6 +941,44 @@ void Immersed_boundary<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     fields.release_tmp(mask );
     fields.release_tmp(maskh);
+}
+
+
+template<typename TF>
+void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    if (cross.get_switch())
+    {
+        for (auto& s : crosslist)
+        {
+            const std::string fluxbot_ib_string = "fluxbot_ib";
+            if (has_ending(s, fluxbot_ib_string))
+            {
+                // Strip the scalar from the fluxbot_ib
+                std::string scalar = s;
+                scalar.erase(s.length() - fluxbot_ib_string.length());
+
+                auto tmp = fields.get_tmp();
+
+                calc_fluxes(
+                        tmp->flux_bot.data(), k_dem.data(),
+                        fields.sp.at(scalar)->fld.data(),
+                        gd.dx,  gd.dy,  gd.dz.data(),
+                        gd.dxi, gd.dyi, gd.dzhi.data(),
+                        fields.sp.at(scalar)->visc,
+                        gd.istart, gd.iend, 
+                        gd.jstart, gd.jend, 
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                cross.cross_plane(tmp->flux_bot.data(), scalar+"fluxbot_ib", iotime);
+
+                fields.release_tmp(tmp);
+            }
+        }
+    }
 }
 
 

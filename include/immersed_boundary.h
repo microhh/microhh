@@ -30,6 +30,7 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Cross;
 
 enum class IB_type {Disabled, DEM, User};
 
@@ -127,11 +128,13 @@ class Immersed_boundary
         Immersed_boundary(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Immersed_boundary();
 
-        void init(Input&);
+        void init(Input&, Cross<TF>&);
         void create();
 
         void exec_momentum();
         void exec_scalars();
+
+        void exec_cross(Cross<TF>&, unsigned long);
 
         bool has_mask(std::string);
         void get_mask(Stats<TF>&, std::string);
@@ -157,12 +160,16 @@ class Immersed_boundary
 
         // IB input from DEM
         std::vector<TF> dem;
+        std::vector<unsigned int> k_dem;
 
         // All ghost cell properties
         std::map<std::string, Ghost_cells<TF>> ghost;
 
         // Statistics
         std::vector<std::string> available_masks;
+
+        // Cross-sections
+        std::vector<std::string> crosslist;
 };
 
 #endif
