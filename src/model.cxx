@@ -380,8 +380,13 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                        dump->do_dump(timeloop->get_itime()))
+                    const int iter = timeloop->get_iteration();
+                    const double time = timeloop->get_time();
+                    const unsigned long itime = timeloop->get_itime();
+                    const int iotime = timeloop->get_iotime();
+                    const double dt = timeloop->get_dt(); 
+
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
@@ -394,17 +399,15 @@ void Model<TF>::exec()
                         }
                         #endif
                         #pragma omp task default(shared)
-                        calculate_statistics(
-                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
-                                timeloop->get_iotime(), timeloop->get_dt());
+                        calculate_statistics(iter, time, itime, iotime, dt);
                     }
 
-                    if (column->do_column(timeloop->get_itime()))
+                    if (column->do_column(itime))
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
-                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                        column->exec(iter, time, itime);
                     }
 
                 }
