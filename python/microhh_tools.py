@@ -470,9 +470,9 @@ def execute(command):
     sp.wait()
 
     # Write the standard output and errors to logflies
-    with open('stdout.log', 'w') as f:
+    with open('stdout.log', 'a') as f:
         f.write(out.decode('utf-8'))
-    with open('stderr.log', 'w') as f:
+    with open('stderr.log', 'a') as f:
         f.write(err.decode('utf-8'))
 
     if sp.returncode != 0:
