@@ -100,10 +100,10 @@ if __name__ == '__main__':
         print('{0}x{0}x{0} grid points'.format(gridsize))
         print('===========================')
     
-        grid   = Grid(3200, 3200, 3200, gridsize, gridsize, gridsize, 2, 1, double)
+        grid   = Grid(3200, 3200, 3200, gridsize, gridsize, gridsize, 3, 3, double)
         fields = Fields(['s'], grid.ncells, grid.ijcells, grid.kcells, double)
 
-        visc = 1.e-5
+        visc = double(1.e-5)
 
         args = [
             fields.s.tend, fields.s.fld,
@@ -117,4 +117,4 @@ if __name__ == '__main__':
         tune_params["block_size_x"] = [32*i for i in range(1,9)]
         tune_params["block_size_y"] = [2**i for i in range(3)]
 
-        tune = kernel_tuner.tune_kernel("advec_s_g", kernel_string, grid.ncells, args, tune_params)
+        tune = kernel_tuner.tune_kernel("diff_c_g", kernel_string, grid.ncells, args, tune_params)
