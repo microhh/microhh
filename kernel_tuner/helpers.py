@@ -41,6 +41,7 @@ class Grid:
         self.dyi = TF(1/self.dy)
         self.dzi = 1/self.dz
         self.dzi4 = 1/self.dz
+        self.dzhi4 = 1/self.dz
 
 
 class Field3d:
