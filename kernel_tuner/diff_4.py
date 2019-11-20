@@ -101,13 +101,13 @@ if __name__ == '__main__':
         print('===========================')
     
         grid   = Grid(3200, 3200, 3200, gridsize, gridsize, gridsize, 2, 1, double)
-        fields = Fields(['u','v','w','s'], grid.ncells, grid.ijcells, grid.kcells, double)
+        fields = Fields(['s'], grid.ncells, grid.ijcells, grid.kcells, double)
 
-        visc = 1e-5
+        visc = 1.e-5
 
         args = [
             fields.s.tend, fields.s.fld,
-            grid.dzi, grid.dzhi,
+            grid.dzi4, grid.dzhi4,
             grid.dxi, grid.dyi, visc,
             grid.icells, grid.ijcells, 
             grid.istart, grid.jstart, grid.kstart, 
