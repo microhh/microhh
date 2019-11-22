@@ -92,6 +92,7 @@ if __name__ == '__main__':
             grid.istart, grid.jstart, grid.kstart, 
             grid.iend, grid.jend, grid.kend)
 
+
         # CUDA
         params = { "block_size_x": 4, "block_size_y": 4 }
         results = kernel_tuner.run_kernel(
@@ -109,5 +110,9 @@ if __name__ == '__main__':
         tune_params["block_size_x"] = [32*i for i in range(1,9)]
         tune_params["block_size_y"] = [2**i for i in range(3)]
 
+        # True answer from the Python code
+        answer = len(args)*[None]
+        answer[0] = fields_ref.s.tend
+
         kernel_tuner.tune_kernel(
-            "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, tune_params)
+            "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, tune_params, answer=answer)
