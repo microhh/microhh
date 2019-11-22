@@ -94,7 +94,8 @@ if __name__ == '__main__':
 
     double = np.float64
     
-    for gridsize in [32,64,128,256,512]:
+    #for gridsize in [32,64,128,256,512]:
+    for gridsize in [128,256,512]:
         
         print('===========================')
         print('{0}x{0}x{0} grid points'.format(gridsize))
@@ -114,7 +115,7 @@ if __name__ == '__main__':
             grid.iend, grid.jend, grid.kend]
         
         tune_params = OrderedDict()
-        tune_params["block_size_x"] = [32*i for i in range(1,9)]
-        tune_params["block_size_y"] = [2**i for i in range(3)]
+        tune_params["block_size_x"] = [32*i for i in range(2,9)]
+        tune_params["block_size_y"] = [2**i for i in range(4)]
 
         tune = kernel_tuner.tune_kernel("diff_c_g", kernel_string, grid.ncells, args, tune_params)
