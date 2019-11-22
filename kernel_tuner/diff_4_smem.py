@@ -142,6 +142,6 @@ if __name__ == '__main__':
         
         tune_params = OrderedDict()
         tune_params["block_size_x"] = [32*i for i in range(2,9)]
-        tune_params["block_size_y"] = [2**i for i in range(4)]
+        tune_params["block_size_y"] = [4]#[2**i for i in range(4)]
 
         tune = kernel_tuner.tune_kernel("diff_c_g", kernel_string, grid.ncells, args, tune_params)
