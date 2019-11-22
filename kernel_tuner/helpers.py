@@ -6,6 +6,8 @@ class Grid:
         Simple (equidistant) grid
         """
 
+        np.random.seed(666)
+
         self.xsize = TF(xsize)
         self.ysize = TF(ysize)
         self.zsize = TF(zsize)
@@ -35,13 +37,15 @@ class Grid:
 
         self.dx = TF(self.xsize / self.itot)
         self.dy = TF(self.ysize / self.jtot)
-        self.dz = np.ones(self.kcells, dtype=TF)*(self.zsize/self.ktot)
+        self.dz = np.random.random(self.kcells).astype(TF)
 
         self.dxi = TF(1/self.dx)
         self.dyi = TF(1/self.dy)
-        self.dzi = 1/self.dz
-        self.dzi4 = 1/self.dz
-        self.dzhi4 = 1/self.dz
+
+        self.dzi   = np.random.random(self.kcells).astype(TF)
+        self.dzi4  = np.random.random(self.kcells).astype(TF)
+        self.dzhi4 = np.random.random(self.kcells).astype(TF)
+
 
 
 class Field3d:
@@ -50,24 +54,26 @@ class Field3d:
         Simple 3D field incl. some surface fields
         """
 
-        self.fld  = np.zeros(ncells, dtype=TF)
+        self.fld  = np.random.random(ncells).astype(TF)
         self.tend = np.zeros(ncells, dtype=TF)
 
-        self.fld_bot = np.zeros(ijcells, dtype=TF)
-        self.fld_top = np.zeros(ijcells, dtype=TF)
+        self.fld_bot = np.random.random(ijcells).astype(TF)
+        self.fld_top = np.random.random(ijcells).astype(TF)
 
-        self.flux_bot = np.zeros(ijcells, dtype=TF)
-        self.flux_top = np.zeros(ijcells, dtype=TF)
+        self.flux_bot = np.random.random(ijcells).astype(TF)
+        self.flux_top = np.random.random(ijcells).astype(TF)
 
 
 class Fields:
     def __init__(self, fields, ncells, ijcells, kcells, TF=np.float64):
 
+        np.random.seed(666)
+
         for field in fields:
             setattr(self, field, Field3d(ncells, ijcells, TF))
 
-        self.rhoref  = np.ones(kcells, dtype=TF)
-        self.rhorefh = np.ones(kcells, dtype=TF)
+        self.rhoref  = np.random.random(kcells).astype(TF)
+        self.rhorefh = np.random.random(kcells).astype(TF)
 
 
 if __name__ == '__main__':
