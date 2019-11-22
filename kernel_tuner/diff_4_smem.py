@@ -57,8 +57,8 @@ kernel_string = """
             const int kk2 = 2*kk;
             const int kk3 = 3*kk;
 
-            const int jjs1 = 3*blockxpad;
-            const int jjs2 = 3*blockxpad;
+            const int jjs1 = 1*blockxpad;
+            const int jjs2 = 2*blockxpad;
             const int jjs3 = 3*blockxpad;
 
             const double dxidxi = dxi*dxi;
