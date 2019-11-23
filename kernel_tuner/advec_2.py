@@ -65,53 +65,58 @@ if __name__ == '__main__':
     TF = np.float64
     
     for gridsize in [32,64,128,256,512]:
-        
         print('===========================')
         print('{0}x{0}x{0} grid points'.format(gridsize))
         print('===========================')
+
+        for manual_check in [True, False]:
     
-        grid       = Grid(3200, 3200, 3200, gridsize, gridsize, gridsize, 2, 1, TF)
-        fields     = Fields(['u','v','w','s'], grid.ncells, grid.ijcells, grid.kcells, TF)
-        fields_ref = Fields(['u','v','w','s'], grid.ncells, grid.ijcells, grid.kcells, TF)
+            grid       = Grid(3200, 3200, 3200, gridsize, gridsize, gridsize, 2, 1, TF)
+            fields     = Fields(['u','v','w','s'], grid.ncells, grid.ijcells, grid.kcells, TF)
+            fields_ref = Fields(['u','v','w','s'], grid.ncells, grid.ijcells, grid.kcells, TF)
 
-        # Argument list of CUDA kernel
-        args = [
-            fields.s.tend, fields.s.fld, fields.u.fld, fields.v.fld, fields.w.fld, 
-            fields.rhoref, fields.rhorefh, grid.dzi, 
-            grid.dxi, grid.dyi, 
-            grid.icells, grid.ijcells, 
-            grid.istart, grid.jstart, grid.kstart, 
-            grid.iend, grid.jend, grid.kend]
+            # Argument list of CUDA kernel
+            args = [
+                fields.s.tend, fields.s.fld, fields.u.fld, fields.v.fld, fields.w.fld, 
+                fields.rhoref, fields.rhorefh, grid.dzi, 
+                grid.dxi, grid.dyi, 
+                grid.icells, grid.ijcells, 
+                grid.istart, grid.jstart, grid.kstart, 
+                grid.iend, grid.jend, grid.kend]
 
-        # Validate results with Python version of code
-        advec_s(
-            fields_ref.s.tend, fields_ref.s.fld, fields_ref.u.fld, fields_ref.v.fld, fields_ref.w.fld, 
-            fields_ref.rhoref, fields_ref.rhorefh, grid.dzi, 
-            grid.dxi, grid.dyi, 
-            grid.icells, grid.ijcells, 
-            grid.istart, grid.jstart, grid.kstart, 
-            grid.iend, grid.jend, grid.kend)
+            # Validate results with Python version of code
+            advec_s(
+                fields_ref.s.tend, fields_ref.s.fld, fields_ref.u.fld, fields_ref.v.fld, fields_ref.w.fld, 
+                fields_ref.rhoref, fields_ref.rhorefh, grid.dzi, 
+                grid.dxi, grid.dyi, 
+                grid.icells, grid.ijcells, 
+                grid.istart, grid.jstart, grid.kstart, 
+                grid.iend, grid.jend, grid.kend)
 
-        # CUDA
-        params = { "block_size_x": 4, "block_size_y": 4 }
-        results = kernel_tuner.run_kernel(
-            "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, params)
+            if manual_check:
 
-        # Compare results
-        if np.allclose(results[0], fields_ref.s.tend, atol=1e-14):
-            print('SUCCESS, CUDA and Python results are identical!')
-        else:
-            print('ERROR: CUDA and Python results not identical')
-            print('Max diff = {}'.format(np.absolute(results[0]-fields_ref.s.tend).max()))
+                # CUDA
+                params = { "block_size_x": 4, "block_size_y": 4 }
+                results = kernel_tuner.run_kernel(
+                    "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, params)
 
-        # Tune parameters
-        tune_params = OrderedDict()
-        tune_params["block_size_x"] = [32*i for i in range(1,9)]
-        tune_params["block_size_y"] = [2**i for i in range(3)]
+                # Compare results
+                if np.allclose(results[0], fields_ref.s.tend, atol=1e-14):
+                    print('SUCCESS, CUDA and Python results are identical!')
+                else:
+                    print('ERROR: CUDA and Python results not identical')
+                    print('Max diff = {}'.format(np.absolute(results[0]-fields_ref.s.tend).max()))
 
-        # True answer from the Python code
-        answer = len(args)*[None]
-        answer[0] = fields_ref.s.tend
+            else:
 
-        kernel_tuner.tune_kernel(
-            "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, tune_params, answer=answer)
+                # Tune parameters
+                tune_params = OrderedDict()
+                tune_params["block_size_x"] = [32*i for i in range(1,9)]
+                tune_params["block_size_y"] = [2**i for i in range(3)]
+
+                # True answer from the Python code
+                answer = len(args)*[None]
+                answer[0] = fields_ref.s.tend
+
+                kernel_tuner.tune_kernel(
+                    "advec_s_g", kernel_string, (grid.itot, grid.jtot, grid.ktot), args, tune_params, answer=answer, atol=1e-14)
