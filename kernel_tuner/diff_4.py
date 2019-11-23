@@ -87,7 +87,9 @@ if __name__ == '__main__':
     with open('diff_4.cu', 'r') as f:
         kernel_string = f.read()
 
-    for gridsize in [32,64,128,256,512]:
+    # Test different grid dimensions (all as N^3)
+    for gridsize in np.arange(32, 513, 32):
+
         print('===========================')
         print('{0}x{0}x{0} grid points'.format(gridsize))
         print('===========================')
