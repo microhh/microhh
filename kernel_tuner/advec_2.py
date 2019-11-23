@@ -92,7 +92,6 @@ if __name__ == '__main__':
             grid.istart, grid.jstart, grid.kstart, 
             grid.iend, grid.jend, grid.kend)
 
-
         # CUDA
         params = { "block_size_x": 4, "block_size_y": 4 }
         results = kernel_tuner.run_kernel(
