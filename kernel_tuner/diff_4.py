@@ -85,7 +85,7 @@ kernel_string = """
                   const int jj,     const int kk,
                   const int istart, const int jstart, const int kstart,
                   const int iend,   const int jend,   const int kend,
-                  const int ngc)
+                  const int icells, const int jcells, const int ngc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -170,14 +170,17 @@ kernel_string_smem = """
                   const int jj,     const int kk,
                   const int istart, const int jstart, const int kstart,
                   const int iend,   const int jend,   const int kend,
-                  const int ngc)
+                  const int icells, const int jcells, const int ngc)
     {
         const int tx = threadIdx.x;
         const int ty = threadIdx.y;
         const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k  = blockIdx.z + kstart;
+        const int bx = blockIdx.x*blockDim.x;
+        const int by = blockIdx.y*blockDim.y;
         const int blockxpad = blockDim.x+2*ngc;
+        const int blockypad = blockDim.y+2*ngc;
 
         // DANGER DANGER ghost cells harcoded..
         __shared__ double as[(block_size_y+6)*(block_size_x+6)];
@@ -201,6 +204,30 @@ kernel_string_smem = """
         constexpr double cdg1 =   783./576.;
         constexpr double cdg2 =   -54./576.;
         constexpr double cdg3 =     1./576.;
+
+        // Read horizontal slice to shared memory
+        #pragma unroll
+        for (int tj=0; tj<block_size_y+6; tj+=block_size_y)
+        {
+            #pragma unroll
+            for (int ti=0; ti<block_size_x+6; ti+=block_size_x)
+            {
+                const int is = ti+tx;
+                const int js = tj+ty;
+
+                const int ig = is+bx;
+                const int jg = js+by;
+                
+                if (is < blockxpad && js < blockypad && ig < icells && jg < jcells)
+                {
+                    const int ijs = is + js*blockxpad;
+                    const int ijg = ig + jg*jj + k*kk;
+                    as[ijs] = a[ijg];
+                }
+            }
+        }
+
+        __syncthreads();
  
         if (i < iend && j < jend && k < kend)
         {
@@ -210,7 +237,7 @@ kernel_string_smem = """
             const int ii1 = 1;
             const int ii2 = 2;
             const int ii3 = 3;
-            const int jj3 = 3*jj;
+            //const int jj3 = 3*jj;
             const int kk1 = 1*kk;
             const int kk2 = 2*kk;
             const int kk3 = 3*kk;
@@ -221,21 +248,6 @@ kernel_string_smem = """
 
             const double dxidxi = dxi*dxi;
             const double dyidyi = dyi*dyi;
-
-            // Read horizontal slice to shared memory
-            as[ijks] = a[ijk];
-
-            if(ty < ngc)
-                as[ijks-jjs3] = a[ijk-jj3];
-            if(ty >= blockDim.y-ngc)
-                as[ijks+jjs3] = a[ijk+jj3];
-
-            if(tx < ngc)
-                as[ijks-ii3] = a[ijk-ii3];
-            if(tx >= blockDim.x-ngc)
-                as[ijks+ii3] = a[ijk+ii3];
-
-            __syncthreads();
 
             // bottom boundary
             if (k == kstart)
@@ -298,7 +310,8 @@ if __name__ == '__main__':
                 grid.dxi, grid.dyi, visc,
                 grid.icells, grid.ijcells, 
                 grid.istart, grid.jstart, grid.kstart, 
-                grid.iend, grid.jend, grid.kend, ngc]
+                grid.iend, grid.jend, grid.kend,
+                grid.icells, grid.jcells, ngc]
 
             # Validate results with Python version of code
             diff_c(
