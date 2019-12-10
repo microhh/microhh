@@ -601,10 +601,10 @@ namespace
                                                     ( w[ijk] - w[ijk-ii] ) * dxi;
 
                     // -2 * visc * du/dy * dw/dy
-                    uw_diss[ijk] = TF(-2.) * visc * ( interp22(u[ijk]-umean[k], u[ijk+jj]-umean[k], u[ijk+jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
-                                                      interp22(u[ijk]-umean[k], u[ijk-jj]-umean[k], u[ijk-jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dyi *
-                                                    ( interp22(w[ijk]         , w[ijk+jj]         , w[ijk+jj-ii]           , w[ijk-ii]           ) -
-                                                      interp22(w[ijk]         , w[ijk-jj]         , w[ijk-jj-ii]           , w[ijk-ii]           ) ) * dyi;
+                    uw_diss[ijk] += TF(-2.) * visc * ( interp22(u[ijk]-umean[k], u[ijk+jj]-umean[k], u[ijk+jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
+                                                       interp22(u[ijk]-umean[k], u[ijk-jj]-umean[k], u[ijk-jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dyi *
+                                                     ( interp22(w[ijk]         , w[ijk+jj]         , w[ijk+jj-ii]           , w[ijk-ii]           ) -
+                                                       interp22(w[ijk]         , w[ijk-jj]         , w[ijk-jj-ii]           , w[ijk-ii]           ) ) * dyi;
                 }
         }
 
@@ -767,14 +767,14 @@ namespace
                                                                   evisc[ijk-ii] * (u[ijk   ] - u[ijk-ii]) * dxi ) * TF(2.) * dxi;
 
                     // 2 * u * d/dy( visc * du/dy + visc * dv/dx)
-                    u2_diff[ijk] = TF(2.) * (u[ijk]-umean[k]) * ( evisc_unorth * (u[ijk+jj] - u[ijk      ]) * dyi -
-                                                                  evisc_usouth * (u[ijk   ] - u[ijk-jj   ]) * dyi +
-                                                                  evisc_unorth * (v[ijk+jj] - v[ijk+jj-ii]) * dxi -
-                                                                  evisc_usouth * (v[ijk   ] - v[ijk-ii   ]) * dxi ) * dyi;
+                    u2_diff[ijk] += TF(2.) * (u[ijk]-umean[k]) * ( evisc_unorth * (u[ijk+jj] - u[ijk      ]) * dyi -
+                                                                   evisc_usouth * (u[ijk   ] - u[ijk-jj   ]) * dyi +
+                                                                   evisc_unorth * (v[ijk+jj] - v[ijk+jj-ii]) * dxi -
+                                                                   evisc_usouth * (v[ijk   ] - v[ijk-ii   ]) * dxi ) * dyi;
 
                     // 2 * u * d/dz( visc * dw/dx )
-                    u2_diff[ijk] = TF(2.) * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
-                                                                  evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
+                    u2_diff[ijk] += TF(2.) * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
+                                                                   evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
 
                     // -----------------------------------------
                     // 2 * v * d/dy( visc * dv/dy + visc * dv/dy )
@@ -782,14 +782,14 @@ namespace
                                                                   evisc[ijk-jj] * (v[ijk   ] - v[ijk-jj]) * dyi ) * TF(2.) * dyi;
 
                     // 2 * v * d/dx( visc * dv/dx + visc * du/dy )
-                    v2_diff[ijk] = TF(2.) * (v[ijk]-vmean[k]) * ( evisc_veast * (v[ijk+ii] - v[ijk      ]) * dxi -
-                                                                  evisc_vwest * (v[ijk   ] - v[ijk-ii   ]) * dxi +
-                                                                  evisc_veast * (u[ijk+ii] - u[ijk+ii-jj]) * dyi -
-                                                                  evisc_vwest * (u[ijk   ] - u[ijk-jj   ]) * dyi ) * dxi;
+                    v2_diff[ijk] += TF(2.) * (v[ijk]-vmean[k]) * ( evisc_veast * (v[ijk+ii] - v[ijk      ]) * dxi -
+                                                                   evisc_vwest * (v[ijk   ] - v[ijk-ii   ]) * dxi +
+                                                                   evisc_veast * (u[ijk+ii] - u[ijk+ii-jj]) * dyi -
+                                                                   evisc_vwest * (u[ijk   ] - u[ijk-jj   ]) * dyi ) * dxi;
 
                     // 2 * v * d/dz( visc * dw/dy )
-                    v2_diff[ijk] = TF(2.) * (v[ijk]-vmean[k]) * ( evisc_vtop * (w[ijk+kk] - w[ijk-jj+kk]) * dyi -
-                                                                  evisc_vbot * (w[ijk   ] - w[ijk-jj   ]) * dyi ) * dzi[k];
+                    v2_diff[ijk] += TF(2.) * (v[ijk]-vmean[k]) * ( evisc_vtop * (w[ijk+kk] - w[ijk-jj+kk]) * dyi -
+                                                                   evisc_vbot * (w[ijk   ] - w[ijk-jj   ]) * dyi ) * dzi[k];
 
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * dw/dx )
@@ -797,8 +797,8 @@ namespace
                                                        evisc_wwest * (w[ijk   ] - w[ijk-ii]) * dxi ) * dxi;
 
                     // 2 * w * d/dy( visc * dw/dy )
-                    w2_diff[ijk] = TF(2.) * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
-                                                       evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
+                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
+                                                        evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
 
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * dw/dx )
@@ -806,16 +806,16 @@ namespace
                                                 interp2(evisc[ijk], evisc[ijk-ii]) * (wz[ijk   ] - wz[ijk-ii]) * dxi ) * dxi;
 
                     // 2 * w * d/dx( visc * du/dz )
-                    tke_diff[ijk] = wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
-                                                interp2(evisc[ijk], evisc[ijk-ii]) * (interp2(u[ijk   ], u[ijk   +kk]) - interp2(u[ijk   ], u[ijk   -kk])) * dzi[k] ) * dxi;
+                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
+                                                 interp2(evisc[ijk], evisc[ijk-ii]) * (interp2(u[ijk   ], u[ijk   +kk]) - interp2(u[ijk   ], u[ijk   -kk])) * dzi[k] ) * dxi;
 
                     // 2 * w * d/dy( visc * dw/dy )
-                    tke_diff[ijk] = wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
-                                                interp2(evisc[ijk], evisc[ijk-jj]) * (wz[ijk   ] - wz[ijk-jj]) * dyi ) * dyi;
+                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
+                                                 interp2(evisc[ijk], evisc[ijk-jj]) * (wz[ijk   ] - wz[ijk-jj]) * dyi ) * dyi;
 
                     // 2 * w * d/dy( visc * dv/dz )
-                    tke_diff[ijk] = wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
-                                                interp2(evisc[ijk], evisc[ijk-jj]) * (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
+                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
+                                                 interp2(evisc[ijk], evisc[ijk-jj]) * (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
                 }
 
         #pragma omp parallel for
@@ -854,12 +854,12 @@ namespace
                                                        evisc_wwest * (u[ijk   ] - u[ijk   -kk]) * dzhi[k] ) * dxi;
 
                     // 2 * w * d/dy( visc * dv/dz )
-                    w2_diff[ijk] = TF(2.) * w[ijk] * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
-                                                       evisc_wsouth * (v[ijk   ] - v[ijk   -kk]) * dzhi[k] ) * dyi;
+                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
+                                                        evisc_wsouth * (v[ijk   ] - v[ijk   -kk]) * dzhi[k] ) * dyi;
 
                     // 2 * w * d/dz( visc * dw/dz )
-                    w2_diff[ijk] = TF(2.) * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
-                                                       evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * TF(2.) * dzhi[k];
+                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
+                                                        evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * TF(2.) * dzhi[k];
 
                     // -----------------------------------------
                     // 2 * w * d/dz( 2 * visc * dw/dz )
@@ -878,33 +878,33 @@ namespace
                                     * dxi );
 
                     // w * d/dy(visc * du/dy + visc * dv/dx)
-                    uw_diff[ijk] = ( ( interp2(w[ijk-ii], w[ijk    ])
-                                      * ( ( evisch[ijk+jj]
-                                        * ( ( ( interp2(u[ijk+jj-kk], u[ijk+jj    ]) - interp2(u[ijk    -kk], u[ijk        ]) )
-                                            * dyi )
-                                          + ( ( interp2(v[ijk    +jj-kk], v[ijk    +jj    ]) - interp2(v[ijk-ii+jj-kk], v[ijk-ii+jj    ]) )
-                                            * dxi ) ) ) - ( evisch[ijk    ]
-                                        * ( ( ( interp2(u[ijk    -kk], u[ijk        ]) - interp2(u[ijk-jj-kk], u[ijk-jj    ]) )
-                                            * dyi )
-                                          + ( ( interp2(v[ijk        -kk], v[ijk            ]) - interp2(v[ijk-ii    -kk], v[ijk-ii        ]) )
-                                            * dxi ) ) ) ) )
-                                    * dyi );
+                    uw_diff[ijk] += ( ( interp2(w[ijk-ii], w[ijk    ])
+                                       * ( ( evisch[ijk+jj]
+                                         * ( ( ( interp2(u[ijk+jj-kk], u[ijk+jj    ]) - interp2(u[ijk    -kk], u[ijk        ]) )
+                                             * dyi )
+                                           + ( ( interp2(v[ijk    +jj-kk], v[ijk    +jj    ]) - interp2(v[ijk-ii+jj-kk], v[ijk-ii+jj    ]) )
+                                             * dxi ) ) ) - ( evisch[ijk    ]
+                                         * ( ( ( interp2(u[ijk    -kk], u[ijk        ]) - interp2(u[ijk-jj-kk], u[ijk-jj    ]) )
+                                             * dyi )
+                                           + ( ( interp2(v[ijk        -kk], v[ijk            ]) - interp2(v[ijk-ii    -kk], v[ijk-ii        ]) )
+                                             * dxi ) ) ) ) )
+                                     * dyi );
 
                     // w * d/dz(visc * du/dz + visc * dw/dx)
-                    uw_diff[ijk] = ( ( interp2(w[ijk-ii], w[ijk    ])
-                                      * ( ( interp2(evisc[ijk-ii    ], evisc[ijk        ])
-                                        * ( ( ( interp2(u[ijk    ], u[ijk+kk]) - interp2(u[ijk-kk], u[ijk    ]) )
-                                            * dzi[k  ] )
-                                          + ( ( interp2(w[ijk        ], w[ijk    +kk]) - interp2(w[ijk-ii    ], w[ijk-ii+kk]) )
-                                            * dxi ) ) ) - ( interp2(evisc[ijk-ii-kk], evisc[ijk    -kk])
-                                        * ( ( ( interp2(u[ijk-kk], u[ijk    ]) - interp2(u[ijk-kk2], u[ijk-kk]) )
-                                            * dzi[k-1] )
-                                          + ( ( interp2(w[ijk    -kk], w[ijk        ]) - interp2(w[ijk-ii-kk], w[ijk-ii    ]) )
-                                            * dxi ) ) ) ) )
-                                    * dzhi[k] );
+                    uw_diff[ijk] += ( ( interp2(w[ijk-ii], w[ijk    ])
+                                       * ( ( interp2(evisc[ijk-ii    ], evisc[ijk        ])
+                                         * ( ( ( interp2(u[ijk    ], u[ijk+kk]) - interp2(u[ijk-kk], u[ijk    ]) )
+                                             * dzi[k  ] )
+                                           + ( ( interp2(w[ijk        ], w[ijk    +kk]) - interp2(w[ijk-ii    ], w[ijk-ii+kk]) )
+                                             * dxi ) ) ) - ( interp2(evisc[ijk-ii-kk], evisc[ijk    -kk])
+                                         * ( ( ( interp2(u[ijk-kk], u[ijk    ]) - interp2(u[ijk-kk2], u[ijk-kk]) )
+                                             * dzi[k-1] )
+                                           + ( ( interp2(w[ijk    -kk], w[ijk        ]) - interp2(w[ijk-ii-kk], w[ijk-ii    ]) )
+                                             * dxi ) ) ) ) )
+                                     * dzhi[k] );
 
                     // u * d/dx(visc * dw/dx + visc * du/dz)
-                    uw_diff[ijk] = ( ( interp2(u[ijk-kk], u[ijk    ])
+                    uw_diff[ijk] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( interp2(evisc[ijk    -kk], evisc[ijk        ])
                                         * ( ( ( interp2(w[ijk    ], w[ijk+ii]) - interp2(w[ijk-ii], w[ijk    ]) )
                                             * dxi )
@@ -917,7 +917,7 @@ namespace
                                     * dxi );
 
                     // u * d/dy(visc * dw/dy + visc * dv/dz)
-                    uw_diff[ijk] = ( ( interp2(u[ijk-kk], u[ijk    ])
+                    uw_diff[ijk] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( evisch[ijk+jj]
                                         * ( ( ( interp2(w[ijk-ii+jj], w[ijk    +jj]) - interp2(w[ijk-ii    ], w[ijk        ]) )
                                             * dyi )
@@ -930,7 +930,7 @@ namespace
                                     * dyi );
 
                     // u * d/dz(visc * dw/dz + visc * dw/dz)
-                    uw_diff[ijk] = ( ( interp2(u[ijk-kk], u[ijk    ])
+                    uw_diff[ijk] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( ( 2 * interp2(evisc[ijk-ii    ], evisc[ijk        ]) )
                                         * ( ( interp2(w[ijk-ii+kk], w[ijk    +kk]) - interp2(w[ijk-ii    ], w[ijk        ]) )
                                           * dzi[k  ] ) ) - ( ( TF(2.) * interp2(evisc[ijk-ii-kk], evisc[ijk    -kk]) )
@@ -953,14 +953,14 @@ namespace
                                   * dxi );
 
                     // w * d/dy(visc * dv/dy + visc * dv/dy)
-                    vw_diff[ijk] = ( ( interp2(w[ijk-jj], w[ijk    ])
+                    vw_diff[ijk] += ( ( interp2(w[ijk-jj], w[ijk    ])
                                     * ( ( ( TF(2.) * interp2(evisc[ijk    -kk], evisc[ijk        ]) )
                                       * ( interp2(v[ijk+jj-kk], v[ijk+jj    ]) - interp2(v[ijk    -kk], v[ijk        ]) ) ) - ( ( TF(2.) * interp2(evisc[ijk-jj-kk], evisc[ijk-jj    ]) )
                                       * ( interp2(v[ijk    -kk], v[ijk        ]) - interp2(v[ijk-jj-kk], v[ijk-jj    ]) ) ) ) )
                                   * dyi );
 
                     // w * d/dz(visc * du/dz + visc * dw/dx)
-                    vw_diff[ijk] = ( ( interp2(w[ijk-jj], w[ijk    ])
+                    vw_diff[ijk] += ( ( interp2(w[ijk-jj], w[ijk    ])
                                     * ( ( interp2(evisc[ijk-jj    ], evisc[ijk        ])
                                       * ( ( ( interp2(v[ijk    ], v[ijk+kk]) - interp2(v[ijk-kk], v[ijk    ]) )
                                           * dzi[k  ] )
@@ -973,7 +973,7 @@ namespace
                                   * dzhi[k] );
 
                     // v * d/dx(visc * dw/dx + visc * du/dz)
-                    vw_diff[ijk] = ( ( interp2(v[ijk-kk], v[ijk    ])
+                    vw_diff[ijk] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( evisch[ijk+ii]
                                       * ( ( ( interp2(w[ijk+ii-jj], w[ijk+ii    ]) - interp2(w[ijk    -jj], w[ijk        ]) )
                                           * dxi )
@@ -986,7 +986,7 @@ namespace
                                   * dxi );
 
                     // v * d/dy(visc * dw/dy + visc * dv/dz)
-                    vw_diff[ijk] = ( ( interp2(v[ijk-kk], v[ijk    ])
+                    vw_diff[ijk] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( interp2(evisc[ijk    -kk], evisc[ijk        ])
                                       * ( ( ( interp2(w[ijk    ], w[ijk+jj]) - interp2(w[ijk-jj], w[ijk    ]) )
                                           * dyi )
@@ -999,7 +999,7 @@ namespace
                                   * dyi );
 
                     // v * d/dz(visc * dw/dz + visc * dw/dz)
-                    vw_diff[ijk] = ( ( interp2(v[ijk-kk], v[ijk    ])
+                    vw_diff[ijk] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( ( TF(2.) * interp2(evisc[ijk-jj    ], evisc[ijk        ]) )
                                       * ( ( interp2(w[ijk-jj+kk], w[ijk    +kk]) - interp2(w[ijk-jj    ], w[ijk        ]) )
                                         * dzi[k  ] ) ) - ( ( TF(2.) * interp2(evisc[ijk-jj-kk], evisc[ijk    -kk]) )
