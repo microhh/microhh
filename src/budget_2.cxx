@@ -1413,393 +1413,398 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    // Calculate the mean of the fields.
-    field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
-    field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
+    auto& masks = stats.get_masks();
 
-    // Calculate kinetic and turbulent kinetic energy
-    auto ke  = fields.get_tmp();
-    auto tke = fields.get_tmp();
-
-    constexpr TF no_offset = 0.;
-    constexpr TF no_threshold = 0.;
-
-    calc_kinetic_energy(
-            ke->fld.data(), tke->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            grid.utrans, grid.vtrans,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("ke" , *ke , no_offset, no_threshold);
-    stats.calc_stats("tke", *tke, no_offset, no_threshold);
-
-    auto wx = std::move(ke );
-    auto wy = std::move(tke);
-
-    // Interpolate w to the locations of u and v.
-    constexpr int wloc [3] = {0,0,1};
-    constexpr int wxloc[3] = {1,0,1};
-    constexpr int wyloc[3] = {0,1,1};
-
-    grid.interpolate_2nd(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
-    grid.interpolate_2nd(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
-
-    auto u2_shear = fields.get_tmp();
-    auto v2_shear = fields.get_tmp();
-    auto tke_shear = fields.get_tmp();
-    auto uw_shear = fields.get_tmp();
-    auto vw_shear = fields.get_tmp();
-
-    calc_shear_terms(
-            u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(),
-            uw_shear->fld.data(), vw_shear->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            wx->fld.data(), wy->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
-    stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
-    stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
-    stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
-    stats.calc_stats("vw_shear" , *vw_shear , no_offset, no_threshold);
-
-    auto u2_turb = std::move(u2_shear);
-    auto v2_turb = std::move(v2_shear);
-    auto w2_turb = fields.get_tmp();
-    auto tke_turb = std::move(tke_shear);
-    auto uw_turb = std::move(uw_shear);
-    auto vw_turb = std::move(vw_shear);
-
-    calc_turb_terms(
-            u2_turb->fld.data(), v2_turb->fld.data(),
-            w2_turb->fld.data(), tke_turb->fld.data(),
-            uw_turb->fld.data(), vw_turb->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            wx->fld.data(), wy->fld.data(),
-            gd.dzi.data(), gd.dzhi.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
-    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
-    stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
-    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
-    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
-    stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
-
-    fields.release_tmp(u2_turb);
-    fields.release_tmp(v2_turb);
-    fields.release_tmp(w2_turb);
-    fields.release_tmp(tke_turb);
-    fields.release_tmp(uw_turb);
-    fields.release_tmp(vw_turb);
-
-    if (diff.get_switch() != Diffusion_type::Disabled)
+    for (auto& m : masks)
     {
-        // Calculate the diffusive transport and dissipation terms
-        if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
-        {
-            auto u2_visc = fields.get_tmp();
-            auto v2_visc = fields.get_tmp();
-            auto w2_visc = fields.get_tmp();
-            auto tke_visc = fields.get_tmp();
-            auto uw_visc = fields.get_tmp();
-
-            auto wz = fields.get_tmp();
-
-            calc_diffusion_transport_terms_dns(
-                    u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    wx->fld.data(), wy->fld.data(), wz->fld.data(),
-                    umodel.data(), vmodel.data(),
-                    gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-
-            stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
-            stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
-            stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
-            stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
-            stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
-
-            auto u2_diss = std::move(u2_visc);
-            auto v2_diss = std::move(v2_visc);
-            auto w2_diss = std::move(w2_visc);
-            auto tke_diss = std::move(tke_visc);
-            auto uw_diss = std::move(uw_visc);
-
-            calc_diffusion_dissipation_terms_dns(
-                    u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    umodel.data(), vmodel.data(),
-                    gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-
-            stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
-            stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
-            stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
-            stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
-            stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
-
-            fields.release_tmp(u2_diss);
-            fields.release_tmp(v2_diss);
-            fields.release_tmp(w2_diss);
-            fields.release_tmp(tke_diss);
-            fields.release_tmp(uw_diss);
-
-            fields.release_tmp(wz);
-        }
-
-        else if (diff.get_switch() == Diffusion_type::Diff_smag2)
-        {
-            auto u2_diff = fields.get_tmp();
-            auto v2_diff = fields.get_tmp();
-            auto w2_diff = fields.get_tmp();
-            auto tke_diff = fields.get_tmp();
-            auto uw_diff = fields.get_tmp();
-            auto vw_diff = fields.get_tmp();
-            auto wz = fields.get_tmp();
-            auto evisch = fields.get_tmp();
-
-            calc_diffusion_terms_les(
-                    u2_diff->fld.data(), v2_diff->fld.data(),
-                    w2_diff->fld.data(), tke_diff->fld.data(),
-                    uw_diff->fld.data(), vw_diff->fld.data(),
-                    wz->fld.data(), evisch->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                    umodel.data(), vmodel.data(),
-                    gd.dzi.data(), gd.dzhi.data(),
-                    gd.dxi, gd.dyi,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells);
-
-            stats.calc_stats("u2_diff" , *u2_diff , no_offset, no_threshold);
-            stats.calc_stats("v2_diff" , *v2_diff , no_offset, no_threshold);
-            stats.calc_stats("w2_diff" , *w2_diff , no_offset, no_threshold);
-            stats.calc_stats("tke_diff", *tke_diff, no_offset, no_threshold);
-            stats.calc_stats("uw_diff" , *uw_diff , no_offset, no_threshold);
-            stats.calc_stats("vw_diff" , *vw_diff , no_offset, no_threshold);
-
-            fields.release_tmp(u2_diff);
-            fields.release_tmp(v2_diff);
-            fields.release_tmp(w2_diff);
-            fields.release_tmp(tke_diff);
-            fields.release_tmp(uw_diff);
-            fields.release_tmp(vw_diff);
-            fields.release_tmp(wz);
-            fields.release_tmp(evisch);
-        }
-    }
-
-    fields.release_tmp(wx);
-    fields.release_tmp(wy);
-
-    auto w2_pres = fields.get_tmp();
-    auto tke_pres = fields.get_tmp();
-    auto uw_pres = fields.get_tmp();
-    auto vw_pres = fields.get_tmp();
-
-    calc_pressure_transport_terms(
-            w2_pres->fld.data(), tke_pres->fld.data(),
-            uw_pres->fld.data(), vw_pres->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-            fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
-    stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
-    stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
-    stats.calc_stats("vw_pres" , *vw_pres , no_offset, no_threshold);
-
-    auto u2_rdstr = fields.get_tmp();
-    auto v2_rdstr = std::move(tke_pres);
-    auto w2_rdstr = std::move(w2_pres);
-    auto uw_rdstr = std::move(uw_pres);
-    auto vw_rdstr = std::move(vw_pres);
-
-    calc_pressure_redistribution_terms(
-            u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(),
-            uw_rdstr->fld.data(), vw_rdstr->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-            fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_rdstr", *u2_rdstr , no_offset, no_threshold);
-    stats.calc_stats("v2_rdstr", *v2_rdstr , no_offset, no_threshold);
-    stats.calc_stats("w2_rdstr", *w2_rdstr , no_offset, no_threshold);
-    stats.calc_stats("uw_rdstr", *uw_rdstr , no_offset, no_threshold);
-    stats.calc_stats("vw_rdstr", *vw_rdstr , no_offset, no_threshold);
-
-    fields.release_tmp(u2_rdstr);
-    fields.release_tmp(v2_rdstr);
-    fields.release_tmp(w2_rdstr);
-    fields.release_tmp(uw_rdstr);
-    fields.release_tmp(vw_rdstr);
-
-    if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
-    {
-        auto u2_cor = fields.get_tmp();
-        auto v2_cor = fields.get_tmp();
-        auto uw_cor = fields.get_tmp();
-        auto vw_cor = fields.get_tmp();
-
-        const TF fc = force.get_coriolis_parameter();
-        calc_coriolis_terms(
-                u2_cor->fld.data(), v2_cor->fld.data(),
-                uw_cor->fld.data(), vw_cor->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(), fc,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        stats.calc_stats("u2_cor", *u2_cor, no_offset, no_threshold);
-        stats.calc_stats("v2_cor", *v2_cor, no_offset, no_threshold);
-        stats.calc_stats("uw_cor", *uw_cor, no_offset, no_threshold);
-        stats.calc_stats("vw_cor", *vw_cor, no_offset, no_threshold);
-
-        fields.release_tmp(u2_cor);
-        fields.release_tmp(v2_cor);
-        fields.release_tmp(uw_cor);
-        fields.release_tmp(vw_cor);
-    }
-
-    if (thermo.get_switch() != "0")
-    {
-        // Get the buoyancy diffusivity from the thermo class
-        const TF diff_b = thermo.get_buoyancy_diffusivity();
-
-        // Acquire the buoyancy, cyclic=true, is_stat=true.
-        auto b = fields.get_tmp();
-        thermo.get_thermo_field(*b, "b", true, true);
-
         // Calculate the mean of the fields.
-        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
-        field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), fields.sd.at("p")->fld.data());
+        field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
+        field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
 
-        auto w2_buoy = fields.get_tmp();
-        auto tke_buoy = fields.get_tmp();
-        auto uw_buoy = fields.get_tmp();
-        auto vw_buoy = fields.get_tmp();
+        // Calculate kinetic and turbulent kinetic energy
+        auto ke  = fields.get_tmp();
+        auto tke = fields.get_tmp();
 
-        // Calculate buoyancy terms
-        calc_buoyancy_terms(
-                w2_buoy->fld.data(), tke_buoy->fld.data(),
-                uw_buoy->fld.data(), vw_buoy->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(), b->fld.data(),
+        constexpr TF no_offset = 0.;
+        constexpr TF no_threshold = 0.;
+
+        calc_kinetic_energy(
+                ke->fld.data(), tke->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 umodel.data(), vmodel.data(),
-                b->fld_mean.data(),
+                grid.utrans, grid.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
-        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
-        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
-        stats.calc_stats("vw_buoy" , *vw_buoy , no_offset, no_threshold);
+        stats.calc_stats("ke" , *ke , no_offset, no_threshold);
+        stats.calc_stats("tke", *tke, no_offset, no_threshold);
 
-        fields.release_tmp(w2_buoy);
-        fields.release_tmp(tke_buoy);
-        fields.release_tmp(uw_buoy);
-        auto bw_buoy = std::move(vw_buoy);
+        auto wx = std::move(ke );
+        auto wy = std::move(tke);
 
-        // Buoyancy variance and flux budgets
-        calc_buoyancy_terms_scalar(
-                bw_buoy->fld.data(),
-                b->fld.data(), b->fld.data(),
-                b->fld_mean.data(), b->fld_mean.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        // Interpolate w to the locations of u and v.
+        constexpr int wloc [3] = {0,0,1};
+        constexpr int wxloc[3] = {1,0,1};
+        constexpr int wyloc[3] = {0,1,1};
 
-        stats.calc_stats("bw_buoy", *bw_buoy, no_offset, no_threshold);
-        fields.release_tmp(bw_buoy);
+        grid.interpolate_2nd(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
+        grid.interpolate_2nd(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
 
-        if (advec.get_switch() != Advection_type::Disabled)
-        {
-            auto b2_shear = fields.get_tmp();
-            auto b2_turb = fields.get_tmp();
-            auto bw_shear = fields.get_tmp();
-            auto bw_turb = fields.get_tmp();
+        auto u2_shear = fields.get_tmp();
+        auto v2_shear = fields.get_tmp();
+        auto tke_shear = fields.get_tmp();
+        auto uw_shear = fields.get_tmp();
+        auto vw_shear = fields.get_tmp();
 
-            calc_advection_terms_scalar(
-                    b2_shear->fld.data(), b2_turb->fld.data(),
-                    bw_shear->fld.data(), bw_turb->fld.data(),
-                    fields.mp.at("w")->fld.data(), b->fld.data(),
-                    b->fld_mean.data(),
-                    gd.dzi.data(), gd.dzhi.data(),
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-
-            stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
-            stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
-            stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
-            stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
-
-            fields.release_tmp(b2_shear);
-            fields.release_tmp(b2_turb );
-            fields.release_tmp(bw_shear);
-            fields.release_tmp(bw_turb );
-        }
-
-        if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
-        {
-            auto b2_visc = fields.get_tmp();
-            auto b2_diss = fields.get_tmp();
-            auto bw_visc = fields.get_tmp();
-            auto bw_diss = fields.get_tmp();
-
-            calc_diffusion_terms_scalar_dns(
-                    b2_visc->fld.data(), b2_diss->fld.data(),
-                    bw_visc->fld.data(), bw_diss->fld.data(),
-                    fields.mp.at("w")->fld.data(), b->fld.data(),
-                    b->fld_mean.data(),
-                    gd.dzi.data(), gd.dzhi.data(),
-                    gd.dxi, gd.dyi, fields.visc, diff_b,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-
-            stats.calc_stats("b2_visc", *b2_visc, no_offset, no_threshold);
-            stats.calc_stats("b2_diss", *b2_diss, no_offset, no_threshold);
-            stats.calc_stats("bw_visc", *bw_visc, no_offset, no_threshold);
-            stats.calc_stats("bw_diss", *bw_diss, no_offset, no_threshold);
-
-            fields.release_tmp(b2_visc);
-            fields.release_tmp(b2_diss);
-            fields.release_tmp(bw_visc);
-            fields.release_tmp(bw_diss);
-        }
-
-        auto bw_pres = fields.get_tmp();
-        auto bw_rdstr = fields.get_tmp();
-
-        calc_pressure_terms_scalar(
-                bw_pres->fld.data(), bw_rdstr->fld.data(),
-                b->fld.data(), fields.sd.at("p")->fld.data(),
-                b->fld_mean.data(), fields.sd.at("p")->fld_mean.data(),
+        calc_shear_terms(
+                u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(),
+                uw_shear->fld.data(), vw_shear->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(),
+                wx->fld.data(), wy->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("bw_pres", *bw_pres, no_offset, no_threshold);
-        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+        stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
+        stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
+        stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
+        stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
+        stats.calc_stats("vw_shear" , *vw_shear , no_offset, no_threshold);
 
-        fields.release_tmp(bw_pres);
-        fields.release_tmp(bw_rdstr);
-        fields.release_tmp(b);
+        auto u2_turb = std::move(u2_shear);
+        auto v2_turb = std::move(v2_shear);
+        auto w2_turb = fields.get_tmp();
+        auto tke_turb = std::move(tke_shear);
+        auto uw_turb = std::move(uw_shear);
+        auto vw_turb = std::move(vw_shear);
+
+        calc_turb_terms(
+                u2_turb->fld.data(), v2_turb->fld.data(),
+                w2_turb->fld.data(), tke_turb->fld.data(),
+                uw_turb->fld.data(), vw_turb->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(),
+                wx->fld.data(), wy->fld.data(),
+                gd.dzi.data(), gd.dzhi.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
+        stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
+        stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
+        stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
+        stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
+        stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
+
+        fields.release_tmp(u2_turb);
+        fields.release_tmp(v2_turb);
+        fields.release_tmp(w2_turb);
+        fields.release_tmp(tke_turb);
+        fields.release_tmp(uw_turb);
+        fields.release_tmp(vw_turb);
+
+        if (diff.get_switch() != Diffusion_type::Disabled)
+        {
+            // Calculate the diffusive transport and dissipation terms
+            if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
+            {
+                auto u2_visc = fields.get_tmp();
+                auto v2_visc = fields.get_tmp();
+                auto w2_visc = fields.get_tmp();
+                auto tke_visc = fields.get_tmp();
+                auto uw_visc = fields.get_tmp();
+
+                auto wz = fields.get_tmp();
+
+                calc_diffusion_transport_terms_dns(
+                        u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
+                        fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                        wx->fld.data(), wy->fld.data(), wz->fld.data(),
+                        umodel.data(), vmodel.data(),
+                        gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
+                stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
+                stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
+                stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
+                stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
+
+                auto u2_diss = std::move(u2_visc);
+                auto v2_diss = std::move(v2_visc);
+                auto w2_diss = std::move(w2_visc);
+                auto tke_diss = std::move(tke_visc);
+                auto uw_diss = std::move(uw_visc);
+
+                calc_diffusion_dissipation_terms_dns(
+                        u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
+                        fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                        umodel.data(), vmodel.data(),
+                        gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
+                stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
+                stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
+                stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
+                stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
+
+                fields.release_tmp(u2_diss);
+                fields.release_tmp(v2_diss);
+                fields.release_tmp(w2_diss);
+                fields.release_tmp(tke_diss);
+                fields.release_tmp(uw_diss);
+
+                fields.release_tmp(wz);
+            }
+
+            else if (diff.get_switch() == Diffusion_type::Diff_smag2)
+            {
+                auto u2_diff = fields.get_tmp();
+                auto v2_diff = fields.get_tmp();
+                auto w2_diff = fields.get_tmp();
+                auto tke_diff = fields.get_tmp();
+                auto uw_diff = fields.get_tmp();
+                auto vw_diff = fields.get_tmp();
+                auto wz = fields.get_tmp();
+                auto evisch = fields.get_tmp();
+
+                calc_diffusion_terms_les(
+                        u2_diff->fld.data(), v2_diff->fld.data(),
+                        w2_diff->fld.data(), tke_diff->fld.data(),
+                        uw_diff->fld.data(), vw_diff->fld.data(),
+                        wz->fld.data(), evisch->fld.data(),
+                        fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                        fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
+                        fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
+                        umodel.data(), vmodel.data(),
+                        gd.dzi.data(), gd.dzhi.data(),
+                        gd.dxi, gd.dyi,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.jcells, gd.ijcells);
+
+                stats.calc_stats("u2_diff" , *u2_diff , no_offset, no_threshold);
+                stats.calc_stats("v2_diff" , *v2_diff , no_offset, no_threshold);
+                stats.calc_stats("w2_diff" , *w2_diff , no_offset, no_threshold);
+                stats.calc_stats("tke_diff", *tke_diff, no_offset, no_threshold);
+                stats.calc_stats("uw_diff" , *uw_diff , no_offset, no_threshold);
+                stats.calc_stats("vw_diff" , *vw_diff , no_offset, no_threshold);
+
+                fields.release_tmp(u2_diff);
+                fields.release_tmp(v2_diff);
+                fields.release_tmp(w2_diff);
+                fields.release_tmp(tke_diff);
+                fields.release_tmp(uw_diff);
+                fields.release_tmp(vw_diff);
+                fields.release_tmp(wz);
+                fields.release_tmp(evisch);
+            }
+        }
+
+        fields.release_tmp(wx);
+        fields.release_tmp(wy);
+
+        auto w2_pres = fields.get_tmp();
+        auto tke_pres = fields.get_tmp();
+        auto uw_pres = fields.get_tmp();
+        auto vw_pres = fields.get_tmp();
+
+        calc_pressure_transport_terms(
+                w2_pres->fld.data(), tke_pres->fld.data(),
+                uw_pres->fld.data(), vw_pres->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+                umodel.data(), vmodel.data(),
+                gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
+        stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
+        stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
+        stats.calc_stats("vw_pres" , *vw_pres , no_offset, no_threshold);
+
+        auto u2_rdstr = fields.get_tmp();
+        auto v2_rdstr = std::move(tke_pres);
+        auto w2_rdstr = std::move(w2_pres);
+        auto uw_rdstr = std::move(uw_pres);
+        auto vw_rdstr = std::move(vw_pres);
+
+        calc_pressure_redistribution_terms(
+                u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(),
+                uw_rdstr->fld.data(), vw_rdstr->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+                umodel.data(), vmodel.data(),
+                gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_stats("u2_rdstr", *u2_rdstr , no_offset, no_threshold);
+        stats.calc_stats("v2_rdstr", *v2_rdstr , no_offset, no_threshold);
+        stats.calc_stats("w2_rdstr", *w2_rdstr , no_offset, no_threshold);
+        stats.calc_stats("uw_rdstr", *uw_rdstr , no_offset, no_threshold);
+        stats.calc_stats("vw_rdstr", *vw_rdstr , no_offset, no_threshold);
+
+        fields.release_tmp(u2_rdstr);
+        fields.release_tmp(v2_rdstr);
+        fields.release_tmp(w2_rdstr);
+        fields.release_tmp(uw_rdstr);
+        fields.release_tmp(vw_rdstr);
+
+        if (force.get_switch_lspres() == Large_scale_pressure_type::Geo_wind)
+        {
+            auto u2_cor = fields.get_tmp();
+            auto v2_cor = fields.get_tmp();
+            auto uw_cor = fields.get_tmp();
+            auto vw_cor = fields.get_tmp();
+
+            const TF fc = force.get_coriolis_parameter();
+            calc_coriolis_terms(
+                    u2_cor->fld.data(), v2_cor->fld.data(),
+                    uw_cor->fld.data(), vw_cor->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                    umodel.data(), vmodel.data(), fc,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("u2_cor", *u2_cor, no_offset, no_threshold);
+            stats.calc_stats("v2_cor", *v2_cor, no_offset, no_threshold);
+            stats.calc_stats("uw_cor", *uw_cor, no_offset, no_threshold);
+            stats.calc_stats("vw_cor", *vw_cor, no_offset, no_threshold);
+
+            fields.release_tmp(u2_cor);
+            fields.release_tmp(v2_cor);
+            fields.release_tmp(uw_cor);
+            fields.release_tmp(vw_cor);
+        }
+
+        if (thermo.get_switch() != "0")
+        {
+            // Get the buoyancy diffusivity from the thermo class
+            const TF diff_b = thermo.get_buoyancy_diffusivity();
+
+            // Acquire the buoyancy, cyclic=true, is_stat=true.
+            auto b = fields.get_tmp();
+            thermo.get_thermo_field(*b, "b", true, true);
+
+            // Calculate the mean of the fields.
+            field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+            field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), fields.sd.at("p")->fld.data());
+
+            auto w2_buoy = fields.get_tmp();
+            auto tke_buoy = fields.get_tmp();
+            auto uw_buoy = fields.get_tmp();
+            auto vw_buoy = fields.get_tmp();
+
+            // Calculate buoyancy terms
+            calc_buoyancy_terms(
+                    w2_buoy->fld.data(), tke_buoy->fld.data(),
+                    uw_buoy->fld.data(), vw_buoy->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(), b->fld.data(),
+                    umodel.data(), vmodel.data(),
+                    b->fld_mean.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
+            stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
+            stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
+            stats.calc_stats("vw_buoy" , *vw_buoy , no_offset, no_threshold);
+
+            fields.release_tmp(w2_buoy);
+            fields.release_tmp(tke_buoy);
+            fields.release_tmp(uw_buoy);
+            auto bw_buoy = std::move(vw_buoy);
+
+            // Buoyancy variance and flux budgets
+            calc_buoyancy_terms_scalar(
+                    bw_buoy->fld.data(),
+                    b->fld.data(), b->fld.data(),
+                    b->fld_mean.data(), b->fld_mean.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("bw_buoy", *bw_buoy, no_offset, no_threshold);
+            fields.release_tmp(bw_buoy);
+
+            if (advec.get_switch() != Advection_type::Disabled)
+            {
+                auto b2_shear = fields.get_tmp();
+                auto b2_turb = fields.get_tmp();
+                auto bw_shear = fields.get_tmp();
+                auto bw_turb = fields.get_tmp();
+
+                calc_advection_terms_scalar(
+                        b2_shear->fld.data(), b2_turb->fld.data(),
+                        bw_shear->fld.data(), bw_turb->fld.data(),
+                        fields.mp.at("w")->fld.data(), b->fld.data(),
+                        b->fld_mean.data(),
+                        gd.dzi.data(), gd.dzhi.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
+                stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
+                stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
+                stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
+
+                fields.release_tmp(b2_shear);
+                fields.release_tmp(b2_turb );
+                fields.release_tmp(bw_shear);
+                fields.release_tmp(bw_turb );
+            }
+
+            if (diff.get_switch() == Diffusion_type::Diff_2 || diff.get_switch() == Diffusion_type::Diff_4)
+            {
+                auto b2_visc = fields.get_tmp();
+                auto b2_diss = fields.get_tmp();
+                auto bw_visc = fields.get_tmp();
+                auto bw_diss = fields.get_tmp();
+
+                calc_diffusion_terms_scalar_dns(
+                        b2_visc->fld.data(), b2_diss->fld.data(),
+                        bw_visc->fld.data(), bw_diss->fld.data(),
+                        fields.mp.at("w")->fld.data(), b->fld.data(),
+                        b->fld_mean.data(),
+                        gd.dzi.data(), gd.dzhi.data(),
+                        gd.dxi, gd.dyi, fields.visc, diff_b,
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                stats.calc_stats("b2_visc", *b2_visc, no_offset, no_threshold);
+                stats.calc_stats("b2_diss", *b2_diss, no_offset, no_threshold);
+                stats.calc_stats("bw_visc", *bw_visc, no_offset, no_threshold);
+                stats.calc_stats("bw_diss", *bw_diss, no_offset, no_threshold);
+
+                fields.release_tmp(b2_visc);
+                fields.release_tmp(b2_diss);
+                fields.release_tmp(bw_visc);
+                fields.release_tmp(bw_diss);
+            }
+
+            auto bw_pres = fields.get_tmp();
+            auto bw_rdstr = fields.get_tmp();
+
+            calc_pressure_terms_scalar(
+                    bw_pres->fld.data(), bw_rdstr->fld.data(),
+                    b->fld.data(), fields.sd.at("p")->fld.data(),
+                    b->fld_mean.data(), fields.sd.at("p")->fld_mean.data(),
+                    gd.dzi.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_stats("bw_pres", *bw_pres, no_offset, no_threshold);
+            stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+
+            fields.release_tmp(bw_pres);
+            fields.release_tmp(bw_rdstr);
+            fields.release_tmp(b);
+        }
     }
 }
 
