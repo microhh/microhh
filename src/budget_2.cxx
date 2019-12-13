@@ -1419,6 +1419,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     // required in order to compute the budget terms.
     for (auto& m : masks)
     {
+        // CvH: THE COMPUTATION BELOW NEEDS TO BE REPLACED BY A MASK MEAN.
+        // stats.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
+        // stats.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
+
         // Calculate the mean of the fields.
         field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
         field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
