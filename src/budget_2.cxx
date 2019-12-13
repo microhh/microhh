@@ -1415,6 +1415,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
 
     auto& masks = stats.get_masks();
 
+    // The loop over masks inside of budget is necessary, because the mask mean is 
+    // required in order to compute the budget terms.
     for (auto& m : masks)
     {
         // Calculate the mean of the fields.
@@ -1436,8 +1438,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("ke" , *ke , no_offset, no_threshold);
-        stats.calc_stats("tke", *tke, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
 
         auto wx = std::move(ke );
         auto wy = std::move(tke);
@@ -1466,11 +1468,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
-        stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
-        stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
-        stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
-        stats.calc_stats("vw_shear" , *vw_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "u2_shear" , *u2_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_shear" , *v2_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_shear", *tke_shear, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_shear" , *uw_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "vw_shear" , *vw_shear , no_offset, no_threshold);
 
         auto u2_turb = std::move(u2_shear);
         auto v2_turb = std::move(v2_shear);
@@ -1490,12 +1492,12 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
-        stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
-        stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
-        stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
-        stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
-        stats.calc_stats("vw_turb" , *vw_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "u2_turb" , *u2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_turb" , *v2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_turb" , *w2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_turb", *tke_turb, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_turb" , *uw_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "vw_turb" , *vw_turb , no_offset, no_threshold);
 
         fields.release_tmp(u2_turb);
         fields.release_tmp(v2_turb);
@@ -1526,11 +1528,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
-                stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
-                stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
-                stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
-                stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "u2_visc" , *u2_visc , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "v2_visc" , *v2_visc , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "w2_visc" , *w2_visc , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "tke_visc", *tke_visc, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "uw_visc" , *uw_visc , no_offset, no_threshold);
 
                 auto u2_diss = std::move(u2_visc);
                 auto v2_diss = std::move(v2_visc);
@@ -1546,11 +1548,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
-                stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
-                stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
-                stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
-                stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "u2_diss" , *u2_diss , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "v2_diss" , *v2_diss , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "w2_diss" , *w2_diss , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "tke_diss", *tke_diss, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "uw_diss" , *uw_diss , no_offset, no_threshold);
 
                 fields.release_tmp(u2_diss);
                 fields.release_tmp(v2_diss);
@@ -1586,12 +1588,12 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.jcells, gd.ijcells);
 
-                stats.calc_stats("u2_diff" , *u2_diff , no_offset, no_threshold);
-                stats.calc_stats("v2_diff" , *v2_diff , no_offset, no_threshold);
-                stats.calc_stats("w2_diff" , *w2_diff , no_offset, no_threshold);
-                stats.calc_stats("tke_diff", *tke_diff, no_offset, no_threshold);
-                stats.calc_stats("uw_diff" , *uw_diff , no_offset, no_threshold);
-                stats.calc_stats("vw_diff" , *vw_diff , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "u2_diff" , *u2_diff , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "v2_diff" , *v2_diff , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "w2_diff" , *w2_diff , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "tke_diff", *tke_diff, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "uw_diff" , *uw_diff , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "vw_diff" , *vw_diff , no_offset, no_threshold);
 
                 fields.release_tmp(u2_diff);
                 fields.release_tmp(v2_diff);
@@ -1622,10 +1624,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
-        stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
-        stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
-        stats.calc_stats("vw_pres" , *vw_pres , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_pres" , *w2_pres , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_pres", *tke_pres, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_pres" , *uw_pres , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "vw_pres" , *vw_pres , no_offset, no_threshold);
 
         auto u2_rdstr = fields.get_tmp();
         auto v2_rdstr = std::move(tke_pres);
@@ -1643,11 +1645,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("u2_rdstr", *u2_rdstr , no_offset, no_threshold);
-        stats.calc_stats("v2_rdstr", *v2_rdstr , no_offset, no_threshold);
-        stats.calc_stats("w2_rdstr", *w2_rdstr , no_offset, no_threshold);
-        stats.calc_stats("uw_rdstr", *uw_rdstr , no_offset, no_threshold);
-        stats.calc_stats("vw_rdstr", *vw_rdstr , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "u2_rdstr", *u2_rdstr , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_rdstr", *v2_rdstr , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_rdstr", *w2_rdstr , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_rdstr", *uw_rdstr , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "vw_rdstr", *vw_rdstr , no_offset, no_threshold);
 
         fields.release_tmp(u2_rdstr);
         fields.release_tmp(v2_rdstr);
@@ -1671,10 +1673,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            stats.calc_stats("u2_cor", *u2_cor, no_offset, no_threshold);
-            stats.calc_stats("v2_cor", *v2_cor, no_offset, no_threshold);
-            stats.calc_stats("uw_cor", *uw_cor, no_offset, no_threshold);
-            stats.calc_stats("vw_cor", *vw_cor, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "u2_cor", *u2_cor, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "v2_cor", *v2_cor, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "uw_cor", *uw_cor, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "vw_cor", *vw_cor, no_offset, no_threshold);
 
             fields.release_tmp(u2_cor);
             fields.release_tmp(v2_cor);
@@ -1711,10 +1713,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
-            stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
-            stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
-            stats.calc_stats("vw_buoy" , *vw_buoy , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "w2_buoy" , *w2_buoy , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "tke_buoy", *tke_buoy, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "uw_buoy" , *uw_buoy , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "vw_buoy" , *vw_buoy , no_offset, no_threshold);
 
             fields.release_tmp(w2_buoy);
             fields.release_tmp(tke_buoy);
@@ -1729,7 +1731,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            stats.calc_stats("bw_buoy", *bw_buoy, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_buoy", *bw_buoy, no_offset, no_threshold);
             fields.release_tmp(bw_buoy);
 
             if (advec.get_switch() != Advection_type::Disabled)
@@ -1748,10 +1750,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
-                stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
-                stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
-                stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "b2_shear", *b2_shear, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "b2_turb" , *b2_turb , no_offset, no_threshold);
+                stats.calc_mask_stats(m, "bw_shear", *bw_shear, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "bw_turb" , *bw_turb , no_offset, no_threshold);
 
                 fields.release_tmp(b2_shear);
                 fields.release_tmp(b2_turb );
@@ -1776,10 +1778,10 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                stats.calc_stats("b2_visc", *b2_visc, no_offset, no_threshold);
-                stats.calc_stats("b2_diss", *b2_diss, no_offset, no_threshold);
-                stats.calc_stats("bw_visc", *bw_visc, no_offset, no_threshold);
-                stats.calc_stats("bw_diss", *bw_diss, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "b2_visc", *b2_visc, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "b2_diss", *b2_diss, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "bw_visc", *bw_visc, no_offset, no_threshold);
+                stats.calc_mask_stats(m, "bw_diss", *bw_diss, no_offset, no_threshold);
 
                 fields.release_tmp(b2_visc);
                 fields.release_tmp(b2_diss);
@@ -1798,8 +1800,8 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            stats.calc_stats("bw_pres", *bw_pres, no_offset, no_threshold);
-            stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_pres", *bw_pres, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_rdstr", *bw_rdstr, no_offset, no_threshold);
 
             fields.release_tmp(bw_pres);
             fields.release_tmp(bw_rdstr);

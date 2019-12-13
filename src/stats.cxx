@@ -1158,7 +1158,7 @@ void Stats<TF>::set_timeseries(const std::string varname, const TF val)
 
 template<typename TF>
 void Stats<TF>::calc_mask_stats(
-        std::pair<std::string, Mask<TF>>& m,
+        std::pair<const std::string, Mask<TF>>& m,
         const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     auto& gd = grid.get_grid_data();
