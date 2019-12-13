@@ -139,6 +139,12 @@ class Stats
         void calc_mask_stats(
                 std::pair<const std::string, Mask<TF>>&,
                 const std::string, const Field3d<TF>&, const TF, const TF);
+
+        void calc_mask_mean_profile(
+                std::vector<TF>&,
+                const std::pair<const std::string, Mask<TF>>&,
+                const Field3d<TF>&);
+
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,

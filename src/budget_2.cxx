@@ -1419,13 +1419,12 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     // required in order to compute the budget terms.
     for (auto& m : masks)
     {
-        // CvH: THE COMPUTATION BELOW NEEDS TO BE REPLACED BY A MASK MEAN.
-        // stats.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
-        // stats.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
-
         // Calculate the mean of the fields.
-        field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
-        field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
+        stats.calc_mask_mean_profile(umodel, m, *fields.mp.at("u"));
+        stats.calc_mask_mean_profile(vmodel, m, *fields.mp.at("v"));
+
+        // field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
+        // field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
 
         // Calculate kinetic and turbulent kinetic energy
         auto ke  = fields.get_tmp();

@@ -1157,6 +1157,32 @@ void Stats<TF>::set_timeseries(const std::string varname, const TF val)
 }
 
 template<typename TF>
+void Stats<TF>::calc_mask_mean_profile(
+        std::vector<TF>& prof,
+        const std::pair<const std::string, Mask<TF>>& m,
+        const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+
+    set_flag(flag, nmask, m.second, fld.loc[2]);
+
+    calc_mean(
+            prof.data(), fld.fld.data(), mfield.data(), flag, nmask,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+    master.sum(prof.data(), gd.kcells);
+
+    // Add the offset.
+    // for (auto& value : prof)
+    //     value += offset;
+
+    // set_fillvalue_prof(prof.data(), nmask, gd.kstart, gd.kcells);
+}
+
+template<typename TF>
 void Stats<TF>::calc_mask_stats(
         std::pair<const std::string, Mask<TF>>& m,
         const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
