@@ -105,8 +105,8 @@ namespace
 
     template<typename TF>
     bool is_ghost_cell(
-            std::vector<TF>& dem,
-            std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
+            const std::vector<TF>& dem,
+            const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& z,
             const TF dx, const TF dy,
             const int i, const int j, const int k,
             const int icells, const int jcells,
@@ -187,7 +187,7 @@ namespace
     template<typename TF>
     void find_nearest_location_wall(
             TF& xb, TF& yb, TF& zb,
-            std::vector<TF> x, std::vector<TF> y, std::vector<TF> dem,
+            const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& dem,
             const TF x0, const TF y0, const TF z0,
             const TF dx, const TF dy,
             const int icells, const int jcells,
@@ -222,8 +222,9 @@ namespace
     template<typename TF>
     void find_interpolation_points(
             std::vector<int>& ip_i, std::vector<int>& ip_j, std::vector<int>& ip_k,
-            std::vector<TF>& ip_d, std::vector<TF>& c_idw, const int index, const int n_idw,
-            std::vector<TF> x, std::vector<TF> y, std::vector<TF> z, std::vector<TF> dem,
+            std::vector<TF>& ip_d, std::vector<TF>& c_idw, 
+            const int index, const int n_idw,
+            const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& z, const std::vector<TF>& dem,
             const TF d_lim, const TF dx, const TF dy,
             const int i, const int j, const int k,
             const int kstart, const int icells, const int jcells, const int ijcells,
@@ -236,7 +237,7 @@ namespace
         const int dk0 = std::max(-2, kstart-k);
 
         // Find neighbouring grid points outside IB
-        for (int dk=dk0; dk<4; ++dk)
+        for (int dk=dk0; dk<6; ++dk)
             for (int dj=-1; dj<2; ++dj)
                 for (int di=-1; di<2; ++di)
                 {
@@ -246,19 +247,19 @@ namespace
                     if (z[k+dk] > zd)
                     {
                         // Calculate distance to IB
-                        TF xb, yb, zb;
-                        find_nearest_location_wall(
-                                xb, yb, zb, x, y, dem, x[i+di], y[j+dj], z[k+dk],
-                                dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
-                        const TF dist = absolute_distance(xb, yb, zb, x[i+di], y[j+dj], z[k+dk]);
+                        //TF xb, yb, zb;
+                        //find_nearest_location_wall(
+                        //        xb, yb, zb, x, y, dem, x[i+di], y[j+dj], z[k+dk],
+                        //        dx, dy, icells, jcells, mpi_offset_x, mpi_offset_y);
+                        //const TF dist = absolute_distance(xb, yb, zb, x[i+di], y[j+dj], z[k+dk]);
 
-                        // Exclude if grid point is too close to the IB
-                        if (dist > d_lim)
-                        {
+                        //// Exclude if grid point is too close to the IB
+                        //if (dist > d_lim)
+                        //{
                             const TF distance = absolute_distance(x[i], y[j], z[k], x[i+di], y[j+dj], z[k+dk]);
                             Neighbour<TF> tmp_neighbour = {i+di, j+dj, k+dk, distance};
                             neighbours.push_back(tmp_neighbour);
-                        }
+                        //}
                     }
                 }
 
@@ -285,8 +286,8 @@ namespace
 
     template<typename TF>
     void precalculate_idw(std::vector<TF>& c_idw, std::vector<TF>& c_idw_sum,
-                          std::vector<int>& ip_i, std::vector<int>& ip_j, std::vector<int>& ip_k,
-                          std::vector<TF>& x, std::vector<TF>& y, std::vector<TF>& z,
+                          const std::vector<int>& ip_i, const std::vector<int>& ip_j, const std::vector<int>& ip_k,
+                          const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& z,
                           const TF xi, const TF yi, const TF zi,
                           const TF xb, const TF yb, const TF zb,
                           Boundary_type bc, const int index, const int n_idw)
@@ -331,9 +332,10 @@ namespace
 
     template<typename TF>
     void calc_ghost_cells(
-            Ghost_cells<TF>& ghost,
-            std::vector<TF>& dem, std::vector<TF> x, std::vector<TF> y, std::vector<TF> z,
-            Boundary_type bc, const TF dx, const TF dy, std::vector<TF> dz, const int n_idw,
+            Ghost_cells<TF>& ghost, const std::vector<TF>& dem, 
+            const std::vector<TF>& x, const std::vector<TF>& y, const std::vector<TF>& z,
+            Boundary_type bc, const TF dx, const TF dy, const std::vector<TF>& dz, 
+            const int n_idw,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
             const int icells, const int jcells, const int ijcells,
