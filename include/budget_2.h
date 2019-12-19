@@ -51,6 +51,7 @@ class Budget_2 : public Budget<TF>
 
         std::vector<TF> umodel;
         std::vector<TF> vmodel;
+        std::vector<TF> wmodel;
 
         /*
         void calc_kinetic_energy(double*, double*, const double*, const double*, const double*, const double*, const double*, const double, const double);

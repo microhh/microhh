@@ -49,7 +49,7 @@ namespace
     void calc_kinetic_energy(
             TF* const restrict ke, TF* const restrict tke,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umodel, const TF* const restrict vmodel,
+            const TF* const restrict umodel, const TF* const restrict vmodel, const TF* const restrict wmodel,
             const TF utrans, const TF vtrans,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -84,7 +84,7 @@ namespace
 
                     const TF u2 = pow2(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]));
                     const TF v2 = pow2(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]));
-                    const TF w2 = pow2(interp2(w[ijk]          , w[ijk+kk]          ));
+                    const TF w2 = pow2(interp2(w[ijk]-wmodel[k], w[ijk+kk]-wmodel[k+1]));
 
                     tke[ijk] = TF(0.5) * (u2 + v2 + w2);
                 }
@@ -99,7 +99,7 @@ namespace
             TF* const restrict u2_shear, TF* const restrict v2_shear, TF* const restrict tke_shear,
             TF* const restrict uw_shear, TF* const restrict vw_shear,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict wx, const TF* const restrict wy,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -121,8 +121,8 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    u2_shear[ijk] = TF(-2.) * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
-                    v2_shear[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
+                    u2_shear[ijk] = TF(-2.) * (u[ijk]-umean[k]) * interp2(wx[ijk]-wmean[k], wx[ijk+kk]-wmean[k+1]) * dudz;
+                    v2_shear[ijk] = TF(-2.) * (v[ijk]-vmean[k]) * interp2(wy[ijk]-wmean[k], wy[ijk+kk]-wmean[k+1]) * dvdz;
 
                     uw_shear[ijk] = -pow(wx[ijk], 2) * (umean[k] - umean[k-1]) * dzhi[k];
                     vw_shear[ijk] = -pow(wy[ijk], 2) * (vmean[k] - vmean[k-1]) * dzhi[k];
@@ -141,7 +141,7 @@ namespace
             TF* const restrict w2_turb, TF* const restrict tke_turb,
             TF* const restrict uw_turb, TF* const restrict vw_turb,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict wx, const TF* const restrict wy,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -160,13 +160,13 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    u2_turb[ijk] = - ( pow(interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]), 2) * wx[ijk+kk]
-                                     - pow(interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1]), 2) * wx[ijk   ] ) * dzi[k];
+                    u2_turb[ijk] = - ( pow(interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]), 2) * (wx[ijk+kk]-wmean[k+1])
+                                     - pow(interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1]), 2) * (wx[ijk   ]-wmean[k  ]) ) * dzi[k];
 
-                    v2_turb[ijk] = - ( pow(interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]), 2) * wy[ijk+kk]
-                                     - pow(interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]), 2) * wy[ijk   ] ) * dzi[k];
+                    v2_turb[ijk] = - ( pow(interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]), 2) * (wy[ijk+kk]-wmean[k+1])
+                                     - pow(interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]), 2) * (wy[ijk   ]-wmean[k  ]) ) * dzi[k];
 
-                    tke_turb[ijk] = - TF(0.5) * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k]
+                    tke_turb[ijk] = - TF(0.5) * ( pow(w[ijk+kk]-wmean[k+1], 3) - pow(w[ijk]-wmean[k], 3) ) * dzi[k]
                                     + TF(0.5) * (u2_turb[ijk] + v2_turb[ijk]);
                 }
         }
@@ -183,11 +183,11 @@ namespace
                 w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk+kk]), 3) * dzhi[k];
 
                 // w^2 @ full level below sfc == w^2 @ full level above sfc
-                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
-                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk+kk]-wmean[k+1]), 2)
+                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk-kk]-wmean[k+1]), 2) ) * dzhi[k];
 
-                vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
-                                 - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+                vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk+kk]-wmean[k+1]), 2)
+                                 - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk-kk]-wmean[k+1]), 2) ) * dzhi[k];
             }
 
         // Top boundary kstart (z=zsize)
@@ -199,15 +199,15 @@ namespace
                 const int ijk = i + j*jj + k*kk;
 
                 // w^3 @ full level above top == -w^3 @ full level below top
-                w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk], w[ijk-kk]), 3) * dzhi[k];
+                w2_turb[ijk] = - TF(2.) * pow(interp2(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1]), 3) * dzhi[k];
 
                 // w^2 @ full level above top == w^2 @ full level below top
-                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2)
-                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+                uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk-kk]-wmean[k-1]), 2)
+                                 - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk-kk]-wmean[k-1]), 2) ) * dzhi[k];
 
                 // w^2 @ full level above top == w^2 @ full level below top
-                vw_turb[ijk] =  - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2)
-                                  - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+                vw_turb[ijk] =  - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk-kk]-wmean[k-1]), 2)
+                                  - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk-kk]-wmean[k-1]), 2) ) * dzhi[k];
             }
 
         // Inner domain
@@ -219,14 +219,14 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    w2_turb[ijk] = - ( pow(interp2(w[ijk], w[ijk+kk]), 3)
-                                     - pow(interp2(w[ijk], w[ijk-kk]), 3) ) * dzhi[k];
+                    w2_turb[ijk] = - ( pow(interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]), 3)
+                                     - pow(interp2(w[ijk]-wmean[k], w[ijk-kk]), 3) ) * dzhi[k];
 
-                    uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2)
-                                     - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+                    uw_turb[ijk] = - ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk+kk]-wmean[k+1]), 2)
+                                     - (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk]-wmean[k], wx[ijk-kk]-wmean[k-1]), 2) ) * dzhi[k];
 
-                    vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk], wy[ijk+kk]), 2)
-                                     - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk], wy[ijk-kk]), 2) ) * dzhi[k];
+                    vw_turb[ijk] = - ( (v[ijk]   -vmean[k  ]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk+kk]-wmean[k+1]), 2)
+                                     - (v[ijk-kk]-vmean[k-1]) * pow(interp2(wy[ijk]-wmean[k], wy[ijk-kk]-wmean[k-1]), 2) ) * dzhi[k];
                 }
     }
 
@@ -238,7 +238,7 @@ namespace
             TF* const restrict u2_cor, TF* const restrict v2_cor,
             TF* const restrict uw_cor, TF* const restrict vw_cor,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umean, const TF* const restrict vmean, const TF fc,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean, const TF fc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
     {
@@ -266,11 +266,11 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    uw_cor[ijk] = interp2(w[ijk], w[ijk-ii]) *
+                    uw_cor[ijk] = interp2(w[ijk]-wmean[k], w[ijk-ii]-wmean[k]) *
                         interp2(interp22(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),
                                 interp22(v[ijk+jj]-vmean[k], v[ijk-ii+jj]-vmean[k], v[ijk-ii+jj-kk]-vmean[k-1], v[ijk+jj-kk]-vmean[k-1])) * fc;
 
-                    vw_cor[ijk] = interp2(w[ijk], w[ijk-jj]) *
+                    vw_cor[ijk] = interp2(w[ijk]-wmean[k], w[ijk-jj]-wmean[k]) *
                         interp2(interp22(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),
                                 interp22(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;
                 }
@@ -285,7 +285,7 @@ namespace
             TF* const restrict uw_pres,  TF* const restrict vw_pres,
             const TF* const restrict u, const TF* const restrict v,
             const TF* const restrict w, const TF* const restrict p,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict dzi, const TF* const restrict dzhi, const TF dxi, const TF dyi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -304,16 +304,16 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    tke_pres[ijk] = - ( interp2(p[ijk], p[ijk+kk]) * w[ijk+kk] -
-                                        interp2(p[ijk], p[ijk-kk]) * w[ijk   ] ) * dzi[k];
+                    tke_pres[ijk] = - ( interp2(p[ijk], p[ijk+kk]) * (w[ijk+kk] -wmean[k+1])-
+                                        interp2(p[ijk], p[ijk-kk]) * (w[ijk   ] -wmean[k  ])) * dzi[k];
 
-                    uw_pres[ijk] = - ( interp2(p[ijk   ], p[ijk-kk   ]) * w[ijk    ] -
-                                       interp2(p[ijk-ii], p[ijk-ii-kk]) * w[ijk-ii ] ) * dxi +
+                    uw_pres[ijk] = - ( interp2(p[ijk   ], p[ijk-kk   ]) * (w[ijk   ]-wmean[k  ])-
+                                       interp2(p[ijk-ii], p[ijk-ii-kk]) * (w[ijk-ii]-wmean[k  ]) ) * dxi +
                                      ( interp2(p[ijk   ], p[ijk-ii   ]) * (u[ijk   ]-umean[k  ]) -
                                        interp2(p[ijk-kk], p[ijk-ii-kk]) * (u[ijk-kk]-umean[k-1]) ) * dzhi[k];
 
-                    vw_pres[ijk] = - ( interp2(p[ijk-kk   ], p[ijk   ]) * w[ijk    ]  -
-                                       interp2(p[ijk-jj-kk], p[ijk-jj]) * w[ijk-jj ] ) * dyi +
+                    vw_pres[ijk] = - ( interp2(p[ijk-kk   ], p[ijk   ]) * (w[ijk   ]-wmean[k  ])  -
+                                       interp2(p[ijk-jj-kk], p[ijk-jj]) * (w[ijk-jj]-wmean[k  ]) ) * dyi +
                                      ( interp2(p[ijk-jj   ], p[ijk   ]) * (v[ijk   ]-vmean[k  ]) -
                                        interp2(p[ijk-jj-kk], p[ijk-kk]) * (v[ijk-kk]-vmean[k-1]) ) * dzhi[k];
                 }
@@ -328,8 +328,8 @@ namespace
                 const int ijk = i + j*jj + k*kk;
 
                 // w @ full level below sfc == -w @ full level above sfc
-                w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
-                                         - interp2(w[ijk], w[ijk+kk]) * p[ijk-kk] ) * dzhi[k];
+                w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk]-wmean[k  ], w[ijk+kk]-wmean[k+1]) * p[ijk   ] -
+                                         - interp2(w[ijk]-wmean[k  ], w[ijk+kk]-wmean[k+1]) * p[ijk-kk] ) * dzhi[k];
             }
 
         // Top boundary (z=zsize)
@@ -344,8 +344,8 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
-                                               interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
+                    w2_pres[ijk] = TF(-2.) * ( interp2(w[ijk]-wmean[k  ], w[ijk+kk]-wmean[k+1]) * p[ijk   ] -
+                                               interp2(w[ijk]-wmean[k  ], w[ijk-kk]-wmean[k-1]) * p[ijk-kk] ) * dzhi[k];
                 }
     }
 
@@ -358,7 +358,7 @@ namespace
             TF* const restrict uw_rdstr, TF* const restrict vw_rdstr,
             const TF* const restrict u, const TF* const restrict v,
             const TF* const restrict w, const TF* const restrict p,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict dzi, const TF* const restrict dzhi, const TF dxi, const TF dyi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -400,7 +400,7 @@ namespace
                 const int ijk = i + j*jj + k*kk;
 
                 // with w[kstart] == 0, dw/dz at surface equals (w[kstart+1] - w[kstart]) / dzi
-                w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
+                w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk]-wmean[k+1] - (w[ijk]-wmean[k])) * dzi[k];
             }
 
         #pragma omp parallel for
@@ -412,7 +412,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     w2_rdstr[ijk] = TF(2.) * interp2(p[ijk], p[ijk-kk]) *
-                        ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];
+                        ( interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]) - interp2(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1]) ) * dzhi[k];
                 }
     }
 
@@ -426,7 +426,7 @@ namespace
             TF* const restrict w2_visc, TF* const restrict tke_visc, TF* const restrict uw_visc,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             TF* const restrict wz, TF* const restrict wx, TF* const restrict wy,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const TF dxi, const TF dyi, const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -443,7 +443,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    wz[ijk] = interp2(w[ijk], w[ijk+kk]);
+                    wz[ijk] = interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]);
                 }
 
         // Set ghost cells such that the velocity interpolated to the boundaries is zero
@@ -494,17 +494,17 @@ namespace
 
                 // visc * d/dz(dw^2/dz)
                 // w[kstart-1] = -w[kstart+1]
-                w2_visc[ijk] = visc * ( (pow(w[ijk+kk], 2) - pow( w[ijk   ], 2)) * dzi[k  ] -
-                                        (pow(w[ijk   ], 2) - pow(-w[ijk+kk], 2)) * dzi[k-1] ) * dzhi[k];
+                w2_visc[ijk] = visc * ( (pow(w[ijk+kk]-wmean[k+1], 2) - pow( w[ijk   ]-wmean[k  ], 2)) * dzi[k  ] -
+                                        (pow(w[ijk   ]-wmean[k  ], 2) - pow( w[ijk+kk]-wmean[k+1], 2)) * dzi[k-1] ) * dzhi[k];
 
                 // visc * d/dz(duw/dz)
                 // wx[kstart-1] = -wx[kstart+1]
                 // Calculate u at dz below surface, extrapolating gradient between u[kstart] and u[kstart-1]
                 const TF utmp = TF(1.5)*(u[ijk-kk]-umean[k-1]) - TF(0.5)*(u[ijk]-umean[k]);
-                uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) *  wx[ijk+kk] -
-                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] -
-                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] -
-                                          utmp                                                   * -wx[ijk+kk] ) * dzi[k-1] ) * dzhi[k];
+                uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) *  (wx[ijk+kk] - wmean[k+1])-
+                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  (wx[ijk   ] - wmean[k  ])) * dzi[k  ] -
+                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  (wx[ijk   ] - wmean[k  ])-
+                                        utmp *                                                     -(wx[ijk+kk] - wmean[k+1]) ) * dzi[k-1] ) * dzhi[k];
             }
 
         // Top boundary (z=zsize)
@@ -517,17 +517,17 @@ namespace
 
                 // visc * d/dz(dw^2/dz)
                 // w[kend+1] = -w[kend-1]
-                w2_visc[ijk] = visc * ( (pow(-w[ijk-kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] -
-                                        (pow( w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k];
+                w2_visc[ijk] = visc * ( (pow( w[ijk-kk]- wmean[k-1], 2) - pow(w[ijk   ]- wmean[k  ], 2)) * dzi[k  ] -
+                                        (pow( w[ijk   ]- wmean[k  ], 2) - pow(w[ijk-kk]- wmean[k-1], 2)) * dzi[k-1] ) * dzhi[k];
 
                 // visc * d/dz(duw/dz)
                 // wx[kend+1] = -wx[kend-1]
                 // Calculate u at dz above top, extrapolating gradient between u[kend] and u[kend-1]
                 const TF utmp = TF(1.5)*(u[ijk]-umean[k]) - TF(0.5)*(u[ijk-kk]-umean[k-1]);
-                uw_visc[ijk] = visc * ( ( utmp                                                   * -wx[ijk-kk] -
-                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] -
-                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] -
-                                          interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) *  wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
+                uw_visc[ijk] = visc * ( ( utmp                                                   * -(wx[ijk-kk]- wmean[k-1]) -
+                                          interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  (wx[ijk   ]- wmean[k  ]) ) * dzi[k  ] -
+                                        ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  (wx[ijk   ]- wmean[k  ]) -
+                                          interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) *  (wx[ijk-kk]- wmean[k-1]) ) * dzi[k-1] ) * dzhi[k];
             }
 
         // Interior
@@ -540,14 +540,14 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // visc * d/dz(dw^2/dz)
-                    w2_visc[ijk] = visc * ( (pow(w[ijk+kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] -
-                                            (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k];
+                    w2_visc[ijk] = visc * ( (pow(w[ijk+kk]- wmean[k+1], 2) - pow(w[ijk   ]- wmean[k  ], 2)) * dzi[k  ] -
+                                            (pow(w[ijk   ]- wmean[k  ], 2) - pow(w[ijk-kk]- wmean[k-1], 2)) * dzi[k-1] ) * dzhi[k];
 
                     // visc * d/dz(duw/dz)
-                    uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) * wx[ijk+kk] -
-                                              interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] ) * dzi[k  ] -
-                                            ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] -
-                                              interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) * wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
+                    uw_visc[ijk] = visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) * (wx[ijk+kk]- wmean[k+1]) -
+                                              interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * (wx[ijk   ]- wmean[k  ]) ) * dzi[k  ] -
+                                            ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * (wx[ijk   ]- wmean[k  ]) -
+                                              interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) * (wx[ijk-kk]- wmean[k-1]) ) * dzi[k-1] ) * dzhi[k];
                 }
     }
 
@@ -559,7 +559,7 @@ namespace
             TF* const restrict u2_diss, TF* const restrict v2_diss,
             TF* const restrict w2_diss, TF* const restrict tke_diss, TF* const restrict uw_diss,
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const TF dxi, const TF dyi, const TF visc,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -592,7 +592,7 @@ namespace
                     // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
                     tke_diss[ijk] = - visc * ( pow( (w[ijk+ii] - w[ijk]) * dxi,    2) +
                                                pow( (w[ijk+jj] - w[ijk]) * dyi,    2) +
-                                               pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2) )
+                                               pow( (w[ijk+kk] - wmean[k+1] - ( w[ijk]-wmean[k])) * dzi[k], 2) )
                                   + TF(0.5) * (u2_diss[ijk] + v2_diss[ijk]);
 
                     // -2 * visc * du/dx * dw/dx
@@ -625,7 +625,7 @@ namespace
                 // -2 * visc * du/dz * dw/dz
                 // w @ full level kstart-1 = -w @ full level kstart+1
                 uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
-                                         TF(2.)*interp22(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]) * dzhi[k];
+                                         TF(2.)*interp22(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1], w[ijk+kk-ii]-wmean[k+1], w[ijk-ii]-wmean[k]) * dzhi[k];
             }
 
         // Top boundary (z=zsize)
@@ -640,12 +640,12 @@ namespace
                 // w @ full level kend = -w @ full level kend-1
                 w2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
                                                   pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
-                                                  pow( (                   TF(-2.) * interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) );
+                                                  pow( (                   TF(-2.) * interp2(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1])) * dzhi[k], 2) );
 
                 // -2 * visc * du/dz * dw/dz
                 // w @ full level kend = - w @ full level kend-1
                 uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
-                                         - TF(2.)*interp22(w[ijk], w[ijk-kk], w[ijk-kk-ii], w[ijk-ii]) * dzhi[k];
+                                         - TF(2.)*interp22(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1], w[ijk-kk-ii]-wmean[k-1], w[ijk-ii]-wmean[k]) * dzhi[k];
             }
 
         // Interior
@@ -660,12 +660,12 @@ namespace
                     // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
                     w2_diss[ijk] = TF(-2.) * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
                                                       pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
-                                                      pow( (interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) );
+                                                      pow( (interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]) - interp2(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1])) * dzhi[k], 2) );
 
                     // -2 * visc * du/dz * dw/dz
                     uw_diss[ijk] = TF(-2.) * visc * ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] *
-                                             ( interp22(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]) -
-                                               interp22(w[ijk], w[ijk-kk], w[ijk-kk-ii], w[ijk-ii]) ) * dzhi[k];
+                                             ( interp22(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1], w[ijk+kk-ii]-wmean[k+1], w[ijk-ii]-wmean[k]) -
+                                               interp22(w[ijk]-wmean[k], w[ijk-kk]-wmean[k-1], w[ijk-kk-ii]-wmean[k-1], w[ijk-ii]-wmean[k]) ) * dzhi[k];
                 }
     }
 
@@ -683,7 +683,7 @@ namespace
             const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
             const TF* const restrict ufluxbot, const TF* const restrict vfluxbot,
             const TF* const restrict evisc,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict dzi, const TF* const restrict dzhi,
             const TF dxi, const TF dyi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -704,7 +704,7 @@ namespace
                 for (int i=0; i<icells; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    wz[ijk] = interp2(w[ijk], w[ijk+kk]);
+                    wz[ijk] = interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]);
                 }
 
         // Set ghost cells such that the velocity interpolated to the boundaries is zero
@@ -793,11 +793,11 @@ namespace
 
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * dw/dx )
-                    w2_diff[ijk] = TF(2.) * w[ijk] * ( evisc_weast * (w[ijk+ii] - w[ijk   ]) * dxi -
+                    w2_diff[ijk] = TF(2.) * (w[ijk]-wmean[k]) * ( evisc_weast * (w[ijk+ii] - w[ijk   ]) * dxi -
                                                        evisc_wwest * (w[ijk   ] - w[ijk-ii]) * dxi ) * dxi;
 
                     // 2 * w * d/dy( visc * dw/dy )
-                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
+                    w2_diff[ijk] += TF(2.) * (w[ijk]-wmean[k]) * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
                                                         evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
 
                     // -----------------------------------------
@@ -806,15 +806,15 @@ namespace
                                                 interp2(evisc[ijk], evisc[ijk-ii]) * (wz[ijk   ] - wz[ijk-ii]) * dxi ) * dxi;
 
                     // 2 * w * d/dx( visc * du/dz )
-                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
+                    tke_diff[ijk] += (wz[ijk]-wmean[k]) * ( interp2(evisc[ijk], evisc[ijk+ii]) * (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
                                                  interp2(evisc[ijk], evisc[ijk-ii]) * (interp2(u[ijk   ], u[ijk   +kk]) - interp2(u[ijk   ], u[ijk   -kk])) * dzi[k] ) * dxi;
 
                     // 2 * w * d/dy( visc * dw/dy )
-                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
+                    tke_diff[ijk] += (wz[ijk]-wmean[k]) * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
                                                  interp2(evisc[ijk], evisc[ijk-jj]) * (wz[ijk   ] - wz[ijk-jj]) * dyi ) * dyi;
 
                     // 2 * w * d/dy( visc * dv/dz )
-                    tke_diff[ijk] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
+                    tke_diff[ijk] += (wz[ijk]-wmean[k]) * ( interp2(evisc[ijk], evisc[ijk+jj]) * (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
                                                  interp2(evisc[ijk], evisc[ijk-jj]) * (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
                 }
 
@@ -850,15 +850,15 @@ namespace
 
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * du/dz )
-                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc_weast * (u[ijk+ii] - u[ijk+ii-kk]) * dzhi[k] -
+                    w2_diff[ijk] += TF(2.) * (w[ijk]-wmean[k]) * ( evisc_weast * (u[ijk+ii] - u[ijk+ii-kk]) * dzhi[k] -
                                                        evisc_wwest * (u[ijk   ] - u[ijk   -kk]) * dzhi[k] ) * dxi;
 
                     // 2 * w * d/dy( visc * dv/dz )
-                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
+                    w2_diff[ijk] += TF(2.) * (w[ijk]-wmean[k]) * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
                                                         evisc_wsouth * (v[ijk   ] - v[ijk   -kk]) * dzhi[k] ) * dyi;
 
                     // 2 * w * d/dz( visc * dw/dz )
-                    w2_diff[ijk] += TF(2.) * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
+                    w2_diff[ijk] += TF(2.) * (w[ijk]-wmean[k]) * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
                                                         evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * TF(2.) * dzhi[k];
 
                     // -----------------------------------------
@@ -1028,7 +1028,7 @@ namespace
 
                 // 2 * w * d/dz( visc * dw/dz )
                 // What to do with evisc at surface (term visc * dw/dz at surface)?
-                tke_diff[ijk] = wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] ) * TF(2.) * dzi[k]
+                tke_diff[ijk] = (wz[ijk]-wmean[k]) * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] ) * TF(2.) * dzi[k]
                               + TF(0.5) * (u2_diff[ijk] + v2_diff[ijk]);
 
                 // uw_diff is zero at surface for no-slip case, unequal for free-slip...
@@ -1044,7 +1044,7 @@ namespace
             TF* const restrict uw_buoy, TF* const restrict vw_buoy,
             const TF* const restrict u, const TF* const restrict v,
             const TF* const restrict w, const TF* const restrict b,
-            const TF* const restrict umean, const TF* const restrict vmean,
+            const TF* const restrict umean, const TF* const restrict vmean, const TF* const restrict wmean,
             const TF* const restrict bmean,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -1062,7 +1062,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // w'b'
-                    tke_buoy[ijk] = interp2(w[ijk], w[ijk+kk]) * (b[ijk] - bmean[k]);
+                    tke_buoy[ijk] = interp2(w[ijk]-wmean[k], w[ijk+kk]-wmean[k+1]) * (b[ijk] - bmean[k]);
                 }
 
         #pragma omp parallel for
@@ -1074,7 +1074,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // w'b'
-                    w2_buoy[ijk] = TF(2.) * interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1]) * w[ijk];
+                    w2_buoy[ijk] = TF(2.) * interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1]) * (w[ijk]-wmean[k]);
 
                     // u'b'
                     uw_buoy[ijk] = interp2 (u[ijk]-umean[k], u[ijk-kk]-umean[k-1]) *
@@ -1306,6 +1306,7 @@ void Budget_2<TF>::init()
 
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+    wmodel.resize(gd.kcells);
 }
 
 template<typename TF>
@@ -1422,6 +1423,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         // Calculate the mean of the fields.
         stats.calc_mask_mean_profile(umodel, m, *fields.mp.at("u"));
         stats.calc_mask_mean_profile(vmodel, m, *fields.mp.at("v"));
+        stats.calc_mask_mean_profile(wmodel, m, *fields.mp.at("w"));
 
         // field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
         // field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
@@ -1436,7 +1438,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         calc_kinetic_energy(
                 ke->fld.data(), tke->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 grid.utrans, grid.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1465,7 +1467,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(),
                 uw_shear->fld.data(), vw_shear->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 wx->fld.data(), wy->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -1489,7 +1491,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 w2_turb->fld.data(), tke_turb->fld.data(),
                 uw_turb->fld.data(), vw_turb->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 wx->fld.data(), wy->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -1526,7 +1528,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
                         fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                         wx->fld.data(), wy->fld.data(), wz->fld.data(),
-                        umodel.data(), vmodel.data(),
+                        umodel.data(), vmodel.data(), wmodel.data(),
                         gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
@@ -1546,7 +1548,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 calc_diffusion_dissipation_terms_dns(
                         u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
                         fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                        umodel.data(), vmodel.data(),
+                        umodel.data(), vmodel.data(), wmodel.data(),
                         gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi, fields.visc,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
@@ -1585,7 +1587,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                         fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                         fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
                         fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                        umodel.data(), vmodel.data(),
+                        umodel.data(), vmodel.data(), wmodel.data(),
                         gd.dzi.data(), gd.dzhi.data(),
                         gd.dxi, gd.dyi,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -1622,7 +1624,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 uw_pres->fld.data(), vw_pres->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1643,7 +1645,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 uw_rdstr->fld.data(), vw_rdstr->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 gd.dzi.data(), gd.dzhi.data(), gd.dxi, gd.dyi,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1672,7 +1674,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     u2_cor->fld.data(), v2_cor->fld.data(),
                     uw_cor->fld.data(), vw_cor->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    umodel.data(), vmodel.data(), fc,
+                    umodel.data(), vmodel.data(), wmodel.data(), fc,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
@@ -1711,7 +1713,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                     uw_buoy->fld.data(), vw_buoy->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(), b->fld.data(),
-                    umodel.data(), vmodel.data(),
+                    umodel.data(), vmodel.data(), wmodel.data(),
                     b->fld_mean.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
