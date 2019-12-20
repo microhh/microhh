@@ -45,7 +45,7 @@ namespace
     template<typename TF>
     void calc_ke(TF* restrict ke, TF* restrict tke,
                  const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                 const TF* restrict umodel, const TF* restrict vmodel,
+                 const TF* restrict umodel, const TF* restrict vmodel, const TF* restrict wmodel,
                  const TF utrans, const TF vtrans,
                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                  const int icells, const int ijcells)
@@ -85,7 +85,7 @@ namespace
                                 + ci2<TF>*pow2(u[ijk+ii1] - umodel[k]) + ci3<TF>*pow2(u[ijk+ii2] - umodel[k]);
                     const TF v2 = ci0<TF>*pow2(v[ijk-jj1] - vmodel[k]) + ci1<TF>*pow2(v[ijk    ] - vmodel[k])
                                 + ci2<TF>*pow2(v[ijk+jj1] - vmodel[k]) + ci3<TF>*pow2(v[ijk+jj2] - vmodel[k]);
-                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1]) + ci1<TF>*pow2(w[ijk]) + ci2<TF>*pow2(w[ijk+kk1]) + ci3<TF>*pow2(w[ijk+kk2]);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1] - wmodel[k-1]) + ci1<TF>*pow2(w[ijk] - wmodel[k]) + ci2<TF>*pow2(w[ijk+kk1] - wmodel[k+1]) + ci3<TF>*pow2(w[ijk+kk2] - wmodel[k+2]);
                     tke[ijk] = TF(0.5)*(u2 + v2 + w2);
                 }
         }
@@ -2805,7 +2805,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         calc_ke(ke->fld.data(), tke->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
                 grid.utrans, grid.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
