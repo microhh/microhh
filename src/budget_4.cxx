@@ -92,6 +92,24 @@ namespace
     }
 
     template<typename TF>
+    void calc_prime(
+            TF* restrict a_prime, const TF* restrict a, const TF* restrict a_mean,
+            const int icells, const int jcells, const int kcells,
+            const int kk)
+    {
+        const int jj = icells;
+
+        for (int k=0; k<kcells; ++k)
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    a_prime[ijk] = a[ijk] - a_mean[k];
+                }
+    }
+
+    template<typename TF>
     void calc_tke_budget_shear(
             TF* restrict u2_shear, TF* restrict v2_shear, TF* restrict tke_shear, TF* restrict uw_shear,
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
@@ -2787,7 +2805,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
     auto& masks = stats.get_masks();
 
-    // The loop over masks inside of budget is necessary, because the mask mean is 
+    // The loop over masks inside of budget is necessary, because the mask mean is
     // required in order to compute the budget terms.
     for (auto& m : masks)
     {
@@ -2813,6 +2831,13 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
         stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
 
+        // Subtract mean
+        auto w_prime = fields.get_tmp();
+        calc_prime(
+                w_prime->fld.data(), fields.mp.at("w")->fld.data(), wmodel.data(),
+                gd.icells, gd.jcells, gd.kcells,
+                gd.ijcells);
+
         auto wx = std::move(ke );
         auto wy = std::move(tke);
 
@@ -2821,8 +2846,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         const int wxloc[3] = {1,0,1};
         const int wyloc[3] = {0,1,1};
 
-        grid.interpolate_4th(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
-        grid.interpolate_4th(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
+        grid.interpolate_4th(wx->fld.data(), w_prime->fld.data(), wloc, wxloc);
+        grid.interpolate_4th(wy->fld.data(), w_prime->fld.data(), wloc, wyloc);
 
         auto u2_shear = fields.get_tmp();
         auto v2_shear = fields.get_tmp();
@@ -2831,7 +2856,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         calc_tke_budget_shear(
                 u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(), uw_shear->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
                 wx->fld.data(), wy->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
@@ -2851,7 +2876,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         calc_tke_budget_turb(
                 u2_turb->fld.data(), v2_turb->fld.data(), w2_turb->fld.data(), tke_turb->fld.data(), uw_turb->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
                 wx->fld.data(), wy->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
@@ -2871,7 +2896,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         calc_tke_budget_pres(
                 w2_pres->fld.data(), tke_pres->fld.data(), uw_pres->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+                w_prime->fld.data(), fields.sd.at("p")->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi,
@@ -2894,7 +2919,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         calc_tke_budget_visc(
                 u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
                 wz->fld.data(), uz->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
@@ -2916,7 +2941,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         calc_tke_budget_diss(
                 u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
@@ -2937,7 +2962,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
         calc_tke_budget_rdstr(
                 u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(), uw_rdstr->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                w_prime->fld.data(), fields.sd.at("p")->fld.data(),
                 umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi,
@@ -2975,7 +3001,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
             calc_tke_budget_buoy(
                     w2_buoy->fld.data(), tke_buoy->fld.data(), uw_buoy->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), b->fld.data(),
+                    fields.mp.at("u")->fld.data(), w_prime->fld.data(), b->fld.data(),
                     umodel.data(), b->fld_mean.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
@@ -2991,7 +3017,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 
             calc_b2_budget(
                     b2_shear->fld.data(), b2_turb->fld.data(), b2_visc->fld.data(), b2_diss->fld.data(),
-                    fields.mp.at("w")->fld.data(), b->fld.data(),
+                    w_prime->fld.data(), b->fld.data(),
                     b->fld_mean.data(),
                     gd.dzi4.data(), gd.dzhi4.data(),
                     gd.dxi, gd.dyi,
@@ -3012,7 +3038,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             calc_bw_budget_shear_turb_visc(
                     bw_shear->fld.data(), bw_turb->fld.data(), bw_visc->fld.data(),
                     bz->fld.data(),
-                    fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                    w_prime->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
                     fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
                     gd.dzi4.data(), gd.dzhi4.data(),
                     gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
@@ -3032,7 +3058,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             calc_bw_budget_buoy_rdstr_diss_pres(
                     bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
                     bz->fld.data(),
-                    fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                    w_prime->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
                     fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
                     gd.dzi4.data(), gd.dzhi4.data(),
                     gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
