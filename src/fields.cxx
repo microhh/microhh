@@ -489,12 +489,12 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     auto& gd = grid.get_grid_data();
 
-    // Interpolate w to half level:
+    // Interpolate w to full level:
     auto wf = get_tmp();
     grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
 
     // Calculate masks
-    TF threshold = 0;
+    const TF threshold = 0;
     if (mask_name == "wplus")
         stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
     else if (mask_name == "wmin")

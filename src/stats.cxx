@@ -864,7 +864,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
     // Make sure that flux goes at the end
     for (auto& it : operations)
     {
-        if (it == "flux" )
+        if (it == "flux")
         {
             std::swap(it, operations.back());
             break;
