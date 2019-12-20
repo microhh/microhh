@@ -2710,6 +2710,7 @@ void Budget_4<TF>::init()
 
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+    wmodel.resize(gd.kcells);
 }
 
 template<typename TF>
@@ -3093,6 +3094,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
             fields.release_tmp(b);
             fields.release_tmp(b_sort);
         }
+
+        fields.release_tmp(w_prime);
     }
 }
 
