@@ -1578,15 +1578,15 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 auto vw_diff = fields.get_tmp();
                 auto wz = fields.get_tmp();
                 auto evisch = fields.get_tmp();
-
+ 
                 calc_diffusion_terms_les(
                         u2_diff->fld.data(), v2_diff->fld.data(),
                         w2_diff->fld.data(), tke_diff->fld.data(),
                         uw_diff->fld.data(), vw_diff->fld.data(),
                         wz->fld.data(), evisch->fld.data(),
-                        fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                        fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
+                        fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                         fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
+                        fields.sd.at("evisc")->fld.data(),
                         umodel.data(), vmodel.data(), wmodel.data(),
                         gd.dzi.data(), gd.dzhi.data(),
                         gd.dxi, gd.dyi,
