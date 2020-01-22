@@ -46,7 +46,7 @@ namespace
     using namespace Micro_2mom_warm_functions;
 
     template<typename TF>
-    void remove_negative_values(TF* const restrict field,
+    void remove_negative_values(TF* const __restrict__ field,
                                 const int istart, const int jstart, const int kstart,
                                 const int iend,   const int jend,   const int kend,
                                 const int jj,     const int kk)
@@ -62,7 +62,7 @@ namespace
     }
 
     template<typename TF>
-    void zero_field(TF* const restrict field, const int ncells)
+    void zero_field(TF* const __restrict__ field, const int ncells)
     {
         for (int n=0; n<ncells; n++)
             field[n] = TF(0);
@@ -88,10 +88,10 @@ namespace mp3d
 {
     // Autoconversion: formation of rain drop by coagulating cloud droplets
     template<typename TF>
-    void autoconversion(TF* const restrict qrt, TF* const restrict nrt,
-                        TF* const restrict qtt, TF* const restrict thlt,
-                        const TF* const restrict qr,  const TF* const restrict ql,
-                        const TF* const restrict rho, const TF* const restrict exner, const TF nc,
+    void autoconversion(TF* const __restrict__ qrt, TF* const __restrict__ nrt,
+                        TF* const __restrict__ qtt, TF* const __restrict__ thlt,
+                        const TF* const __restrict__ qr,  const TF* const __restrict__ ql,
+                        const TF* const __restrict__ rho, const TF* const __restrict__ exner, const TF nc,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend,
                         const int jj, const int kk)
@@ -126,9 +126,9 @@ namespace mp3d
 
     // Accreation: growth of raindrops collecting cloud droplets
     template<typename TF>
-    void accretion(TF* const restrict qrt, TF* const restrict qtt, TF* const restrict thlt,
-                   const TF* const restrict qr,  const TF* const restrict ql,
-                   const TF* const restrict rho, const TF* const restrict exner,
+    void accretion(TF* const __restrict__ qrt, TF* const __restrict__ qtt, TF* const __restrict__ thlt,
+                   const TF* const __restrict__ qr,  const TF* const __restrict__ ql,
+                   const TF* const __restrict__ rho, const TF* const __restrict__ exner,
                    const int istart, const int jstart, const int kstart,
                    const int iend,   const int jend,   const int kend,
                    const int jj, const int kk)
@@ -157,9 +157,9 @@ namespace mp3d
 
     // Calculate maximum sedimentation velocity
     template<typename TF>
-    TF calc_max_sedimentation_cfl(TF* const restrict w_qr,
-                                  const TF* const restrict qr, const TF* const restrict nr,
-                                  const TF* const restrict rho, const TF* const restrict dzi,
+    TF calc_max_sedimentation_cfl(TF* const __restrict__ w_qr,
+                                  const TF* const __restrict__ qr, const TF* const __restrict__ nr,
+                                  const TF* const __restrict__ rho, const TF* const __restrict__ dzi,
                                   const double dt,
                                   const int istart, const int jstart, const int kstart,
                                   const int iend,   const int jend,   const int kend,
@@ -236,10 +236,10 @@ namespace mp2d
 {
     // Calculate microphysics properties which are used in multiple routines
     template<typename TF>
-    void prepare_microphysics_slice(TF* const restrict rain_mass, TF* const restrict rain_diameter,
-                                    TF* const restrict mu_r, TF* const restrict lambda_r,
-                                    const TF* const restrict qr, const TF* const restrict nr,
-                                    const TF* const restrict rho,
+    void prepare_microphysics_slice(TF* const __restrict__ rain_mass, TF* const __restrict__ rain_diameter,
+                                    TF* const __restrict__ mu_r, TF* const __restrict__ lambda_r,
+                                    const TF* const __restrict__ qr, const TF* const __restrict__ nr,
+                                    const TF* const __restrict__ rho,
                                     const int istart, const int iend,
                                     const int kstart, const int kend,
                                     const int icells, const int ijcells, const int j)
@@ -271,12 +271,12 @@ namespace mp2d
 
     // Evaporation: evaporation of rain drops in unsaturated environment
     template<typename TF>
-    void evaporation(TF* const restrict qrt, TF* const restrict nrt,
-                     TF* const restrict qtt, TF* const restrict thlt,
-                     const TF* const restrict qr, const TF* const restrict nr,
-                     const TF* const restrict ql, const TF* const restrict qt, const TF* const restrict thl,
-                     const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
-                     const TF* const restrict rain_mass, const TF* const restrict rain_diameter,
+    void evaporation(TF* const __restrict__ qrt, TF* const __restrict__ nrt,
+                     TF* const __restrict__ qtt, TF* const __restrict__ thlt,
+                     const TF* const __restrict__ qr, const TF* const __restrict__ nr,
+                     const TF* const __restrict__ ql, const TF* const __restrict__ qt, const TF* const __restrict__ thl,
+                     const TF* const __restrict__ rho, const TF* const __restrict__ exner, const TF* const __restrict__ p,
+                     const TF* const __restrict__ rain_mass, const TF* const __restrict__ rain_diameter,
                      const int istart, const int jstart, const int kstart,
                      const int iend,   const int jend,   const int kend,
                      const int jj, const int kk, const int j)
@@ -314,9 +314,9 @@ namespace mp2d
 
     // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
     template<typename TF>
-    void selfcollection_breakup(TF* const restrict nrt, const TF* const restrict qr, const TF* const restrict nr, const TF* const restrict rho,
-                                const TF* const restrict rain_mass, const TF* const restrict rain_diameter,
-                                const TF* const restrict lambda_r,
+    void selfcollection_breakup(TF* const __restrict__ nrt, const TF* const __restrict__ qr, const TF* const __restrict__ nr, const TF* const __restrict__ rho,
+                                const TF* const __restrict__ rain_mass, const TF* const __restrict__ rain_diameter,
+                                const TF* const __restrict__ lambda_r,
                                 const int istart, const int jstart, const int kstart,
                                 const int iend,   const int jend,   const int kend,
                                 const int jj, const int kk, const int j)
@@ -364,16 +364,16 @@ namespace mp2d
 
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
-    void sedimentation_ss08(TF* const restrict qrt, TF* const restrict nrt, TF* const restrict rr_bot,
-                            TF* const restrict w_qr, TF* const restrict w_nr,
-                            TF* const restrict c_qr, TF* const restrict c_nr,
-                            TF* const restrict slope_qr, TF* const restrict slope_nr,
-                            TF* const restrict flux_qr, TF* const restrict flux_nr,
-                            const TF* const restrict mu_r, const TF* const restrict lambda_r,
-                            const TF* const restrict qr, const TF* const restrict nr,
-                            const TF* const restrict rho, const TF* const restrict rhoh,
-                            const TF* const restrict dzi,
-                            const TF* const restrict dz, const double dt,
+    void sedimentation_ss08(TF* const __restrict__ qrt, TF* const __restrict__ nrt, TF* const __restrict__ rr_bot,
+                            TF* const __restrict__ w_qr, TF* const __restrict__ w_nr,
+                            TF* const __restrict__ c_qr, TF* const __restrict__ c_nr,
+                            TF* const __restrict__ slope_qr, TF* const __restrict__ slope_nr,
+                            TF* const __restrict__ flux_qr, TF* const __restrict__ flux_nr,
+                            const TF* const __restrict__ mu_r, const TF* const __restrict__ lambda_r,
+                            const TF* const __restrict__ qr, const TF* const __restrict__ nr,
+                            const TF* const __restrict__ rho, const TF* const __restrict__ rhoh,
+                            const TF* const __restrict__ dzi,
+                            const TF* const __restrict__ dz, const double dt,
                             const int istart, const int jstart, const int kstart,
                             const int iend,   const int jend,   const int kend,
                             const int icells, const int kcells, const int ijcells, const int j)
@@ -517,6 +517,7 @@ namespace mp2d
                 qrt[ijk] += -(flux_qr[ik+kk2d] - flux_qr[ik]) / rho[k] * dzi[k];
                 nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
             }
+
 
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
