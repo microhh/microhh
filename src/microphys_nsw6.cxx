@@ -122,13 +122,13 @@ namespace
     // Compute all microphysical tendencies.
     template<typename TF>
     void conversion(
-            TF* const __restrict__ qrt, TF* const __restrict__ qst, TF* const __restrict__ qgt,
-            TF* const __restrict__ qtt, TF* const __restrict__ thlt,
-            const TF* const __restrict__ qr, const TF* const __restrict__ qs, const TF* const __restrict__ qg,
-            const TF* const __restrict__ qt, const TF* const __restrict__ thl,
-            const TF* const __restrict__ ql, const TF* const __restrict__ qi,
-            const TF* const __restrict__ rho, const TF* const __restrict__ exner, const TF* const __restrict__ p,
-            const TF* const __restrict__ dzi, const TF* const __restrict__ dzhi,
+            TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
+            TF* const restrict qtt, TF* const restrict thlt,
+            const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
+            const TF* const restrict qt, const TF* const restrict thl,
+            const TF* const restrict ql, const TF* const restrict qi,
+            const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
+            const TF* const restrict dzi, const TF* const restrict dzhi,
             const TF N_d, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
@@ -651,10 +651,10 @@ namespace
     // Bergeron.
     template<typename TF>
     void bergeron(
-            TF* const __restrict__ qst,
-            TF* const __restrict__ qtt, TF* const __restrict__ thlt,
-            const TF* const __restrict__ ql, const TF* const __restrict__ qi,
-            const TF* const __restrict__ rho, const TF* const __restrict__ exner,
+            TF* const restrict qst,
+            TF* const restrict qtt, TF* const restrict thlt,
+            const TF* const restrict ql, const TF* const restrict qi,
+            const TF* const restrict rho, const TF* const restrict exner,
             const TF delta_t,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
@@ -684,12 +684,12 @@ namespace
     // Sedimentation based on Stevens and Seifert (2008)
     template<typename TF>
     void sedimentation_ss08(
-            TF* const __restrict__ qct, TF* const __restrict__ rc_bot,
-            TF* const __restrict__ w_qc, TF* const __restrict__ c_qc,
-            TF* const __restrict__ slope_qc, TF* const __restrict__ flux_qc,
-            const TF* const __restrict__ qc,
-            const TF* const __restrict__ rho,
-            const TF* const __restrict__ dzi, const TF* const __restrict__ dz,
+            TF* const restrict qct, TF* const restrict rc_bot,
+            TF* const restrict w_qc, TF* const restrict c_qc,
+            TF* const restrict slope_qc, TF* const restrict flux_qc,
+            const TF* const restrict qc,
+            const TF* const restrict rho,
+            const TF* const restrict dzi, const TF* const restrict dz,
             const double dt,
             const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
             const TF qc_min,
@@ -826,10 +826,10 @@ namespace
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF>
     TF calc_cfl_ss08(
-            TF* const __restrict__ w_qc,
-            const TF* const __restrict__ qc,
-            const TF* const __restrict__ rho,
-            const TF* const __restrict__ dzi, const TF* const __restrict__ dz,
+            TF* const restrict w_qc,
+            const TF* const restrict qc,
+            const TF* const restrict rho,
+            const TF* const restrict dzi, const TF* const restrict dz,
             const double dt,
             const TF a_c, const TF b_c, const TF c_c, const TF d_c, const TF N_0c,
             const TF qc_min,
