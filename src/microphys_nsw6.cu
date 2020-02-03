@@ -46,7 +46,7 @@
  using namespace Thermo_moist_functions;
 //  using namespace Micro_2mom_warm_constants;
 //  using namespace Micro_2mom_warm_functions;
- 
+
  
  namespace
  {
@@ -118,7 +118,7 @@
      template<typename TF> constexpr TF gamma_saut = 60.e-3; // Tomita's code in SCALE is different than paper (0.025).
      template<typename TF> constexpr TF gamma_gacs = 90.e-3;
      template<typename TF> constexpr TF gamma_gaut = 90.e-3;
- 
+
      template<typename TF> constexpr TF nu = 1.5e-5; // Kinematic viscosity of air
 
      template<typename TF> CUDA_MACRO
@@ -130,7 +130,7 @@
          return copysign(TF(1.), a) * std::max(TF(0.), std::min(std::abs(a), TF(copysign(TF(1.), a))*b));
          #endif
      }
-     // Taken from include/microphys_2mom_warm.h
+     // Taken from include/microphys_2mom_warm.h , can likely delete the cxx version
  }
  // Above are all constants imported from microphys.cxx
  
@@ -139,11 +139,7 @@
      using namespace Constants;
      using namespace Thermo_moist_functions;
      using namespace Fast_math;
-    //  using namespace Micro_2mom_warm_functions;
-    //  using Micro_2mom_warm_functions::minmod;
 
-
- 
      // Compute all microphysical tendencies.
      template<typename TF> __global__
      void conversion_g(
@@ -157,18 +153,18 @@
              const TF N_d, const TF dt,
              const int istart, const int jstart, const int kstart,
              const int iend, const int jend, const int kend,
-             const int jj, const int kk)
+             const int jj, const int kk, TF* const __restrict__ temp_array)
      {
          // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
          const TF D_d = TF(0.146) - TF(5.964e-2)* log((N_d*TF(1.e-6)) / TF(2.e3));
          const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
          const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-         const int k = blockIdx.z + kstart;
+         //const int k = blockIdx.z + kstart;
  
          for (int k=kstart; k<kend; ++k)
          {
-             const TF rho0_rho_sqrt = sqrt(rho[kstart]/rho[k]);
- 
+
+             const TF rho0_rho_sqrt = pow(rho[kstart]/rho[k], TF(0.5));
              // Setup the relevant variables for each z slice
  
 
@@ -233,10 +229,10 @@
                      // Check which species are present.
                      const bool has_vapor   = (qv      > qv_min<TF>); 
                      const bool has_liq     = (ql[ijk] > ql_min<TF>);
-                     const bool has_ice     = false; //(qi[ijk] > qi_min<TF>);
+                     const bool has_ice     = (qi[ijk] > qi_min<TF>);
                      const bool has_rain    = (qr[ijk] > qr_min<TF>);
-                     const bool has_snow    = false; //(qs[ijk] > qs_min<TF>);
-                     const bool has_graupel = false; //(qg[ijk] > qg_min<TF>);
+                     const bool has_snow    = (qs[ijk] > qs_min<TF>);
+                     const bool has_graupel = (qg[ijk] > qg_min<TF>);
  
                      if (! (has_liq || has_ice || has_rain || has_snow || has_graupel) )
                          continue;
@@ -381,13 +377,16 @@
                      const TF G_w = TF(1.) / (
                          Lv<TF> / (K_a<TF> * T) * (Lv<TF> / (Rv<TF> * T) - TF(1.))
                          + Rv<TF>*T / (K_d<TF> * esat_liq(T)) );
+
+                         /// CHANGE THIS BACK
+                    
  
                      // Tomita Eq. 62
                      const TF G_i = TF(1.) / (
                          Ls<TF> / (K_a<TF> * T) * (Ls<TF> / (Rv<TF> * T) - TF(1.))
                          + Rv<TF>*T / (K_d<TF> * esat_ice(T)) );
  
-                     const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p[k], T);
+                     const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p[k], T); 
                      const TF S_i = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_ice(p[k], T);
  
                      // Tomita Eq. 63
@@ -395,13 +394,31 @@
  
                      // Tomita Eq. 59
                      
-                     TF P_revp = !(has_rain) ? TF(0.) : // still requires bounding by zero!
-                         - TF(2.)*pi<TF> * N_0r<TF> * (fmin(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
-                         * ( f_1r<TF> * tgamma(TF(2.)) / pow2(lambda_r)
-                         + f_2r<TF> * sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
-                         * tgamma( TF(0.5) * (TF(5.) + d_r<TF>) )
-                         / pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) ) ;
- 
+
+                    //*****************************************************************************
+
+                    
+                     TF P_revp = !(has_rain) ? TF(0.) : // still requires bounding ?
+                     - TF(2.)*pi<TF> * N_0r<TF> * (fmin(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
+                     * ( f_1r<TF> * tgamma(TF(2.)) / pow(lambda_r,TF(2.))
+                     + f_2r<TF> * sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
+                     * tgamma( TF(0.5) * (TF(5.) + d_r<TF>) )
+                     / pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) );
+                     
+                    //  fmin( TF(1.e-10), !(has_rain) ? TF(0.) : // still requires bounding by zero!
+                    //      - TF(2.)*pi<TF> * N_0r<TF> * (fmin(S_w, TF(1.)) - TF(1.)) * G_w / rho[k]
+                    //      * ( f_1r<TF> * tgamma(TF(2.)) / pow(lambda_r,TF(2.))
+                    //      + f_2r<TF> * sqrt(c_r<TF> * rho0_rho_sqrt / nu<TF>)
+                    //      * tgamma( TF(0.5) * (TF(5.) + d_r<TF>) )
+                    //      / pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) ));
+
+
+                    
+                    temp_array[ijk] = P_revp; //Rv<TF>; // G_w * rho[k]; //
+
+
+                    //******************************************************************************
+
                     // Tomita Eq. 60. Negative for sublimation, positive for deposition.
                     const TF P_sdep_ssub = 
                         TF(2.)*pi<TF> * N_0s<TF> * (S_i - TF(1.)) * G_i / rho[k]
@@ -456,7 +473,7 @@
 
                     TF P_gfrz = !(has_rain) ? TF(0.) :
                         TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
-                        * (exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
+                        * (exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r); 
 
                     // COMPUTE THE TENDENCIES.
                     // Limit the production terms to avoid instability.
@@ -610,11 +627,12 @@
                      qst[ijk] += rain_to_snow;
                      thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
                          
+                    //  qrt[ijk] = fmax(TF(0.0), qrt[ijk]);
                  }
  
  
               } // end for loop over k
-         
+            //   temp_array[i+j*jj] = TF(0.);
       } // end conversion function
  
     template<typename TF> __global__
@@ -634,34 +652,35 @@
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
+        //const int k = blockIdx.z + kstart;
 
         constexpr TF V_Tmin = TF(0.1);
         constexpr TF V_Tmax = TF(10.);
 
         // 1. Calculate sedimentation velocity at cell center
-        if (k < kend)
+        for (int k=kstart; k<kend; ++k)
         {
             const TF rho0_rho_sqrt = sqrt(rho[kstart]/rho[k]);
 
-            if ( i < iend && j < jend)
+            if (j<jend)
+                if (i<iend)
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    if (TF(qc[ijk]) > TF(qc_min)) // should be qc_min
+                    if (qc[ijk] > qc_min)
                     {
-                        const TF lambda_c =  pow(
-                            a_c * N_0c *  tgamma(b_c + TF(1.))
+                        const TF lambda_c = pow(
+                            a_c * N_0c * tgamma(b_c + TF(1.))
                             / (rho[k] * qc[ijk]),
                             TF(1.) / (b_c + TF(1.)) );
 
                         TF V_T =
                             c_c * rho0_rho_sqrt
-                            *  tgamma(b_c + d_c + TF(1.)) /  tgamma(b_c + TF(1.))
-                            *  pow(lambda_c, -d_c);
-                        
+                            * tgamma(b_c + d_c + TF(1.)) / tgamma(b_c + TF(1.))
+                            * pow(lambda_c, -d_c);
+
                         // Constrain the terminal velocity between 0.1 and 10.
-                        V_T = fmax(V_Tmin, fmin(V_T, V_Tmax));
+                        V_T = max(V_Tmin, min(V_T, V_Tmax));
 
                         w_qc[ijk] = V_T;
                     }
@@ -669,30 +688,30 @@
                         w_qc[ijk] = TF(0.);
                 }
         }
-        
-        // 1.1 Set one ghost cell to zero
-        if (i < iend && j < jend)
-            {
-                
-                const int ijk_bot = i + j*jj + (kstart-1)*kk;
-                const int ijk_top = i + j*jj + (kend)*kk;
 
+        // // 1.1 Set one ghost cell to zero
+        if (j<jend)
+            if (i<iend)
+            {
+                const int ijk_bot = i + j*jj + (kstart-1)*kk;
+                const int ijk_top = i + j*jj + (kend    )*kk;
                 w_qc[ijk_bot] = w_qc[ijk_bot+kk];
                 w_qc[ijk_top] = TF(0.);
-
             }
 
         // 2. Calculate CFL number using interpolated sedimentation velocity
-        if ( i < iend && j < jend && k < kend)
+        for (int k=kstart; k<kend; ++k)
+            if (j<jend)
+                if (i<iend)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    TF cflmax = TF(0.0);
-                    c_qc[ijk] = fmax( double(cflmax), TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt); 
-                    // the type of arguments must be same, otherwise, raised device/host code errors
+                    c_qc[ijk] = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
                 }
 
         // 3. Calculate slopes
-        if (i < iend && j < jend && k < kend)
+        for (int k=kstart; k<kend; ++k)
+            if (j<jend)
+                if (i<iend)
                 {
                     const int ijk = i + j*jj + k*kk;
                     slope_qc[ijk] = minmod(qc[ijk]-qc[ijk-kk], qc[ijk+kk]-qc[ijk]);
@@ -700,14 +719,16 @@
 
         // Calculate flux
         // Set the fluxes at the top of the domain (kend) to zero
-        if (i < iend && j < jend)
+        if (j<jend)
+            if (i<iend)
             {
                 const int ijk = i + j*jj + kend*kk;
                 flux_qc[ijk] = TF(0.);
             }
 
         for (int k=kend-1; k>kstart-1; --k)
-            if (i < iend && j < jend)
+            if (j<jend)
+                if (i<iend)
                 {
                     const int ijk = i + j*jj + k*kk;
 
@@ -733,11 +754,14 @@
                 }
 
         // Calculate tendency
-        if (i < iend && j < jend && k < kend)
+        for (int k=kstart; k<kend; ++k)
+            if (j<jend)
+                if (i<iend)
                 {
                     const int ijk = i + j*jj + k*kk;
                     qct[ijk] += -(flux_qc[ijk+kk] - flux_qc[ijk]) / rho[k] * dzi[k];
                 }
+
 
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
@@ -784,8 +808,10 @@
      TF* p     = thermo.get_basestate_fld_g("pref");
      TF* exner = thermo.get_basestate_fld_g("exner");
  
-    
-     conversion_g<<<gridGPU, blockGPU>>>(
+     auto temp_g = fields.get_tmp_g();
+     auto temp = fields.get_tmp();
+
+     conversion_g<<<grid2dGPU, block2dGPU>>>(
             fields.st.at("qr")->fld_g, fields.st.at("qs")->fld_g, fields.st.at("qg")->fld_g,
             fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
             fields.sp.at("qr")->fld_g, fields.sp.at("qs")->fld_g, fields.sp.at("qg")->fld_g,
@@ -796,9 +822,12 @@
             this->N_d, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells); 
+            gd.icells, gd.ijcells, temp_g->fld_g); 
      cuda_check_error();
-    
+
+     cuda_safe_call(cudaMemcpy(temp->fld.data(), temp_g->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
+     cuda_safe_call(cudaMemcpy(fields.st.at("qr")->fld.data(), fields.st.at("qr")->fld_g, gd.ncells * sizeof(TF), cudaMemcpyDeviceToHost));
+
 
      fields.release_tmp_g(ql);
      fields.release_tmp_g(qi);
@@ -808,8 +837,20 @@
      auto tmp3 = fields.get_tmp_g();
      auto tmp4 = fields.get_tmp_g();
  
+    // for (int n = 1; n<gd.ncells; ++n){
+    //     if (fields.st.at("qr")->fld[n] > qr_min<TF> && temp->fld[n] != TF(0.)){
+    //         std::cout<< "P_revp: " << temp->fld[n] << "\t" << "qr: " << fields.st.at("qr")->fld[n] << "\n";
+            
+    //         // cout<< temp ;
+    //     }
+
+    // }
+    
+    fields.release_tmp_g(temp_g);
+    fields.release_tmp(temp);
+
      // Falling rain.
-     sedimentation_ss08_g<<<gridGPU, blockGPU>>>(
+     sedimentation_ss08_g<<<grid2dGPU, block2dGPU>>>(
              fields.st.at("qr")->fld_g,
              tmp1->fld_g, tmp2->fld_g,
              tmp3->fld_g, tmp4->fld_g,
@@ -824,14 +865,10 @@
              gd.icells, gd.ijcells);
     cuda_check_error();
 
-
-    
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
     fields.release_tmp_g(tmp3);
     fields.release_tmp_g(tmp4);
-
-
 
 
      // cleanup
