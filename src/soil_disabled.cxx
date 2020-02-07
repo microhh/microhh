@@ -33,8 +33,8 @@
 
 
 template<typename TF>
-Soil_disabled<TF>::Soil_disabled(Master& masterin,Input& inputin) : 
-    Soil<TF>(masterin, inputin)
+Soil_disabled<TF>::Soil_disabled(Master& masterin, Grid<TF>& gridin, Input& inputin): 
+    Soil<TF>(masterin, gridin, inputin)
 {
     sw_soil = Soil_type::Disabled;
 }

@@ -28,13 +28,14 @@
 class Master;
 class Input;
 
+template<typename> class Grid;
 template<typename> class Soil;
 
 template<typename TF>
 class Soil_disabled : public Soil<TF>
 {
     public:
-        Soil_disabled(Master&, Input&);
+        Soil_disabled(Master&, Grid<TF>&, Input&);
         virtual ~Soil_disabled();
 
         void init() {};

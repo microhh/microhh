@@ -124,7 +124,6 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
     Netcdf_group& group_nc = input_nc.get_group("timedep");
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 
-
     std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
     std::string time_dim = unique_time.first;
     int time_dim_length = unique_time.second;

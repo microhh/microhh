@@ -124,7 +124,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
-        soil      = Soil<TF>     ::factory(master, *input);
+        soil      = Soil<TF>     ::factory(master, *grid, *input);
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
@@ -184,6 +184,7 @@ void Model<TF>::init()
     radiation->init(timeloop->get_ifactor());
     decay->init(*input);
     budget->init();
+    soil->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -238,6 +239,7 @@ void Model<TF>::load()
     force->create(*input, *input_nc, *stats);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
+    soil->create(*input, *input_nc);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);

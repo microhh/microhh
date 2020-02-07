@@ -23,15 +23,18 @@
 #include <iostream>
 
 #include "master.h"
+#include "grid.h"
 #include "fields.h"
 #include "input.h"
 
 // Soil schemes
 #include "soil.h"
 #include "soil_disabled.h"
+#include "soil_enabled.h"
 
 template<typename TF>
-Soil<TF>::Soil(Master& masterin, Input& input) : master(masterin)
+Soil<TF>::Soil(Master& masterin, Grid<TF>& gridin, Input& input) : 
+    master(masterin), grid(gridin)
 {
 }
 
@@ -47,12 +50,14 @@ Soil_type Soil<TF>::get_switch()
 }
 
 template<typename TF>
-std::shared_ptr<Soil<TF>> Soil<TF>::factory(Master& masterin, Input& inputin)
+std::shared_ptr<Soil<TF>> Soil<TF>::factory(Master& masterin, Grid<TF>& gridin, Input& inputin)
 {
     std::string sw_soil_str = inputin.get_item<std::string>("soil", "swsoil", "", "0");
 
     if (sw_soil_str == "0")
-        return std::make_shared<Soil_disabled<TF>>(masterin, inputin);
+        return std::make_shared<Soil_disabled<TF>>(masterin, gridin, inputin);
+    else if (sw_soil_str == "1")
+        return std::make_shared<Soil_enabled<TF>>(masterin, gridin, inputin);
     else
     {
         std::string msg = sw_soil_str + " is an illegal value for swsoil";

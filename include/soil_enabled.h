@@ -20,39 +20,46 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SOIL
-#define SOIL
+#ifndef SOIL_ENABLED
+#define SOIL_ENABLED
+
+#include "soil.h"
 
 class Master;
 class Input;
+
+template<typename> class Soil;
 template<typename> class Grid;
 
-enum class Soil_type {Disabled, Enabled};
-
-/**
- * Base class for the soil scheme. This class is abstract and only
- * derived classes can be instantiated. Derived classes are
- * implemented that handle different microphysiscs schemes.
- */
 template<typename TF>
-class Soil
+class Soil_enabled : public Soil<TF>
 {
     public:
-        Soil(Master&, Grid<TF>&, Input&);
-        virtual ~Soil();
+        Soil_enabled(Master&, Grid<TF>&, Input&);
+        virtual ~Soil_enabled();
 
-        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Input&);
-        Soil_type get_switch();
+        void init();
+        void create(Input&, Netcdf_handle&);
+        void exec() {};
 
-        // Below are the functions that the derived class has to implement.
-        virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&) = 0;
-        virtual void exec() = 0;
+    private:
+        using Soil<TF>::sw_soil;
+        using Soil<TF>::grid;
 
-    protected:
-        Master& master;
-        Grid<TF>& grid;
+        bool sw_interactive;
+        bool sw_homogeneous;
 
-        Soil_type sw_soil;
+        // Soil grid dimensions and data
+        int ktot;
+        std::vector<TF> z;
+        std::vector<TF> zh;
+        std::vector<TF> dz;
+        std::vector<TF> dzh;
+        std::vector<TF> dzi;
+        std::vector<TF> dzhi;
+
+        // Soil fields
+        std::vector<TF> temperature;  // Soil temperature (K)
+        std::vector<TF> theta;        // Volumetric soil moisture content (-)
 };
 #endif
