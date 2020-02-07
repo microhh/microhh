@@ -51,6 +51,7 @@
 #include "cross.h"
 #include "dump.h"
 #include "model.h"
+#include "soil.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -123,6 +124,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
+        soil      = Soil<TF>     ::factory(master, *input);
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
