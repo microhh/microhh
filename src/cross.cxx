@@ -255,7 +255,6 @@ Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         xz = inputin.get_list<TF>("cross", "xz", "", std::vector<TF>());
         yz = inputin.get_list<TF>("cross", "yz", "", std::vector<TF>());
     }
-
 }
 
 template<typename TF>
@@ -287,8 +286,6 @@ void Cross<TF>::init(double ifactor)
         return;
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
-
-    field3d_io.init();
 }
 
 template<typename TF>
