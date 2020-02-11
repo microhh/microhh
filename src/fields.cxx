@@ -332,9 +332,6 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
-    // Init the toolbox classes.
-    field3d_io.init();
-
     // Set up output classes
     create_dump(dump);
     create_cross(cross);

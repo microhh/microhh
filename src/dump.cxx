@@ -68,8 +68,6 @@ void Dump<TF>::init(double ifactor)
         return;
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
-
-    field3d_io.init();
 }
 
 template<typename TF>

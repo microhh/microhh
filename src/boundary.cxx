@@ -211,9 +211,6 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
-
-    // Initialize the IO operators.
-    field3d_io.init();
 }
 
 template<typename TF>
