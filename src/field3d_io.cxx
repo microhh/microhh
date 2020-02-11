@@ -34,7 +34,6 @@ template<typename TF>
 Field3d_io<TF>::Field3d_io(Master& masterin, Grid<TF>& gridin) :
     master(masterin), grid(gridin)
 {
-    sw_transpose = true;    // tmp here for now, becomes argument of save_field3d et al.
 }
 
 template<typename TF>
@@ -53,7 +52,8 @@ namespace
 template<typename TF>
 int Field3d_io<TF>::save_field3d(
         TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        const char* filename, TF offset)
+        const char* filename, TF offset,
+        const int kstart, const int kend)
 {
     // Save the data in transposed order to have large chunks of contiguous disk space.
     // MPI-IO is not stable on Juqueen and Supermuc otherwise
@@ -62,22 +62,25 @@ int Field3d_io<TF>::save_field3d(
     auto tp = Transpose<TF>(master, grid);
     tp.init();
 
-    // extract the data from the 3d field without the ghost cells
-    const int jj  = gd.icells;
-    const int kk  = gd.icells*gd.jcells;
-    const int jjb = gd.imax;
-    const int kkb = gd.imax*gd.jmax;
-
-    int count = gd.imax*gd.jmax*gd.kmax;
+    // Extract the data from the 3d field without the ghost cells
+    const int jj    = gd.icells;
+    const int kk    = gd.icells*gd.jcells;
+    const int jjb   = gd.imax;
+    const int kkb   = gd.imax*gd.jmax;
+    const int kmax  = kend-kstart;
+    const int count = gd.imax*gd.jmax*kmax;
 
     MPI_Datatype subarray;   // MPI datatype containing the dimensions of the total array that is contained in one process.
 
-    for (int k=0; k<gd.kmax; ++k)
+    // For full 3D fields, use the transposed save to increase IO performance
+    bool sw_transpose = (kmax == gd.kmax) ? true : false;
+
+    for (int k=0; k<kmax; ++k)
         for (int j=0; j<gd.jmax; ++j)
             #pragma ivdep
             for (int i=0; i<gd.imax; ++i)
             {
-                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
+                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+kstart)*kk;
                 const int ijkb = i + j*jjb + k*kkb;
                 tmp1[ijkb] = data[ijk] + offset;
             }
@@ -97,8 +100,8 @@ int Field3d_io<TF>::save_field3d(
     else
     {
         // Create MPI datatype for writing non-transposed field
-        int totsize [3] = {gd.kmax, gd.jtot, gd.itot};
-        int subsize [3] = {gd.kmax, gd.jmax, gd.imax};
+        int totsize [3] = {kmax, gd.jtot, gd.itot};
+        int subsize [3] = {kmax, gd.jmax, gd.imax};
         int substart[3] = {0, md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
         MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
         MPI_Type_commit(&subarray);
@@ -135,7 +138,10 @@ int Field3d_io<TF>::save_field3d(
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2, const char* filename, TF offset)
+int Field3d_io<TF>::load_field3d(
+        TF* const restrict data, TF* const restrict tmp1,
+        TF* const restrict tmp2, const char* filename, TF offset,
+        const int kstart, const int kend)
 {
     // Read the data (optionally) in transposed order to have large chunks of contiguous disk space.
     // MPI-IO is not stable on Juqueen and supermuc otherwise.
@@ -145,6 +151,11 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
     tp.init();
 
     MPI_Datatype subarray;   // MPI datatype containing the dimensions of the total array that is contained in one process.
+
+    const int kmax = kend-kstart;
+
+    // For full 3D fields, use the transposed read to increase IO performance
+    bool sw_transpose = (kmax == gd.kmax) ? true : false;
 
     if (sw_transpose)
     {
@@ -158,8 +169,8 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
     else
     {
         // Create MPI datatype for reading non-transposed field
-        int totsize [3] = {gd.kmax, gd.jtot, gd.itot};
-        int subsize [3] = {gd.kmax, gd.jmax, gd.imax};
+        int totsize [3] = {kmax, gd.jtot, gd.itot};
+        int subsize [3] = {kmax, gd.jmax, gd.imax};
         int substart[3] = {0, md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
         MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
         MPI_Type_commit(&subarray);
@@ -176,7 +187,7 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
     MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL);
 
     // extract the data from the 3d field without the ghost cells
-    int count = gd.imax*gd.jmax*gd.kmax;
+    int count = gd.imax*gd.jmax*kmax;
 
     if (sw_transpose)
     {
@@ -201,12 +212,12 @@ int Field3d_io<TF>::load_field3d(TF* const restrict data, TF* const restrict tmp
     const int jjb = gd.imax;
     const int kkb = gd.imax*gd.jmax;
 
-    for (int k=0; k<gd.kmax; ++k)
+    for (int k=0; k<kmax; ++k)
         for (int j=0; j<gd.jmax; ++j)
             #pragma ivdep
             for (int i=0; i<gd.imax; ++i)
             {
-                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
+                const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+kstart)*kk;
                 const int ijkb = i + j*jjb + k*kkb;
                 data[ijk] = tmp2[ijkb] - offset;
             }
@@ -482,8 +493,10 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const cha
 
 #else
 template<typename TF>
-int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        const char* filename, const TF offset)
+int Field3d_io<TF>::save_field3d(
+        TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        const char* filename, const TF offset,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
 
@@ -496,8 +509,8 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
     const int jj = gd.icells;
     const int kk = gd.icells*gd.jcells;
 
-    // first, add the offset to the data
-    for (int k=gd.kstart; k<gd.kend; ++k)
+    // First, add the offset to the data
+    for (int k=kstart; k<kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
@@ -505,8 +518,8 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
                 tmp1[ijk] = data[ijk] + offset;
             }
 
-    // second, save the data to disk
-    for (int k=gd.kstart; k<gd.kend; ++k)
+    // Second, save the data to disk
+    for (int k=kstart; k<kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
         {
             const int ijk = gd.istart + j*jj + k*kk;
@@ -520,8 +533,10 @@ int Field3d_io<TF>::save_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        const char* filename, const TF offset)
+int Field3d_io<TF>::load_field3d(
+        TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        const char* filename, const TF offset,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
 
@@ -534,8 +549,8 @@ int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
     const int jj = gd.icells;
     const int kk = gd.icells*gd.jcells;
 
-    // first, load the data from disk
-    for (int k=gd.kstart; k<gd.kend; k++)
+    // First, load the data from disk
+    for (int k=kstart; k<kend; k++)
         for (int j=gd.jstart; j<gd.jend; j++)
         {
             const int ijk = gd.istart + j*jj + k*kk;
@@ -545,8 +560,8 @@ int Field3d_io<TF>::load_field3d(TF* restrict data, TF* restrict tmp1, TF* restr
 
     fclose(pFile);
 
-    // second, remove the offset
-    for (int k=gd.kstart; k<gd.kend; k++)
+    // Second, remove the offset
+    for (int k=kstart; k<kend; k++)
         for (int j=gd.jstart; j<gd.jend; j++)
             for (int i=gd.istart; i<gd.iend; i++)
             {

@@ -113,6 +113,7 @@ std::vector<std::string>* Dump<TF>::get_dumplist()
 template<typename TF>
 void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
 {
+    auto& gd = grid.get_grid_data();
     const double no_offset = 0.;
     char filename[256];
 
@@ -131,7 +132,11 @@ void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
         auto tmp1 = tmpfld1.get();
         auto tmp2 = tmpfld1.get();
 
-        if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
+        if (field3d_io.save_field3d(
+                    data,
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
             master.print_message("FAILED\n");
             throw std::runtime_error("In Dump");

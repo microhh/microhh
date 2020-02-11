@@ -895,6 +895,7 @@ void Fields<TF>::create_column(Column<TF>& column)
 template<typename TF>
 void Fields<TF>::save(int n)
 {
+    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto tmp1 = get_tmp();
@@ -908,8 +909,11 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (field3d_io.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset))
+        if (field3d_io.save_field3d(
+                    f.second->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
             master.print_message("FAILED\n");
             ++nerror;
@@ -932,6 +936,7 @@ void Fields<TF>::save(int n)
 template<typename TF>
 void Fields<TF>::load(int n)
 {
+    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto tmp1 = get_tmp();
@@ -946,8 +951,11 @@ void Fields<TF>::load(int n)
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
 
-        if (field3d_io.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset))
+        if (field3d_io.load_field3d(
+                    f.second->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
             master.print_message("FAILED\n");
             ++nerror;
