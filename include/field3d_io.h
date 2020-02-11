@@ -46,7 +46,6 @@ class Field3d_io
     private:
         Master& master;
         Grid<TF>& grid;
-        Transpose<TF> transpose;
 
         bool sw_transpose;  // tmp
 };
