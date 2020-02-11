@@ -35,8 +35,8 @@ class Field3d_io
         Field3d_io(Master&, Grid<TF>&);
         ~Field3d_io();
 
-        int save_field3d(TF*, TF*, TF*, const char*, const TF); // Saves a full 3d field.
-        int load_field3d(TF*, TF*, TF*, const char*, const TF); // Loads a full 3d field.
+        int save_field3d(TF*, TF*, TF*, const char*, const TF, int, int); // Saves a full 3d field.
+        int load_field3d(TF*, TF*, TF*, const char*, const TF, int, int); // Loads a full 3d field.
 
         int save_xz_slice(TF*, TF*, const char*, int);           // Saves a xz-slice from a 3d field.
         int save_yz_slice(TF*, TF*, const char*, int);           // Saves a yz-slice from a 3d field.
@@ -46,7 +46,5 @@ class Field3d_io
     private:
         Master& master;
         Grid<TF>& grid;
-
-        bool sw_transpose;  // tmp
 };
 #endif
