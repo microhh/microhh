@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,29 +20,32 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <iostream>
+#ifndef SOIL_FIELD
+#define SOIL_FIELD
 
-#include "master.h"
-#include "grid.h"
-#include "fields.h"
-#include "constants.h"
+#include <string>
+#include <vector>
+#include <array>
 
-#include "soil.h"
-#include "soil_disabled.h"
-
+class Master;
+template<typename> class Grid;
 
 template<typename TF>
-Soil_disabled<TF>::Soil_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin): 
-    Soil<TF>(masterin, gridin, fieldsin, inputin)
+class Soil_field
 {
-    sw_soil = Soil_type::Disabled;
-}
+    public:
+        // Functions
+        Soil_field(Master&, Grid<TF>&);
+        ~Soil_field();
 
-template<typename TF>
-Soil_disabled<TF>::~Soil_disabled()
-{
-}
+        void init(int);
 
-template class Soil_disabled<double>;
-template class Soil_disabled<float>;
+        // Variables at CPU.
+        std::vector<TF> fld;
+        std::vector<TF> tend;
+
+    private:
+        Master& master;
+        Grid<TF>& grid;
+};
+#endif

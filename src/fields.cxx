@@ -930,7 +930,7 @@ void Fields<TF>::save(int n)
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Error allocating fields");
+        throw std::runtime_error("Error saving 3D fields");
 }
 
 template<typename TF>

@@ -20,29 +20,39 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <iostream>
-
 #include "master.h"
 #include "grid.h"
-#include "fields.h"
-#include "constants.h"
-
-#include "soil.h"
-#include "soil_disabled.h"
-
+#include "soil_field.h"
 
 template<typename TF>
-Soil_disabled<TF>::Soil_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin): 
-    Soil<TF>(masterin, gridin, fieldsin, inputin)
-{
-    sw_soil = Soil_type::Disabled;
-}
-
-template<typename TF>
-Soil_disabled<TF>::~Soil_disabled()
+Soil_field<TF>::Soil_field(Master& masterin, Grid<TF>& gridin) :
+    master(masterin),
+    grid(gridin)
 {
 }
 
-template class Soil_disabled<double>;
-template class Soil_disabled<float>;
+template<typename TF>
+Soil_field<TF>::~Soil_field()
+{
+}
+
+template<typename TF>
+void Soil_field<TF>::init(const int ktot)
+{
+    // Allocate all fields belonging to the soil field
+    const Grid_data<TF>& gd = grid.get_grid_data();
+    const int ncells_soil   = gd.ijcells *  ktot;
+
+    fld .resize(ncells_soil);
+    tend.resize(ncells_soil);
+
+    // Set all values to zero
+    for (int n=0; n<ncells_soil; ++n)
+    {
+        fld [n] = 0.;
+        tend[n] = 0.;
+    }
+}
+
+template class Soil_field<double>;
+template class Soil_field<float>;

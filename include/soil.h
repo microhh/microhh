@@ -26,6 +26,7 @@
 class Master;
 class Input;
 template<typename> class Grid;
+template<typename> class Fields;
 
 enum class Soil_type {Disabled, Enabled};
 
@@ -38,20 +39,23 @@ template<typename TF>
 class Soil
 {
     public:
-        Soil(Master&, Grid<TF>&, Input&);
+        Soil(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil();
 
-        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Input&);
+        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         Soil_type get_switch();
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
         virtual void create(Input&, Netcdf_handle&) = 0;
+        virtual void save(int) = 0;
+        virtual void load(int) = 0;
         virtual void exec() = 0;
 
     protected:
         Master& master;
         Grid<TF>& grid;
+        Fields<TF>& fields;
 
         Soil_type sw_soil;
 };

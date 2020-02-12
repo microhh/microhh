@@ -124,7 +124,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
-        soil      = Soil<TF>     ::factory(master, *grid, *input);
+        soil      = Soil<TF>     ::factory(master, *grid, *fields, *input);
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
@@ -231,6 +231,7 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
+    soil->load(timeloop->get_iotime());
     fields->create_stats(*stats);
     fields->create_column(*column);
 
@@ -263,12 +264,14 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input_nc);
     fields->create(*input, *input_nc);
+    soil->create(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
+    soil->save(timeloop->get_iotime());
 }
 
 template<typename TF>

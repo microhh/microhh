@@ -24,30 +24,49 @@
 #define SOIL_ENABLED
 
 #include "soil.h"
+#include "soil_field.h"
 
 class Master;
 class Input;
 
 template<typename> class Soil;
 template<typename> class Grid;
+template<typename> class Soil_field;
 
 template<typename TF>
 class Soil_enabled : public Soil<TF>
 {
     public:
-        Soil_enabled(Master&, Grid<TF>&, Input&);
+        Soil_enabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil_enabled();
 
         void init();
         void create(Input&, Netcdf_handle&);
+        void save(int);
+        void load(int);
         void exec() {};
 
     private:
         using Soil<TF>::sw_soil;
         using Soil<TF>::grid;
+        using Soil<TF>::master;
+        using Soil<TF>::fields;
 
         bool sw_interactive;
         bool sw_homogeneous;
+
+        // Soil fields
+        std::shared_ptr<Soil_field<TF>> t_soil;
+        std::shared_ptr<Soil_field<TF>> theta_soil;
+
+        // Soil properties
+        std::vector<int> soil_index;    // Index in lookup tables
+
+        std::vector<TF> diffusivity;    // Full level (m2 s-1)
+        std::vector<TF> diffusivity_h;  // Half level (m2 s-1)
+        std::vector<TF> conductivity;   // Full level (unit m s-1)
+        std::vector<TF> conductivity_h; // Half level (unit m s-1)
+        std::vector<TF> source;         // Source term (unit s-1)
 
         // Soil grid dimensions and data
         int ktot;
@@ -57,9 +76,5 @@ class Soil_enabled : public Soil<TF>
         std::vector<TF> dzh;
         std::vector<TF> dzi;
         std::vector<TF> dzhi;
-
-        // Soil fields
-        std::vector<TF> temperature;  // Soil temperature (K)
-        std::vector<TF> theta;        // Volumetric soil moisture content (-)
 };
 #endif

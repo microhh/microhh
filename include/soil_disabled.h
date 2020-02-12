@@ -30,16 +30,19 @@ class Input;
 
 template<typename> class Grid;
 template<typename> class Soil;
+template<typename> class Fields;
 
 template<typename TF>
 class Soil_disabled : public Soil<TF>
 {
     public:
-        Soil_disabled(Master&, Grid<TF>&, Input&);
+        Soil_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil_disabled();
 
         void init() {};
         void create(Input&, Netcdf_handle&) {};
+        void save(int) {};
+        void load(int) {};
         void exec() {};
 
     private:
