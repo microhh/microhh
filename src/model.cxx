@@ -539,6 +539,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
+        soil     ->exec_stats(*stats);
         // radiation->exec_stats(*stats, *thermo, *timeloop);
     }
 

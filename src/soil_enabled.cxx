@@ -203,15 +203,74 @@ void Soil_enabled<TF>::create_fields_grid_stats(
         Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross)
 {
     /*
-       Create the non-prognostic fields (soil type, ...) from the input files,
+       Create/set the non-prognostic fields (soil type, ...) from the input files,
        calculate/define the soil grid, and init the soil statistics and cross-sections.
     */
+    auto& gd = grid.get_grid_data();
 
-    // Get full level grid height (depth) from input NetCDF
+    // Get full level grid height (depth) from input NetCDF, and calculate vertical grid
     input_nc.get_variable(z, "z_soil", {0}, {ktot});
     calculate_grid(z, zh, dz, dzh, dzi, dzhi, zsize, ktot);
 
+    // Init soil properties
+    if (sw_homogeneous)
+    {
+        Netcdf_group& soil_group = input_nc.get_group("soil");
+        std::vector<int> soil_index_prof(ktot);
+        soil_group.get_variable<int>(soil_index_prof, "soil_index", {0}, {ktot});
 
+        const int kstart_soil = 0;
+        const int kend_soil = ktot;
+
+        init_soil_homogeneous<int>(
+                soil_index.data(), soil_index_prof.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                kstart_soil, kend_soil,
+                gd.icells, gd.ijcells);
+    }
+
+    // Init the soil statistics
+    if (stats.get_switch())
+    {
+        std::string group_name = "soil"; 
+
+        // Add soil dimensions to each of the statistics masks
+        auto& masks = stats.get_masks();
+        for (auto& mask : masks)
+        {
+            auto& m = mask.second;
+
+            // Add dimensions to NetCDF file
+            m.data_file->add_dimension("zs",  ktot);
+            m.data_file->add_dimension("zsh", ktot+1);
+
+            // Write the attributes
+            Netcdf_variable<TF> zs_var = m.data_file->template add_variable<TF>("zs", {"zs"});
+            zs_var.add_attribute("units", "m");
+            zs_var.add_attribute("long_name", "Full level soil height");
+
+            Netcdf_variable<TF> zsh_var = m.data_file->template add_variable<TF>("zsh", {"zsh"});
+            zsh_var.add_attribute("units", "m");
+            zsh_var.add_attribute("long_name", "Half level soil height");
+
+            // Write the grid levels
+            zs_var .insert(z,  {0});
+            zsh_var.insert(zh, {0});
+
+            m.data_file->sync();
+        }
+
+        // Add the statistics variables
+        stats.add_prof("t_soil", "Soil temperature", "K", "zs", group_name);
+        stats.add_prof("theta_soil", "Soil volumetric water content", "-", "zs", group_name);
+    }
+}
+
+template<typename TF>
+void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
+{
+    auto& gd = grid.get_grid_data();
 }
 
 template<typename TF>

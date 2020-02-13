@@ -54,6 +54,7 @@ class Soil
         virtual void save_prognostic_fields(int) = 0;
         virtual void load_prognostic_fields(int) = 0;
         virtual void calc_tendencies() = 0;
+        virtual void exec_stats(Stats<TF>&) = 0;
 
     protected:
         Master& master;

@@ -41,6 +41,7 @@ class Soil_enabled : public Soil<TF>
         void save_prognostic_fields(int);
         void load_prognostic_fields(int);
         void calc_tendencies() {};
+        void exec_stats(Stats<TF>&);
 
     private:
         using Soil<TF>::sw_soil;
