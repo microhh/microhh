@@ -380,18 +380,14 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const cha
     const int kk  = gd.icells*gd.jcells;
     const int jjb = gd.imax;
 
-    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-    if (kslice == -1)
-        kslice = -gd.kgc;
-
-    int count = gd.imax*gd.jmax;
+    const int count = gd.imax*gd.jmax;
 
     for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
+            // Take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
             tmp[ijkb] = data[ijk];
         }
@@ -585,7 +581,7 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const cha
     const int count = gd.imax*gd.kmax;
 
     for (int k=0; k<gd.kmax; k++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
             // take the modulus of jslice and gd.jmax to have the right offset within proc
@@ -652,16 +648,12 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const cha
 
     const int count = gd.imax*gd.jmax;
 
-    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-    if (kslice == -1)
-        kslice = -gd.kgc;
-
     for (int j=0; j<gd.jmax; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
+            // Take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
             tmp[ijkb] = data[ijk];
         }
@@ -702,7 +694,7 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const cha
     const int jjb = gd.imax;
 
     for (int j=0; j<gd.jmax; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;

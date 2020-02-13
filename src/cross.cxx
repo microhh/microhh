@@ -562,7 +562,7 @@ int Cross<TF>::cross_simple(
         for (auto& it: kxyh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it+gd.kgc), filename);
         }
     }
     else
@@ -570,7 +570,7 @@ int Cross<TF>::cross_simple(
         for (auto& it: kxy)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it+gd.kgc), filename);
         }
     }
     fields.release_tmp(tmpfld);
@@ -633,7 +633,7 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     for (auto& it: kxy)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-        nerror += check_save(field3d_io.save_xy_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(field3d_io.save_xy_slice(lngrad, tmp, filename, it+gd.kgc),filename);
     }
     fields.release_tmp(tmpfld);
     fields.release_tmp(lngradfld);
