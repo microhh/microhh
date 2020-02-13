@@ -27,6 +27,8 @@ class Master;
 class Input;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Stats;
+template<typename> class Cross;
 
 enum class Soil_type {Disabled, Enabled};
 
@@ -47,10 +49,11 @@ class Soil
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&) = 0;
-        virtual void save(int) = 0;
-        virtual void load(int) = 0;
-        virtual void exec() = 0;
+        virtual void create_cold_start(Input&, Netcdf_handle&) = 0;
+        virtual void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&) = 0;
+        virtual void save_prognostic_fields(int) = 0;
+        virtual void load_prognostic_fields(int) = 0;
+        virtual void calc_tendencies() = 0;
 
     protected:
         Master& master;

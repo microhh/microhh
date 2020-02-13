@@ -231,16 +231,18 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
-    soil->load(timeloop->get_iotime());
     fields->create_stats(*stats);
     fields->create_column(*column);
+
+    // Load the prognostic soil fields, and create/init soil
+    soil->load_prognostic_fields(timeloop->get_iotime());
+    soil->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
 
     boundary->create(*input, *input_nc, *stats);
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
-    soil->create(*input, *input_nc);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
@@ -264,14 +266,14 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input_nc);
     fields->create(*input, *input_nc);
-    soil->create(*input, *input_nc);
+    soil->create_cold_start(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
-    soil->save(timeloop->get_iotime());
+    soil->save_prognostic_fields(timeloop->get_iotime());
 }
 
 template<typename TF>

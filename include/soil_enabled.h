@@ -26,12 +26,7 @@
 #include "soil.h"
 #include "soil_field.h"
 
-class Master;
-class Input;
-
-template<typename> class Soil;
-template<typename> class Grid;
-template<typename> class Soil_field;
+//template<typename> class Soil_field;
 
 template<typename TF>
 class Soil_enabled : public Soil<TF>
@@ -41,10 +36,11 @@ class Soil_enabled : public Soil<TF>
         virtual ~Soil_enabled();
 
         void init();
-        void create(Input&, Netcdf_handle&);
-        void save(int);
-        void load(int);
-        void exec() {};
+        void create_cold_start(Input&, Netcdf_handle&);
+        void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
+        void save_prognostic_fields(int);
+        void load_prognostic_fields(int);
+        void calc_tendencies() {};
 
     private:
         using Soil<TF>::sw_soil;
@@ -76,5 +72,6 @@ class Soil_enabled : public Soil<TF>
         std::vector<TF> dzh;
         std::vector<TF> dzi;
         std::vector<TF> dzhi;
+        TF zsize;
 };
 #endif

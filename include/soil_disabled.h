@@ -25,13 +25,6 @@
 
 #include "soil.h"
 
-class Master;
-class Input;
-
-template<typename> class Grid;
-template<typename> class Soil;
-template<typename> class Fields;
-
 template<typename TF>
 class Soil_disabled : public Soil<TF>
 {
@@ -40,10 +33,11 @@ class Soil_disabled : public Soil<TF>
         virtual ~Soil_disabled();
 
         void init() {};
-        void create(Input&, Netcdf_handle&) {};
-        void save(int) {};
-        void load(int) {};
-        void exec() {};
+        void create_cold_start(Input&, Netcdf_handle&) {};
+        void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&) {};
+        void save_prognostic_fields(int) {};
+        void load_prognostic_fields(int) {};
+        void calc_tendencies() {};
 
     private:
         using Soil<TF>::sw_soil;
