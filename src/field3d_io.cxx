@@ -42,6 +42,7 @@ Field3d_io<TF>::~Field3d_io()
 }
 
 #ifdef USEMPI
+
 namespace
 {
     template<typename TF> MPI_Datatype mpi_fp_type();
@@ -51,8 +52,9 @@ namespace
 
 template<typename TF>
 int Field3d_io<TF>::save_field3d(
-        TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
-        const char* filename, TF offset,
+        TF* const restrict data,
+        TF* const restrict tmp1, TF* const restrict tmp2,
+        const char* filename, const TF offset,
         const int kstart, const int kend)
 {
     // Save the data in transposed order to have large chunks of contiguous disk space.
@@ -139,8 +141,9 @@ int Field3d_io<TF>::save_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::load_field3d(
-        TF* const restrict data, TF* const restrict tmp1,
-        TF* const restrict tmp2, const char* filename, TF offset,
+        TF* const restrict data,
+        TF* const restrict tmp1, TF* const restrict tmp2,
+        const char* filename, TF offset,
         const int kstart, const int kend)
 {
     // Read the data (optionally) in transposed order to have large chunks of contiguous disk space.
@@ -228,27 +231,30 @@ int Field3d_io<TF>::load_field3d(
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int jslice)
+int Field3d_io<TF>::save_xz_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int jslice,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     int nerror = 0;
 
-    const int jj  = gd.icells;
-    const int kk  = gd.icells*gd.jcells;
-    const int kkb = gd.imax;
+    const int jj   = gd.icells;
+    const int kk   = gd.icells*gd.jcells;
+    const int kkb  = gd.imax;
+    const int kmax = kend-kstart;
 
-    int count = gd.imax*gd.kmax;
+    int count = gd.imax*kmax;
 
-
-    for (int k=0; k<gd.kmax; k++)
+    for (int k=kstart; k<kend; k++)
         #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
             // take the modulus of jslice and gd.jmax to have the right offset within proc
-            const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + (k+gd.kgc)*kk;
-            const int ijkb = i + k*kkb;
+            const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + k*kk;
+            const int ijkb = i + (k-kstart)*kkb;
             tmp[ijkb] = data[ijk];
         }
 
@@ -256,8 +262,8 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const cha
     {
         // Create MPI datatype for XZ-slice
         MPI_Datatype subxzslice;
-        int totxzsize [2] = {gd.kmax, gd.itot};
-        int subxzsize [2] = {gd.kmax, gd.imax};
+        int totxzsize [2] = {kmax, gd.itot};
+        int subxzsize [2] = {kmax, gd.imax};
         int subxzstart[2] = {0, md.mpicoordx*gd.imax};
         MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxzslice);
         MPI_Type_commit(&subxzslice);
@@ -298,29 +304,31 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int islice)
+int Field3d_io<TF>::save_yz_slice(
+        TF* restrict data, TF* restrict tmp,
+        const char* filename, const int islice,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     int nerror = 0;
 
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
+    const int jj   = gd.icells;
+    const int kk   = gd.ijcells;
+    const int kkb  = gd.jmax;
+    const int kmax = kend-kstart;
 
-    const int kkb = gd.jmax;
-
-    int count = gd.jmax*gd.kmax;
-
+    int count = gd.jmax*kmax;
 
     // Strip off the ghost cells
-    for (int k=0; k<gd.kmax; k++)
+    for (int k=kstart; k<kend; k++)
         #pragma ivdep
         for (int j=0; j<gd.jmax; j++)
         {
             // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
-            const int ijkb = j + k*kkb;
+            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
+            const int ijkb = j + (k-kstart)*kkb;
             tmp[ijkb] = data[ijk];
         }
 
@@ -328,8 +336,8 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const cha
     {
         // Create MPI datatype for YZ-slice
         MPI_Datatype subyzslice;
-        int totyzsize [2] = {gd.kmax, gd.jtot};
-        int subyzsize [2] = {gd.kmax, gd.jmax};
+        int totyzsize [2] = {kmax, gd.jtot};
+        int subyzsize [2] = {kmax, gd.jmax};
         int subyzstart[2] = {0, md.mpicoordy*gd.jmax};
         MPI_Type_create_subarray(2, totyzsize, subyzsize, subyzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subyzslice);
         MPI_Type_commit(&subyzslice);
@@ -370,12 +378,14 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
+int Field3d_io<TF>::save_xy_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // extract the data from the 3d field without the ghost cells
+    // Extract the data from the 3d field without the ghost cells
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
     const int jjb = gd.imax;
@@ -404,14 +414,14 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const cha
     if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
         return 1;
 
-    // select noncontiguous part of 3d array to store the selected data
+    // Select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
 
     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
         return 1;
 
-    // only write at the procs that contain the slice
+    // Only write at the procs that contain the slice
     if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
 
@@ -428,12 +438,14 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
+int Field3d_io<TF>::load_xy_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // extract the data from the 3d field without the ghost cells
+    // Extract the data from the 3d field without the ghost cells
     const int jj = gd.icells;
     const int kk = gd.icells*gd.jcells;
     const int jjb = gd.imax;
@@ -456,14 +468,14 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const cha
     if (MPI_File_open(md.commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
         return 1;
 
-    // select noncontiguous part of 3d array to store the selected data
+    // Select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
 
     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
         return 1;
 
-    // only write at the procs that contain the slice
+    // Only write at the procs that contain the slice
     if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
 
@@ -488,9 +500,11 @@ int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 #else
+
 template<typename TF>
 int Field3d_io<TF>::save_field3d(
-        TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        TF* const restrict data,
+        TF* const restrict tmp1, TF* const restrict tmp2,
         const char* filename, const TF offset,
         const int kstart, const int kend)
 {
@@ -530,7 +544,8 @@ int Field3d_io<TF>::save_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::load_field3d(
-        TF* restrict data, TF* restrict tmp1, TF* restrict tmp2,
+        TF* const restrict data,
+        TF* const restrict tmp1, TF* const restrict tmp2,
         const char* filename, const TF offset,
         const int kstart, const int kend)
 {
@@ -569,24 +584,28 @@ int Field3d_io<TF>::load_field3d(
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int jslice)
+int Field3d_io<TF>::save_xz_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int jslice,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
 
     // extract the data from the 3d field without the ghost cells
-    const int jj  = gd.icells;
-    const int kk  = gd.icells*gd.jcells;
-    const int kkb = gd.imax;
+    const int jj   = gd.icells;
+    const int kk   = gd.icells*gd.jcells;
+    const int kkb  = gd.imax;
+    const int kmax = kend-kstart;
 
-    const int count = gd.imax*gd.kmax;
+    const int count = gd.imax*kmax;
 
-    for (int k=0; k<gd.kmax; k++)
+    for (int k=kstart; k<kend; k++)
         #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
             // take the modulus of jslice and gd.jmax to have the right offset within proc
-            const int ijk  = i+gd.igc + (jslice+gd.jgc)*jj + (k+gd.kgc)*kk;
-            const int ijkb = i + k*kkb;
+            const int ijk  = i+gd.igc + (jslice+gd.jgc)*jj + k*kk;
+            const int ijkb = i + (k-kstart)*kkb;
             tmp[ijkb] = data[ijk];
         }
 
@@ -602,26 +621,29 @@ int Field3d_io<TF>::save_xz_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const char* filename, int islice)
+int Field3d_io<TF>::save_yz_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int islice,
+        const int kstart, const int kend)
 {
     auto& gd = grid.get_grid_data();
 
     // Extract the data from the 3d field without the ghost cells
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
+    const int jj   = gd.icells;
+    const int kk   = gd.ijcells;
+    const int kkb  = gd.jmax;
+    const int kmax = kend-kstart;
 
-    const int kkb = gd.jmax;
-
-    int count = gd.jmax*gd.kmax;
+    int count = gd.jmax*kmax;
 
     // Strip off the ghost cells
-    for (int k=0; k<gd.kmax; k++)
+    for (int k=kstart; k<kend; k++)
         #pragma ivdep
         for (int j=0; j<gd.jmax; j++)
         {
             // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + (k+gd.kgc)*kk;
-            const int ijkb = j + k*kkb;
+            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
+            const int ijkb = j + (k-kstart)*kkb;
             tmp[ijkb] = data[ijk];
         }
 
@@ -637,7 +659,9 @@ int Field3d_io<TF>::save_yz_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
+int Field3d_io<TF>::save_xy_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
 
@@ -670,7 +694,9 @@ int Field3d_io<TF>::save_xy_slice(TF* restrict data, TF* restrict tmp, const cha
 }
 
 template<typename TF>
-int Field3d_io<TF>::load_xy_slice(TF* restrict data, TF* restrict tmp, const char* filename, int kslice)
+int Field3d_io<TF>::load_xy_slice(
+        TF* const restrict data, TF* const restrict tmp,
+        const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
 
