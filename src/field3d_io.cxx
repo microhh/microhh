@@ -440,7 +440,7 @@ int Field3d_io<TF>::save_xy_slice(
 template<typename TF>
 int Field3d_io<TF>::load_xy_slice(
         TF* const restrict data, TF* const restrict tmp,
-        const char* filename, const int kslice)
+        const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -696,7 +696,7 @@ int Field3d_io<TF>::save_xy_slice(
 template<typename TF>
 int Field3d_io<TF>::load_xy_slice(
         TF* const restrict data, TF* const restrict tmp,
-        const char* filename, const int kslice)
+        const char* filename, int kslice)
 {
     auto& gd = grid.get_grid_data();
 
