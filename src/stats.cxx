@@ -61,7 +61,10 @@ namespace
     }
 
     template<typename TF>
-    TF in_mask(const unsigned int mask, const unsigned int flag) { return static_cast<TF>( (mask & flag) != 0 ); }
+    TF in_mask(const unsigned int mask, const unsigned int flag)
+    {
+        return static_cast<TF>( (mask & flag) != 0 );
+    }
 
     template<typename TF>
     void set_flag(unsigned int& flag, const int*& restrict nmask, const Mask<TF>& m, const int loc)
@@ -183,7 +186,8 @@ namespace
     template<typename TF>
     void calc_nmask(
             int* restrict nmask_full, int* restrict nmask_half, int& nmask_bottom,
-            const unsigned int* const mfield, const unsigned int* const mfield_bot, const unsigned int flag, const unsigned int flagh,
+            const unsigned int* const mfield, const unsigned int* const mfield_bot,
+            const unsigned int flag, const unsigned int flagh,
             const int istart, const int iend, const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int ijcells, const int kcells)
@@ -250,6 +254,7 @@ namespace
             const int icells, const int itot, const int jtot)
     {
         double tmp = 0.;
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -260,6 +265,39 @@ namespace
 
         out = tmp / (itot*jtot);
     }
+
+
+    template<typename TF>
+    void calc_mean_projected_mask(
+            TF* const restrict prof, const TF* const restrict fld,
+            const unsigned int* const mask_bot, const int nmask_bot,
+            const int flag,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        double tmp;
+
+        if (nmask_bot == 0)
+            return;
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            tmp = 0;
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i  + j*icells;
+                    const int ijk = ij + k*ijcells;
+
+                    tmp += in_mask<double>(mask_bot[ij], flag) * fld[ijk];
+                }
+            prof[k] = tmp / nmask_bot;
+        }
+    }
+
 
     template<typename TF>
     void calc_moment(
@@ -289,7 +327,8 @@ namespace
 
     template<typename TF>
     void calc_cov(
-            TF* const restrict prof, const TF* const restrict fld1, const TF* const restrict fld1_mean, const TF offset1, const int pow1,
+            TF* const restrict prof, const TF* const restrict fld1, const TF* const restrict fld1_mean,
+            const TF offset1, const int pow1,
             const TF* const restrict fld2, const TF* const restrict fld2_mean, const TF offset2, const int pow2,
             const unsigned int* const mask, const unsigned int flag, const int* const nmask,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -308,7 +347,9 @@ namespace
                         for (int i=istart; i<iend; ++i)
                         {
                             const int ijk  = i + j*icells + k*ijcells;
-                            tmp += in_mask<double>(mask[ijk], flag)*std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)*std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
+                            tmp += in_mask<double>(mask[ijk], flag)
+                                * std::pow(fld1[ijk] - fld1_mean[k] + offset1, pow1)
+                                * std::pow(fld2[ijk] - fld2_mean[k] + offset2, pow2);
                         }
 
                     prof[k] = tmp / nmask[k];
@@ -388,7 +429,7 @@ namespace
                     }
                 }
             }
-       
+
         return std::make_pair(path, nmask_proj);
     }
 
@@ -1070,6 +1111,7 @@ void Stats<TF>::finalize_masks()
 
     boundary_cyclic.exec(mfield.data());
     boundary_cyclic.exec_2d(mfield_bot.data());
+
     for (auto& it : masks)
     {
         calc_nmask<TF>(
@@ -1080,7 +1122,9 @@ void Stats<TF>::finalize_masks()
 
         master.sum(it.second.nmask.data() , gd.kcells);
         master.sum(it.second.nmaskh.data(), gd.kcells);
+
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
+
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
             calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(),
@@ -1216,7 +1260,8 @@ void Stats<TF>::calc_mask_stats(
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
             calc_moment(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
+                    m.second.profs.at(name).data.data(), fld.fld.data(),
+                    m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
                     power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
@@ -1345,7 +1390,8 @@ void Stats<TF>::calc_mask_stats(
         set_flag(flag, nmask, m.second, fld.loc[2]);
 
         calc_frac(
-                m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                m.second.profs.at(name).data.data(), fld.fld.data(),
+                offset, threshold, mfield.data(), flag, nmask,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -1392,7 +1438,8 @@ void Stats<TF>::calc_stats(
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
                 calc_moment(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
+                        m.second.profs.at(name).data.data(), fld.fld.data(),
+                        m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
                         power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
@@ -1454,7 +1501,8 @@ void Stats<TF>::calc_stats(
             // No sum is required in this routine as values all.
             set_flag(flag, nmask, m.second, !fld.loc[2]);
             add_fluxes(
-                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
+                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(),
+                    m.second.profs.at(varname+"_diff").data.data(),
                     gd.kstart, gd.kend);
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
@@ -1560,6 +1608,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
     auto& gd = grid.get_grid_data();
     unsigned int flag;
     const int* nmask;
+
     std::string name = fld.name + "_" + tend_name;
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
@@ -1593,6 +1642,49 @@ void Stats<TF>::calc_stats_2d(
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
             master.sum(&m.second.tseries.at(varname).data, 1);
             m.second.tseries.at(varname).data += offset;
+        }
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_soil(
+        const std::string varname, const std::vector<TF>& fld,
+        const TF offset, const int kend)
+{
+    /*
+       Calculate soil statistics, using the surface mask
+       projected on the entire soil column.
+    */
+    auto& gd = grid.get_grid_data();
+    const int kstart = 0;
+    const int kmax = kend-kstart;
+
+    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            if (m.second.nmask_bot > 0)
+            {
+                calc_mean_projected_mask(
+                        m.second.profs.at(varname).data.data(), fld.data(),
+                        mfield_bot.data(), m.second.nmask_bot,
+                        m.second.flag,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        kstart, kend,
+                        gd.icells, gd.ijcells);
+
+                // Add offset
+                for (auto& value : m.second.profs.at(varname).data)
+                    value += offset;
+
+                master.sum(m.second.profs.at(varname).data.data(), kmax);
+            }
+            else
+            {
+                for (auto& value : m.second.profs.at(varname).data)
+                    value = netcdf_fp_fillvalue<TF>();
+            }
         }
     }
 }
@@ -1638,15 +1730,16 @@ void Stats<TF>::calc_covariance(
                     }
                     nmask = m.second.nmaskh.data();
                 }
+
                 calc_cov(
                         m.second.profs.at(name).data.data(), fld1.fld.data(), fld1_mean, offset1, power1,
                         fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
                         mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
+
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
                 set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-
             }
         }
         else
@@ -1671,14 +1764,14 @@ void Stats<TF>::calc_covariance(
                 }
 
                 calc_cov(
-                        m.second.profs.at(name).data.data(), tmp->fld.data(), m.second.profs.at(varname1).data.data(), offset1, power1,
+                        m.second.profs.at(name).data.data(), tmp->fld.data(),
+                        m.second.profs.at(varname1).data.data(), offset1, power1,
                         fld2.fld.data(), m.second.profs.at(varname2).data.data(), offset2, power2,
                         mfield.data(), flag, nmask,
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-
             }
 
             fields.release_tmp(tmp);
