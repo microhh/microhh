@@ -36,8 +36,13 @@
 namespace
 {
     template<typename TF>
-    void calc_lngrad_4th(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
-            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_lngrad_4th(
+            const TF* const restrict a, TF* const restrict lngrad,
+            TF dxi, TF dyi, const TF* const restrict dzi4,
+            int icells, int ijcells,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         using namespace Finite_difference::O4;
 
@@ -126,8 +131,12 @@ namespace
 
     template<typename TF>
     void calc_lngrad_2nd(
-            const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi,
-            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+            const TF* const restrict a, TF* const restrict lngrad,
+            TF dxi, TF dyi, const TF* const restrict dzi,
+            int icells, int ijcells,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         using namespace Finite_difference::O2;
 
@@ -155,8 +164,13 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_path(const TF* const restrict data, TF* const restrict tmp, const TF* const restrict rhoref, const TF* const restrict dz,
-            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_path(
+            const TF* const restrict data, TF* const restrict tmp,
+            const TF* const restrict rhoref, const TF* const restrict dz,
+            int jj, int kk,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
     // Path is integrated in first full level, set to zero first
     for (int j=jstart; j<jend; j++)
@@ -180,8 +194,13 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_height_threshold(const TF* const restrict data, TF* const restrict height, const TF* const restrict z, TF threshold, bool upward, TF fillvalue,
-            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_height_threshold(
+            const TF* const restrict data, TF* const restrict height,
+            const TF* const restrict z, TF threshold, bool upward, TF fillvalue,
+            int jj, int kk,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         // Set height to NetCDF fill value
         for (int j=jstart; j<jend; j++)
@@ -657,7 +676,12 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
     auto tmp = tmpfld->fld.data();
     auto& gd = grid.get_grid_data();
 
-    calc_cross_path<TF>(data, tmp, fields.rhoref.data(), gd.dz.data(), gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    calc_cross_path<TF>(
+            data, tmp, fields.rhoref.data(), gd.dz.data(),
+            gd.icells, gd.ijcells,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend);
 
     nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], name, iotime);
     fields.release_tmp(tmpfld);
@@ -686,7 +710,12 @@ int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Cross_dir
 
     TF fillvalue = -1e-9; //TODO: SET FILL VALUE
     bool isupward = (direction == Cross_direction::Bottom_to_top);
-    calc_cross_height_threshold<TF>(data, height, gd.z.data(), threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    calc_cross_height_threshold<TF>(
+            data, height, gd.z.data(), threshold, isupward, fillvalue,
+            gd.icells, gd.ijcells,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend);
 
     nerror += cross_plane(height, name, iotime);
     fields.release_tmp(tmpfld);
