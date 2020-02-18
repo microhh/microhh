@@ -133,7 +133,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
 
-        stats     = std::make_shared<Stats <TF>>(master, *grid, *fields, *advec, *diff, *input);
+        stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
         dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
         cross     = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);

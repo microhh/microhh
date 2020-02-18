@@ -225,11 +225,10 @@ void Soil_enabled<TF>::create_fields_grid_stats(
 template<typename TF>
 void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 {
-    auto& sgd = soil_grid.get_grid_data();
     const TF offset = 0;
 
-    stats.calc_stats_soil("t_soil",     t_soil->fld,     offset, sgd.kstart, sgd.kend);
-    stats.calc_stats_soil("theta_soil", theta_soil->fld, offset, sgd.kstart, sgd.kend);
+    stats.calc_stats_soil("t_soil",     t_soil->fld,     offset);
+    stats.calc_stats_soil("theta_soil", theta_soil->fld, offset);
 }
 
 template<typename TF>

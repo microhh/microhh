@@ -30,6 +30,7 @@ class Master;
 class Input;
 class Netcdf_file;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Advec;
 template<typename> class Diff;
@@ -77,6 +78,7 @@ struct Mask
     std::unique_ptr<Netcdf_variable<int>> iter_var;
     std::unique_ptr<Netcdf_variable<TF>> time_var;
     Prof_map<TF> profs;
+    Prof_map<TF> soil_profs;
     Time_series_map<TF> tseries;
 };
 
@@ -90,7 +92,7 @@ template<typename TF>
 class Stats
 {
     public:
-        Stats(Master&, Grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
+        Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
         void init(double);
@@ -151,7 +153,7 @@ class Stats
 
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
-        void calc_stats_soil(const std::string, const std::vector<TF>&, const TF, const int, const int);
+        void calc_stats_soil(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
         void calc_tend(Field3d<TF>&, const std::string);
@@ -163,6 +165,7 @@ class Stats
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Advec<TF>& advec;
         Diff<TF>& diff;
@@ -174,6 +177,7 @@ class Stats
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
+        std::vector<std::string> varlist_soil;
         void add_operation(std::vector<std::string>&, std::string, std::string);
         void sanitize_operations_vector(std::string, std::vector<std::string>&);
         bool is_blacklisted(std::string, Stats_whitelist_type = Stats_whitelist_type::Default);

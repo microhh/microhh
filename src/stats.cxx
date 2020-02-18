@@ -30,6 +30,7 @@
 #include <utility>
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "stats.h"
 #include "defines.h"
@@ -475,9 +476,9 @@ namespace
 
 template<typename TF>
 Stats<TF>::Stats(
-        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
-    master(masterin), grid(gridin), fields(fieldsin), advec(advecin), diff(diffin),
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
+    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin), advec(advecin), diff(diffin),
     boundary_cyclic(master, grid)
 
 {
@@ -641,7 +642,8 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
     if (!swstats)
         return;
 
-    auto& gd = grid.get_grid_data();
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
@@ -669,7 +671,7 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
                         nmask = m.nmask.data();
                     else
                         nmask = m.nmaskh.data();
-                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, agd.kstart, agd.kcells);
                 }
             }
 
@@ -696,10 +698,22 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
             std::vector<int> time_height_size  = {1, ksize};
 
             std::vector<TF> prof_nogc(
-                    p.second.data.begin() + gd.kstart,
-                    p.second.data.begin() + gd.kstart + ksize);
+                    p.second.data.begin() + agd.kstart,
+                    p.second.data.begin() + agd.kstart + ksize);
 
             m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+        }
+
+        for (auto& p : m.soil_profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + sgd.kstart,
+                    p.second.data.begin() + sgd.kstart + ksize);
+
+            m.soil_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
         }
 
         for (auto& ts : m.tseries)
@@ -944,7 +958,8 @@ void Stats<TF>::add_prof(
         const std::string& unit, const std::string& zloc, const std::string& group_name,
         Stats_whitelist_type wltype)
 {
-    auto& gd = grid.get_grid_data();
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Check whether variable is part of whitelist/blacklist and is not the area coverage of the mask.
     if (is_blacklisted(name, wltype))
@@ -954,7 +969,7 @@ void Stats<TF>::add_prof(
         return;
 
     Level_type level;
-    if (zloc == "z")
+    if ((zloc == "z") || (zloc == "zs"))
         level = Level_type::Full;
     else
         level = Level_type::Half;
@@ -969,18 +984,33 @@ void Stats<TF>::add_prof(
 
         // Create the NetCDF variable.
         // Create the profile variable and the vector at the appropriate size.
-        Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells), level};
 
-        m.profs.emplace(
-                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+        if ((zloc == "z") || (zloc == "zh"))
+        {
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(agd.kcells), level};
 
-        m.profs.at(name).ncvar.add_attribute("units", unit);
-        m.profs.at(name).ncvar.add_attribute("long_name", longname);
+            m.profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+
+            m.profs.at(name).ncvar.add_attribute("units", unit);
+            m.profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
+        else
+        {
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(sgd.kcells), level};
+
+            m.soil_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+
+            m.soil_profs.at(name).ncvar.add_attribute("units", unit);
+            m.soil_profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
 
         m.data_file->sync();
     }
-    varlist.push_back(name);
 
+    if ((zloc == "z") || (zloc == "zh"))
+        varlist.push_back(name);
+    else
+        varlist_soil.push_back(name);
 }
 
 template<typename TF>
@@ -1410,7 +1440,7 @@ void Stats<TF>::calc_stats(
     const int* nmask;
     std::string name;
 
-    // Calc mean
+    // Calc mean of atmospheric variables
     if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
     {
         for (auto& m : masks)
@@ -1597,6 +1627,25 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+
+    // Calc mean of soil variables
+    if (std::find(varlist_soil.begin(), varlist_soil.end(), varname) != varlist_soil.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_mean(m.second.soil_profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            master.sum(m.second.soil_profs.at(varname).data.data(), gd.kcells);
+
+            // Add the offset.
+            for (auto& value : m.second.soil_profs.at(varname).data)
+                value += offset;
+
+            set_fillvalue_prof(m.second.soil_profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+
 }
 
 template<typename TF>
@@ -1648,40 +1697,39 @@ void Stats<TF>::calc_stats_2d(
 
 template<typename TF>
 void Stats<TF>::calc_stats_soil(
-        const std::string varname, const std::vector<TF>& fld, const TF offset,
-        const int kstart, const int kend)
+        const std::string varname, const std::vector<TF>& fld, const TF offset)
 {
     /*
        Calculate soil statistics, using the surface mask
        projected on the entire soil column.
     */
-    auto& gd = grid.get_grid_data();
-    const int kmax = kend-kstart;
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
-    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
+    if (std::find(varlist_soil.begin(), varlist_soil.end(), varname) != varlist_soil.end())
     {
         for (auto& m : masks)
         {
             if (m.second.nmask_bot > 0)
             {
                 calc_mean_projected_mask(
-                        m.second.profs.at(varname).data.data(), fld.data(),
+                        m.second.soil_profs.at(varname).data.data(), fld.data(),
                         mfield_bot.data(), m.second.nmask_bot,
                         m.second.flag,
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        kstart, kend,
-                        gd.icells, gd.ijcells);
+                        agd.istart, agd.iend,
+                        agd.jstart, agd.jend,
+                        sgd.kstart, sgd.kend,
+                        agd.icells, agd.ijcells);
 
                 // Add offset
-                for (auto& value : m.second.profs.at(varname).data)
+                for (auto& value : m.second.soil_profs.at(varname).data)
                     value += offset;
 
-                master.sum(m.second.profs.at(varname).data.data(), kmax);
+                master.sum(m.second.soil_profs.at(varname).data.data(), sgd.kmax);
             }
             else
             {
-                for (auto& value : m.second.profs.at(varname).data)
+                for (auto& value : m.second.soil_profs.at(varname).data)
                     value = netcdf_fp_fillvalue<TF>();
             }
         }
