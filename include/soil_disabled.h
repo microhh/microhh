@@ -39,6 +39,7 @@ class Soil_disabled : public Soil<TF>
         void load_prognostic_fields(int) {};
         void calc_tendencies() {};
         void exec_stats(Stats<TF>&) {};
+        void exec_cross(Cross<TF>&, unsigned long) {};
 
     private:
         using Soil<TF>::sw_soil;

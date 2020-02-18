@@ -42,6 +42,7 @@ class Soil_enabled : public Soil<TF>
         void load_prognostic_fields(int);
         void calc_tendencies() {};
         void exec_stats(Stats<TF>&);
+        void exec_cross(Cross<TF>&, unsigned long);
 
     private:
         using Soil<TF>::sw_soil;
@@ -74,5 +75,9 @@ class Soil_enabled : public Soil<TF>
         std::vector<TF> dzi;
         std::vector<TF> dzhi;
         TF zsize;
+
+        // Soil cross-sections
+        std::vector<std::string> cross_vars;
+
 };
 #endif

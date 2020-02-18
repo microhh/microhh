@@ -55,6 +55,7 @@ class Soil
         virtual void load_prognostic_fields(int) = 0;
         virtual void calc_tendencies() = 0;
         virtual void exec_stats(Stats<TF>&) = 0;
+        virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 
     protected:
         Master& master;

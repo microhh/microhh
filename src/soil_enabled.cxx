@@ -265,6 +265,13 @@ void Soil_enabled<TF>::create_fields_grid_stats(
         stats.add_prof("t_soil", "Soil temperature", "K", "zs", group_name);
         stats.add_prof("theta_soil", "Soil volumetric water content", "-", "zs", group_name);
     }
+
+    // Init the soil cross-sections
+    if (cross.get_switch())
+    {
+        std::vector<std::string> allowed_crossvars = {"t_soil", "theta_soil"};
+        cross_vars = cross.get_enabled_variables(allowed_crossvars);
+    }
 }
 
 template<typename TF>
@@ -275,6 +282,12 @@ void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 
     stats.calc_stats_soil("t_soil",     t_soil->fld,     offset, ktot);
     stats.calc_stats_soil("theta_soil", theta_soil->fld, offset, ktot);
+}
+
+template<typename TF>
+void Soil_enabled<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+{
+    auto &gd = grid.get_grid_data();
 }
 
 template<typename TF>
