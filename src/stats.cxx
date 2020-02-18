@@ -1648,15 +1648,14 @@ void Stats<TF>::calc_stats_2d(
 
 template<typename TF>
 void Stats<TF>::calc_stats_soil(
-        const std::string varname, const std::vector<TF>& fld,
-        const TF offset, const int kend)
+        const std::string varname, const std::vector<TF>& fld, const TF offset,
+        const int kstart, const int kend)
 {
     /*
        Calculate soil statistics, using the surface mask
        projected on the entire soil column.
     */
     auto& gd = grid.get_grid_data();
-    const int kstart = 0;
     const int kmax = kend-kstart;
 
     if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())

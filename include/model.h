@@ -32,6 +32,7 @@ class Data_block;
 class Netcdf_file;
 
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 
 template<typename> class Timeloop;
@@ -77,6 +78,7 @@ class Model
         std::shared_ptr<Netcdf_file> input_nc;
 
         std::shared_ptr<Grid<TF>> grid;
+        std::shared_ptr<Soil_grid<TF>> soil_grid;
         std::shared_ptr<Fields<TF>> fields;
 
         std::shared_ptr<Timeloop<TF>> timeloop;

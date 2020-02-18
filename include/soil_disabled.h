@@ -29,7 +29,7 @@ template<typename TF>
 class Soil_disabled : public Soil<TF>
 {
     public:
-        Soil_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Soil_disabled(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil_disabled();
 
         void init() {};

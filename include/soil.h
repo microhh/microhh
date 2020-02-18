@@ -26,6 +26,7 @@
 class Master;
 class Input;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Stats;
 template<typename> class Cross;
@@ -41,10 +42,10 @@ template<typename TF>
 class Soil
 {
     public:
-        Soil(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Soil(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil();
 
-        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         Soil_type get_switch();
 
         // Below are the functions that the derived class has to implement.
@@ -60,6 +61,7 @@ class Soil
     protected:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
 
         Soil_type sw_soil;

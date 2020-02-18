@@ -32,7 +32,7 @@ template<typename TF>
 class Soil_enabled : public Soil<TF>
 {
     public:
-        Soil_enabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Soil_enabled(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         virtual ~Soil_enabled();
 
         void init();
@@ -47,6 +47,7 @@ class Soil_enabled : public Soil<TF>
     private:
         using Soil<TF>::sw_soil;
         using Soil<TF>::grid;
+        using Soil<TF>::soil_grid;
         using Soil<TF>::master;
         using Soil<TF>::fields;
 
@@ -65,16 +66,6 @@ class Soil_enabled : public Soil<TF>
         std::vector<TF> conductivity;   // Full level (unit m s-1)
         std::vector<TF> conductivity_h; // Half level (unit m s-1)
         std::vector<TF> source;         // Source term (unit s-1)
-
-        // Soil grid dimensions and data
-        int ktot;
-        std::vector<TF> z;
-        std::vector<TF> zh;
-        std::vector<TF> dz;
-        std::vector<TF> dzh;
-        std::vector<TF> dzi;
-        std::vector<TF> dzhi;
-        TF zsize;
 
         // Soil cross-sections
         std::vector<std::string> cross_vars;

@@ -30,6 +30,7 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "buffer.h"
 #include "netcdf_interface.h"
@@ -111,10 +112,11 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid      = std::make_shared<Grid<TF>>    (master, *input);
-        fields    = std::make_shared<Fields<TF>>  (master, *grid, *input);
-        timeloop  = std::make_shared<Timeloop<TF>>(master, *grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>     (master, *grid);
+        grid      = std::make_shared<Grid<TF>>     (master, *input);
+        soil_grid = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
+        fields    = std::make_shared<Fields<TF>>   (master, *grid, *input);
+        timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *fields, *input, sim_mode);
+        fft       = std::make_shared<FFT<TF>>      (master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
 
@@ -124,7 +126,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
-        soil      = Soil<TF>     ::factory(master, *grid, *fields, *input);
+        soil      = Soil<TF>     ::factory(master, *grid, *soil_grid, *fields, *input);
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
@@ -170,6 +172,7 @@ void Model<TF>::init()
     master.init(*input);
 
     grid->init();
+    soil_grid->init();
     fields->init(*input, *dump, *cross, sim_mode);
 
     fft->init();
@@ -223,6 +226,8 @@ void Model<TF>::load()
     grid->load();
     fft->load();
     timeloop->load(timeloop->get_iotime());
+
+    soil_grid->create(*input_nc);
 
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);

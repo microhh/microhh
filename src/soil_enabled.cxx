@@ -25,6 +25,7 @@
 
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "stats.h"
 #include "cross.h"
@@ -50,55 +51,19 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*isize + k*ijsize;
-                    soil_fld[ijk] = soil_prof[k];
+                    soil_fld[ijk] = soil_prof[k-kstart];
                 }
     }
-
-    template<typename TF>
-    void calculate_grid(
-            std::vector<TF>& z, std::vector<TF>& zh,
-            std::vector<TF>& dz, std::vector<TF>& dzh,
-            std::vector<TF>& dzi, std::vector<TF>& dzhi,
-            const TF zsize, const int ktot)
-    {
-
-        // Calculate half level heights
-        for (int k=1; k<ktot; ++k)
-            zh[k] = 0.5*(z[k-1] + z[k]);
-
-        zh[ktot] = 0.;
-        zh[0   ] = zsize;
-
-        // Calculate grid spacing
-        for (int k=0; k<ktot; ++k)
-            dz[k] = zh[k+1] - zh[k];
-
-        for (int k=1; k<ktot; ++k)
-            dzh[k] = z[k] - z[k-1];
-
-        dzh[ktot] = 2*-z[ktot-1];
-        dzh[0   ] = 2*(z[0] - zh[0]);
-
-        // Inverse grid spacings
-        for (int k=0; k<ktot; ++k)
-            dzi[k] = 1./dz[k];
-
-        for (int k=0; k<ktot+1; ++k)
-            dzhi[k] = 1./dzh[k];
-    }
-
 }
 
 
 template<typename TF>
-Soil_enabled<TF>::Soil_enabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : 
-    Soil<TF>(masterin, gridin, fieldsin, inputin)
+Soil_enabled<TF>::Soil_enabled(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+    Soil<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     sw_soil = Soil_type::Enabled;
-
-    // Read the soil settings from the ini file
-    ktot  = inputin.get_item<int>("soil", "ktot", "");
-    zsize = inputin.get_item<TF>("soil", "zsize", "");
 
     sw_interactive = inputin.get_item<bool>("soil", "sw_interactive", "", false);
     sw_homogeneous = inputin.get_item<bool>("soil", "sw_homogeneous", "", true);
@@ -125,32 +90,22 @@ void Soil_enabled<TF>::init()
     /*
        Allocate/resize the soil fields, properties, and grid definition.
     */
-    auto& gd = grid.get_grid_data();
-    const int ncells_soil = gd.ijcells * ktot;
-    const int ncells_soil_h = gd.ijcells * (ktot+1);
+    auto& sgd = soil_grid.get_grid_data();
 
     // Init prognostic soil fields
-    t_soil->init(ktot);
-    theta_soil->init(ktot);
-
-    // Resize the vectors which hold the vertical grid info
-    z.resize(ktot);
-    dz.resize(ktot);
-    dzi.resize(ktot);
-    zh.resize(ktot+1);
-    dzh.resize(ktot+1);
-    dzhi.resize(ktot+1);
+    t_soil->init(sgd.kcells);
+    theta_soil->init(sgd.kcells);
 
     // Resize the vectors which contain the soil properties
-    soil_index.resize(ncells_soil);
+    soil_index.resize(sgd.ncells);
 
     if (sw_interactive)
     {
-        diffusivity.resize(ncells_soil);
-        diffusivity_h.resize(ncells_soil_h);
-        conductivity.resize(ncells_soil);
-        conductivity_h.resize(ncells_soil_h);
-        source.resize(ncells_soil);
+        diffusivity.resize   (sgd.ncells);
+        diffusivity_h.resize (sgd.ncellsh);
+        conductivity.resize  (sgd.ncells);
+        conductivity_h.resize(sgd.ncellsh);
+        source.resize        (sgd.ncells);
     }
 }
 
@@ -164,7 +119,8 @@ void Soil_enabled<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
        This routine is only called in the `init` phase of the model (from model.cxx),
        in the `run` phase these fields are read from the restart files.
      */
-    auto& gd = grid.get_grid_data();
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Init the soil variables
     if (sw_homogeneous)
@@ -172,29 +128,26 @@ void Soil_enabled<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
         // Read initial profiles from input NetCDF file
         Netcdf_group& soil_group = input_nc.get_group("soil");
 
-        std::vector<TF> t_prof(ktot);
-        std::vector<TF> theta_prof(ktot);
+        std::vector<TF> t_prof(sgd.ktot);
+        std::vector<TF> theta_prof(sgd.ktot);
 
-        soil_group.get_variable(t_prof, "t_soil", {0}, {ktot});
-        soil_group.get_variable(theta_prof, "theta_soil", {0}, {ktot});
+        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
+        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
 
         // Initialise soil as spatially homogeneous
-        const int kstart_soil = 0;
-        const int kend_soil = ktot;
-
         init_soil_homogeneous(
                 t_soil->fld.data(), t_prof.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                kstart_soil, kend_soil,
-                gd.icells, gd.ijcells);
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
 
         init_soil_homogeneous(
                 theta_soil->fld.data(), theta_prof.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                kstart_soil, kend_soil,
-                gd.icells, gd.ijcells);
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
     }
 }
 
@@ -206,34 +159,29 @@ void Soil_enabled<TF>::create_fields_grid_stats(
        Create/set the non-prognostic fields (soil type, ...) from the input files,
        calculate/define the soil grid, and init the soil statistics and cross-sections.
     */
-    auto& gd = grid.get_grid_data();
-
-    // Get full level grid height (depth) from input NetCDF, and calculate vertical grid
-    input_nc.get_variable(z, "z_soil", {0}, {ktot});
-    calculate_grid(z, zh, dz, dzh, dzi, dzhi, zsize, ktot);
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Init soil properties
     if (sw_homogeneous)
     {
         Netcdf_group& soil_group = input_nc.get_group("soil");
-        std::vector<int> soil_index_prof(ktot);
-        soil_group.get_variable<int>(soil_index_prof, "soil_index", {0}, {ktot});
+        std::vector<int> soil_index_prof(sgd.ktot);
 
-        const int kstart_soil = 0;
-        const int kend_soil = ktot;
+        soil_group.get_variable<int>(soil_index_prof, "soil_index", {0}, {sgd.ktot});
 
         init_soil_homogeneous<int>(
                 soil_index.data(), soil_index_prof.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                kstart_soil, kend_soil,
-                gd.icells, gd.ijcells);
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
     }
 
     // Init the soil statistics
     if (stats.get_switch())
     {
-        std::string group_name = "soil"; 
+        std::string group_name = "soil";
 
         // Add soil dimensions to each of the statistics masks
         auto& masks = stats.get_masks();
@@ -242,8 +190,8 @@ void Soil_enabled<TF>::create_fields_grid_stats(
             auto& m = mask.second;
 
             // Add dimensions to NetCDF file
-            m.data_file->add_dimension("zs",  ktot);
-            m.data_file->add_dimension("zsh", ktot+1);
+            m.data_file->add_dimension("zs",  sgd.ktot);
+            m.data_file->add_dimension("zsh", sgd.ktot+1);
 
             // Write the attributes
             Netcdf_variable<TF> zs_var = m.data_file->template add_variable<TF>("zs", {"zs"});
@@ -255,8 +203,8 @@ void Soil_enabled<TF>::create_fields_grid_stats(
             zsh_var.add_attribute("long_name", "Half level soil height");
 
             // Write the grid levels
-            zs_var .insert(z,  {0});
-            zsh_var.insert(zh, {0});
+            zs_var .insert(sgd.z,  {0});
+            zsh_var.insert(sgd.zh, {0});
 
             m.data_file->sync();
         }
@@ -277,11 +225,11 @@ void Soil_enabled<TF>::create_fields_grid_stats(
 template<typename TF>
 void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 {
-    auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
     const TF offset = 0;
 
-    stats.calc_stats_soil("t_soil",     t_soil->fld,     offset, ktot);
-    stats.calc_stats_soil("theta_soil", theta_soil->fld, offset, ktot);
+    stats.calc_stats_soil("t_soil",     t_soil->fld,     offset, sgd.kstart, sgd.kend);
+    stats.calc_stats_soil("theta_soil", theta_soil->fld, offset, sgd.kstart, sgd.kend);
 }
 
 template<typename TF>
@@ -294,9 +242,9 @@ template<typename TF>
 void Soil_enabled<TF>::save_prognostic_fields(const int itime)
 {
     auto field3d_io = Field3d_io<TF>(master, grid);
-    auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
     const TF no_offset = 0.;
-    const int kstart = 0;
     int nerror = 0;
 
     auto tmp1 = fields.get_tmp();
@@ -311,7 +259,7 @@ void Soil_enabled<TF>::save_prognostic_fields(const int itime)
                 t_soil->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
-                kstart, ktot))
+                sgd.kstart, sgd.kend))
     {
         master.print_message("FAILED\n");
         ++nerror;
@@ -327,7 +275,7 @@ void Soil_enabled<TF>::save_prognostic_fields(const int itime)
                 theta_soil->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
-                kstart, ktot))
+                sgd.kstart, sgd.kend))
     {
         master.print_message("FAILED\n");
         ++nerror;
@@ -348,9 +296,9 @@ template<typename TF>
 void Soil_enabled<TF>::load_prognostic_fields(const int itime)
 {
     auto field3d_io = Field3d_io<TF>(master, grid);
-    auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
     const TF no_offset = 0.;
-    const int kstart = 0;
     int nerror = 0;
 
     auto tmp1 = fields.get_tmp();
@@ -365,7 +313,7 @@ void Soil_enabled<TF>::load_prognostic_fields(const int itime)
                 t_soil->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
-                kstart, ktot))
+                sgd.kstart, sgd.kend))
     {
         master.print_message("FAILED\n");
         ++nerror;
@@ -381,7 +329,7 @@ void Soil_enabled<TF>::load_prognostic_fields(const int itime)
                 theta_soil->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
-                kstart, ktot))
+                sgd.kstart, sgd.kend))
     {
         master.print_message("FAILED\n");
         ++nerror;

@@ -25,6 +25,7 @@
 
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "constants.h"
 
@@ -33,8 +34,10 @@
 
 
 template<typename TF>
-Soil_disabled<TF>::Soil_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin): 
-    Soil<TF>(masterin, gridin, fieldsin, inputin)
+Soil_disabled<TF>::Soil_disabled(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin):
+    Soil<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     sw_soil = Soil_type::Disabled;
 }
