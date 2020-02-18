@@ -68,7 +68,7 @@ class Soil_enabled : public Soil<TF>
         std::vector<TF> source;         // Source term (unit s-1)
 
         // Soil cross-sections
-        std::vector<std::string> cross_vars;
+        std::vector<std::string> crosslist;
 
 };
 #endif

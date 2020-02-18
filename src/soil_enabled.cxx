@@ -218,7 +218,7 @@ void Soil_enabled<TF>::create_fields_grid_stats(
     if (cross.get_switch())
     {
         std::vector<std::string> allowed_crossvars = {"t_soil", "theta_soil"};
-        cross_vars = cross.get_enabled_variables(allowed_crossvars);
+        crosslist = cross.get_enabled_variables(allowed_crossvars);
     }
 }
 
@@ -235,7 +235,15 @@ void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 template<typename TF>
 void Soil_enabled<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    auto &gd = grid.get_grid_data();
+    auto &sgd = soil_grid.get_grid_data();
+
+    for (auto& it : crosslist)
+    {
+        if (it == "t_soil")
+            cross.cross_soil(t_soil->fld.data(), it, iotime);
+        else if (it == "theta_soil")
+            cross.cross_soil(theta_soil->fld.data(), it, iotime);
+    }
 }
 
 template<typename TF>
