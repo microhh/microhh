@@ -1627,25 +1627,6 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
-
-    // Calc mean of soil variables
-    if (std::find(varlist_soil.begin(), varlist_soil.end(), varname) != varlist_soil.end())
-    {
-        for (auto& m : masks)
-        {
-            set_flag(flag, nmask, m.second, fld.loc[2]);
-            calc_mean(m.second.soil_profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            master.sum(m.second.soil_profs.at(varname).data.data(), gd.kcells);
-
-            // Add the offset.
-            for (auto& value : m.second.soil_profs.at(varname).data)
-                value += offset;
-
-            set_fillvalue_prof(m.second.soil_profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
-        }
-    }
-
 }
 
 template<typename TF>
