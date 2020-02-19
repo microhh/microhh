@@ -36,6 +36,7 @@ class Netcdf_file;
 class Netcdf_handle;
 
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Stats;
 template<typename> class Advec;
 template<typename> class Diff;
@@ -43,12 +44,15 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Soil_field3d;
 template<typename> class Field3d_io;
 template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
+template<typename TF>
+using Soil_field_map = std::map<std::string, std::shared_ptr<Soil_field3d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
 
@@ -56,7 +60,7 @@ template<typename TF>
 class Fields
 {
     public:
-        Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
+        Fields(Master&, Grid<TF>&, Soil_grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
         void init(Input&, Dump<TF>&, Cross<TF>&, const Sim_mode);  ///< Initialization of the field arrays.
@@ -74,6 +78,8 @@ class Fields
         void init_momentum_field  (const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
         void init_prognostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
         void init_diagnostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
+
+        void init_prognostic_soil_field(const std::string&, const std::string&, const std::string&);
 
         std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
@@ -106,6 +112,9 @@ class Fields
         Field_map<TF> sd; ///< Map containing all diagnostic scalar field3d instances.
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances.
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances.
+
+        Soil_field_map<TF> sps; ///< Map containing all prognostic soil scalar fields.
+        Soil_field_map<TF> sts; ///< Map containing all prognostic soil scalar tendencies.
 
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
@@ -145,6 +154,7 @@ class Fields
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Field3d_io<TF> field3d_io;
         Field3d_operators<TF> field3d_operators;
 

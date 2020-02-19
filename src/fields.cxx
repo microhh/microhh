@@ -32,6 +32,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "field3d.h"
+#include "soil_field3d.h"
 #include "input.h"
 #include "netcdf_interface.h"
 #include "defines.h"
@@ -231,9 +232,10 @@ namespace
 }
 
 template<typename TF>
-Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
+Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin, Input& input) :
     master(masterin),
     grid(gridin),
+    soil_grid(soilgridin),
     field3d_io(master, grid),
     field3d_operators(master, grid, *this)
 {
@@ -302,6 +304,10 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
 
     // allocate the diagnostic scalars
     for (auto& it : sd)
+        nerror += it.second->init();
+
+    // allocate the prognostic soil fields
+    for (auto& it : sps)
         nerror += it.second->init();
 
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
@@ -588,6 +594,27 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+}
+
+
+template<typename TF>
+void Fields<TF>::init_prognostic_soil_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit)
+{
+    if (sps.find(fldname)!=sps.end())
+    {
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
+    }
+
+    // add a new scalar variable
+    sps[fldname] = std::make_shared<Soil_field3d<TF>>(master, grid, soil_grid, fldname, longname, unit);
+
+    // add a new tendency for scalar variable
+    std::string fldtname  = fldname + "t";
+    std::string tlongname = "Tendency of " + longname;
+    std::string tunit     = simplify_unit(unit, "s-1");
+    sts[fldname] = std::make_shared<Soil_field3d<TF>>(master, grid, soil_grid, fldtname, tlongname, tunit);
 }
 
 template<typename TF>

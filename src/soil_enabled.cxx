@@ -28,6 +28,7 @@
 #include "grid.h"
 #include "soil_grid.h"
 #include "fields.h"
+#include "soil_field3d.h"
 #include "stats.h"
 #include "cross.h"
 #include "constants.h"
@@ -129,8 +130,8 @@ Soil_enabled<TF>::Soil_enabled(
         throw std::runtime_error("Heterogeneous soil input not (yet) implemented");
 
     // Create soil fields (temperature and volumetric water content)
-    t_soil     = std::make_shared<Soil_field<TF>>(master, grid);
-    theta_soil = std::make_shared<Soil_field<TF>>(master, grid);
+    fields.init_prognostic_soil_field("t_soil",     "Soil temperature", "K");
+    fields.init_prognostic_soil_field("theta_soil", "Soil volumetric water content", "m3 m-3");
 
     // Open NetCDF file with soil lookup table
     nc_lookup_table = std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
@@ -148,10 +149,6 @@ void Soil_enabled<TF>::init()
        Allocate/resize the soil fields, properties, and grid definition.
     */
     auto& sgd = soil_grid.get_grid_data();
-
-    // Init prognostic soil fields
-    t_soil->init(sgd.kcells);
-    theta_soil->init(sgd.kcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -215,14 +212,14 @@ void Soil_enabled<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
 
         // Initialise soil as spatially homogeneous
         init_soil_homogeneous(
-                t_soil->fld.data(), t_prof.data(),
+                fields.sps.at("t_soil")->fld.data(), t_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
 
         init_soil_homogeneous(
-                theta_soil->fld.data(), theta_prof.data(),
+                fields.sps.at("theta_soil")->fld.data(), theta_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -327,8 +324,8 @@ void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF offset = 0;
 
-    stats.calc_stats_soil("t_soil",     t_soil->fld,     offset);
-    stats.calc_stats_soil("theta_soil", theta_soil->fld, offset);
+    stats.calc_stats_soil("t_soil",     fields.sps.at("t_soil")->fld,     offset);
+    stats.calc_stats_soil("theta_soil", fields.sps.at("theta_soil")->fld, offset);
 }
 
 template<typename TF>
@@ -337,9 +334,9 @@ void Soil_enabled<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "t_soil")
-            cross.cross_soil(t_soil->fld.data(), it, iotime);
+            cross.cross_soil(fields.sps.at("t_soil")->fld.data(), it, iotime);
         else if (it == "theta_soil")
-            cross.cross_soil(theta_soil->fld.data(), it, iotime);
+            cross.cross_soil(fields.sps.at("t_soil")->fld.data(), it, iotime);
     }
 }
 
@@ -361,7 +358,7 @@ void Soil_enabled<TF>::save_prognostic_fields(const int itime)
     master.print_message("Saving \"%s\" ... ", filename);
 
     if (field3d_io.save_field3d(
-                t_soil->fld.data(),
+                fields.sps.at("t_soil")->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
@@ -377,7 +374,7 @@ void Soil_enabled<TF>::save_prognostic_fields(const int itime)
     master.print_message("Saving \"%s\" ... ", filename);
 
     if (field3d_io.save_field3d(
-                theta_soil->fld.data(),
+                fields.sps.at("theta_soil")->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
@@ -415,7 +412,7 @@ void Soil_enabled<TF>::load_prognostic_fields(const int itime)
     master.print_message("Loading \"%s\" ... ", filename);
 
     if (field3d_io.load_field3d(
-                t_soil->fld.data(),
+                fields.sps.at("t_soil")->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
@@ -431,7 +428,7 @@ void Soil_enabled<TF>::load_prognostic_fields(const int itime)
     master.print_message("Loading \"%s\" ... ", filename);
 
     if (field3d_io.load_field3d(
-                theta_soil->fld.data(),
+                fields.sps.at("theta_soil")->fld.data(),
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))

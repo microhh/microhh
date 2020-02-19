@@ -20,39 +20,58 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+
 #include "master.h"
 #include "grid.h"
-#include "soil_field.h"
+#include "soil_grid.h"
+#include "soil_field3d.h"
 
 template<typename TF>
-Soil_field<TF>::Soil_field(Master& masterin, Grid<TF>& gridin) :
+Soil_field3d<TF>::Soil_field3d(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        std::string namein, std::string longnamein, std::string unitin) :
     master(masterin),
-    grid(gridin)
+    grid(gridin),
+    soil_grid(soilgridin)
+{
+    name = namein;
+    longname = longnamein;
+    unit = unitin;
+}
+
+template<typename TF>
+Soil_field3d<TF>::~Soil_field3d()
 {
 }
 
 template<typename TF>
-Soil_field<TF>::~Soil_field()
-{
-}
-
-template<typename TF>
-void Soil_field<TF>::init(const int ktot)
+int Soil_field3d<TF>::init()
 {
     // Allocate all fields belonging to the soil field
-    const Grid_data<TF>& gd = grid.get_grid_data();
-    const int ncells_soil   = gd.ijcells *  ktot;
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
-    fld .resize(ncells_soil);
-    tend.resize(ncells_soil);
+    fld     .resize(sgd.ncells);
+    fld_bot .resize(agd.ijcells);
+    fld_top .resize(agd.ijcells);
+    flux_bot.resize(agd.ijcells);
+    flux_top.resize(agd.ijcells);
 
     // Set all values to zero
-    for (int n=0; n<ncells_soil; ++n)
-    {
+    for (int n=0; n<sgd.ncells; ++n)
         fld [n] = 0.;
-        tend[n] = 0.;
+
+    for (int n=0; n<agd.ijcells; ++n)
+    {
+        fld_bot[n]  = 0.;
+        fld_top[n]  = 0.;
+        flux_bot[n] = 0.;
+        flux_top[n] = 0.;
     }
+
+    return 0;
 }
 
-template class Soil_field<double>;
-template class Soil_field<float>;
+template class Soil_field3d<double>;
+template class Soil_field3d<float>;

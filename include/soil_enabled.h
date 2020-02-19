@@ -24,7 +24,6 @@
 #define SOIL_ENABLED
 
 #include "soil.h"
-#include "soil_field.h"
 
 class Netcdf_file;
 
@@ -55,10 +54,6 @@ class Soil_enabled : public Soil<TF>
 
         bool sw_interactive;
         bool sw_homogeneous;
-
-        // Soil fields
-        std::shared_ptr<Soil_field<TF>> t_soil;
-        std::shared_ptr<Soil_field<TF>> theta_soil;
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables
