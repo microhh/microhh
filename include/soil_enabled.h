@@ -41,7 +41,7 @@ class Soil_enabled : public Soil<TF>
         void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
         void save_prognostic_fields(int);
         void load_prognostic_fields(int);
-        void calc_tendencies() {};
+        void calc_tendencies();
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
