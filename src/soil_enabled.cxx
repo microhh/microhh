@@ -69,14 +69,17 @@ Soil_enabled<TF>::Soil_enabled(
     sw_homogeneous = inputin.get_item<bool>("soil", "sw_homogeneous", "", true);
 
     // Checks on input & limitations
-    if (sw_interactive)
-        throw std::runtime_error("Interactive soil not (yet) implemented");
+    //if (sw_interactive)
+    //    throw std::runtime_error("Interactive soil not (yet) implemented");
     if (!sw_homogeneous)
         throw std::runtime_error("Heterogeneous soil input not (yet) implemented");
 
     // Create soil fields (temperature and volumetric water content)
     t_soil     = std::make_shared<Soil_field<TF>>(master, grid);
     theta_soil = std::make_shared<Soil_field<TF>>(master, grid);
+
+    // Open NetCDF file with soil lookup table
+    nc_lookup_table = std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
 }
 
 template<typename TF>
@@ -106,6 +109,19 @@ void Soil_enabled<TF>::init()
         conductivity.resize  (sgd.ncells);
         conductivity_h.resize(sgd.ncellsh);
         source.resize        (sgd.ncells);
+
+        // Resize the lookup table
+        lookup_table_size = nc_lookup_table->get_dimension_size("index");
+
+        theta_res.resize(lookup_table_size);
+        theta_wp.resize(lookup_table_size);
+        theta_fc.resize(lookup_table_size);
+        theta_sat.resize(lookup_table_size);
+
+        gamma_sat.resize(lookup_table_size);
+        vg_a.resize(lookup_table_size);
+        vg_l.resize(lookup_table_size);
+        vg_n.resize(lookup_table_size);
     }
 }
 
@@ -177,6 +193,17 @@ void Soil_enabled<TF>::create_fields_grid_stats(
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
     }
+
+    // Read lookup table soil
+    nc_lookup_table->get_variable<TF>(theta_res, "theta_res", {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(theta_wp,  "theta_wp",  {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(theta_fc,  "theta_fc",  {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(theta_sat, "theta_sat", {0}, {lookup_table_size});
+
+    nc_lookup_table->get_variable<TF>(gamma_sat, "gamma_sat", {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(vg_a,      "alpha",     {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(vg_l,      "l",         {0}, {lookup_table_size});
+    nc_lookup_table->get_variable<TF>(vg_n,      "n",         {0}, {lookup_table_size});
 
     // Init the soil statistics
     if (stats.get_switch())

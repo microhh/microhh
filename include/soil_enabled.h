@@ -26,6 +26,8 @@
 #include "soil.h"
 #include "soil_field.h"
 
+class Netcdf_file;
+
 //template<typename> class Soil_field;
 
 template<typename TF>
@@ -70,5 +72,18 @@ class Soil_enabled : public Soil<TF>
         // Soil cross-sections
         std::vector<std::string> crosslist;
 
+        // Lookup tables van Genuchten parameterisation
+        std::shared_ptr<Netcdf_file> nc_lookup_table;
+        int lookup_table_size;
+
+        std::vector<TF> theta_res;  // Residual soil moisture content (m3 m-3)
+        std::vector<TF> theta_wp;   // Soil moisture content at wilting point (m3 m-3)
+        std::vector<TF> theta_fc;   // Soil moisture content at field capacity (m3 m-3)
+        std::vector<TF> theta_sat;  // Soil moisture content at saturation (m3 m-3)
+
+        std::vector<TF> gamma_sat;  // Conducticity soil moisture at saturation (m3 m-3)
+        std::vector<TF> vg_a;       // van Genuchten parameter alpha (m-1)
+        std::vector<TF> vg_l;       // van Genuchten parameter l (-)
+        std::vector<TF> vg_n;       // van Genuchten parameter n (-)
 };
 #endif
