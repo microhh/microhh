@@ -30,6 +30,7 @@
 
 class Master;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 class Input;
 enum class Sim_mode;
@@ -48,8 +49,8 @@ template<typename TF>
 class Timeloop
 {
     public:
-        Timeloop(Master&, Grid<TF>&, Fields<TF>&,
-                Input&, const Sim_mode);
+        Timeloop(Master&, Grid<TF>&, Soil_grid<TF>&,
+                Fields<TF>&, Input&, const Sim_mode);
         ~Timeloop();
 
         void step_time();
@@ -93,6 +94,7 @@ class Timeloop
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
 
         timeval start;

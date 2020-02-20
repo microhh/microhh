@@ -30,16 +30,20 @@
 #include "input.h"
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
+#include "soil_field3d.h"
 #include "fields.h"
 #include "timeloop.h"
 #include "defines.h"
 #include "constants.h"
 
 template<typename TF>
-Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Input& input, const Sim_mode sim_mode) :
+Timeloop<TF>::Timeloop(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
+    soil_grid(soilgridin),
     fields(fieldsin),
     flag_utc_time(false),
     ifactor(1e9)
@@ -325,13 +329,21 @@ namespace
 template<typename TF>
 void Timeloop<TF>::exec()
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd  = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     if (rkorder == 3)
     {
+        // Atmospheric fields
         for (auto& f : fields.at)
             rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk3<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 3;
@@ -339,9 +351,16 @@ void Timeloop<TF>::exec()
 
     if (rkorder == 4)
     {
+        // Atmospheric fields
         for (auto& f : fields.at)
             rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk4<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 5;

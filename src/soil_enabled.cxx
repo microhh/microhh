@@ -683,6 +683,7 @@ void Soil_enabled<TF>::calc_tendencies()
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
+
 }
 
 template<typename TF>

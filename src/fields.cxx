@@ -309,6 +309,8 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     // allocate the prognostic soil fields
     for (auto& it : sps)
         nerror += it.second->init();
+    for (auto& it : sts)
+        nerror += it.second->init();
 
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
     for (int i=0; i<n_tmp_fields; ++i)

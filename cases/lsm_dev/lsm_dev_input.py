@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # Define soil fields
     ktot_soil = nl['soil']['ktot']
-    z_soil = np.array([-1, -0.5, -0.25, -0.1])
+    z_soil = np.array([-1.75, -1.25, -0.75, -0.25])
     theta_soil = 0.2+0.1*np.arange(ktot_soil)
     temp_soil = 289+np.arange(ktot_soil)
     soil_index = np.zeros(ktot_soil, dtype=int)
