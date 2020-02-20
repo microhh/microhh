@@ -71,14 +71,14 @@ namespace
             const int kstart, const int kend,
             const int isize, const int ijsize)
     {
-        for (int k = kstart; k < kend; ++k)
-            for (int j = jstart; j < jend; ++j)
-                    #pragma ivdep
-                    for (int i = istart; i < iend; ++i)
-                    {
-                        const int ijk = i + j * isize + k * ijsize;
-                        soil_fld[ijk] = soil_prof[k - kstart];
-                    }
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i+j * isize + k*ijsize;
+                    soil_fld[ijk] = soil_prof[k-kstart];
+                }
     }
 
     template<typename TF>
@@ -93,7 +93,7 @@ namespace
             const TF* const restrict theta_fc,
             const int table_size)
     {
-        for (int i = 0; i < table_size; ++i)
+        for (int i=0; i<table_size; ++i)
         {
             // van Genuchten parameter `m`
             vg_m[i] = (TF(1) - (TF(1) / vg_n[i]));
@@ -134,28 +134,28 @@ namespace
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        for (int k = kstart; k < kend; ++k)
-            for (int j = jstart; j < jend; ++j)
-                    #pragma ivdep
-                    for (int i = istart; i < iend; ++i)
-                    {
-                        const int ijk = i + j * icells + k * ijcells;
-                        const int si = soil_index[ijk];
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int si = soil_index[ijk];
 
-                        // Heat conductivity at saturation (from IFS code..)
-                        const TF lambda_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
-                                                * pow(Constants::gamma_T_water<TF>, theta[ijk])
-                                                * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
+                    // Heat conductivity at saturation (from IFS code..)
+                    const TF lambda_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
+                                            * pow(Constants::gamma_T_water<TF>, theta[ijk])
+                                            * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
 
-                        // Kersten number for fine soils [IFS eq 8.64] (-)
-                        const TF kersten = log10(std::max(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
+                    // Kersten number for fine soils [IFS eq 8.64] (-)
+                    const TF kersten = log10(std::max(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
 
-                        // Heat conductivity soil [IFS eq 8.62] (W m-1 K-1)
-                        gamma[ijk] = kersten * (lambda_T_sat - gamma_dry[si]) + gamma_dry[si];
+                    // Heat conductivity soil [IFS eq 8.62] (W m-1 K-1)
+                    gamma[ijk] = kersten * (lambda_T_sat - gamma_dry[si]) + gamma_dry[si];
 
-                        // Heat diffusivity (m2 s-1)
-                        kappa[ijk] = gamma[ijk] / rho_C[si];
-                    }
+                    // Heat diffusivity (m2 s-1)
+                    kappa[ijk] = gamma[ijk] / rho_C[si];
+                }
     }
 
     template<typename TF>
@@ -179,31 +179,31 @@ namespace
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        for (int k = kstart; k < kend; ++k)
-            for (int j = jstart; j < jend; ++j)
-                    #pragma ivdep
-                    for (int i = istart; i < iend; ++i)
-                    {
-                        const int ijk = i + j * icells + k * ijcells;
-                        const int si = soil_index[ijk];
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int si = soil_index[ijk];
 
-                        // Limit soil moisture just above the residual soil moisture content
-                        const TF theta_lim = std::max(theta[ijk], TF(1.001) * theta_res[si]);
+                    // Limit soil moisture just above the residual soil moisture content
+                    const TF theta_lim = std::max(theta[ijk], TF(1.001) * theta_res[si]);
 
-                        // Dimensionless soil water content
-                        const TF theta_norm = (theta_lim - theta_res[si]) / (theta_sat[si] - theta_res[si]);
+                    // Dimensionless soil water content
+                    const TF theta_norm = (theta_lim - theta_res[si]) / (theta_sat[si] - theta_res[si]);
 
-                        // Calculate & limit the diffusivity
-                        kappa[ijk] = calc_diffusivity_vg(
-                                vg_a[si], vg_l[si], vg_m[si], gamma_sat[si],
-                                theta_res[si], theta_sat[si], theta_norm);
-                        kappa[ijk] = std::max(std::min(kappa_max[si], kappa[ijk]), kappa_min[si]);
+                    // Calculate & limit the diffusivity
+                    kappa[ijk] = calc_diffusivity_vg(
+                            vg_a[si], vg_l[si], vg_m[si], gamma_sat[si],
+                            theta_res[si], theta_sat[si], theta_norm);
+                    kappa[ijk] = std::max(std::min(kappa_max[si], kappa[ijk]), kappa_min[si]);
 
-                        // Calculate & limit the conductivity
-                        gamma[ijk] = calc_conductivity_vg(
-                                theta_norm, vg_l[si], vg_m[si], gamma_sat[si]);
-                        gamma[ijk] = std::max(std::min(gamma_max[si], gamma[ijk]), gamma_min[si]);
-                    }
+                    // Calculate & limit the conductivity
+                    gamma[ijk] = calc_conductivity_vg(
+                            theta_norm, vg_l[si], vg_m[si], gamma_sat[si]);
+                    gamma[ijk] = std::max(std::min(gamma_max[si], gamma[ijk]), gamma_min[si]);
+                }
     }
 
     template<typename TF, Soil_interpolation_type interpolation_type>
@@ -217,43 +217,43 @@ namespace
     {
         const int kk = ijcells;
 
-        for (int k = kstart + 1; k < kend; ++k)
-            for (int j = jstart; j < jend; ++j)
-                    #pragma ivdep
-                    for (int i = istart; i < iend; ++i)
-                    {
-                        const int ijk = i + j * icells + k * ijcells;
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
 
-                        if (interpolation_type == Soil_interpolation_type::Mean)
-                            fldh[ijk] = TF(0.5) * (fld[ijk] + fld[ijk-kk]);
-                        else if(interpolation_type == Soil_interpolation_type::Max)
-                            fldh[ijk] = std::max(fld[ijk], fld[ijk-kk]);
-                    }
+                    if (interpolation_type == Soil_interpolation_type::Mean)
+                        fldh[ijk] = TF(0.5) * (fld[ijk] + fld[ijk-kk]);
+                    else if(interpolation_type == Soil_interpolation_type::Max)
+                        fldh[ijk] = std::max(fld[ijk], fld[ijk-kk]);
+                }
     }
 
     template<typename TF>
     void set_bcs_temperature(
-            TF* const restrict fluxtop,
-            TF* const restrict fluxbot,
+            TF* const restrict flux_top,
+            TF* const restrict flux_bot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        for (int j = jstart; j < jend; ++j)
-                #pragma ivdep
-                for (int i = istart; i < iend; ++i)
-                {
-                    const int ij = i + j * icells;
-                    fluxtop[ij] = TF(0);    // Eventually: G/rho
-                    fluxbot[ij] = TF(0);
-                }
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*icells;
+                flux_top[ij] = TF(0);    // Eventually: G/rho
+                flux_bot[ij] = TF(0);
+            }
     }
 
     template<typename TF>
     void set_bcs_moisture(
-            TF* const restrict fluxtop,
-            TF* const restrict fluxbot,
+            TF* const restrict flux_top,
+            TF* const restrict flux_bot,
             TF* const restrict conductivity_h,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -261,20 +261,90 @@ namespace
             const int icells, const int ijcells)
     {
         const int kk = ijcells;
-        for (int j = jstart; j < jend; ++j)
-                #pragma ivdep
-                for (int i = istart; i < iend; ++i)
-                {
-                    const int ij = i + j * icells;
-                    fluxtop[ij] = TF(0);    // Eventually: LE & infiltration
-                    fluxbot[ij] = TF(0);
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*icells;
+                flux_top[ij] = TF(0);    // Eventually: LE & infiltration
+                flux_bot[ij] = TF(0);
 
-                    // Set free drainage bottom BC:
-                    const int ijk = ij + kstart*ijcells;
-                    conductivity_h[ijk] = conductivity_h[ijk+kk];
-                }
+                // Set free drainage bottom BC:
+                const int ijk = ij + kstart*ijcells;
+                conductivity_h[ijk] = conductivity_h[ijk+kk];
+            }
     }
 
+    template<typename TF, bool sw_source_term, bool sw_conductivity_term>
+    void diff_explicit(
+            TF* const restrict tend,
+            const TF* const restrict fld,
+            const TF* const restrict kappa_h,
+            const TF* const restrict gamma_h,
+            const TF* const restrict source,
+            const TF* const restrict flux_top,
+            const TF* const restrict flux_bot,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int kk = ijcells;
+        int k;
+
+        // Bottom soil level
+        k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = ij + k*ijcells;
+
+                tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk]) * dzhi[k+1]) + flux_bot[ij])*dzi[k];
+
+                if (sw_conductivity_term)
+                    tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
+                if (sw_source_term)
+                    tend[ijk] += source[ijk];
+            }
+
+        // Top soil level
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = ij + k*ijcells;
+
+                tend[ijk] += (-flux_top[ij] - (kappa_h[ijk] * (fld[ijk] - fld[ijk-kk]) * dzhi[k]))*dzi[k];
+
+                if (sw_conductivity_term)
+                    tend[ijk] -= gamma_h[ijk] * dzi[k];
+                if (sw_source_term)
+                    tend[ijk] += source[ijk];
+            }
+
+        // Interior
+        for (int k=kstart+1; k<kend-1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk   ]) * dzhi[k+1])
+                               - (kappa_h[ijk   ] * (fld[ijk   ] - fld[ijk-kk]) * dzhi[k  ])) * dzi[k];
+
+                    if (sw_conductivity_term)
+                        tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
+                    if (sw_source_term)
+                        tend[ijk] += source[ijk];
+                }
+    }
 }
 
 template<typename TF>
@@ -489,6 +559,15 @@ void Soil_enabled<TF>::calc_tendencies()
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    // Only soil moisture has a source and conductivity term
+    const bool sw_source_term_t = false;
+    const bool sw_conductivity_term_t = false;
+    const bool sw_source_term_theta = true;
+    const bool sw_conductivity_term_theta = true;
+
+    //
+    // Soil temperature
+    //
     // Calculate the thermal diffusivity at full levels
     calc_thermal_properties(
             diffusivity.data(),
@@ -521,8 +600,25 @@ void Soil_enabled<TF>::calc_tendencies()
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    // Calc tendency temperature......
+    // Calculate diffusive tendency
+    diff_explicit<TF, sw_source_term_t, sw_conductivity_term_t>(
+            fields.sts.at("t_soil")->fld.data(),
+            fields.sps.at("t_soil")->fld.data(),
+            diffusivity_h.data(),
+            conductivity_h.data(),
+            source.data(),
+            fields.sps.at("t_soil")->flux_top.data(),
+            fields.sps.at("t_soil")->flux_bot.data(),
+            sgd.dzi.data(), sgd.dzhi.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kstart, sgd.kend,
+            agd.icells, agd.ijcells);
 
+    //
+    // Soil moisture
+    //
+    // Calculate the hydraulic diffusivity and conductivity at full levels
     calc_hydraulic_properties(
             diffusivity.data(),
             conductivity.data(),
@@ -573,7 +669,20 @@ void Soil_enabled<TF>::calc_tendencies()
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    // Calc tendency soil moisture......
+    // Calculate diffusive tendency
+    diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
+            fields.sts.at("theta_soil")->fld.data(),
+            fields.sps.at("theta_soil")->fld.data(),
+            diffusivity_h.data(),
+            conductivity_h.data(),
+            source.data(),
+            fields.sps.at("theta_soil")->flux_top.data(),
+            fields.sps.at("theta_soil")->flux_bot.data(),
+            sgd.dzi.data(), sgd.dzhi.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kstart, sgd.kend,
+            agd.icells, agd.ijcells);
 }
 
 template<typename TF>
