@@ -64,7 +64,8 @@ namespace
 
     template<typename TF>
     void init_soil_homogeneous(
-            TF *const restrict soil_fld, const TF *const restrict soil_prof,
+            TF* const restrict soil_fld,
+            const TF* const restrict soil_prof,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -82,14 +83,14 @@ namespace
 
     template<typename TF>
     void calc_soil_properties(
-            TF *const restrict kappa_theta_min, TF *const restrict kappa_theta_max,
-            TF *const restrict gamma_theta_min, TF *const restrict gamma_theta_max,
-            TF *const restrict vg_m,
-            TF *const restrict gamma_T_dry, TF *const restrict rho_C,
-            const TF *const restrict vg_a, const TF *const restrict vg_l, const TF *const restrict vg_n,
-            const TF *const restrict gamma_theta_sat,
-            const TF *const restrict theta_res, const TF *const restrict theta_sat,
-            const TF *const restrict theta_fc,
+            TF* const restrict kappa_theta_min, TF* const restrict kappa_theta_max,
+            TF* const restrict gamma_theta_min, TF* const restrict gamma_theta_max,
+            TF* const restrict vg_m,
+            TF* const restrict gamma_T_dry, TF* const restrict rho_C,
+            const TF* const restrict vg_a, const TF* const restrict vg_l, const TF* const restrict vg_n,
+            const TF* const restrict gamma_theta_sat,
+            const TF* const restrict theta_res, const TF* const restrict theta_sat,
+            const TF* const restrict theta_fc,
             const int table_size)
     {
         for (int i = 0; i < table_size; ++i)
@@ -121,13 +122,13 @@ namespace
 
     template<typename TF>
     void calc_thermal_properties(
-            TF *const restrict kappa,
-            TF *const restrict gamma,
-            const int *const restrict soil_index,
-            const TF *const restrict theta,
-            const TF *const restrict theta_sat,
-            const TF *const restrict gamma_dry,
-            const TF *const restrict rho_C,
+            TF* const restrict kappa,
+            TF* const restrict gamma,
+            const int* const restrict soil_index,
+            const TF* const restrict theta,
+            const TF* const restrict theta_sat,
+            const TF* const restrict gamma_dry,
+            const TF* const restrict rho_C,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -159,20 +160,20 @@ namespace
 
     template<typename TF>
     void calc_hydraulic_properties(
-            TF *const restrict kappa,
-            TF *const restrict gamma,
-            const int *const restrict soil_index,
-            const TF *const restrict theta,
-            const TF *const restrict theta_sat,
-            const TF *const restrict theta_res,
-            const TF *const restrict vg_a,
-            const TF *const restrict vg_l,
-            const TF *const restrict vg_m,
-            const TF *const restrict gamma_sat,
-            const TF *const restrict gamma_min,
-            const TF *const restrict gamma_max,
-            const TF *const restrict kappa_min,
-            const TF *const restrict kappa_max,
+            TF* const restrict kappa,
+            TF* const restrict gamma,
+            const int* const restrict soil_index,
+            const TF* const restrict theta,
+            const TF* const restrict theta_sat,
+            const TF* const restrict theta_res,
+            const TF* const restrict vg_a,
+            const TF* const restrict vg_l,
+            const TF* const restrict vg_m,
+            const TF* const restrict gamma_sat,
+            const TF* const restrict gamma_min,
+            const TF* const restrict gamma_max,
+            const TF* const restrict kappa_min,
+            const TF* const restrict kappa_max,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -207,8 +208,8 @@ namespace
 
     template<typename TF, Soil_interpolation_type interpolation_type>
     void interp_2_vertical(
-            TF *const restrict fldh,
-            const TF *const restrict fld,
+            TF* const restrict fldh,
+            const TF* const restrict fld,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -233,7 +234,7 @@ namespace
     template<typename TF>
     void set_bcs_temperature(
             TF* const restrict fluxtop,
-            TF *const restrict fluxbot,
+            TF* const restrict fluxbot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -252,7 +253,7 @@ namespace
     template<typename TF>
     void set_bcs_moisture(
             TF* const restrict fluxtop,
-            TF *const restrict fluxbot,
+            TF* const restrict fluxbot,
             TF* const restrict conductivity_h,
             const int istart, const int iend,
             const int jstart, const int jend,
