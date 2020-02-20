@@ -39,7 +39,7 @@ if __name__ == '__main__':
     z_soil = np.array([-1, -0.5, -0.25, -0.1])
     theta_soil = 0.2+0.1*np.arange(ktot_soil)
     temp_soil = 289+np.arange(ktot_soil)
-    soil_index = np.arange(ktot_soil, dtype=int)
+    soil_index = np.zeros(ktot_soil, dtype=int)
 
     # Save all the input data to NetCDF
     nc_file = nc.Dataset('lsm_dev_input.nc', mode='w', datamodel='NETCDF4')

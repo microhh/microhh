@@ -145,7 +145,7 @@ namespace
                         // Heat conductivity at saturation (from IFS code..)
                         const TF lambda_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
                                                 * pow(Constants::gamma_T_water<TF>, theta[ijk])
-                                                * TF(2.2) * (theta_sat[si] - theta[ijk]);
+                                                * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
 
                         // Kersten number for fine soils [IFS eq 8.64] (-)
                         const TF kersten = log10(std::max(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
