@@ -27,7 +27,7 @@
 
 class Netcdf_file;
 
-//template<typename> class Soil_field;
+enum class Soil_interpolation_type {Mean, Max};
 
 template<typename TF>
 class Soil_enabled : public Soil<TF>
