@@ -52,8 +52,8 @@ class Soil_enabled : public Soil<TF>
         using Soil<TF>::master;
         using Soil<TF>::fields;
 
-        bool sw_interactive;
         bool sw_homogeneous;
+        bool sw_free_drainage;
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables

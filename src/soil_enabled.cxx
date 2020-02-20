@@ -250,7 +250,7 @@ namespace
             }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_free_drainage>
     void set_bcs_moisture(
             TF* const restrict flux_top,
             TF* const restrict flux_bot,
@@ -271,7 +271,10 @@ namespace
 
                 // Set free drainage bottom BC:
                 const int ijk = ij + kstart*ijcells;
-                conductivity_h[ijk] = conductivity_h[ijk+kk];
+                if (sw_free_drainage)
+                    conductivity_h[ijk] = conductivity_h[ijk+kk];
+                else
+                    conductivity_h[ijk] = TF(0);
             }
     }
 
@@ -355,12 +358,10 @@ Soil_enabled<TF>::Soil_enabled(
 {
     sw_soil = Soil_type::Enabled;
 
-    sw_interactive = inputin.get_item<bool>("soil", "sw_interactive", "", false);
-    sw_homogeneous = inputin.get_item<bool>("soil", "sw_homogeneous", "", true);
+    sw_homogeneous   = inputin.get_item<bool>("soil", "sw_homogeneous", "", true);
+    sw_free_drainage = inputin.get_item<bool>("soil", "sw_free_drainage", "", true);
 
     // Checks on input & limitations
-    //if (sw_interactive)
-    //    throw std::runtime_error("Interactive soil not (yet) implemented");
     if (!sw_homogeneous)
         throw std::runtime_error("Heterogeneous soil input not (yet) implemented");
 
@@ -388,36 +389,33 @@ void Soil_enabled<TF>::init()
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
 
-    if (sw_interactive)
-    {
-        diffusivity.resize   (sgd.ncells);
-        diffusivity_h.resize (sgd.ncellsh);
-        conductivity.resize  (sgd.ncells);
-        conductivity_h.resize(sgd.ncellsh);
-        source.resize        (sgd.ncells);
+    diffusivity.resize   (sgd.ncells);
+    diffusivity_h.resize (sgd.ncellsh);
+    conductivity.resize  (sgd.ncells);
+    conductivity_h.resize(sgd.ncellsh);
+    source.resize        (sgd.ncells);
 
-        // Resize the lookup table
-        lookup_table_size = nc_lookup_table->get_dimension_size("index");
+    // Resize the lookup table
+    lookup_table_size = nc_lookup_table->get_dimension_size("index");
 
-        theta_res.resize(lookup_table_size);
-        theta_wp.resize(lookup_table_size);
-        theta_fc.resize(lookup_table_size);
-        theta_sat.resize(lookup_table_size);
+    theta_res.resize(lookup_table_size);
+    theta_wp.resize(lookup_table_size);
+    theta_fc.resize(lookup_table_size);
+    theta_sat.resize(lookup_table_size);
 
-        gamma_theta_sat.resize(lookup_table_size);
-        vg_a.resize(lookup_table_size);
-        vg_l.resize(lookup_table_size);
-        vg_n.resize(lookup_table_size);
+    gamma_theta_sat.resize(lookup_table_size);
+    vg_a.resize(lookup_table_size);
+    vg_l.resize(lookup_table_size);
+    vg_n.resize(lookup_table_size);
 
-        vg_m.resize(lookup_table_size);
-        kappa_theta_max.resize(lookup_table_size);
-        kappa_theta_min.resize(lookup_table_size);
-        gamma_theta_max.resize(lookup_table_size);
-        gamma_theta_min.resize(lookup_table_size);
+    vg_m.resize(lookup_table_size);
+    kappa_theta_max.resize(lookup_table_size);
+    kappa_theta_min.resize(lookup_table_size);
+    gamma_theta_max.resize(lookup_table_size);
+    gamma_theta_min.resize(lookup_table_size);
 
-        gamma_T_dry.resize(lookup_table_size);
-        rho_C.resize(lookup_table_size);
-    }
+    gamma_T_dry.resize(lookup_table_size);
+    rho_C.resize(lookup_table_size);
 }
 
 template<typename TF>
@@ -541,8 +539,17 @@ void Soil_enabled<TF>::create_fields_grid_stats(
         }
 
         // Add the statistics variables
-        stats.add_prof("t_soil", "Soil temperature", "K", "zs", group_name);
-        stats.add_prof("theta_soil", "Soil volumetric water content", "-", "zs", group_name);
+        stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
+        stats.add_prof("theta", "Soil volumetric water content", "-", "zs", group_name);
+
+        //stats.add_prof("diff_t", "Full level soil temperature diffusivity", "m2 s-1 ", "zs", group_name);
+        //stats.add_prof("diff_t_h", "Half level soil temperature diffusivity", "m2 s-1 ", "zsh", group_name);
+
+        //stats.add_prof("diff_theta", "Full level soil moisture diffusivity", "m2 s-1 ", "zs", group_name);
+        //stats.add_prof("diff_theta_h", "Half level soil moisture diffusivity", "m2 s-1 ", "zsh", group_name);
+
+        //stats.add_prof("cond_theta", "Full level soil moisture conductivity", "m s-1 ", "zs", group_name);
+        //stats.add_prof("cond_theta_h", "Half level soil moisture conductivity", "m s-1 ", "zsh", group_name);
     }
 
     // Init the soil cross-sections
@@ -660,14 +667,24 @@ void Soil_enabled<TF>::calc_tendencies()
 
     // Set the flux boundary conditions at the top and bottom
     // of the soil layer, and a free drainage conditions at the bottom.
-    set_bcs_moisture(
-            fields.sps.at("theta_soil")->flux_top.data(),
-            fields.sps.at("theta_soil")->flux_bot.data(),
-            conductivity_h.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            sgd.kstart, sgd.kend,
-            agd.icells, agd.ijcells);
+    if (sw_free_drainage)
+        set_bcs_moisture<TF, true>(
+                fields.sps.at("theta_soil")->flux_top.data(),
+                fields.sps.at("theta_soil")->flux_bot.data(),
+                conductivity_h.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+    else
+        set_bcs_moisture<TF, false>(
+                fields.sps.at("theta_soil")->flux_top.data(),
+                fields.sps.at("theta_soil")->flux_bot.data(),
+                conductivity_h.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
 
     // Calculate diffusive tendency
     diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
@@ -691,6 +708,7 @@ void Soil_enabled<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF offset = 0;
 
+    // Soil prognostic fields
     stats.calc_stats_soil("t_soil",     fields.sps.at("t_soil")->fld,     offset);
     stats.calc_stats_soil("theta_soil", fields.sps.at("theta_soil")->fld, offset);
 }
