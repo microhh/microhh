@@ -23,47 +23,74 @@
 #ifndef SOIL
 #define SOIL
 
-class Master;
-class Input;
-template<typename> class Grid;
-template<typename> class Soil_grid;
-template<typename> class Fields;
-template<typename> class Stats;
-template<typename> class Cross;
+class Netcdf_file;
 
-enum class Soil_type {Disabled, Enabled};
+enum class Soil_interpolation_type {Mean, Max};
 
-/**
- * Base class for the soil scheme. This class is abstract and only
- * derived classes can be instantiated. Derived classes are
- * implemented that handle different microphysiscs schemes.
- */
 template<typename TF>
 class Soil
 {
     public:
         Soil(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Soil();
+        ~Soil();
 
-        static std::shared_ptr<Soil> factory(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
-        Soil_type get_switch();
+        void init();
+        void create_cold_start(Input&, Netcdf_handle&);
+        void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
+        void save_prognostic_fields(int);
+        void load_prognostic_fields(int);
+        void calc_tendencies();
+        void exec_stats(Stats<TF>&);
+        void exec_cross(Cross<TF>&, unsigned long);
 
-        // Below are the functions that the derived class has to implement.
-        virtual void init() = 0;
-        virtual void create_cold_start(Input&, Netcdf_handle&) = 0;
-        virtual void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&) = 0;
-        virtual void save_prognostic_fields(int) = 0;
-        virtual void load_prognostic_fields(int) = 0;
-        virtual void calc_tendencies() = 0;
-        virtual void exec_stats(Stats<TF>&) = 0;
-        virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
-
-    protected:
+    private:
         Master& master;
         Grid<TF>& grid;
         Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
 
-        Soil_type sw_soil;
+        bool sw_soil;
+        bool sw_homogeneous;
+        bool sw_free_drainage;
+
+        // Soil properties
+        std::vector<int> soil_index;    // Index in lookup tables
+
+        std::vector<TF> diffusivity;    // Full level (m2 s-1)
+        std::vector<TF> diffusivity_h;  // Half level (m2 s-1)
+        std::vector<TF> conductivity;   // Full level (unit m s-1)
+        std::vector<TF> conductivity_h; // Half level (unit m s-1)
+        std::vector<TF> source;         // Source term (unit s-1)
+
+        // Soil cross-sections
+        std::vector<std::string> crosslist;
+
+        // Lookup tables van Genuchten parameterisation
+        std::shared_ptr<Netcdf_file> nc_lookup_table;
+        int lookup_table_size;
+
+        // Lookup table data obtained from input NetCDF file:
+        std::vector<TF> theta_res;  // Residual soil moisture content (m3 m-3)
+        std::vector<TF> theta_wp;   // Soil moisture content at wilting point (m3 m-3)
+        std::vector<TF> theta_fc;   // Soil moisture content at field capacity (m3 m-3)
+        std::vector<TF> theta_sat;  // Soil moisture content at saturation (m3 m-3)
+
+        std::vector<TF> gamma_theta_sat;  // Conducticity soil moisture at saturation (m3 m-3)
+
+        std::vector<TF> vg_a;  // van Genuchten parameter alpha (m-1)
+        std::vector<TF> vg_l;  // van Genuchten parameter l (-)
+        std::vector<TF> vg_n;  // van Genuchten parameter n (-)
+
+        // Derived lookup table entries
+        std::vector<TF> vg_m;  // van Genuchten parameter m (-)
+
+        std::vector<TF> kappa_theta_max;  // Maximum diffusivity (m2 s-1)
+        std::vector<TF> kappa_theta_min;  // Minimum diffusivity (m2 s-1)
+
+        std::vector<TF> gamma_theta_max;  // Maximum conductivity (m s-1):
+        std::vector<TF> gamma_theta_min;  // Minimum conductivity (m s-1)
+
+        std::vector<TF> gamma_T_dry;      // Heat conductivity dry soil (m s-1)
+        std::vector<TF> rho_C;            // Volumetric soil heat capacity (J m-3 K-1)
 };
 #endif

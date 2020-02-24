@@ -39,7 +39,7 @@ if __name__ == '__main__':
     z_soil = np.array([-1.75, -1.25, -0.75, -0.25])
     theta_soil = 0.2+0.1*np.arange(ktot_soil)
     temp_soil = 289+np.arange(ktot_soil)
-    soil_index = np.zeros(ktot_soil, dtype=int)
+    soil_index = np.ones(ktot_soil, dtype=int)*2
 
     # Save all the input data to NetCDF
     nc_file = nc.Dataset('lsm_dev_input.nc', mode='w', datamodel='NETCDF4')
@@ -70,8 +70,8 @@ if __name__ == '__main__':
     nc_group_soil = nc_file.createGroup("soil")
 
     nc_soil_index = nc_group_soil.createVariable("soil_index", int_type, ("z_soil"))
-    nc_theta_soil = nc_group_soil.createVariable("theta_soil", float_type, ("z_soil"))
-    nc_temp_soil  = nc_group_soil.createVariable("t_soil", float_type, ("z_soil"))
+    nc_theta_soil = nc_group_soil.createVariable("theta", float_type, ("z_soil"))
+    nc_temp_soil  = nc_group_soil.createVariable("t", float_type, ("z_soil"))
 
     nc_soil_index[:] = soil_index[:]
     nc_theta_soil[:] = theta_soil[:]

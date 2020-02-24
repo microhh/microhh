@@ -126,8 +126,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
-        soil      = Soil<TF>     ::factory(master, *grid, *soil_grid, *fields, *input);
 
+        soil      = std::make_shared<Soil   <TF>>(master, *grid, *soil_grid, *fields, *input);
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);

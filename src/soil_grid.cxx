@@ -38,7 +38,7 @@ template<typename TF>
 Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin), grid(gridin)
 {
-    sw_soil_enabled = input.get_item<bool>("soil", "swsoil", "", false);
+    sw_soil_enabled = input.get_item<bool>("soil", "sw_soil", "", false);
 
     if (sw_soil_enabled)
     {
