@@ -53,6 +53,7 @@
 #include "dump.h"
 #include "model.h"
 #include "soil.h"
+#include "land_surface.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -127,7 +128,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        soil      = std::make_shared<Soil   <TF>>(master, *grid, *soil_grid, *fields, *input);
+        soil      = std::make_shared<Soil        <TF>>(master, *grid, *soil_grid, *fields, *input);
+        lsm       = std::make_shared<Land_surface<TF>>(master, *grid, *fields, *input);
+
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
@@ -188,6 +191,7 @@ void Model<TF>::init()
     decay->init(*input);
     budget->init();
     soil->init();
+    lsm->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
