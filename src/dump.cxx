@@ -108,9 +108,9 @@ bool Dump<TF>::do_dump(unsigned long itime)
 }
 
 template<typename TF>
-std::vector<std::string>* Dump<TF>::get_dumplist()
+std::vector<std::string>& Dump<TF>::get_dumplist()
 {
-    return &dumplist;
+    return dumplist;
 }
 
 template<typename TF>

@@ -40,7 +40,7 @@ class Dump
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swdump; }
-        std::vector<std::string>* get_dumplist();
+        std::vector<std::string>& get_dumplist();
 
         bool do_dump(unsigned long);
         void save_dump(TF*, const std::string&, int);
