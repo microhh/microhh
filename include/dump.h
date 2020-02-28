@@ -43,7 +43,7 @@ class Dump
         std::vector<std::string>* get_dumplist();
 
         bool do_dump(unsigned long);
-        void save_dump(TF*, std::string, int);
+        void save_dump(TF*, const std::string&, int);
 
     private:
         Master& master;
@@ -51,8 +51,8 @@ class Dump
         Fields<TF>& fields;
         Field3d_io<TF> field3d_io;
 
-        std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
-        bool swdump;           ///< Statistics on/off switch
+        std::vector<std::string> dumplist; // List with all dumps from the ini file.
+        bool swdump;                       // Statistics on/off switch
         double sampletime;
         unsigned long isampletime;
 };
