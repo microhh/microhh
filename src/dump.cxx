@@ -40,7 +40,7 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
 
     if (swdump)
     {
-       // Get the time at which the dump sections are triggered.
+        // Get the time at which the dump sections are triggered.
         sampletime = inputin.get_item<double>("dump", "sampletime", "");
 
         // Get list of dump variables.
@@ -119,10 +119,10 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     const double no_offset = 0.;
     char filename[256];
 
-    std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
+    std::sprintf(filename, "%s.xyz.%07d", varname.c_str(), iotime);
     std::ifstream infile(filename);
 
-    if(infile.good())
+    if (infile.good())
     {
         master.print_message("%s already exists\n", filename);
     }
@@ -136,7 +136,7 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
         if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
         {
             master.print_message("FAILED\n");
-            throw std::runtime_error("In Dump");
+            throw std::runtime_error("Writing error in dump");
         }
         else
         {
@@ -147,7 +147,6 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
         fields.release_tmp(tmp2);
     }
 }
-
 
 template class Dump<double>;
 template class Dump<float>;
