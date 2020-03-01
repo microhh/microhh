@@ -781,9 +781,10 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state(bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
-                    bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
-                    gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+    calc_base_state(
+            bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
+            bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
+            gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
     if (bs.swbasestate == Basestate_type::boussinesq)
@@ -807,7 +808,6 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     // 7. Process the time dependent surface pressure
     tdep_pbot->create_timedep(input_nc);
 
-
     // Init the toolbox classes.
     boundary_cyclic.init();
 
@@ -828,18 +828,20 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto tmp = fields.get_tmp();
     if (bs.swupdatebasestate)
     {
-        calc_base_state(bs.pref.data(), bs.prefh.data(),
-                        bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
-                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state(
+                bs.pref.data(), bs.prefh.data(),
+                bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
     }
 
     // extend later for gravity vector not normal to surface
-    calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
-                           &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
-                           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                           gd.icells, gd.ijcells);
+    calc_buoyancy_tend_2nd(
+            fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
+            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
+            &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
 
