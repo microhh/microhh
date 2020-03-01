@@ -76,9 +76,9 @@ add_0d_variable(rsdscs_avg, "rsdscs_avg", "domain avg. surface downwelling short
 add_0d_variable(rsuscs_avg, "rsuscs_avg", "domain avg. surface upwelling shortwave flux - clear sky", "W m-2")
 del(rldscs_avg, rluscs_avg, rsdscs_avg, rsuscs_avg)
 
-rlut_avg = nc_file.groups["radiation"].variables["lw_flux_up"][:,0]
-rsdt_avg = nc_file.groups["radiation"].variables["sw_flux_dn"][:,0]
-rsut_avg = nc_file.groups["radiation"].variables["sw_flux_up"][:,0]
+rlut_avg = nc_file.groups["radiation"].variables["lw_flux_up"][:,-2]
+rsdt_avg = nc_file.groups["radiation"].variables["sw_flux_dn"][:,-2]
+rsut_avg = nc_file.groups["radiation"].variables["sw_flux_up"][:,-2]
 add_0d_variable(rlut_avg, "rlut_avg", "domain avg. TOA upwelling longwave flux", "W m-2")
 add_0d_variable(rsdt_avg, "rsdt_avg", "domain avg. TOA downwelling shortwave flux", "W m-2")
 add_0d_variable(rsut_avg, "rsut_avg", "domain avg. TOA upwelling shortwave flux", "W m-2")

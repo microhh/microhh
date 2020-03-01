@@ -136,6 +136,15 @@ class Stats
                 const std::string&, const std::string&,
                 const std::string&, const std::string&, Stats_whitelist_type=Stats_whitelist_type::Default);
 
+        void calc_mask_stats(
+                std::pair<const std::string, Mask<TF>>&,
+                const std::string, const Field3d<TF>&, const TF, const TF);
+
+        void calc_mask_mean_profile(
+                std::vector<TF>&,
+                const std::pair<const std::string, Mask<TF>>&,
+                const Field3d<TF>&);
+
         void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
         void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
@@ -143,6 +152,8 @@ class Stats
         void calc_tend(Field3d<TF>&, const std::string);
         void set_prof(const std::string, const std::vector<TF>&);
         void set_timeseries(const std::string, const TF);
+
+        Mask_map<TF>& get_masks() { return masks; }
 
     private:
         Master& master;
@@ -172,7 +183,7 @@ class Stats
         std::vector<unsigned int> mfield;
         std::vector<unsigned int> mfield_bot;
 
-        //Tendency calculations
+        // Tendency calculations
         std::map<std::string, std::vector<std::string>> tendency_order;
 
         void calc_flux_2nd(TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,

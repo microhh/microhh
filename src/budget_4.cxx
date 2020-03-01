@@ -36,6 +36,7 @@
 #include "stats.h"
 #include "field3d_operators.h"
 #include "constants.h"
+#include "netcdf_interface.h"
 
 #include "budget.h"
 #include "budget_4.h"
@@ -45,7 +46,7 @@ namespace
     template<typename TF>
     void calc_ke(TF* restrict ke, TF* restrict tke,
                  const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                 const TF* restrict umodel, const TF* restrict vmodel,
+                 const TF* restrict umodel, const TF* restrict vmodel, const TF* restrict wmodel,
                  const TF utrans, const TF vtrans,
                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                  const int icells, const int ijcells)
@@ -85,10 +86,28 @@ namespace
                                 + ci2<TF>*pow2(u[ijk+ii1] - umodel[k]) + ci3<TF>*pow2(u[ijk+ii2] - umodel[k]);
                     const TF v2 = ci0<TF>*pow2(v[ijk-jj1] - vmodel[k]) + ci1<TF>*pow2(v[ijk    ] - vmodel[k])
                                 + ci2<TF>*pow2(v[ijk+jj1] - vmodel[k]) + ci3<TF>*pow2(v[ijk+jj2] - vmodel[k]);
-                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1]) + ci1<TF>*pow2(w[ijk]) + ci2<TF>*pow2(w[ijk+kk1]) + ci3<TF>*pow2(w[ijk+kk2]);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1] - wmodel[k-1]) + ci1<TF>*pow2(w[ijk] - wmodel[k]) + ci2<TF>*pow2(w[ijk+kk1] - wmodel[k+1]) + ci3<TF>*pow2(w[ijk+kk2] - wmodel[k+2]);
                     tke[ijk] = TF(0.5)*(u2 + v2 + w2);
                 }
         }
+    }
+
+    template<typename TF>
+    void calc_prime(
+            TF* restrict a_prime, const TF* restrict a, const TF* restrict a_mean,
+            const int icells, const int jcells, const int kcells,
+            const int kk)
+    {
+        const int jj = icells;
+
+        for (int k=0; k<kcells; ++k)
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    a_prime[ijk] = a[ijk] - a_mean[k];
+                }
     }
 
     template<typename TF>
@@ -2692,6 +2711,7 @@ void Budget_4<TF>::init()
 
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+    wmodel.resize(gd.kcells);
 }
 
 template<typename TF>
@@ -2785,279 +2805,298 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    // Calculate the mean of the fields.
-    field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
-    field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
+    auto& masks = stats.get_masks();
 
-    // Calculate the TKE budget.
-    auto ke  = fields.get_tmp();
-    auto tke = fields.get_tmp();
-
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
-
-    calc_ke(ke->fld.data(), tke->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            grid.utrans, grid.vtrans,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("ke" , *ke , no_offset, no_threshold);
-    stats.calc_stats("tke", *tke, no_offset, no_threshold);
-
-    auto wx = std::move(ke );
-    auto wy = std::move(tke);
-
-    // Interpolate w to the locations of u and v.
-    const int wloc [3] = {0,0,1};
-    const int wxloc[3] = {1,0,1};
-    const int wyloc[3] = {0,1,1};
-
-    grid.interpolate_4th(wx->fld.data(), fields.mp.at("w")->fld.data(), wloc, wxloc);
-    grid.interpolate_4th(wy->fld.data(), fields.mp.at("w")->fld.data(), wloc, wyloc);
-
-    auto u2_shear = fields.get_tmp();
-    auto v2_shear = fields.get_tmp();
-    auto tke_shear = fields.get_tmp();
-    auto uw_shear = fields.get_tmp();
-
-    calc_tke_budget_shear(
-            u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(), uw_shear->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            wx->fld.data(), wy->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_shear" , *u2_shear , no_offset, no_threshold);
-    stats.calc_stats("v2_shear" , *v2_shear , no_offset, no_threshold);
-    stats.calc_stats("tke_shear", *tke_shear, no_offset, no_threshold);
-    stats.calc_stats("uw_shear" , *uw_shear , no_offset, no_threshold);
-
-    auto u2_turb = std::move(u2_shear);
-    auto v2_turb = std::move(v2_shear);
-    auto w2_turb = fields.get_tmp();
-    auto tke_turb = std::move(tke_shear);
-    auto uw_turb = std::move(uw_shear);
-
-    calc_tke_budget_turb(
-            u2_turb->fld.data(), v2_turb->fld.data(), w2_turb->fld.data(), tke_turb->fld.data(), uw_turb->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            wx->fld.data(), wy->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_turb" , *u2_turb , no_offset, no_threshold);
-    stats.calc_stats("v2_turb" , *v2_turb , no_offset, no_threshold);
-    stats.calc_stats("w2_turb" , *w2_turb , no_offset, no_threshold);
-    stats.calc_stats("tke_turb", *tke_turb, no_offset, no_threshold);
-    stats.calc_stats("uw_turb" , *uw_turb , no_offset, no_threshold);
-
-    auto w2_pres  = std::move(w2_turb);
-    auto tke_pres = std::move(tke_turb);
-    auto uw_pres  = std::move(uw_turb);
-
-    calc_tke_budget_pres(
-            w2_pres->fld.data(), tke_pres->fld.data(), uw_pres->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-            fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.dxi, gd.dyi,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("w2_pres" , *w2_pres , no_offset, no_threshold);
-    stats.calc_stats("tke_pres", *tke_pres, no_offset, no_threshold);
-    stats.calc_stats("uw_pres" , *uw_pres , no_offset, no_threshold);
-
-    auto u2_visc  = std::move(u2_turb);
-    auto v2_visc  = std::move(v2_turb);
-    auto w2_visc  = std::move(w2_pres);
-    auto tke_visc = std::move(tke_pres);
-    auto uw_visc  = std::move(uw_pres);
-
-    auto wz = std::move(wx);
-    auto uz = std::move(wy);
-
-    calc_tke_budget_visc(
-            u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
-            wz->fld.data(), uz->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
-            fields.visc,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_visc" , *u2_visc , no_offset, no_threshold);
-    stats.calc_stats("v2_visc" , *v2_visc , no_offset, no_threshold);
-    stats.calc_stats("w2_visc" , *w2_visc , no_offset, no_threshold);
-    stats.calc_stats("tke_visc", *tke_visc, no_offset, no_threshold);
-    stats.calc_stats("uw_visc" , *uw_visc , no_offset, no_threshold);
-
-    auto u2_diss  = std::move(u2_visc);
-    auto v2_diss  = std::move(v2_visc);
-    auto w2_diss  = std::move(w2_visc);
-    auto tke_diss = std::move(tke_visc);
-    auto uw_diss  = std::move(uw_visc);
-
-    calc_tke_budget_diss(
-            u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
-            fields.visc,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_diss" , *u2_diss , no_offset, no_threshold);
-    stats.calc_stats("v2_diss" , *v2_diss , no_offset, no_threshold);
-    stats.calc_stats("w2_diss" , *w2_diss , no_offset, no_threshold);
-    stats.calc_stats("tke_diss", *tke_diss, no_offset, no_threshold);
-    stats.calc_stats("uw_diss" , *uw_diss , no_offset, no_threshold);
-
-    auto u2_rdstr = std::move(u2_diss);
-    auto v2_rdstr = std::move(v2_diss);
-    auto w2_rdstr = std::move(w2_diss);
-    auto uw_rdstr = std::move(uw_diss);
-
-    calc_tke_budget_rdstr(
-            u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(), uw_rdstr->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(),
-            umodel.data(), vmodel.data(),
-            gd.dzi4.data(), gd.dzhi4.data(),
-            gd.dxi, gd.dyi,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("u2_rdstr", *u2_rdstr, no_offset, no_threshold);
-    stats.calc_stats("v2_rdstr", *v2_rdstr, no_offset, no_threshold);
-    stats.calc_stats("w2_rdstr", *w2_rdstr, no_offset, no_threshold);
-    stats.calc_stats("uw_rdstr", *uw_rdstr, no_offset, no_threshold);
-
-    // Release the tmp arrays that are still in use.
-    fields.release_tmp(uz);
-    fields.release_tmp(wz);
-    fields.release_tmp(u2_rdstr);
-    fields.release_tmp(v2_rdstr);
-    fields.release_tmp(w2_rdstr);
-    fields.release_tmp(tke_diss);
-    fields.release_tmp(uw_rdstr);
-
-    // Calculate the buoyancy term of the TKE budget.
-    if (thermo.get_switch() != "0")
+    // The loop over masks inside of budget is necessary, because the mask mean is
+    // required in order to compute the budget terms.
+    for (auto& m : masks)
     {
-        auto b = fields.get_tmp();
+        // Calculate the mean of the fields.
+        stats.calc_mask_mean_profile(umodel, m, *fields.mp.at("u"));
+        stats.calc_mask_mean_profile(vmodel, m, *fields.mp.at("v"));
+        stats.calc_mask_mean_profile(wmodel, m, *fields.mp.at("w"));
 
-        // Compute the buoyancy, cyclic is true, and stat is true.
-        thermo.get_thermo_field(*b, "b", true, true);
+        // Calculate the TKE budget.
+        auto ke  = fields.get_tmp();
+        auto tke = fields.get_tmp();
 
-        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
-        field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), b->fld.data());
+        const TF no_offset = 0.;
+        const TF no_threshold = 0.;
 
-        auto w2_buoy  = fields.get_tmp();
-        auto tke_buoy = fields.get_tmp();
-        auto uw_buoy  = fields.get_tmp();
-
-        calc_tke_budget_buoy(
-                w2_buoy->fld.data(), tke_buoy->fld.data(), uw_buoy->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), b->fld.data(),
-                umodel.data(), b->fld_mean.data(),
+        calc_ke(ke->fld.data(), tke->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
+                grid.utrans, grid.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("w2_buoy" , *w2_buoy , no_offset, no_threshold);
-        stats.calc_stats("tke_buoy", *tke_buoy, no_offset, no_threshold);
-        stats.calc_stats("uw_buoy" , *uw_buoy , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
 
-        auto b2_shear = std::move(w2_buoy);
-        auto b2_turb = std::move(tke_buoy);
-        auto b2_visc = std::move(uw_buoy);
-        auto b2_diss = fields.get_tmp();
+        // Subtract mean
+        auto w_prime = fields.get_tmp();
+        calc_prime(
+                w_prime->fld.data(), fields.mp.at("w")->fld.data(), wmodel.data(),
+                gd.icells, gd.jcells, gd.kcells,
+                gd.ijcells);
 
-        calc_b2_budget(
-                b2_shear->fld.data(), b2_turb->fld.data(), b2_visc->fld.data(), b2_diss->fld.data(),
-                fields.mp.at("w")->fld.data(), b->fld.data(),
-                b->fld_mean.data(),
+        auto wx = std::move(ke );
+        auto wy = std::move(tke);
+
+        // Interpolate w to the locations of u and v.
+        const int wloc [3] = {0,0,1};
+        const int wxloc[3] = {1,0,1};
+        const int wyloc[3] = {0,1,1};
+
+        grid.interpolate_4th(wx->fld.data(), w_prime->fld.data(), wloc, wxloc);
+        grid.interpolate_4th(wy->fld.data(), w_prime->fld.data(), wloc, wyloc);
+
+        auto u2_shear = fields.get_tmp();
+        auto v2_shear = fields.get_tmp();
+        auto tke_shear = fields.get_tmp();
+        auto uw_shear = fields.get_tmp();
+
+        calc_tke_budget_shear(
+                u2_shear->fld.data(), v2_shear->fld.data(), tke_shear->fld.data(), uw_shear->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
+                wx->fld.data(), wy->fld.data(),
+                umodel.data(), vmodel.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_mask_stats(m, "u2_shear" , *u2_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_shear" , *v2_shear , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_shear", *tke_shear, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_shear" , *uw_shear , no_offset, no_threshold);
+
+        auto u2_turb = std::move(u2_shear);
+        auto v2_turb = std::move(v2_shear);
+        auto w2_turb = fields.get_tmp();
+        auto tke_turb = std::move(tke_shear);
+        auto uw_turb = std::move(uw_shear);
+
+        calc_tke_budget_turb(
+                u2_turb->fld.data(), v2_turb->fld.data(), w2_turb->fld.data(), tke_turb->fld.data(), uw_turb->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
+                wx->fld.data(), wy->fld.data(),
+                umodel.data(), vmodel.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        stats.calc_mask_stats(m, "u2_turb" , *u2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_turb" , *v2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_turb" , *w2_turb , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_turb", *tke_turb, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_turb" , *uw_turb , no_offset, no_threshold);
+
+        auto w2_pres  = std::move(w2_turb);
+        auto tke_pres = std::move(tke_turb);
+        auto uw_pres  = std::move(uw_turb);
+
+        calc_tke_budget_pres(
+                w2_pres->fld.data(), tke_pres->fld.data(), uw_pres->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                w_prime->fld.data(), fields.sd.at("p")->fld.data(),
+                umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi,
-                thermo.get_buoyancy_diffusivity(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("b2_shear", *b2_shear, no_offset, no_threshold);
-        stats.calc_stats("b2_turb" , *b2_turb , no_offset, no_threshold);
-        stats.calc_stats("b2_visc" , *b2_visc , no_offset, no_threshold);
-        stats.calc_stats("b2_diss" , *b2_diss , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_pres" , *w2_pres , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_pres", *tke_pres, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_pres" , *uw_pres , no_offset, no_threshold);
 
-        auto bw_shear = std::move(b2_shear);
-        auto bw_turb  = std::move(b2_turb);
-        auto bw_visc  = std::move(b2_visc);
-        auto bz       = std::move(b2_diss);
+        auto u2_visc  = std::move(u2_turb);
+        auto v2_visc  = std::move(v2_turb);
+        auto w2_visc  = std::move(w2_pres);
+        auto tke_visc = std::move(tke_pres);
+        auto uw_visc  = std::move(uw_pres);
 
-        calc_bw_budget_shear_turb_visc(
-                bw_shear->fld.data(), bw_turb->fld.data(), bw_visc->fld.data(),
-                bz->fld.data(),
-                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
-                fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+        auto wz = std::move(wx);
+        auto uz = std::move(wy);
+
+        calc_tke_budget_visc(
+                u2_visc->fld.data(), v2_visc->fld.data(), w2_visc->fld.data(), tke_visc->fld.data(), uw_visc->fld.data(),
+                wz->fld.data(), uz->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
+                umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
-                thermo.get_buoyancy_diffusivity(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells);
+                gd.icells, gd.ijcells);
 
-        stats.calc_stats("bw_shear", *bw_shear, no_offset, no_threshold);
-        stats.calc_stats("bw_turb" , *bw_turb , no_offset, no_threshold);
-        stats.calc_stats("bw_visc" , *bw_visc , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "u2_visc" , *u2_visc , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_visc" , *v2_visc , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_visc" , *w2_visc , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_visc", *tke_visc, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_visc" , *uw_visc , no_offset, no_threshold);
 
-        auto bw_buoy  = std::move(bw_shear);
-        auto bw_rdstr = std::move(bw_turb);
-        auto bw_diss  = std::move(bw_visc);
-        auto bw_pres  = fields.get_tmp();
+        auto u2_diss  = std::move(u2_visc);
+        auto v2_diss  = std::move(v2_visc);
+        auto w2_diss  = std::move(w2_visc);
+        auto tke_diss = std::move(tke_visc);
+        auto uw_diss  = std::move(uw_visc);
 
-        calc_bw_budget_buoy_rdstr_diss_pres(
-                bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
-                bz->fld.data(),
-                fields.mp.at("w")->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
-                fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+        calc_tke_budget_diss(
+                u2_diss->fld.data(), v2_diss->fld.data(), w2_diss->fld.data(), tke_diss->fld.data(), uw_diss->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), w_prime->fld.data(),
+                umodel.data(), vmodel.data(),
                 gd.dzi4.data(), gd.dzhi4.data(),
                 gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
-                thermo.get_buoyancy_diffusivity(),
+                fields.visc,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells);
+                gd.icells, gd.ijcells);
 
-        stats.calc_stats("bw_buoy" , *bw_buoy , no_offset, no_threshold);
-        stats.calc_stats("bw_rdstr", *bw_rdstr, no_offset, no_threshold);
-        stats.calc_stats("bw_diss" , *bw_diss , no_offset, no_threshold);
-        stats.calc_stats("bw_pres" , *bw_pres , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "u2_diss" , *u2_diss , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_diss" , *v2_diss , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_diss" , *w2_diss , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke_diss", *tke_diss, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_diss" , *uw_diss , no_offset, no_threshold);
 
-        fields.release_tmp(bw_buoy);
-        fields.release_tmp(bw_rdstr);
-        fields.release_tmp(bw_diss);
-        fields.release_tmp(bw_pres);
+        auto u2_rdstr = std::move(u2_diss);
+        auto v2_rdstr = std::move(v2_diss);
+        auto w2_rdstr = std::move(w2_diss);
+        auto uw_rdstr = std::move(uw_diss);
 
-        auto b_sort = std::move(bz);
-
-        // Calculate the sorted buoyancy profile.
-        calc_sorted_prof(
-                b->fld.data(), b_sort->fld.data(), b_sort->fld_mean.data(),
-                gd.z.data(), gd.dz.data(),
+        calc_tke_budget_rdstr(
+                u2_rdstr->fld.data(), v2_rdstr->fld.data(), w2_rdstr->fld.data(), uw_rdstr->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                w_prime->fld.data(), fields.sd.at("p")->fld.data(),
+                umodel.data(), vmodel.data(),
+                gd.dzi4.data(), gd.dzhi4.data(),
+                gd.dxi, gd.dyi,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells,
-                gd.itot, gd.jtot, gd.nmax,
-                grid.get_spatial_order(), master);
+                gd.icells, gd.ijcells);
 
-        stats.set_prof("b_sort", b_sort->fld_mean);
+        stats.calc_mask_stats(m, "u2_rdstr", *u2_rdstr, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "v2_rdstr", *v2_rdstr, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "w2_rdstr", *w2_rdstr, no_offset, no_threshold);
+        stats.calc_mask_stats(m, "uw_rdstr", *uw_rdstr, no_offset, no_threshold);
 
-        fields.release_tmp(b);
-        fields.release_tmp(b_sort);
+        // Release the tmp arrays that are still in use.
+        fields.release_tmp(uz);
+        fields.release_tmp(wz);
+        fields.release_tmp(u2_rdstr);
+        fields.release_tmp(v2_rdstr);
+        fields.release_tmp(w2_rdstr);
+        fields.release_tmp(tke_diss);
+        fields.release_tmp(uw_rdstr);
+
+        // Calculate the buoyancy term of the TKE budget.
+        if (thermo.get_switch() != "0")
+        {
+            auto b = fields.get_tmp();
+
+            // Compute the buoyancy, cyclic is true, and stat is true.
+            thermo.get_thermo_field(*b, "b", true, true);
+
+            field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+            field3d_operators.calc_mean_profile(fields.sd.at("p")->fld_mean.data(), b->fld.data());
+
+            auto w2_buoy  = fields.get_tmp();
+            auto tke_buoy = fields.get_tmp();
+            auto uw_buoy  = fields.get_tmp();
+
+            calc_tke_budget_buoy(
+                    w2_buoy->fld.data(), tke_buoy->fld.data(), uw_buoy->fld.data(),
+                    fields.mp.at("u")->fld.data(), w_prime->fld.data(), b->fld.data(),
+                    umodel.data(), b->fld_mean.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_mask_stats(m, "w2_buoy" , *w2_buoy , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "tke_buoy", *tke_buoy, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "uw_buoy" , *uw_buoy , no_offset, no_threshold);
+
+            auto b2_shear = std::move(w2_buoy);
+            auto b2_turb = std::move(tke_buoy);
+            auto b2_visc = std::move(uw_buoy);
+            auto b2_diss = fields.get_tmp();
+
+            calc_b2_budget(
+                    b2_shear->fld.data(), b2_turb->fld.data(), b2_visc->fld.data(), b2_diss->fld.data(),
+                    w_prime->fld.data(), b->fld.data(),
+                    b->fld_mean.data(),
+                    gd.dzi4.data(), gd.dzhi4.data(),
+                    gd.dxi, gd.dyi,
+                    thermo.get_buoyancy_diffusivity(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            stats.calc_mask_stats(m, "b2_shear", *b2_shear, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "b2_turb" , *b2_turb , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "b2_visc" , *b2_visc , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "b2_diss" , *b2_diss , no_offset, no_threshold);
+
+            auto bw_shear = std::move(b2_shear);
+            auto bw_turb  = std::move(b2_turb);
+            auto bw_visc  = std::move(b2_visc);
+            auto bz       = std::move(b2_diss);
+
+            calc_bw_budget_shear_turb_visc(
+                    bw_shear->fld.data(), bw_turb->fld.data(), bw_visc->fld.data(),
+                    bz->fld.data(),
+                    w_prime->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                    fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+                    gd.dzi4.data(), gd.dzhi4.data(),
+                    gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
+                    thermo.get_buoyancy_diffusivity(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells);
+
+            stats.calc_mask_stats(m, "bw_shear", *bw_shear, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_turb" , *bw_turb , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_visc" , *bw_visc , no_offset, no_threshold);
+
+            auto bw_buoy  = std::move(bw_shear);
+            auto bw_rdstr = std::move(bw_turb);
+            auto bw_diss  = std::move(bw_visc);
+            auto bw_pres  = fields.get_tmp();
+
+            calc_bw_budget_buoy_rdstr_diss_pres(
+                    bw_buoy->fld.data(), bw_rdstr->fld.data(), bw_diss->fld.data(), bw_pres->fld.data(),
+                    bz->fld.data(),
+                    w_prime->fld.data(), fields.sd.at("p")->fld.data(), b->fld.data(),
+                    fields.sd.at("p")->fld_mean.data(), b->fld_mean.data(),
+                    gd.dzi4.data(), gd.dzhi4.data(),
+                    gd.dxi, gd.dyi, gd.dzhi4bot, gd.dzhi4top,
+                    thermo.get_buoyancy_diffusivity(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells);
+
+            stats.calc_mask_stats(m, "bw_buoy" , *bw_buoy , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_rdstr", *bw_rdstr, no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_diss" , *bw_diss , no_offset, no_threshold);
+            stats.calc_mask_stats(m, "bw_pres" , *bw_pres , no_offset, no_threshold);
+
+            fields.release_tmp(bw_buoy);
+            fields.release_tmp(bw_rdstr);
+            fields.release_tmp(bw_diss);
+            fields.release_tmp(bw_pres);
+
+            auto b_sort = std::move(bz);
+
+            // Calculate the sorted buoyancy profile.
+            // CvH: This does not work out well with the masking.
+            calc_sorted_prof(
+                    b->fld.data(), b_sort->fld.data(), b_sort->fld_mean.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells,
+                    gd.itot, gd.jtot, gd.nmax,
+                    grid.get_spatial_order(), master);
+
+            stats.set_prof("b_sort", b_sort->fld_mean);
+
+            fields.release_tmp(b);
+            fields.release_tmp(b_sort);
+        }
+
+        fields.release_tmp(w_prime);
     }
 }
 
