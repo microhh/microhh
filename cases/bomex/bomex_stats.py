@@ -12,26 +12,26 @@ def plotstats(name, line):
   z   = stats.variables["z"][:]
   zh  = stats.variables["zh"][:]
 
-  areat  = stats.variables["area"][:,:]
-  areaht = stats.variables["areah"][:,:]
+  areat  = stats.groups["default"].variables["area"][:,:]
+  areaht = stats.groups["default"].variables["areah"][:,:]
   
-  st  = stats.variables["thl"][:,:]
-  qtt = stats.variables["qt"][:,:]*1000.
-  bt  = stats.variables["b"][:,:]
-  ut  = stats.variables["u"][:,:]
-  vt  = stats.variables["v"][:,:]
-  qlt = stats.variables["ql"][:,:]*1000.
-  cft = stats.variables["qlfrac"][:,:]
+  st  = stats.groups["default"].variables["thl"][:,:]
+  qtt = stats.groups["default"].variables["qt"][:,:]*1000.
+  bt  = stats.groups["thermo"].variables["b"][:,:]
+  ut  = stats.groups["default"].variables["u"][:,:]
+  vt  = stats.groups["default"].variables["v"][:,:]
+  qlt = stats.groups["thermo"].variables["ql"][:,:]*1000.
+  cft = stats.groups["thermo"].variables["ql_frac"][:,:]
   
-  sfluxt = stats.variables["thlflux"][:,:]
-  bfluxt = stats.variables["bflux"][:,:]
-  ufluxt = stats.variables["uflux"][:,:]
-  vfluxt = stats.variables["vflux"][:,:]
+  sfluxt = stats.groups["default"].variables["thl_flux"][:,:]
+  bfluxt = stats.groups["thermo"].variables["b_flux"][:,:]
+  ufluxt = stats.groups["default"].variables["u_flux"][:,:]
+  vfluxt = stats.groups["default"].variables["v_flux"][:,:]
   Ufluxt = ufluxt + vfluxt
   
-  u2t  = stats.variables["u2"][:,:]
-  v2t  = stats.variables["v2"][:,:]
-  w2t  = stats.variables["w2"][:,:]
+  u2t  = stats.groups["default"].variables["u_2"][:,:]
+  v2t  = stats.groups["default"].variables["v_2"][:,:]
+  w2t  = stats.groups["default"].variables["w_2"][:,:]
   tket = 0.5*(u2t + v2t + 0.5*(w2t[:,0:-1]+w2t[:,1::]))
   
   end   = t.size
