@@ -102,17 +102,23 @@ def replace_namelist_value(item, new_value, group=None, namelist_file=None):
         lines = source.readlines()
     with open(namelist_file, "w") as source:
         current_group = None
+        has_replaced = False
+
         for line in lines:
             lstrip = line.strip()
+
             if len(lstrip)>0 and lstrip[0] == '[' and lstrip[-1] == ']':
                 current_group = lstrip[1:-1]
-            if (group==current_group) and (lstrip==''):
-                source.write('{0}={1}\n\n'.format(item,new_value))
-            elif group is None or group==current_group:
+
+            if group is None or group==current_group:
                 source.write(re.sub(r'({}).*'.format(item), r'\1={}'.format(new_value), line))
+                has_replaced = True
             else:
                 source.write(line)
 
+        if (not has_replaced):
+            raise RuntimeError(
+                'There is no item \"{0}\" in group \"{1}\" in .ini file'.format(group, item))
 
 
 def determine_ntasks():
