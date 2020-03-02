@@ -796,7 +796,7 @@ void Thermo_moist<TF>::load(const int iotime)
     int nerror = 0;
 
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "thermo_basestate", 0);
+    std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
     if (master.get_mpiid() == 0)
         std::printf("Loading \"%s\" ... ", filename);
 
@@ -830,7 +830,7 @@ void Thermo_moist<TF>::load(const int iotime)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
@@ -879,6 +879,12 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     //    This one is not updated throughout the simulation to be consistent with the anelastic approximation.
     fields.rhoref = bs.rhoref;
     fields.rhorefh = bs.rhorefh;
+}
+
+template<typename TF>
+void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    create_basestate(inputin, input_nc);
 
     // 7. Process the time dependent surface pressure
     tdep_pbot->create_timedep(input_nc);

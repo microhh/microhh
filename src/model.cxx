@@ -234,7 +234,10 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats);
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
+
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
@@ -265,6 +268,9 @@ void Model<TF>::save()
     fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
+
+    thermo->create_basestate(*input, *input_nc);
+    thermo->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -432,6 +438,7 @@ void Model<TF>::exec()
                         {
                             timeloop->save(timeloop->get_iotime());
                             fields  ->save(timeloop->get_iotime());
+                            thermo  ->save(timeloop->get_iotime());
                         }
                     }
                 }
