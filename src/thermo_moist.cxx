@@ -756,6 +756,80 @@ void Thermo_moist<TF>::init()
 }
 
 template<typename TF>
+void Thermo_moist<TF>::save(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    if (master.get_mpiid() == 0 && bs.swupdatebasestate)
+    {
+        // Save the base state to disk
+        FILE *pFile;
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+        pFile = fopen(filename, "wbx");
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        int nerror = 0;
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+            master.print_message("OK\n");
+        master.sum(&nerror, 1);
+
+        if (nerror)
+            throw std::runtime_error("Error in writing thermo_basestate");
+
+        fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+        fclose(pFile);
+    }
+}
+
+template<typename TF>
+void Thermo_moist<TF>::load(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", "thermo_basestate", 0);
+    if (master.get_mpiid() == 0)
+        std::printf("Loading \"%s\" ... ", filename);
+
+    FILE *pFile;
+    if (master.get_mpiid() == 0 && bs.swupdatebasestate)
+    {
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            fclose(pFile);
+        }
+    }
+
+    // Communicate the file read error over all procs.
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in thermo_basestate");
+    else
+        master.print_message("OK\n");
+
+    master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
+    master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
@@ -778,7 +852,8 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
     std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
-    calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
+    calc_top_and_bot(
+            bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
     calc_base_state(
