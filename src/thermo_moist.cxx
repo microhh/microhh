@@ -760,7 +760,9 @@ void Thermo_moist<TF>::save(const int iotime)
 {
     auto& gd = grid.get_grid_data();
 
-    if (master.get_mpiid() == 0 && bs.swupdatebasestate)
+    int nerror = 0;
+
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
     {
         // Save the base state to disk
         FILE *pFile;
@@ -769,7 +771,6 @@ void Thermo_moist<TF>::save(const int iotime)
         pFile = fopen(filename, "wbx");
         master.print_message("Saving \"%s\" ... ", filename);
 
-        int nerror = 0;
         if (pFile == NULL)
         {
             master.print_message("FAILED\n");
@@ -777,15 +778,16 @@ void Thermo_moist<TF>::save(const int iotime)
         }
         else
             master.print_message("OK\n");
-        master.sum(&nerror, 1);
-
-        if (nerror)
-            throw std::runtime_error("Error in writing thermo_basestate");
 
         fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
         fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
         fclose(pFile);
     }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in writing thermo_basestate");
 }
 
 template<typename TF>
@@ -795,14 +797,14 @@ void Thermo_moist<TF>::load(const int iotime)
 
     int nerror = 0;
 
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
-    if (master.get_mpiid() == 0)
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+
         std::printf("Loading \"%s\" ... ", filename);
 
-    FILE *pFile;
-    if (master.get_mpiid() == 0 && bs.swupdatebasestate)
-    {
+        FILE* pFile;
         pFile = fopen(filename, "rb");
         if (pFile == NULL)
         {
