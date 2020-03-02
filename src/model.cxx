@@ -417,6 +417,8 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
+                        const int iotime = timeloop->get_iotime();
+
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -430,8 +432,8 @@ void Model<TF>::exec()
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(timeloop->get_iotime());
-                            fields  ->save(timeloop->get_iotime());
+                            timeloop->save(iotime);
+                            fields  ->save(iotime);
                         }
                     }
                 }
