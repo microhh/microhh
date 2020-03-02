@@ -56,8 +56,12 @@ class Thermo_vapor : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create_basestate(Input&, Netcdf_handle&);
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
+
+        void load(const int);
+        void save(const int);
 
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -96,10 +100,6 @@ class Thermo_vapor : public Thermo<TF>
         #endif
 
         // Empty functions that are allowed to pass.
-        void create_basestate(Input&, Netcdf_handle&) {};
-        void load(const int) {};
-        void save(const int) {};
-
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
