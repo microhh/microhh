@@ -376,7 +376,7 @@ void Model<TF>::exec()
                     const double time = timeloop->get_time();
                     const unsigned long itime = timeloop->get_itime();
                     const int iotime = timeloop->get_iotime();
-                    const double dt = timeloop->get_dt(); 
+                    const double dt = timeloop->get_dt();
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
@@ -440,7 +440,7 @@ void Model<TF>::exec()
                         {
                             timeloop->save(iotime);
                             fields  ->save(iotime);
-                            thermo  ->save(timeloop->get_iotime());
+                            thermo  ->save(iotime);
                         }
                     }
                 }
