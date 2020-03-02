@@ -20,11 +20,9 @@ opt_nostats = {
 # Case configuration dicts with name label for permutations.
 dict_opts = {
         'all_enabled': {},
-        'advec': {'advec': {'swadvec': 0}},
-        'diff': {'diff': {'swdiff': 0}},
-        'thermo': {'thermo': {'swthermo': 0}, 'fields': {'slist': 'thl,qt'}},
+        'vapor': {'thermo': {'swthermo': 'vapor'}},
         'basestate': {'thermo': {'swupdatebasestate': 0}},
-        'buffer': {'buffer': {'swbuffer': 0}}}
+        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
 
 list_permutations = [ dict_opts ]
 
