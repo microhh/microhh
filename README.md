@@ -15,12 +15,12 @@ Requirements
 In order to compile MicroHH you need:
 * C++ compiler
 * FFTW3 libraries
+* Boost libraries
 * NetCDF4
 * CMake
 * MPI2/3 implementation (optional for MPI support)
 * CUDA (optional for GPU support)
-* Doxygen + Graphviz (optional for creating automatic documentation)
-* Python + numpy (optional for running example cases)
+* Python + numpy + python-netcdf4 (optional for running example cases)
 * Ipython + python-netcdf4 + matplotlib (optional for plotting results example cases)
 
 Compilation of the code
@@ -81,11 +81,10 @@ If everything works out properly, a series of files has been created. The model 
 
     ./microhh run drycblles
 
-This will take some time. Now, a statistics file called drycblles.default.0000000.nc has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses python and matplotlib. This is most easily done in interactive python:
+This will take some time. Now, a statistics file called drycblles_default_0000000.nc has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses python and matplotlib. This is most easily done in interactive python:
 
     ipython  
-    run drycbllesstats  
-    show()  
+    run drycbllesstats
 
 This should show you a set of basic plots. Congratulations, you have just completed your first run of MicroHH.
 

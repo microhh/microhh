@@ -262,11 +262,11 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
-    void calc_base_state(TF* restrict pref,    TF* restrict prefh,
-                         TF* restrict rho,     TF* restrict rhoh,
-                         TF* restrict thv,     TF* restrict thvh,
-                         TF* restrict ex,      TF* restrict exh,
-                         TF* restrict thlmean, TF* restrict qtmean, const TF pbot,
+    void calc_base_state(TF* restrict pref, TF* restrict prefh,
+                         TF* restrict rho, TF* restrict rhoh,
+                         TF* restrict thv, TF* restrict thvh,
+                         TF* restrict ex, TF* restrict exh,
+                         const TF* restrict thlmean, const TF* restrict qtmean, const TF pbot,
                          const int kstart, const int kend,
                          const TF* restrict z, const TF* restrict dz, const TF* const dzh)
     {

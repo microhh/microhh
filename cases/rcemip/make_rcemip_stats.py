@@ -6,10 +6,10 @@ import subprocess
 nc_file = nc.Dataset('rcemip_default_0000000.nc', 'r')
 itot = 96
 jtot = 96
-ktot = 144
+ktot = 72
 timetot = nc_file.variables['time'].shape[0]
 
-case_name = "vert_300"
+case_name = "small_295"
 
 Lv = 2.45e6
 cp = 1004.
@@ -76,9 +76,9 @@ add_0d_variable(rsdscs_avg, "rsdscs_avg", "domain avg. surface downwelling short
 add_0d_variable(rsuscs_avg, "rsuscs_avg", "domain avg. surface upwelling shortwave flux - clear sky", "W m-2")
 del(rldscs_avg, rluscs_avg, rsdscs_avg, rsuscs_avg)
 
-rlut_avg = nc_file.groups["radiation"].variables["lw_flux_up"][:,0]
-rsdt_avg = nc_file.groups["radiation"].variables["sw_flux_dn"][:,0]
-rsut_avg = nc_file.groups["radiation"].variables["sw_flux_up"][:,0]
+rlut_avg = nc_file.groups["radiation"].variables["lw_flux_up"][:,-2]
+rsdt_avg = nc_file.groups["radiation"].variables["sw_flux_dn"][:,-2]
+rsut_avg = nc_file.groups["radiation"].variables["sw_flux_up"][:,-2]
 add_0d_variable(rlut_avg, "rlut_avg", "domain avg. TOA upwelling longwave flux", "W m-2")
 add_0d_variable(rsdt_avg, "rsdt_avg", "domain avg. TOA downwelling shortwave flux", "W m-2")
 add_0d_variable(rsut_avg, "rsut_avg", "domain avg. TOA upwelling shortwave flux", "W m-2")
@@ -118,6 +118,14 @@ def add_1d_variable(data_in, name, long_name, units, z_name):
     nc_var[:,:] = data_in[:,:]
     nc_var.units = units
     nc_var.long_name = long_name
+
+phydro_avg = nc_file.groups["thermo"].variables["phydro"][:,:]
+add_1d_variable(phydro_avg, "phydro", "domain avg. air hydrostatic pressure profile", "Pa", "z")
+del(phydro_avg)
+
+phydroh_avg = nc_file.groups["thermo"].variables["phydroh"][:,:]
+add_1d_variable(phydroh_avg, "phydroh", "domain avg. air hydrostatic pressure profile at flux level", "Pa", "zh")
+del(phydroh_avg)
 
 ta_avg = nc_file.groups["thermo"].variables["T"][:,:]
 add_1d_variable(ta_avg, "ta_avg", "domain avg. air temperature profile", "K", "z")
@@ -231,7 +239,7 @@ var_in  = "lw_flux_dn"
 var_out = "rlds"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -243,7 +251,7 @@ var_in  = "lw_flux_up"
 var_out = "rlus"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -255,7 +263,7 @@ var_in  = "sw_flux_dn"
 var_out = "rsds"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -267,7 +275,7 @@ var_in  = "sw_flux_up"
 var_out = "rsus"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -281,7 +289,7 @@ var_in  = "lw_flux_dn_clear"
 var_out = "rldscs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -293,7 +301,7 @@ var_in  = "lw_flux_up_clear"
 var_out = "rluscs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -305,7 +313,7 @@ var_in  = "sw_flux_dn_clear"
 var_out = "rsdscs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -317,7 +325,7 @@ var_in  = "sw_flux_up_clear"
 var_out = "rsuscs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,0,0 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -331,7 +339,7 @@ var_in  = "sw_flux_dn"
 var_out = "rsdt"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -343,7 +351,7 @@ var_in  = "sw_flux_up"
 var_out = "rsut"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -355,7 +363,7 @@ var_in  = "lw_flux_up"
 var_out = "rlut"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -369,7 +377,7 @@ var_in  = "sw_flux_up_clear"
 var_out = "rsutcs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]
@@ -381,7 +389,7 @@ var_in  = "lw_flux_up_clear"
 var_out = "rlutcs"
 nc_file_in = "{}.xy.nc".format(var_in)
 nc_file_out = "microhh_{0}_2d_{1}.nc".format(case_name, var_out)
-subprocess.run("ncks -O -h -d z,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
+subprocess.run("ncks -O -h -d zh,1,1 {0} {1}".format(nc_file_in, nc_file_out), shell=True)
 nc_2d = nc.Dataset(nc_file_out, "r+")
 nc_2d.renameVariable(var_in, var_out)
 nc_2d_var = nc_2d.variables[var_out]

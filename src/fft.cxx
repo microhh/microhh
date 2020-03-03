@@ -130,16 +130,18 @@ void FFT<double>::load()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -175,16 +177,18 @@ void FFT<float>::load()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftwf_r2r_kind kindf[] = {FFTW_R2HC};
     fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -206,16 +210,18 @@ void FFT<double>::save()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+                                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+                                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+                                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+                                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -257,16 +263,18 @@ void FFT<float>::save()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftwf_r2r_kind kindf[] = {FFTW_R2HC};
     fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+                                  fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+                                  fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+                                  fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+                                  fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 

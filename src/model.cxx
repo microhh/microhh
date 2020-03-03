@@ -234,7 +234,10 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats);
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
+
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
@@ -265,6 +268,9 @@ void Model<TF>::save()
     fft->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(timeloop->get_iotime());
+
+    thermo->create_basestate(*input, *input_nc);
+    thermo->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -349,7 +355,8 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
+
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
@@ -365,8 +372,13 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                        dump->do_dump(timeloop->get_itime()))
+                    const int iter = timeloop->get_iteration();
+                    const double time = timeloop->get_time();
+                    const unsigned long itime = timeloop->get_itime();
+                    const int iotime = timeloop->get_iotime();
+                    const double dt = timeloop->get_dt();
+
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
@@ -379,17 +391,15 @@ void Model<TF>::exec()
                         }
                         #endif
                         #pragma omp task default(shared)
-                        calculate_statistics(
-                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
-                                timeloop->get_iotime(), timeloop->get_dt());
+                        calculate_statistics(iter, time, itime, iotime, dt);
                     }
 
-                    if (column->do_column(timeloop->get_itime()))
+                    if (column->do_column(itime))
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
-                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                        column->exec(iter, time, itime);
                     }
 
                 }
@@ -413,6 +423,8 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
+                        const int iotime = timeloop->get_iotime();
+
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -426,8 +438,9 @@ void Model<TF>::exec()
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(timeloop->get_iotime());
-                            fields  ->save(timeloop->get_iotime());
+                            timeloop->save(iotime);
+                            fields  ->save(iotime);
+                            thermo  ->save(iotime);
                         }
                     }
                 }

@@ -6,15 +6,33 @@ import shutil
 sys.path.append('../../python/')
 import microhh_tools as mht
 
-opt_mpi = [('master', 'npx', 2), ('master', 'npy', 4)]
-opt_small = [('grid', 'itot', 8), ('grid', 'jtot', 8),
-             ('time', 'endtime', 7200)]
+# Case configuration dicts
+opt_mpi = {
+        'master': {'npx': 2, 'npy': 2}}
+
+opt_small = {
+        'grid': {'itot': 8, 'jtot': 8},
+        'time': {'endtime': 7200}}
+
+opt_nostats = {
+        'stats': {'swstats': 0}}
+
+# Case configuration dicts with name label for permutations.
+dict_opts = {
+        'all_enabled': {},
+        'vapor': {'thermo': {'swthermo': 'vapor'}},
+        'basestate': {'thermo': {'swupdatebasestate': 0}},
+        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
+
+list_permutations = [ dict_opts ]
 
 
 def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
+
     options = []
     if mode == 'cpumpi':
         options.extend(opt_mpi)
+
     cases = [
         mht.Case(
             'drycblles',
@@ -31,9 +49,12 @@ def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
 
 def run_small(executable='microhh', mode='cpu',
               casedir='.', experiment='local'):
+
+    # Deep copy the reference case.
     options = opt_small.copy()
     if mode == 'cpumpi':
-        options.extend(opt_mpi)
+        mht.merge_options(options, opt_mpi)
+
     cases = [
         mht.Case(
             'drycblles',
@@ -50,15 +71,20 @@ def run_small(executable='microhh', mode='cpu',
 
 def run_restart(executable='microhh', mode='cpu',
                 casedir='.', experiment='local'):
+
+    # Deep copy the small version of the reference case and disable stats.
     options = opt_small.copy()
+    mht.merge_options(options, opt_nostats)
+
     if mode == 'cpumpi':
-        options.extend(opt_mpi)
-    base_case = mht.Case(
-        'drycblles',
-        casedir=casedir,
-        rundir=experiment,
-        options=options)
-    cases = mht.generator_restart(base_case, 1800.)
+        mht.merge_options(options, opt_mpi)
+
+    cases = [
+        mht.Case(
+            'drycblles',
+            casedir=casedir,
+            rundir=experiment,
+            options=options)]
 
     mht.run_cases(
         cases,

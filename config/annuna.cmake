@@ -4,15 +4,12 @@
 
 # module load cuda
 # module load netcdf/gcc/64/4.6.1
-# # module load fftw3/gcc/64/3.3.8
+# module load fftw3/gcc/64/3.3.8
 # module load hdf5/gcc/64/1.10.1
 # module unload intel
 # module load gcc/7.1.0
 # module unload python
 # module load python/3.7.1
-# export CPATH=$CPATH:$HOME/fftw3/include
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/fftw3/lib
-# export LIBRARY_PATH=$LIBRARY_PATH:$HOME/fftw3/lib
 
 set(ENV{CC}  gcc) # C compiler for serial build
 set(ENV{CXX} g++) # C++ compiler for serial build
