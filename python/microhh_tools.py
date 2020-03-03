@@ -118,7 +118,7 @@ def replace_namelist_value(item, new_value, group=None, namelist_file=None):
 
         if (not has_replaced):
             raise RuntimeError(
-                'There is no item \"{0}\" in group \"{1}\" in .ini file'.format(group, item))
+                'There is no item \"{0}\" in group \"{1}\" in .ini file'.format(item, group))
 
 
 def determine_ntasks():
