@@ -28,6 +28,8 @@
 #include <iomanip>
 #include <vector>
 #include <utility>
+#include <netcdf.h>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -38,8 +40,6 @@
 #include "timeloop.h"
 #include "advec.h"
 #include "diff.h"
-
-#include <netcdf.h>
 #include "netcdf_interface.h"
 
 namespace
