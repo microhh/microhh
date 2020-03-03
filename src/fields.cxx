@@ -383,17 +383,17 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global dump-list from dump.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-        std::vector<std::string>::iterator dumpvar = dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (a.count(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;
@@ -409,45 +409,48 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
     {
 
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = cross.get_crosslist();
+        std::vector<std::string>& crosslist_global = cross.get_crosslist();
 
         // Check different type of crosses and put them in their respective lists
         for (auto& it : ap)
         {
-            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, &cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, &cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, &cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, &cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, &cross_path);
+            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
-            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
+            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
 
 template<typename TF>
-void Fields<TF>::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+void Fields<TF>::check_added_cross(
+        const std::string& var,
+        const std::string& type,
+        std::vector<std::string>& crosslist,
+        std::vector<std::string>& typelist)
 {
     std::vector<std::string>::iterator position;
 
-    position = std::find(crosslist->begin(), crosslist->end(), var + type);
-    if (position != crosslist->end())
+    position = std::find(crosslist.begin(), crosslist.end(), var + type);
+    if (position != crosslist.end())
     {
-        // don't allow lngrad in 2nd order mode
+        // Don't allow lngrad in 2nd order mode.
         if (!(type == "lngrad" && grid.get_spatial_order() == Grid_order::Second))
         {
-            typelist->push_back(var);
-            crosslist->erase(position);
+            typelist.push_back(var);
+            crosslist.erase(position);
         }
     }
 }
-
 
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()

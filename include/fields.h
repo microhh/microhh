@@ -170,7 +170,11 @@ class Fields
         std::vector<std::string> cross_fluxtop;
         std::vector<std::string> cross_path;
 
-        void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
+        void check_added_cross(
+                const std::string&,
+                const std::string&,
+                std::vector<std::string>&,
+                std::vector<std::string>&);
 
         // // masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
