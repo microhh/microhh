@@ -79,12 +79,16 @@ def run_restart(executable='microhh', mode='cpu',
     if mode == 'cpumpi':
         mht.merge_options(options, opt_mpi)
 
-    cases = [
+    base_cases = [
         mht.Case(
             'drycblles',
             casedir=casedir,
             rundir=experiment,
             options=options)]
+
+    cases = []
+    for case in base_cases:
+        cases.extend(mht.generator_restart(case, 1800.))
 
     mht.run_cases(
         cases,

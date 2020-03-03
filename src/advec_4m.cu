@@ -336,9 +336,9 @@ namespace
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-        const int k = blockIdx.z;
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
         const int ii1 = 1;
         const int ii2 = 2;
@@ -448,9 +448,11 @@ void Advec_4m<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     cudaDeviceSynchronize();
+
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
     stats.calc_tend(*fields.mt.at("w"), tend_name);
+
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
 }
