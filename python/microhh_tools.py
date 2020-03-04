@@ -432,11 +432,34 @@ def restart_pre(origin, timestr):
         shutil.copy(file, '.')
 
 
+def compare_bitwise(f1, f2):
+    # Compare with Python's `filecmp`
+    cmp_python = filecmp.cmp(f1, f2)
+
+    # Backup check with OS `cmp`
+    sp = subprocess.Popen(
+            'cmp {} {}'.format(f1, f2),
+            executable='/bin/bash',
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+    out, err = sp.communicate()
+    sp.wait()
+    cmp_os = not sp.returncode
+
+    return cmp_python, cmp_os
+
 def restart_post(origin, timestr):
     file_names = glob.glob('*.' + timestr)
     for file_name in file_names:
-        if not filecmp.cmp('../' + origin + '/' + file_name, file_name):
-            raise Warning(file_name + ' is not identical')
+        cmp_python, cmp_os = compare_bitwise('../' + origin + '/' + file_name, file_name)
+
+        if not cmp_python and not cmp_os:
+            raise Warning('{} is not identical (python+OS)'.format(file_name))
+        elif not cmp_python:
+            raise Warning('{} is not identical (python)'.format(file_name))
+        elif not cmp_os:
+            raise Warning('{} is not identical (OS)'.format(file_name))
 
 
 def compare(origin, file, starttime=-1, vars={}):
