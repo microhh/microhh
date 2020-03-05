@@ -209,7 +209,6 @@ void Model<TF>::load_or_save()
 
     // Free the memory taken by the input fields.
     input.reset();
-
 }
 
 // In these functions data necessary to start the model is loaded from disk.
@@ -224,7 +223,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
-    dump->create();
+
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -245,7 +244,11 @@ void Model<TF>::load()
     decay->create(*input, *stats);
     limiter->create(*stats);
 
-    cross->create(); // Cross needs to be called at the end!
+    // Cross and dump both need to be called at/near the
+    // end of the create phase, as other classes register which
+    // variables are legal as a cross/dump.
+    cross->create();
+    dump->create();
 
     boundary->set_values();
     pres->set_values();
