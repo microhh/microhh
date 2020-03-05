@@ -379,12 +379,6 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    const int iter = timeloop->get_iteration();
-                    const double time = timeloop->get_time();
-                    const unsigned long itime = timeloop->get_itime();
-                    const int iotime = timeloop->get_iotime();
-                    const double dt = timeloop->get_dt();
-
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
@@ -392,11 +386,14 @@ void Model<TF>::exec()
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
+                            lock_stat_time();
+
                             fields  ->backward_device();
                             boundary->backward_device();
                             thermo  ->backward_device();
                         }
                         #endif
+
                         #pragma omp task default(shared)
                         calculate_statistics(iter, time, itime, iotime, dt);
                     }
@@ -408,7 +405,6 @@ void Model<TF>::exec()
                         radiation->exec_column(*column, *thermo, *timeloop);
                         column->exec(iter, time, itime);
                     }
-
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -430,16 +426,13 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
-                        const int iotime = timeloop->get_iotime();
-                        const unsigned long idt = timeloop->get_idt();
-                        const unsigned long itime = timeloop->get_itime();
-                        const int iteration = timeloop->get_iteration();
-
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
+                            lock_stat_time();
+
                             fields  ->backward_device();
                             boundary->backward_device();
                             thermo  ->backward_device();
@@ -449,7 +442,7 @@ void Model<TF>::exec()
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(iotime, itime, idt, iteration);
+                            timeloop->save(iotime, itime, idt, iter);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
                         }
@@ -745,6 +738,20 @@ void Model<TF>::print_status()
         }
     }
 }
+
+
+template<typename TF>
+void Model<TF>::lock_stat_time()
+{
+    iotime = timeloop->get_iotime();
+    dt     = timeloop->get_idt();
+    itime  = timeloop->get_itime();
+    iter   = timeloop->get_iteration();
+    time   = timeloop->get_time();
+    iotime = timeloop->get_iotime();
+    dt     = timeloop->get_dt();
+}
+
 
 template class Model<double>;
 template class Model<float>;
