@@ -270,7 +270,11 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
-    timeloop->save(timeloop->get_iotime());
+    timeloop->save(
+            timeloop->get_iotime(),
+            timeloop->get_itime(),
+            timeloop->get_idt(),
+            timeloop->get_iteration());
 
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
@@ -427,6 +431,9 @@ void Model<TF>::exec()
                     if (timeloop->do_save())
                     {
                         const int iotime = timeloop->get_iotime();
+                        const unsigned long idt = timeloop->get_idt();
+                        const unsigned long itime = timeloop->get_itime();
+                        const int iteration = timeloop->get_iteration();
 
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
@@ -438,10 +445,11 @@ void Model<TF>::exec()
                             thermo  ->backward_device();
                         }
                         #endif
+
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(iotime);
+                            timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
                         }
