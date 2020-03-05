@@ -65,7 +65,7 @@ class Timeloop
 
         double check();
 
-        void save(int);
+        void save(int, unsigned long, unsigned lon, int);
         void load(int);
 
         // Query functions for main loop

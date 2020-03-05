@@ -1005,7 +1005,7 @@ bool Thermo_moist<TF>::has_mask(std::string mask_name)
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)
 {
-    if (name == "b" || name == "ql" || name == "T")
+    if (name == "b" || name == "ql" || name == "T" || name == "qi")
         return true;
     else
         return false;
@@ -1580,19 +1580,17 @@ void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 
     for (auto& it : dumplist)
     {
-        if (it == "b")
-            get_thermo_field(*output, "b", false, true);
-        else if (it == "ql")
-            get_thermo_field(*output, "ql", false, true);
-        else if (it == "T")
-            get_thermo_field(*output, "T", false, true);
+        if (check_field_exists(it))
+            get_thermo_field(*output, it, false, true);
         else
         {
             std::string msg = "Thermo dump of field \"" + it + "\" not supported";
             throw std::runtime_error(msg);
         }
+
         dump.save_dump(output->fld.data(), it, iotime);
     }
+
     fields.release_tmp(output);
 }
 

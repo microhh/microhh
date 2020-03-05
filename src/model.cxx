@@ -209,7 +209,6 @@ void Model<TF>::load_or_save()
 
     // Free the memory taken by the input fields.
     input.reset();
-
 }
 
 // In these functions data necessary to start the model is loaded from disk.
@@ -224,7 +223,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
-    dump->create();
+
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -245,7 +244,11 @@ void Model<TF>::load()
     decay->create(*input, *stats);
     limiter->create(*stats);
 
-    cross->create(); // Cross needs to be called at the end!
+    // Cross and dump both need to be called at/near the
+    // end of the create phase, as other classes register which
+    // variables are legal as a cross/dump.
+    cross->create();
+    dump->create();
 
     boundary->set_values();
     pres->set_values();
@@ -267,7 +270,11 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
-    timeloop->save(timeloop->get_iotime());
+    timeloop->save(
+            timeloop->get_iotime(),
+            timeloop->get_itime(),
+            timeloop->get_idt(),
+            timeloop->get_iteration());
 
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
@@ -372,12 +379,6 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    const int iter = timeloop->get_iteration();
-                    const double time = timeloop->get_time();
-                    const unsigned long itime = timeloop->get_itime();
-                    const int iotime = timeloop->get_iotime();
-                    const double dt = timeloop->get_dt();
-
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
@@ -385,11 +386,14 @@ void Model<TF>::exec()
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
+                            lock_stat_time();
+
                             fields  ->backward_device();
                             boundary->backward_device();
                             thermo  ->backward_device();
                         }
                         #endif
+
                         #pragma omp task default(shared)
                         calculate_statistics(iter, time, itime, iotime, dt);
                     }
@@ -401,7 +405,6 @@ void Model<TF>::exec()
                         radiation->exec_column(*column, *thermo, *timeloop);
                         column->exec(iter, time, itime);
                     }
-
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -423,22 +426,23 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
-                        const int iotime = timeloop->get_iotime();
-
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
+                            lock_stat_time();
+
                             fields  ->backward_device();
                             boundary->backward_device();
                             thermo  ->backward_device();
                         }
                         #endif
+
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(iotime);
+                            timeloop->save(iotime, itime, idt, iter);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
                         }
@@ -734,6 +738,20 @@ void Model<TF>::print_status()
         }
     }
 }
+
+
+template<typename TF>
+void Model<TF>::lock_stat_time()
+{
+    iotime = timeloop->get_iotime();
+    dt     = timeloop->get_idt();
+    itime  = timeloop->get_itime();
+    iter   = timeloop->get_iteration();
+    time   = timeloop->get_time();
+    iotime = timeloop->get_iotime();
+    dt     = timeloop->get_dt();
+}
+
 
 template class Model<double>;
 template class Model<float>;

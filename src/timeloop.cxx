@@ -380,7 +380,7 @@ bool Timeloop<TF>::is_stats_step()
 }
 
 template<typename TF>
-void Timeloop<TF>::save(int starttime)
+void Timeloop<TF>::save(int starttime, unsigned long itime_in, unsigned int idt_in, int iteration_in)
 {
     int nerror = 0;
 
@@ -401,9 +401,9 @@ void Timeloop<TF>::save(int starttime)
         }
         else
         {
-            fwrite(&itime    , sizeof(unsigned long), 1, pFile);
-            fwrite(&idt      , sizeof(unsigned long), 1, pFile);
-            fwrite(&iteration, sizeof(int), 1, pFile);
+            fwrite(&itime_in    , sizeof(unsigned long), 1, pFile);
+            fwrite(&idt_in      , sizeof(unsigned long), 1, pFile);
+            fwrite(&iteration_in, sizeof(int), 1, pFile);
 
             fclose(pFile);
             master.print_message("OK\n");
