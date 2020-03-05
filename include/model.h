@@ -119,15 +119,5 @@ class Model
         void clear_gpu();
 
         void add_statistics_masks();
-
-        // Time variables statistics
-        unsigned long idt;
-        unsigned long itime;
-        int iter;
-        double time;
-        int iotime;
-        double dt;
-
-        void lock_stat_time();
 };
 #endif
