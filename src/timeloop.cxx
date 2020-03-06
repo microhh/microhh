@@ -380,7 +380,7 @@ bool Timeloop<TF>::is_stats_step()
 }
 
 template<typename TF>
-void Timeloop<TF>::save(int starttime, unsigned long itime_in, unsigned int idt_in, int iteration_in)
+void Timeloop<TF>::save(int starttime, unsigned long itime_in, unsigned long idt_in, int iteration_in)
 {
     int nerror = 0;
 
