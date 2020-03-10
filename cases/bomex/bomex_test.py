@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import os
 import copy
@@ -12,10 +13,13 @@ opt_mpi = {
 
 opt_small = {
         'grid': {'itot': 8, 'jtot': 8},
-        'time': {'endtime': 7200}}
+        'time': {'endtime': 3600, 'savetime': 1800}}
 
 opt_nostats = {
         'stats': {'swstats': 0}}
+
+opt_small_nostats = deepcopy(opt_small)
+mht.merge_options(opt_small_nostats, opt_nostats)
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {

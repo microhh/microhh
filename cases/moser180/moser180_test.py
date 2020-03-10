@@ -11,7 +11,12 @@ opt_mpi = {
         'master': {'npx': 2, 'npy': 2}}
 
 opt_small = {
-        'grid': {'itot': 64, 'jtot': 48, 'ktot': 32}}
+        'grid': {'itot': 64, 'jtot': 48, 'ktot': 32},
+        'time': {'endtime': 10}}
+
+opt_small_restart = {
+        'grid': {'itot': 32, 'jtot': 16, 'ktot': 32},
+        'time': {'endtime': 200, 'savetime': 100}}
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {

@@ -14,6 +14,7 @@ import csv
 import copy
 import datetime
 import itertools
+from copy import deepcopy
 
 # -------------------------
 # General help functions
@@ -818,3 +819,64 @@ class Case:
         self.files = files if files else [
             '{0}.ini'.format(name), '{}_input.py'.format(name)]
         self.casedir = casedir if casedir else name
+
+
+def run_case(
+        case_name, options_in, options_mpi_in,
+        executable='microhh', mode='cpu',
+        case_dir='.', experiment='local'):
+
+    options = deepcopy(options_in)
+
+    if mode == 'cpumpi':
+        merge_options(options, options_mpi_in)
+
+    cases = [
+        Case(
+            case_name,
+            casedir=case_dir,
+            rundir=experiment,
+            options=options)]
+
+    run_cases(
+        cases,
+        executable,
+        mode,
+        outputfile='{}/{}_{}.csv'.format(case_dir, case_name, experiment))
+
+
+def run_restart(
+        case_name, options_in, options_mpi_in, permutations_in=None,
+        executable='microhh', mode='cpu',
+        case_dir='.', experiment='local'):
+
+    # Deep copy the small version of the reference case and disable stats.
+    options = deepcopy(options_in)
+
+    if mode == 'cpumpi':
+        merge_options(options, options_mpi_in)
+
+    if permutations_in is None:
+        base_cases = [Case(
+                case_name,
+                casedir=case_dir,
+                rundir=experiment,
+                options=options)]
+    else:
+        base_case = Case(
+            case_name,
+            casedir=case_dir,
+            rundir=experiment,
+            options=options)
+
+        base_cases = generator_parameter_permutations(base_case, [permutations_in])
+
+    cases = []
+    for case in base_cases:
+        cases.extend(generator_restart(case, options['time']['endtime']))
+
+    run_cases(
+        cases,
+        executable,
+        mode,
+        outputfile='{}/{}_restart_{}.csv'.format(case_dir, case_name, experiment))

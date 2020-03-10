@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import os
 import copy
@@ -12,20 +13,19 @@ opt_mpi = {
 
 opt_small = {
         'grid': {'itot': 8, 'jtot': 8},
-        'time': {'endtime': 7200}}
+        'time': {'endtime': 3600, 'savetime': 1800}}
 
 opt_nostats = {
         'stats': {'swstats': 0}}
 
 # Case configuration dicts with name label for permutations.
-dict_opts = {
-        'all_enabled': {},
-        'vapor': {'thermo': {'swthermo': 'vapor'}},
-        'basestate': {'thermo': {'swupdatebasestate': 0}},
-        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
-
-list_permutations = [ dict_opts ]
-
+#dict_opts = {
+#        'all_enabled': {},
+#        'vapor': {'thermo': {'swthermo': 'vapor'}},
+#        'basestate': {'thermo': {'swupdatebasestate': 0}},
+#        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
+#
+#list_permutations = [ dict_opts ]
 
 def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
 
