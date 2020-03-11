@@ -439,7 +439,7 @@ void Radiation_gcss<TF>::create_stats(Stats<TF>& stats)
     {
         stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z", group_name);
         stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z", group_name);
-        stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
     }
 }
 
