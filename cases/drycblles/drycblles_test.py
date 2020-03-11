@@ -20,6 +20,12 @@ opt_small = {
 opt_nostats = {
         'stats': {'swstats': 0}}
 
+# Case configuration dicts with name label for permutations.
+dict_opts = {
+        'default': {},
+        'advec_2i3': {'advec': {'swadvec': '2i3'}},
+        'advec_2i4': {'advec': {'swadvec': '2i4'}}}
+
 
 if __name__ == '__main__':
 
@@ -35,7 +41,7 @@ if __name__ == '__main__':
         elif function_name == 'run_small':
             mht.run_case(case_name, opt_small, opt_mpi, **kwargs)
         elif function_name == 'run_restart':
-            mht.run_restart(case_name, opt_small, opt_mpi, None, **kwargs)
+            mht.run_restart(case_name, opt_small, opt_mpi, dict_opts, **kwargs)
         else:
             raise Exception('\"{}\" is an invalid option'.format(function_name))
 

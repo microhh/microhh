@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import os
 import copy
@@ -13,24 +14,18 @@ opt_mpi = {
         'master': {'npx': 2, 'npy': 2}}
 
 opt_small = {
-        'grid': {'itot': 64, 'jtot': 48, 'ktot': 32},
-        'time': {'endtime': 10}}
-
-opt_small_restart = {
-        'grid': {'itot': 32, 'jtot': 16, 'ktot': 32},
-        'time': {'endtime': 200, 'savetime': 100}}
+        'grid': {'xsize': 800, 'ysize': 800, 'itot': 8, 'jtot': 8},
+        'time': {'endtime': 1800, 'savetime': 900}}
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {
-        'default': {},
-        'no_advec': {'advec': {'swadvec': 0}},
-        'advec_4m': {'advec': {'swadvec': '4m'}},
-        'no_diff': {'diff': {'swdiff': 0}}}
+        'all_enabled': {},
+        'fixed_basestate': {'thermo': {'swupdatebasestate': 0}}}
 
 
 if __name__ == '__main__':
 
-    case_name = 'moser180'
+    case_name = 'rico'
 
     kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
 
