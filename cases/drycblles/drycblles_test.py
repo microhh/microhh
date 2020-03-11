@@ -8,6 +8,8 @@ sys.path.append('../../python/')
 import microhh_tools as mht
 
 # Case configuration dicts
+no_opts = {}
+
 opt_mpi = {
         'master': {'npx': 2, 'npy': 2}}
 
@@ -18,88 +20,24 @@ opt_small = {
 opt_nostats = {
         'stats': {'swstats': 0}}
 
-# Case configuration dicts with name label for permutations.
-#dict_opts = {
-#        'all_enabled': {},
-#        'vapor': {'thermo': {'swthermo': 'vapor'}},
-#        'basestate': {'thermo': {'swupdatebasestate': 0}},
-#        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
-#
-#list_permutations = [ dict_opts ]
-
-def run(executable='microhh', mode='cpu', casedir='.', experiment='local'):
-
-    options = []
-    if mode == 'cpumpi':
-        options.extend(opt_mpi)
-
-    cases = [
-        mht.Case(
-            'drycblles',
-            casedir=casedir,
-            rundir=experiment,
-            options=options)]
-
-    mht.run_cases(
-        cases,
-        executable,
-        mode,
-        outputfile='{}/drycblles_{}.csv'.format(casedir, experiment))
-
-
-def run_small(executable='microhh', mode='cpu',
-              casedir='.', experiment='local'):
-
-    # Deep copy the reference case.
-    options = opt_small.copy()
-    if mode == 'cpumpi':
-        mht.merge_options(options, opt_mpi)
-
-    cases = [
-        mht.Case(
-            'drycblles',
-            casedir=casedir,
-            rundir='{}_small'.format(experiment),
-            options=options)]
-
-    mht.run_cases(
-        cases,
-        executable,
-        mode,
-        outputfile='{}/drycblles_small_{}.csv'.format(casedir, experiment))
-
-
-def run_restart(executable='microhh', mode='cpu',
-                casedir='.', experiment='local'):
-
-    # Deep copy the small version of the reference case and disable stats.
-    options = opt_small.copy()
-    mht.merge_options(options, opt_nostats)
-
-    if mode == 'cpumpi':
-        mht.merge_options(options, opt_mpi)
-
-    base_cases = [
-        mht.Case(
-            'drycblles',
-            casedir=casedir,
-            rundir=experiment,
-            options=options)]
-
-    cases = []
-    for case in base_cases:
-        cases.extend(mht.generator_restart(case, 1800.))
-
-    mht.run_cases(
-        cases,
-        executable,
-        mode,
-        outputfile='{}/drycblles_restart_{}.csv'.format(casedir, experiment))
-
 
 if __name__ == '__main__':
+
+    case_name = 'drycblles'
+
     kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
+
     if len(sys.argv) > 1:
-        globals()[sys.argv[1]](**kwargs)
+        function_name = sys.argv[1]
+
+        if function_name == 'run_case':
+            mht.run_case(case_name, no_opts, opt_mpi, **kwargs)
+        elif function_name == 'run_small':
+            mht.run_case(case_name, opt_small, opt_mpi, **kwargs)
+        elif function_name == 'run_restart':
+            mht.run_restart(case_name, opt_small, opt_mpi, None, **kwargs)
+        else:
+            raise Exception('\"{}\" is an invalid option'.format(function_name))
+
     else:
-        run()
+        mht.run_case(case_name, no_opts, opt_mpi)
