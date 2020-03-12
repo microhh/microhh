@@ -104,10 +104,10 @@ nc_z[:] = z[:]
 # Create a group called "init" for the initial profiles.
 nc_group_init = nc_file.createGroup("init")
 
-nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
-nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
-nc_u   = nc_group_init.createVariable("u"  , float_type, ("z"))
-nc_ug  = nc_group_init.createVariable("ug" , float_type, ("z"))
+nc_thl = nc_group_init.createVariable("thl",   float_type, ("z"))
+nc_qt  = nc_group_init.createVariable("qt",    float_type, ("z"))
+nc_u   = nc_group_init.createVariable("u",     float_type, ("z"))
+nc_ug  = nc_group_init.createVariable("u_geo", float_type, ("z"))
 nc_thl[:] = thl[:]
 nc_qt [:] = qt [:]
 nc_u  [:] = u  [:]
