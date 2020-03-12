@@ -548,7 +548,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         Mask<TF>& m = mask.second;
 
         std::stringstream filename;
-        filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
         // Create new NetCDF file
         m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
