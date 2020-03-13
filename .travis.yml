@@ -13,7 +13,7 @@ compiler:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y gfortran fftw3 libfftw3-dev libnetcdf-dev libnetcdf-c++4 libnetcdf-c++4-dev cmake libboost-dev mpich libmpich-dev
-  - pip install --user numpy netcdf4
+  - pip3 install --user numpy netcdf4
 
 before_script:
   - mkdir build_dp_cpu
@@ -30,8 +30,8 @@ script:
   - make -j 4
   - cd ../build_dp_cpumpi
   - make -j 4
-#  - cd ../cases
-#  - python run_travis.py
+  - cd ../cases
+  - python3 run_travis.py
 
 notifications:
   slack: microhh:hA8nIix9Z34cn6uG8xnz8Uiu
