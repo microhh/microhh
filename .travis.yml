@@ -30,8 +30,8 @@ script:
   - make -j 4
   - cd ../build_dp_cpumpi
   - make -j 4
-  - cd ../cases
-  - python run_travis.py
+#  - cd ../cases
+#  - python run_travis.py
 
 notifications:
   slack: microhh:hA8nIix9Z34cn6uG8xnz8Uiu
