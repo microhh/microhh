@@ -1324,13 +1324,15 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                // const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                const double layer_thickness = gd.dz[ilay + gd.kstart - 1];
+
                 for (int icol=1; icol<=n_col_in; ++icol)
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
                     double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                        std::pow((clwp_subset({icol, ilay})/layer_mass) / four_third_pi_Nc0_rho_w, (1./3.));
+                        std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.));
 
                     // Limit the values between 2.5 and 60.
                     rel_value = std::max(2.5, std::min(rel_value, 60.));
@@ -1338,7 +1340,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
                     double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
-                        std::pow((ciwp_subset({icol, ilay})/layer_mass) / four_third_pi_Ni0_rho_i, (1./3.));
+                        std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.));
 
                     // Limit the values between 2.5 and 200.
                     rei_value = std::max(2.5, std::min(rei_value, 200.));
@@ -1539,18 +1541,20 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const double Nc0 = 100.e6;
             const double Ni0 = 1.e5;
 
-            const double four_pi_Nc0_rho_w = 4.*M_PI*Nc0*Constants::rho_w<double>;
-            const double four_pi_Ni0_rho_i = 4.*M_PI*Ni0*Constants::rho_i<double>;
+            const double four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<double>;
+            const double four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<double>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                // const double layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<double>;
+                const double layer_thickness = gd.dz[ilay + gd.kstart - 1];
+
                 for (int icol=1; icol<=n_col_in; ++icol)
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
                     double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                        std::pow(3.*(clwp_subset({icol, ilay})/layer_mass) / four_pi_Nc0_rho_w, (1./3.));
+                        std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.));
 
                     // Limit the values between 2.5 and 60.
                     rel_value = std::max(2.5, std::min(rel_value, 60.));
@@ -1558,7 +1562,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
                     double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
-                        std::pow(3.*(ciwp_subset({icol, ilay})/layer_mass) / four_pi_Ni0_rho_i, (1./3.));
+                        std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.));
 
                     // Limit the values between 2.5 and 200.
                     rei_value = std::max(2.5, std::min(rei_value, 200.));
