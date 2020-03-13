@@ -30,7 +30,7 @@ script:
   - make -j 4
   - cd ../build_dp_cpumpi
   - make -j 4
-  - cd../cases
+  - cd ../cases
   - python run_travis.py
 
 notifications:
