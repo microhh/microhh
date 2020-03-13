@@ -699,8 +699,10 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields
-    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", gd.sloc);
-    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", group_name, gd.sloc);
+    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", group_name, gd.sloc);
 
     // Get the diffusivities of temperature and moisture
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
