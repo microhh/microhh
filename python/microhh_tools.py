@@ -884,6 +884,11 @@ def run_case(
         mode,
         outputfile='{}/{}_{}.csv'.format(case_dir, case_name, experiment))
 
+    for case in cases:
+        if not case.success:
+            return 1
+    return 0
+
 
 def run_restart(
         case_name, options_in, options_mpi_in, permutations_in=None,
@@ -920,3 +925,8 @@ def run_restart(
         executable,
         mode,
         outputfile='{}/{}_restart_{}.csv'.format(case_dir, case_name, experiment))
+
+    for case in cases:
+        if not case.success:
+            return 1
+    return 0
