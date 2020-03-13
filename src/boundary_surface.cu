@@ -21,6 +21,7 @@
  */
 
 #include <cstdio>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -100,7 +101,7 @@ namespace
                      TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
                      TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
                      int* __restrict__ nobuk_g,
-                     TF z0m, TF z0h, TF zsl,
+                     TF z0m, TF z0h, TF db_ref, TF zsl,
                      int icells, int jcells, int kstart, int jj, int kk,
                      Boundary_type mbcbot, Boundary_type thermobc)
     {
@@ -126,7 +127,7 @@ namespace
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
-                TF db = b[ijk] - bbot[ij];
+                TF db = b[ijk] - bbot[ij] + db_ref;
                 obuk [ij] = calc_Obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
             }
@@ -374,6 +375,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     {
         auto buoy = fields.get_tmp_g();
         thermo.get_buoyancy_surf_g(*buoy);
+        const TF db_ref = thermo.get_db_ref();
 
         // Calculate ustar and Obukhov length, including ghost cells
         stability_g<<<gridGPU2, blockGPU2>>>(
@@ -381,7 +383,7 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
             dutot->fld_g, zL_sl_g, f_sl_g,
             nobuk_g,
-            z0m, z0h, gd.z[gd.kstart],
+            z0m, z0h, db_ref, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells,
             mbcbot, thermobc);
         cuda_check_error();
