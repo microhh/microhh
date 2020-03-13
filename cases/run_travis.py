@@ -4,8 +4,8 @@ import os
 sys.path.append('../python/')
 import microhh_tools as mht
 
-modes = ['cpu', 'cpumpi']
-precs = ['dp']  # ['dp', 'sp']
+modes = ['cpu'] # ['cpu', 'cpumpi']
+precs = ['dp'] # ['dp', 'sp']
 
 #
 # Link executables to working directory
