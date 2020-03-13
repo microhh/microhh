@@ -846,9 +846,9 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         for (auto& it : ap)
         {
             if (it.first == "w")
-                stats.add_profs(*it.second, "zh", stat_op_w, group_name);
+                stats.add_profs(*it.second, "zh", stat_op_w, it.second->group);
             else
-                stats.add_profs(*it.second, "z", stat_op_def, group_name);
+                stats.add_profs(*it.second, "z", stat_op_def, it.second->group);
         }
         stats.add_profs(*sd.at("p"), "z", stat_op_p, group_name);
 
