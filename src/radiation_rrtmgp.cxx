@@ -600,7 +600,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     // Nc0 = inputin.get_item<double>("microphysics", "Nc0", "", 70e6);
 
     auto& gd = grid.get_grid_data();
-    fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", gd.sloc);
+    fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", "radiation", gd.sloc);
 }
 
 template<typename TF>

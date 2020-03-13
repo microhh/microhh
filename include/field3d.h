@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,7 +35,10 @@ class Field3d
 {
     public:
         // Functions
-        Field3d(Master&, Grid<TF>&, std::string, std::string, std::string, const std::array<int,3>&);
+        Field3d(
+                Master&, Grid<TF>&,
+                const std::string&, const std::string&, const std::string&, const std::string&,
+                const std::array<int,3>&);
         ~Field3d();
 
         int init();
@@ -53,6 +56,8 @@ class Field3d
         std::string name;
         std::string unit;
         std::string longname;
+        std::string group;
+
         std::array<int,3> loc;
 
         TF visc;

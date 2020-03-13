@@ -310,7 +310,9 @@ Thermo_dry<TF>::Thermo_dry(
 
     swthermo = "dry";
 
-    fields.init_prognostic_field("th", "Potential Temperature", "K", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("th", "Potential Temperature", "K", group_name, gd.sloc);
 
     fields.sp.at("th")->visc = inputin.get_item<TF>("fields", "svisc", "th");
 

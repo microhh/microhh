@@ -310,7 +310,9 @@ Thermo<TF>(masterin, gridin, fieldsin, inputin)
     auto& gd = grid.get_grid_data();
     swthermo = "buoy";
 
-    fields.init_prognostic_field("b", "Buoyancy", "m s-2", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("b", "Buoyancy", "m s-2", group_name, gd.sloc);
 
     bs.alpha = inputin.get_item<TF>("thermo", "alpha", "", 0.);
     bs.n2 = inputin.get_item<TF>("thermo", "N2"   , "", 0.);
