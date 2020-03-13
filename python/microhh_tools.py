@@ -64,10 +64,9 @@ class Read_namelist:
             nl = Read_namelist()    # with no name specified, it searches for a .ini file in the current dir
             itot = nl['grid']['itot']
             enttime = nl['time']['endtime']
-            printing e.g. nl['grid'] provides an overview of the available variables in a group
     """
 
-    def __init__(self, namelist_file=None):
+    def __init__(self,  namelist_file=None, ducktype=True):
         if (namelist_file is None):
             namelist_file = _find_namelist_file()
 
@@ -81,18 +80,54 @@ class Read_namelist:
                         self.groups[curr_group_name] = {}
                     elif ("=" in line):
                         var_name = lstrip.split('=')[0]
-                        value = _convert_value(lstrip.split('=')[1])
+                        value    = lstrip.split('=')[1]
+
+                        if ducktype:
+                            value = _convert_value(value)
+
                         self.groups[curr_group_name][var_name] = value
 
     def __getitem__(self, name):
+        """
+        Get group dictionary with `nl['group_name']` syntax
+        """
         if name in self.groups.keys():
             return self.groups[name]
         else:
             raise RuntimeError(
                 'Can\'t find group \"{}\" in .ini file'.format(name))
 
+
     def __repr__(self):
+        """
+        Print list of availabe groups
+        """
         return 'Available groups:\n{}'.format(', '.join(self.groups.keys()))
+
+
+    def set_value(self, group, variable, value):
+        """
+        Set value in namelist file/dict, if the group or
+        variable does not exist, it is newly defined
+        """
+        if group not in self.groups:
+            self.groups[group] = {}
+        self.groups[group][variable] = value
+
+
+    def save(self, namelist_file, allow_overwrite=False):
+        """
+        Write namelist from (nested) dictionary back to .ini file
+        """
+        if os.path.exists(namelist_file) and not allow_overwrite:
+            raise Exception('.ini file \"{}\" already exists!'.format(namelist_file))
+
+        with open(namelist_file, 'w') as f:
+            for group in self.groups:
+                f.write('[{}]\n'.format(group))
+                for variable, value in self.groups[group].items():
+                    f.write('{}={}\n'.format(variable, value))
+                f.write('\n')
 
 
 def replace_namelist_value(item, new_value, group=None, namelist_file=None):
@@ -559,11 +594,16 @@ def run_cases(cases, executable, mode, outputfile=''):
 
         try:
             # Update .ini file for testing
-            for group, group_dict in case.options.items():
-                for item, value in group_dict.items():
-                    replace_namelist_value(
-                            item, value, group=group, namelist_file='{0}.ini'.format(case.name))
+            ini_file = '{0}.ini'.format(case.name)
+            nl = Read_namelist(ini_file, ducktype=False)
 
+            for group, group_dict in case.options.items():
+                for variable, value in group_dict.items():
+                    nl.set_value(group, variable, value)
+
+            nl.save(ini_file, allow_overwrite=True)
+
+            # Find the number of MPI tasks
             ntasks = determine_ntasks()
 
             # Create input data, and do other pre-processing
