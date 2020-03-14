@@ -12,7 +12,7 @@ compiler:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y gfortran fftw3 libfftw3-dev libnetcdf-dev libnetcdf-c++4 libnetcdf-c++4-dev cmake libboost-dev mpich libmpich-dev python3-pip
+  - sudo apt-get install -y gfortran fftw3 libfftw3-dev libnetcdf-dev libnetcdf-c++4 libnetcdf-c++4-dev cmake libboost-dev libopenmpi-dev python3-pip
   - pip3 install --user numpy netcdf4
 
 before_script:
