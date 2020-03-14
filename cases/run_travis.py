@@ -4,7 +4,7 @@ import os
 sys.path.append('../python/')
 import microhh_tools as mht
 
-modes = ['cpu', 'cpumpi']
+modes = ['cpu']
 precs = ['dp'] # ['dp', 'sp']
 
 #
