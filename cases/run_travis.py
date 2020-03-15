@@ -77,22 +77,22 @@ les_perturbations = {
 
 les_options.update(no_stats)
 
-print('---------------------')
-print('Running restart tests')
-print('---------------------')
-
-for prec in precs:
-    for mode in modes:
-        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
-        experiment   = '{}_{}'.format(prec, mode)
-
-        err += mht.run_restart('drycbl',
-                dns_options, mpi_options, dns_perturbations,
-                microhh_exec, mode, 'drycbl', experiment)
-
-        err += mht.run_restart('bomex',
-                les_options, mpi_options, les_perturbations,
-                microhh_exec, mode, 'bomex', experiment)
+#print('---------------------')
+#print('Running restart tests')
+#print('---------------------')
+#
+#for prec in precs:
+#    for mode in modes:
+#        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+#        experiment   = '{}_{}'.format(prec, mode)
+#
+#        err += mht.run_restart('drycbl',
+#                dns_options, mpi_options, dns_perturbations,
+#                microhh_exec, mode, 'drycbl', experiment)
+#
+#        err += mht.run_restart('bomex',
+#                les_options, mpi_options, les_perturbations,
+#                microhh_exec, mode, 'bomex', experiment)
 
 if err > 0:
     sys.exit('One of more travis case tests failed!')
