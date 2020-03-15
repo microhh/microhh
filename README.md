@@ -81,7 +81,7 @@ If everything works out properly, a series of files has been created. The model 
 
     ./microhh run drycblles
 
-This will take some time. Now, a statistics file called drycblles_default_0000000.nc has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses python and matplotlib. This is most easily done in interactive python:
+This will take some time. Now, a statistics file called drycblles.default.0000000.nc has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses python and matplotlib. This is most easily done in interactive python:
 
     ipython  
     run drycbllesstats
