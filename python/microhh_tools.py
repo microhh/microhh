@@ -614,7 +614,7 @@ def run_cases(cases, executable, mode, outputfile=''):
                 if mode == 'cpu' or mode == 'gpu':
                     execute('{} {} {}'.format(executable, phase, case.name))
                 elif mode == 'cpumpi':
-                    execute('mpirun --oversubscribe -n {} {} {} {}'.format(
+                    execute('mpiexec --oversubscribe -n {} {} {} {}'.format(
                         ntasks, executable, phase, case.name))
                 else:
                     raise ValueError('{} is an illegal value for mode'.format(mode))
