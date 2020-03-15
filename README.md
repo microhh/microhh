@@ -51,17 +51,17 @@ or
 
     cmake .. -DUSECUDA=TRUE
 
-(Note that once the build has been configured and you wish to change the USECUDA or USEMPI setting, you must delete the build directory or create an additional empty directory from which cmake is run.)
+(Note that once the build has been configured and you wish to change the `USECUDA` or `USEMPI` setting, you must delete the build directory or create an additional empty directory from which `cmake` is run.)
 
-With the previous command you have triggered the build system and created the make files, if the default.cmake file contains the correct settings. Now, you can start the compilation of the code and create the microhh executable with:
+With the previous command you have triggered the build system and created the make files, if the `default.cmake` file contains the correct settings. Now, you can start the compilation of the code and create the microhh executable with:
 
     make -j
 
-Your directory should contain a file named "microhh" now. This is the main executable.
+Your directory should contain a file named `microhh` now. This is the main executable.
 
 Running an example case
 -----------------------
-To start one of the included test cases, go back to the main directory and  open the directory "cases". Here, a collection of test cases has been included. In this example, we start the drycblles case, a simple large-eddy simulation of a dry convective boundary layer.
+To start one of the included test cases, go back to the main directory and  open the directory `cases`. Here, a collection of test cases has been included. In this example, we start the `drycblles` case, a simple large-eddy simulation of a dry convective boundary layer.
 
     cd cases/drycblles
 
@@ -69,11 +69,11 @@ First, we have to create the vertical profiles for our prognostic variables:
 
     python drycblles_input.py
 
-Then, we have to copy or link the microhh executable to the current directory. Here we assume the executable is in the build directory that we have created before.
+Then, we have to copy or link the `microhh` executable to the current directory. Here we assume the executable is in the build directory that we have created before.
 
     cp ../../build/microhh .
 
-Now, we can start microhh in initialization mode to create the initial fields:
+Now, we can start `microhh` in initialization mode to create the initial fields:
 
     ./microhh init drycblles
 
@@ -81,7 +81,7 @@ If everything works out properly, a series of files has been created. The model 
 
     ./microhh run drycblles
 
-This will take some time. Now, a statistics file called drycblles.default.0000000.nc has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses python and matplotlib. This is most easily done in interactive python:
+This will take some time. Now, a statistics file called `drycblles.default.0000000.nc` has been created. You can open this file with your favorite plotting tool, or run some example plots using the provided plotting script that uses Python and matplotlib. This is most easily done in interactive python:
 
     ipython  
     run drycbllesstats
