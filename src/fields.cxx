@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -247,24 +247,26 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     // obligatory parameters
     visc = input.get_item<TF>("fields", "visc", "");
 
+    const std::string group_name = "default";
+
     // Initialize the passive scalars
     std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
-        init_prognostic_field(s, s, "-", gd.sloc);
+        init_prognostic_field(s, s, "-", group_name, gd.sloc);
         sp.at(s)->visc = input.get_item<TF>("fields", "svisc", s);
     }
 
     // Initialize the basic set of fields.
-    init_momentum_field("u", "U velocity", "m s-1", gd.uloc);
-    init_momentum_field("v", "V velocity", "m s-1", gd.vloc);
-    init_momentum_field("w", "Vertical velocity", "m s-1", gd.wloc);
+    init_momentum_field("u", "U velocity", "m s-1", group_name, gd.uloc);
+    init_momentum_field("v", "V velocity", "m s-1", group_name, gd.vloc);
+    init_momentum_field("w", "Vertical velocity", "m s-1", group_name, gd.wloc);
 
     mp.at("u")->visc = visc;
     mp.at("v")->visc = visc;
     mp.at("w")->visc = visc;
 
-    init_diagnostic_field("p", "Pressure", "Pa", gd.sloc);
+    init_diagnostic_field("p", "Pressure", "Pa", group_name, gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
     // before the init phase, where they are initialized in Fields::init()
@@ -383,17 +385,17 @@ void Fields<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global dump-list from dump.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-        std::vector<std::string>::iterator dumpvar = dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (a.count(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;
@@ -409,45 +411,48 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
     {
 
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = cross.get_crosslist();
+        std::vector<std::string>& crosslist_global = cross.get_crosslist();
 
         // Check different type of crosses and put them in their respective lists
         for (auto& it : ap)
         {
-            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, &cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, &cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, &cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, &cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, &cross_path);
+            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
-            check_added_cross(it.first, "",        crosslist_global, &cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, &cross_lngrad);
+            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
 
 template<typename TF>
-void Fields<TF>::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+void Fields<TF>::check_added_cross(
+        const std::string& var,
+        const std::string& type,
+        std::vector<std::string>& crosslist,
+        std::vector<std::string>& typelist)
 {
     std::vector<std::string>::iterator position;
 
-    position = std::find(crosslist->begin(), crosslist->end(), var + type);
-    if (position != crosslist->end())
+    position = std::find(crosslist.begin(), crosslist.end(), var + type);
+    if (position != crosslist.end())
     {
-        // don't allow lngrad in 2nd order mode
+        // Don't allow lngrad in 2nd order mode.
         if (!(type == "lngrad" && grid.get_spatial_order() == Grid_order::Second))
         {
-            typelist->push_back(var);
-            crosslist->erase(position);
+            typelist.push_back(var);
+            crosslist.erase(position);
         }
     }
 }
-
 
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
@@ -489,12 +494,12 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     auto& gd = grid.get_grid_data();
 
-    // Interpolate w to half level:
+    // Interpolate w to full level:
     auto wf = get_tmp();
     grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
 
     // Calculate masks
-    TF threshold = 0;
+    const TF threshold = 0;
     if (mask_name == "wplus")
         stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
     else if (mask_name == "wmin")
@@ -543,7 +548,9 @@ void Fields<TF>::set_calc_mean_profs(bool sw)
 
 template<typename TF>
 void Fields<TF>::init_momentum_field(
-        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
+        const std::string& fldname, const std::string& longname,
+        const std::string& unit, const std::string& groupname,
+        const std::array<int,3>& loc)
 {
     if (mp.find(fldname) != mp.end())
     {
@@ -552,13 +559,13 @@ void Fields<TF>::init_momentum_field(
     }
 
     // Add a new prognostic momentum variable.
-    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
+    mp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, groupname, loc);
 
     // Add a new tendency for momentum variable.
     std::string fldtname  = fldname + "t";
     std::string tunit     = simplify_unit(unit, "s-1");
     std::string tlongname = "Tendency of " + longname;
-    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
+    mt[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, groupname, loc);
 
     // Add the prognostic variable and its tendency to the collection
     // of all fields and tendencies.
@@ -569,7 +576,9 @@ void Fields<TF>::init_momentum_field(
 
 template<typename TF>
 void Fields<TF>::init_prognostic_field(
-        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
+        const std::string& fldname, const std::string& longname,
+        const std::string& unit, const std::string& groupname,
+        const std::array<int,3>& loc)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -578,13 +587,13 @@ void Fields<TF>::init_prognostic_field(
     }
 
     // add a new scalar variable
-    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
+    sp[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, groupname, loc);
 
     // add a new tendency for scalar variable
     std::string fldtname  = fldname + "t";
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = simplify_unit(unit, "s-1");
-    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, loc);
+    st[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldtname, tlongname, tunit, groupname, loc);
 
     // add the prognostic variable and its tendency to the collection
     // of all fields and tendencies
@@ -595,7 +604,9 @@ void Fields<TF>::init_prognostic_field(
 
 template<typename TF>
 void Fields<TF>::init_diagnostic_field(
-        const std::string& fldname, const std::string& longname, const std::string& unit, const std::array<int,3>& loc)
+        const std::string& fldname, const std::string& longname,
+        const std::string& unit, const std::string& groupname,
+        const std::array<int,3>& loc)
 {
     if (sd.find(fldname)!=sd.end())
     {
@@ -603,7 +614,7 @@ void Fields<TF>::init_diagnostic_field(
         throw std::runtime_error(msg);
     }
 
-    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc);
+    sd[fldname] = std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, groupname, loc);
     a [fldname] = sd[fldname];
 }
 
@@ -615,11 +626,12 @@ void Fields<TF>::init_tmp_field()
     std::string fldname = "tmp" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::string group = "tmp_group";
     std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
+    atmp.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, group, loc));
 }
 
 #ifdef USECUDA
@@ -631,11 +643,12 @@ void Fields<TF>::init_tmp_field_g()
     std::string fldname = "tmp_gpu" + std::to_string(ntmp);
     std::string longname = "";
     std::string unit = "";
+    std::string group = "tmp_group";
     std::array<int,3> loc = {0,0,0};
 
     std::string message = "Allocating temporary field: " + fldname;
     master.print_message(message);
-    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, loc));
+    atmp_g.push_back(std::make_shared<Field3d<TF>>(master, grid, fldname, longname, unit, group, loc));
 }
 #endif
 
@@ -818,27 +831,6 @@ void Fields<TF>::add_vortex_pair(Input& inputin)
     }
 }
 
-//int Fields::add_mean_prof(Input* inputin, std::string fld, double* restrict data, double offset)
-//{
-//    double proftemp[grid.kmax];
-//
-//    const int jj = grid.icells;
-//    const int kk = grid.ijcells;
-//
-//    if (input.get_prof(proftemp, fld, grid.kmax))
-//        return 1;
-//
-//    for (int k=grid.kstart; k<grid.kend; ++k)
-//        for (int j=grid.jstart; j<grid.jend; ++j)
-//            for (int i=grid.istart; i<grid.iend; ++i)
-//            {
-//                const int ijk = i + j*jj + k*kk;
-//                data[ijk] += proftemp[k-grid.kstart] - offset;
-//            }
-//
-//    return 0;
-//}
-
 template <typename TF>
 void Fields<TF>::create_stats(Stats<TF>& stats)
 {
@@ -854,9 +846,9 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         for (auto& it : ap)
         {
             if (it.first == "w")
-                stats.add_profs(*it.second, "zh", stat_op_w, group_name);
+                stats.add_profs(*it.second, "zh", stat_op_w, it.second->group);
             else
-                stats.add_profs(*it.second, "z", stat_op_def, group_name);
+                stats.add_profs(*it.second, "z", stat_op_def, it.second->group);
         }
         stats.add_profs(*sd.at("p"), "z", stat_op_p, group_name);
 

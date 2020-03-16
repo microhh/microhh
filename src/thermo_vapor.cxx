@@ -332,8 +332,10 @@ Thermo_vapor<TF>::Thermo_vapor(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields
-    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", gd.sloc);
-    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", group_name, gd.sloc);
+    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", group_name, gd.sloc);
 
     // Get the diffusivities of temperature and moisture
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
@@ -386,7 +388,83 @@ void Thermo_vapor<TF>::init()
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::save(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    {
+        // Save the base state to disk
+        FILE *pFile;
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+        pFile = fopen(filename, "wbx");
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+            master.print_message("OK\n");
+
+        fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+        fclose(pFile);
+    }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in writing thermo_basestate");
+}
+
+template<typename TF>
+void Thermo_vapor<TF>::load(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+
+        std::printf("Loading \"%s\" ... ", filename);
+
+        FILE* pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            fclose(pFile);
+        }
+    }
+
+    // Communicate the file read error over all procs.
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in thermo_basestate");
+    else
+        master.print_message("OK\n");
+
+    master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
+    master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);
+}
+
+template<typename TF>
+void Thermo_vapor<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
@@ -427,6 +505,12 @@ void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
             bs.thvrefh[k]     = bs.thvref0;
         }
     }
+}
+
+template<typename TF>
+void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    create_basestate(inputin, input_nc);
 
     // 6. Process the time dependent surface pressure
     tdep_pbot->create_timedep(input_nc);
@@ -462,7 +546,6 @@ void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 
     fields.release_tmp(tmp);
     stats.calc_tend(*fields.mt.at("w"), tend_name);
-
 }
 #endif
 
@@ -477,7 +560,6 @@ void Thermo_vapor<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     std::string message = "Vapor thermodynamics can not provide mask: \"" + mask_name +"\"";
     throw std::runtime_error(message);
-
 }
 
 
@@ -733,17 +815,17 @@ void Thermo_vapor<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are retrievable thermo fields
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;

@@ -1,6 +1,5 @@
 import netCDF4 as nc
-import numpy
-from pylab import *
+import numpy as np
 
 float_type = 'f8'
 
@@ -9,16 +8,16 @@ kmax  = 64
 zsize = 5.
 dz = zsize / kmax
 
-z = zeros(kmax)
-u = zeros(kmax)
-v = zeros(kmax)
-u_geo = zeros(kmax)
-v_geo = zeros(kmax)
+z = np.zeros(kmax)
+u = np.zeros(kmax)
+v = np.zeros(kmax)
+u_geo = np.zeros(kmax)
+v_geo = np.zeros(kmax)
 
 u_geo[:] = 1.
 v_geo[:] = 0.
 
-z = linspace(0.5*dz, zsize-0.5*dz, kmax)
+z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 
 visc = 0.1
 fc   = 1.
@@ -51,5 +50,3 @@ nc_u_geo[:] = u_geo[:]
 nc_v_geo[:] = v_geo[:]
 
 nc_file.close()
-
-

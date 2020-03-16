@@ -56,7 +56,10 @@ class Thermo
         virtual void init() = 0;
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create_basestate(Input&, Netcdf_handle&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
+        virtual void load(const int) = 0;
+        virtual void save(const int) = 0;
 
         virtual void exec(const double, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&) = 0; ///< Calculate the statistics

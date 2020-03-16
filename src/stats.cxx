@@ -28,6 +28,8 @@
 #include <iomanip>
 #include <vector>
 #include <utility>
+#include <netcdf.h>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -38,8 +40,6 @@
 #include "timeloop.h"
 #include "advec.h"
 #include "diff.h"
-
-#include <netcdf.h>
 #include "netcdf_interface.h"
 
 namespace
@@ -95,8 +95,8 @@ namespace
             const TF* const restrict fld, const TF* const restrict fldh,
             const TF* const restrict fld_bot, const TF threshold,
             const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int icells, const int ijcells)
+            const int iend, const int jend, const int kend,
+            const int icells, const int ijcells, const int kcells)
     {
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
@@ -119,13 +119,50 @@ namespace
                 mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
             }
 
+        // Set the ghost cells equal to the first model level.
+        #pragma omp parallel for
+        for (int k=0; k<kstart; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + kstart*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk_ref], threshold);
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
+                }
+
+        // Set the ghost cells for the full level equal to kend-1.
+        #pragma omp parallel for
+        for (int k=kend; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + (kend-1)*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flag) * is_false<TF, mode>(fld [ijk_ref], threshold);
+                }
+
+        // Set the ghost cells for the flux level equal to kend.
+        #pragma omp parallel for
+        for (int k=kend+1; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + kend*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
+                }
+
         // Set the mask for surface projected quantities
         #pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij  = i + j*icells;
+                const int ij = i + j*icells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij], threshold);
             }
     }
@@ -205,15 +242,15 @@ namespace
         }
 
         nmask_bottom     = 0;
-        nmask_half[kend] = 0;
+        // nmask_half[kend] = 0;
         #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
                 const int ijk = i + j*icells + kend*ijcells;
-                nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
-                nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
+                nmask_bottom += in_mask<int>(mfield_bot[ij], flag);
+                // nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
     }
 
@@ -511,7 +548,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         Mask<TF>& m = mask.second;
 
         std::stringstream filename;
-        filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
         // Create new NetCDF file
         m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
@@ -864,7 +901,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
     // Make sure that flux goes at the end
     for (auto& it : operations)
     {
-        if (it == "flux" )
+        if (it == "flux")
         {
             std::swap(it, operations.back());
             break;
@@ -1070,17 +1107,22 @@ void Stats<TF>::finalize_masks()
 
     boundary_cyclic.exec(mfield.data());
     boundary_cyclic.exec_2d(mfield_bot.data());
+
     for (auto& it : masks)
     {
+        // CvH: compute the nmask over the entire depth. Masks need to provide the proper count for
+        // the ghost cells in order to be able to calculate mean profile in ghost cells (needed for budgets).
         calc_nmask<TF>(
                 it.second.nmask.data(), it.second.nmaskh.data(), it.second.nmask_bot,
                 mfield.data(), mfield_bot.data(), it.second.flag, it.second.flagh,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
                 gd.icells, gd.ijcells, gd.kcells);
 
         master.sum(it.second.nmask.data() , gd.kcells);
         master.sum(it.second.nmaskh.data(), gd.kcells);
+
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
+
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
             calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(),
@@ -1120,14 +1162,14 @@ void Stats<TF>::set_mask_thres(
                 fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, gd.kcells);
     else if (mode == Stats_mask_type::Min)
         calc_mask_thres<TF, Stats_mask_type::Min>(
                 mfield.data(), mfield_bot.data(), flag, flagh,
                 fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, gd.kcells);
     else
         throw std::runtime_error("Invalid mask type in set_mask_thres()");
 }
@@ -1143,7 +1185,6 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF>& prof)
         for (auto& it : masks)
             it.second.profs.at(varname).data = prof;
     }
-
 }
 
 template<typename TF>
@@ -1154,6 +1195,200 @@ void Stats<TF>::set_timeseries(const std::string varname, const TF val)
     {
         for (auto& it : masks)
             it.second.tseries.at(varname).data = val;
+    }
+}
+
+template<typename TF>
+void Stats<TF>::calc_mask_mean_profile(
+        std::vector<TF>& prof,
+        const std::pair<const std::string, Mask<TF>>& m,
+        const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+
+    set_flag(flag, nmask, m.second, fld.loc[2]);
+
+    // CvH. Do the mean over the entire depth. The calc_mean function always add 1 to the specified
+    // kend, so I send kcells-1 as the limit. This is not elegant, yet it works.
+    calc_mean(
+            prof.data(), fld.fld.data(), mfield.data(), flag, nmask,
+            gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells-1, gd.icells, gd.ijcells);
+
+    master.sum(prof.data(), gd.kcells);
+}
+
+template<typename TF>
+void Stats<TF>::calc_mask_stats(
+        std::pair<const std::string, Mask<TF>>& m,
+        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+
+    // Calc mean
+    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
+    {
+        set_flag(flag, nmask, m.second, fld.loc[2]);
+        calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
+
+        // Add the offset.
+        for (auto& value : m.second.profs.at(varname).data)
+            value += offset;
+
+        set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
+    }
+
+    // Calc moments
+    for (int power=2; power<=4; power++)
+    {
+        name = varname + "_" + std::to_string(power);
+        if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            calc_moment(
+                    m.second.profs.at(name).data.data(), fld.fld.data(), m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
+                    power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+
+    // Calc Resolved Flux
+    name = varname + "_w";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        auto advec_flux = fields.get_tmp();
+        advec.get_advec_flux(*advec_flux, fld);
+
+        set_flag(flag, nmask, m.second, !fld.loc[2]);
+        calc_mean(
+                m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+
+        fields.release_tmp(advec_flux);
+    }
+
+    // Calc Diffusive Flux
+    name = varname + "_diff";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        auto diff_flux = fields.get_tmp();
+        diff.diff_flux(*diff_flux, fld);
+
+        set_flag(flag, nmask, m.second, !fld.loc[2]);
+        calc_mean(
+                m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+
+        fields.release_tmp(diff_flux);
+    }
+
+    // Calc Total Flux
+    name = varname + "_flux";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        // No sum is required in this routine as values all.
+        set_flag(flag, nmask, m.second, !fld.loc[2]);
+        add_fluxes(
+                m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
+                gd.kstart, gd.kend);
+        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+    }
+
+    // Calc Gradient
+    name = varname + "_grad";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        set_flag(flag, nmask, m.second, !fld.loc[2]);
+
+        if (grid.get_spatial_order() == Grid_order::Second)
+        {
+            calc_grad_2nd(
+                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        }
+        else if (grid.get_spatial_order() == Grid_order::Fourth)
+        {
+            calc_grad_4th(
+                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        }
+
+        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+    }
+
+    // Calc Integrated Path
+    name = varname + "_path";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        set_flag(flag, nmask, m.second, fld.loc[2]);
+
+        std::pair<TF, int> path = calc_path(
+                fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(&path.first, 1);
+        master.sum(&path.second, 1);
+
+        m.second.tseries.at(name).data = path.first / path.second;
+    }
+
+    // Calc Cover
+    name = varname + "_cover";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        set_flag(flag, nmask, m.second, fld.loc[2]);
+
+        // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
+        std::pair<int, int> cover = calc_cover(
+                fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(&cover.first, 1);
+        master.sum(&cover.second, 1);
+
+        // Only assign if number of points in mask is positive.
+        m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
+    }
+
+    // Calc Fraction
+    name = varname + "_frac";
+    auto it1 = std::find(varlist.begin(), varlist.end(), name);
+    if (it1 != varlist.end())
+    {
+        set_flag(flag, nmask, m.second, fld.loc[2]);
+
+        calc_frac(
+                m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
     }
 }
 

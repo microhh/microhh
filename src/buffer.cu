@@ -105,7 +105,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
         const int blockj = gd.jthread_block;
         const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
         const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-        const int gridk  = gd.kmax - bufferkstart + 1;
+        const int gridk  = gd.kmax - (bufferkstart-gd.kgc);
 
         dim3 gridGPU (gridi, gridj, gridk);
         dim3 blockGPU(blocki, blockj, 1);
@@ -136,7 +136,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
                 fields.mp.at("w")->fld_mean_g, gd.zh_g,
                 zstart, zsizebufi, sigma, beta,
-                gd.istart, gd.jstart, bufferkstart,
+                gd.istart, gd.jstart, bufferkstarth,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
@@ -175,7 +175,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
                 bufferprofs_g.at("w"), gd.zh_g,
                 zstart, zsizebufi, sigma, beta,
-                gd.istart, gd.jstart, bufferkstart,
+                gd.istart, gd.jstart, bufferkstarth,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
@@ -190,7 +190,9 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                     gd.icells, gd.ijcells);
             cuda_check_error();
         }
+
         cudaDeviceSynchronize();
+
         stats.calc_tend(*fields.mt.at("u"), tend_name);
         stats.calc_tend(*fields.mt.at("v"), tend_name);
         stats.calc_tend(*fields.mt.at("w"), tend_name);

@@ -1,28 +1,44 @@
 import sys
+
 sys.path.append('../python/')
 import microhh_tools as mht
-import taylorgreen.taylorgreenconv as tg
-import conservation.run_conservation as conv
 
+#import taylorgreen.taylorgreenconv as tg
+#import conservation.run_conservation as conv
 
+#modes = ['cpu', 'cpumpi', 'gpu']
+modes = ['cpu', 'cpumpi']
+precs = ['dp', 'sp']
 
-options = {'itot' : 64, 'jtot' : 64, 'ktot' : 64}
-mode_options = {'cpu' : {}, 'gpu' : {}, 'mpi' : {'npx' : 2, 'npy' : 4 }}
-for prec in ['sp', 'dp']:
-    for mode in ['cpu', 'mpi', 'gpu']:
-        cases=[]
-        rundir = mode + '_' + prec
-        exec   = 'microhh_' + mode + '_' + prec
+les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'lasso', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip missing
+dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
 
-        # 1) Run all real cases at coarse resolution
-        for case in ['arm', 'bomex', 'drycbl','drycblles', 'drycblles_subs', 'dryslope', 'dycoms', 'ekman', 'lasso', 'prandtlslope','rico', 'moser180']:
-            cases.append(mht.Case(case,options={**options, **mode_options},rundir=rundir,keep=True))
-        
-        # 2) Test a RICO restart
-        cases.append(mht.generator_restart(mht.Case('rico',options={**options, **mode_options, **{'endtime' : 60}})))
+les_options = {
+        'grid': {'itot': 16, 'jtot': 16},
+        'time': {'endtime': 300}}
 
-        # 3) Do conservation and taylorgreen test
-        tg.main(exec, prec)
-        conv.main()
-        # 4) Run tests
-        mht.test_cases(cases, exec)
+dns_options = {
+        'grid': {'itot': 8, 'jtot': 8},
+        'time': {'endtime': 1}}
+
+mpi_options = {
+        'master': {'npx': 2, 'npy': 2}}
+
+for prec in precs:
+    for mode in modes:
+        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+        experiment   = '{}_{}'.format(prec, mode)
+
+        for case in les_cases:
+            mht.run_case(case,
+                    les_options, mpi_options,
+                    microhh_exec, mode, case, experiment)
+
+        for case in dns_cases:
+            mht.run_case(case,
+                    dns_options, mpi_options,
+                    microhh_exec, mode, case, experiment)
+
+#        # 3) Do conservation and taylorgreen test
+#        tg.main(exec, prec)
+#        conv.main()

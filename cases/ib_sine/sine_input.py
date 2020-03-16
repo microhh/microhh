@@ -57,10 +57,10 @@ if __name__ == "__main__":
     # Create stretched grid
     #grid = Grid(16, 40, 5, 0.0008, 0.0015)
     #grid = Grid(96, 40, 5, 0.0004, 0.0007)
-    grid = Grid(128, 40, 5, 0.0002, 0.0005373)
-    #grid = Grid(256, 122, 10, 0.0001, 0.000322)
+    #grid = Grid(128, 40, 5, 0.0002, 0.0005373)
+    grid = Grid(256, 122, 10, 0.0001, 0.000322)
     #grid = Grid(384, 180, 20, 0.00006, 0.00021831)
-    #grid.plot()
+    grid.plot()
 
     print('Effective zsize = {}'.format(grid.zsize-z_offset-amplitude))
 

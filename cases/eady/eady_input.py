@@ -26,7 +26,7 @@ dudz = 1e-2
 th = 300. + dthetadz*z
 u = dudz*z
 u_geo = u.copy()
-print("dthetady_ls = {0}".format(-dudz*fc))
+#print("dthetady_ls = {0}".format(-dudz*fc))
 
 # Write the data to a file.
 nc_file = nc.Dataset("eady_input.nc", mode="w", datamodel="NETCDF4", clobber=False)

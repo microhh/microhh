@@ -4,4 +4,3 @@
 .vscode
 build*
 .*
-__pycache__

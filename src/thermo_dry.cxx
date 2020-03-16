@@ -310,7 +310,9 @@ Thermo_dry<TF>::Thermo_dry(
 
     swthermo = "dry";
 
-    fields.init_prognostic_field("th", "Potential Temperature", "K", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("th", "Potential Temperature", "K", group_name, gd.sloc);
 
     fields.sp.at("th")->visc = inputin.get_item<TF>("fields", "svisc", "th");
 
@@ -643,17 +645,17 @@ void Thermo_dry<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global dump-list from dump.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;
@@ -676,17 +678,17 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
         allowedcrossvars.push_back("thlngrad");
 
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = cross.get_crosslist();
+        std::vector<std::string>& crosslist_global = cross.get_crosslist();
 
         // Check input list of cross variables (crosslist)
-        std::vector<std::string>::iterator it=crosslist_global->begin();
-        while (it != crosslist_global->end())
+        std::vector<std::string>::iterator it = crosslist_global.begin();
+        while (it != crosslist_global.end())
         {
             if (std::count(allowedcrossvars.begin(), allowedcrossvars.end(), *it))
             {
                 // Remove variable from global list, put in local list
                 crosslist.push_back(*it);
-                crosslist_global->erase(it); // erase() returns iterator of next element..
+                crosslist_global.erase(it); // erase() returns iterator of next element..
 
                 // CvH: This is not required if only thlngrad is used.
                 swcross_b = true;

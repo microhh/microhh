@@ -213,7 +213,6 @@ void Model<TF>::load_or_save()
 
     // Free the memory taken by the input fields.
     input.reset();
-
 }
 
 // In these functions data necessary to start the model is loaded from disk.
@@ -228,7 +227,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
-    dump->create();
+
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -239,7 +238,10 @@ void Model<TF>::load()
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
+
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
@@ -247,7 +249,11 @@ void Model<TF>::load()
     decay->create(*input, *stats);
     limiter->create(*stats);
 
-    cross->create(); // Cross needs to be called at the end!
+    // Cross and dump both need to be called at/near the
+    // end of the create phase, as other classes register which
+    // variables are legal as a cross/dump.
+    cross->create();
+    dump->create();
 
     boundary->set_values();
     pres->set_values();
@@ -269,7 +275,14 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
-    timeloop->save(timeloop->get_iotime());
+    timeloop->save(
+            timeloop->get_iotime(),
+            timeloop->get_itime(),
+            timeloop->get_idt(),
+            timeloop->get_iteration());
+
+    thermo->create_basestate(*input, *input_nc);
+    thermo->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -431,6 +444,11 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
+                        const int iotime = timeloop->get_iotime();
+                        const unsigned long idt = timeloop->get_idt();
+                        const unsigned long itime = timeloop->get_itime();
+                        const int iteration = timeloop->get_iteration();
+
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -441,11 +459,13 @@ void Model<TF>::exec()
                             thermo  ->backward_device();
                         }
                         #endif
+
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(timeloop->get_iotime());
-                            fields  ->save(timeloop->get_iotime());
+                            timeloop->save(iotime, itime, idt, iteration);
+                            fields  ->save(iotime);
+                            thermo  ->save(iotime);
                         }
                     }
                 }

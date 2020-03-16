@@ -27,7 +27,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "dump.h"
-//#include "thermo.h"
 #include "timeloop.h"
 #include "constants.h"
 #include "defines.h"
@@ -41,7 +40,7 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
 
     if (swdump)
     {
-       // Get the time at which the dump sections are triggered.
+        // Get the time at which the dump sections are triggered.
         sampletime = inputin.get_item<double>("dump", "sampletime", "");
 
         // Get list of dump variables.
@@ -76,7 +75,7 @@ template<typename TF>
 void Dump<TF>::create()
 {
     /* All classes (fields, thermo) have removed their dump-variables from
-       dumplist by now. If it isnt empty, print warnings for invalid variables */
+       dumplist by now. If it isn't empty, print warnings for invalid variables */
     if (!dumplist.empty())
     {
         for (auto& it : dumplist)
@@ -96,31 +95,34 @@ unsigned long Dump<TF>::get_time_limit(unsigned long itime)
 template<typename TF>
 bool Dump<TF>::do_dump(unsigned long itime)
 {
-    // check if dump are enabled
+    // Check if dump is enabled.
     if (!swdump)
         return false;
-    // check if time for execution
+
+    // Check if current time step is dump time.
     if (itime % isampletime != 0)
         return false;
-    // return true such that column are computed
+
+    // Return true such that column are computed
     return true;
 }
 
 template<typename TF>
-std::vector<std::string>* Dump<TF>::get_dumplist()
+std::vector<std::string>& Dump<TF>::get_dumplist()
 {
-    return &dumplist;
+    return dumplist;
 }
 
 template<typename TF>
-void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
+void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
 {
     const double no_offset = 0.;
     char filename[256];
 
     std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
     std::ifstream infile(filename);
-    if(infile.good())
+
+    if (infile.good())
     {
         master.print_message("%s already exists\n", filename);
     }
@@ -128,25 +130,23 @@ void Dump<TF>::save_dump(TF* data, std::string varname, int iotime)
     {
         master.print_message("Saving \"%s\" ... ", filename);
 
-        auto tmpfld1 = fields.get_tmp();
-        auto tmpfld2 = fields.get_tmp();
-        auto tmp1 = tmpfld1.get();
-        auto tmp2 = tmpfld1.get();
+        auto tmp1 = fields.get_tmp();
+        auto tmp2 = fields.get_tmp();
 
         if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
         {
             master.print_message("FAILED\n");
-            throw std::runtime_error("In Dump");
+            throw std::runtime_error("Writing error in dump");
         }
         else
         {
             master.print_message("OK\n");
         }
-        fields.release_tmp(tmpfld1);
-        fields.release_tmp(tmpfld2);
+
+        fields.release_tmp(tmp1);
+        fields.release_tmp(tmp2);
     }
 }
-
 
 template class Dump<double>;
 template class Dump<float>;
