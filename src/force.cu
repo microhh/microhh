@@ -328,18 +328,21 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
         cudaDeviceSynchronize();
-        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
 
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
     }
     else if (swlspres == Large_scale_pressure_type::Pressure_gradient)
     {
+        const TF fbody = TF(-1.)*dpdx;
         add_pressure_force_g<TF><<<gridGPU, blockGPU>>>(
-            fields.mt.at("u")->fld_g, dpdx,
+            fields.mt.at("u")->fld_g, fbody,
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend);
         cuda_check_error();
         cudaDeviceSynchronize();
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
@@ -366,6 +369,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             cuda_check_error();
         }
         cudaDeviceSynchronize();
+
         stats.calc_tend(*fields.mt.at("u"), tend_name_cor);
         stats.calc_tend(*fields.mt.at("v"), tend_name_cor);
     }

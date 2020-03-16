@@ -498,9 +498,13 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     else if (swlspres == Large_scale_pressure_type::Pressure_gradient)
     {
+        const TF fbody = TF(-1.)*dpdx;
+
         add_pressure_force<TF>(
-                fields.at.at("u")->fld.data(), dpdx,
+                fields.at.at("u")->fld.data(), fbody,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
     }
 
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
