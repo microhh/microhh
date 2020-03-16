@@ -10,6 +10,8 @@
 * `rcemip`: RCEMIP radiative convective equilibrium case (Wing et al., 2018).
 * `rico`: RICO precipitating cumulus case (van Zanten et al., 2013).
 * `sullivan2011`: Dry convective boundary layer following Sullivan and Patton (2011).
+* 'gabls1': GABLS1 LES intercomparison (Beare et al. 2006).
+* 'gabls4s3': GABLS4 LES intercomparison (Couvreux et al. 2020).
 
 ## DNS
 * `ekman`: Ekman spiral with constant viscosity.
