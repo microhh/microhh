@@ -21,18 +21,22 @@ class read_microhh:
 
         #if(t0 != -1 and t1 != -1):
         # find times closest to t0,t1:
-        self.t = self.nc.variables['t'][:]  
+        self.t = self.nc.variables['time'][:]
+
         t0 = (np.abs(self.t-t0)).argmin()   if t0 != -1 else 0
         t1 = (np.abs(self.t-t1)).argmin()+1 if t1 != -1 else self.t.size
         print('%s, av=%i, t=%.1f-%.1f s'%(ncfile,average,self.t[t0],self.t[t1-1]))
 
+        self.z  = self.nc.variables['z'][:]
+        self.zh = self.nc.variables['zh'][:]
+
         # Read in all variables from NetCDF:
-        for var in self.nc.variables:
-            tmp = self.nc.variables[var]
+        for var in self.nc['default'].variables:
+            tmp = self.nc['default'].variables[var]
             shp = tmp.shape
 
             if(np.size(shp) == 1):
-                if(average and tmp.dimensions[0] == 't'):
+                if(average and tmp.dimensions[0] == 'time'):
                     setattr(self,var,np.mean(tmp[t0:t1]))
                 else:
                     setattr(self,var,tmp[:])
