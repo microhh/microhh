@@ -57,12 +57,14 @@ class Radiation_gcss : public Radiation<TF>
 
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        std::vector<TF>& get_surface_radiation(std::string)
+            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int)
-        { throw std::runtime_error("Not implemented yet!"); }
+        { throw std::runtime_error("\"exec_all_stats()\" is not implemented in radiation_gcss"); }
 
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
 
