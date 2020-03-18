@@ -529,9 +529,9 @@ bool Cross<TF>::do_cross(unsigned long itime)
 
 
 template<typename TF>
-std::vector<std::string>* Cross<TF>::get_crosslist()
+std::vector<std::string>& Cross<TF>::get_crosslist()
 {
-    return &crosslist;
+    return crosslist;
 }
 
 /*

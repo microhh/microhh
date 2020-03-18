@@ -151,6 +151,7 @@ nl = mht.Read_namelist(args.filename)
 itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
+
 starttime = float(
     args.starttime) if args.starttime is not None else nl['time']['starttime']
 endtime = float(
@@ -160,11 +161,19 @@ sampletime = float(
 
 if args.modes is None:
     modes = list(nl['cross'].keys() & cross_modes)
+
+    # Check if there are paths in the cross-list
+    if 'xy' not in modes:
+        for v in nl['cross']['crosslist']:
+            if 'path' in v:
+                modes.append('xy')
+                break
 else:
     modes = args.modes
-try:
+
+if 'iotimeprec' in nl['time']:
     iotimeprec = nl['time']['iotimeprec']
-except KeyError:
+else:
     iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['cross']['crosslist']

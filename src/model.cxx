@@ -37,6 +37,7 @@
 #include "timeloop.h"
 #include "fft.h"
 #include "boundary.h"
+#include "immersed_boundary.h"
 #include "advec.h"
 #include "diff.h"
 #include "pres.h"
@@ -135,6 +136,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+
 
         stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
@@ -181,6 +184,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    ib->init(*input, *cross);
     buffer->init();
     diff->init();
     pres->init();
@@ -219,7 +223,6 @@ void Model<TF>::load_or_save()
 
     // Free the memory taken by the input fields.
     input.reset();
-
 }
 
 // In these functions data necessary to start the model is loaded from disk.
@@ -236,7 +239,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
-    dump->create();
+
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -248,9 +251,13 @@ void Model<TF>::load()
     soil->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
 
     boundary->create(*input, *input_nc, *stats);
+    ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
+
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     microphys->create(*input, *input_nc, *stats, *cross, *dump);
 
     // Radiation needs to be created after thermo as it needs base profiles.
@@ -258,7 +265,11 @@ void Model<TF>::load()
     decay->create(*input, *stats);
     limiter->create(*stats);
 
-    cross->create(); // Cross needs to be called at the end!
+    // Cross and dump both need to be called at/near the
+    // end of the create phase, as other classes register which
+    // variables are legal as a cross/dump.
+    cross->create();
+    dump->create();
 
     boundary->set_values();
     pres->set_values();
@@ -281,7 +292,15 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
-    timeloop->save(timeloop->get_iotime());
+    timeloop->save(
+            timeloop->get_iotime(),
+            timeloop->get_itime(),
+            timeloop->get_idt(),
+            timeloop->get_iteration());
+
+    thermo->create_basestate(*input, *input_nc);
+    thermo->save(timeloop->get_iotime());
+
     soil->save_prognostic_fields(timeloop->get_iotime());
 }
 
@@ -307,6 +326,9 @@ void Model<TF>::exec()
 
     // Calculate the field means, in case needed.
     fields->exec();
+
+    // Set the immersed boundary conditions
+    ib->exec_momentum();
 
     // Get the viscosity to be used in diffusion.
     diff->exec_viscosity(*thermo);
@@ -343,6 +365,9 @@ void Model<TF>::exec()
                 // Calculate stat masks and begin tendency calculation, if necessary
                 setup_stats();
 
+                // Set the immersed boundary conditions for scalars
+                ib->exec_scalars();
+
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 advec->exec(*stats);
@@ -371,6 +396,10 @@ void Model<TF>::exec()
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
+
+                // Set the immersed boundary conditions
+                ib->exec_momentum();
+
                 // Solve the poisson equation for pressure.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
@@ -386,8 +415,13 @@ void Model<TF>::exec()
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
-                    if (stats->do_statistics(timeloop->get_itime()) || cross->do_cross(timeloop->get_itime()) ||
-                        dump->do_dump(timeloop->get_itime()))
+                    const int iter = timeloop->get_iteration();
+                    const double time = timeloop->get_time();
+                    const unsigned long itime = timeloop->get_itime();
+                    const int iotime = timeloop->get_iotime();
+                    const double dt = timeloop->get_dt(); 
+
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
@@ -400,17 +434,15 @@ void Model<TF>::exec()
                         }
                         #endif
                         #pragma omp task default(shared)
-                        calculate_statistics(
-                                timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime(),
-                                timeloop->get_iotime(), timeloop->get_dt());
+                        calculate_statistics(iter, time, itime, iotime, dt);
                     }
 
-                    if (column->do_column(timeloop->get_itime()))
+                    if (column->do_column(itime))
                     {
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
-                        column->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+                        column->exec(iter, time, itime);
                     }
 
                 }
@@ -434,6 +466,11 @@ void Model<TF>::exec()
                     // Save the data for restarts.
                     if (timeloop->do_save())
                     {
+                        const int iotime = timeloop->get_iotime();
+                        const unsigned long idt = timeloop->get_idt();
+                        const unsigned long itime = timeloop->get_itime();
+                        const int iteration = timeloop->get_iteration();
+
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {
@@ -444,11 +481,13 @@ void Model<TF>::exec()
                             thermo  ->backward_device();
                         }
                         #endif
+
                         // Save data to disk.
                         #pragma omp task default(shared)
                         {
-                            timeloop->save(timeloop->get_iotime());
-                            fields  ->save(timeloop->get_iotime());
+                            timeloop->save(iotime, itime, idt, iteration);
+                            fields  ->save(iotime);
+                            thermo  ->save(iotime);
                         }
                     }
                 }
@@ -512,6 +551,7 @@ void Model<TF>::prepare_gpu()
     boundary->prepare_device();
     diff    ->prepare_device(*boundary);
     force   ->prepare_device();
+    ib      ->prepare_device();
     // decay   ->prepare_device();
     // // Prepare pressure last, for memory check
     pres    ->prepare_device();
@@ -528,6 +568,7 @@ void Model<TF>::clear_gpu()
     // boundary->clear_device();
     // diff    ->clear_device();
     force   ->clear_device();
+    ib      ->clear_device();
     // decay   ->clear_device();
     // // Clear pressure last, for memory check
     pres    ->clear_device();
@@ -561,6 +602,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
+        ib       ->exec_cross(*cross, iotime);
         soil     ->exec_cross(*cross, iotime);
 
         // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
@@ -585,7 +627,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     if (stats->do_statistics(itime))
         stats->exec(iteration, time, itime);
 }
-
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
 void Model<TF>::setup_stats()
@@ -603,6 +644,30 @@ void Model<TF>::setup_stats()
             thermo  ->backward_device();
         }
         #endif
+        // Prepare all the masks.
+        const std::vector<std::string>& mask_list = stats->get_mask_list();
+
+        stats->initialize_masks();
+        for (auto& mask_name : mask_list)
+        {
+            // Get the mask from one of the mask providing classes
+            if (fields->has_mask(mask_name))
+                fields->get_mask(*stats, mask_name);
+            else if (thermo->has_mask(mask_name))
+                thermo->get_mask(*stats, mask_name);
+            else if (microphys->has_mask(mask_name))
+                microphys->get_mask(*stats, mask_name);
+            else if (decay->has_mask(mask_name))
+                decay->get_mask(*stats, mask_name);
+            else if (ib->has_mask(mask_name))
+                ib->get_mask(*stats, mask_name);
+            else
+            {
+                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                throw std::runtime_error(error_message);
+            }
+        }
+        stats->finalize_masks();
         if (stats->do_tendency())
         {
             calc_masks();
@@ -631,6 +696,8 @@ void Model<TF>::calc_masks()
             microphys->get_mask(*stats, mask_name);
         else if (decay->has_mask(mask_name))
             decay->get_mask(*stats, mask_name);
+        else if (ib->has_mask(mask_name))
+            ib->get_mask(*stats, mask_name);
         else
         {
             std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -681,6 +748,8 @@ void Model<TF>::add_statistics_masks()
             stats->add_mask(mask_name);
         else if (decay->has_mask(mask_name))
             stats->add_mask(mask_name);
+        else if (ib->has_mask(mask_name))
+            stats->add_mask(mask_name);
         else
         {
             std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
@@ -728,6 +797,7 @@ void Model<TF>::print_status()
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
         TF mom  = fields->check_momentum();
         TF tke  = fields->check_tke();
+        TF mass = fields->check_mass();
         TF cfl  = advec->get_cfl(timeloop->get_dt());
         TF dn   = diff->get_dn(timeloop->get_dt());
 

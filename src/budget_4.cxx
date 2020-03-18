@@ -36,6 +36,7 @@
 #include "stats.h"
 #include "field3d_operators.h"
 #include "constants.h"
+#include "netcdf_interface.h"
 
 #include "budget.h"
 #include "budget_4.h"

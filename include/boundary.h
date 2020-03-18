@@ -23,6 +23,8 @@
 #ifndef BOUNDARY_H
 #define BOUNDARY_H
 
+#include <memory>
+
 #include "timedep.h"
 #include "boundary_cyclic.h"
 #include "field3d_io.h"
@@ -34,6 +36,7 @@ template<typename> class Fields;
 template<typename> class Diff;
 template<typename> class Thermo;
 template<typename> class Timedep;
+template<typename> class Stats;
 
 class Input;
 

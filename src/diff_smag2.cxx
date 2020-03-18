@@ -756,7 +756,9 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     cs    = inputin.get_item<TF>("diff", "cs"   , "", 0.23 );
     tPr   = inputin.get_item<TF>("diff", "tPr"  , "", 1./3.);
 
-    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", gd.sloc);
+    const std::string group_name = "default";
+
+    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
 
     if (grid.get_spatial_order() != Grid_order::Second)
         throw std::runtime_error("Diff_smag2 only runs with second order grids");

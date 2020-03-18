@@ -43,15 +43,11 @@ using namespace Finite_difference::O2;
 namespace
 {
     template<typename TF>
-    void enforce_fixed_flux(
-            TF* restrict ut,
-            const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
-            const TF dt,
+    void add_pressure_force(
+            TF* restrict ut, const TF fbody,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
-
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -61,6 +57,22 @@ namespace
                     ut[ijk] += fbody;
                 }
     }
+
+
+    template<typename TF>
+    void enforce_fixed_flux(
+            TF* restrict ut,
+            const TF u_flux, const TF u_mean, const TF ut_mean, const TF u_grid,
+            const TF dt,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const TF fbody = (u_flux - u_mean - u_grid) / dt - ut_mean;
+
+        add_pressure_force(ut, fbody, istart, iend, jstart, jend, kstart, kend, jj, kk);
+    }
+
+
     template<typename TF>
     void calc_coriolis_2nd(
             TF* const restrict ut, TF* const restrict vt,
@@ -249,6 +261,11 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::Fixed_flux;
         uflux = inputin.get_item<TF>("force", "uflux", "");
+    }
+    else if (swlspres_in == "dpdx")
+    {
+        swlspres = Large_scale_pressure_type::Pressure_gradient;
+        dpdx = inputin.get_item<TF>("force", "dpdx", "");
     }
     else if (swlspres_in == "geo")
     {
@@ -474,6 +491,17 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         enforce_fixed_flux<TF>(
                 fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
+    }
+
+    else if (swlspres == Large_scale_pressure_type::Pressure_gradient)
+    {
+        const TF fbody = TF(-1.)*dpdx;
+
+        add_pressure_force<TF>(
+                fields.at.at("u")->fld.data(), fbody,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
         stats.calc_tend(*fields.mt.at("u"), tend_name_pres);

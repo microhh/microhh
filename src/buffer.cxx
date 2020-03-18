@@ -46,6 +46,7 @@ namespace
         for (int k=bufferkstart; k<kend; ++k)
         {
             const TF sigmaz = sigma*std::pow((z[k]-zstart)/zsizebuf, beta);
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)

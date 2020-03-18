@@ -96,6 +96,10 @@ class Thermo_dry : public Thermo<TF>
         #endif
 
         // Empty functions that are allowed to pass.
+        void create_basestate(Input&, Netcdf_handle&) {};
+        void load(const int) {};
+        void save(const int) {};
+
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 

@@ -439,7 +439,7 @@ void Radiation_gcss<TF>::create_stats(Stats<TF>& stats)
     {
         stats.add_prof("sflx", "Total shortwave radiative flux", "W m-2", "z", group_name);
         stats.add_prof("lflx", "Total longwave radiative flux", "W m-2", "z", group_name);
-        stats.add_tendency(*fields.mt.at("thl"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
     }
 }
 
@@ -472,17 +472,17 @@ void Radiation_gcss<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are retrievable thermo fields
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;

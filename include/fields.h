@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -75,9 +75,20 @@ class Fields
         void exec_stats(Stats<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
-        void init_momentum_field  (const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
-        void init_prognostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
-        void init_diagnostic_field(const std::string&, const std::string&, const std::string&, const std::array<int,3>&);
+        void init_momentum_field(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&,
+                const std::array<int,3>&);
+
+        void init_prognostic_field(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&,
+                const std::array<int,3>&);
+
+        void init_diagnostic_field(
+                const std::string&, const std::string&,
+                const std::string&, const std::string&,
+                const std::array<int,3>&);
 
         void init_prognostic_soil_field(const std::string&, const std::string&, const std::string&);
 
@@ -180,7 +191,11 @@ class Fields
         std::vector<std::string> cross_fluxtop;
         std::vector<std::string> cross_path;
 
-        void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
+        void check_added_cross(
+                const std::string&,
+                const std::string&,
+                std::vector<std::string>&,
+                std::vector<std::string>&);
 
         // // masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide

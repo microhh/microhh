@@ -27,6 +27,33 @@
 #include "fields.h"
 #include "stats.h"
 #include "limiter.h"
+#include "tools.h"
+
+namespace
+{
+    template<typename TF>__global__
+    void tendency_limiter(
+            TF* const __restrict__ at,
+            const TF* const __restrict__ a,
+            const TF dt, const TF dti,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            const TF a_new = a[ijk] + dt*at[ijk];
+            at[ijk] += (a_new < TF(0.)) ? -a_new * dti : TF(0.);
+        }
+    }
+}
 
 #ifdef USECUDA
 template <typename TF>
@@ -34,8 +61,32 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 {
     if (limit_list.empty())
         return;
-    else
-        throw std::runtime_error("Limiter not implemented on GPU yet");
+
+    const Grid_data<TF>& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    const TF dti = 1./dt;
+
+    for (auto& name : limit_list)
+    {
+        tendency_limiter<TF><<<gridGPU, blockGPU>>>(
+            fields.at.at(name)->fld_g, fields.ap.at(name)->fld_g,
+            dt, dti,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        stats.calc_tend(*fields.at.at(name), tend_name);
+    }
+
 }
 #endif
 

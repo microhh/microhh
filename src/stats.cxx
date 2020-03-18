@@ -28,6 +28,8 @@
 #include <iomanip>
 #include <vector>
 #include <utility>
+#include <netcdf.h>
+
 #include "master.h"
 #include "grid.h"
 #include "soil_grid.h"
@@ -39,8 +41,6 @@
 #include "timeloop.h"
 #include "advec.h"
 #include "diff.h"
-
-#include <netcdf.h>
 #include "netcdf_interface.h"
 
 namespace
@@ -99,8 +99,8 @@ namespace
             const TF* const restrict fld, const TF* const restrict fldh,
             const TF* const restrict fld_bot, const TF threshold,
             const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int icells, const int ijcells)
+            const int iend, const int jend, const int kend,
+            const int icells, const int ijcells, const int kcells)
     {
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
@@ -123,13 +123,50 @@ namespace
                 mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
             }
 
+        // Set the ghost cells equal to the first model level.
+        #pragma omp parallel for
+        for (int k=0; k<kstart; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + kstart*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk_ref], threshold);
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
+                }
+
+        // Set the ghost cells for the full level equal to kend-1.
+        #pragma omp parallel for
+        for (int k=kend; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + (kend-1)*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flag) * is_false<TF, mode>(fld [ijk_ref], threshold);
+                }
+
+        // Set the ghost cells for the flux level equal to kend.
+        #pragma omp parallel for
+        for (int k=kend+1; k<kcells; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk_ref = i + j*icells + kend*ijcells;
+                    mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
+                }
+
         // Set the mask for surface projected quantities
         #pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij  = i + j*icells;
+                const int ij = i + j*icells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij], threshold);
             }
     }
@@ -210,15 +247,15 @@ namespace
         }
 
         nmask_bottom     = 0;
-        nmask_half[kend] = 0;
+        // nmask_half[kend] = 0;
         #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
                 const int ijk = i + j*icells + kend*ijcells;
-                nmask_bottom     += in_mask<int>(mfield_bot[ij], flag);
-                nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
+                nmask_bottom += in_mask<int>(mfield_bot[ij], flag);
+                // nmask_half[kend] += in_mask<int>(mfield[ijk], flagh);
             }
     }
 
@@ -553,7 +590,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         Mask<TF>& m = mask.second;
 
         std::stringstream filename;
-        filename << sim_name << "_" << m.name << "_" << std::setfill('0') << std::setw(7) << iotime << ".nc";
+        filename << sim_name << "." << m.name << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
 
         // Create new NetCDF file
         m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
@@ -1144,10 +1181,12 @@ void Stats<TF>::finalize_masks()
 
     for (auto& it : masks)
     {
+        // CvH: compute the nmask over the entire depth. Masks need to provide the proper count for
+        // the ghost cells in order to be able to calculate mean profile in ghost cells (needed for budgets).
         calc_nmask<TF>(
                 it.second.nmask.data(), it.second.nmaskh.data(), it.second.nmask_bot,
                 mfield.data(), mfield_bot.data(), it.second.flag, it.second.flagh,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells,
                 gd.icells, gd.ijcells, gd.kcells);
 
         master.sum(it.second.nmask.data() , gd.kcells);
@@ -1194,14 +1233,14 @@ void Stats<TF>::set_mask_thres(
                 fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, gd.kcells);
     else if (mode == Stats_mask_type::Min)
         calc_mask_thres<TF, Stats_mask_type::Min>(
                 mfield.data(), mfield_bot.data(), flag, flagh,
                 fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, gd.kcells);
     else
         throw std::runtime_error("Invalid mask type in set_mask_thres()");
 }
@@ -1243,17 +1282,13 @@ void Stats<TF>::calc_mask_mean_profile(
 
     set_flag(flag, nmask, m.second, fld.loc[2]);
 
+    // CvH. Do the mean over the entire depth. The calc_mean function always add 1 to the specified
+    // kend, so I send kcells-1 as the limit. This is not elegant, yet it works.
     calc_mean(
             prof.data(), fld.fld.data(), mfield.data(), flag, nmask,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells-1, gd.icells, gd.ijcells);
 
     master.sum(prof.data(), gd.kcells);
-
-    // Add the offset.
-    // for (auto& value : prof)
-    //     value += offset;
-
-    // set_fillvalue_prof(prof.data(), nmask, gd.kstart, gd.kcells);
 }
 
 template<typename TF>

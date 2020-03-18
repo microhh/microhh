@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <cmath>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -34,6 +35,7 @@
 #include "advec.h"
 #include "force.h"
 #include "stats.h"
+#include "netcdf_interface.h"
 
 #include "budget.h"
 #include "budget_2.h"

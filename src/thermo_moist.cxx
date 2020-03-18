@@ -699,8 +699,10 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         throw std::runtime_error("swthermo=moist is not supported for swspatialorder=4\n");
 
     // Initialize the prognostic fields
-    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", gd.sloc);
-    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", gd.sloc);
+    const std::string group_name = "thermo";
+
+    fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", group_name, gd.sloc);
+    fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", group_name, gd.sloc);
 
     // Get the diffusivities of temperature and moisture
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
@@ -756,7 +758,83 @@ void Thermo_moist<TF>::init()
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_moist<TF>::save(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    {
+        // Save the base state to disk
+        FILE *pFile;
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+        pFile = fopen(filename, "wbx");
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+            master.print_message("OK\n");
+
+        fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+        fclose(pFile);
+    }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in writing thermo_basestate");
+}
+
+template<typename TF>
+void Thermo_moist<TF>::load(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+
+    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+
+        std::printf("Loading \"%s\" ... ", filename);
+
+        FILE* pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            fclose(pFile);
+        }
+    }
+
+    // Communicate the file read error over all procs.
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error in thermo_basestate");
+    else
+        master.print_message("OK\n");
+
+    master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
+    master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
@@ -778,12 +856,14 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     std::rotate(bs.thl0.rbegin(), bs.thl0.rbegin() + gd.kstart, bs.thl0.rend());
     std::rotate(bs.qt0.rbegin(), bs.qt0.rbegin() + gd.kstart, bs.qt0.rend());
 
-    calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
+    calc_top_and_bot(
+            bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state(bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
-                    bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
-                    gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+    calc_base_state(
+            bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
+            bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
+            gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
     if (bs.swbasestate == Basestate_type::boussinesq)
@@ -803,10 +883,15 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     //    This one is not updated throughout the simulation to be consistent with the anelastic approximation.
     fields.rhoref = bs.rhoref;
     fields.rhorefh = bs.rhorefh;
+}
+
+template<typename TF>
+void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    create_basestate(inputin, input_nc);
 
     // 7. Process the time dependent surface pressure
     tdep_pbot->create_timedep(input_nc);
-
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -828,18 +913,20 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto tmp = fields.get_tmp();
     if (bs.swupdatebasestate)
     {
-        calc_base_state(bs.pref.data(), bs.prefh.data(),
-                        bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
-                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state(
+                bs.pref.data(), bs.prefh.data(),
+                bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
     }
 
     // extend later for gravity vector not normal to surface
-    calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
-                           &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                           &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
-                           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                           gd.icells, gd.ijcells);
+    calc_buoyancy_tend_2nd(
+            fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
+            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
+            &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
 
@@ -920,7 +1007,7 @@ bool Thermo_moist<TF>::has_mask(std::string mask_name)
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)
 {
-    if (name == "b" || name == "ql" || name == "T")
+    if (name == "b" || name == "ql" || name == "T" || name == "qi")
         return true;
     else
         return false;
@@ -1289,17 +1376,17 @@ void Thermo_moist<TF>::create_dump(Dump<TF>& dump)
     if (dump.get_switch())
     {
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *dumplist_global = dump.get_dumplist();
+        std::vector<std::string>& dumplist_global = dump.get_dumplist();
 
         // Check if fields in dumplist are retrievable thermo fields
-        std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
-        while (dumpvar != dumplist_global->end())
+        std::vector<std::string>::iterator dumpvar = dumplist_global.begin();
+        while (dumpvar != dumplist_global.end())
         {
             if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);
-                dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+                dumplist_global.erase(dumpvar); // erase() returns iterator of next element..
             }
             else
                 ++dumpvar;
@@ -1495,19 +1582,17 @@ void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 
     for (auto& it : dumplist)
     {
-        if (it == "b")
-            get_thermo_field(*output, "b", false, true);
-        else if (it == "ql")
-            get_thermo_field(*output, "ql", false, true);
-        else if (it == "T")
-            get_thermo_field(*output, "T", false, true);
+        if (check_field_exists(it))
+            get_thermo_field(*output, it, false, true);
         else
         {
             std::string msg = "Thermo dump of field \"" + it + "\" not supported";
             throw std::runtime_error(msg);
         }
+
         dump.save_dump(output->fld.data(), it, iotime);
     }
+
     fields.release_tmp(output);
 }
 

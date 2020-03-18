@@ -44,7 +44,7 @@ template <typename TF>
 void Limiter<TF>::create(Stats<TF>& stats)
 {
     for (const std::string& s : limit_list)
-        stats.add_tendency(*fields.st.at(s), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.at.at(s), "z", tend_name, tend_longname);
 }
 
 namespace

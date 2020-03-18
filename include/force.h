@@ -45,7 +45,7 @@ template<typename> class Thermo;
  * assigned to all scalars.
  */
 
-enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind};
+enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind, Pressure_gradient};
 enum class Large_scale_tendency_type {Disabled, Enabled};
 enum class Large_scale_subsidence_type {Disabled, Enabled};
 enum class Nudging_type {Disabled, Enabled};
@@ -95,6 +95,7 @@ class Force
         Nudging_type swnudge;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
+        TF dpdx;  ///< Large-scale pressure gradient
         TF fc;    ///< Coriolis parameter.
 
         std::vector<TF> ug;  ///< Pointer to array u-component geostrophic wind.

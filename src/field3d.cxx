@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,13 +29,18 @@
 #include "defines.h"
 
 template<typename TF>
-Field3d<TF>::Field3d(Master& masterin, Grid<TF>& gridin, std::string namein, std::string longnamein, std::string unitin, const std::array<int,3>& locin) :
+Field3d<TF>::Field3d(
+        Master& masterin, Grid<TF>& gridin,
+        const std::string& namein, const std::string& longnamein,
+        const std::string& unitin, const std::string& groupin,
+        const std::array<int,3>& locin) :
     master(masterin),
     grid(gridin)
 {
     name     = namein;
     longname = longnamein;
     unit     = unitin;
+    group    = groupin;
     loc      = locin;
 }
 

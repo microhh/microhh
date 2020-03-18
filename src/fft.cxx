@@ -56,10 +56,12 @@ void FFT<float>::init()
 {
     auto& gd = grid.get_grid_data();
 
+    #ifdef FLOAT_SINGLE
     fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
     fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
     fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
     fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
+    #endif
 
     transpose.init();
 }
@@ -86,6 +88,7 @@ FFT<double>::~FFT()
 template<>
 FFT<float>::~FFT()
 {
+    #ifdef FLOAT_SINGLE
     if (has_fftw_plan)
     {
         fftwf_destroy_plan(iplanff);
@@ -100,6 +103,7 @@ FFT<float>::~FFT()
     fftwf_free(fftoutj);
 
     fftwf_cleanup();
+    #endif
 }
 
 template<>
@@ -130,16 +134,18 @@ void FFT<double>::load()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -150,6 +156,7 @@ void FFT<double>::load()
 template<>
 void FFT<float>::load()
 {
+    #ifdef FLOAT_SINGLE
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
 
@@ -175,20 +182,23 @@ void FFT<float>::load()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftwf_r2r_kind kindf[] = {FFTW_R2HC};
     fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
     fftwf_forget_wisdom();
+    #endif
 }
 
 
@@ -206,16 +216,18 @@ void FFT<double>::save()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftw_r2r_kind kindf[] = {FFTW_R2HC};
     fftw_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+                                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+                                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+                                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+                                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -246,6 +258,7 @@ void FFT<double>::save()
 template<>
 void FFT<float>::save()
 {
+    #ifdef FLOAT_SINGLE
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
     auto& gd = grid.get_grid_data();
@@ -257,16 +270,18 @@ void FFT<float>::save()
     int jstride = gd.iblock;
     int idist = gd.itot;
     int jdist = 1;
+
     fftwf_r2r_kind kindf[] = {FFTW_R2HC};
     fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+                                  fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+                                  fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+                                  fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
+                                  fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
@@ -292,6 +307,7 @@ void FFT<float>::save()
 
     if (nerror)
         throw std::runtime_error("Error saving FFTW plan");
+    #endif
 }
 
 namespace
@@ -307,7 +323,9 @@ namespace
     template<>
     void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
     {
+    	#ifdef FLOAT_SINGLE
         fftwf_execute(pf);
+        #endif
     }
 
     #ifndef USEMPI
