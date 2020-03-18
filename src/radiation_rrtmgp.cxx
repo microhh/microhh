@@ -969,11 +969,14 @@ void Radiation_rrtmgp<TF>::exec(
 
         // Initialize arrays in double precision, cast when needed.
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
+        const int ijmax = gd.imax*gd.jmax;
 
         Array<double,2> t_lay_a(
                 std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
         Array<double,2> t_lev_a(
                 std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
+        Array<double,1> t_sfc_a(
+                std::vector<double>(t_lev->fld_bot.begin(), t_lev->fld_bot.begin() + ijmax), {gd.imax*gd.jmax});
         Array<double,2> h2o_a(
                 std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
         Array<double,2> clwp_a(
@@ -992,7 +995,7 @@ void Radiation_rrtmgp<TF>::exec(
             exec_longwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                     compute_clouds);
 
             calc_tendency(
@@ -1101,11 +1104,14 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     // Initialize arrays in double precision, cast when needed.
     const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
+    const int ijmax = gd.imax*gd.jmax;
 
     Array<double,2> t_lay_a(
             std::vector<double>(t_lay->fld.begin(), t_lay->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> t_lev_a(
             std::vector<double>(t_lev->fld.begin(), t_lev->fld.begin() + nmaxh), {gd.imax*gd.jmax, gd.ktot+1});
+    Array<double,1> t_sfc_a(
+            std::vector<double>(t_lev->fld_bot.begin(), t_lev->fld_bot.begin() + ijmax), {gd.imax*gd.jmax});
     Array<double,2> h2o_a(
             std::vector<double>(h2o->fld.begin(), h2o->fld.begin() + gd.nmax), {gd.imax*gd.jmax, gd.ktot});
     Array<double,2> clwp_a(
@@ -1161,7 +1167,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         exec_longwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                 compute_clouds);
 
         save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
@@ -1172,7 +1178,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             exec_longwave(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                     !compute_clouds);
 
             save_stats_and_cross(flux_up, "lw_flux_up_clear", gd.wloc);
@@ -1215,7 +1221,7 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
-        const Array<double,2>& t_lay, const Array<double,2>& t_lev,
+        const Array<double,2>& t_lay, const Array<double,2>& t_lev, const Array<double,1>& t_sfc,
         const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp,
         const bool compute_clouds)
 {
@@ -1260,7 +1266,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
     Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
 
-    Array<double,1> t_sfc(std::vector<double>(1, this->t_sfc), {1});
     Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {n_bnd, 1});
 
     gas_concs.set_vmr("h2o", h2o);
