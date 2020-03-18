@@ -49,7 +49,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         virtual ~Radiation_rrtmgp() {}
 
 		bool check_field_exists(std::string name)
-        { throw std::runtime_error("Not implemented"); }
+        { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
 
         void init(const double);
         void create(
@@ -58,7 +58,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
-        { throw std::runtime_error("Not implemented"); }
+        { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
+        std::vector<TF>& get_surface_radiation(std::string);
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&,

@@ -1094,6 +1094,25 @@ void Radiation_rrtmgp<TF>::exec(
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
+
+
+template<typename TF>
+std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(std::string name)
+{
+    if (name == "sw_down")
+        return sw_flux_dn_sfc;
+    else if (name == "sw_up")
+        return sw_flux_up_sfc;
+    else if (name == "lw_down")
+        return lw_flux_dn_sfc;
+    else if (name == "lw_up")
+        return lw_flux_up_sfc;
+    else
+    {
+        std::string error = "Variable \"" + name + "\" is not a valid surface radiation field";
+        throw std::runtime_error(error);
+    }
+}
 #endif
 
 namespace
