@@ -622,9 +622,10 @@ namespace
 
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict clwp, TF* restrict ciwp,
+            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
+            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
             TF* restrict thlh, TF* restrict qth,
-            const TF* restrict thl, const TF* restrict qt,
+            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
             const TF* restrict p, const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -681,6 +682,18 @@ namespace
                     T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
                 }
         }
+
+        // Calculate surface temperature (assuming no liquid water)
+        const TF exn_bot = exner(ph[kstart]);
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+                T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+            }
     }
 }
 
@@ -1130,9 +1143,11 @@ void Thermo_moist<TF>::get_radiation_fields(
     auto& gd = grid.get_grid_data();
 
     calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(), clwp.fld.data(), ciwp.fld.data(),
-            T.fld_bot.data(), T.fld_top.data(), // These 2d fields are used as tmp arrays.
+            T.fld.data(), T_h.fld.data(), qv.fld.data(),
+            clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
+            T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
             fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
             bs.pref.data(), bs.prefh.data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
