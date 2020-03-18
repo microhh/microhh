@@ -142,5 +142,12 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         std::unique_ptr<Cloud_optics<double>> cloud_lw;
         std::unique_ptr<Cloud_optics<double>> cloud_sw;
+
+        // Surface radiative fluxes
+        std::vector<TF> lw_flux_dn_sfc;
+        std::vector<TF> lw_flux_up_sfc;
+
+        std::vector<TF> sw_flux_dn_sfc;
+        std::vector<TF> sw_flux_up_sfc;
 };
 #endif
