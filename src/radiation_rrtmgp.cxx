@@ -397,6 +397,27 @@ namespace
     }
 
     template<typename TF>
+    void store_surface_fluxes(
+            TF* restrict flux_up_sfc, TF* restrict flux_dn_sfc,
+            const double* restrict flux_up, const double* restrict flux_dn,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int igc, const int jgc,
+            const int jj, const int kk,
+            const int jj_nogc)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+                flux_up_sfc[ij] = flux_up[ijk_nogc];
+                flux_dn_sfc[ij] = flux_dn[ijk_nogc];
+            }
+    }
+
+    template<typename TF>
     void solve_longwave_column(
             std::unique_ptr<Optical_props_arry<TF>>& optical_props,
             Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_net,
@@ -606,7 +627,16 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 template<typename TF>
 void Radiation_rrtmgp<TF>::init(const double ifactor)
 {
+    auto& gd = grid.get_grid_data();
+
     idt_rad = static_cast<unsigned long>(ifactor * dt_rad + 0.5);
+
+    // Resize surface radiation fields
+    lw_flux_dn_sfc.resize(gd.ijcells);
+    lw_flux_up_sfc.resize(gd.ijcells);
+
+    sw_flux_dn_sfc.resize(gd.ijcells);
+    sw_flux_up_sfc.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -1007,6 +1037,15 @@ void Radiation_rrtmgp<TF>::exec(
                     gd.igc, gd.jgc, gd.kgc,
                     gd.icells, gd.ijcells,
                     gd.imax, gd.imax*gd.jmax);
+
+            store_surface_fluxes(
+                    lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
+                    flux_up.ptr(), flux_dn.ptr(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.igc, gd.jgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax);
         }
 
         if (sw_shortwave)
@@ -1028,6 +1067,15 @@ void Radiation_rrtmgp<TF>::exec(
                     gd.igc, gd.jgc, gd.kgc,
                     gd.icells, gd.ijcells,
                     gd.imax, gd.imax*gd.jmax);
+
+            store_surface_fluxes(
+                    sw_flux_up_sfc.data(), sw_flux_dn_sfc.data(),
+                    flux_up.ptr(), flux_dn.ptr(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.igc, gd.jgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax);
         }
 
         fields.release_tmp(t_lay);
