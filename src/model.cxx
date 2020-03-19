@@ -53,7 +53,6 @@
 #include "cross.h"
 #include "dump.h"
 #include "model.h"
-#include "soil.h"
 #include "land_surface.h"
 
 #ifdef USECUDA
@@ -129,8 +128,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        soil      = std::make_shared<Soil        <TF>>(master, *grid, *soil_grid, *fields, *input);
-        lsm       = std::make_shared<Land_surface<TF>>(master, *grid, *fields, *input);
+        lsm       = std::make_shared<Land_surface<TF>>(master, *grid, *soil_grid, *fields, *input);
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
@@ -194,7 +192,6 @@ void Model<TF>::init()
     radiation->init(timeloop->get_ifactor());
     decay->init(*input);
     budget->init();
-    soil->init();
     lsm->init();
 
     stats->init(timeloop->get_ifactor());
@@ -247,8 +244,8 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     // Load the prognostic soil fields, and create/init soil
-    soil->load_prognostic_fields(timeloop->get_iotime());
-    soil->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
+    lsm->load_prognostic_fields(timeloop->get_iotime());
+    lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
 
     boundary->create(*input, *input_nc, *stats);
     ib->create();
@@ -286,7 +283,7 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input_nc);
     fields->create(*input, *input_nc);
-    soil->create_cold_start(*input, *input_nc);
+    lsm->create_cold_start(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
@@ -301,7 +298,7 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
-    soil->save_prognostic_fields(timeloop->get_iotime());
+    lsm->save_prognostic_fields(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -386,7 +383,7 @@ void Model<TF>::exec()
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
                 // Calculate the soil tendencies
-                soil->calc_tendencies();
+                lsm->calc_tendencies();
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
@@ -592,7 +589,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
-        soil     ->exec_stats(*stats);
+        lsm      ->exec_stats(*stats);
         // radiation->exec_stats(*stats, *thermo, *timeloop);
     }
 
@@ -603,7 +600,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
-        soil     ->exec_cross(*cross, iotime);
+        lsm      ->exec_cross(*cross, iotime);
 
         // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
         // boundary->exec_cross(iotime);

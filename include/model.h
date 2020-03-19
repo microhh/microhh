@@ -47,7 +47,6 @@ template<typename> class Force;
 template<typename> class Thermo;
 template<typename> class Microphys;
 template<typename> class Radiation;
-template<typename> class Soil;
 template<typename> class Land_surface;
 
 template<typename> class Decay;
@@ -97,7 +96,6 @@ class Model
         std::shared_ptr<Thermo<TF>> thermo;
         std::shared_ptr<Microphys<TF>> microphys;
         std::shared_ptr<Radiation<TF>> radiation;
-        std::shared_ptr<Soil<TF>> soil;
         std::shared_ptr<Land_surface<TF>> lsm;
 
         std::shared_ptr<Decay<TF>> decay;
