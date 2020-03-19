@@ -79,7 +79,7 @@ class Soil_grid
         Master& master;    // Reference to master class.
         Grid<TF>& grid;    // Reference to atmospheric grid
 
-        bool sw_soil_enabled;
+        bool sw_land_surface;
         Soil_grid_data<TF> gd;  // Struct holding the grid data
 };
 #endif

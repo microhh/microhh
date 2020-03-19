@@ -38,12 +38,12 @@ template<typename TF>
 Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin), grid(gridin)
 {
-    sw_soil_enabled = input.get_item<bool>("soil", "sw_soil", "", false);
+    sw_land_surface = input.get_item<bool>("land_surface", "sw_land_surface", "", false);
 
-    if (sw_soil_enabled)
+    if (sw_land_surface)
     {
-        gd.zsize = input.get_item<TF> ("soil", "zsize", "");
-        gd.ktot  = input.get_item<int>("soil", "ktot",  "");
+        gd.zsize = input.get_item<TF> ("land_surface", "zsize", "");
+        gd.ktot  = input.get_item<int>("land_surface", "ktot",  "");
     }
 }
 
@@ -59,7 +59,7 @@ Soil_grid<TF>::~Soil_grid()
 template<typename TF>
 void Soil_grid<TF>::init()
 {
-    if (!sw_soil_enabled)
+    if (!sw_land_surface)
         return;
 
     auto& agd = grid.get_grid_data();   // Atmospheric grid data
@@ -95,7 +95,7 @@ void Soil_grid<TF>::init()
 template<typename TF>
 void Soil_grid<TF>::create(Netcdf_handle& input_nc)
 {
-    if (!sw_soil_enabled)
+    if (!sw_land_surface)
         return;
 
     // Get the grid coordinates from the input. This one is read from the global scope.

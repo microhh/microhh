@@ -237,14 +237,13 @@ void Model<TF>::load()
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
 
-
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
     fields->create_column(*column);
 
     // Load the prognostic soil fields, and create/init soil
-    lsm->load_prognostic_fields(timeloop->get_iotime());
+    lsm->load(timeloop->get_iotime());
     lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
 
     boundary->create(*input, *input_nc, *stats);
@@ -298,7 +297,7 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
-    lsm->save_prognostic_fields(timeloop->get_iotime());
+    lsm->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -488,6 +487,7 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
+                            lsm     ->save(iotime);
                         }
                     }
                 }

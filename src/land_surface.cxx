@@ -808,7 +808,7 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
 
 template<typename TF>
-void Land_surface<TF>::save_prognostic_fields(const int itime)
+void Land_surface<TF>::save(const int itime)
 {
     if (!sw_land_surface)
         return;
@@ -884,7 +884,7 @@ void Land_surface<TF>::save_prognostic_fields(const int itime)
 }
 
 template<typename TF>
-void Land_surface<TF>::load_prognostic_fields(const int itime)
+void Land_surface<TF>::load(const int itime)
 {
     if (!sw_land_surface)
         return;

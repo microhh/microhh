@@ -58,8 +58,8 @@ class Land_surface
         void create_cold_start(Input&, Netcdf_handle&);
         void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
 
-        void save_prognostic_fields(int);
-        void load_prognostic_fields(int);
+        void save(int);
+        void load(int);
 
         void exec_soil();
         void exec_surface();
