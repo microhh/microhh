@@ -28,6 +28,26 @@ class Netcdf_file;
 enum class Soil_interpolation_type {Mean, Max};
 
 template<typename TF>
+struct Surface_tile
+{
+    std::vector<TF> fraction;  // Grid point fraction tile (-)
+
+    std::vector<TF> H;   // Sensible heat flux (W m-2)
+    std::vector<TF> LE;  // Latent heat flux (W m-2)
+    std::vector<TF> G;   // Soil heat flux (W m-2)
+
+    std::vector<TF> T_bot;    // Skin temperature (K)
+    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
+    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
+
+    std::vector<TF> thl_fluxbot;  // Surface kinematic heat flux (K m s-1)
+    std::vector<TF> qt_fluxbot;   // Surface kinematic moisture flux (kg kg-1 m s-1)
+};
+
+template<typename TF>
+using Tile_map = std::map<std::string, Surface_tile<TF>>;
+
+template<typename TF>
 class Land_surface
 {
     public:
@@ -39,7 +59,7 @@ class Land_surface
         void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
         void save_prognostic_fields(int);
         void load_prognostic_fields(int);
-        void calc_tendencies();
+        void exec();
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
@@ -49,9 +69,11 @@ class Land_surface
         Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
 
-        bool sw_soil;
+        bool sw_land_surface;
         bool sw_homogeneous;
         bool sw_free_drainage;
+
+        Tile_map<TF> tiles;
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables

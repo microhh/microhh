@@ -41,8 +41,12 @@
 
 using namespace Constants;
 
-namespace
+namespace soil
 {
+    //
+    // TO-DO: move to separate source/header file
+    //
+
     template<typename TF>
     inline TF calc_diffusivity_vg(
             const TF vg_a, const TF vg_l, const TF vg_m, const TF gamma_sat,
@@ -349,26 +353,55 @@ namespace
     }
 }
 
+namespace lsm
+{
+    //
+    // TO-DO: move to separate source/header file
+    //
+
+    template<typename TF>
+    void init_tile(Surface_tile<TF>& tile, const int ijcells)
+    {
+        tile.fraction.resize(ijcells);
+
+        tile.H.resize(ijcells);
+        tile.LE.resize(ijcells);
+        tile.G.resize(ijcells);
+
+        tile.T_bot.resize(ijcells);
+        tile.thl_bot.resize(ijcells);
+        tile.qt_bot.resize(ijcells);
+
+        tile.thl_fluxbot.resize(ijcells);
+        tile.qt_fluxbot.resize(ijcells);
+    }
+}
+
 template<typename TF>
 Land_surface<TF>::Land_surface(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
         Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin) 
 {
-    sw_soil = inputin.get_item<bool>("soil", "sw_soil", "", false);
+    sw_land_surface = inputin.get_item<bool>("land_surface", "sw_land_surface", "", false);
     
-    if (sw_soil)
+    if (sw_land_surface)
     {
-        sw_homogeneous   = inputin.get_item<bool>("soil", "sw_homogeneous", "", true);
-        sw_free_drainage = inputin.get_item<bool>("soil", "sw_free_drainage", "", true);
+        sw_homogeneous   = inputin.get_item<bool>("land_surface", "sw_homogeneous", "", true);
+        sw_free_drainage = inputin.get_item<bool>("land_surface", "sw_free_drainage", "", true);
 
         // Checks on input & limitations
         if (!sw_homogeneous)
-            throw std::runtime_error("Heterogeneous soil input not (yet) implemented");
+            throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
 
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
         fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");
+
+        // Create the land-surface tiles
+        tiles.emplace("low_veg",   Surface_tile<TF>{});
+        tiles.emplace("bare_soil", Surface_tile<TF>{});
+        tiles.emplace("wet_skin",  Surface_tile<TF>{});
 
         // Open NetCDF file with soil lookup table
         nc_lookup_table = std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
@@ -384,12 +417,17 @@ template<typename TF>
 void Land_surface<TF>::init()
 {
     /*
-       Allocate/resize the soil fields, properties, and grid definition.
+       Allocate/resize the land-surface/soil fields, properties, and grid definition.
     */
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
+    auto& gd  = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
+
+    // Allocate the surface tiles
+    for (auto& tile : tiles)
+        lsm::init_tile(tile.second, gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -433,7 +471,7 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
        This routine is only called in the `init` phase of the model (from model.cxx),
        in the `run` phase these fields are read from the restart files.
      */
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     auto& agd = grid.get_grid_data();
@@ -452,14 +490,14 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
         soil_group.get_variable(theta_prof, "theta", {0}, {sgd.ktot});
 
         // Initialise soil as spatially homogeneous
-        init_soil_homogeneous(
+        soil::init_soil_homogeneous(
                 fields.sps.at("t")->fld.data(), t_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
 
-        init_soil_homogeneous(
+        soil::init_soil_homogeneous(
                 fields.sps.at("theta")->fld.data(), theta_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
@@ -476,7 +514,7 @@ void Land_surface<TF>::create_fields_grid_stats(
        Create/set the non-prognostic fields (soil type, ...) from the input files,
        calculate/define the soil grid, and init the soil statistics and cross-sections.
     */
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     auto& agd = grid.get_grid_data();
@@ -490,7 +528,7 @@ void Land_surface<TF>::create_fields_grid_stats(
 
         soil_group.get_variable<int>(soil_index_prof, "soil_index", {0}, {sgd.ktot});
 
-        init_soil_homogeneous<int>(
+        soil::init_soil_homogeneous<int>(
                 soil_index.data(), soil_index_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
@@ -511,7 +549,7 @@ void Land_surface<TF>::create_fields_grid_stats(
     nc_lookup_table->get_variable<TF>(vg_n, "n",     {0}, {lookup_table_size});
 
     // Calculate derived properties
-    calc_soil_properties(
+    soil::calc_soil_properties(
             kappa_theta_min.data(), kappa_theta_max.data(),
             gamma_theta_min.data(), gamma_theta_max.data(), vg_m.data(),
             gamma_T_dry.data(), rho_C.data(),
@@ -563,9 +601,9 @@ void Land_surface<TF>::create_fields_grid_stats(
 }
 
 template<typename TF>
-void Land_surface<TF>::calc_tendencies()
+void Land_surface<TF>::exec()
 {
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     auto& agd = grid.get_grid_data();
@@ -581,7 +619,7 @@ void Land_surface<TF>::calc_tendencies()
     // Soil temperature
     //
     // Calculate the thermal diffusivity at full levels
-    calc_thermal_properties(
+    soil::calc_thermal_properties(
             diffusivity.data(),
             conductivity.data(),
             soil_index.data(),
@@ -595,7 +633,7 @@ void Land_surface<TF>::calc_tendencies()
             agd.icells, agd.ijcells);
 
     // Linear interpolation diffusivity to half levels
-    interp_2_vertical<TF, Soil_interpolation_type::Mean>(
+    soil::interp_2_vertical<TF, Soil_interpolation_type::Mean>(
             diffusivity_h.data(),
             diffusivity.data(),
             agd.istart, agd.iend,
@@ -604,7 +642,7 @@ void Land_surface<TF>::calc_tendencies()
             agd.icells, agd.ijcells);
 
     // Set flux boundary conditions at top and bottom of soil column
-    set_bcs_temperature(
+    soil::set_bcs_temperature(
             fields.sps.at("t")->flux_top.data(),
             fields.sps.at("t")->flux_bot.data(),
             agd.istart, agd.iend,
@@ -613,7 +651,7 @@ void Land_surface<TF>::calc_tendencies()
             agd.icells, agd.ijcells);
 
     // Calculate diffusive tendency
-    diff_explicit<TF, sw_source_term_t, sw_conductivity_term_t>(
+    soil::diff_explicit<TF, sw_source_term_t, sw_conductivity_term_t>(
             fields.sts.at("t")->fld.data(),
             fields.sps.at("t")->fld.data(),
             diffusivity_h.data(),
@@ -631,7 +669,7 @@ void Land_surface<TF>::calc_tendencies()
     // Soil moisture
     //
     // Calculate the hydraulic diffusivity and conductivity at full levels
-    calc_hydraulic_properties(
+    soil::calc_hydraulic_properties(
             diffusivity.data(),
             conductivity.data(),
             soil_index.data(),
@@ -654,7 +692,7 @@ void Land_surface<TF>::calc_tendencies()
     // Interpolation diffusivity and conductivity to half levels,
     // using the IFS method, which uses the max value from the
     // two surrounding grid points.
-    interp_2_vertical<TF, Soil_interpolation_type::Max>(
+    soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
             diffusivity_h.data(),
             diffusivity.data(),
             agd.istart, agd.iend,
@@ -662,7 +700,7 @@ void Land_surface<TF>::calc_tendencies()
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    interp_2_vertical<TF, Soil_interpolation_type::Max>(
+    soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
             conductivity_h.data(),
             conductivity.data(),
             agd.istart, agd.iend,
@@ -673,7 +711,7 @@ void Land_surface<TF>::calc_tendencies()
     // Set the flux boundary conditions at the top and bottom
     // of the soil layer, and a free drainage conditions at the bottom.
     if (sw_free_drainage)
-        set_bcs_moisture<TF, true>(
+        soil::set_bcs_moisture<TF, true>(
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
@@ -682,7 +720,7 @@ void Land_surface<TF>::calc_tendencies()
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
     else
-        set_bcs_moisture<TF, false>(
+        soil::set_bcs_moisture<TF, false>(
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
@@ -692,7 +730,7 @@ void Land_surface<TF>::calc_tendencies()
                 agd.icells, agd.ijcells);
 
     // Calculate diffusive tendency
-    diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
+    soil::diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
             fields.sts.at("theta")->fld.data(),
             fields.sps.at("theta")->fld.data(),
             diffusivity_h.data(),
@@ -711,7 +749,7 @@ void Land_surface<TF>::calc_tendencies()
 template<typename TF>
 void Land_surface<TF>::exec_stats(Stats<TF>& stats)
 {
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     const TF offset = 0;
@@ -724,7 +762,7 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
 template<typename TF>
 void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     for (auto& it : crosslist)
@@ -739,7 +777,7 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 void Land_surface<TF>::save_prognostic_fields(const int itime)
 {
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     auto field3d_io = Field3d_io<TF>(master, grid);
@@ -796,7 +834,7 @@ void Land_surface<TF>::save_prognostic_fields(const int itime)
 template<typename TF>
 void Land_surface<TF>::load_prognostic_fields(const int itime)
 {
-    if (!sw_soil)
+    if (!sw_land_surface)
         return;
 
     auto field3d_io = Field3d_io<TF>(master, grid);
