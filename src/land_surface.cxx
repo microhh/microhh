@@ -375,16 +375,18 @@ namespace lsm
         tile.thl_fluxbot.resize(ijcells);
         tile.qt_fluxbot.resize(ijcells);
     }
+
+
 }
 
 template<typename TF>
 Land_surface<TF>::Land_surface(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
         Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin) 
+    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin)
 {
     sw_land_surface = inputin.get_item<bool>("land_surface", "sw_land_surface", "", false);
-    
+
     if (sw_land_surface)
     {
         sw_homogeneous   = inputin.get_item<bool>("land_surface", "sw_homogeneous", "", true);
@@ -428,6 +430,8 @@ void Land_surface<TF>::init()
     // Allocate the surface tiles
     for (auto& tile : tiles)
         lsm::init_tile(tile.second, gd.ijcells);
+
+    liquid_water_reservoir.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -482,6 +486,7 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
     {
         // Read initial profiles from input NetCDF file
         Netcdf_group& soil_group = input_nc.get_group("soil");
+        Netcdf_group& init_group = input_nc.get_group("init");
 
         std::vector<TF> t_prof(sgd.ktot);
         std::vector<TF> theta_prof(sgd.ktot);
@@ -503,6 +508,23 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
+
+        // Initialise the prognostic surface variables, and/or
+        // variables which are needed for consistent restarts.
+        std::fill(liquid_water_reservoir.begin(), liquid_water_reservoir.begin()+agd.ijcells, 0.);
+
+        // Set initial surface potential temperature and humidity to the atmospheric values (...)
+        std::vector<TF> thl_1(1);
+        std::vector<TF> qt_1(1);
+
+        init_group.get_variable(thl_1, "thl", {0}, {1});
+        init_group.get_variable(qt_1,  "qt",  {0}, {1});
+
+        for (auto& tile : tiles)
+        {
+            std::fill(tile.second.thl_bot.begin(), tile.second.thl_bot.begin()+agd.ijcells, thl_1[0]);
+            std::fill(tile.second.qt_bot.begin(),  tile.second.qt_bot.begin() +agd.ijcells, qt_1 [0]);
+        }
     }
 }
 
@@ -526,7 +548,7 @@ void Land_surface<TF>::create_fields_grid_stats(
         Netcdf_group& soil_group = input_nc.get_group("soil");
         std::vector<int> soil_index_prof(sgd.ktot);
 
-        soil_group.get_variable<int>(soil_index_prof, "soil_index", {0}, {sgd.ktot});
+        soil_group.get_variable<int>(soil_index_prof, "index", {0}, {sgd.ktot});
 
         soil::init_soil_homogeneous<int>(
                 soil_index.data(), soil_index_prof.data(),
@@ -555,6 +577,9 @@ void Land_surface<TF>::create_fields_grid_stats(
             gamma_T_dry.data(), rho_C.data(),
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), lookup_table_size);
+
+    // Calculate root fraction
+
 
     // Init the soil statistics
     if (stats.get_switch())
@@ -601,7 +626,7 @@ void Land_surface<TF>::create_fields_grid_stats(
 }
 
 template<typename TF>
-void Land_surface<TF>::exec()
+void Land_surface<TF>::exec_soil()
 {
     if (!sw_land_surface)
         return;
@@ -743,7 +768,14 @@ void Land_surface<TF>::exec()
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
+}
 
+
+template<typename TF>
+void Land_surface<TF>::exec_surface()
+{
+    if (!sw_land_surface)
+        return;
 }
 
 template<typename TF>
@@ -774,6 +806,7 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 }
 
+
 template<typename TF>
 void Land_surface<TF>::save_prognostic_fields(const int itime)
 {
@@ -789,38 +822,57 @@ void Land_surface<TF>::save_prognostic_fields(const int itime)
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
 
-    // Soil temperature
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "t_soil", itime);
-    master.print_message("Saving \"%s\" ... ", filename);
+    // Save the 3D soil fields (temperature and moisture)
+    auto save_3d_field = [&](TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Saving \"%s\" ... ", filename);
 
-    if (field3d_io.save_field3d(
-                fields.sps.at("t")->fld.data(),
-                tmp1->fld.data(), tmp2->fld.data(),
+        if (field3d_io.save_field3d(
+                field, tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
-    {
-        master.print_message("FAILED\n");
-        ++nerror;
-    }
-    else
-        master.print_message("OK\n");
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
 
-    // Soil moisture
-    std::sprintf(filename, "%s.%07d", "theta_soil", itime);
-    master.print_message("Saving \"%s\" ... ", filename);
+    save_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
+    save_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
 
-    if (field3d_io.save_field3d(
-                fields.sps.at("theta")->fld.data(),
-                tmp1->fld.data(), tmp2->fld.data(),
-                filename, no_offset,
-                sgd.kstart, sgd.kend))
+    // Surface temperature, humidity and liquid water content.
+    auto save_2d_field = [&](TF* const restrict field, const std::string& name)
     {
-        master.print_message("FAILED\n");
-        ++nerror;
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(),
+                filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    save_2d_field(liquid_water_reservoir.data(), "wl_skin");
+
+    for (auto& tile : tiles)
+    {
+        std::string thl_name = "thl_bot_" + tile.first;
+        std::string qt_name  = "qt_bot_" + tile.first;
+
+        save_2d_field(tile.second.thl_bot.data(), thl_name.c_str());
+        save_2d_field(tile.second.qt_bot.data(), qt_name.c_str());
     }
-    else
-        master.print_message("OK\n");
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -828,7 +880,7 @@ void Land_surface<TF>::save_prognostic_fields(const int itime)
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Error saving soil fields");
+        throw std::runtime_error("Error saving soil/surface fields");
 }
 
 template<typename TF>
@@ -846,38 +898,58 @@ void Land_surface<TF>::load_prognostic_fields(const int itime)
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
 
-    // Soil temperature
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "t_soil", itime);
-    master.print_message("Loading \"%s\" ... ", filename);
+    // Load the 3D soil fields (temperature and moisture)
+    auto load_3d_field = [&](TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
 
-    if (field3d_io.load_field3d(
-                fields.sps.at("t")->fld.data(),
+        if (field3d_io.load_field3d(
+                field,
                 tmp1->fld.data(), tmp2->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
-    {
-        master.print_message("FAILED\n");
-        ++nerror;
-    }
-    else
-        master.print_message("OK\n");
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
 
-    // Soil moisture
-    std::sprintf(filename, "%s.%07d", "theta_soil", itime);
-    master.print_message("Loading \"%s\" ... ", filename);
+    load_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
+    load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
 
-    if (field3d_io.load_field3d(
-                fields.sps.at("theta")->fld.data(),
-                tmp1->fld.data(), tmp2->fld.data(),
-                filename, no_offset,
-                sgd.kstart, sgd.kend))
+    // Surface temperature, humidity and liquid water content.
+    auto load_2d_field = [&](TF* const restrict field, const std::string& name)
     {
-        master.print_message("FAILED\n");
-        ++nerror;
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    load_2d_field(liquid_water_reservoir.data(), "wl_skin");
+
+    for (auto& tile : tiles)
+    {
+        std::string thl_name = "thl_bot_" + tile.first;
+        std::string qt_name  = "qt_bot_" + tile.first;
+
+        load_2d_field(tile.second.thl_bot.data(), thl_name.c_str());
+        load_2d_field(tile.second.qt_bot.data(), qt_name.c_str());
     }
-    else
-        master.print_message("OK\n");
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);

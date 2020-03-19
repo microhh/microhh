@@ -57,9 +57,12 @@ class Land_surface
         void init();
         void create_cold_start(Input&, Netcdf_handle&);
         void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
+
         void save_prognostic_fields(int);
         void load_prognostic_fields(int);
-        void exec();
+
+        void exec_soil();
+        void exec_surface();
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
@@ -73,7 +76,9 @@ class Land_surface
         bool sw_homogeneous;
         bool sw_free_drainage;
 
+        // Land-surface properties
         Tile_map<TF> tiles;
+        std::vector<TF> liquid_water_reservoir;  // Liquid water on leaves/surface (m)
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables
