@@ -36,6 +36,7 @@
 #include "constants.h"
 #include "netcdf_interface.h"
 #include "constants.h"
+#include "radiation.h"
 
 #include "land_surface.h"
 
@@ -122,6 +123,32 @@ namespace soil
             rho_C[i] = (TF(1) - theta_sat[i]) * Constants::rho_C_matrix<TF> + theta_fc[i] * Constants::rho_C_water<TF>;
         }
     }
+
+
+    template<typename TF>
+    void calc_root_column(
+            TF* const restrict root_frac,
+            const TF* const restrict zh,
+            const TF a_root, const TF b_root,
+            const int kstart, const int kend)
+    {
+        TF root_frac_sum = TF(0);
+
+        for (int k=kstart+1; k<kend; ++k)
+        {
+            root_frac[k] = 0.5 * (exp(a_root * zh[k+1]) + \
+                                  exp(b_root * zh[k+1]) - \
+                                  exp(a_root * zh[k  ]) - \
+                                  exp(b_root * zh[k  ]));
+
+            root_frac_sum += root_frac[k];
+        }
+
+        // Make sure the root fraction sums to one.
+        root_frac[kstart] = TF(1) - root_frac_sum;
+    }
+
+
 
     template<typename TF>
     void calc_thermal_properties(
@@ -376,6 +403,33 @@ namespace lsm
         tile.qt_fluxbot.resize(ijcells);
     }
 
+    template<typename TF>
+    void calc_resistance_functions(
+            TF* const restrict f1,
+            TF* const restrict f2,
+            TF* const restrict f2b,
+            TF* const restrict f3,
+            const TF* const restrict sw_dn,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        // Constants f1 calculation:
+        const TF a_f1 = 0.81;
+        const TF b_f1 = 0.004;
+        const TF c_f1 = 0.05;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                // f1: reduction as f(sw_in)
+                const TF sw_dn_lim = std::max(TF(0), sw_dn[ij]);
+                f1[ij] = TF(1)/std::min( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
+            }
+    }
 
 }
 
@@ -395,6 +449,9 @@ Land_surface<TF>::Land_surface(
         // Checks on input & limitations
         if (!sw_homogeneous)
             throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
+
+        a_root = inputin.get_item<TF>("land_surface", "a_root", "");
+        b_root = inputin.get_item<TF>("land_surface", "b_root", "");
 
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
@@ -441,6 +498,8 @@ void Land_surface<TF>::init()
     conductivity.resize  (sgd.ncells);
     conductivity_h.resize(sgd.ncellsh);
     source.resize        (sgd.ncells);
+
+    root_fraction.resize(sgd.ncells);
 
     // Resize the lookup table
     lookup_table_size = nc_lookup_table->get_dimension_size("index");
@@ -542,6 +601,8 @@ void Land_surface<TF>::create_fields_grid_stats(
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+
+
     // Init soil properties
     if (sw_homogeneous)
     {
@@ -552,6 +613,21 @@ void Land_surface<TF>::create_fields_grid_stats(
 
         soil::init_soil_homogeneous<int>(
                 soil_index.data(), soil_index_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+
+        // Calculate root fraction
+        std::vector<TF> root_frac_column(sgd.kcells);
+        soil::calc_root_column(
+                root_frac_column.data(),
+                sgd.zh.data(),
+                a_root, b_root,
+                sgd.kstart, sgd.kend);
+
+        soil::init_soil_homogeneous<TF>(
+                root_fraction.data(), root_frac_column.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -570,7 +646,7 @@ void Land_surface<TF>::create_fields_grid_stats(
     nc_lookup_table->get_variable<TF>(vg_l, "l",     {0}, {lookup_table_size});
     nc_lookup_table->get_variable<TF>(vg_n, "n",     {0}, {lookup_table_size});
 
-    // Calculate derived properties
+    // Calculate derived properties of the lookup table
     soil::calc_soil_properties(
             kappa_theta_min.data(), kappa_theta_max.data(),
             gamma_theta_min.data(), gamma_theta_max.data(), vg_m.data(),
@@ -772,10 +848,43 @@ void Land_surface<TF>::exec_soil()
 
 
 template<typename TF>
-void Land_surface<TF>::exec_surface()
+void Land_surface<TF>::exec_surface(Radiation<TF>& radiation)
 {
     if (!sw_land_surface)
         return;
+
+    auto& gd = grid.get_grid_data();
+
+    // Get references to surface radiation fluxes
+    std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
+    std::vector<TF>& sw_up = radiation.get_surface_radiation("sw_up");
+    std::vector<TF>& lw_dn = radiation.get_surface_radiation("lw_down");
+    std::vector<TF>& lw_up = radiation.get_surface_radiation("lw_up");
+
+    // Get 2D slices from 3D tmp field
+    auto tmp1 = fields.get_tmp();
+    int kk = 0;
+    TF* f1  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+    TF* f2  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+    TF* f2b = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+    TF* f3  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+
+    TF* theta_mean   = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+    TF* theta_mean_n = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+
+    // Calculate root fraction weighted mean soil water content
+
+
+    // Calculate vegetation/soil resistance functions `f`
+    lsm::calc_resistance_functions(
+            f1, f2, f2b, f3,
+            sw_dn.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>

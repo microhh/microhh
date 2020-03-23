@@ -62,7 +62,7 @@ class Land_surface
         void load(int);
 
         void exec_soil();
-        void exec_surface();
+        void exec_surface(Radiation<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
@@ -88,6 +88,10 @@ class Land_surface
         std::vector<TF> conductivity;   // Full level (unit m s-1)
         std::vector<TF> conductivity_h; // Half level (unit m s-1)
         std::vector<TF> source;         // Source term (unit s-1)
+
+        std::vector<TF> root_fraction;  // Root fraction per soil layer (-)
+        TF a_root;  // Root fraction parameter `a`
+        TF b_root;  // Root fraction parameter `b`
 
         // Soil cross-sections
         std::vector<std::string> crosslist;
