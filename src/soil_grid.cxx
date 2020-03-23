@@ -98,8 +98,9 @@ void Soil_grid<TF>::create(Netcdf_handle& input_nc)
     if (!sw_land_surface)
         return;
 
-    // Get the grid coordinates from the input. This one is read from the global scope.
-    input_nc.get_variable(gd.z, "z_soil", {0}, {gd.ktot});
+    // Get the grid coordinates from the input.
+    Netcdf_group& soil_group = input_nc.get_group("soil");
+    soil_group.get_variable(gd.z, "z", {0}, {gd.ktot});
     std::rotate(gd.z.rbegin(), gd.z.rbegin() + gd.kstart, gd.z.rend());
 
     // Calculate the grid
