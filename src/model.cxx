@@ -385,7 +385,7 @@ void Model<TF>::exec()
                 lsm->exec_soil();
 
                 // Calculate interactive land-surface
-                lsm->exec_surface(*radiation);
+                lsm->exec_surface(*radiation, *thermo);
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);

@@ -132,6 +132,13 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
+    CUDA_MACRO inline TF esat(const TF T)
+    {
+        const TF alpha = water_fraction(T);
+        return alpha*esat_liq(T) + (TF(1.)-alpha)*esat_ice(T);
+    }
+
+    template<typename TF>
     CUDA_MACRO inline TF dqsatdT_liq(const TF p, const TF T)
     {
         const TF den = p - esat_liq(T)*(TF(1.) - ep<TF>);

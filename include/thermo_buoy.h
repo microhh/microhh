@@ -56,6 +56,7 @@ class Thermo_buoy : public Thermo<TF>
 
         bool check_field_exists(std::string name);
         void get_buoyancy_surf(Field3d<TF>&, bool);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);           ///< Compute the bottom buoyancy flux for usage in another routine.
         void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
         void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.

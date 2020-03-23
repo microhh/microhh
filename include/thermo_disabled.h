@@ -91,6 +91,8 @@ class Thermo_disabled : public Thermo<TF>
         { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool)
         { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
+        void get_vpd_surf(Field3d<TF>&, bool) 
+        { throw std::runtime_error("Function get_vpd_surf not implemented"); }
         void get_buoyancy_fluxbot(Field3d<TF>&, bool)
         { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented"); }
 

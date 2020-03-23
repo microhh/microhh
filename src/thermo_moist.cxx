@@ -527,6 +527,32 @@ namespace
     }
 
     template<typename TF>
+    void calc_vpd_surf(TF* const restrict vpd,
+                       const TF* const restrict thl,
+                       const TF* const restrict qt,
+                       const TF p, const TF exner,
+                       const int istart, const int iend,
+                       const int jstart, const int jend,
+                       const int kstart,
+                       const int icells, const int ijcells)
+    {
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+
+                Struct_sat_adjust<TF> sa = sat_adjust(thl[ijk], qt[ijk], p, exner);
+
+                const TF es = esat(sa.t);
+                const TF e  = qt[ijk]/sa.qs * es;
+                vpd[ij] = es-e;
+            }
+    }
+
+    template<typename TF>
     void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
                                TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
                                const int icells, const int jcells, const int kstart,
@@ -1175,6 +1201,30 @@ void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
     calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
                           fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_vpd_surf(Field3d<TF>& vpd, bool is_stat)
+{
+    /* Calculate first model level VPD (esat-e) in the `fld_bot` field of `vpd`. */
+
+    auto& gd = grid.get_grid_data();
+    Background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
+    calc_vpd_surf(
+            vpd.fld_bot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            base.pref[gd.kstart], base.exnref[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+
 }
 
 template<typename TF>

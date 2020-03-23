@@ -37,6 +37,7 @@
 #include "netcdf_interface.h"
 #include "constants.h"
 #include "radiation.h"
+#include "thermo.h"
 
 #include "land_surface.h"
 
@@ -146,6 +147,42 @@ namespace soil
 
         // Make sure the root fraction sums to one.
         root_frac[kstart] = TF(1) - root_frac_sum;
+    }
+
+
+    template<typename TF>
+    void calc_root_weighted_mean_theta(
+            TF* const restrict theta_mean,
+            const TF* const restrict theta,
+            const int* const restrict soil_index,
+            const TF* const restrict root_fraction,
+            const TF* const restrict theta_wp,
+            const TF* const restrict theta_fc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*icells;
+                theta_mean[ij] = TF(0);
+            }
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int si  = soil_index[ijk];
+
+                    const TF theta_lim = std::max(theta[ijk], theta_wp[si]);
+                    theta_mean[ij] += root_fraction[ijk] * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
+                }
     }
 
 
@@ -410,6 +447,9 @@ namespace lsm
             TF* const restrict f2b,
             TF* const restrict f3,
             const TF* const restrict sw_dn,
+            const TF* const restrict theta_mean_n,
+            const TF* const restrict vpd,
+            const TF* const restrict gD,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
@@ -425,9 +465,15 @@ namespace lsm
             {
                 const int ij  = i + j*icells;
 
-                // f1: reduction as f(sw_in)
+                // f1: reduction as f(sw_in):
                 const TF sw_dn_lim = std::max(TF(0), sw_dn[ij]);
                 f1[ij] = TF(1)/std::min( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
+
+                // f2: reduction as f(theta):
+                f2[ij] = TF(1)/std::min( TF(1), std::max(TF(1e-9), theta_mean_n[ij]) );
+
+                // f3: reduction as f(VPD):
+                f3[ij] = 1./exp(-gD[ij] * vpd[ij]);
             }
     }
 
@@ -449,9 +495,6 @@ Land_surface<TF>::Land_surface(
         // Checks on input & limitations
         if (!sw_homogeneous)
             throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
-
-        a_root = inputin.get_item<TF>("land_surface", "a_root", "");
-        b_root = inputin.get_item<TF>("land_surface", "b_root", "");
 
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
@@ -489,6 +532,7 @@ void Land_surface<TF>::init()
         lsm::init_tile(tile.second, gd.ijcells);
 
     liquid_water_reservoir.resize(gd.ijcells);
+    gD_coeff.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -601,8 +645,6 @@ void Land_surface<TF>::create_fields_grid_stats(
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-
-
     // Init soil properties
     if (sw_homogeneous)
     {
@@ -619,6 +661,9 @@ void Land_surface<TF>::create_fields_grid_stats(
                 agd.icells, agd.ijcells);
 
         // Calculate root fraction
+        const TF a_root = input.get_item<TF>("land_surface", "ar", "");
+        const TF b_root = input.get_item<TF>("land_surface", "br", "");
+
         std::vector<TF> root_frac_column(sgd.kcells);
         soil::calc_root_column(
                 root_frac_column.data(),
@@ -632,6 +677,10 @@ void Land_surface<TF>::create_fields_grid_stats(
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
+
+        // Land-surface properties
+        const TF gD = input.get_item<TF>("land_surface", "gD", "");
+        std::fill(gD_coeff.begin(), gD_coeff.begin()+agd.ijcells, gD);
     }
 
     // Read lookup table soil
@@ -653,9 +702,6 @@ void Land_surface<TF>::create_fields_grid_stats(
             gamma_T_dry.data(), rho_C.data(),
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), lookup_table_size);
-
-    // Calculate root fraction
-
 
     // Init the soil statistics
     if (stats.get_switch())
@@ -848,12 +894,13 @@ void Land_surface<TF>::exec_soil()
 
 
 template<typename TF>
-void Land_surface<TF>::exec_surface(Radiation<TF>& radiation)
+void Land_surface<TF>::exec_surface(Radiation<TF>& radiation, Thermo<TF>& thermo)
 {
     if (!sw_land_surface)
         return;
 
-    auto& gd = grid.get_grid_data();
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Get references to surface radiation fluxes
     std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
@@ -863,26 +910,41 @@ void Land_surface<TF>::exec_surface(Radiation<TF>& radiation)
 
     // Get 2D slices from 3D tmp field
     auto tmp1 = fields.get_tmp();
-    int kk = 0;
-    TF* f1  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
-    TF* f2  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
-    TF* f2b = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
-    TF* f3  = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
 
-    TF* theta_mean   = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
-    TF* theta_mean_n = &(tmp1->fld.data()[kk*gd.ijcells]); kk+=1;
+    int kk = 0;
+    TF* f1  = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
+    TF* f2  = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
+    TF* f2b = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
+    TF* f3  = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
+
+    TF* theta_mean_n = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
 
     // Calculate root fraction weighted mean soil water content
+    soil::calc_root_weighted_mean_theta(
+            theta_mean_n,
+            fields.sps.at("theta")->fld.data(),
+            soil_index.data(),
+            root_fraction.data(),
+            theta_wp.data(),
+            theta_fc.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kstart, sgd.kend,
+            agd.icells, agd.ijcells);
 
+    // Get lowest model level VPD (calculated in tmp1->fld_bot)
+    thermo.get_vpd_surf(*tmp1, false);
 
     // Calculate vegetation/soil resistance functions `f`
     lsm::calc_resistance_functions(
             f1, f2, f2b, f3,
             sw_dn.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
+            theta_mean_n,
+            tmp1->fld_bot.data(),   // VPD
+            gD_coeff.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
 
     fields.release_tmp(tmp1);
 }
