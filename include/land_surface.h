@@ -64,7 +64,7 @@ class Land_surface
         void load(int);
 
         void exec_soil();
-        void exec_surface(Radiation<TF>&, Thermo<TF>&);
+        void exec_surface(Radiation<TF>&, Thermo<TF>&, Boundary<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 

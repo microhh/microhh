@@ -24,6 +24,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -399,6 +401,26 @@ namespace
                 }
         }
     }
+
+
+    template<typename TF>
+    void calc_ra(
+            TF* const restrict ra,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF z0m, const TF z0h, const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h, obuk[ij]));
+            }
+    }
 }
 
 template<typename TF>
@@ -757,6 +779,21 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
               gd.icells, gd.jcells, gd.ijcells,
               boundary_cyclic);
     }
+}
+
+
+template<typename TF>
+void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_ra(fld.flux_bot.data(),
+            ustar.data(),
+            obuk.data(),
+            z0m, z0h, gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 }
 #endif
 

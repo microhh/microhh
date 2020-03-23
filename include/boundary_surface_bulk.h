@@ -38,6 +38,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         void init(Input&, Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&);
         void set_values();
+        void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
 
         void exec_stats(Stats<TF>&);
         void exec_cross(int);

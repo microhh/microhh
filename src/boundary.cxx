@@ -770,6 +770,12 @@ void Boundary<TF>::update_bcs(Thermo<TF>& thermo)
 }
 
 template<typename TF>
+void Boundary<TF>::get_ra(Field3d<TF>& fld)
+{
+    throw std::runtime_error("Function get_ra() not implemented in base boundary.");
+}
+
+template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;

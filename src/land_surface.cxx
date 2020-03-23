@@ -38,6 +38,7 @@
 #include "constants.h"
 #include "radiation.h"
 #include "thermo.h"
+#include "boundary.h"
 
 #include "land_surface.h"
 
@@ -966,7 +967,8 @@ void Land_surface<TF>::exec_soil()
 
 
 template<typename TF>
-void Land_surface<TF>::exec_surface(Radiation<TF>& radiation, Thermo<TF>& thermo)
+void Land_surface<TF>::exec_surface(
+        Radiation<TF>& radiation, Thermo<TF>& thermo, Boundary<TF>& boundary)
 {
     if (!sw_land_surface)
         return;
@@ -1005,8 +1007,11 @@ void Land_surface<TF>::exec_surface(Radiation<TF>& radiation, Thermo<TF>& thermo
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    // Get lowest model level VPD (calculated in tmp1->fld_bot)
+    // Get lowest model level VPD (calculated in tmp1->fld_bot...)
     thermo.get_vpd_surf(*tmp1, false);
+
+    // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
+    boundary.get_ra(*tmp1);
 
     // Calculate vegetation/soil resistance functions `f`
     lsm::calc_resistance_functions(

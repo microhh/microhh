@@ -85,6 +85,8 @@ class Boundary
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
         // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
+        virtual void get_ra(Field3d<TF>&);  // Get the aerodynamic resistance
+
         std::string get_switch();
 
         // GPU functions and variables
