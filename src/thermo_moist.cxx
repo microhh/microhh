@@ -476,6 +476,7 @@ namespace
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                 }
+
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
@@ -506,6 +507,9 @@ namespace
             }
     }
 
+
+
+
     template<typename TF>
     void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
                            TF* restrict thl,    TF* restrict thlbot,
@@ -527,14 +531,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_vpd_surf(TF* const restrict vpd,
-                       const TF* const restrict thl,
-                       const TF* const restrict qt,
-                       const TF p, const TF exner,
-                       const int istart, const int iend,
-                       const int jstart, const int jend,
-                       const int kstart,
-                       const int icells, const int ijcells)
+    void calc_vpd_surf(
+            TF* const restrict vpd,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF p, const TF exner,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
     {
 
         for (int j=jstart; j<jend; j++)
@@ -549,6 +554,33 @@ namespace
                 const TF es = esat(sa.t);
                 const TF e  = qt[ijk]/sa.qs * es;
                 vpd[ij] = es-e;
+            }
+    }
+
+    template<typename TF>
+    void calc_temperature_surf(
+            TF* const restrict T_bot,
+            TF* const restrict T,
+            const TF* const restrict thl_bot,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict exner,
+            const TF* const restrict exnerh,
+            const TF* const restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+
+                T[ijk]    = sat_adjust(thl[ijk], qt[ijk], p[kstart], exner[kstart]).t;
+                T_bot[ij] = exnerh[kstart] * thl_bot[ij];
             }
     }
 
@@ -1204,6 +1236,34 @@ void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 }
 
 template<typename TF>
+void Thermo_moist<TF>::get_temperature_surf(Field3d<TF>& fld, bool is_stat)
+{
+    /* Calculate absolute surface temperature of surface and
+       first model level into the `fld_bot` and `fld` fields */
+    auto& gd = grid.get_grid_data();
+
+    Background_state base;
+    if (is_stat)
+        base = bs_stats;
+    else
+        base = bs;
+
+    calc_temperature_surf(
+            fld.fld_bot.data(),
+            fld.fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            base.exnref.data(),
+            base.exnrefh.data(),
+            base.pref.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::get_vpd_surf(Field3d<TF>& vpd, bool is_stat)
 {
     /* Calculate first model level VPD (esat-e) in the `fld_bot` field of `vpd`. */
@@ -1243,7 +1303,7 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
+void Thermo_moist<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     Background_state base;

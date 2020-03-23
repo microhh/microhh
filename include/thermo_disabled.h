@@ -65,7 +65,6 @@ class Thermo_disabled : public Thermo<TF>
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};
-        int get_bl_depth() { throw std::runtime_error("Function get_bl_depth not implemented"); };
 
         TF get_buoyancy_diffusivity();
 
@@ -80,7 +79,6 @@ class Thermo_disabled : public Thermo<TF>
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
-
         #endif
 
         // Empty functions that shall throw.
@@ -95,8 +93,10 @@ class Thermo_disabled : public Thermo<TF>
         { throw std::runtime_error("Function get_vpd_surf not implemented"); }
         void get_buoyancy_fluxbot(Field3d<TF>&, bool)
         { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented"); }
+        int get_bl_depth() { throw std::runtime_error("Function get_bl_depth not implemented"); };
+        void get_temperature_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_surf not implemented"); }
 
-        void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
+        void get_temperature_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_bot not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }

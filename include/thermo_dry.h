@@ -66,13 +66,9 @@ class Thermo_dry : public Thermo<TF>
         bool check_field_exists(std::string name);
         void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool);
-        void get_radiation_fields(
-                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
-        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool);
-        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
-        void get_T_bot(Field3d<TF>&, bool);
+        void get_temperature_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
@@ -95,6 +91,13 @@ class Thermo_dry : public Thermo<TF>
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
+
+        // Functions which are not implemented and throw error
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
+        void get_temperature_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_surf not implemented"); }
 
         // Empty functions that are allowed to pass.
         void create_basestate(Input&, Netcdf_handle&) {};

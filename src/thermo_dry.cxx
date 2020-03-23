@@ -538,7 +538,7 @@ void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
+void Thermo_dry<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     background_state base;

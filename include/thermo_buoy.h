@@ -55,22 +55,26 @@ class Thermo_buoy : public Thermo<TF>
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
-        void get_buoyancy_surf(Field3d<TF>&, bool);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool);           ///< Compute the bottom buoyancy flux for usage in another routine.
-        void get_T_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_T_bot not implemented"); }
-        void get_prog_vars(std::vector<std::string>&); ///< Retrieve a list of prognostic variables.
+
+        void get_buoyancy_surf(Field3d<TF>&, bool);     ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+        void get_buoyancy_fluxbot(Field3d<TF>&, bool);  ///< Compute the bottom buoyancy flux for usage in another routine.
+        void get_prog_vars(std::vector<std::string>&);  ///< Retrieve a list of prognostic variables.
         void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool); ///< Compute the buoyancy for usage in another routine.
+        TF get_db_ref() const { return bs.n2; }
+        int get_bl_depth();
+        TF get_buoyancy_diffusivity();
+
+        // Functions which are not implemented and throw error
+        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
+        void get_temperature_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_surf not implemented"); }
+        void get_temperature_bot(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_bot not implemented"); }
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
                 { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         const std::vector<TF>& get_p_vector() const { throw std::runtime_error("Function get_p_vector not implemented"); }
         const std::vector<TF>& get_ph_vector() const { throw std::runtime_error("Function get_ph_vector not implemented"); }
         const std::vector<TF>& get_exner_vector() const { throw std::runtime_error("Function get_exner_vector not implemented"); }
-        TF get_db_ref() const { return bs.n2; }
-        int get_bl_depth();
-        TF get_buoyancy_diffusivity();
 
         // Empty functions that are allowed to pass.
         void init() {}

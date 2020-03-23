@@ -985,6 +985,7 @@ void Land_surface<TF>::exec_surface(
     // Get 2D slices from 3D tmp field
     // TO-DO: add check for sufficient vertical levels in tmp field....
     auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
 
     int kk = 0;
     TF* f1  = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
@@ -1047,9 +1048,14 @@ void Land_surface<TF>::exec_surface(
             agd.jstart, agd.jend,
             agd.icells);
 
+    // Get absolute temperature of surface and first model level
+    thermo.get_temperature_surf(*tmp2, false);
+
+
 
 
     fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
 }
 
 template<typename TF>

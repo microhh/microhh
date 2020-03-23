@@ -75,9 +75,10 @@ class Thermo
         virtual void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool) = 0;
         virtual void get_buoyancy_surf(Field3d<TF>&, bool) = 0;
+        virtual void get_temperature_surf(Field3d<TF>&, bool) = 0;
         virtual void get_vpd_surf(Field3d<TF>&, bool) = 0;
         virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
-        virtual void get_T_bot(Field3d<TF>&, bool) = 0;
+        virtual void get_temperature_bot(Field3d<TF>&, bool) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
