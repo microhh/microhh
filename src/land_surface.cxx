@@ -864,15 +864,8 @@ void Land_surface<TF>::save(const int itime)
     };
 
     save_2d_field(liquid_water_reservoir.data(), "wl_skin");
-
-    for (auto& tile : tiles)
-    {
-        std::string thl_name = "thl_bot_" + tile.first;
-        std::string qt_name  = "qt_bot_" + tile.first;
-
-        save_2d_field(tile.second.thl_bot.data(), thl_name.c_str());
-        save_2d_field(tile.second.qt_bot.data(), qt_name.c_str());
-    }
+    save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -941,15 +934,8 @@ void Land_surface<TF>::load(const int itime)
     };
 
     load_2d_field(liquid_water_reservoir.data(), "wl_skin");
-
-    for (auto& tile : tiles)
-    {
-        std::string thl_name = "thl_bot_" + tile.first;
-        std::string qt_name  = "qt_bot_" + tile.first;
-
-        load_2d_field(tile.second.thl_bot.data(), thl_name.c_str());
-        load_2d_field(tile.second.qt_bot.data(), qt_name.c_str());
-    }
+    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
