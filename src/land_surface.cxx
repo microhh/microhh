@@ -428,6 +428,8 @@ namespace lsm
     {
         tile.fraction.resize(ijcells);
 
+        tile.rs.resize(ijcells);
+
         tile.H.resize(ijcells);
         tile.LE.resize(ijcells);
         tile.G.resize(ijcells);
@@ -447,12 +449,19 @@ namespace lsm
             TF* const restrict f2b,
             TF* const restrict f3,
             const TF* const restrict sw_dn,
+            const TF* const restrict theta,
             const TF* const restrict theta_mean_n,
             const TF* const restrict vpd,
             const TF* const restrict gD,
+            const TF* const restrict c_veg,
+            const TF* const restrict theta_wp,
+            const TF* const restrict theta_fc,
+            const TF* const restrict theta_res,
+            const int* const restrict soil_index,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells)
+            const int kend,
+            const int icells, const int ijcells)
     {
         // Constants f1 calculation:
         const TF a_f1 = 0.81;
@@ -464,19 +473,66 @@ namespace lsm
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
+                const int ijk = i + j*icells + (kend-1)*ijcells;    // Top soil layer
+                const int si  = soil_index[ij];
 
-                // f1: reduction as f(sw_in):
+                // f1: reduction vegetation resistance as f(sw_in):
                 const TF sw_dn_lim = std::max(TF(0), sw_dn[ij]);
                 f1[ij] = TF(1)/std::min( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
 
-                // f2: reduction as f(theta):
+                // f2: reduction vegetation resistance as f(theta):
                 f2[ij] = TF(1)/std::min( TF(1), std::max(TF(1e-9), theta_mean_n[ij]) );
 
-                // f3: reduction as f(VPD):
-                f3[ij] = 1./exp(-gD[ij] * vpd[ij]);
+                // f3: reduction vegetation resistance as f(VPD):
+                f3[ij] = TF(1)/exp(-gD[ij] * vpd[ij]);
+
+                // f2b: reduction soil resistance as f(theta)
+                const TF theta_min = c_veg[ij] * theta_wp[si] + (TF(1)-c_veg[ij]) * theta_res[si];
+                const TF theta_rel = (theta[ijk] - theta_min) / (theta_fc[si] - theta_min);
+                f2b[ij] = TF(1)/std::min(TF(1), std::max(TF(1e-9), theta_rel));
             }
     }
 
+
+    template<typename TF>
+    void calc_canopy_resistance(
+            TF* const restrict rs,
+            const TF* const restrict rs_min,
+            const TF* const restrict lai,
+            const TF* const restrict f1,
+            const TF* const restrict f2,
+            const TF* const restrict f3,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                rs[ij] = rs_min[ij] / lai[ij] * f1[ij] * f2[ij] * f3[ij];
+            }
+    }
+
+
+    template<typename TF>
+    void calc_soil_resistance(
+            TF* const restrict rs,
+            const TF* const restrict rs_min,
+            const TF* const restrict f2b,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                rs[ij] = rs_min[ij] * f2b[ij];
+            }
+    }
 }
 
 template<typename TF>
@@ -533,6 +589,10 @@ void Land_surface<TF>::init()
 
     liquid_water_reservoir.resize(gd.ijcells);
     gD_coeff.resize(gd.ijcells);
+    c_veg.resize(gd.ijcells);
+    lai.resize(gd.ijcells);
+    rs_veg_min.resize(gd.ijcells);
+    rs_soil_min.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -679,8 +739,20 @@ void Land_surface<TF>::create_fields_grid_stats(
                 agd.icells, agd.ijcells);
 
         // Land-surface properties
-        const TF gD = input.get_item<TF>("land_surface", "gD", "");
-        std::fill(gD_coeff.begin(), gD_coeff.begin()+agd.ijcells, gD);
+        auto init_homogeneous = [&](std::vector<TF>& field, std::string name)
+        {
+            const TF value = input.get_item<TF>("land_surface", name.c_str(), "");
+            std::fill(field.begin(), field.begin()+agd.ijcells, value);
+        };
+
+        init_homogeneous(gD_coeff, "gD");
+        init_homogeneous(c_veg, "c_veg");
+        init_homogeneous(lai, "lai");
+        init_homogeneous(rs_veg_min, "rs_veg_min");
+        init_homogeneous(rs_soil_min, "rs_soil_min");
+
+        // Set the canopy resistance of the liquid water tile at zero
+        std::fill(tiles.at("wet_skin").rs.begin(), tiles.at("wet_skin").rs.begin()+agd.ijcells, 0.);
     }
 
     // Read lookup table soil
@@ -909,6 +981,7 @@ void Land_surface<TF>::exec_surface(Radiation<TF>& radiation, Thermo<TF>& thermo
     std::vector<TF>& lw_up = radiation.get_surface_radiation("lw_up");
 
     // Get 2D slices from 3D tmp field
+    // TO-DO: add check for sufficient vertical levels in tmp field....
     auto tmp1 = fields.get_tmp();
 
     int kk = 0;
@@ -939,12 +1012,37 @@ void Land_surface<TF>::exec_surface(Radiation<TF>& radiation, Thermo<TF>& thermo
     lsm::calc_resistance_functions(
             f1, f2, f2b, f3,
             sw_dn.data(),
+            fields.sps.at("theta")->fld.data(),
             theta_mean_n,
             tmp1->fld_bot.data(),   // VPD
             gD_coeff.data(),
+            c_veg.data(),
+            theta_wp.data(),
+            theta_fc.data(),
+            theta_res.data(),
+            soil_index.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kend,
+            agd.icells, agd.ijcells);
+
+    // Calculate canopy resistance per tile
+    lsm::calc_canopy_resistance(
+            tiles.at("low_veg").rs.data(),
+            rs_veg_min.data(), lai.data(),
+            f1, f2, f3,
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             agd.icells);
+
+    lsm::calc_soil_resistance(
+            tiles.at("bare_soil").rs.data(),
+            rs_soil_min.data(), f2b,
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
+
 
     fields.release_tmp(tmp1);
 }

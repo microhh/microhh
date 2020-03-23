@@ -106,7 +106,6 @@ namespace
             TF* restrict ustar, TF* restrict obuk, TF* restrict dutot, TF* restrict bfluxbot, const TF Cm,
             const int istart, const int iend, const int jstart, const int jend, const int jj)
     {
-
         const double sqrt_Cm = sqrt(Cm);
 
         for (int j=jstart; j<jend; ++j)
