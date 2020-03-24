@@ -531,60 +531,6 @@ namespace
     }
 
     template<typename TF>
-    void calc_vpd_surf(
-            TF* const restrict vpd,
-            const TF* const restrict thl,
-            const TF* const restrict qt,
-            const TF p, const TF exner,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
-    {
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-
-                Struct_sat_adjust<TF> sa = sat_adjust(thl[ijk], qt[ijk], p, exner);
-
-                const TF es = esat(sa.t);
-                const TF e  = qt[ijk]/sa.qs * es;
-                vpd[ij] = es-e;
-            }
-    }
-
-    template<typename TF>
-    void calc_temperature_surf(
-            TF* const restrict T_bot,
-            TF* const restrict T,
-            const TF* const restrict thl_bot,
-            const TF* const restrict thl,
-            const TF* const restrict qt,
-            const TF* const restrict exner,
-            const TF* const restrict exnerh,
-            const TF* const restrict p,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
-    {
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-
-                T[ijk]    = sat_adjust(thl[ijk], qt[ijk], p[kstart], exner[kstart]).t;
-                T_bot[ij] = exnerh[kstart] * thl_bot[ij];
-            }
-    }
-
-    template<typename TF>
     void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
                                TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
                                const int icells, const int jcells, const int kstart,
@@ -753,7 +699,54 @@ namespace
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
             }
     }
+
+
+    template<typename TF>
+    void calc_land_surface_fields(
+            TF* const restrict T_bot,
+            TF* const restrict T_a,
+            TF* const restrict vpd,
+            TF* const restrict qs,
+            TF* const restrict dqsdT,
+            const TF* const restrict thl_bot,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict exner,
+            const TF* const restrict exnerh,
+            const TF* const restrict p,
+            const TF* const restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + kstart*ijcells;
+
+                // Saturation adjustment for first model level
+                Struct_sat_adjust<TF> sa = sat_adjust(
+                        thl[ijk], qt[ijk], p[kstart], exner[kstart]);
+
+                T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
+                T_a[ij]   = sa.t;
+
+                // Vapor pressure deficit first model level
+                const TF es = esat(sa.t);
+                const TF e = qt[ijk]/sa.qs * es;
+                vpd[ij] = es-e;
+
+                // qsat(T_bot) + dqsatdT(T_bot)
+                qs[ij] = qsat(ph[kstart], T_bot[ij]);
+                dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
+            }
+    }
+
 }
+
 
 template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -1216,6 +1209,32 @@ void Thermo_moist<TF>::get_radiation_fields(
 }
 
 template<typename TF>
+void Thermo_moist<TF>::get_land_surface_fields(Field3d<TF>& tmp)
+{
+    /* Calculate the thermo fields required by the LSM in
+       2D slices in the 3D tmp field */
+    auto& gd = grid.get_grid_data();
+
+    calc_land_surface_fields(
+            tmp.fld_bot.data(),   // T_bot
+            tmp.fld_top.data(),   // T first model level
+            tmp.flux_bot.data(),  // VPD first model level
+            tmp.flux_top.data(),  // qsat(T_bot)
+            tmp.grad_bot.data(),  // dqsatdT(T_bot)
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            bs.exnref.data(),
+            bs.exnrefh.data(),
+            bs.pref.data(),
+            bs.prefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
@@ -1235,57 +1254,6 @@ void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
                           gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
-template<typename TF>
-void Thermo_moist<TF>::get_temperature_surf(Field3d<TF>& fld, bool is_stat)
-{
-    /* Calculate absolute surface temperature of surface and
-       first model level into the `fld_bot` and `fld` fields */
-    auto& gd = grid.get_grid_data();
-
-    Background_state base;
-    if (is_stat)
-        base = bs_stats;
-    else
-        base = bs;
-
-    calc_temperature_surf(
-            fld.fld_bot.data(),
-            fld.fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            base.exnref.data(),
-            base.exnrefh.data(),
-            base.pref.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
-}
-
-template<typename TF>
-void Thermo_moist<TF>::get_vpd_surf(Field3d<TF>& vpd, bool is_stat)
-{
-    /* Calculate first model level VPD (esat-e) in the `fld_bot` field of `vpd`. */
-
-    auto& gd = grid.get_grid_data();
-    Background_state base;
-    if (is_stat)
-        base = bs_stats;
-    else
-        base = bs;
-
-    calc_vpd_surf(
-            vpd.fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            base.pref[gd.kstart], base.exnref[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
-
-}
 
 template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
@@ -1618,7 +1586,7 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
 template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
-{    
+{
     auto& gd = grid.get_grid_data();
 
     #ifndef USECUDA

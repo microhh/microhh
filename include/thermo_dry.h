@@ -89,15 +89,15 @@ class Thermo_dry : public Thermo<TF>
                 Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
-        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
+        TF* get_basestate_fld_g(std::string)
+            { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         #endif
 
         // Functions which are not implemented and throw error
-        void get_radiation_fields(
-                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
-        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_vpd_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_vpd_surf not implemented"); }
-        void get_temperature_surf(Field3d<TF>&, bool) { throw std::runtime_error("Function get_temperature_surf not implemented"); }
+        void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_land_surface_fields(Field3d<TF>&)
+            { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
         void create_basestate(Input&, Netcdf_handle&) {};

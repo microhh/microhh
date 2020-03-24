@@ -153,6 +153,13 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
+    CUDA_MACRO inline TF dqsatdT(const TF p, const TF T)
+    {
+        const TF alpha = water_fraction(T);
+        return alpha*dqsatdT_liq(p,T) + (TF(1.)-alpha)*dqsatdT_ice(p,T);
+    }
+
+    template<typename TF>
     CUDA_MACRO inline TF exner(const TF p)
     {
         return pow((p/p0<TF>), (Rd<TF>/cp<TF>));

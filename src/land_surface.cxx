@@ -1008,8 +1008,14 @@ void Land_surface<TF>::exec_surface(
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    // Get lowest model level VPD (calculated in tmp1->fld_bot...)
-    thermo.get_vpd_surf(*tmp1, false);
+    // Get required thermo fields in 2D slices of tmp field.
+    thermo.get_land_surface_fields(*tmp2);
+
+    TF* T_bot = tmp2->fld_bot.data();
+    TF* T_a = tmp2->fld_top.data();
+    TF* vpd = tmp2->flux_bot.data();
+    TF* qsat = tmp2->flux_top.data();
+    TF* dqsatdT = tmp2->grad_bot.data();
 
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
     boundary.get_ra(*tmp1);
@@ -1020,7 +1026,7 @@ void Land_surface<TF>::exec_surface(
             sw_dn.data(),
             fields.sps.at("theta")->fld.data(),
             theta_mean_n,
-            tmp1->fld_bot.data(),   // VPD
+            vpd,
             gD_coeff.data(),
             c_veg.data(),
             theta_wp.data(),
@@ -1047,9 +1053,6 @@ void Land_surface<TF>::exec_surface(
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             agd.icells);
-
-    // Get absolute temperature of surface and first model level
-    thermo.get_temperature_surf(*tmp2, false);
 
 
 
