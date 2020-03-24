@@ -1303,6 +1303,12 @@ const std::vector<TF>& Thermo_moist<TF>::get_exner_vector() const
 }
 
 template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_rhorefh_vector() const
+{
+    return bs.rhorefh;
+}
+
+template<typename TF>
 TF Thermo_moist<TF>::get_db_ref() const
 {
     auto& gd = grid.get_grid_data();

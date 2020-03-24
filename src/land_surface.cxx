@@ -39,10 +39,12 @@
 #include "radiation.h"
 #include "thermo.h"
 #include "boundary.h"
+#include "fast_math.h"
 
 #include "land_surface.h"
 
 using namespace Constants;
+using namespace Fast_math;
 
 namespace soil
 {
@@ -534,6 +536,66 @@ namespace lsm
                 rs[ij] = rs_min[ij] * f2b[ij];
             }
     }
+
+    template<typename TF>
+    void calc_fluxes(
+            TF* const restrict H,
+            TF* const restrict LE,
+            TF* const restrict G,
+            const TF* const restrict T,
+            const TF* const restrict qt,
+            const TF* const restrict T_soil,
+            const TF* const restrict T_bot,
+            const TF* const restrict qsat_bot,
+            const TF* const restrict dqsatdT_bot,
+            const TF* const restrict ra,
+            const TF* const restrict rs,
+            const TF* const restrict lambda,
+            const TF* const restrict sw_dn,
+            const TF* const restrict sw_up,
+            const TF* const restrict lw_dn,
+            const TF* const restrict lw_up,
+            const TF* const restrict rhorefh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend_soil,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij    = i + j*icells;
+                const int ijk   = ij + kstart*ijcells;
+                const int ijk_s = ij + (kend_soil-1)*ijcells;
+
+                // Disable canopy resistance in case of dew fall
+                const TF rs_lim = qsat_bot[ij] < qt[ijk] ? TF(0) : rs[ij];
+
+                // Recuring factors
+                const TF fH  = rhorefh[kstart] * cp<TF> / ra[ij];
+                const TF fLE = rhorefh[kstart] * Lv<TF> / (ra[ij] + rs_lim);
+                const TF fG  = lambda[ij];
+
+                // Net radiation; negative sign = net input of energy at surface
+                const TF Qnet = -(sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij]);
+
+                // Solve for the new surface temperature
+                const TF num = -(Qnet - lw_up[ij]
+                        - fH * T[ij] + (qsat_bot[ij] - dqsatdT_bot[ij] * T_bot[ij] - qt[ijk]) * fLE
+                        - fG * T_soil[ijk_s] - TF(3) * sigma_b<TF> * pow4(T_bot[ij]));
+                const TF denom = (fH + fLE * dqsatdT_bot[ij] + fG + TF(4) * sigma_b<TF> * pow3(T_bot[ij]));
+                const TF T_bot_new = num / denom;
+
+                // Update qsat with linearised relation, to make sure that the SEB closes
+                const TF qsat_new = qsat_bot[ij] + dqsatdT_bot[ij] * (T_bot_new - T_bot[ij]);
+
+                // Calculate surface fluxes
+                H [ij] = fH  * (T_bot_new - T[ij]);
+                LE[ij] = fLE * (qsat_new - qt[ijk]);
+                G [ij] = fG  * (T_soil[ijk_s] - T_bot_new);
+            }
+    }
 }
 
 template<typename TF>
@@ -594,6 +656,7 @@ void Land_surface<TF>::init()
     lai.resize(gd.ijcells);
     rs_veg_min.resize(gd.ijcells);
     rs_soil_min.resize(gd.ijcells);
+    lambda.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -751,6 +814,7 @@ void Land_surface<TF>::create_fields_grid_stats(
         init_homogeneous(lai, "lai");
         init_homogeneous(rs_veg_min, "rs_veg_min");
         init_homogeneous(rs_soil_min, "rs_soil_min");
+        init_homogeneous(lambda, "lambda");
 
         // Set the canopy resistance of the liquid water tile at zero
         std::fill(tiles.at("wet_skin").rs.begin(), tiles.at("wet_skin").rs.begin()+agd.ijcells, 0.);
@@ -776,10 +840,16 @@ void Land_surface<TF>::create_fields_grid_stats(
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), lookup_table_size);
 
+    // HACK (temporary..): fix the tile fractions
+    const TF c_veg_in = input.get_item<TF>("land_surface", "c_veg", "");
+    std::fill(tiles.at("wet_skin" ).fraction.begin(), tiles.at("wet_skin" ).fraction.begin()+agd.ijcells, TF(0));
+    std::fill(tiles.at("low_veg"  ).fraction.begin(), tiles.at("low_veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
+    std::fill(tiles.at("bare_soil").fraction.begin(), tiles.at("bare_soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
+
     // Init the soil statistics
     if (stats.get_switch())
     {
-        std::string group_name = "soil";
+        std::string group_name = "land_surface";
 
         // Add soil dimensions to each of the statistics masks
         auto& masks = stats.get_masks();
@@ -810,6 +880,31 @@ void Land_surface<TF>::create_fields_grid_stats(
         // Add the statistics variables
         stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
         stats.add_prof("theta", "Soil volumetric water content", "-", "zs", group_name);
+
+        std::string name;
+        std::string desc;
+        for (auto& tile : tiles)
+        {
+            name = "c_" + tile.first;
+            desc = tile.first + " tile fraction";
+            stats.add_time_series(name, desc, "-", group_name);
+
+            name = "H_" + tile.first;
+            desc = tile.first + " sensible heat flux";
+            stats.add_time_series(name, desc, "W m-2", group_name);
+
+            name = "LE_" + tile.first;
+            desc = tile.first + " latent heat flux";
+            stats.add_time_series(name, desc, "W m-2", group_name);
+
+            name = "G_" + tile.first;
+            desc = tile.first + " soil heat flux";
+            stats.add_time_series(name, desc, "W m-2", group_name);
+
+            name = "rs_" + tile.first;
+            desc = tile.first + " surface resistance";
+            stats.add_time_series(name, desc, "s m-1", group_name);
+        }
     }
 
     // Init the soil cross-sections
@@ -1014,11 +1109,14 @@ void Land_surface<TF>::exec_surface(
     TF* T_bot = tmp2->fld_bot.data();
     TF* T_a = tmp2->fld_top.data();
     TF* vpd = tmp2->flux_bot.data();
-    TF* qsat = tmp2->flux_top.data();
-    TF* dqsatdT = tmp2->grad_bot.data();
+    TF* qsat_bot = tmp2->flux_top.data();
+    TF* dqsatdT_bot = tmp2->grad_bot.data();
+
+    const std::vector<TF>& rhorefh = thermo.get_rhorefh_vector();
 
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
     boundary.get_ra(*tmp1);
+    TF* ra = tmp1->flux_bot.data();
 
     // Calculate vegetation/soil resistance functions `f`
     lsm::calc_resistance_functions(
@@ -1054,8 +1152,22 @@ void Land_surface<TF>::exec_surface(
             agd.jstart, agd.jend,
             agd.icells);
 
-
-
+    // Solve the surface energy balance
+    for (auto& tile : tiles)
+        lsm::calc_fluxes(
+                tile.second.H.data(), tile.second.LE.data(),
+                tile.second.G.data(), T_a,
+                fields.sp.at("qt")->fld.data(),
+                fields.sps.at("t")->fld.data(),
+                T_bot, qsat_bot, dqsatdT_bot,
+                ra, tile.second.rs.data(), lambda.data(),
+                sw_dn.data(), sw_up.data(),
+                lw_dn.data(), lw_up.data(),
+                rhorefh.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -1072,6 +1184,16 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
     // Soil prognostic fields
     stats.calc_stats_soil("t",     fields.sps.at("t")->fld,     offset);
     stats.calc_stats_soil("theta", fields.sps.at("theta")->fld, offset);
+
+    std::string name;
+    for (auto& tile : tiles)
+    {
+        stats.calc_stats_2d("c_" +tile.first, tile.second.fraction, offset);
+        stats.calc_stats_2d("H_" +tile.first, tile.second.H, offset);
+        stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, offset);
+        stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
+        stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
+    }
 }
 
 template<typename TF>

@@ -86,6 +86,7 @@ class Land_surface
         std::vector<TF> lai;                     // Leaf area index (-)
         std::vector<TF> rs_veg_min;              // Minimum vegetation resistance (s m-1)
         std::vector<TF> rs_soil_min;             // Minimum soil resistance (s m-1)
+        std::vector<TF> lambda;                  // Skin conductivity (W m-2 K-1)
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables

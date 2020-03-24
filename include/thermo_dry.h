@@ -98,6 +98,8 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_land_surface_fields(Field3d<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
+        const std::vector<TF>& get_rhorefh_vector() const
+            { throw std::runtime_error("Function get_rhorefh_vector not implemented"); }
 
         // Empty functions that are allowed to pass.
         void create_basestate(Input&, Netcdf_handle&) {};

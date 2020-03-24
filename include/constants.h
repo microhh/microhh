@@ -41,6 +41,7 @@ namespace Constants
     template<typename TF> constexpr TF ep    = Rd<TF>/Rv<TF>;
     template<typename TF> constexpr TF rho_w = 1.e3;          // Density of water [kg m-3]
     template<typename TF> constexpr TF rho_i = 7.e2;          // Density of ice   [kg m-3]
+    template<typename TF> constexpr TF sigma_b = 5.67e-8;     // Boltzmann constant [W m-1 K-1]
 
     // Soil specific constants
     template<typename TF> constexpr TF rho_C_matrix   = 1.6e6;   // Volumetric soil heat capacity [J m-3 K-1]
