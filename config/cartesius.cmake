@@ -24,6 +24,9 @@
 # module load FFTW/3.3.5-intel-2016b
 # module load Doxygen/1.8.11-intel-2016b
 
+# Use "lfs setstripe -c 50" in empty directories if large files need to be
+# written with MPI-IO. It hugely increases the IO performance.
+
 if(USEMPI)
     set(ENV{CC}  mpiicc ) # C compiler for parallel build
     set(ENV{CXX} mpiicpc) # C++ compiler for parallel build
