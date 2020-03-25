@@ -301,17 +301,23 @@ namespace soil
     void set_bcs_temperature(
             TF* const restrict flux_top,
             TF* const restrict flux_bot,
+            const TF* const restrict G,
+            const TF* const restrict rho_C,
+            const int* const restrict soil_index,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int kstart, const int kend,
+            const int kend,
             const int icells, const int ijcells)
     {
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij = i + j*icells;
-                flux_top[ij] = TF(0);    // Eventually: G/rho
+                const int ij  = i + j*icells;
+                const int ijk = ij + (kend-1)*ijcells;  // Top soil layer
+                const int si  = soil_index[ijk];
+
+                flux_top[ij] = G[ij] / rho_C[si];
                 flux_bot[ij] = TF(0);
             }
     }
@@ -321,18 +327,21 @@ namespace soil
             TF* const restrict flux_top,
             TF* const restrict flux_bot,
             TF* const restrict conductivity_h,
+            const TF* const restrict LE_soil,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
+        const TF fac = TF(1) / (rho_w<TF> * Lv<TF>);
+
         const int kk = ijcells;
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*icells;
-                flux_top[ij] = TF(0);    // Eventually: LE & infiltration
+                flux_top[ij] = LE_soil[ij] * fac;
                 flux_bot[ij] = TF(0);
 
                 // Set free drainage bottom BC:
@@ -637,6 +646,50 @@ namespace lsm
                 // Calculate surface values
                 thl_bot[ij] = thl[ijk] + wthl * ra[ij];
                 qt_bot [ij] = qt[ijk]  + wqt  * ra[ij];
+            }
+    }
+
+    template<typename TF>
+    void calc_tiled_mean(
+            TF* const restrict fld_mean,
+            const TF* const restrict fld_low_veg,
+            const TF* const restrict fld_bare_soil,
+            const TF* const restrict fld_wet_skin,
+            const TF* const restrict c_low_veg,
+            const TF* const restrict c_bare_soil,
+            const TF* const restrict c_wet_skin,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                fld_mean[ij] =
+                    c_low_veg  [ij] * fld_low_veg  [ij] +
+                    c_bare_soil[ij] * fld_bare_soil[ij] +
+                    c_wet_skin [ij] * fld_wet_skin [ij];
+            }
+    }
+
+    template<typename TF>
+    void scale_tile_with_fraction(
+            TF* const restrict fld_scaled,
+            const TF* const restrict fld,
+            const TF* const restrict fraction,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                fld_scaled[ij] = fld[ij] * fraction[ij];
             }
     }
 }
@@ -964,6 +1017,8 @@ void Land_surface<TF>::exec_soil()
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    auto tmp1 = fields.get_tmp();
+
     // Only soil moisture has a source and conductivity term
     const bool sw_source_term_t = false;
     const bool sw_conductivity_term_t = false;
@@ -997,12 +1052,29 @@ void Land_surface<TF>::exec_soil()
             agd.icells, agd.ijcells);
 
     // Set flux boundary conditions at top and bottom of soil column
+    // Top = soil heat flux (G) averaged over all tiles
+    // Bottom = zero flux.
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("low_veg").G.data(),
+            tiles.at("bare_soil").G.data(),
+            tiles.at("wet_skin").G.data(),
+            tiles.at("low_veg").fraction.data(),
+            tiles.at("bare_soil").fraction.data(),
+            tiles.at("wet_skin").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
     soil::set_bcs_temperature(
             fields.sps.at("t")->flux_top.data(),
             fields.sps.at("t")->flux_bot.data(),
+            tmp1->fld_bot.data(),
+            rho_C.data(),
+            soil_index.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
-            sgd.kstart, sgd.kend,
+            sgd.kend,
             agd.icells, agd.ijcells);
 
     // Calculate diffusive tendency
@@ -1063,13 +1135,23 @@ void Land_surface<TF>::exec_soil()
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
-    // Set the flux boundary conditions at the top and bottom
-    // of the soil layer, and a free drainage conditions at the bottom.
+    // Set the boundary conditions.
+    // Top = evaporation from bare soil tile.
+    // Bottom = optionally free drainage (or else closed)
+    lsm::scale_tile_with_fraction(
+            tmp1->fld_bot.data(),
+            tiles.at("bare_soil").LE.data(),
+            tiles.at("bare_soil").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
     if (sw_free_drainage)
         soil::set_bcs_moisture<TF, true>(
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
+                tmp1->fld_bot.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -1079,6 +1161,7 @@ void Land_surface<TF>::exec_soil()
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
+                tmp1->fld_bot.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -1098,6 +1181,8 @@ void Land_surface<TF>::exec_soil()
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
+
+    fields.release_tmp(tmp1);
 }
 
 
@@ -1231,7 +1316,6 @@ void Land_surface<TF>::exec_surface(
             agd.jstart, agd.jend,
             agd.kstart,
             agd.icells, agd.ijcells);
-
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);

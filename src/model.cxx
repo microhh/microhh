@@ -381,11 +381,11 @@ void Model<TF>::exec()
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
-                // Calculate soil tendencies
-                lsm->exec_soil();
-
                 // Calculate interactive land-surface
                 lsm->exec_surface(*radiation, *thermo, *boundary);
+
+                // Calculate soil tendencies
+                lsm->exec_soil();
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
