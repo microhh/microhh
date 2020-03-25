@@ -272,6 +272,53 @@ namespace soil
                 }
     }
 
+    template<typename TF>
+    void calc_root_water_extraction(
+            TF* const restrict extraction,
+            TF* const restrict tmp,
+            const TF* const restrict theta,
+            const TF* const restrict root_frac,
+            const TF* const restrict LE_veg,
+            const TF* const restrict dzi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const TF fac = TF(1) / (rho_w<TF> * Lv<TF>);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                tmp[ij] = TF(0);
+            }
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+
+                    tmp[ij] += root_frac[ijk] * theta[ijk];
+                }
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+
+                    const TF theta_frac = root_frac[ijk] * theta[ijk] / tmp[ij];
+                    extraction[ijk] = -std::max(TF(0), LE_veg[ij]) * fac * dzi[k] * theta_frac;
+                }
+    }
+
     template<typename TF, Soil_interpolation_type interpolation_type>
     void interp_2_vertical(
             TF* const restrict fldh,
@@ -1166,6 +1213,27 @@ void Land_surface<TF>::exec_soil()
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
+
+    // Calculate root water extraction
+    lsm::scale_tile_with_fraction(
+            tmp1->fld_bot.data(),
+            tiles.at("low_veg").LE.data(),
+            tiles.at("low_veg").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
+    soil::calc_root_water_extraction(
+            source.data(),
+            tmp1->fld_top.data(),   // tmp field
+            fields.sps.at("theta")->fld.data(),
+            root_fraction.data(),
+            tmp1->fld_bot.data(),
+            sgd.dzi.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kstart, sgd.kend,
+            agd.icells, agd.ijcells);
 
     // Calculate diffusive tendency
     soil::diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
