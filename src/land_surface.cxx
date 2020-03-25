@@ -128,7 +128,6 @@ namespace soil
         }
     }
 
-
     template<typename TF>
     void calc_root_column(
             TF* const restrict root_frac,
@@ -151,7 +150,6 @@ namespace soil
         // Make sure the root fraction sums to one.
         root_frac[kstart] = TF(1) - root_frac_sum;
     }
-
 
     template<typename TF>
     void calc_root_weighted_mean_theta(
@@ -187,8 +185,6 @@ namespace soil
                     theta_mean[ij] += root_fraction[ijk] * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
                 }
     }
-
-
 
     template<typename TF>
     void calc_thermal_properties(
@@ -496,7 +492,6 @@ namespace lsm
             }
     }
 
-
     template<typename TF>
     void calc_canopy_resistance(
             TF* const restrict rs,
@@ -517,7 +512,6 @@ namespace lsm
                 rs[ij] = rs_min[ij] / lai[ij] * f1[ij] * f2[ij] * f3[ij];
             }
     }
-
 
     template<typename TF>
     void calc_soil_resistance(
@@ -594,6 +588,55 @@ namespace lsm
                 H [ij] = fH  * (T_bot_new - T[ij]);
                 LE[ij] = fLE * (qsat_new - qt[ijk]);
                 G [ij] = fG  * (T_soil[ijk_s] - T_bot_new);
+            }
+    }
+
+    template<typename TF>
+    void calc_bcs(
+            TF* const restrict thl_bot,
+            TF* const restrict qt_bot,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict H_low_veg,
+            const TF* const restrict H_bare_soil,
+            const TF* const restrict H_wet_skin,
+            const TF* const restrict LE_low_veg,
+            const TF* const restrict LE_bare_soil,
+            const TF* const restrict LE_wet_skin,
+            const TF* const restrict c_low_veg,
+            const TF* const restrict c_bare_soil,
+            const TF* const restrict c_wet_skin,
+            const TF* const restrict ra,
+            const TF* const restrict rhorefh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const TF rhocp_i = TF(1) / (rhorefh[kstart] * cp<TF>);
+        const TF rholv_i = TF(1) / (rhorefh[kstart] * Lv<TF>);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = ij + kstart*ijcells;
+
+                // Tile averaged surface fluxes
+                const TF wthl = (
+                    c_low_veg  [ij] * H_low_veg  [ij] +
+                    c_bare_soil[ij] * H_bare_soil[ij] +
+                    c_wet_skin [ij] * H_wet_skin [ij] ) * rhocp_i;
+
+                const TF wqt = (
+                    c_low_veg  [ij] * LE_low_veg  [ij] +
+                    c_bare_soil[ij] * LE_bare_soil[ij] +
+                    c_wet_skin [ij] * LE_wet_skin [ij] ) * rholv_i;
+
+                // Calculate surface values
+                thl_bot[ij] = thl[ijk] + wthl * ra[ij];
+                qt_bot [ij] = qt[ijk]  + wqt  * ra[ij];
             }
     }
 }
@@ -747,11 +790,8 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
         init_group.get_variable(thl_1, "thl", {0}, {1});
         init_group.get_variable(qt_1,  "qt",  {0}, {1});
 
-        for (auto& tile : tiles)
-        {
-            std::fill(tile.second.thl_bot.begin(), tile.second.thl_bot.begin()+agd.ijcells, thl_1[0]);
-            std::fill(tile.second.qt_bot.begin(),  tile.second.qt_bot.begin() +agd.ijcells, qt_1 [0]);
-        }
+        std::fill(fields.sp.at("thl")->fld_bot.begin(), fields.sp.at("thl")->fld_bot.begin()+agd.ijcells, thl_1[0]);
+        std::fill(fields.sp.at("qt")->fld_bot.begin(), fields.sp.at("qt")->fld_bot.begin()+agd.ijcells, qt_1[0]);
     }
 }
 
@@ -1168,6 +1208,30 @@ void Land_surface<TF>::exec_surface(
                 agd.jstart, agd.jend,
                 agd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
+
+    // Solve bottom boundary condition back
+    // NOTE: THIS SHOULD BE CALLED FROM SOMEWHERE ELSE,
+    // NOT IN THE MIDDLE OF THE TIME LOOP........
+    lsm::calc_bcs(
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("qt")->fld_bot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            tiles.at("low_veg").H.data(),
+            tiles.at("bare_soil").H.data(),
+            tiles.at("wet_skin").H.data(),
+            tiles.at("low_veg").LE.data(),
+            tiles.at("bare_soil").LE.data(),
+            tiles.at("wet_skin").LE.data(),
+            tiles.at("low_veg").fraction.data(),
+            tiles.at("bare_soil").fraction.data(),
+            tiles.at("wet_skin").fraction.data(),
+            ra, rhorefh.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.kstart,
+            agd.icells, agd.ijcells);
+
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
