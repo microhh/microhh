@@ -21,6 +21,7 @@
  */
 
 #include <iostream>
+#include <algorithm>
 
 #include "soil_grid.h"
 #include "grid.h"
