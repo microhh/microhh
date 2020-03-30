@@ -762,6 +762,9 @@ Land_surface<TF>::Land_surface(
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
         fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");
 
+        // Create prognostic 2D field for liquid water on land-surface
+        fields.init_prognostic_2d_field("wl");
+
         // Create the land-surface tiles
         tiles.emplace("low_veg",   Surface_tile<TF>{});
         tiles.emplace("bare_soil", Surface_tile<TF>{});
@@ -793,7 +796,6 @@ void Land_surface<TF>::init()
     for (auto& tile : tiles)
         lsm::init_tile(tile.second, gd.ijcells);
 
-    liquid_water_reservoir.resize(gd.ijcells);
     gD_coeff.resize(gd.ijcells);
     c_veg.resize(gd.ijcells);
     lai.resize(gd.ijcells);
@@ -881,7 +883,7 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
 
         // Initialise the prognostic surface variables, and/or
         // variables which are needed for consistent restarts.
-        std::fill(liquid_water_reservoir.begin(), liquid_water_reservoir.begin()+agd.ijcells, 0.);
+        std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
 
         // Set initial surface potential temperature and humidity to the atmospheric values (...)
         std::vector<TF> thl_1(1);
@@ -1021,6 +1023,10 @@ void Land_surface<TF>::create_fields_grid_stats(
         stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
         stats.add_prof("theta", "Soil volumetric water content", "-", "zs", group_name);
 
+        // Non-tiled variables
+        stats.add_time_series("wl", "Liquid water reservoir", "m", group_name);
+
+        // Tiled variables
         std::string name;
         std::string desc;
         for (auto& tile : tiles)
@@ -1401,6 +1407,10 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_soil("t",     fields.sps.at("t")->fld,     offset);
     stats.calc_stats_soil("theta", fields.sps.at("theta")->fld, offset);
 
+    // Non-tiled variables
+    stats.calc_stats_2d("wl", fields.ap2d.at("wl"), offset);
+
+    // Tiled variables
     std::string name;
     for (auto& tile : tiles)
     {
@@ -1484,7 +1494,7 @@ void Land_surface<TF>::save(const int itime)
             master.print_message("OK\n");
     };
 
-    save_2d_field(liquid_water_reservoir.data(), "wl_skin");
+    save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
     save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
     save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
 
@@ -1554,7 +1564,7 @@ void Land_surface<TF>::load(const int itime)
             master.print_message("OK\n");
     };
 
-    load_2d_field(liquid_water_reservoir.data(), "wl_skin");
+    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
     load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
     load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
 

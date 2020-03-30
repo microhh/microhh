@@ -993,8 +993,6 @@ void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 template<typename TF>
 void Microphys_2mom_warm<TF>::get_surface_precip(std::vector<TF>& field)
 {
-    auto& gd = grid.get_grid_data();
-
     // Make a hard copy of the surface precipitation field
     field = rr_bot;
 }

@@ -332,6 +332,9 @@ void Timeloop<TF>::exec()
     auto& gd  = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    const int kstart_2d = 0;
+    const int kend_2d = 1;
+
     if (rkorder == 3)
     {
         // Atmospheric fields
@@ -344,6 +347,12 @@ void Timeloop<TF>::exec()
         for (auto& f : fields.sts)
             rk3<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk3<TF>(fields.ap2d.at(f.first).data(), f.second.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 3;
@@ -361,6 +370,12 @@ void Timeloop<TF>::exec()
         for (auto& f : fields.sts)
             rk4<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk4<TF>(fields.ap2d.at(f.first).data(), f.second.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
                     gd.icells, gd.ijcells);
 
         substep = (substep+1) % 5;

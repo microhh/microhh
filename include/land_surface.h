@@ -80,7 +80,6 @@ class Land_surface
 
         // Land-surface properties
         Tile_map<TF> tiles;
-        std::vector<TF> liquid_water_reservoir;  // Liquid water on leaves/surface (m)
         std::vector<TF> gD_coeff;                // Coefficient in response surface to VPD (Pa)
         std::vector<TF> c_veg;                   // Vegetation fraction (-)
         std::vector<TF> lai;                     // Leaf area index (-)

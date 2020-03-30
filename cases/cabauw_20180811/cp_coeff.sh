@@ -1,4 +1,5 @@
-path=/Users/bart/meteo/models/rte-rrtmgp/
+#path=/Users/bart/meteo/models/rte-rrtmgp/
+path=/home/bart/meteo/models/rte-rrtmgp
 
 cp $path/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc coefficients_lw.nc
 cp $path/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc coefficients_sw.nc

@@ -53,6 +53,8 @@ template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 template<typename TF>
 using Soil_field_map = std::map<std::string, std::shared_ptr<Soil_field3d<TF>>>;
+template<typename TF>
+using Field_2d_map = std::map<std::string, std::vector<TF>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
 
@@ -91,6 +93,7 @@ class Fields
                 const std::array<int,3>&);
 
         void init_prognostic_soil_field(const std::string&, const std::string&, const std::string&);
+        void init_prognostic_2d_field(const std::string&);
 
         std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
@@ -126,6 +129,9 @@ class Fields
 
         Soil_field_map<TF> sps; ///< Map containing all prognostic soil scalar fields.
         Soil_field_map<TF> sts; ///< Map containing all prognostic soil scalar tendencies.
+
+        Field_2d_map<TF> ap2d; ///< Map containing all prognostic 2D fields.
+        Field_2d_map<TF> at2d; ///< Map containing all prognostic 2D field tendencies.
 
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);

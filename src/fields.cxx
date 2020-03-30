@@ -286,6 +286,8 @@ Fields<TF>::~Fields()
 template<typename TF>
 void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_mode sim_mode)
 {
+    auto& gd = grid.get_grid_data();
+
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
@@ -314,6 +316,12 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     for (auto& it : sts)
         nerror += it.second->init();
 
+    // Allocate the prognostic 2d fields
+    for (auto& it : ap2d)
+        it.second.resize(gd.ijcells);
+    for (auto& it : at2d)
+        it.second.resize(gd.ijcells);
+
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
     for (int i=0; i<n_tmp_fields; ++i)
         init_tmp_field();
@@ -326,9 +334,6 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
 
     if (nerror)
         throw std::runtime_error("Error allocating fields");
-
-    // Get the grid data.
-    const Grid_data<TF>& gd = grid.get_grid_data();
 
     rhoref .resize(gd.kcells);
     rhorefh.resize(gd.kcells);
@@ -607,7 +612,6 @@ void Fields<TF>::init_prognostic_field(
     at[fldname] = st[fldname];
 }
 
-
 template<typename TF>
 void Fields<TF>::init_prognostic_soil_field(
         const std::string& fldname, const std::string& longname, const std::string& unit)
@@ -626,6 +630,20 @@ void Fields<TF>::init_prognostic_soil_field(
     std::string tlongname = "Tendency of " + longname;
     std::string tunit     = simplify_unit(unit, "s-1");
     sts[fldname] = std::make_shared<Soil_field3d<TF>>(master, grid, soil_grid, fldtname, tlongname, tunit);
+}
+
+template<typename TF>
+void Fields<TF>::init_prognostic_2d_field(const std::string& fldname)
+{
+    if (ap2d.find(fldname)!=ap2d.end())
+    {
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
+    }
+
+    // add a new scalar variable
+    ap2d[fldname] = std::vector<TF>();
+    at2d[fldname] = std::vector<TF>();
 }
 
 template<typename TF>
