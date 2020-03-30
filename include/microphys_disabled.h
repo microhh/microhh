@@ -54,6 +54,8 @@ class Microphys_disabled : public Microphys<TF>
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
+        void get_surface_precip(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
         #ifdef USECUDA
@@ -65,5 +67,6 @@ class Microphys_disabled : public Microphys<TF>
 
     private:
         using Microphys<TF>::swmicrophys;
+        using Microphys<TF>::grid;
 };
 #endif

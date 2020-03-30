@@ -165,6 +165,8 @@ class Microphys_2mom_warm : public Microphys<TF>
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
+        void get_surface_precip(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
         #ifdef USECUDA
