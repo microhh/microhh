@@ -48,11 +48,11 @@ def convert_to_nc(variables):
                     dim.update({'x': indexes_local})
                     n = ktot * jtot
 
-                if variable is 'u':
+                if variable == 'u':
                     dim['xh'] = dim.pop('x')
-                if variable is 'v':
+                if variable == 'v':
                     dim['yh'] = dim.pop('y')
-                if variable is 'w':
+                if variable == 'w':
                     dim['zh'] = dim.pop('z')
 
                 ncfile = mht.Create_ncfile(
