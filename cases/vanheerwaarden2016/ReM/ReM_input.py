@@ -1,5 +1,7 @@
 import numpy
 from pylab import *
+import netCDF4 as nc
+float_type = 'f8'
 
 # set the height (ktot = 512)
 ktot = 768
@@ -70,11 +72,18 @@ for k in range(ktot):
     b[k] = N2*z[k]
 
 # write the data to a file
-proffile = open('drycbl.prof', 'w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z', 'b'))
-for k in range(ktot):
-    proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
-proffile.close()
+nc_file = nc.Dataset("drycbl_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+
+nc_file.createDimension("z", ktot)
+nc_z = nc_file.createVariable("z" , float_type, ("z"))
+
+nc_group_init = nc_file.createGroup("init");
+nc_b = nc_group_init.createVariable("b", float_type, ("z"))
+
+nc_z[:] = z[:]
+nc_b[:] = b[:]
+
+nc_file.close()
 
 # plot the grid
 # figure()
