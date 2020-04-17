@@ -1,5 +1,4 @@
 import numpy
-#from scipy.special import erf
 from pylab import *
 
 # set the height (ktot = 512)
@@ -68,7 +67,6 @@ N2 = 3.
 b = numpy.zeros(numpy.size(z))
 
 for k in range(ktot):
-    #b[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
     b[k] = N2*z[k]
 
 # write the data to a file
@@ -79,11 +77,11 @@ for k in range(ktot):
 proffile.close()
 
 # plot the grid
-figure()
-subplot(131)
-plot(n, z)
-subplot(132)
-plot(n, dz)
-subplot(133)
-plot(n, stretch)
-show()
+# figure()
+# subplot(131)
+# plot(n, z)
+# subplot(132)
+# plot(n, dz)
+# subplot(133)
+# plot(n, stretch)
+# show()
