@@ -32,10 +32,10 @@ if __name__ == '__main__':
         function_name = sys.argv[1]
 
         if function_name == 'run_case':
-            mht.run_case(case_name, no_opts, opt_mpi, **kwargs)
+            mht.run_permutations(case_name, no_opts, opt_mpi, [dict_rk, dict_dt], **kwargs)
         else:
             raise Exception('\"{}\" is an invalid option'.format(function_name))
 
     else:
-        mht.run_case(case_name, no_opts, opt_mpi)
+        mht.run_permutations(case_name, no_opts, opt_mpi, [dict_rk, dict_dt])
 

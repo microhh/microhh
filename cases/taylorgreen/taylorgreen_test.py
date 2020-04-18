@@ -26,13 +26,16 @@ dict_order = {
 
 def run(executable='microhh', float_type='dp',
         mode='cpu', casedir='.', experiment='local'):
+
     if mode == 'cpumpi':
         print('MPI mode not supported')
         return
 
     base_case = mht.Case('taylorgreen', casedir=casedir)
+
     cases = mht.generator_parameter_permutations(
         base_case, experiment, [dict_resolution, dict_order])
+
     mht.run_cases(
         cases,
         executable,

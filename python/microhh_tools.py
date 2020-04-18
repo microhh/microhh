@@ -890,6 +890,36 @@ def run_case(
     return 0
 
 
+def run_permutations(
+        case_name, options_in, options_mpi_in, permutations_in,
+        executable='microhh', mode='cpu',
+        case_dir='.', experiment='local'):
+
+    options = deepcopy(options_in)
+
+    if mode == 'cpumpi':
+        merge_options(options, options_mpi_in)
+
+    base_case = Case(
+            case_name,
+            casedir=case_dir,
+            rundir=experiment,
+            options=options)
+
+    cases = generator_parameter_permutations(base_case, permutations_in)
+
+    run_cases(
+        cases,
+        executable,
+        mode,
+        outputfile='{}/{}_{}.csv'.format(case_dir, case_name, experiment))
+
+    for case in cases:
+        if not case.success:
+            return 1
+    return 0
+
+
 def run_restart(
         case_name, options_in, options_mpi_in, permutations_in=None,
         executable='microhh', mode='cpu',
