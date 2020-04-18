@@ -776,6 +776,7 @@ def generator_scaling(cases, procs, type='strong', dir='y'):
     return cases_out
 
 
+"""
 def generator_parameter_change(cases, **kwargs):
     cases_out = []
     if len(kwargs) > 0:
@@ -792,13 +793,17 @@ def generator_parameter_change(cases, **kwargs):
             cases_out = generator_parameter_change(cases_out, **kwargs)
 
     return cases_out
-
+"""
 
 def generator_parameter_permutations(base_case, lists):
     """
     Function to permutate lists of dictionaries to generate cases to run
     """
     cases_out = []
+
+    # Put a single dictionary into a list with one item.
+    if type(lists) is dict:
+        lists = [lists]
 
     # Convert the dictionaries into tuples to enable to permutate the list.
     tuple_lists = []
@@ -944,7 +949,7 @@ def run_restart(
             rundir=experiment,
             options=options)
 
-        base_cases = generator_parameter_permutations(base_case, [permutations_in])
+        base_cases = generator_parameter_permutations(base_case, permutations_in)
 
     cases = []
     for case in base_cases:
