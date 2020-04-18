@@ -420,7 +420,7 @@ def merge_options(options, options_to_add):
         if group in options:
             options[group].update(options_to_add[group])
         else:
-            options[group] = options_to_add[group]
+            options[group] = copy.deepcopy(options_to_add[group])
 
 
 def run_scripts(scripts):
