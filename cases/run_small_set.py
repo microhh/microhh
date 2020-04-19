@@ -4,6 +4,7 @@ sys.path.append('../python/')
 import microhh_tools as mht
 
 import taylorgreen.taylorgreen_test as taylorgreen
+import conservation.conservation_test as conservation
 import moser180.moser180_test as moser180
 import drycbl.drycbl_test as drycbl
 import drycblles.drycblles_test as drycblles
@@ -20,8 +21,10 @@ for prec in precs:
         microhh_exec = 'microhh_{}_{}'.format(prec, mode)
         experiment = '{}_{}'.format(prec, mode)
 
-        #taylorgreen.run(microhh_exec, prec, mode, 'taylorgreen', experiment)
+        # taylorgreen.run(microhh_exec, prec, mode, 'taylorgreen', experiment)
+        conservation.run_test(microhh_exec, prec, mode, 'conservation', experiment)
 
+        """
         #
         # DNS cases
         #
@@ -81,3 +84,4 @@ for prec in precs:
         mht.run_restart('rico',
                 rico.opt_small, rico.opt_mpi, rico.dict_opts,
                 microhh_exec, mode, 'rico', experiment)
+        """

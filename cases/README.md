@@ -1,5 +1,9 @@
 # Overview of cases
 
+## Dynamical core validation
+* `conservation`: Random noise advection for checking mass, momentum, and energy conservation.
+* `taylorgreen`: Convergence test for spatial discretizations in Taylor-Green vortex.
+
 ## Atmospheric LES
 * `andren1994`: LES of neutral boundary layer (Andren et al. 1994).
 * `arm`: Shallow cumulus over land (Brown et al., 2002).

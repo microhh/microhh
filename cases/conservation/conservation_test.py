@@ -24,8 +24,8 @@ dict_dt = {
     'dt0125': {'time': {'dtmax':  1.25}, 'stats': {'sampletime': 10.}}}
 
 
-def get_data_from_nc(experiment_name):
-    data = nc.Dataset('{}/conservation.default.0000000.nc'.format(experiment_name), 'r')
+def get_data_from_nc(case_dir, experiment_name):
+    data = nc.Dataset('{}/{}/conservation.default.0000000.nc'.format(case_dir, experiment_name), 'r')
     time = data.variables['time'][:]
     dz = data.variables['zh'][1] - data.variables['zh'][0]
 
@@ -39,7 +39,7 @@ def get_data_from_nc(experiment_name):
     tke  /= tke [1]
     mass /= mass[1]
 
-    data_out = np.loadtxt('{}/conservation.out'.format(experiment_name), skiprows=1)
+    data_out = np.loadtxt('{}/{}/conservation.out'.format(case_dir, experiment_name), skiprows=1)
     time = data_out[:,1]
     mom = data_out[:,7] / data_out[1,7]
     tke = data_out[:,8] / data_out[1,8]
@@ -48,18 +48,17 @@ def get_data_from_nc(experiment_name):
     return time, mom, tke, mass
 
 
-def plot(case_name, experiment_name):
-    time100_3rd, mom100_3rd, tke100_3rd, mass100_3rd = get_data_from_nc('{}_rk3_dt1000'.format(experiment_name))
-    time200_3rd, mom200_3rd, tke200_3rd, mass200_3rd = get_data_from_nc('{}_rk3_dt0500'.format(experiment_name))
-    time400_3rd, mom400_3rd, tke400_3rd, mass400_3rd = get_data_from_nc('{}_rk3_dt0250'.format(experiment_name))
-    time800_3rd, mom800_3rd, tke800_3rd, mass800_3rd = get_data_from_nc('{}_rk3_dt0125'.format(experiment_name))
+def plot(case_name, case_dir, experiment_name):
+    time100_3rd, mom100_3rd, tke100_3rd, mass100_3rd = get_data_from_nc(case_dir, '{}_rk3_dt1000'.format(experiment_name))
+    time200_3rd, mom200_3rd, tke200_3rd, mass200_3rd = get_data_from_nc(case_dir, '{}_rk3_dt0500'.format(experiment_name))
+    time400_3rd, mom400_3rd, tke400_3rd, mass400_3rd = get_data_from_nc(case_dir, '{}_rk3_dt0250'.format(experiment_name))
+    time800_3rd, mom800_3rd, tke800_3rd, mass800_3rd = get_data_from_nc(case_dir, '{}_rk3_dt0125'.format(experiment_name))
+    time100_4th, mom100_4th, tke100_4th, mass100_4th = get_data_from_nc(case_dir, '{}_rk4_dt1000'.format(experiment_name))
+    time200_4th, mom200_4th, tke200_4th, mass200_4th = get_data_from_nc(case_dir, '{}_rk4_dt0500'.format(experiment_name))
+    time400_4th, mom400_4th, tke400_4th, mass400_4th = get_data_from_nc(case_dir, '{}_rk4_dt0250'.format(experiment_name))
+    time800_4th, mom800_4th, tke800_4th, mass800_4th = get_data_from_nc(case_dir, '{}_rk4_dt0125'.format(experiment_name))
 
-    time100_4th, mom100_4th, tke100_4th, mass100_4th = get_data_from_nc('{}_rk4_dt1000'.format(experiment_name))
-    time200_4th, mom200_4th, tke200_4th, mass200_4th = get_data_from_nc('{}_rk4_dt0500'.format(experiment_name))
-    time400_4th, mom400_4th, tke400_4th, mass400_4th = get_data_from_nc('{}_rk4_dt0250'.format(experiment_name))
-    time800_4th, mom800_4th, tke800_4th, mass800_4th = get_data_from_nc('{}_rk4_dt0125'.format(experiment_name))
-
-    file_name = '{0}_{1}.pdf'.format(case_name, experiment_name)
+    file_name = '{0}/{1}_{2}.pdf'.format(case_dir, case_name, experiment_name)
 
     with PdfPages(file_name) as pdf:
         plt.figure()
@@ -133,24 +132,29 @@ def plot(case_name, experiment_name):
         pdf.savefig()
 
 
-if __name__ == '__main__':
+def run_test(executable='microhh', prec='dp', mode='cpu', case_dir='.', experiment='local'):
 
     case_name = 'conservation'
 
-    kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
+    mht.run_permutations(
+            case_name, no_opts, opt_mpi, [dict_rk, dict_dt],
+            executable=executable, mode=mode, case_dir=case_dir, experiment=experiment)
 
-    if len(sys.argv) > 1:
-        function_name = sys.argv[1]
+    plot(case_name, case_dir, experiment)
 
-        if function_name == 'run_case':
-            mht.run_permutations(case_name, no_opts, opt_mpi, [dict_rk, dict_dt], **kwargs)
-        else:
-            raise Exception('\"{}\" is an invalid option'.format(function_name))
 
-    else:
-        mht.run_permutations(case_name, no_opts, opt_mpi, [dict_rk, dict_dt])
+if __name__ == '__main__':
 
-    experiment_name = 'local'
+    #kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
 
-    plot(case_name, experiment_name)
+    #if len(sys.argv) > 1:
+    #    function_name = sys.argv[1]
 
+    #    if function_name == 'run_test':
+    #        run_test(**kwargs)
+    #    else:
+    #        raise Exception('\"{}\" is an invalid option'.format(function_name))
+    #else
+
+    run_test()
+ 
