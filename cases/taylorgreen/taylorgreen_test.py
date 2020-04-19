@@ -122,7 +122,7 @@ class geterror:
             self.p = self.p + sum(dx * dz * abs(data.p[k, :] - ref.p[k, :]))
 
 
-def plot(filename, float_type, experiment):
+def plot(case_name, case_dir, experiment, float_type):
     t = 1
     time = 1.
     visc = (8. * pi**2. * 100.)**(-1.)
@@ -136,31 +136,31 @@ def plot(filename, float_type, experiment):
         16,
         8,
         float_type,
-        '{}_itot016_swadvec2'.format(experiment))
+        '{}/{}_itot016_swadvec2'.format(case_dir, experiment))
     data32_2nd = microhh(
         t,
         32,
         16,
         float_type,
-        '{}_itot032_swadvec2'.format(experiment))
+        '{}/{}_itot032_swadvec2'.format(case_dir, experiment))
     data64_2nd = microhh(
         t,
         64,
         32,
         float_type,
-        '{}_itot064_swadvec2'.format(experiment))
+        '{}/{}_itot064_swadvec2'.format(case_dir, experiment))
     data128_2nd = microhh(
         t,
         128,
         64,
         float_type,
-        '{}_itot128_swadvec2'.format(experiment))
+        '{}/{}_itot128_swadvec2'.format(case_dir, experiment))
     data256_2nd = microhh(
         t,
         256,
         128,
         float_type,
-        '{}_itot256_swadvec2'.format(experiment))
+        '{}/{}_itot256_swadvec2'.format(case_dir, experiment))
 
     ref16_2nd = getref(data16_2nd .x, data16_2nd .xh,
                        data16_2nd .z, data16_2nd .zh, visc, time)
@@ -201,31 +201,31 @@ def plot(filename, float_type, experiment):
         16,
         8,
         float_type,
-        '{}_itot016_swadvec4m'.format(experiment))
+        '{}/{}_itot016_swadvec4m'.format(case_dir, experiment))
     data32_4m = microhh(
         t,
         32,
         16,
         float_type,
-        '{}_itot032_swadvec4m'.format(experiment))
+        '{}/{}_itot032_swadvec4m'.format(case_dir, experiment))
     data64_4m = microhh(
         t,
         64,
         32,
         float_type,
-        '{}_itot064_swadvec4m'.format(experiment))
+        '{}/{}_itot064_swadvec4m'.format(case_dir, experiment))
     data128_4m = microhh(
         t,
         128,
         64,
         float_type,
-        '{}_itot128_swadvec4m'.format(experiment))
+        '{}/{}_itot128_swadvec4m'.format(case_dir, experiment))
     data256_4m = microhh(
         t,
         256,
         128,
         float_type,
-        '{}_itot256_swadvec4m'.format(experiment))
+        '{}/{}_itot256_swadvec4m'.format(case_dir, experiment))
 
     ref16_4m = getref(data16_4m .x, data16_4m .xh,
                       data16_4m .z, data16_4m .zh, visc, time)
@@ -266,31 +266,31 @@ def plot(filename, float_type, experiment):
         16,
         8,
         float_type,
-        '{}_itot016_swadvec4'.format(experiment))
+        '{}/{}_itot016_swadvec4'.format(case_dir, experiment))
     data32_4th = microhh(
         t,
         32,
         16,
         float_type,
-        '{}_itot032_swadvec4'.format(experiment))
+        '{}/{}_itot032_swadvec4'.format(case_dir, experiment))
     data64_4th = microhh(
         t,
         64,
         32,
         float_type,
-        '{}_itot064_swadvec4'.format(experiment))
+        '{}/{}_itot064_swadvec4'.format(case_dir, experiment))
     data128_4th = microhh(
         t,
         128,
         64,
         float_type,
-        '{}_itot128_swadvec4'.format(experiment))
+        '{}/{}_itot128_swadvec4'.format(case_dir, experiment))
     data256_4th = microhh(
         t,
         256,
         128,
         float_type,
-        '{}_itot256_swadvec4'.format(experiment))
+        '{}/{}_itot256_swadvec4'.format(case_dir, experiment))
 
     ref16_4th = getref(data16_4th .x, data16_4th .xh,
                        data16_4th .z, data16_4th .zh, visc, time)
@@ -330,8 +330,10 @@ def plot(filename, float_type, experiment):
     slope2 = off2 * (dxs[:] / dxs[0])**2.
     slope4 = off4 * (dxs[:] / dxs[0])**4.
 
+    file_name = '{}/{}_{}.pdf'.format(case_dir, case_name, experiment)
+
     close('all')
-    with PdfPages(filename) as pdf:
+    with PdfPages(file_name) as pdf:
         figure()
         if(t > 0):
             loglog(dxs, errsu_2nd, 'bo-', label="u_2nd")
@@ -418,22 +420,17 @@ def plot(filename, float_type, experiment):
         pdf.savefig()
 
 
-if __name__ == '__main__':
+def run_test(executable='microhh', prec='dp', mode='cpu', case_dir='.', experiment='local'):
 
     case_name = 'taylorgreen'
 
-    if len(sys.argv) > 1:
-        mht.run_permutations(case_name, no_opts, opt_mpi, [dict_resolution, dict_order], **kwargs)
+    mht.run_permutations(
+            case_name, no_opts, opt_mpi, [dict_resolution, dict_order],
+            executable=executable, mode=mode, case_dir=case_dir, experiment=experiment)
 
-    else:
-        case_dir = '.'
-        experiment = 'local'
-        float_type = 'dp'
+    plot(case_name, case_dir, experiment, prec)
 
-        mht.run_permutations(case_name, no_opts, opt_mpi, [dict_resolution, dict_order])#, **kwargs)
 
-    cwd = os.getcwd()
-    os.chdir(case_dir)
-    filename = 'taylorgreen_{}.pdf'.format(experiment)
-    plot(filename, float_type=float_type, experiment=experiment)
-    os.chdir(cwd)
+if __name__ == '__main__':
+
+    run_test()
