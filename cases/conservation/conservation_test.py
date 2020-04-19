@@ -145,16 +145,5 @@ def run_test(executable='microhh', prec='dp', mode='cpu', case_dir='.', experime
 
 if __name__ == '__main__':
 
-    #kwargs = dict([arg.split('=') for arg in sys.argv[2:]])
-
-    #if len(sys.argv) > 1:
-    #    function_name = sys.argv[1]
-
-    #    if function_name == 'run_test':
-    #        run_test(**kwargs)
-    #    else:
-    #        raise Exception('\"{}\" is an invalid option'.format(function_name))
-    #else
-
     run_test()
  

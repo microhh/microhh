@@ -28,7 +28,7 @@ dict_order = {
     'swadvec4m': {'grid': {'swspatialorder': 4}, 'advec': {'swadvec': '4m'}}}
 
 
-class microhh:
+class Microhh:
     def __init__(self, iter, itot, ktot, loadtype, path):
         nx = itot
         ny = 1
@@ -92,7 +92,7 @@ class microhh:
         fin.close()
 
 
-class getref:
+class Get_ref:
     def __init__(self, x, xh, z, zh, visc, time):
         self.u = zeros((zh.size, 1, x .size))
         self.w = zeros((z .size, 1, xh.size))
@@ -107,7 +107,7 @@ class getref:
                 0.25 * (cos(4. * pi * x) + cos(4. * pi * z[k])) - 0.25) * (exp(-8. * pi**2. * visc * time)**2.)
 
 
-class geterror:
+class Get_error:
     def __init__(self, data, ref):
         dx = 1. / data.x.size
         dz = 0.5 / data.z.size
@@ -123,6 +123,10 @@ class geterror:
 
 
 def plot(case_name, case_dir, experiment, float_type):
+
+    # Log the stream output to a file.
+    sys.stdout = open('{}/{}_{}.log'.format(case_dir, case_name, experiment), 'w')
+
     t = 1
     time = 1.
     visc = (8. * pi**2. * 100.)**(-1.)
@@ -131,53 +135,53 @@ def plot(case_name, case_dir, experiment, float_type):
     dxs = 1. / ns
 
     # 2nd order data
-    data16_2nd = microhh(
+    data16_2nd = Microhh(
         t,
         16,
         8,
         float_type,
         '{}/{}_itot016_swadvec2'.format(case_dir, experiment))
-    data32_2nd = microhh(
+    data32_2nd = Microhh(
         t,
         32,
         16,
         float_type,
         '{}/{}_itot032_swadvec2'.format(case_dir, experiment))
-    data64_2nd = microhh(
+    data64_2nd = Microhh(
         t,
         64,
         32,
         float_type,
         '{}/{}_itot064_swadvec2'.format(case_dir, experiment))
-    data128_2nd = microhh(
+    data128_2nd = Microhh(
         t,
         128,
         64,
         float_type,
         '{}/{}_itot128_swadvec2'.format(case_dir, experiment))
-    data256_2nd = microhh(
+    data256_2nd = Microhh(
         t,
         256,
         128,
         float_type,
         '{}/{}_itot256_swadvec2'.format(case_dir, experiment))
 
-    ref16_2nd = getref(data16_2nd .x, data16_2nd .xh,
+    ref16_2nd = Get_ref(data16_2nd .x, data16_2nd .xh,
                        data16_2nd .z, data16_2nd .zh, visc, time)
-    ref32_2nd = getref(data32_2nd .x, data32_2nd .xh,
+    ref32_2nd = Get_ref(data32_2nd .x, data32_2nd .xh,
                        data32_2nd .z, data32_2nd .zh, visc, time)
-    ref64_2nd = getref(data64_2nd .x, data64_2nd .xh,
+    ref64_2nd = Get_ref(data64_2nd .x, data64_2nd .xh,
                        data64_2nd .z, data64_2nd .zh, visc, time)
-    ref128_2nd = getref(data128_2nd.x, data128_2nd.xh,
+    ref128_2nd = Get_ref(data128_2nd.x, data128_2nd.xh,
                         data128_2nd.z, data128_2nd.zh, visc, time)
-    ref256_2nd = getref(data256_2nd.x, data256_2nd.xh,
+    ref256_2nd = Get_ref(data256_2nd.x, data256_2nd.xh,
                         data256_2nd.z, data256_2nd.zh, visc, time)
 
-    err16_2nd = geterror(data16_2nd, ref16_2nd)
-    err32_2nd = geterror(data32_2nd, ref32_2nd)
-    err64_2nd = geterror(data64_2nd, ref64_2nd)
-    err128_2nd = geterror(data128_2nd, ref128_2nd)
-    err256_2nd = geterror(data256_2nd, ref256_2nd)
+    err16_2nd = Get_error(data16_2nd, ref16_2nd)
+    err32_2nd = Get_error(data32_2nd, ref32_2nd)
+    err64_2nd = Get_error(data64_2nd, ref64_2nd)
+    err128_2nd = Get_error(data128_2nd, ref128_2nd)
+    err256_2nd = Get_error(data256_2nd, ref256_2nd)
 
     errsu_2nd = array(
         [err16_2nd.u, err32_2nd.u, err64_2nd.u, err128_2nd.u, err256_2nd.u])
@@ -196,53 +200,53 @@ def plot(case_name, case_dir, experiment, float_type):
           (log(errsp_2nd[-1]) - log(errsp_2nd[0])) / (log(dxs[-1]) - log(dxs[0])))
 
     # 42 order data
-    data16_4m = microhh(
+    data16_4m = Microhh(
         t,
         16,
         8,
         float_type,
         '{}/{}_itot016_swadvec4m'.format(case_dir, experiment))
-    data32_4m = microhh(
+    data32_4m = Microhh(
         t,
         32,
         16,
         float_type,
         '{}/{}_itot032_swadvec4m'.format(case_dir, experiment))
-    data64_4m = microhh(
+    data64_4m = Microhh(
         t,
         64,
         32,
         float_type,
         '{}/{}_itot064_swadvec4m'.format(case_dir, experiment))
-    data128_4m = microhh(
+    data128_4m = Microhh(
         t,
         128,
         64,
         float_type,
         '{}/{}_itot128_swadvec4m'.format(case_dir, experiment))
-    data256_4m = microhh(
+    data256_4m = Microhh(
         t,
         256,
         128,
         float_type,
         '{}/{}_itot256_swadvec4m'.format(case_dir, experiment))
 
-    ref16_4m = getref(data16_4m .x, data16_4m .xh,
+    ref16_4m = Get_ref(data16_4m .x, data16_4m .xh,
                       data16_4m .z, data16_4m .zh, visc, time)
-    ref32_4m = getref(data32_4m .x, data32_4m .xh,
+    ref32_4m = Get_ref(data32_4m .x, data32_4m .xh,
                       data32_4m .z, data32_4m .zh, visc, time)
-    ref64_4m = getref(data64_4m .x, data64_4m .xh,
+    ref64_4m = Get_ref(data64_4m .x, data64_4m .xh,
                       data64_4m .z, data64_4m .zh, visc, time)
-    ref128_4m = getref(data128_4m.x, data128_4m.xh,
+    ref128_4m = Get_ref(data128_4m.x, data128_4m.xh,
                        data128_4m.z, data128_4m.zh, visc, time)
-    ref256_4m = getref(data256_4m.x, data256_4m.xh,
+    ref256_4m = Get_ref(data256_4m.x, data256_4m.xh,
                        data256_4m.z, data256_4m.zh, visc, time)
 
-    err16_4m = geterror(data16_4m, ref16_4m)
-    err32_4m = geterror(data32_4m, ref32_4m)
-    err64_4m = geterror(data64_4m, ref64_4m)
-    err128_4m = geterror(data128_4m, ref128_4m)
-    err256_4m = geterror(data256_4m, ref256_4m)
+    err16_4m = Get_error(data16_4m, ref16_4m)
+    err32_4m = Get_error(data32_4m, ref32_4m)
+    err64_4m = Get_error(data64_4m, ref64_4m)
+    err128_4m = Get_error(data128_4m, ref128_4m)
+    err256_4m = Get_error(data256_4m, ref256_4m)
 
     errsu_4m = array(
         [err16_4m.u, err32_4m.u, err64_4m.u, err128_4m.u, err256_4m.u])
@@ -261,53 +265,53 @@ def plot(case_name, case_dir, experiment, float_type):
           (log(errsp_4m[-1]) - log(errsp_4m[0])) / (log(dxs[-1]) - log(dxs[0])))
 
     # 4th order data
-    data16_4th = microhh(
+    data16_4th = Microhh(
         t,
         16,
         8,
         float_type,
         '{}/{}_itot016_swadvec4'.format(case_dir, experiment))
-    data32_4th = microhh(
+    data32_4th = Microhh(
         t,
         32,
         16,
         float_type,
         '{}/{}_itot032_swadvec4'.format(case_dir, experiment))
-    data64_4th = microhh(
+    data64_4th = Microhh(
         t,
         64,
         32,
         float_type,
         '{}/{}_itot064_swadvec4'.format(case_dir, experiment))
-    data128_4th = microhh(
+    data128_4th = Microhh(
         t,
         128,
         64,
         float_type,
         '{}/{}_itot128_swadvec4'.format(case_dir, experiment))
-    data256_4th = microhh(
+    data256_4th = Microhh(
         t,
         256,
         128,
         float_type,
         '{}/{}_itot256_swadvec4'.format(case_dir, experiment))
 
-    ref16_4th = getref(data16_4th .x, data16_4th .xh,
+    ref16_4th = Get_ref(data16_4th .x, data16_4th .xh,
                        data16_4th .z, data16_4th .zh, visc, time)
-    ref32_4th = getref(data32_4th .x, data32_4th .xh,
+    ref32_4th = Get_ref(data32_4th .x, data32_4th .xh,
                        data32_4th .z, data32_4th .zh, visc, time)
-    ref64_4th = getref(data64_4th .x, data64_4th .xh,
+    ref64_4th = Get_ref(data64_4th .x, data64_4th .xh,
                        data64_4th .z, data64_4th .zh, visc, time)
-    ref128_4th = getref(data128_4th.x, data128_4th.xh,
+    ref128_4th = Get_ref(data128_4th.x, data128_4th.xh,
                         data128_4th.z, data128_4th.zh, visc, time)
-    ref256_4th = getref(data256_4th.x, data256_4th.xh,
+    ref256_4th = Get_ref(data256_4th.x, data256_4th.xh,
                         data256_4th.z, data256_4th.zh, visc, time)
 
-    err16_4th = geterror(data16_4th, ref16_4th)
-    err32_4th = geterror(data32_4th, ref32_4th)
-    err64_4th = geterror(data64_4th, ref64_4th)
-    err128_4th = geterror(data128_4th, ref128_4th)
-    err256_4th = geterror(data256_4th, ref256_4th)
+    err16_4th = Get_error(data16_4th, ref16_4th)
+    err32_4th = Get_error(data32_4th, ref32_4th)
+    err64_4th = Get_error(data64_4th, ref64_4th)
+    err128_4th = Get_error(data128_4th, ref128_4th)
+    err256_4th = Get_error(data256_4th, ref256_4th)
 
     errsu_4th = array(
         [err16_4th.u, err32_4th.u, err64_4th.u, err128_4th.u, err256_4th.u])
