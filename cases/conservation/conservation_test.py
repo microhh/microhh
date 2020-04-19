@@ -39,10 +39,16 @@ def get_data_from_nc(experiment_name):
     tke  /= tke [1]
     mass /= mass[1]
 
+    data_out = np.loadtxt('{}/conservation.out'.format(experiment_name), skiprows=1)
+    time = data_out[:,1]
+    mom = data_out[:,7] / data_out[1,7]
+    tke = data_out[:,8] / data_out[1,8]
+    mass = np.zeros_like(time)
+
     return time, mom, tke, mass
 
 
-def plot(experiment_name):
+def plot(case_name, experiment_name):
     time100_3rd, mom100_3rd, tke100_3rd, mass100_3rd = get_data_from_nc('{}_rk3_dt1000'.format(experiment_name))
     time200_3rd, mom200_3rd, tke200_3rd, mass200_3rd = get_data_from_nc('{}_rk3_dt0500'.format(experiment_name))
     time400_3rd, mom400_3rd, tke400_3rd, mass400_3rd = get_data_from_nc('{}_rk3_dt0250'.format(experiment_name))
@@ -53,7 +59,7 @@ def plot(experiment_name):
     time400_4th, mom400_4th, tke400_4th, mass400_4th = get_data_from_nc('{}_rk4_dt0250'.format(experiment_name))
     time800_4th, mom800_4th, tke800_4th, mass800_4th = get_data_from_nc('{}_rk4_dt0125'.format(experiment_name))
 
-    file_name = '{}.pdf'.format(case_name)
+    file_name = '{0}_{1}.pdf'.format(case_name, experiment_name)
 
     with PdfPages(file_name) as pdf:
         plt.figure()
@@ -146,5 +152,5 @@ if __name__ == '__main__':
 
     experiment_name = 'local'
 
-    plot(experiment_name)
+    plot(case_name, experiment_name)
 
