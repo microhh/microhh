@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  * Copyright (c) 2018-2019 Elynn Wu
  *
  * This file is part of MicroHH
@@ -28,7 +28,6 @@
 #include <cmath>
 #include <vector>
 
-// #include "field3d_operators.h"
 #include "radiation.h"
 
 class Master;
@@ -61,8 +60,7 @@ class Radiation_gcss : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
-                const unsigned long, const int)
-        { throw std::runtime_error("Not implemented yet!"); }
+                const unsigned long, const int);
 
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
 
@@ -72,21 +70,17 @@ class Radiation_gcss : public Radiation<TF>
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
 
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
-        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
-
         using Radiation<TF>::swradiation;
         using Radiation<TF>::master;
         using Radiation<TF>::grid;
         using Radiation<TF>::fields;
         using Radiation<TF>::field3d_operators;
 
-        std::vector<std::string> available_masks;  // Vector with the masks
+        std::vector<std::string> available_masks; // Vector with the masks
 
-        std::vector<std::string> crosslist;        ///< List with all crosses from ini file.
+        std::vector<std::string> crosslist; ///< List with all crosses from ini file.
         bool swcross_rflx;
-        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.
 
         TF lat;
         TF lon;
