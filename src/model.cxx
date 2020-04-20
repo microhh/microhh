@@ -483,6 +483,7 @@ void Model<TF>::exec()
                     // Load the data from disk.
                     timeloop->load(timeloop->get_iotime());
                     fields  ->load(timeloop->get_iotime());
+                    thermo  ->load(timeloop->get_iotime());
                 }
 
                 // Update the time dependent parameters.
