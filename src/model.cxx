@@ -484,6 +484,11 @@ void Model<TF>::exec()
                     timeloop->load(timeloop->get_iotime());
                     fields  ->load(timeloop->get_iotime());
                     thermo  ->load(timeloop->get_iotime());
+
+                    // Reset tendencies
+                    auto& gd = grid->get_grid_data();
+                    for (auto& fld3d : fields->at)
+                        std::fill(fld3d.second->fld.begin(), fld3d.second->fld.begin()+gd.ncells, TF(0));
                 }
 
                 // Update the time dependent parameters.
@@ -608,6 +613,7 @@ template<typename TF>
 void Model<TF>::setup_stats()
 {
     stats->set_tendency(false);
+
     if (stats->do_statistics(timeloop->get_itime()) && timeloop->is_stats_step())
     {
         #ifdef USECUDA
@@ -620,6 +626,7 @@ void Model<TF>::setup_stats()
             thermo  ->backward_device();
         }
         #endif
+
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 
