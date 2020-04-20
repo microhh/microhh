@@ -480,9 +480,7 @@ void Model<TF>::exec()
                     thermo  ->load(timeloop->get_iotime());
 
                     // Reset tendencies
-                    auto& gd = grid->get_grid_data();
-                    for (auto& fld3d : fields->at)
-                        std::fill(fld3d.second->fld.begin(), fld3d.second->fld.begin()+gd.ncells, TF(0));
+                    fields->reset_tendencies();
                 }
 
             } // End time loop.
