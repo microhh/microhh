@@ -71,6 +71,8 @@ class Fields
         void exec_stats(Stats<TF>&);   ///< Calculate the statistics
         void exec_column(Column<TF>&);   ///< Output the column
 
+        void reset_tendencies();
+
         void init_momentum_field(
                 const std::string&, const std::string&,
                 const std::string&, const std::string&,
@@ -135,8 +137,6 @@ class Fields
         /*
          *Device (GPU) functions and variables
          */
-
-
         void prepare_device();  ///< Allocation of all fields at device
         void forward_device();  ///< Copy of all fields from host to device
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
