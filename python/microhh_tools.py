@@ -310,7 +310,7 @@ class Create_ncfile():
             self.dim[key] = self.ncfile.createDimension(key, len(value))
             self.dimvar[key] = self.ncfile.createVariable(
                 key, precision, (key))
-            if key is not 'time':
+            if key != 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(
@@ -570,7 +570,7 @@ def run_cases(cases, executable, mode, outputfile=''):
         rundir = rootdir + '/' + case.casedir + '/' + case.rundir + '/'
 
         casedir = rootdir + '/' + case.casedir + '/'
-        if case.rundir is not '':
+        if case.rundir != '':
             try:
                 shutil.rmtree(rundir)
             except Exception:
@@ -637,7 +637,7 @@ def run_cases(cases, executable, mode, outputfile=''):
             os.chdir(rootdir)
 
     # Write the output file and remove unnecssary dirs
-    if outputfile is not '':
+    if outputfile != '':
         with open(outputfile, 'w') as csv_file:
             write = csv.writer(csv_file)
             write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
