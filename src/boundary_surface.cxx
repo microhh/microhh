@@ -452,6 +452,9 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    // 5. Init the field3d_io.
+    field3d_io.init();
 }
 
 template<typename TF>
