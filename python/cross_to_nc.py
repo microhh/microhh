@@ -177,6 +177,10 @@ else:
     iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['cross']['crosslist']
+
+# In case variables is a single string, convert to list.
+variables = [ variables ] if not isinstance(variables, list) else variables
+
 precision = args.precision
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
