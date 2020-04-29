@@ -39,6 +39,26 @@ namespace Input_tools
         return item_string;
     }
 
+    // In case of bool, capture string labels true and false.
+    template<>
+    inline bool get_item_from_stream(std::istringstream& ss)
+    {
+        bool item;
+
+        std::string item_string = ss.str();
+        boost::trim(item_string);
+        boost::to_lower(item_string);
+
+        if ( (item_string == "1") || (item_string == "true") )
+            item = true;
+        else if ( (item_string == "0") || (item_string == "false") )
+            item = false;
+        else
+            throw std::runtime_error("Item does not match type");
+
+        return item;
+    }
+
     inline bool get_line_from_input(std::ifstream& infile, std::string& line, Master& master)
     {
         int has_line = false;

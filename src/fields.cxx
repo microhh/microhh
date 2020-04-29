@@ -229,6 +229,12 @@ namespace
         return unit;
     }
 
+    template<typename TF>
+    void reset_field(TF* const restrict fld, const int ncells)
+    {
+        for (int i=0; i<ncells; ++i)
+            fld[i] = TF(0);
+    }
 }
 
 template<typename TF>
@@ -1199,6 +1205,16 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
 
     return output;
 }
+
+template<typename TF>
+void Fields<TF>::reset_tendencies()
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& fld3d : at)
+        reset_field(fld3d.second->fld.data(), gd.ncells);
+}
+
 
 template class Fields<double>;
 template class Fields<float>;

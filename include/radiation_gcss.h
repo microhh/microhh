@@ -28,7 +28,6 @@
 #include <cmath>
 #include <vector>
 
-// #include "field3d_operators.h"
 #include "radiation.h"
 
 class Master;
@@ -57,14 +56,14 @@ class Radiation_gcss : public Radiation<TF>
 
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+
         std::vector<TF>& get_surface_radiation(std::string)
-            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
+            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
-                const unsigned long, const int)
-        { throw std::runtime_error("\"exec_all_stats()\" is not implemented in radiation_gcss"); }
+                const unsigned long, const int);
 
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
 
@@ -73,10 +72,6 @@ class Radiation_gcss : public Radiation<TF>
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.
-
-        void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
-        void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&);
 
         using Radiation<TF>::swradiation;
         using Radiation<TF>::master;

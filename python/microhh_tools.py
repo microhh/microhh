@@ -310,7 +310,7 @@ class Create_ncfile():
             self.dim[key] = self.ncfile.createDimension(key, len(value))
             self.dimvar[key] = self.ncfile.createVariable(
                 key, precision, (key))
-            if key is not 'time':
+            if key != 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(
@@ -420,7 +420,7 @@ def merge_options(options, options_to_add):
         if group in options:
             options[group].update(options_to_add[group])
         else:
-            options[group] = options_to_add[group]
+            options[group] = copy.deepcopy(options_to_add[group])
 
 
 def run_scripts(scripts):
@@ -570,7 +570,7 @@ def run_cases(cases, executable, mode, outputfile=''):
         rundir = rootdir + '/' + case.casedir + '/' + case.rundir + '/'
 
         casedir = rootdir + '/' + case.casedir + '/'
-        if case.rundir is not '':
+        if case.rundir != '':
             try:
                 shutil.rmtree(rundir)
             except Exception:
@@ -637,7 +637,7 @@ def run_cases(cases, executable, mode, outputfile=''):
             os.chdir(rootdir)
 
     # Write the output file and remove unnecssary dirs
-    if outputfile is not '':
+    if outputfile != '':
         with open(outputfile, 'w') as csv_file:
             write = csv.writer(csv_file)
             write.writerow(['Name', 'Run Dir', 'Success', 'Time', 'Options'])
@@ -776,6 +776,7 @@ def generator_scaling(cases, procs, type='strong', dir='y'):
     return cases_out
 
 
+"""
 def generator_parameter_change(cases, **kwargs):
     cases_out = []
     if len(kwargs) > 0:
@@ -792,13 +793,17 @@ def generator_parameter_change(cases, **kwargs):
             cases_out = generator_parameter_change(cases_out, **kwargs)
 
     return cases_out
-
+"""
 
 def generator_parameter_permutations(base_case, lists):
     """
     Function to permutate lists of dictionaries to generate cases to run
     """
     cases_out = []
+
+    # Put a single dictionary into a list with one item.
+    if type(lists) is dict:
+        lists = [lists]
 
     # Convert the dictionaries into tuples to enable to permutate the list.
     tuple_lists = []
@@ -890,6 +895,36 @@ def run_case(
     return 0
 
 
+def run_permutations(
+        case_name, options_in, options_mpi_in, permutations_in,
+        executable='microhh', mode='cpu',
+        case_dir='.', experiment='local'):
+
+    options = deepcopy(options_in)
+
+    if mode == 'cpumpi':
+        merge_options(options, options_mpi_in)
+
+    base_case = Case(
+            case_name,
+            casedir=case_dir,
+            rundir=experiment,
+            options=options)
+
+    cases = generator_parameter_permutations(base_case, permutations_in)
+
+    run_cases(
+        cases,
+        executable,
+        mode,
+        outputfile='{}/{}_{}.csv'.format(case_dir, case_name, experiment))
+
+    for case in cases:
+        if not case.success:
+            return 1
+    return 0
+
+
 def run_restart(
         case_name, options_in, options_mpi_in, permutations_in=None,
         executable='microhh', mode='cpu',
@@ -914,7 +949,7 @@ def run_restart(
             rundir=experiment,
             options=options)
 
-        base_cases = generator_parameter_permutations(base_case, [permutations_in])
+        base_cases = generator_parameter_permutations(base_case, permutations_in)
 
     cases = []
     for case in base_cases:

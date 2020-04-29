@@ -490,24 +490,6 @@ void Radiation_gcss<TF>::create_dump(Dump<TF>& dump)
     }
 }
 
-template<typename TF>
-void Radiation_gcss<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
-{
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
-
-    // calculate the mean
-    auto tmp = fields.get_tmp();
-
-    get_radiation_field(*tmp, "lflx", thermo, timeloop);
-    stats.calc_stats("lflx", *tmp, no_offset, no_threshold);
-
-    get_radiation_field(*tmp, "sflx", thermo, timeloop);
-    stats.calc_stats("sflx", *tmp, no_offset, no_threshold);
-
-    fields.release_tmp(tmp);
-}
-
 #ifndef USECUDA
 template<typename TF>
 void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
@@ -526,34 +508,67 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 #endif
 
 template<typename TF>
-void Radiation_gcss<TF>::exec_cross(
-        Cross<TF>& cross, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::exec_all_stats(
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop,
+        const unsigned long itime, const int iotime)
 {
-    auto& gd = grid.get_grid_data();
+    const bool do_stats = stats.do_statistics(itime);
+    const bool do_cross = cross.do_cross(itime);
+    const bool do_dump = dump.do_dump(itime);
 
-    auto tmp = fields.get_tmp();
+    // Return in case of no stats or cross section.
+    if ( !(do_stats || do_cross || do_dump) )
+        return;
 
-    for (auto& it : crosslist)
+    // Stats.
+    if (do_stats)
     {
-        get_radiation_field(*tmp, it, thermo, timeloop);
-        // All cross sections possible in this class are at the sloc located.
-        cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
+        const TF no_offset = 0.;
+        const TF no_threshold = 0.;
+
+        // calculate the mean
+        auto tmp = fields.get_tmp();
+
+        get_radiation_field(*tmp, "lflx", thermo, timeloop);
+        stats.calc_stats("lflx", *tmp, no_offset, no_threshold);
+
+        get_radiation_field(*tmp, "sflx", thermo, timeloop);
+        stats.calc_stats("sflx", *tmp, no_offset, no_threshold);
+
+        fields.release_tmp(tmp);
     }
-    fields.release_tmp(tmp);
-}
 
-template<typename TF>
-void Radiation_gcss<TF>::exec_dump(
-        Dump<TF>& dump, unsigned long iotime, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
-{
-    auto output = fields.get_tmp();
-
-    for (auto& it : dumplist)
+    // Cross.
+    if (do_cross)
     {
-        get_radiation_field(*output, it, thermo, timeloop);
-        dump.save_dump(output->fld.data(), it, iotime);
+        auto& gd = grid.get_grid_data();
+
+        auto tmp = fields.get_tmp();
+
+        for (auto& it : crosslist)
+        {
+            get_radiation_field(*tmp, it, thermo, timeloop);
+            // All cross sections possible in this class are at the sloc located.
+            cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
+        }
+
+        fields.release_tmp(tmp);
     }
-    fields.release_tmp(output);
+
+    // Dump.
+    if (do_dump)
+    {
+        auto output = fields.get_tmp();
+
+        for (auto& it : dumplist)
+        {
+            get_radiation_field(*output, it, thermo, timeloop);
+            dump.save_dump(output->fld.data(), it, iotime);
+        }
+
+        fields.release_tmp(output);
+    }
 }
 
 template class Radiation_gcss<double>;

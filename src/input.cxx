@@ -259,21 +259,40 @@ T Input::get_item(const std::string& blockname,
 {
     T item;
     std::string itemqualifier;
+    bool revert_to_default = false;
+
+    std::string value = "";
 
     try
     {
-        std::string value = get_item_string(itemlist, blockname, itemname, subitemname);
-        item = convert_value_to_item<T>(value);
+        value = get_item_string(itemlist, blockname, itemname, subitemname);
     }
     catch (std::runtime_error& e)
     {
-        item = default_value;
-        itemqualifier = "(default)";
+        revert_to_default = true;
     }
 
     std::string itemout = "[" + blockname + "][" + itemname + "]";
     if (!subitemname.empty())
         itemout += "[" + subitemname + "]";
+
+    if (revert_to_default)
+    {
+        item = default_value;
+        itemqualifier = "(default)";
+    }
+    else
+    {
+        try
+        {
+            item = convert_value_to_item<T>(value);
+        }
+        catch (std::runtime_error& e)
+        {
+            const std::string error = itemout + " = " + value + " is illegal.";
+            throw std::runtime_error(error);
+        }
+    }
 
     std::ostringstream ss;
     ss << std::left << std::setw(30) << itemout << "= "

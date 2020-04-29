@@ -312,29 +312,6 @@ void Model<TF>::exec()
 
     master.print_message("Starting time integration\n");
 
-    // Update the time dependent parameters.
-    boundary->update_time_dependent(*timeloop);
-    thermo  ->update_time_dependent(*timeloop);
-    force   ->update_time_dependent(*timeloop);
-
-    // Set the boundary conditions.
-    boundary->exec(*thermo);
-
-    // Calculate the field means, in case needed.
-    fields->exec();
-
-    // Set the immersed boundary conditions
-    ib->exec_momentum();
-
-    // Get the viscosity to be used in diffusion.
-    diff->exec_viscosity(*thermo);
-
-    // Set the time step.
-    set_time_step();
-
-    // Print the initial status information.
-    print_status();
-
     #ifdef USECUDA
         #ifdef _OPENMP
         omp_set_nested(1);
@@ -355,8 +332,25 @@ void Model<TF>::exec()
             // start the time loop
             while (true)
             {
+                // Update the time dependent parameters.
+                boundary->update_time_dependent(*timeloop);
+                thermo  ->update_time_dependent(*timeloop);
+                force   ->update_time_dependent(*timeloop);
+
+                // Set the boundary conditions.
+                boundary->exec(*thermo);
+
+                // Calculate the field means, in case needed.
+                fields->exec();
+
+                // Get the viscosity to be used in diffusion.
+                diff->exec_viscosity(*thermo);
+
                 // Determine the time step.
                 set_time_step();
+
+                // Write status information to disk.
+                print_status();
 
                 // Calculate stat masks and begin tendency calculation, if necessary
                 setup_stats();
@@ -394,7 +388,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
-                force->exec(timeloop->get_sub_time_step(), *thermo, *stats); //adding thermo and time because of gcssrad
+                force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
 
                 // Set the immersed boundary conditions
                 ib->exec_momentum();
@@ -418,7 +412,7 @@ void Model<TF>::exec()
                     const double time = timeloop->get_time();
                     const unsigned long itime = timeloop->get_itime();
                     const int iotime = timeloop->get_iotime();
-                    const double dt = timeloop->get_dt(); 
+                    const double dt = timeloop->get_dt();
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
@@ -505,24 +499,11 @@ void Model<TF>::exec()
                     // Load the data from disk.
                     timeloop->load(timeloop->get_iotime());
                     fields  ->load(timeloop->get_iotime());
+                    thermo  ->load(timeloop->get_iotime());
+
+                    // Reset tendencies
+                    fields->reset_tendencies();
                 }
-
-                // Update the time dependent parameters.
-                boundary->update_time_dependent(*timeloop);
-                thermo  ->update_time_dependent(*timeloop);
-                force   ->update_time_dependent(*timeloop);
-
-                // Set the boundary conditions.
-                boundary->exec(*thermo);
-
-                // Calculate the field means, in case needed.
-                fields->exec();
-
-                // Get the viscosity to be used in diffusion.
-                diff->exec_viscosity(*thermo);
-
-                // Write status information to disk.
-                print_status();
 
             } // End time loop.
         } // End OpenMP master region.
@@ -632,6 +613,7 @@ template<typename TF>
 void Model<TF>::setup_stats()
 {
     stats->set_tendency(false);
+
     if (stats->do_statistics(timeloop->get_itime()) && timeloop->is_stats_step())
     {
         #ifdef USECUDA
@@ -644,6 +626,7 @@ void Model<TF>::setup_stats()
             thermo  ->backward_device();
         }
         #endif
+
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
 

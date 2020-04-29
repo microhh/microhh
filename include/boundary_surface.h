@@ -73,6 +73,7 @@ class Boundary_surface : public Boundary<TF>
         using Boundary<TF>::fields;
         using Boundary<TF>::boundary_cyclic;
         using Boundary<TF>::swboundary;
+        using Boundary<TF>::field3d_io;
 
         using Boundary<TF>::process_bcs;
 

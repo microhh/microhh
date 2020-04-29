@@ -1,5 +1,9 @@
 # Overview of cases
 
+## Dynamical core validation
+* `conservation`: Random noise advection for checking mass, momentum, and energy conservation.
+* `taylorgreen`: Convergence test for spatial discretizations in Taylor-Green vortex.
+
 ## Atmospheric LES
 * `andren1994`: LES of neutral boundary layer (Andren et al. 1994).
 * `arm`: Shallow cumulus over land (Brown et al., 2002).
@@ -19,3 +23,4 @@
 * `moser180`: Turbulent channel flow at Re_tau = 180 (Moser et al., 1999).
 * `moser600`: Turbulent channel flow at Re_tau = 600 (Moser et al., 1999).
 * `taylorgreen`: Taylor-Greene vortex case to test spatial accuracy of schemes.
+* `vanHeerwaarden2016`: Dry convective boundary layer over surface with constant temperature (van Heerwaarden and Mellado, 2016).
