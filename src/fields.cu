@@ -186,17 +186,20 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 {
     std::shared_ptr<Field3d<TF>> tmp;
 
-    // In case of insufficient tmp fields, allocate a new one.
-    if (atmp_g.empty())
+    #pragma omp critical
     {
-        init_tmp_field_g();
-        tmp = atmp_g.back();
-        tmp->init_device();
-    }
-    else
-        tmp = atmp_g.back();
+        // In case of insufficient tmp fields, allocate a new one.
+        if (atmp_g.empty())
+        {
+            init_tmp_field_g();
+            tmp = atmp_g.back();
+            tmp->init_device();
+        }
+        else
+            tmp = atmp_g.back();
 
-    atmp_g.pop_back();
+        atmp_g.pop_back();
+    }
 
     // Assign to a huge negative number in case of debug mode.
     #ifdef __CUDACC_DEBUG__
