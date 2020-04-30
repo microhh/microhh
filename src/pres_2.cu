@@ -258,7 +258,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
     const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    const double dti = 1./dt;
+    const TF dti = TF(1.)/dt;
 
     // 3D grid
     dim3 gridGPU (gridi,  gridj,  gd.kmax);
@@ -285,7 +285,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
         gd.icells, gd.ijcells,
         gd.imax, gd.imax*gd.jmax,
         gd.imax, gd.jmax, gd.kmax,
-        gd.igc,  gd.jgc,  gd.kgc);
+        gd.igc, gd.jgc, gd.kgc);
     cuda_check_error();
 
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
@@ -314,8 +314,8 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
         fields.sd.at("p")->fld_g, tmp1->fld_g,
         gd.imax, gd.imax*gd.jmax,
         gd.icells, gd.ijcells,
-        gd.istart,  gd.jstart, gd.kstart,
-        gd.imax,    gd.jmax,   gd.kmax);
+        gd.istart, gd.jstart, gd.kstart,
+        gd.imax, gd.jmax, gd.kmax);
     cuda_check_error();
 
     boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
@@ -323,7 +323,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     pres_out_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
         fields.sd.at("p")->fld_g,
-        gd.dzhi_g, 1./gd.dx, 1./gd.dy,
+        gd.dzhi_g, TF(1.)/gd.dx, TF(1.)/gd.dy,
         gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
         gd.iend,    gd.jend,   gd.kend);
@@ -358,7 +358,7 @@ TF Pres_2<TF>::check_divergence()
         gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
         gd.istart,  gd.jstart, gd.kstart,
-        gd.iend,    gd.jend,   gd.kend);
+        gd.iend, gd.jend, gd.kend);
     cuda_check_error();
 
     TF divmax = field3d_operators.calc_max_g(divergence->fld_g);
