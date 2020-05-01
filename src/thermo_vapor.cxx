@@ -161,6 +161,8 @@ namespace
                  const int jj, const int kk)
     {
         for (int k=kstart; k<kend; ++k)
+        {
+            std::cout << "CvH: " << k << ", " << thvref[k] << std::endl;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -169,6 +171,7 @@ namespace
 
                     N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                 }
+        }
     }
 
     template<typename TF>
@@ -625,7 +628,7 @@ void Thermo_vapor<TF>::get_thermo_field(
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "T")
     {
