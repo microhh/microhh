@@ -720,7 +720,7 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
+void Boundary_surface<TF>::calc_MO_stability(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -760,6 +760,12 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);
     }
+}
+
+template<typename TF>
+void Boundary_surface<TF>::calc_MO_bcs(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     surfm(ustar.data(), obuk.data(),
@@ -780,7 +786,6 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
               boundary_cyclic);
     }
 }
-
 
 template<typename TF>
 void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)

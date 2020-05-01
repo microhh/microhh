@@ -40,6 +40,9 @@ class Boundary_surface : public Boundary<TF>
         void set_values();
         void get_ra(Field3d<TF>&);
 
+        void calc_MO_stability(Thermo<TF>&);
+        void calc_MO_bcs(Thermo<TF>&);
+
         void exec_stats(Stats<TF>&);
         void exec_cross(int);
 
@@ -84,7 +87,6 @@ class Boundary_surface : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-        void update_bcs(Thermo<TF>&);
 
         TF ustarin;
 

@@ -235,7 +235,12 @@ void Boundary_surface_bulk<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::calc_MO_stability(Thermo<TF>& thermo)
+{
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::calc_MO_bcs(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     const TF zsl = gd.z[gd.kstart];
@@ -279,7 +284,6 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
 
     fields.release_tmp(b);
     fields.release_tmp(dutot);
-
 }
 #endif
 

@@ -560,9 +560,15 @@ namespace
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary<TF>::exec(Thermo<TF>& thermo)
+void Boundary<TF>::calc_MO_stability(Thermo<TF>& thermo)
 {
-    update_bcs(thermo);
+    // Only used for LES with surface model
+}
+
+template<typename TF>
+void Boundary<TF>::calc_MO_bcs(Thermo<TF>& thermo)
+{
+    // Only used for LES with surface model
 }
 
 template<typename TF>

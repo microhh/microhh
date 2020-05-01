@@ -40,6 +40,9 @@ class Boundary_surface_bulk : public Boundary<TF>
         void set_values();
         void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
 
+        void calc_MO_stability(Thermo<TF>&);
+        void calc_MO_bcs(Thermo<TF>&);
+
         void exec_stats(Stats<TF>&);
         void exec_cross(int);
 
@@ -77,9 +80,6 @@ class Boundary_surface_bulk : public Boundary<TF>
         using Boundary<TF>::vbot;
 
         using Boundary<TF>::sbc;
-
-        void update_bcs(Thermo<TF>&);
-
 
         // transfer coefficients
         TF bulk_cm;

@@ -337,11 +337,11 @@ void Model<TF>::exec()
                 thermo  ->update_time_dependent(*timeloop);
                 force   ->update_time_dependent(*timeloop);
 
-                // Set the cyclic BCs of the prognostic 3D fields
+                // Set the cyclic BCs of the prognostic 3D fields.
                 fields->set_prognostic_cyclic_bcs();
 
-                // Set the boundary conditions.
-                boundary->exec(*thermo);
+                // Calculate Monin-Obukhov parameters (L, u*).
+                boundary->calc_MO_stability(*thermo);
                 boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
@@ -359,17 +359,6 @@ void Model<TF>::exec()
                 // Calculate stat masks and begin tendency calculation, if necessary
                 setup_stats();
 
-                // Set the immersed boundary conditions for scalars
-                ib->exec_scalars();
-
-                // Calculate the advection tendency.
-                boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
-                advec->exec(*stats);
-                boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
-
-                // Calculate the diffusion tendency.
-                diff->exec(*stats);
-
                 // Calculate the thermodynamics and the buoyancy tendency.
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
 
@@ -379,11 +368,24 @@ void Model<TF>::exec()
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
-                // Calculate interactive land-surface
+                // Calculate interactive land-surface, and
+                // soil temperature and moisture tendencies.
                 lsm->exec_surface(*radiation, *thermo, *boundary);
-
-                // Calculate soil tendencies
                 lsm->exec_soil();
+
+                // Update surface properties.
+                boundary->calc_MO_bcs(*thermo);
+
+                // Set the immersed boundary conditions for scalars.
+                ib->exec_scalars();
+
+                // Calculate the advection tendency.
+                boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
+                advec->exec(*stats);
+                boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
+
+                // Calculate the diffusion tendency.
+                diff->exec(*stats);
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
