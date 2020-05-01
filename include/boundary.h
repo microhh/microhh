@@ -77,6 +77,7 @@ class Boundary
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
         virtual void exec(Thermo<TF>&); ///< Update the boundary conditions.
+        virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface

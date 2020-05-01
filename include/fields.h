@@ -29,6 +29,7 @@
 #include "field3d.h"
 #include "field3d_io.h"
 #include "field3d_operators.h"
+#include "boundary_cyclic.h"
 
 class Master;
 class Input;
@@ -78,6 +79,7 @@ class Fields
         void exec_column(Column<TF>&);   ///< Output the column
 
         void reset_tendencies();
+        void set_prognostic_cyclic_bcs();
 
         void init_momentum_field(
                 const std::string&, const std::string&,
@@ -174,6 +176,7 @@ class Fields
         Soil_grid<TF>& soil_grid;
         Field3d_io<TF> field3d_io;
         Field3d_operators<TF> field3d_operators;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         bool calc_mean_profs;
 

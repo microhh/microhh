@@ -562,17 +562,13 @@ namespace
 template<typename TF>
 void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
-    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
-    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
-    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
-
-    for (auto& it : fields.sp)
-        boundary_cyclic.exec(it.second->fld.data());
-
-    // Update the boundary values.
     update_bcs(thermo);
+}
 
-    const Grid_data<TF>& gd = grid.get_grid_data();
+template<typename TF>
+void Boundary<TF>::set_ghost_cells()
+{
+    auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {

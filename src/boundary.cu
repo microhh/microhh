@@ -259,6 +259,12 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
 
     // Calculate the boundary values.
     update_bcs(thermo);
+}
+
+template<typename TF>
+void Boundary<TF>::set_ghost_cells()
+{
+    auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {
@@ -343,15 +349,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
         }
     }
 }
-#endif
-template<typename TF>
-void Boundary<TF>::clear_device()
-{
-    for(auto& it : tdep_bc)
-        it.second->clear_device();
-}
 
-#ifdef USECUDA
 template<typename TF>
 void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 {
@@ -395,6 +393,13 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 #endif
 
 template<typename TF>
+void Boundary<TF>::clear_device()
+{
+    for(auto& it : tdep_bc)
+        it.second->clear_device();
+}
+
+template<typename TF>
 void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict aflux,
                         Boundary_type sw, TF aval, TF visc, TF offset)
 {
@@ -409,18 +414,18 @@ void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict afl
 
     if (sw == Boundary_type::Dirichlet_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(a, aval-offset,    gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(a, aval-offset, gd.icells, gd.jcells);
         cuda_check_error();
     }
     else if (sw == Boundary_type::Neumann_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, aval,       gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, aval, gd.icells, gd.jcells);
         set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, -aval*visc, gd.icells, gd.jcells);
         cuda_check_error();
     }
     else if (sw == Boundary_type::Flux_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, aval,       gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, aval, gd.icells, gd.jcells);
         set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, -aval*visc, gd.icells, gd.jcells);
         cuda_check_error();
     }
@@ -437,8 +442,14 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     for (auto& it : tdep_bc)
     {
         it.second->update_time_dependent(sbc.at(it.first).bot,timeloop);
-        set_bc_g(fields.sp.at(it.first)->fld_bot_g, fields.sp.at(it.first)->grad_bot_g, fields.sp.at(it.first)->flux_bot_g,
-                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset);
+        set_bc_g(
+                fields.sp.at(it.first)->fld_bot_g,
+                fields.sp.at(it.first)->grad_bot_g,
+                fields.sp.at(it.first)->flux_bot_g,
+                sbc.at(it.first).bcbot,
+                sbc.at(it.first).bot,
+                fields.sp.at(it.first)->visc,
+                no_offset);
     }
 }
 #endif

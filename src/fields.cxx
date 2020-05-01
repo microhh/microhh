@@ -113,7 +113,9 @@ namespace
     TF calc_momentum_2nd(
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -142,7 +144,9 @@ namespace
     TF calc_tke_2nd(
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -174,7 +178,9 @@ namespace
     TF calc_mass(
             const TF* restrict s,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -243,7 +249,8 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
     grid(gridin),
     soil_grid(soilgridin),
     field3d_io(master, grid),
-    field3d_operators(master, grid, *this)
+    field3d_operators(master, grid, *this),
+    boundary_cyclic(master, grid)
 {
     auto& gd = grid.get_grid_data();
     calc_mean_profs = false;
@@ -258,7 +265,8 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
     const std::string group_name = "default";
 
     // Initialize the passive scalars
-    std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
+    std::vector<std::string> slist = input.get_list<std::string>(
+            "fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
         init_prognostic_field(s, s, "-", group_name, gd.sloc);
@@ -1214,6 +1222,22 @@ void Fields<TF>::reset_tendencies()
     for (auto& fld3d : at)
         reset_field(fld3d.second->fld.data(), gd.ncells);
 }
+
+#ifndef USECUDA
+template<typename TF>
+void Fields<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+
+    boundary_cyclic.exec(mp.at("u")->fld.data());
+    boundary_cyclic.exec(mp.at("v")->fld.data());
+    boundary_cyclic.exec(mp.at("w")->fld.data());
+
+    for (auto& it : sp)
+        boundary_cyclic.exec(it.second->fld.data());
+}
+#endif
 
 
 template class Fields<double>;

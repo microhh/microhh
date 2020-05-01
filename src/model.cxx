@@ -337,8 +337,12 @@ void Model<TF>::exec()
                 thermo  ->update_time_dependent(*timeloop);
                 force   ->update_time_dependent(*timeloop);
 
+                // Set the cyclic BCs of the prognostic 3D fields
+                fields->set_prognostic_cyclic_bcs();
+
                 // Set the boundary conditions.
                 boundary->exec(*thermo);
+                boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
                 fields->exec();
@@ -608,6 +612,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     if (stats->do_statistics(itime))
         stats->exec(iteration, time, itime);
 }
+
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
 void Model<TF>::setup_stats()
