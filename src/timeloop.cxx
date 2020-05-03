@@ -164,6 +164,10 @@ void Timeloop<TF>::step_time()
 template<typename TF>
 bool Timeloop<TF>::do_check()
 {
+    // Print every RK3 substep if outputiter == 0. Useful for debugging.
+    if (outputiter == 0)
+        return true;
+
     if ((iteration % outputiter == 0 && !in_substep()) | !loop)
         return true;
 
