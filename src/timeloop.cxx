@@ -233,7 +233,7 @@ namespace
     template<typename TF>
     void rk3(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int jj, const int kk)
+             const int jj, const int kk, const int ncells)
     {
         constexpr TF cA [] = {0., -5./9., -153./128.};
         constexpr TF cB [] = {1./3., 15./16., 8./15.};
@@ -250,20 +250,28 @@ namespace
         const int substepn = (substep+1) % 3;
 
         // substep 0 resets the tendencies, because cA[0] == 0
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    at[ijk] *= cA[substepn];
-                }
+        if (substepn == 0)
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] = TF(0.);
+        }
+        else
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        at[ijk] *= cA[substepn];
+                    }
+        }
     }
 
     template<typename TF>
     void rk4(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
              const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int jj, const int kk)
+             const int jj, const int kk, const int ncells)
     {
         constexpr TF cA [] = {
             0.,
@@ -291,14 +299,22 @@ namespace
         const int substepn = (substep+1) % 5;
 
         // substep 0 resets the tendencies, because cA[0] == 0
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    at[ijk] = cA[substepn]*at[ijk];
-                }
+        if (substepn == 0)
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] = TF(0.);
+        }
+        else
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart; j<jend; ++j)
+                    #pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        at[ijk] = cA[substepn]*at[ijk];
+                    }
+        }
     }
 
     template<typename TF>
@@ -332,7 +348,7 @@ void Timeloop<TF>::exec()
         for (auto& f : fields.at)
             rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    gd.icells, gd.ijcells, gd.ncells);
 
         substep = (substep+1) % 3;
     }
@@ -342,7 +358,7 @@ void Timeloop<TF>::exec()
         for (auto& f : fields.at)
             rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    gd.icells, gd.ijcells, gd.ncells);
 
         substep = (substep+1) % 5;
     }
