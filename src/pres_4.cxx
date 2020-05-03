@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * The heptadiagonal matrix solver is
  * Copyright (c) 2014 Juan Pedro Mellado
@@ -186,8 +186,8 @@ void Pres_4<TF>::set_values()
     const int kstart = gd.kstart;
 
     // compute the modified wave numbers of the 4th order scheme
-    TF dxidxi = 1./(gd.dx*gd.dx);
-    TF dyidyi = 1./(gd.dy*gd.dy);
+    const TF dxidxi = 1./(gd.dx*gd.dx);
+    const TF dyidyi = 1./(gd.dy*gd.dy);
 
     const TF pi = std::acos(-1.);
 
@@ -365,14 +365,14 @@ void Pres_4<TF>::solve(
             {
                 // Set a zero gradient bc at the bottom.
                 ik = i + j*jj;
-                m1temp[ik] =  0.;
-                m2temp[ik] =  0.;
-                m3temp[ik] =  0.;
-                m4temp[ik] =  1.;
-                m5temp[ik] =  0.;
-                m6temp[ik] =  0.;
-                m7temp[ik] = -1.;
-                ptemp [ik] =  0.;
+                m1temp[ik] = TF( 0.);
+                m2temp[ik] = TF( 0.);
+                m3temp[ik] = TF( 0.);
+                m4temp[ik] = TF( 1.);
+                m5temp[ik] = TF( 0.);
+                m6temp[ik] = TF( 0.);
+                m7temp[ik] = TF(-1.);
+                ptemp [ik] = TF( 0.);
             }
 
         for (int j=0; j<jslice; ++j)
@@ -380,14 +380,14 @@ void Pres_4<TF>::solve(
             for (int i=0; i<iblock; ++i)
             {
                 ik = i + j*jj;
-                m1temp[ik+kki1] =  0.;
-                m2temp[ik+kki1] =  0.;
-                m3temp[ik+kki1] =  0.;
-                m4temp[ik+kki1] =  1.;
-                m5temp[ik+kki1] = -1.;
-                m6temp[ik+kki1] =  0.;
-                m7temp[ik+kki1] =  0.;
-                ptemp [ik+kki1] =  0.;
+                m1temp[ik+kki1] = TF( 0.);
+                m2temp[ik+kki1] = TF( 0.);
+                m3temp[ik+kki1] = TF( 0.);
+                m4temp[ik+kki1] = TF( 1.);
+                m5temp[ik+kki1] = TF(-1.);
+                m6temp[ik+kki1] = TF( 0.);
+                m7temp[ik+kki1] = TF( 0.);
+                ptemp [ik+kki1] = TF( 0.);
             }
 
         for (int k=0; k<kmax; ++k)
@@ -426,28 +426,28 @@ void Pres_4<TF>::solve(
                 ik = i + j*jj + kmax*kki1;
                 if (iindex == 0 && jindex == 0)
                 {
-                    m1temp[ik+kki2] =    0.;
-                    m2temp[ik+kki2] = -1/3.;
-                    m3temp[ik+kki2] =    2.;
-                    m4temp[ik+kki2] =    1.;
+                    m1temp[ik+kki2] = TF(   0.);
+                    m2temp[ik+kki2] = TF(-1/3.);
+                    m3temp[ik+kki2] = TF(   2.);
+                    m4temp[ik+kki2] = TF(   1.);
 
-                    m1temp[ik+kki3] =   -2.;
-                    m2temp[ik+kki3] =    9.;
-                    m3temp[ik+kki3] =    0.;
-                    m4temp[ik+kki3] =    1.;
+                    m1temp[ik+kki3] = TF(  -2.);
+                    m2temp[ik+kki3] = TF(   9.);
+                    m3temp[ik+kki3] = TF(   0.);
+                    m4temp[ik+kki3] = TF(   1.);
                 }
                 // Set dp/dz at top to zero.
                 else
                 {
-                    m1temp[ik+kki2] =  0.;
-                    m2temp[ik+kki2] =  0.;
-                    m3temp[ik+kki2] = -1.;
-                    m4temp[ik+kki2] =  1.;
+                    m1temp[ik+kki2] = TF( 0.);
+                    m2temp[ik+kki2] = TF( 0.);
+                    m3temp[ik+kki2] = TF(-1.);
+                    m4temp[ik+kki2] = TF( 1.);
 
-                    m1temp[ik+kki3] = -1.;
-                    m2temp[ik+kki3] =  0.;
-                    m3temp[ik+kki3] =  0.;
-                    m4temp[ik+kki3] =  1.;
+                    m1temp[ik+kki3] = TF(-1.);
+                    m2temp[ik+kki3] = TF( 0.);
+                    m3temp[ik+kki3] = TF( 0.);
+                    m4temp[ik+kki3] = TF( 1.);
                 }
             }
         }
@@ -458,15 +458,15 @@ void Pres_4<TF>::solve(
             {
                 // Set the top boundary.
                 ik = i + j*jj + kmax*kki1;
-                m5temp[ik+kki2] = 0.;
-                m6temp[ik+kki2] = 0.;
-                m7temp[ik+kki2] = 0.;
-                ptemp [ik+kki2] = 0.;
+                m5temp[ik+kki2] = TF(0.);
+                m6temp[ik+kki2] = TF(0.);
+                m7temp[ik+kki2] = TF(0.);
+                ptemp [ik+kki2] = TF(0.);
 
-                m5temp[ik+kki3] = 0.;
-                m6temp[ik+kki3] = 0.;
-                m7temp[ik+kki3] = 0.;
-                ptemp [ik+kki3] = 0.;
+                m5temp[ik+kki3] = TF(0.);
+                m6temp[ik+kki3] = TF(0.);
+                m7temp[ik+kki3] = TF(0.);
+                ptemp [ik+kki3] = TF(0.);
             }
 
         hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp, jslice);
@@ -596,10 +596,10 @@ void Pres_4<TF>::hdma(
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj;
-            m1[ik] = 1.;
-            m2[ik] = 1.;
-            m3[ik] = 1.            / m4[ik];
-            m4[ik] = 1.;
+            m1[ik] = TF(1.);
+            m2[ik] = TF(1.);
+            m3[ik] = TF(1.)            / m4[ik];
+            m4[ik] = TF(1.);
             m5[ik] = m5[ik]*m3[ik];
             m6[ik] = m6[ik]*m3[ik];
             m7[ik] = m7[ik]*m3[ik];
@@ -611,8 +611,8 @@ void Pres_4<TF>::hdma(
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
-            m1[ik] = 1.;
-            m2[ik] = 1.;
+            m1[ik] = TF(1.);
+            m2[ik] = TF(1.);
             m3[ik] = m3[ik]                     / m4[ik-kk1];
             m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
             m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
@@ -625,7 +625,7 @@ void Pres_4<TF>::hdma(
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
-            m1[ik] = 1.;
+            m1[ik] = TF(1.);
             m2[ik] =   m2[ik]                                           / m4[ik-kk2];
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
@@ -653,7 +653,7 @@ void Pres_4<TF>::hdma(
         for (int i=0; i<iblock; ++i)
         {
             ik = i + j*jj + k*kk1;
-            m7[ik] = 1.;
+            m7[ik] = TF(1.);
         }
 
     k = kmax+2;
@@ -667,8 +667,8 @@ void Pres_4<TF>::hdma(
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
             m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-            m6[ik] = 1.;
-            m7[ik] = 1.;
+            m6[ik] = TF(1.);
+            m7[ik] = TF(1.);
         }
 
     k = kmax+3;
@@ -681,9 +681,9 @@ void Pres_4<TF>::hdma(
             m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
             m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
             m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-            m5[ik] = 1.;
-            m6[ik] = 1.;
-            m7[ik] = 1.;
+            m5[ik] = (1.);
+            m6[ik] = (1.);
+            m7[ik] = (1.);
         }
 
     // Do the backward substitution.
