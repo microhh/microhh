@@ -8,7 +8,7 @@ else()
 endif()
 
 set(USER_CXX_FLAGS "-std=c++14")
-set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -mtune=native -march=native")
+set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/include")
