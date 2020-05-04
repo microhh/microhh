@@ -572,6 +572,33 @@ namespace
                 flux_net   ({icol, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
             }
     }
+
+    template<typename TF>
+    TF deg2rad(const TF deg)
+    {
+        return TF(2.*M_PI/360. * deg);
+    }
+
+    template<typename TF>
+    TF calc_zenith_angle(
+            const TF lat, const TF lon, const TF day_of_year,
+            const TF seconds_since_midnight)
+    {
+        constexpr TF pi = TF(M_PI);
+        constexpr TF twopi = TF(2.*M_PI);
+
+        const TF radlon = deg2rad(lon);
+        const TF radlat = deg2rad(lat);
+
+        TF declination_angle = deg2rad(23.45) * std::cos(twopi * (day_of_year - 173.) / 365.25);
+
+        TF hour_angle = twopi * seconds_since_midnight/TF(86400.) + radlon - pi;
+
+        TF cos_zenith = std::sin(radlat)*std::sin(declination_angle)
+                      + std::cos(radlat)*std::cos(declination_angle)*std::cos(hour_angle);
+
+        return cos_zenith;
+    }
 }
 
 template<typename TF>
@@ -597,7 +624,8 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     const double sza = inputin.get_item<double>("radiation", "sza", "");
     mu0 = std::cos(sza);
 
-    // Nc0 = inputin.get_item<double>("microphysics", "Nc0", "", 70e6);
+	lat = inputin.get_item<TF>("radiation", "lat", "");
+    lon = inputin.get_item<TF>("radiation", "lon", "");
 
     auto& gd = grid.get_grid_data();
     fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", "radiation", gd.sloc);
@@ -705,7 +733,7 @@ void Radiation_rrtmgp<TF>::create_column(
 template<typename TF>
 void Radiation_rrtmgp<TF>::read_background_profiles(
         Netcdf_handle& rad_nc,
-        const Gas_concs<double>& gas_concs);
+        const Gas_concs<double>& gas_concs)
 {
     // Read the atmospheric pressure and temperature.
     const int n_col = 1;
@@ -958,6 +986,11 @@ void Radiation_rrtmgp<TF>::exec(
 
     if (do_radiation)
     {
+        //
+        const TF day_of_year = TF(timeloop.calc_day_of_year());
+        const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+        const TF z = calc_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
+
         // Set the tendency to zero.
         std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), TF(0.));
 
