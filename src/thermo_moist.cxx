@@ -879,6 +879,8 @@ void Thermo_moist<TF>::load(const int iotime)
         }
         else
         {
+            master.print_message("OK\n");
+
             fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
             fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
             fclose(pFile);
@@ -889,9 +891,7 @@ void Thermo_moist<TF>::load(const int iotime)
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Error in thermo_basestate");
-    else
-        master.print_message("OK\n");
+        throw std::runtime_error("Error in loading thermo_moist basestate");
 
     master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
     master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);

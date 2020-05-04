@@ -625,7 +625,7 @@ void Thermo_vapor<TF>::get_thermo_field(
     else if (name == "N2")
     {
         calc_N2(fld.fld.data(), fields.sp.at("thl")->fld.data(), gd.dzi.data(), base.thvref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kcells, gd.icells, gd.ijcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
     else if (name == "T")
     {
