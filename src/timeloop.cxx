@@ -44,6 +44,8 @@ Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     flag_utc_time(false),
     ifactor(1e9)
 {
+    setenv("TZ", "utc", 1);
+
     substep = 0;
 
     // Obligatory parameters.
