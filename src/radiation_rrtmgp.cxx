@@ -745,7 +745,7 @@ void Radiation_rrtmgp<TF>::create_column(
 template<typename TF>
 void Radiation_rrtmgp<TF>::read_background_profiles(
         Netcdf_handle& rad_nc,
-        const Gas_concs<double>& gas_concs)
+        const Gas_concs<double>& gas_concs_col)
 {
     // Read the atmospheric pressure and temperature.
     n_col = 1;
@@ -766,13 +766,13 @@ void Radiation_rrtmgp<TF>::read_background_profiles(
     if (rad_nc.variable_exists("col_dry"))
         col_dry = rad_nc.get_variable<double>("col_dry", {n_lay_col, n_col});
     else
-        Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev_col);
+        Gas_optics<double>::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
 }
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_column_longwave(
         Input& input, Netcdf_handle& rad_nc, Thermo<TF>& thermo, Stats<TF>& stats,
-        const Gas_concs<double>& gas_concs)
+        const Gas_concs<double>& gas_concs_col)
 {
     auto& gd = grid.get_grid_data();
 
@@ -804,7 +804,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
                 optical_props_lw,
                 lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
                 lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
-                gas_concs,
+                gas_concs_col,
                 kdist_lw,
                 sources_lw,
                 col_dry,
@@ -836,7 +836,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_column_shortwave(
         Input& input, Netcdf_handle& rad_nc, Thermo<TF>& thermo, Stats<TF>& stats,
-        const Gas_concs<double>& gas_concs)
+        const Gas_concs<double>& gas_concs_col)
 {
     auto& gd = grid.get_grid_data();
 
@@ -873,7 +873,7 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
                 optical_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
                 sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
-                gas_concs,
+                gas_concs_col,
                 *kdist_sw,
                 col_dry,
                 p_lay_col, p_lev_col,
@@ -1044,7 +1044,7 @@ void Radiation_rrtmgp<TF>::exec(
                         optical_props_lw,
                         lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
                         lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
-                        gas_concs,
+                        gas_concs_col,
                         kdist_lw,
                         sources_lw,
                         col_dry,
@@ -1075,7 +1075,7 @@ void Radiation_rrtmgp<TF>::exec(
                         optical_props_sw,
                         sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
                         sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
-                        gas_concs,
+                        gas_concs_col,
                         *kdist_sw,
                         col_dry,
                         p_lay_col, p_lev_col,
