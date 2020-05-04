@@ -83,6 +83,9 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
                 const Gas_concs<double>&);
 
+        void read_background_profiles(
+                Netcdf_handle&, const Gas_concs<double>&);
+
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
         void create_solver_longwave(
@@ -134,6 +137,14 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<double,2> lw_flux_dn_inc;
         Array<double,2> sw_flux_dn_dir_inc;
         Array<double,2> sw_flux_dn_dif_inc;
+
+        // Reference profiles on pressure levels
+        Array<double,2> p_lay;
+        Array<double,2> t_lay;
+        Array<double,2> p_lev;
+        Array<double,2> t_lev;
+        Array<double,2> col_dry;
+        Gas_concs<double> gas_concs_col;
 
         // The full solver.
         Gas_concs<double> gas_concs;

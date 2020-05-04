@@ -639,7 +639,7 @@ void Radiation_rrtmgp<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_up");
         allowed_crossvars_radiation.push_back("sw_flux_dn");
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
-        
+
         if (sw_clear_sky_stats)
         {
             allowed_crossvars_radiation.push_back("sw_flux_up_clear");
@@ -670,7 +670,6 @@ void Radiation_rrtmgp<TF>::create_column(
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
-    Gas_concs<double> gas_concs_col;
     load_gas_concs<double>(gas_concs_col, rad_nc, "lay");
 
     // 2. Set the coordinate for the reference profiles in the stats, before calling the other creates.
@@ -693,11 +692,41 @@ void Radiation_rrtmgp<TF>::create_column(
                 std::vector<TF>(p_lev.v().begin(), p_lev.v().end()));
     }
 
-    // 3. Call the column solvers for longwave and shortwave.
+    // 3. Read background profiles on pressure levels
+    read_background_profiles(rad_nc, gas_concs_col);
+
+    // 4. Call the column solvers for longwave and shortwave.
     if (sw_longwave)
         create_column_longwave (input, rad_nc, thermo, stats, gas_concs_col);
     if (sw_shortwave)
         create_column_shortwave(input, rad_nc, thermo, stats, gas_concs_col);
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::read_background_profiles(
+        Netcdf_handle& rad_nc,
+        const Gas_concs<double>& gas_concs);
+{
+    // Read the atmospheric pressure and temperature.
+    const int n_col = 1;
+    const int n_lay = rad_nc.get_dimension_size("lay");
+    const int n_lev = rad_nc.get_dimension_size("lev");
+
+    p_lay.set_dims({n_col, n_lay});
+    t_lay.set_dims({n_col, n_lay});
+    p_lev.set_dims({n_col, n_lev});
+    t_lev.set_dims({n_col, n_lev});
+    col_dry.set_dims({n_col, n_lay});
+
+    p_lay = rad_nc.get_variable<double>("p_lay", {n_lay, n_col});
+    t_lay = rad_nc.get_variable<double>("t_lay", {n_lay, n_col});
+    p_lev = rad_nc.get_variable<double>("p_lev", {n_lev, n_col});
+    t_lev = rad_nc.get_variable<double>("t_lev", {n_lev, n_col});
+
+    if (rad_nc.variable_exists("col_dry"))
+        col_dry = rad_nc.get_variable<double>("col_dry", {n_lay, n_col});
+    else
+        Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
 }
 
 template<typename TF>
@@ -707,24 +736,11 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
 {
     auto& gd = grid.get_grid_data();
 
-    // 3. Read the atmospheric pressure and temperature.
     const int n_col = 1;
-
     const int n_lay = rad_nc.get_dimension_size("lay");
     const int n_lev = rad_nc.get_dimension_size("lev");
 
-    Array<double,2> p_lay(rad_nc.get_variable<double>("p_lay", {n_lay, n_col}), {n_col, n_lay});
-    Array<double,2> t_lay(rad_nc.get_variable<double>("t_lay", {n_lay, n_col}), {n_col, n_lay});
-    Array<double,2> p_lev(rad_nc.get_variable<double>("p_lev", {n_lev, n_col}), {n_col, n_lev});
-    Array<double,2> t_lev(rad_nc.get_variable<double>("t_lev", {n_lev, n_col}), {n_col, n_lev});
-
-    Array<double,2> col_dry({n_col, n_lay});
-    if (rad_nc.variable_exists("col_dry"))
-        col_dry = rad_nc.get_variable<double>("col_dry", {n_lay, n_col});
-    else
-        Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
-
-    // 4. Read the boundary conditions.
+    // Read the boundary conditions.
     // Set the surface temperature and emissivity.
     // CvH: communicate with surface scheme.
     Array<double,1> t_sfc({1});
@@ -788,24 +804,11 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
 {
     auto& gd = grid.get_grid_data();
 
-    // 3. Read the atmospheric pressure and temperature.
     const int n_col = 1;
-
     const int n_lay = rad_nc.get_dimension_size("lay");
     const int n_lev = rad_nc.get_dimension_size("lev");
 
-    Array<double,2> p_lay(rad_nc.get_variable<double>("p_lay", {n_lay, n_col}), {n_col, n_lay});
-    Array<double,2> t_lay(rad_nc.get_variable<double>("t_lay", {n_lay, n_col}), {n_col, n_lay});
-    Array<double,2> p_lev(rad_nc.get_variable<double>("p_lev", {n_lev, n_col}), {n_col, n_lev});
-    Array<double,2> t_lev(rad_nc.get_variable<double>("t_lev", {n_lev, n_col}), {n_col, n_lev});
-
-    Array<double,2> col_dry({n_col, n_lay});
-    if (rad_nc.variable_exists("col_dry"))
-        col_dry = rad_nc.get_variable<double>("col_dry", {n_lay, n_col});
-    else
-        Gas_optics<double>::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev);
-
-    // 4. Read the boundary conditions.
+    // Read the boundary conditions.
     const int n_bnd = kdist_sw->get_nband();
 
     // Set the solar zenith angle and albedo.
