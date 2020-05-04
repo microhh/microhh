@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
