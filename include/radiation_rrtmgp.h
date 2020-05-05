@@ -84,6 +84,9 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
                 const Gas_concs<double>&);
 
+        void read_background_profiles(
+                Netcdf_handle&, const Gas_concs<double>&);
+
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
         void create_solver_longwave(
@@ -117,6 +120,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_longwave;
         bool sw_shortwave;
         bool sw_clear_sky_stats;
+        bool sw_fixed_sza;
         double dt_rad;
         unsigned long idt_rad;
 
@@ -131,10 +135,39 @@ class Radiation_rrtmgp : public Radiation<TF>
         double mu0;         // Cosine of solar zenith angle.
         double Nc0;         // Total droplet number concentration.
 
+        TF lat;    // Latitude (degrees)
+        TF lon;    // Longitude (degrees)
+
         // The reference column for the full profile.
         Array<double,2> lw_flux_dn_inc;
         Array<double,2> sw_flux_dn_dir_inc;
         Array<double,2> sw_flux_dn_dif_inc;
+
+        int n_col;
+        int n_lay_col;
+        int n_lev_col;
+
+        Array<double,2> p_lay_col;
+        Array<double,2> t_lay_col;
+        Array<double,2> p_lev_col;
+        Array<double,2> t_lev_col;
+        Array<double,2> col_dry;
+
+        // Fluxes of reference column
+        Array<double,2> lw_flux_up_col;
+        Array<double,2> lw_flux_dn_col;
+        Array<double,2> lw_flux_net_col;
+
+        Array<double,2> sw_flux_up_col;
+        Array<double,2> sw_flux_dn_col;
+        Array<double,2> sw_flux_dn_dir_col;
+        Array<double,2> sw_flux_net_col;
+
+        Gas_concs<double> gas_concs_col;
+
+        std::unique_ptr<Source_func_lw<double>> sources_lw;
+        std::unique_ptr<Optical_props_arry<double>> optical_props_lw;
+        std::unique_ptr<Optical_props_arry<double>> optical_props_sw;
 
         // The full solver.
         Gas_concs<double> gas_concs;
