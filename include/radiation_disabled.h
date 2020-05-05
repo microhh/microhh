@@ -1,9 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
- * Copyright (c) 2018-2019 Elynn Wu
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -19,8 +18,9 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RADIATION_DISABLED
-#define RADIATION_DISABLED
+#ifndef RADIATION_DISABLED_H
+#define RADIATION_DISABLED_H
+
 #include <cstdio>
 #include "master.h"
 #include "grid.h"

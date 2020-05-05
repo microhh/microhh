@@ -20,8 +20,9 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FIELDS
-#define FIELDS
+#ifndef FIELDS_H
+#define FIELDS_H
+
 #include <memory>
 #include <map>
 #include <vector>

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,10 +20,10 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
- #include <stdio.h>
+#include <stdio.h>
 
-#ifndef TOOLS
-#define TOOLS
+#ifndef TOOLS_H
+#define TOOLS_H
 
 /* CUDA error checking, from: http://choorucode.com/2011/03/02/how-to-do-error-checking-in-cuda/
    In debug mode, CUDACHECKS is defined and all kernel calls are checked with cudaCheckError().
