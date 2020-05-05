@@ -1552,10 +1552,9 @@ void Land_surface<TF>::load(const int itime)
         std::sprintf(filename, "%s.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
-        const int kslice = 0;
         if (field3d_io.load_xy_slice(
                 field, tmp1->fld.data(),
-                filename, kslice))
+                filename))
         {
             master.print_message("FAILED\n");
             nerror += 1;

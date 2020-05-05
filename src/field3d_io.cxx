@@ -725,6 +725,7 @@ int Field3d_io<TF>::load_xy_slice(
         {
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
             const int ijkb = i + j*jjb;
+
             data[ijk] = tmp[ijkb];
         }
 
