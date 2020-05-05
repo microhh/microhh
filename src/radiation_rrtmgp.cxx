@@ -580,14 +580,8 @@ namespace
     }
 
     template<typename TF>
-    TF rad_to_deg(const TF rad)
-    {
-        return TF(360./(2.*M_PI) * rad);
-    }
-
-    template<typename TF>
-    TF calc_zenith_angle(
-            const TF lat, const TF lon, const TF day_of_year,
+    TF calc_cos_zenith_angle(
+            const TF lat, const TF lon, const int day_of_year,
             const TF seconds_since_midnight)
     {
         constexpr TF pi = TF(M_PI);
@@ -596,9 +590,9 @@ namespace
         const TF radlon = deg_to_rad(lon);
         const TF radlat = deg_to_rad(lat);
 
-        TF declination_angle = deg_to_rad(23.45) * std::cos(twopi * (day_of_year - 173.) / 365.25);
+        TF declination_angle = deg_to_rad(TF(23.45)) * std::cos(twopi * (TF(day_of_year) - TF(173)) / TF(365.25));
 
-        TF hour_angle = twopi * seconds_since_midnight/TF(86400.) + radlon - pi;
+        TF hour_angle = twopi * seconds_since_midnight/TF(TF(86400)) + radlon - pi;
 
         TF cos_zenith = std::sin(radlat)*std::sin(declination_angle)
                       + std::cos(radlat)*std::cos(declination_angle)*std::cos(hour_angle);
@@ -1026,9 +1020,9 @@ void Radiation_rrtmgp<TF>::exec(
 
         if (!sw_fixed_sza)
         {
-            const TF day_of_year = TF(timeloop.calc_day_of_year());
+            const int day_of_year = int(timeloop.calc_day_of_year());
             const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-            this->mu0 = calc_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
+            this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
 
             if (sw_longwave)
             {
