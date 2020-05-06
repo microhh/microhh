@@ -720,7 +720,7 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::calc_MO_stability(Thermo<TF>& thermo)
+void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -763,7 +763,7 @@ void Boundary_surface<TF>::calc_MO_stability(Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::calc_MO_bcs(Thermo<TF>& thermo)
+void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -775,16 +775,20 @@ void Boundary_surface<TF>::calc_MO_bcs(Thermo<TF>& thermo)
           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
           gd.icells, gd.jcells, gd.ijcells,
           boundary_cyclic);
+}
+
+template<typename TF>
+void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
 
     for (auto& it : fields.sp)
-    {
         surfs(ustar.data(), obuk.data(), it.second->fld.data(),
               it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
               gd.z[gd.kstart], z0m, z0h, sbc.at(it.first).bcbot,
               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
               gd.icells, gd.jcells, gd.ijcells,
               boundary_cyclic);
-    }
 }
 
 template<typename TF>

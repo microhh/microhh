@@ -40,8 +40,9 @@ class Boundary_surface : public Boundary<TF>
         void set_values();
         void get_ra(Field3d<TF>&);
 
-        void calc_MO_stability(Thermo<TF>&);
-        void calc_MO_bcs(Thermo<TF>&);
+        void calc_mo_stability(Thermo<TF>&);
+        void calc_mo_bcs_momentum(Thermo<TF>&);
+        void calc_mo_bcs_scalars(Thermo<TF>&);
 
         void exec_stats(Stats<TF>&);
         void exec_cross(int);
