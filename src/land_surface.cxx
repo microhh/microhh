@@ -984,9 +984,12 @@ void Land_surface<TF>::create_fields_grid_stats(
 
     // HACK (temporary..): fix the tile fractions
     const TF c_veg_in = input.get_item<TF>("land_surface", "c_veg", "");
-    std::fill(tiles.at("wet_skin" ).fraction.begin(), tiles.at("wet_skin" ).fraction.begin()+agd.ijcells, TF(0));
-    std::fill(tiles.at("low_veg"  ).fraction.begin(), tiles.at("low_veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
-    std::fill(tiles.at("bare_soil").fraction.begin(), tiles.at("bare_soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
+    std::fill(tiles.at("wet_skin" ).fraction.begin(),
+            tiles.at("wet_skin" ).fraction.begin()+agd.ijcells, TF(0));
+    std::fill(tiles.at("low_veg"  ).fraction.begin(),
+            tiles.at("low_veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
+    std::fill(tiles.at("bare_soil").fraction.begin(),
+            tiles.at("bare_soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
 
     // Init the soil statistics
     if (stats.get_switch())
@@ -1436,7 +1439,6 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_soil(fields.sps.at("theta")->fld.data(), it, iotime);
     }
 }
-
 
 template<typename TF>
 void Land_surface<TF>::save(const int itime)
