@@ -802,9 +802,8 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
 
     // Read the boundary conditions.
     // Set the surface temperature and emissivity.
-    // CvH: communicate with surface scheme.
     Array<double,1> t_sfc({1});
-    t_sfc({1}) = this->t_sfc;
+    t_sfc({1}) = t_lev_col({1,1});
 
     const int n_bnd = kdist_lw->get_nband();
     Array<double,2> emis_sfc({n_bnd, 1});
@@ -1057,29 +1056,31 @@ void Radiation_rrtmgp<TF>::exec(
             const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
             this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
 
-            if (sw_longwave)
-            {
-                Array<double,1> t_sfc({1});
-                t_sfc({1}) = this->t_sfc;
+            // Updating the longwave column on pressure levels is
+            // only necessary when the reference atmosphere is updated as well..
+            //if (sw_longwave)
+            //{
+            //    Array<double,1> t_sfc({1});
+            //    t_sfc({1}) = t_lev_col({1,1});
 
-                const int n_bnd = kdist_lw->get_nband();
-                Array<double,2> emis_sfc({n_bnd, 1});
-                for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-                    emis_sfc({ibnd, 1}) = this->emis_sfc;
+            //    const int n_bnd = kdist_lw->get_nband();
+            //    Array<double,2> emis_sfc({n_bnd, 1});
+            //    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+            //        emis_sfc({ibnd, 1}) = this->emis_sfc;
 
-                solve_longwave_column<double>(
-                        optical_props_lw,
-                        lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
-                        lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
-                        gas_concs_col,
-                        kdist_lw,
-                        sources_lw,
-                        col_dry,
-                        p_lay_col, p_lev_col,
-                        t_lay_col, t_lev_col,
-                        t_sfc, emis_sfc,
-                        n_lay_col);
-            }
+            //    solve_longwave_column<double>(
+            //            optical_props_lw,
+            //            lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
+            //            lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
+            //            gas_concs_col,
+            //            kdist_lw,
+            //            sources_lw,
+            //            col_dry,
+            //            p_lay_col, p_lev_col,
+            //            t_lay_col, t_lev_col,
+            //            t_sfc, emis_sfc,
+            //            n_lay_col);
+            //}
 
             if (sw_shortwave)
             {
