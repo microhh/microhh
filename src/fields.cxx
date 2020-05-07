@@ -302,6 +302,8 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
 {
     auto& gd = grid.get_grid_data();
 
+    boundary_cyclic.init();
+
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
