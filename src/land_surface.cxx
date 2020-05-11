@@ -388,6 +388,8 @@ namespace soil
             TF* const restrict flux_bot,
             TF* const restrict conductivity_h,
             const TF* const restrict LE_soil,
+            const TF* const restrict tile_frac_soil,
+            const TF* const restrict throughfall,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -401,7 +403,7 @@ namespace soil
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*icells;
-                flux_top[ij] = LE_soil[ij] * fac;
+                flux_top[ij] = tile_frac_soil[ij] * LE_soil[ij] * fac + throughfall[ij];
                 flux_bot[ij] = TF(0);
 
                 // Set free drainage bottom BC:
@@ -1300,20 +1302,14 @@ void Land_surface<TF>::exec_soil()
     // Set the boundary conditions.
     // Top = evaporation from bare soil tile.
     // Bottom = optionally free drainage (or else closed)
-    lsm::scale_tile_with_fraction(
-            tmp1->fld_bot.data(),
-            tiles.at("soil").LE.data(),
-            tiles.at("soil").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
-
     if (sw_free_drainage)
         soil::set_bcs_moisture<TF, true>(
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
-                tmp1->fld_bot.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("soil").fraction.data(),
+                throughfall.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -1323,7 +1319,9 @@ void Land_surface<TF>::exec_soil()
                 fields.sps.at("theta")->flux_top.data(),
                 fields.sps.at("theta")->flux_bot.data(),
                 conductivity_h.data(),
-                tmp1->fld_bot.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("soil").fraction.data(),
+                throughfall.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
