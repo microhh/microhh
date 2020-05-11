@@ -61,15 +61,18 @@ namespace soil
     {
         const TF vg_mi = TF(1) / vg_m;
 
-        return (TF(1) - vg_m) * gamma_sat / (vg_a * vg_m * (theta_sat - theta_res)) * pow(theta_norm, (vg_l - vg_mi)) *
-               (pow((TF(1) - pow(theta_norm, vg_mi)), -vg_m) + pow((TF(1) - pow(theta_norm, vg_mi)), vg_m) - TF(2));
+        return (TF(1) - vg_m) * gamma_sat / (vg_a * vg_m * (theta_sat - theta_res))
+                    * pow(theta_norm, (vg_l - vg_mi))
+                    * (pow((TF(1) - pow(theta_norm, vg_mi)), -vg_m)
+                    + pow((TF(1) - pow(theta_norm, vg_mi)), vg_m) - TF(2));
     }
 
     template<typename TF>
     inline TF calc_conductivity_vg(
             const TF theta_norm, const TF vg_l, const TF vg_m, const TF gamma_sat)
     {
-        return gamma_sat * pow(theta_norm, vg_l) * pow((TF(1) - pow((TF(1) - pow(theta_norm, (1. / vg_m))), vg_m)), 2);
+        return gamma_sat * pow(theta_norm, vg_l)
+                    * pow((TF(1) - pow((TF(1) - pow(theta_norm, (1. / vg_m))), vg_m)), 2);
     }
 
     template<typename TF>
@@ -97,7 +100,9 @@ namespace soil
             TF* const restrict gamma_theta_min, TF* const restrict gamma_theta_max,
             TF* const restrict vg_m,
             TF* const restrict gamma_T_dry, TF* const restrict rho_C,
-            const TF* const restrict vg_a, const TF* const restrict vg_l, const TF* const restrict vg_n,
+            const TF* const restrict vg_a,
+            const TF* const restrict vg_l,
+            const TF* const restrict vg_n,
             const TF* const restrict gamma_theta_sat,
             const TF* const restrict theta_res, const TF* const restrict theta_sat,
             const TF* const restrict theta_fc,
@@ -109,13 +114,17 @@ namespace soil
             vg_m[i] = (TF(1) - (TF(1) / vg_n[i]));
 
             // Min/max values diffusivity soil moisture
-            const TF theta_norm_min = (TF(1.001) * theta_res[i] - theta_res[i]) / (theta_sat[i] - theta_res[i]);
-            const TF theta_norm_max = (TF(0.999) * theta_sat[i] - theta_res[i]) / (theta_sat[i] - theta_res[i]);
+            const TF theta_norm_min =
+                (TF(1.001) * theta_res[i] - theta_res[i]) / (theta_sat[i] - theta_res[i]);
+            const TF theta_norm_max =
+                (TF(0.999) * theta_sat[i] - theta_res[i]) / (theta_sat[i] - theta_res[i]);
 
             kappa_theta_min[i] = calc_diffusivity_vg(
-                    vg_a[i], vg_l[i], vg_m[i], gamma_theta_sat[i], theta_res[i], theta_sat[i], theta_norm_min);
+                    vg_a[i], vg_l[i], vg_m[i], gamma_theta_sat[i],
+                    theta_res[i], theta_sat[i], theta_norm_min);
             kappa_theta_max[i] = calc_diffusivity_vg(
-                    vg_a[i], vg_l[i], vg_m[i], gamma_theta_sat[i], theta_res[i], theta_sat[i], theta_norm_max);
+                    vg_a[i], vg_l[i], vg_m[i], gamma_theta_sat[i],
+                    theta_res[i], theta_sat[i], theta_norm_max);
 
             // Min/max values conductivity soil moisture
             gamma_theta_min[i] = TF(0);
@@ -126,7 +135,8 @@ namespace soil
             const TF rho_dry = (TF(1) - theta_sat[i]) * rho_solid;  // Density of soil (kg m-3)
 
             gamma_T_dry[i] = (TF(0.135) * rho_dry + TF(64.7)) / (rho_solid - TF(0.947) * rho_dry);
-            rho_C[i] = (TF(1) - theta_sat[i]) * Constants::rho_C_matrix<TF> + theta_fc[i] * Constants::rho_C_water<TF>;
+            rho_C[i] = (TF(1) - theta_sat[i]) * Constants::rho_C_matrix<TF>
+                    + theta_fc[i] * Constants::rho_C_water<TF>;
         }
     }
 
@@ -184,7 +194,8 @@ namespace soil
                     const int si  = soil_index[ijk];
 
                     const TF theta_lim = std::max(theta[ijk], theta_wp[si]);
-                    theta_mean[ij] += root_fraction[ijk] * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
+                    theta_mean[ij] += root_fraction[ijk]
+                            * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
                 }
     }
 
@@ -864,7 +875,8 @@ Land_surface<TF>::Land_surface(
         tiles.emplace("wet",  Surface_tile<TF>{});
 
         // Open NetCDF file with soil lookup table
-        nc_lookup_table = std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
+        nc_lookup_table =
+            std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
     }
 }
 
@@ -991,8 +1003,12 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
         init_group.get_variable(thl_1, "thl", {0}, {1});
         init_group.get_variable(qt_1,  "qt",  {0}, {1});
 
-        std::fill(fields.sp.at("thl")->fld_bot.begin(), fields.sp.at("thl")->fld_bot.begin()+agd.ijcells, thl_1[0]);
-        std::fill(fields.sp.at("qt")->fld_bot.begin(), fields.sp.at("qt")->fld_bot.begin()+agd.ijcells, qt_1[0]);
+        std::fill(
+                fields.sp.at("thl")->fld_bot.begin(),
+                fields.sp.at("thl")->fld_bot.begin()+agd.ijcells, thl_1[0]);
+        std::fill(
+                fields.sp.at("qt")->fld_bot.begin(),
+                fields.sp.at("qt")->fld_bot.begin()+agd.ijcells, qt_1[0]);
     }
 }
 
@@ -1080,15 +1096,6 @@ void Land_surface<TF>::create_fields_grid_stats(
             gamma_T_dry.data(), rho_C.data(),
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), lookup_table_size);
-
-    //// HACK (temporary..): fix the tile fractions
-    //const TF c_veg_in = input.get_item<TF>("land_surface", "c_veg", "");
-    //std::fill(tiles.at("wet" ).fraction.begin(),
-    //        tiles.at("wet" ).fraction.begin()+agd.ijcells, TF(0));
-    //std::fill(tiles.at("veg"  ).fraction.begin(),
-    //        tiles.at("veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
-    //std::fill(tiles.at("soil").fraction.begin(),
-    //        tiles.at("soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
 
     // Init the soil statistics
     if (stats.get_switch())
