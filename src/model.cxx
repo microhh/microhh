@@ -372,7 +372,7 @@ void Model<TF>::exec()
 
                 // Calculate interactive land-surface, and
                 // soil temperature and moisture tendencies.
-                lsm->exec_surface(*radiation, *thermo, *boundary);
+                lsm->exec_surface(*radiation, *thermo, *microphys, *boundary, *timeloop);
                 lsm->exec_soil();
 
                 // Update surface properties.

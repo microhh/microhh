@@ -30,20 +30,17 @@ enum class Soil_interpolation_type {Mean, Max};
 template<typename TF>
 struct Surface_tile
 {
-    std::vector<TF> fraction;  // Grid point fraction tile (-)
-
-    std::vector<TF> rs;  // Surface resistance (canopy or soil, s m-1)
-
-    std::vector<TF> H;   // Sensible heat flux (W m-2)
-    std::vector<TF> LE;  // Latent heat flux (W m-2)
-    std::vector<TF> G;   // Soil heat flux (W m-2)
-
-    std::vector<TF> T_bot;    // Skin temperature (K)
-    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
-    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
-
-    std::vector<TF> thl_fluxbot;  // Surface kinematic heat flux (K m s-1)
-    std::vector<TF> qt_fluxbot;   // Surface kinematic moisture flux (kg kg-1 m s-1)
+    std::string long_name;       // Descriptive name of tile
+    std::vector<TF> fraction;    // Grid point fraction tile (-)
+    std::vector<TF> rs;          // Surface resistance (canopy or soil, s m-1)
+    std::vector<TF> H;           // Sensible heat flux (W m-2)
+    std::vector<TF> LE;          // Latent heat flux (W m-2)
+    std::vector<TF> G;           // Soil heat flux (W m-2)
+    std::vector<TF> T_bot;       // Skin temperature (K)
+    std::vector<TF> qt_bot;      // Skin specific humidity (kg kg-1)
+    std::vector<TF> thl_bot;     // Skin (liquid water) potential temperature (K)
+    std::vector<TF> thl_fluxbot; // Surface kinematic heat flux (K m s-1)
+    std::vector<TF> qt_fluxbot;  // Surface kinematic moisture flux (kg kg-1 m s-1)
 };
 
 template<typename TF>
@@ -64,7 +61,9 @@ class Land_surface
         void load(int);
 
         void exec_soil();
-        void exec_surface(Radiation<TF>&, Thermo<TF>&, Boundary<TF>&);
+        void exec_surface(
+                Radiation<TF>&, Thermo<TF>&, Microphys<TF>&,
+                Boundary<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
@@ -97,6 +96,9 @@ class Land_surface
         std::vector<TF> source;         // Source term (unit s-1)
 
         std::vector<TF> root_fraction;  // Root fraction per soil layer (-)
+
+        std::vector<TF> interception;   // Interception rain/dew by surface (m s-1)
+        std::vector<TF> throughfall;    // Throughfall rain/dew into soil (m s-1)
 
         // Soil cross-sections
         std::vector<std::string> crosslist;

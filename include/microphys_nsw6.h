@@ -66,7 +66,7 @@ class Microphys_nsw6 : public Microphys<TF>
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
-        void get_surface_precip(std::vector<TF>&);
+        void get_surface_rain_rate(std::vector<TF>&);
 
         unsigned long get_time_limit(unsigned long, double);
 

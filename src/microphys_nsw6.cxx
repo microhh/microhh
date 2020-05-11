@@ -1170,7 +1170,7 @@ void Microphys_nsw6<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 }
 
 template<typename TF>
-void Microphys_nsw6<TF>::get_surface_precip(std::vector<TF>& field)
+void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
 {
     // Make a hard copy of the surface rain precipitation field
     field = rr_bot;

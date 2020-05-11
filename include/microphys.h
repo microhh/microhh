@@ -66,7 +66,7 @@ class Microphys
         virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;
 
-        virtual void get_surface_precip(std::vector<TF>&) = 0;
+        virtual void get_surface_rain_rate(std::vector<TF>&) = 0;
 
         #ifdef USECUDA
         // GPU functions and variables.

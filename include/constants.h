@@ -43,11 +43,12 @@ namespace Constants
     template<typename TF> constexpr TF rho_i = 7.e2;          // Density of ice   [kg m-3]
     template<typename TF> constexpr TF sigma_b = 5.67e-8;     // Boltzmann constant [W m-1 K-1]
 
-    // Soil specific constants
+    // Soil / land-surface specific constants
     template<typename TF> constexpr TF rho_C_matrix   = 1.6e6;   // Volumetric soil heat capacity [J m-3 K-1]
     template<typename TF> constexpr TF rho_C_water    = 4.18e6;  // Volumetric water heat capacity [J m-3 K-1]
     template<typename TF> constexpr TF gamma_T_matrix = 3.4293695508945325; //  pow(7.7, 0.4)*pow(2,(1-0.4));  // Heat conductivity soil [J s-1 m-1 K-1]
-    template<typename TF> constexpr TF gamma_T_water  = 0.57;  // Heat conductivity water [J s-1 m-1 K-1]
+    template<typename TF> constexpr TF gamma_T_water  = 0.57;    // Heat conductivity water [J s-1 m-1 K-1]
+    template<typename TF> constexpr TF wlmax = 0.0002;           // Max water depth on vegetation/soil
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)

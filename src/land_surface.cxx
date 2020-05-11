@@ -40,6 +40,8 @@
 #include "thermo.h"
 #include "boundary.h"
 #include "fast_math.h"
+#include "timeloop.h"
+#include "microphys.h"
 
 #include "land_surface.h"
 
@@ -498,6 +500,97 @@ namespace lsm
     }
 
     template<typename TF>
+    void calc_tile_fractions(
+            TF* const restrict tile_frac_veg,
+            TF* const restrict tile_frac_soil,
+            TF* const restrict tile_frac_wet,
+            const TF* const restrict wl,
+            const TF* const restrict c_veg,
+            const TF* const restrict lai,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                const TF wlm = Constants::wlmax<TF> * (TF(1)-c_veg[ij] + c_veg[ij]*lai[ij]);
+
+                tile_frac_wet[ij]  = std::min(TF(1), wl[ij]/wlm);
+                tile_frac_veg[ij]  = (TF(1)-tile_frac_wet[ij]) * c_veg[ij];
+                tile_frac_soil[ij] = (TF(1)-tile_frac_wet[ij]) * (TF(1)-c_veg[ij]);
+            }
+    }
+
+    template<typename TF>
+    void calc_liquid_water_reservoir(
+            TF* const restrict wl_tend,
+            TF* const restrict interception,
+            TF* const restrict throughfall,
+            const TF* const restrict wl,
+            const TF* const restrict LE_veg,
+            const TF* const restrict LE_soil,
+            const TF* const restrict LE_wet,
+            const TF* const restrict tile_frac_veg,
+            const TF* const restrict tile_frac_soil,
+            const TF* const restrict tile_frac_wet,
+            const TF* const restrict rain_rate,
+            const TF* const restrict c_veg,
+            const TF* const restrict lai,
+            const double subdt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const TF intercept_eff = TF(0.5);
+        const TF to_ms  = TF(1) / (Constants::rho_w<TF> * Constants::Lv<TF>);
+        const TF subdti = TF(1) / subdt;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                // Max `wl` accounting for vegetation fraction and LAI
+                const TF wlm = Constants::wlmax<TF> * (TF(1) - c_veg[ij] + c_veg[ij] * lai[ij]);
+
+                // Max and min possible tendencies
+                const TF wl_tend_max = (wlm - wl[ij]) * subdti - wl_tend[ij];
+                const TF wl_tend_min = (    - wl[ij]) * subdti - wl_tend[ij];
+
+                // Tendency due to evaporation from liquid water reservoir/tile.
+                const TF wl_tend_liq = -std::max(TF(0), tile_frac_wet[ij] * LE_wet[ij] * to_ms);
+
+                // Tendency due to dewfall into vegetation/soil/liquid water tiles
+                const TF wl_tend_dew = -( std::min(TF(0), tile_frac_wet[ij]  * LE_wet[ij]  * to_ms)
+                                        + std::min(TF(0), tile_frac_veg[ij]  * LE_veg[ij]  * to_ms)
+                                        + std::min(TF(0), tile_frac_soil[ij] * LE_soil[ij] * to_ms) );
+
+                // Tendency due to interception of precipitation by vegetation
+                // Rain rate is positive downwards, so minus is excluded.
+                const TF wl_tend_precip = intercept_eff * c_veg[ij] * rain_rate[ij];
+
+                // Total and limited tendencies
+                const TF wl_tend_sum = wl_tend_liq + wl_tend_dew + wl_tend_precip;
+                const TF wl_tend_lim = std::min(wl_tend_max, std::max(wl_tend_min,  wl_tend_sum));
+
+                // Diagnose throughfall and interception
+                throughfall[ij] =
+                    -(TF(1)-c_veg[ij]) * rain_rate[ij]
+                    -(TF(1)-intercept_eff) * c_veg[ij] * rain_rate[ij] +
+                    std::min(TF(0), wl_tend_lim - wl_tend_sum);
+
+                interception[ij] = std::max(TF(0), wl_tend_lim);
+
+                wl_tend[ij] += wl_tend_lim;
+            }
+    }
+
+    template<typename TF>
     void calc_resistance_functions(
             TF* const restrict f1,
             TF* const restrict f2,
@@ -653,15 +746,15 @@ namespace lsm
             TF* const restrict qt_bot,
             const TF* const restrict thl,
             const TF* const restrict qt,
-            const TF* const restrict H_low_veg,
-            const TF* const restrict H_bare_soil,
-            const TF* const restrict H_wet_skin,
-            const TF* const restrict LE_low_veg,
-            const TF* const restrict LE_bare_soil,
-            const TF* const restrict LE_wet_skin,
-            const TF* const restrict c_low_veg,
-            const TF* const restrict c_bare_soil,
-            const TF* const restrict c_wet_skin,
+            const TF* const restrict H_veg,
+            const TF* const restrict H_soil,
+            const TF* const restrict H_wet,
+            const TF* const restrict LE_veg,
+            const TF* const restrict LE_soil,
+            const TF* const restrict LE_wet,
+            const TF* const restrict tile_frac_veg,
+            const TF* const restrict tile_frac_soil,
+            const TF* const restrict tile_frac_wet,
             const TF* const restrict ra,
             const TF* const restrict rhorefh,
             const int istart, const int iend,
@@ -681,14 +774,14 @@ namespace lsm
 
                 // Tile averaged surface fluxes
                 const TF wthl = (
-                    c_low_veg  [ij] * H_low_veg  [ij] +
-                    c_bare_soil[ij] * H_bare_soil[ij] +
-                    c_wet_skin [ij] * H_wet_skin [ij] ) * rhocp_i;
+                    tile_frac_veg [ij] * H_veg [ij] +
+                    tile_frac_soil[ij] * H_soil[ij] +
+                    tile_frac_wet [ij] * H_wet [ij] ) * rhocp_i;
 
                 const TF wqt = (
-                    c_low_veg  [ij] * LE_low_veg  [ij] +
-                    c_bare_soil[ij] * LE_bare_soil[ij] +
-                    c_wet_skin [ij] * LE_wet_skin [ij] ) * rholv_i;
+                    tile_frac_veg [ij] * LE_veg [ij] +
+                    tile_frac_soil[ij] * LE_soil[ij] +
+                    tile_frac_wet [ij] * LE_wet [ij] ) * rholv_i;
 
                 // Calculate surface values
                 thl_bot[ij] = thl[ijk] + wthl * ra[ij];
@@ -699,12 +792,12 @@ namespace lsm
     template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld_mean,
-            const TF* const restrict fld_low_veg,
-            const TF* const restrict fld_bare_soil,
-            const TF* const restrict fld_wet_skin,
-            const TF* const restrict c_low_veg,
-            const TF* const restrict c_bare_soil,
-            const TF* const restrict c_wet_skin,
+            const TF* const restrict fld_veg,
+            const TF* const restrict fld_soil,
+            const TF* const restrict fld_wet,
+            const TF* const restrict tile_frac_veg,
+            const TF* const restrict tile_frac_soil,
+            const TF* const restrict tile_frac_wet,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
@@ -716,9 +809,9 @@ namespace lsm
                 const int ij  = i + j*icells;
 
                 fld_mean[ij] =
-                    c_low_veg  [ij] * fld_low_veg  [ij] +
-                    c_bare_soil[ij] * fld_bare_soil[ij] +
-                    c_wet_skin [ij] * fld_wet_skin [ij];
+                    tile_frac_veg [ij] * fld_veg [ij] +
+                    tile_frac_soil[ij] * fld_soil[ij] +
+                    tile_frac_wet [ij] * fld_wet [ij];
             }
     }
 
@@ -726,7 +819,7 @@ namespace lsm
     void scale_tile_with_fraction(
             TF* const restrict fld_scaled,
             const TF* const restrict fld,
-            const TF* const restrict fraction,
+            const TF* const restrict tile_frac,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
@@ -736,7 +829,7 @@ namespace lsm
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                fld_scaled[ij] = fld[ij] * fraction[ij];
+                fld_scaled[ij] = fld[ij] * tile_frac[ij];
             }
     }
 }
@@ -766,9 +859,9 @@ Land_surface<TF>::Land_surface(
         fields.init_prognostic_2d_field("wl");
 
         // Create the land-surface tiles
-        tiles.emplace("low_veg",   Surface_tile<TF>{});
-        tiles.emplace("bare_soil", Surface_tile<TF>{});
-        tiles.emplace("wet_skin",  Surface_tile<TF>{});
+        tiles.emplace("veg",  Surface_tile<TF>{});
+        tiles.emplace("soil", Surface_tile<TF>{});
+        tiles.emplace("wet",  Surface_tile<TF>{});
 
         // Open NetCDF file with soil lookup table
         nc_lookup_table = std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
@@ -795,6 +888,9 @@ void Land_surface<TF>::init()
     // Allocate the surface tiles
     for (auto& tile : tiles)
         lsm::init_tile(tile.second, gd.ijcells);
+    tiles.at("veg" ).long_name = "vegetation";
+    tiles.at("soil").long_name = "bare soil";
+    tiles.at("wet" ).long_name = "wet skin";
 
     gD_coeff.resize(gd.ijcells);
     c_veg.resize(gd.ijcells);
@@ -802,6 +898,9 @@ void Land_surface<TF>::init()
     rs_veg_min.resize(gd.ijcells);
     rs_soil_min.resize(gd.ijcells);
     lambda.resize(gd.ijcells);
+
+    interception.resize(gd.ijcells);
+    throughfall.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -959,7 +1058,7 @@ void Land_surface<TF>::create_fields_grid_stats(
         init_homogeneous(lambda, "lambda");
 
         // Set the canopy resistance of the liquid water tile at zero
-        std::fill(tiles.at("wet_skin").rs.begin(), tiles.at("wet_skin").rs.begin()+agd.ijcells, 0.);
+        std::fill(tiles.at("wet").rs.begin(), tiles.at("wet").rs.begin()+agd.ijcells, 0.);
     }
 
     // Read lookup table soil
@@ -982,14 +1081,14 @@ void Land_surface<TF>::create_fields_grid_stats(
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), lookup_table_size);
 
-    // HACK (temporary..): fix the tile fractions
-    const TF c_veg_in = input.get_item<TF>("land_surface", "c_veg", "");
-    std::fill(tiles.at("wet_skin" ).fraction.begin(),
-            tiles.at("wet_skin" ).fraction.begin()+agd.ijcells, TF(0));
-    std::fill(tiles.at("low_veg"  ).fraction.begin(),
-            tiles.at("low_veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
-    std::fill(tiles.at("bare_soil").fraction.begin(),
-            tiles.at("bare_soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
+    //// HACK (temporary..): fix the tile fractions
+    //const TF c_veg_in = input.get_item<TF>("land_surface", "c_veg", "");
+    //std::fill(tiles.at("wet" ).fraction.begin(),
+    //        tiles.at("wet" ).fraction.begin()+agd.ijcells, TF(0));
+    //std::fill(tiles.at("veg"  ).fraction.begin(),
+    //        tiles.at("veg"  ).fraction.begin()+agd.ijcells, c_veg_in);
+    //std::fill(tiles.at("soil").fraction.begin(),
+    //        tiles.at("soil").fraction.begin()+agd.ijcells, TF(1-c_veg_in));
 
     // Init the soil statistics
     if (stats.get_switch())
@@ -1035,23 +1134,23 @@ void Land_surface<TF>::create_fields_grid_stats(
         for (auto& tile : tiles)
         {
             name = "c_" + tile.first;
-            desc = tile.first + " tile fraction";
+            desc = "Tile fraction " + tile.second.long_name;
             stats.add_time_series(name, desc, "-", group_name);
 
             name = "H_" + tile.first;
-            desc = tile.first + " sensible heat flux";
+            desc = "Sensible heat flux " + tile.second.long_name;
             stats.add_time_series(name, desc, "W m-2", group_name);
 
             name = "LE_" + tile.first;
-            desc = tile.first + " latent heat flux";
+            desc = "Latent heat flux " + tile.second.long_name;
             stats.add_time_series(name, desc, "W m-2", group_name);
 
             name = "G_" + tile.first;
-            desc = tile.first + " soil heat flux";
+            desc = "Soil heat flux " + tile.second.long_name;
             stats.add_time_series(name, desc, "W m-2", group_name);
 
             name = "rs_" + tile.first;
-            desc = tile.first + " surface resistance";
+            desc = "Surface resistance " + tile.second.long_name;
             stats.add_time_series(name, desc, "s m-1", group_name);
         }
     }
@@ -1112,12 +1211,12 @@ void Land_surface<TF>::exec_soil()
     // Bottom = zero flux.
     lsm::calc_tiled_mean(
             tmp1->fld_bot.data(),
-            tiles.at("low_veg").G.data(),
-            tiles.at("bare_soil").G.data(),
-            tiles.at("wet_skin").G.data(),
-            tiles.at("low_veg").fraction.data(),
-            tiles.at("bare_soil").fraction.data(),
-            tiles.at("wet_skin").fraction.data(),
+            tiles.at("veg").G.data(),
+            tiles.at("soil").G.data(),
+            tiles.at("wet").G.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             agd.icells);
@@ -1196,8 +1295,8 @@ void Land_surface<TF>::exec_soil()
     // Bottom = optionally free drainage (or else closed)
     lsm::scale_tile_with_fraction(
             tmp1->fld_bot.data(),
-            tiles.at("bare_soil").LE.data(),
-            tiles.at("bare_soil").fraction.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("soil").fraction.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             agd.icells);
@@ -1226,8 +1325,8 @@ void Land_surface<TF>::exec_soil()
     // Calculate root water extraction
     lsm::scale_tile_with_fraction(
             tmp1->fld_bot.data(),
-            tiles.at("low_veg").LE.data(),
-            tiles.at("low_veg").fraction.data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("veg").fraction.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             agd.icells);
@@ -1265,7 +1364,8 @@ void Land_surface<TF>::exec_soil()
 
 template<typename TF>
 void Land_surface<TF>::exec_surface(
-        Radiation<TF>& radiation, Thermo<TF>& thermo, Boundary<TF>& boundary)
+        Radiation<TF>& radiation, Thermo<TF>& thermo, Microphys<TF>& microphys,
+        Boundary<TF>& boundary, Timeloop<TF>& timeloop)
 {
     if (!sw_land_surface)
         return;
@@ -1292,19 +1392,6 @@ void Land_surface<TF>::exec_surface(
 
     TF* theta_mean_n = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
 
-    // Calculate root fraction weighted mean soil water content
-    soil::calc_root_weighted_mean_theta(
-            theta_mean_n,
-            fields.sps.at("theta")->fld.data(),
-            soil_index.data(),
-            root_fraction.data(),
-            theta_wp.data(),
-            theta_fc.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            sgd.kstart, sgd.kend,
-            agd.icells, agd.ijcells);
-
     // Get required thermo fields in 2D slices of tmp field.
     thermo.get_land_surface_fields(*tmp2);
 
@@ -1319,6 +1406,23 @@ void Land_surface<TF>::exec_surface(
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
     boundary.get_ra(*tmp1);
     TF* ra = tmp1->flux_bot.data();
+
+    // Get surface precipitation
+    microphys.get_surface_rain_rate(tmp1->fld_bot);
+    TF* rain_rate = tmp1->fld_bot.data();
+
+    // Calculate root fraction weighted mean soil water content
+    soil::calc_root_weighted_mean_theta(
+            theta_mean_n,
+            fields.sps.at("theta")->fld.data(),
+            soil_index.data(),
+            root_fraction.data(),
+            theta_wp.data(),
+            theta_fc.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kstart, sgd.kend,
+            agd.icells, agd.ijcells);
 
     // Calculate vegetation/soil resistance functions `f`
     lsm::calc_resistance_functions(
@@ -1340,7 +1444,7 @@ void Land_surface<TF>::exec_surface(
 
     // Calculate canopy resistance per tile
     lsm::calc_canopy_resistance(
-            tiles.at("low_veg").rs.data(),
+            tiles.at("veg").rs.data(),
             rs_veg_min.data(), lai.data(),
             f1, f2, f3,
             agd.istart, agd.iend,
@@ -1348,7 +1452,7 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     lsm::calc_soil_resistance(
-            tiles.at("bare_soil").rs.data(),
+            tiles.at("soil").rs.data(),
             rs_soil_min.data(), f2b,
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
@@ -1371,23 +1475,52 @@ void Land_surface<TF>::exec_surface(
                 agd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
 
+    // Calculate dynamic tile fractions
+    lsm::calc_tile_fractions(
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            fields.ap2d.at("wl").data(),
+            c_veg.data(),
+            lai.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
+    // Calculate changes in the liquid water reservoir
+    const double subdt = timeloop.get_sub_time_step();
+
+    lsm::calc_liquid_water_reservoir(
+            fields.at2d.at("wl").data(),
+            interception.data(),
+            throughfall.data(),
+            fields.ap2d.at("wl").data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("wet").LE.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            rain_rate, c_veg.data(), lai.data(), subdt,
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+
     // Solve bottom boundary condition back
-    // NOTE: THIS SHOULD BE CALLED FROM SOMEWHERE ELSE,
-    // NOT IN THE MIDDLE OF THE TIME LOOP........
     lsm::calc_bcs(
             fields.sp.at("thl")->fld_bot.data(),
             fields.sp.at("qt")->fld_bot.data(),
             fields.sp.at("thl")->fld.data(),
             fields.sp.at("qt")->fld.data(),
-            tiles.at("low_veg").H.data(),
-            tiles.at("bare_soil").H.data(),
-            tiles.at("wet_skin").H.data(),
-            tiles.at("low_veg").LE.data(),
-            tiles.at("bare_soil").LE.data(),
-            tiles.at("wet_skin").LE.data(),
-            tiles.at("low_veg").fraction.data(),
-            tiles.at("bare_soil").fraction.data(),
-            tiles.at("wet_skin").fraction.data(),
+            tiles.at("veg").H.data(),
+            tiles.at("soil").H.data(),
+            tiles.at("wet").H.data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("wet").LE.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
             ra, rhorefh.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
