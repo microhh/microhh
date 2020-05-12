@@ -154,7 +154,15 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
             nc_check_code = nc_open(name.c_str(), NC_NOWRITE | NC_NETCDF4, &ncid);
     }
 
-    nc_check(master, nc_check_code, mpiid_to_write);
+    try
+    {
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        std::string error = "Opening of file " + name + " returned: " + e.what();
+        throw std::runtime_error(error);
+    }
 
     root_ncid = ncid;
 
