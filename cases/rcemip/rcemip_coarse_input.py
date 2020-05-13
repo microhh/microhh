@@ -155,6 +155,7 @@ with open('rcemip.ini') as f:
 z1 = np.array([37., 112., 194., 288., 395., 520., 667., 843., 1062., 1331., 1664., 2055., 2505., 3000.]);
 z2 = np.arange(3500., 33001., 500.)
 z = np.concatenate((z1, z2))
+z = z[:-2]
 zh = 0.5*(z[:-1] + z[1:])
 zh = np.append(0., zh)
 zh = np.append(zh, zsize)

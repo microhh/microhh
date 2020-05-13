@@ -1,3 +1,25 @@
+/*
+ * MicroHH
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
+ *
+ * This file is part of MicroHH
+ *
+ * MicroHH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * MicroHH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <iostream>
 #include <map>
 #include <numeric>
@@ -132,7 +154,15 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
             nc_check_code = nc_open(name.c_str(), NC_NOWRITE | NC_NETCDF4, &ncid);
     }
 
-    nc_check(master, nc_check_code, mpiid_to_write);
+    try
+    {
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        std::string error = "Opening of file " + name + " returned: " + e.what();
+        throw std::runtime_error(error);
+    }
 
     root_ncid = ncid;
 
