@@ -958,7 +958,7 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    const bool do_radiation = (timeloop.get_itime() % idt_rad == 0);
+    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
     {
