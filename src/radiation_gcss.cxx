@@ -328,7 +328,7 @@ Radiation_gcss<TF>::~Radiation_gcss()
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::init(Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::init(const double ifactor)
 {
 }
 

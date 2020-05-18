@@ -659,15 +659,11 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 }
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
+void Radiation_rrtmgp<TF>::init(const double ifactor)
 {
     auto& gd = grid.get_grid_data();
 
-    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
-
-    // Check if the restart time is dividable by `dt_rad`
-    if (timeloop.get_isavetime() % idt_rad != 0)
-        throw std::runtime_error("Save time of restart files is not an integer multiplication of dt_rad");
+    idt_rad = static_cast<unsigned long>(ifactor * dt_rad + 0.5);
 
     // Resize surface radiation fields
     lw_flux_dn_sfc.resize(gd.ijcells);
