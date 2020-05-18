@@ -54,6 +54,8 @@ class Radiation_gcss : public Radiation<TF>
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
+        unsigned long get_time_limit(unsigned long);
+
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
 

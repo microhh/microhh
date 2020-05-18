@@ -53,6 +53,8 @@ class Radiation_disabled : public Radiation<TF>
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) {};
 
+        unsigned long get_time_limit(unsigned long);
+
         // Empty functions that should throw
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&){throw 1;};
 

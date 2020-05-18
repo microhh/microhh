@@ -20,6 +20,7 @@
  */
 
 #include "radiation_disabled.h"
+#include "constants.h"
 
 template<typename TF>
 Radiation_disabled<TF>::Radiation_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -31,6 +32,12 @@ Radiation_disabled<TF>::Radiation_disabled(Master& masterin, Grid<TF>& gridin, F
 template<typename TF>
 Radiation_disabled<TF>::~Radiation_disabled()
 {
+}
+
+template<typename TF>
+unsigned long Radiation_disabled<TF>::get_time_limit(unsigned long itime)
+{
+    return Constants::ulhuge;
 }
 
 template<typename TF>
