@@ -674,6 +674,13 @@ void Radiation_rrtmgp<TF>::init(const double ifactor)
 }
 
 template<typename TF>
+unsigned long Radiation_rrtmgp<TF>::get_time_limit(unsigned long itime)
+{
+    unsigned long idtlim = idt_rad - itime % idt_rad;
+    return idtlim;
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
@@ -1011,7 +1018,7 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    const bool do_radiation = (timeloop.get_itime() % idt_rad == 0);
+    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
     {

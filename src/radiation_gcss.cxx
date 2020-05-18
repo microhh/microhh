@@ -344,6 +344,12 @@ void Radiation_gcss<TF>::create(
     create_cross(cross);
 }
 
+template<typename TF>
+unsigned long Radiation_gcss<TF>::get_time_limit(unsigned long itime)
+{
+    return Constants::ulhuge;
+}
+
 #ifndef USECUDA
 template<typename TF>
 void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)

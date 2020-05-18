@@ -14,15 +14,13 @@
 #####
 # Intel Compiler (in all other cases):
 # module purge
-# module load eb (Use the new software development and installation framework EasyBuild, currently implemented by SURFsara)
 # module load surfsara
-# module load intel/2018a
-# module load CMake/3.7.2-intel-2016b (Loads as well the MPI and Intel Compiler)
-# module load cuDNN/7.0.5-CUDA-9.0.176 (Loads CUDA as well,cuDNN needed for Tensorflow-gpu)
-# module load netCDF/4.4.1.1-intel-2016b (Loads as well HDF5,cURL,sZIP)
-# module load netCDF-C++4/4.3.0-intel-2016b
-# module load FFTW/3.3.5-intel-2016b
-# module load Doxygen/1.8.11-intel-2016b
+# module load compilerwrappers
+# module load 2019
+# module load CMake
+# module load intel/2018b
+# module load netCDF/4.6.1-intel-2018b
+# module load FFTW/3.3.8-intel-2018b
 
 # Use "lfs setstripe -c 50" in empty directories if large files need to be
 # written with MPI-IO. It hugely increases the IO performance.
