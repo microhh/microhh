@@ -47,7 +47,7 @@ class Radiation_disabled : public Radiation<TF>
         virtual ~Radiation_disabled();
 
         bool check_field_exists(std::string name);
-        void init(const double) {};
+        void init(Timeloop<TF>&) {};
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
