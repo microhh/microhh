@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2019 Chiel van Heerwaarden
- * Copyright (c) 2011-2019 Thijs Heus
- * Copyright (c) 2014-2019 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -183,7 +183,7 @@ void Model<TF>::init()
     force->init();
     thermo->init();
     microphys->init();
-    radiation->init(timeloop->get_ifactor());
+    radiation->init(*timeloop);
     decay->init(*input);
     budget->init();
 
@@ -678,6 +678,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(radiation->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));

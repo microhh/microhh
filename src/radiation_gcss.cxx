@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2018 Chiel van Heerwaarden
- * Copyright (c) 2011-2018 Thijs Heus
- * Copyright (c) 2014-2018 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  * Copyright (c) 2018-2019 Elynn Wu
  *
  * This file is part of MicroHH
@@ -328,7 +328,7 @@ Radiation_gcss<TF>::~Radiation_gcss()
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::init(const double ifactor)
+void Radiation_gcss<TF>::init(Timeloop<TF>& timeloop)
 {
 }
 
@@ -342,6 +342,12 @@ void Radiation_gcss<TF>::create(
     create_column(column);
     create_dump(dump);
     create_cross(cross);
+}
+
+template<typename TF>
+unsigned long Radiation_gcss<TF>::get_time_limit(unsigned long itime)
+{
+    return Constants::ulhuge;
 }
 
 #ifndef USECUDA

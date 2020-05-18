@@ -48,11 +48,13 @@ class Radiation_gcss : public Radiation<TF>
     public:
         Radiation_gcss(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_gcss();
-        void init(const double);
+        void init(Timeloop<TF>&);
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
+
+        unsigned long get_time_limit(unsigned long);
 
         bool check_field_exists(std::string name);
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);

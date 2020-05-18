@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2019 Chiel van Heerwaarden
-#  Copyright (c) 2011-2019 Thijs Heus
-#  Copyright (c) 2014-2019 Bart van Stratum
+#  Copyright (c) 2011-2020 Chiel van Heerwaarden
+#  Copyright (c) 2011-2020 Thijs Heus
+#  Copyright (c) 2014-2020 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -19,6 +19,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
+
 cmake_minimum_required (VERSION 2.8.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2019 Chiel van Heerwaarden
- * Copyright (c) 2011-2019 Thijs Heus
- * Copyright (c) 2014-2019 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -638,9 +638,20 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 }
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::init(const double ifactor)
+void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 {
-    idt_rad = static_cast<unsigned long>(ifactor * dt_rad + 0.5);
+    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+
+    // Check if restarttime is dividable by dt_rad
+    if (timeloop.get_isavetime() % idt_rad != 0)
+        throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
+}
+
+template<typename TF>
+unsigned long Radiation_rrtmgp<TF>::get_time_limit(unsigned long itime)
+{
+    unsigned long idtlim = idt_rad - itime % idt_rad;
+    return idtlim;
 }
 
 template<typename TF>
@@ -981,7 +992,7 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    const bool do_radiation = (timeloop.get_itime() % idt_rad == 0);
+    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
     {

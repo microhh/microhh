@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FIELD3D
-#define FIELD3D
+#ifndef FIELD3D_H
+#define FIELD3D_H
 
 #include <string>
 #include <vector>

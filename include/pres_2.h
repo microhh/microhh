@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2020 Chiel van Heerwaarden
+ * Copyright (c) 2011-2020 Thijs Heus
+ * Copyright (c) 2014-2020 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PRES_2
-#define PRES_2
+#ifndef PRES_2_H
+#define PRES_2_H
 
 #include "pres.h"
 #include "defines.h"
