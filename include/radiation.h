@@ -49,7 +49,7 @@ class Radiation
         std::string get_switch();
 
         //functions that the derived class has to implement
-        virtual void init(const double) = 0;
+        virtual void init(Timeloop<TF>&) = 0;
         virtual void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;

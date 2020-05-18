@@ -604,9 +604,13 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 }
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::init(const double ifactor)
+void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 {
-    idt_rad = static_cast<unsigned long>(ifactor * dt_rad + 0.5);
+    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+
+    // Check if restarttime is dividable by dt_rad
+    if (timeloop.get_isavetime() % idt_rad != 0)
+        throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
 }
 
 template<typename TF>
@@ -646,7 +650,7 @@ void Radiation_rrtmgp<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_up");
         allowed_crossvars_radiation.push_back("sw_flux_dn");
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
-        
+
         if (sw_clear_sky_stats)
         {
             allowed_crossvars_radiation.push_back("sw_flux_up_clear");

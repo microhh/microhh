@@ -75,12 +75,13 @@ class Timeloop
         bool is_finished();
 
         // Accessors for other classes
-        double get_time() const { return time;    }
-        double get_dt() const { return dt;      }
+        double get_time() const { return time; }
+        double get_dt() const { return dt; }
         double get_ifactor() const { return ifactor; }
         unsigned long get_itime() const { return itime; }
-        unsigned long get_idt() const { return idt;   }
-        int get_iotime() const { return iotime;    }
+        unsigned long get_idt() const { return idt; }
+        unsigned long get_isavetime() const { return isavetime; }
+        int get_iotime() const { return iotime; }
         int get_iteration() const { return iteration; }
 
         // Functions for UTC time support.
