@@ -1230,19 +1230,8 @@ void Land_surface<TF>::exec_soil()
             agd.icells, agd.ijcells);
 
     // Set flux boundary conditions at top and bottom of soil column
-    // Top = soil heat flux (G) averaged over all tiles
-    // Bottom = zero flux.
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").G.data(),
-            tiles.at("soil").G.data(),
-            tiles.at("wet").G.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
+    get_tiled_mean(tmp1->fld_bot, "G");
 
     soil::set_bcs_temperature(
             fields.sps.at("t")->flux_top.data(),
@@ -1567,43 +1556,13 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
     // Non-tiled variables
     stats.calc_stats_2d("wl", fields.ap2d.at("wl"), offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").H.data(),
-            tiles.at("soil").H.data(),
-            tiles.at("wet").H.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "H");
     stats.calc_stats_2d("H", tmp1->fld_bot, offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").LE.data(),
-            tiles.at("soil").LE.data(),
-            tiles.at("wet").LE.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "LE");
     stats.calc_stats_2d("LE", tmp1->fld_bot, offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").G.data(),
-            tiles.at("soil").G.data(),
-            tiles.at("wet").G.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "G");
     stats.calc_stats_2d("G", tmp1->fld_bot, offset);
 
     // Tiled variables
@@ -1633,43 +1592,13 @@ void Land_surface<TF>::exec_column(Column<TF>& column)
     // Non-tiled variables
     column.calc_time_series("wl", fields.ap2d.at("wl").data(), offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").H.data(),
-            tiles.at("soil").H.data(),
-            tiles.at("wet").H.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "H");
     column.calc_time_series("H", tmp1->fld_bot.data(), offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").LE.data(),
-            tiles.at("soil").LE.data(),
-            tiles.at("wet").LE.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "LE");
     column.calc_time_series("LE", tmp1->fld_bot.data(), offset);
 
-    lsm::calc_tiled_mean(
-            tmp1->fld_bot.data(),
-            tiles.at("veg").G.data(),
-            tiles.at("soil").G.data(),
-            tiles.at("wet").G.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            agd.istart, agd.iend,
-            agd.jstart, agd.jend,
-            agd.icells);
+    get_tiled_mean(tmp1->fld_bot, "G");
     column.calc_time_series("G", tmp1->fld_bot.data(), offset);
 
     fields.release_tmp(tmp1);
@@ -1687,6 +1616,57 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_soil(fields.sps.at("t")->fld.data(), it, iotime);
         else if (it == "theta_soil")
             cross.cross_soil(fields.sps.at("theta")->fld.data(), it, iotime);
+    }
+}
+
+template<typename TF>
+void Land_surface<TF>::get_tiled_mean(std::vector<TF>& mean, std::string name)
+{
+    auto& agd = grid.get_grid_data();
+
+    if (name == "H")
+        lsm::calc_tiled_mean(
+                mean.data(),
+                tiles.at("veg").H.data(),
+                tiles.at("soil").H.data(),
+                tiles.at("wet").H.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.icells);
+
+    else if (name == "LE")
+        lsm::calc_tiled_mean(
+                mean.data(),
+                tiles.at("veg").LE.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("wet").LE.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.icells);
+
+    else if (name == "G")
+        lsm::calc_tiled_mean(
+                mean.data(),
+                tiles.at("veg").G.data(),
+                tiles.at("soil").G.data(),
+                tiles.at("wet").G.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.icells);
+
+    else
+    {
+        std::string err = "Cannot get tiled mean of variable \"" + name + "\"";
+        throw std::runtime_error(err);
     }
 }
 

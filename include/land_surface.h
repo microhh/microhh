@@ -81,6 +81,8 @@ class Land_surface
         bool sw_homogeneous;
         bool sw_free_drainage;
 
+        void get_tiled_mean(std::vector<TF>&, std::string);
+
         // Land-surface properties
         Tile_map<TF> tiles;
         std::vector<TF> gD_coeff;                // Coefficient in response surface to VPD (Pa)
