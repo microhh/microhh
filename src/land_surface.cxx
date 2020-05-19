@@ -864,6 +864,8 @@ Land_surface<TF>::Land_surface(
         if (!sw_homogeneous)
             throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
 
+
+
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
         fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");

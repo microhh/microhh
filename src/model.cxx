@@ -344,6 +344,8 @@ void Model<TF>::exec()
                 // Calculate Monin-Obukhov parameters (L, u*).
                 boundary->calc_mo_stability(*thermo);
                 boundary->calc_mo_bcs_momentum(*thermo);
+                if (!lsm->get_switch())
+                    boundary->calc_mo_bcs_scalars(*thermo);
                 boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
@@ -376,7 +378,8 @@ void Model<TF>::exec()
                 lsm->exec_soil();
 
                 // Update surface properties.
-                boundary->calc_mo_bcs_scalars(*thermo);
+                if (lsm->get_switch())
+                    boundary->calc_mo_bcs_scalars(*thermo);
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();

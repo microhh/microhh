@@ -57,6 +57,8 @@ class Land_surface
         void create_cold_start(Input&, Netcdf_handle&);
         void create_fields_grid_stats(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&);
 
+        bool get_switch() { return sw_land_surface; }
+
         void save(int);
         void load(int);
 
