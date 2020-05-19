@@ -51,7 +51,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 		bool check_field_exists(std::string name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
 
-        void init(const double);
+        void init(Timeloop<TF>&);
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);

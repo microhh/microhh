@@ -48,7 +48,7 @@ class Radiation_gcss : public Radiation<TF>
     public:
         Radiation_gcss(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_gcss();
-        void init(const double);
+        void init(Timeloop<TF>&);
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
