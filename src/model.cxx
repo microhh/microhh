@@ -443,12 +443,12 @@ void Model<TF>::exec()
 
                     if (column->do_column(itime))
                     {
-                        fields->exec_column(*column);
-                        thermo->exec_column(*column);
+                        fields   ->exec_column(*column);
+                        thermo   ->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
-                        boundary->exec_column(*column);
-
-                        column->exec(iter, time, itime);
+                        boundary ->exec_column(*column);
+                        lsm      ->exec_column(*column);
+                        column   ->exec(iter, time, itime);
                     }
 
                 }

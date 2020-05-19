@@ -33,6 +33,7 @@
 #include "soil_field3d.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "constants.h"
 #include "netcdf_interface.h"
 #include "constants.h"
@@ -1137,6 +1138,9 @@ void Land_surface<TF>::create_fields_grid_stats(
 
         // Non-tiled variables
         stats.add_time_series("wl", "Liquid water reservoir", "m", group_name);
+        stats.add_time_series("H",  "Sensible heat flux", "W m-2", group_name);
+        stats.add_time_series("LE", "Latent heat flux", "W m-2", group_name);
+        stats.add_time_series("G",  "Soil heat flux", "W m-2", group_name);
 
         // Tiled variables
         std::string name;
@@ -1163,6 +1167,15 @@ void Land_surface<TF>::create_fields_grid_stats(
             desc = "Surface resistance " + tile.second.long_name;
             stats.add_time_series(name, desc, "s m-1", group_name);
         }
+    }
+
+    // Init the column statistics time series
+    if (column.get_switch())
+    {
+        column.add_time_series("wl", "Liquid water reservoir", "m");
+        column.add_time_series("H",  "Sensible heat flux", "W m-2");
+        column.add_time_series("LE", "Latent heat flux", "W m-2");
+        column.add_time_series("G",  "Soil heat flux", "W m-2");
     }
 
     // Init the soil cross-sections
@@ -1544,6 +1557,8 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
         return;
 
     const TF offset = 0;
+    auto& agd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
 
     // Soil prognostic fields
     stats.calc_stats_soil("t",     fields.sps.at("t")->fld,     offset);
@@ -1551,6 +1566,45 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
 
     // Non-tiled variables
     stats.calc_stats_2d("wl", fields.ap2d.at("wl"), offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").H.data(),
+            tiles.at("soil").H.data(),
+            tiles.at("wet").H.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    stats.calc_stats_2d("H", tmp1->fld_bot, offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("wet").LE.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    stats.calc_stats_2d("LE", tmp1->fld_bot, offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").G.data(),
+            tiles.at("soil").G.data(),
+            tiles.at("wet").G.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    stats.calc_stats_2d("G", tmp1->fld_bot, offset);
 
     // Tiled variables
     std::string name;
@@ -1562,6 +1616,63 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
         stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
     }
+
+    fields.release_tmp(tmp1);
+}
+
+template<typename TF>
+void Land_surface<TF>::exec_column(Column<TF>& column)
+{
+    if (!sw_land_surface)
+        return;
+
+    const TF offset = 0;
+    auto& agd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
+
+    // Non-tiled variables
+    column.calc_time_series("wl", fields.ap2d.at("wl").data(), offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").H.data(),
+            tiles.at("soil").H.data(),
+            tiles.at("wet").H.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    column.calc_time_series("H", tmp1->fld_bot.data(), offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("wet").LE.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    column.calc_time_series("LE", tmp1->fld_bot.data(), offset);
+
+    lsm::calc_tiled_mean(
+            tmp1->fld_bot.data(),
+            tiles.at("veg").G.data(),
+            tiles.at("soil").G.data(),
+            tiles.at("wet").G.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            agd.icells);
+    column.calc_time_series("G", tmp1->fld_bot.data(), offset);
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>

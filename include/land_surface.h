@@ -68,6 +68,7 @@ class Land_surface
                 Radiation<TF>&, Thermo<TF>&, Microphys<TF>&,
                 Boundary<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
+        void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
     private:
