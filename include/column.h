@@ -46,12 +46,12 @@ class Column
         void exec(int, double, unsigned long);
         bool do_column(unsigned long);
 
-
         // Interface functions.
         void add_prof(std::string, std::string, std::string, std::string);
-        void calc_column(std::string, const TF* const,
-                       const TF);
+        void add_time_series(std::string, std::string, std::string);
 
+        void calc_column(std::string, const TF* const, const TF);
+        void calc_time_series(std::string, const TF* const, const TF);
 
     private:
         // Struct for profiles.
@@ -61,7 +61,15 @@ class Column
             std::vector<TF> data;
         };
 
+        // Struct for time series.
+        struct Time_var
+        {
+            Netcdf_variable<TF> ncvar;
+            TF data;
+        };
+
         using Prof_map = std::map<std::string, Prof_var>;
+        using Time_map = std::map<std::string, Time_var>;
 
         // Structure for columns.
         struct Column_struct
@@ -71,6 +79,7 @@ class Column
             std::unique_ptr<Netcdf_variable<int>> iter_var;
             std::unique_ptr<Netcdf_variable<TF>> time_var;
             Prof_map profs;
+            Time_map time_series;
         };
 
         std::vector<Column_struct> columns;

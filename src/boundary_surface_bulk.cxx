@@ -141,7 +141,8 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Boundary_surface_bulk<TF>::create(
+        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
 {
     const std::string group_name = "default";
 
@@ -224,6 +225,11 @@ void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::exec_column(Column<TF>& column)
+{
 }
 
 template<typename TF>

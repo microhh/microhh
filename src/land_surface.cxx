@@ -864,8 +864,6 @@ Land_surface<TF>::Land_surface(
         if (!sw_homogeneous)
             throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
 
-
-
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
         fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");
@@ -1018,7 +1016,8 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
 
 template<typename TF>
 void Land_surface<TF>::create_fields_grid_stats(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross, Column<TF>& column)
 {
     /*
        Create/set the non-prognostic fields (soil type, ...) from the input files,

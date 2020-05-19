@@ -37,6 +37,7 @@
 #include "thermo.h"
 #include "master.h"
 #include "cross.h"
+#include "column.h"
 #include "monin_obukhov.h"
 
 namespace
@@ -447,7 +448,8 @@ Boundary_surface<TF>::~Boundary_surface()
 }
 
 template<typename TF>
-void Boundary_surface<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Boundary_surface<TF>::create(
+        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
 {
     const std::string group_name = "default";
     Boundary<TF>::process_time_dependent(input, input_nc);
@@ -457,6 +459,12 @@ void Boundary_surface<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<T
     {
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
+    }
+
+    if (column.get_switch())
+    {
+        column.add_time_series("ustar", "Surface friction velocity", "m s-1");
+        column.add_time_series("obuk", "Obukhov length", "m");
     }
 }
 
@@ -609,6 +617,14 @@ void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
+}
+
+template<typename TF>
+void Boundary_surface<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("obuk", obuk.data(), no_offset);
+    column.calc_time_series("ustar", ustar.data(), no_offset);
 }
 
 template<typename TF>

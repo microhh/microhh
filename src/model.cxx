@@ -242,12 +242,12 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
-    boundary->create(*input, *input_nc, *stats);
+    boundary->create(*input, *input_nc, *stats, *column);
     boundary->set_values();
 
     // Load the prognostic soil fields, and create/init soil
     lsm->load(timeloop->get_iotime());
-    lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross);
+    lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross, *column);
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);
@@ -446,6 +446,8 @@ void Model<TF>::exec()
                         fields->exec_column(*column);
                         thermo->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
+                        boundary->exec_column(*column);
+
                         column->exec(iter, time, itime);
                     }
 

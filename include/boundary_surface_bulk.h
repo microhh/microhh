@@ -36,7 +36,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         ~Boundary_surface_bulk();
 
         void init(Input&, Thermo<TF>&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
         void set_values();
         void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
 
@@ -45,6 +45,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         void calc_mo_bcs_scalars(Thermo<TF>&);
 
         void exec_stats(Stats<TF>&);
+        void exec_column(Column<TF>&);
         void exec_cross(int);
 
         using Boundary<TF>::ustar;

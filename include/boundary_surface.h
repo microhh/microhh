@@ -36,7 +36,7 @@ class Boundary_surface : public Boundary<TF>
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
         void set_values();
         void get_ra(Field3d<TF>&);
 
@@ -45,6 +45,8 @@ class Boundary_surface : public Boundary<TF>
         void calc_mo_bcs_scalars(Thermo<TF>&);
 
         void exec_stats(Stats<TF>&);
+        void exec_column(Column<TF>&);
+
         void exec_cross(int);
 
         using Boundary<TF>::ustar;
