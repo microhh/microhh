@@ -31,6 +31,7 @@
 #include "diff.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -568,7 +569,9 @@ void Microphys_2mom_warm<TF>::init()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_2mom_warm<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
     const std::string group_name = "thermo";
 
@@ -609,6 +612,12 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, St
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("nr") , "z", tend_name, tend_longname);
+    }
+
+    // Add variables to column statistics
+    if (column.get_switch())
+    {
+        column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -919,6 +928,13 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         fields.release_tmp(thlt);
         fields.release_tmp(qtt );
     }
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot.data(), no_offset);
 }
 
 template<typename TF>

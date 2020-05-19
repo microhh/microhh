@@ -54,11 +54,12 @@ class Microphys
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(Thermo<TF>&, const double, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
+        virtual void exec_column(Column<TF>&) = 0;
 
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;

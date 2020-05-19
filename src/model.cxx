@@ -256,7 +256,7 @@ void Model<TF>::load()
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
 
-    microphys->create(*input, *input_nc, *stats, *cross, *dump);
+    microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
@@ -448,9 +448,9 @@ void Model<TF>::exec()
                         radiation->exec_column(*column, *thermo, *timeloop);
                         boundary ->exec_column(*column);
                         lsm      ->exec_column(*column);
+                        microphys->exec_column(*column);
                         column   ->exec(iter, time, itime);
                     }
-
                 }
 
                 // Exit the simulation when the runtime has been hit.

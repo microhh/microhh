@@ -30,6 +30,7 @@
 #include "diff.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -942,7 +943,9 @@ void Microphys_nsw6<TF>::init()
 }
 
 template<typename TF>
-void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_nsw6<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
     const std::string group_name = "thermo";
 
@@ -959,6 +962,13 @@ void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<T
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+    }
+
+    if (column.get_switch())
+    {
+        column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
+        column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
+        column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -1072,6 +1082,15 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     stats.calc_stats_2d("rr", rr_bot, no_offset);
     stats.calc_stats_2d("rs", rs_bot, no_offset);
     stats.calc_stats_2d("rg", rg_bot, no_offset);
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot.data(), no_offset);
+    column.calc_time_series("rs", rs_bot.data(), no_offset);
+    column.calc_time_series("rg", rg_bot.data(), no_offset);
 }
 
 template<typename TF>
