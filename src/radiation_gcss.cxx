@@ -515,7 +515,7 @@ void Radiation_gcss<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo, Tim
 
 template<typename TF>
 void Radiation_gcss<TF>::exec_all_stats(
-        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column,
         Thermo<TF>& thermo, Timeloop<TF>& timeloop,
         const unsigned long itime, const int iotime)
 {

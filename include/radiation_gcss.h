@@ -63,7 +63,7 @@ class Radiation_gcss : public Radiation<TF>
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
         void exec_all_stats(
-                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
 

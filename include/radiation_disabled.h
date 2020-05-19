@@ -67,7 +67,7 @@ class Radiation_disabled : public Radiation<TF>
         // void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
 
         void exec_all_stats(
-                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) {};
 

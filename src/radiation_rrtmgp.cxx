@@ -32,6 +32,7 @@
 #include "netcdf_interface.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "constants.h"
 #include "timeloop.h"
 
@@ -701,7 +702,7 @@ void Radiation_rrtmgp<TF>::create(
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
 
     // Create the gas optics solver that is needed for the column and model solver.
-    create_solver(input, input_nc, thermo, stats);
+    create_solver(input, input_nc, thermo, stats, column);
 
     // Solve the reference column to compute upper boundary conditions.
     create_column(input, input_nc, thermo, stats);
@@ -944,7 +945,8 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_solver(
-        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column)
 {
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle& rad_input_nc = input_nc.get_group("init");
@@ -952,14 +954,15 @@ void Radiation_rrtmgp<TF>::create_solver(
 
     // 2. Pass the gas concentrations to the solver initializers.
     if (sw_longwave)
-        create_solver_longwave(input, input_nc, thermo, stats, gas_concs);
+        create_solver_longwave(input, input_nc, thermo, stats, column, gas_concs);
     if (sw_shortwave)
-        create_solver_shortwave(input, input_nc, thermo, stats, gas_concs);
+        create_solver_shortwave(input, input_nc, thermo, stats, column, gas_concs);
 }
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_solver_longwave(
-        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column,
         const Gas_concs<double>& gas_concs)
 {
     const std::string group_name = "radiation";
@@ -983,11 +986,25 @@ void Radiation_rrtmgp<TF>::create_solver_longwave(
             stats.add_prof("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "zh", group_name);
         }
     }
+
+    // Set up the column statistics
+    if (column.get_switch())
+    {
+        column.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
+        column.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
+
+        if (sw_clear_sky_stats)
+        {
+            column.add_prof("lw_flux_up_clear", "Clear-sky longwave upwelling flux"  , "W m-2", "zh");
+            column.add_prof("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "zh");
+        }
+    }
 }
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::create_solver_shortwave(
-        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats,
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column,
         const Gas_concs<double>& gas_concs)
 {
     const std::string group_name = "radiation";
@@ -1011,6 +1028,21 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
             stats.add_prof("sw_flux_up_clear"    , "Clear-sky shortwave upwelling flux"         , "W m-2", "zh", group_name);
             stats.add_prof("sw_flux_dn_clear"    , "Clear-sky shortwave downwelling flux"       , "W m-2", "zh", group_name);
             stats.add_prof("sw_flux_dn_dir_clear", "Clear-sky shortwave direct downwelling flux", "W m-2", "zh", group_name);
+        }
+    }
+
+    // Set up the column statistics
+    if (column.get_switch())
+    {
+        column.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
+        column.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
+        column.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+
+        if (sw_clear_sky_stats)
+        {
+            column.add_prof("sw_flux_up_clear"    , "Clear-sky shortwave upwelling flux"         , "W m-2", "zh");
+            column.add_prof("sw_flux_dn_clear"    , "Clear-sky shortwave downwelling flux"       , "W m-2", "zh");
+            column.add_prof("sw_flux_dn_dir_clear", "Clear-sky shortwave direct downwelling flux", "W m-2", "zh");
         }
     }
 }
@@ -1249,15 +1281,17 @@ namespace
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_all_stats(
-        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump,
+        Stats<TF>& stats, Cross<TF>& cross,
+        Dump<TF>& dump, Column<TF>& column,
         Thermo<TF>& thermo, Timeloop<TF>& timeloop,
         const unsigned long itime, const int iotime)
 {
-    const bool do_stats = stats.do_statistics(itime);
-    const bool do_cross = cross.do_cross(itime);
+    const bool do_stats  = stats.do_statistics(itime);
+    const bool do_cross  = cross.do_cross(itime);
+    const bool do_column = column.do_column(itime);
 
     // Return in case of no stats or cross section.
-    if ( !(do_stats || do_cross) )
+    if ( !(do_stats || do_cross || do_column) )
         return;
 
     const TF no_offset = 0.;
@@ -1311,7 +1345,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     auto save_stats_and_cross = [&](
             const Array<double,2>& array, const std::string& name, const std::array<int,3>& loc)
     {
-        if (do_stats || do_cross)
+        if (do_stats || do_cross || do_column)
         {
             // Make sure that the top boundary is taken into account in case of fluxes.
             const int kend = gd.kstart + array.dim(2) + 1;
@@ -1333,6 +1367,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
                 cross.cross_simple(tmp->fld.data(), name, iotime, loc);
         }
+
+        if (do_column)
+            column.calc_column(name, tmp->fld.data(), no_offset);
     };
 
     if (sw_longwave)

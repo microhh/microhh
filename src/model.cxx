@@ -612,7 +612,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
     // Handle the routines that share computations between stats, cross, and dump.
     radiation->exec_all_stats(
-            *stats, *cross, *dump,
+            *stats, *cross, *dump, *column,
             *thermo, *timeloop,
             itime, iotime);
 

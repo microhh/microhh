@@ -66,7 +66,7 @@ class Radiation
         // virtual void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
 
         virtual void exec_all_stats(
-                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) = 0;
 

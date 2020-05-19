@@ -64,9 +64,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<TF>& get_surface_radiation(std::string);
 
         void exec_all_stats(
-                Stats<TF>&, Cross<TF>&, Dump<TF>&,
-                Thermo<TF>&, Timeloop<TF>&,
-                const unsigned long, const int);
+                Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
+                Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
 
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
@@ -90,12 +89,12 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Netcdf_handle&, const Gas_concs<double>&);
 
         void create_solver(
-                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&);
         void create_solver_longwave(
-                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
                 const Gas_concs<double>&);
         void create_solver_shortwave(
-                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
+                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
                 const Gas_concs<double>&);
 
         void exec_longwave(
