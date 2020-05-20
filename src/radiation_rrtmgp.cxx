@@ -1146,7 +1146,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         if (do_stats || do_cross)
         {
             // Make sure that the top boundary is taken into account in case of fluxes.
-            const int kend = gd.kstart + array.dim(2) + 1;
+            const int kend = gd.kstart + array.dim(2);
             add_ghost_cells(
                     tmp->fld.data(), array.ptr(),
                     gd.istart, gd.iend,
