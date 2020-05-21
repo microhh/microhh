@@ -844,19 +844,6 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
     // Read the boundary conditions.
     const int n_bnd = kdist_sw->get_nband();
 
-    // Set the solar zenith angle and albedo.
-    Array<double,2> sfc_alb_dir({n_bnd, n_col});
-    Array<double,2> sfc_alb_dif({n_bnd, n_col});
-
-    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-    {
-        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
-    }
-
-    Array<double,1> mu0({n_col});
-    mu0({1}) = this->mu0;
-
     optical_props_sw = std::make_unique<Optical_props_2str<double>>(n_col, n_lay_col, *kdist_sw);
 
     sw_flux_up_col    .set_dims({n_col, n_lev_col});
@@ -870,6 +857,19 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
 
     if (sw_fixed_sza)
     {
+        // Set the solar zenith angle and albedo.
+        Array<double,2> sfc_alb_dir({n_bnd, n_col});
+        Array<double,2> sfc_alb_dif({n_bnd, n_col});
+
+        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+        {
+            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
+            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+        }
+
+        Array<double,1> mu0({n_col});
+        mu0({1}) = std::max(this->mu0, Constants::mu0_min<double>);
+
         solve_shortwave_column<double>(
                 optical_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
@@ -1055,6 +1055,7 @@ void Radiation_rrtmgp<TF>::exec(
                 const int day_of_year = int(timeloop.calc_day_of_year());
                 const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
                 this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
+                this->mu0 = std::max(this->mu0, Constants::mu0_min<double>);
 
                 const int n_bnd = kdist_sw->get_nband();
 
