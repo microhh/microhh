@@ -1107,6 +1107,15 @@ void Radiation_rrtmgp<TF>::exec(
                     gd.igc, gd.jgc, gd.kgc,
                     gd.icells, gd.ijcells,
                     gd.imax, gd.imax*gd.jmax);
+
+            store_surface_fluxes(
+                    lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
+                    flux_up.ptr(), flux_dn.ptr(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.igc, gd.jgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax);
         }
 
         if (sw_shortwave)

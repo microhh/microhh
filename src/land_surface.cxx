@@ -1537,6 +1537,7 @@ void Land_surface<TF>::exec_surface(
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
+
 }
 
 template<typename TF>
