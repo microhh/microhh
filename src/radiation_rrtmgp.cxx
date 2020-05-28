@@ -94,12 +94,29 @@ namespace
                 "hfc143a", "hfc125", "hfc23", "hfc32", "hfc134a",
                 "cf4", "no2" };
 
-        for (const std::string& gas : possible_gases)
+        for (const std::string& gas_name : possible_gases)
         {
-            if (input_nc.variable_exists(gas))
+            if (input_nc.variable_exists(gas_name))
             {
-                gas_concs.set_vmr(gas,
-                        Array<TF,1>(input_nc.get_variable<TF>(gas, {n_lay}), {n_lay}));
+                std::map<std::string, int> dims = input_nc.get_variable_dimensions(gas_name);
+                const int n_dims = dims.size();
+
+                if (n_dims == 0)
+                {
+                    gas_concs.set_vmr(gas_name, input_nc.get_variable<TF>(gas_name));
+                }
+                else if (n_dims == 1)
+                {
+                    if (dims.at(dim_name) == n_lay)
+                        gas_concs.set_vmr(gas_name,
+                                Array<TF,1>(input_nc.get_variable<TF>(gas_name, {n_lay}), {n_lay}));
+                    else
+                        throw std::runtime_error("Illegal dimensions of gas \"" + gas_name + "\" in input");
+                }
+                else
+                {
+                    throw std::runtime_error("Illegal dimensions of gas \"" + gas_name + "\" in input");
+                }
             }
         };
     }
