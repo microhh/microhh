@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -87,11 +87,13 @@ template<typename T, int N>
 class Array
 {
     public:
+        // Create an empty array, without dimensions.
         Array() :
             dims({}),
             ncells(0)
         {}
 
+        // Create an array of zeros with given dimensions.
         Array(const std::array<int, N>& dims) :
             dims(dims),
             ncells(product<N>(dims)),
@@ -100,6 +102,7 @@ class Array
             offsets({})
         {}
 
+        // Create an array from copying the contents of an std::vector.
         Array(const std::vector<T>& data, const std::array<int, N>& dims) :
             dims(dims),
             ncells(product<N>(dims)),
@@ -108,6 +111,7 @@ class Array
             offsets({})
         {} // CvH Do we need to size check data?
 
+        // Create an array from moving the contents of an std::vector.
         Array(std::vector<T>&& data, const std::array<int, N>& dims) :
             dims(dims),
             ncells(product<N>(dims)),
@@ -132,6 +136,8 @@ class Array
         {
             this->offsets = offsets;
         }
+
+        inline std::array<int, N> get_dims() const { return dims; }
 
         inline void set_dims(const std::array<int, N>& dims)
         {

@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -35,7 +35,7 @@ namespace rrtmgp_kernel_launcher
     template<typename TF>
     void apply_BC(
             int ncol, int nlay, int ngpt,
-            int top_at_1, Array<TF,3>& gpt_flux_dn)
+            BOOL_TYPE top_at_1, Array<TF,3>& gpt_flux_dn)
     {
         rrtmgp_kernels::apply_BC_0(
                 &ncol, &nlay, &ngpt,
@@ -45,7 +45,7 @@ namespace rrtmgp_kernel_launcher
     template<typename TF>
     void apply_BC(
             int ncol, int nlay, int ngpt,
-            int top_at_1, const Array<TF,2>& inc_flux,
+            BOOL_TYPE top_at_1, const Array<TF,2>& inc_flux,
             Array<TF,3>& gpt_flux_dn)
     {
         rrtmgp_kernels::apply_BC_gpt(
@@ -55,16 +55,17 @@ namespace rrtmgp_kernel_launcher
 
     template<typename TF>
     void lw_solver_noscat_GaussQuad(
-            int ncol, int nlay, int ngpt, int top_at_1, int n_quad_angs,
+            int ncol, int nlay, int ngpt, BOOL_TYPE top_at_1, int n_quad_angs,
             const Array<TF,2>& gauss_Ds_subset,
             const Array<TF,2>& gauss_wts_subset,
             const Array<TF,3>& tau,
             const Array<TF,3>& lay_source,
             const Array<TF,3>& lev_source_inc, const Array<TF,3>& lev_source_dec,
             const Array<TF,2>& sfc_emis_gpt, const Array<TF,2>& sfc_source,
-            Array<TF,3>& gpt_flux_up, Array<TF,3>& gpt_flux_dn)
-    {
-        rrtmgp_kernels::lw_solver_noscat_GaussQuad(
+            Array<TF,3>& gpt_flux_up, Array<TF,3>& gpt_flux_dn,
+            Array<TF,2>& sfc_source_jac, Array<TF,3>& gpt_flux_up_jac)
+{
+    rrtmgp_kernels::lw_solver_noscat_GaussQuad(
                 &ncol, &nlay, &ngpt, &top_at_1, &n_quad_angs,
                 const_cast<TF*>(gauss_Ds_subset.ptr()),
                 const_cast<TF*>(gauss_wts_subset.ptr()),
@@ -75,14 +76,16 @@ namespace rrtmgp_kernel_launcher
                 const_cast<TF*>(sfc_emis_gpt.ptr()),
                 const_cast<TF*>(sfc_source.ptr()),
                 gpt_flux_up.ptr(),
-                gpt_flux_dn.ptr());
+                gpt_flux_dn.ptr(),
+                sfc_source_jac.ptr(),
+                gpt_flux_up_jac.ptr());
     }
 }
 
 template<typename TF>
 void Rte_lw<TF>::rte_lw(
         const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-        const int top_at_1,
+        const BOOL_TYPE top_at_1,
         const Source_func_lw<TF>& sources,
         const Array<TF,2>& sfc_emis,
         const Array<TF,2>& inc_flux,
@@ -127,6 +130,10 @@ void Rte_lw<TF>::rte_lw(
     Array<TF,2> gauss_wts_subset = gauss_wts.subset(
             {{ {1, n_quad_angs}, {n_quad_angs, n_quad_angs} }});
 
+    // For now, just pass the arrays around.
+    Array<TF,2> sfc_src_jac(sources.get_sfc_source().get_dims());
+    Array<TF,3> gpt_flux_up_jac(gpt_flux_up.get_dims());
+
     rrtmgp_kernel_launcher::lw_solver_noscat_GaussQuad(
             ncol, nlay, ngpt, top_at_1, n_quad_angs,
             gauss_Ds_subset, gauss_wts_subset,
@@ -134,7 +141,8 @@ void Rte_lw<TF>::rte_lw(
             sources.get_lay_source(),
             sources.get_lev_source_inc(), sources.get_lev_source_dec(),
             sfc_emis_gpt, sources.get_sfc_source(),
-            gpt_flux_up, gpt_flux_dn);
+            gpt_flux_up, gpt_flux_dn,
+            sfc_src_jac, gpt_flux_up_jac);
 
     // CvH: In the fortran code this call is here, I removed it for performance and flexibility.
     // fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);

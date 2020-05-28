@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -70,6 +70,7 @@ Optical_props<TF>::Optical_props(
             this->gpt2band({i}) = iband;
     }
 }
+
 template<typename TF>
 Optical_props_1scl<TF>::Optical_props_1scl(
         const int ncol,
@@ -144,27 +145,6 @@ void Optical_props_2str<TF>::get_subset(
 
 namespace rrtmgp_kernel_launcher
 {
-    template<typename TF> void increment_1scalar_by_1scalar(
-            int ncol, int nlay, int ngpt,
-            Array<TF,3>& tau_inout, const Array<TF,3>& tau_in)
-
-    {
-        rrtmgp_kernels::increment_1scalar_by_1scalar(
-                &ncol, &nlay, &ngpt,
-                tau_inout.ptr(), const_cast<TF*>(tau_in.ptr()));
-    }
-
-    template<typename TF> void increment_2stream_by_2stream(
-            int ncol, int nlay, int ngpt,
-            Array<TF,3>& tau_inout, Array<TF,3>& ssa_inout, Array<TF,3>& g_inout,
-            const Array<TF,3>& tau_in, const Array<TF,3>& ssa_in, const Array<TF,3>& g_in)
-    {
-        rrtmgp_kernels::increment_2stream_by_2stream(
-                &ncol, &nlay, &ngpt,
-                tau_inout.ptr(), ssa_inout.ptr(), g_inout.ptr(),
-                const_cast<TF*>(tau_in.ptr()), const_cast<TF*>(ssa_in.ptr()), const_cast<TF*>(g_in.ptr()));
-    }
-
     template<typename TF> void inc_1scalar_by_1scalar_bybnd(
             int ncol, int nlay, int ngpt,
             Array<TF,3>& tau_inout, const Array<TF,3>& tau_in,
@@ -200,11 +180,7 @@ void add_to(Optical_props_1scl<TF>& op_inout, const Optical_props_1scl<TF>& op_i
     const int ngpt = op_inout.get_ngpt();
 
     if (ngpt == op_in.get_ngpt())
-    {
-        rrtmgp_kernel_launcher::increment_1scalar_by_1scalar(
-                ncol, nlay, ngpt,
-                op_inout.get_tau(), op_in.get_tau());
-    }
+        throw std::runtime_error("Adding optical properties of the same gpts is not implemented yet");
     else
     {
         if (op_in.get_ngpt() != op_inout.get_nband())
@@ -225,12 +201,7 @@ void add_to(Optical_props_2str<TF>& op_inout, const Optical_props_2str<TF>& op_i
     const int ngpt = op_inout.get_ngpt();
 
     if (ngpt == op_in.get_ngpt())
-    {
-        rrtmgp_kernel_launcher::increment_2stream_by_2stream(
-                ncol, nlay, ngpt,
-                op_inout.get_tau(), op_inout.get_ssa(), op_inout.get_g(),
-                op_in   .get_tau(), op_in   .get_ssa(), op_in   .get_g());
-    }
+        throw std::runtime_error("Adding optical properties of the same gpts is not implemented yet");
     else
     {
         if (op_in.get_ngpt() != op_inout.get_nband())

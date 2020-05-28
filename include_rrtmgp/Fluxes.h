@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -39,14 +39,14 @@ class Fluxes
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1) = 0;
+                const BOOL_TYPE top_at_1) = 0;
 
         virtual void reduce(
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const Array<TF,3>& gpt_flux_dn_dir,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1) = 0;
+                const BOOL_TYPE top_at_1) = 0;
 };
 
 template<typename TF>
@@ -60,14 +60,14 @@ class Fluxes_broadband : public Fluxes<TF>
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1);
+                const BOOL_TYPE top_at_1);
 
         virtual void reduce(
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const Array<TF,3>& gpt_flux_dn_dir,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1);
+                const BOOL_TYPE top_at_1);
 
         Array<TF,2>& get_flux_up    () { return flux_up;     }
         Array<TF,2>& get_flux_dn    () { return flux_dn;     }
@@ -97,14 +97,14 @@ class Fluxes_byband : public Fluxes_broadband<TF>
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1);
+                const BOOL_TYPE top_at_1);
 
         virtual void reduce(
                 const Array<TF,3>& gpt_flux_up,
                 const Array<TF,3>& gpt_flux_dn,
                 const Array<TF,3>& gpt_flux_dn_dir,
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-                const int top_at_1);
+                const BOOL_TYPE top_at_1);
 
         Array<TF,3>& get_bnd_flux_up    () { return bnd_flux_up;     }
         Array<TF,3>& get_bnd_flux_dn    () { return bnd_flux_dn;     }

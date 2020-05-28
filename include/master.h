@@ -66,6 +66,7 @@ class Master
 
         // Overload the broadcast function.
         void broadcast(char*, int, int mpiid_to_send=0);
+        void broadcast(signed char*, int, int mpiid_to_send=0);
         void broadcast(int*, int, int mpiid_to_send=0);
         void broadcast(bool*, int, int mpiid_to_send=0);
         void broadcast(double*, int, int mpiid_to_send=0);

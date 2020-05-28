@@ -17,6 +17,7 @@
 module mo_gas_optics_kernels
   use mo_rte_kind,      only : wp, wl
   implicit none
+  public
 contains
   ! --------------------------------------------------------------------------------------
   ! Compute interpolation coefficients
@@ -481,7 +482,7 @@ contains
                     fmajor, jeta, tropo, jtemp, jpress,    &
                     gpoint_bands, band_lims_gpt,           &
                     pfracin, temp_ref_min, totplnk_delta, totplnk, gpoint_flavor, &
-                    sfc_src, lay_src, lev_src_inc, lev_src_dec) bind(C, name="compute_Planck_source")
+                    sfc_src, lay_src, lev_src_inc, lev_src_dec, sfc_source_Jac) bind(C, name="compute_Planck_source")
     integer,                                    intent(in) :: ncol, nlay, nbnd, ngpt
     integer,                                    intent(in) :: nflav, neta, npres, ntemp, nPlanckTemp
     real(wp),    dimension(ncol,nlay  ),        intent(in) :: tlay
@@ -504,8 +505,12 @@ contains
     real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lay_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lev_src_inc, lev_src_dec
+
+    real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_source_Jac
     ! -----------------
     ! local
+    real(wp), parameter                             :: delta_Tsurf = 1.0_wp
+
     integer  :: ilay, icol, igpt, ibnd, itropo, iflav
     integer  :: gptS, gptE
     real(wp), dimension(2), parameter :: one = [1._wp, 1._wp]
@@ -536,7 +541,8 @@ contains
     ! Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
     !
     do icol = 1, ncol
-      planck_function(1:nbnd,1,icol) = interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk)
+      planck_function(1:nbnd,1,icol) = interpolate1D(tsfc(icol)              , temp_ref_min, totplnk_delta, totplnk)
+      planck_function(1:nbnd,2,icol) = interpolate1D(tsfc(icol) + delta_Tsurf, temp_ref_min, totplnk_delta, totplnk) 
       !
       ! Map to g-points
       !
@@ -544,7 +550,9 @@ contains
         gptS = band_lims_gpt(1, ibnd)
         gptE = band_lims_gpt(2, ibnd)
         do igpt = gptS, gptE
-          sfc_src(igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd, 1, icol)
+          sfc_src       (igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd,1,icol)
+          sfc_source_Jac(igpt, icol) = pfrac(igpt,sfc_lay,icol) * &
+                                (planck_function(ibnd, 2, icol) - planck_function(ibnd,1,icol))
         end do
       end do
     end do ! icol
