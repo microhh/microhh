@@ -463,7 +463,7 @@ namespace
         return std::make_pair(cover, nmaskcover);
     }
 
-    bool has_only_digits(const std::string s)
+    bool has_only_digits(const std::string& s)
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
@@ -730,7 +730,7 @@ void Stats<TF>::add_dimension(
 
 // Add a new mask to the mask map.
 template<typename TF>
-void Stats<TF>::add_mask(const std::string maskname)
+void Stats<TF>::add_mask(const std::string& maskname)
 {
     masks.emplace(maskname, Mask<TF>{});
     masks.at(maskname).name = maskname;
@@ -838,7 +838,8 @@ void Stats<TF>::add_covariance(const Field3d<TF>& var1, const Field3d<TF>& var2,
 
 
 template<typename TF>
-void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string varname, std::string op)
+void Stats<TF>::add_operation(
+        std::vector<std::string>& operations, const std::string& varname, const std::string& op)
 {
     operations.push_back(op);
     if (is_blacklisted(varname + "_" +  op))
@@ -850,7 +851,8 @@ void Stats<TF>::add_operation(std::vector<std::string>& operations, std::string 
 }
 
 template<typename TF>
-void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std::string>& operations)
+void Stats<TF>::sanitize_operations_vector(
+        const std::string& varname, std::vector<std::string>& operations)
 {
     // Sanitize the operations vector:
     // find instances that need a mean ({2,3,4,5}); if so, add it to the vector if necessary
@@ -910,7 +912,7 @@ void Stats<TF>::sanitize_operations_vector(std::string varname, std::vector<std:
 }
 
 template<typename TF>
-bool Stats<TF>::is_blacklisted(const std::string name, Stats_whitelist_type wltype)
+bool Stats<TF>::is_blacklisted(const std::string& name, Stats_whitelist_type wltype)
 {
     if (wltype == Stats_whitelist_type::White)
         return false;
@@ -1175,7 +1177,7 @@ void Stats<TF>::set_mask_thres(
 }
 
 template<typename TF>
-void Stats<TF>::set_prof(const std::string varname, const std::vector<TF>& prof)
+void Stats<TF>::set_prof(const std::string& varname, const std::vector<TF>& prof)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
     if (it == varlist.end())
@@ -1188,7 +1190,7 @@ void Stats<TF>::set_prof(const std::string varname, const std::vector<TF>& prof)
 }
 
 template<typename TF>
-void Stats<TF>::set_time_series(const std::string varname, const TF val)
+void Stats<TF>::set_time_series(const std::string& varname, const TF val)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
     if (it != varlist.end())
@@ -1223,7 +1225,7 @@ void Stats<TF>::calc_mask_mean_profile(
 template<typename TF>
 void Stats<TF>::calc_mask_stats(
         std::pair<const std::string, Mask<TF>>& m,
-        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1394,7 +1396,7 @@ void Stats<TF>::calc_mask_stats(
 
 template<typename TF>
 void Stats<TF>::calc_stats(
-        const std::string varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1590,7 +1592,7 @@ void Stats<TF>::calc_stats(
 }
 
 template<typename TF>
-void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
+void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 {
     if (!doing_tendency)
         return;
@@ -1619,7 +1621,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string tend_name)
 
 template<typename TF>
 void Stats<TF>::calc_stats_2d(
-        const std::string varname, const std::vector<TF>& fld, const TF offset)
+        const std::string& varname, const std::vector<TF>& fld, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1637,8 +1639,8 @@ void Stats<TF>::calc_stats_2d(
 
 template<typename TF>
 void Stats<TF>::calc_covariance(
-        const std::string varname1, const Field3d<TF>& fld1, const TF offset1, const TF threshold1, const int power1,
-        const std::string varname2, const Field3d<TF>& fld2, const TF offset2, const TF threshold2, const int power2)
+        const std::string& varname1, const Field3d<TF>& fld1, const TF offset1, const TF threshold1, const int power1,
+        const std::string& varname2, const Field3d<TF>& fld2, const TF offset2, const TF threshold2, const int power2)
 {
     auto& gd = grid.get_grid_data();
 
