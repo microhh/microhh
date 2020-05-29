@@ -743,6 +743,13 @@ void Radiation_rrtmgp<TF>::create(
     // Solve the reference column to compute upper boundary conditions.
     create_column(input, input_nc, thermo, stats);
 
+
+    if (stats.get_switch() && sw_shortwave)
+    {
+        const std::string group_name = "radiation";
+        stats.add_time_series("sza", "solar zenith angle", "rad", group_name);
+    }
+
     // Get the allowed cross sections from the cross list
     std::vector<std::string> allowed_crossvars_radiation;
 
@@ -1428,6 +1435,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
             save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
         }
+
+        stats.set_time_series("sza", std::acos(mu0));
     }
 
     fields.release_tmp(tmp);

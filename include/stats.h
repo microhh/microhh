@@ -158,7 +158,7 @@ class Stats
                              const std::string, const Field3d<TF>&, const TF, const TF, const int);
         void calc_tend(Field3d<TF>&, const std::string);
         void set_prof(const std::string, const std::vector<TF>&);
-        void set_timeseries(const std::string, const TF);
+        void set_time_series(const std::string, const TF);
 
         Mask_map<TF>& get_masks() { return masks; }
 
