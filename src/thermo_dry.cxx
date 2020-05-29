@@ -721,7 +721,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
     fields.release_tmp(b);
-    stats.set_timeseries("zi", gd.z[get_bl_depth()]);
+    stats.set_time_series("zi", gd.z[get_bl_depth()]);
 }
 
 template<typename TF>
