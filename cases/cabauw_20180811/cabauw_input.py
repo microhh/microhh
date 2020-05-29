@@ -30,7 +30,7 @@ def interp_z(array, z_in, z_out):
 
 def has_time_dim(dims):
     """
-    Check if any of the dimensions in `dims` is a tim dimension
+    Check if any of the dimensions in `dims` is a time dimension
     """
     has_time = False
     for dim in dims:
@@ -42,7 +42,7 @@ def has_time_dim(dims):
 # Input file (`cabauw_input_hr.nc`) runs from 00:00 to 00:00 utc.
 # Period (indices) used for experiment:
 t0 = 6
-t1 = 18
+t1 = 19
 
 # Simple linearly stretched vertical grid:
 ktot = 256
