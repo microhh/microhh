@@ -9,9 +9,12 @@ else()
   set(ENV{FC}  gfortran) # Fortran compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "-std=c++14")
+set(USER_CXX_FLAGS "-std=c++14 -DBOOL_TYPE=\"signed char\"")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check -DUSE_CBOOL")
+set(USER_FC_FLAGS_RELEASE "-DNDEBUG -Ofast -march=native")
+set(USER_FC_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/include")
 set(FFTW_LIB           "/usr/lib/libfftw3.so")
