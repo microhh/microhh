@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -34,7 +34,7 @@ namespace rrtmgp_kernel_launcher
     template<typename TF>
     void apply_BC(
             int ncol, int nlay, int ngpt,
-            int top_at_1, Array<TF,3>& gpt_flux_dn)
+            BOOL_TYPE top_at_1, Array<TF,3>& gpt_flux_dn)
     {
         rrtmgp_kernels::apply_BC_0(
                 &ncol, &nlay, &ngpt,
@@ -43,7 +43,7 @@ namespace rrtmgp_kernel_launcher
 
     template<typename TF>
     void apply_BC(
-            int ncol, int nlay, int ngpt, int top_at_1,
+            int ncol, int nlay, int ngpt, BOOL_TYPE top_at_1,
             const Array<TF,2>& inc_flux, Array<TF,3>& gpt_flux_dn)
     {
         rrtmgp_kernels::apply_BC_gpt(
@@ -53,7 +53,7 @@ namespace rrtmgp_kernel_launcher
 
     template<typename TF>
     void apply_BC(
-            int ncol, int nlay, int ngpt, int top_at_1,
+            int ncol, int nlay, int ngpt, BOOL_TYPE top_at_1,
             const Array<TF,2>& inc_flux,
             const Array<TF,1>& factor,
             Array<TF,3>& gpt_flux)
@@ -68,7 +68,7 @@ namespace rrtmgp_kernel_launcher
 
     template<typename TF>
     void sw_solver_2stream(
-            int ncol, int nlay, int ngpt, int top_at_1,
+            int ncol, int nlay, int ngpt, BOOL_TYPE top_at_1,
             const Array<TF,3>& tau,
             const Array<TF,3>& ssa,
             const Array<TF,3>& g,
@@ -91,7 +91,7 @@ namespace rrtmgp_kernel_launcher
 template<typename TF>
 void Rte_sw<TF>::rte_sw(
         const std::unique_ptr<Optical_props_arry<TF>>& optical_props,
-        const int top_at_1,
+        const BOOL_TYPE top_at_1,
         const Array<TF,1>& mu0,
         const Array<TF,2>& inc_flux_dir,
         const Array<TF,2>& sfc_alb_dir,

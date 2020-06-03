@@ -114,7 +114,7 @@ class Stats
 
         // Interface functions.
         void add_dimension(const std::string&, const int);
-        void add_mask(const std::string);
+        void add_mask(const std::string&);
         void add_prof(
                 const std::string&, const std::string&,
                 const std::string&, const std::string&, const std::string&,
@@ -144,21 +144,21 @@ class Stats
 
         void calc_mask_stats(
                 std::pair<const std::string, Mask<TF>>&,
-                const std::string, const Field3d<TF>&, const TF, const TF);
+                const std::string&, const Field3d<TF>&, const TF, const TF);
 
         void calc_mask_mean_profile(
                 std::vector<TF>&,
                 const std::pair<const std::string, Mask<TF>>&,
                 const Field3d<TF>&);
 
-        void calc_stats(const std::string, const Field3d<TF>&, const TF, const TF);
-        void calc_stats_2d(const std::string, const std::vector<TF>&, const TF);
+        void calc_stats(const std::string&, const Field3d<TF>&, const TF, const TF);
+        void calc_stats_2d(const std::string&, const std::vector<TF>&, const TF);
         void calc_stats_soil(const std::string, const std::vector<TF>&, const TF);
-        void calc_covariance(const std::string, const Field3d<TF>&, const TF, const TF, const int,
-                             const std::string, const Field3d<TF>&, const TF, const TF, const int);
-        void calc_tend(Field3d<TF>&, const std::string);
-        void set_prof(const std::string, const std::vector<TF>&);
-        void set_timeseries(const std::string, const TF);
+        void calc_covariance(const std::string&, const Field3d<TF>&, const TF, const TF, const int,
+                             const std::string&, const Field3d<TF>&, const TF, const TF, const int);
+        void calc_tend(Field3d<TF>&, const std::string&);
+        void set_prof(const std::string&, const std::vector<TF>&);
+        void set_time_series(const std::string&, const TF);
 
         Mask_map<TF>& get_masks() { return masks; }
 
@@ -178,9 +178,10 @@ class Stats
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
         std::vector<std::string> varlist_soil;
-        void add_operation(std::vector<std::string>&, std::string, std::string);
-        void sanitize_operations_vector(std::string, std::vector<std::string>&);
-        bool is_blacklisted(std::string, Stats_whitelist_type = Stats_whitelist_type::Default);
+        
+        void add_operation(std::vector<std::string>&, const std::string&, const std::string&);
+        void sanitize_operations_vector(const std::string&, std::vector<std::string>&);
+        bool is_blacklisted(const std::string&, Stats_whitelist_type = Stats_whitelist_type::Default);
 
         int statistics_counter;
         double sampletime;

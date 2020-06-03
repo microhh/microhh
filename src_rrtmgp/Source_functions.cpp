@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -33,6 +33,7 @@ Source_func_lw<TF>::Source_func_lw(
         const Optical_props<TF>& optical_props) :
     Optical_props<TF>(optical_props),
     sfc_source({n_col, optical_props.get_ngpt()}),
+    sfc_source_jac({n_col, optical_props.get_ngpt()}),
     lay_source({n_col, n_lay, optical_props.get_ngpt()}),
     lev_source_inc({n_col, n_lay, optical_props.get_ngpt()}),
     lev_source_dec({n_col, n_lay, optical_props.get_ngpt()})
