@@ -71,6 +71,12 @@ namespace Thermo_moist_functions
         return grav<TF>/thvref * (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
+    template<typename TF>
+    CUDA_MACRO inline TF virtual_temperature_flux_no_ql(const TF thl, const TF thlflux, const TF qt, const TF qtflux)
+    {
+        return (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
+    }
+
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
     template<typename TF>

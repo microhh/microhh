@@ -490,6 +490,31 @@ namespace
     }
 
     template<typename TF>
+    void calc_thv(
+            TF* const restrict thv, const TF* const restrict thl,
+            const TF* const restrict qt, const TF* const restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        // Calculate the thv field
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF ex = exner(p[k]);
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                    thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
+                }
+        }
+    }
+
+    template<typename TF>
     void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
                     const TF* const restrict exnrefh, const TF* const restrict threfh,
                     const int istart, const int iend, const int jstart, const int jend, const int kstart,
@@ -506,9 +531,6 @@ namespace
                 T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
             }
     }
-
-
-
 
     template<typename TF>
     void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
@@ -547,6 +569,30 @@ namespace
                 const int ij  = i + j*icells;
                 const int ijk = i + j*icells + kstart*ijcells;
                 bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
+            }
+    }
+
+    template<typename TF>
+    void calc_virtual_temperature_fluxbot(
+            TF* const restrict thv_fluxbot,
+            const TF* const restrict thl, const TF* const restrict thl_fluxbot,
+            const TF* const restrict qt,  const TF* const restrict qt_fluxbot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        // Assume no liquid water at the lowest model level.
+        // Pass the temperature and moisture of the first model level, because the surface values are
+        // unknown before the surface layer solver.
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = ij + kstart*ijcells;
+                thv_fluxbot[ij] = virtual_temperature_flux_no_ql(
+                        thl[ijk], thl_fluxbot[ij], qt[ijk], qt_fluxbot[ij]);
             }
     }
 
@@ -1177,6 +1223,19 @@ void Thermo_moist<TF>::get_thermo_field(
                  &tmp->fld[2*gd.ijcells], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         fields.release_tmp(tmp);
     }
+    else if (name == "thv")
+    {
+        calc_thv(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    }
+    else if (name == "thv_fluxbot")
+    {
+        calc_virtual_temperature_fluxbot(
+                fld.flux_bot.data(),
+                fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+                fields.sp.at("qt") ->fld.data(), fields.sp.at("qt") ->flux_bot.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    }
     else
     {
         std::string error_message = "Can not get thermo field: \"" + name + "\"";
@@ -1374,6 +1433,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
         fields.release_tmp(b);
 
+        auto thv = fields.get_tmp();
+        thv->name = "thv";
+        thv->longname = "Virtual potential temperature";
+        thv->unit = "K";
+        stats.add_profs(*thv, "z", {"mean", "2", "w", "grad", "diff", "flux"}, group_name);
+        fields.release_tmp(thv);
+
         auto T = fields.get_tmp();
         T->name = "T";
         T->longname = "Absolute temperature";
@@ -1424,8 +1490,14 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
     // add the profiles to the columns
     if (column.get_switch())
     {
-        column.add_prof("b", "Buoyancy", "m s-2", "z");
+        // Vertical profiles
+        column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+        column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
+
+        // Time series
+        column.add_time_series("thl_bot", "Surface liquid water potential temperature", "K");
+        column.add_time_series("qt_bot", "Surface total specific humidity", "kg kg-1");
     }
 }
 
@@ -1509,7 +1581,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
-    // calculate the buoyancy and its surface flux for the profiles
+    // Calculate the buoyancy and its surface flux for the profiles
     auto b = fields.get_tmp();
     b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
@@ -1520,7 +1592,17 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(b);
 
-    // calculate the absolute temperature stats.
+    // Calculate the virtual temperature stats.
+    auto thv = fields.get_tmp();
+    thv->loc = gd.sloc;
+    get_thermo_field(*thv, "thv", true, true);
+    get_thermo_field(*thv, "thv_fluxbot", true, true);
+
+    stats.calc_stats("thv", *thv, no_offset, no_threshold);
+
+    fields.release_tmp(thv);
+
+    // Calculate the absolute temperature stats.
     auto T = fields.get_tmp();
     T->loc = gd.sloc;
 
@@ -1529,7 +1611,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(T);
 
-    // calculate the liquid water stats
+    // Calculate the liquid water stats
     auto ql = fields.get_tmp();
     ql->loc = gd.sloc;
 
@@ -1538,7 +1620,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(ql);
 
-    // calculate the ice stats
+    // Calculate the ice stats
     auto qi = fields.get_tmp();
     qi->loc = gd.sloc;
 
@@ -1547,7 +1629,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(qi);
 
-    // calculate the saturated water vapor stats
+    // Calculate the saturated water vapor stats
     auto qsat = fields.get_tmp();
     qsat->loc = gd.sloc;
 
@@ -1556,7 +1638,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(qsat);
 
-    // calculate the relative humidity
+    // Calculate the relative humidity
     auto rh = fields.get_tmp();
     rh->loc = gd.sloc;
 
@@ -1587,11 +1669,19 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
-    get_thermo_field(*output, "b", false, true);
-    column.calc_column("b", output->fld.data(), no_offset);
+    // Vertical profiles
+    get_thermo_field(*output, "thv", false, true);
+    column.calc_column("thv", output->fld.data(), no_offset);
 
     get_thermo_field(*output, "ql", false, true);
     column.calc_column("ql", output->fld.data(), no_offset);
+
+    get_thermo_field(*output, "qi", false, true);
+    column.calc_column("qi", output->fld.data(), no_offset);
+
+    // Time series
+    column.calc_time_series("thl_bot", fields.ap.at("thl")->fld_bot.data(), no_offset);
+    column.calc_time_series("qt_bot", fields.ap.at("qt")->fld_bot.data(), no_offset);
 
     fields.release_tmp(output);
 }
