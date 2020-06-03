@@ -1426,13 +1426,6 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
         }
 
-        auto b = fields.get_tmp();
-        b->name = "b";
-        b->longname = "Buoyancy";
-        b->unit = "m s-2";
-        stats.add_profs(*b, "z", {"mean", "2", "3", "4", "w", "grad", "diff", "flux"}, group_name);
-        fields.release_tmp(b);
-
         auto thv = fields.get_tmp();
         thv->name = "thv";
         thv->longname = "Virtual potential temperature";
@@ -1580,17 +1573,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-
-    // Calculate the buoyancy and its surface flux for the profiles
-    auto b = fields.get_tmp();
-    b->loc = gd.sloc;
-    get_thermo_field(*b, "b", true, true);
-    get_buoyancy_surf(*b, true);
-    get_buoyancy_fluxbot(*b, true);
-
-    stats.calc_stats("b", *b, no_offset, no_threshold);
-
-    fields.release_tmp(b);
 
     // Calculate the virtual temperature stats.
     auto thv = fields.get_tmp();
