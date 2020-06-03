@@ -1225,8 +1225,9 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "thv")
     {
+        // Calculate thv including one ghost cell, for the calculation of gradients in the statistics
         calc_thv(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart-1, gd.kend+1, gd.icells, gd.ijcells);
     }
     else if (name == "thv_fluxbot")
     {
