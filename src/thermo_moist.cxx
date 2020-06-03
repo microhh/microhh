@@ -573,7 +573,7 @@ namespace
     }
 
     template<typename TF>
-    void calc_virtual_temperature_fluxbot(
+    void calc_thv_fluxbot(
             TF* const restrict thv_fluxbot,
             const TF* const restrict thl, const TF* const restrict thl_fluxbot,
             const TF* const restrict qt,  const TF* const restrict qt_fluxbot,
@@ -1230,7 +1230,7 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "thv_fluxbot")
     {
-        calc_virtual_temperature_fluxbot(
+        calc_thv_fluxbot(
                 fld.flux_bot.data(),
                 fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
                 fields.sp.at("qt") ->fld.data(), fields.sp.at("qt") ->flux_bot.data(),
