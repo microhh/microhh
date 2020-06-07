@@ -1527,23 +1527,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
             Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
-            // Set the masks.
-            constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
-
-            Array<int,2> cld_mask_liq({n_col_in, n_lay});
-            for (int i=0; i<cld_mask_liq.size(); ++i)
-                cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
-
-            Array<int,2> cld_mask_ice({n_col_in, n_lay});
-            for (int i=0; i<cld_mask_ice.size(); ++i)
-                cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
-
             // Compute the effective droplet radius.
             Array<double,2> rel({n_col_in, n_lay});
             Array<double,2> rei({n_col_in, n_lay});
 
             const double sig_g = 1.34;
-            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
             // CvH: Numbers according to RCEMIP.
             const double Nc0 = 100.e6;
@@ -1561,20 +1550,18 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                        std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.));
+                    double rel_value = clwp_subset({icol, ilay}) > TF(0.) ? 
+                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : TF(0.);
 
-                    // Limit the values between 2.5 and 60.
-                    rel_value = std::max(2.5, std::min(rel_value, 60.));
-                    rel({icol, ilay}) = rel_value;
+                    // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
+                    rel({icol, ilay}) = std::max(2.5, std::min(rel_value, 21.5));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
-                        std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.));
+                    double rei_value = ciwp_subset({icol, ilay}) > TF(0.) ? 
+                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : TF(0.);
 
-                    // Limit the values between 2.5 and 200.
-                    rei_value = std::max(2.5, std::min(rei_value, 200.));
-                    rei({icol, ilay}) = rei_value;
+                    // Limit the values between 10. and 180 (limits of cloud optics lookup table).
+                    rei({icol, ilay}) = std::max(10., std::min(rei_value, 180.));
                 }
             }
 
@@ -1586,7 +1573,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 ciwp_subset.v()[i] *= 1e3;
 
             cloud_lw->cloud_optics(
-                    cld_mask_liq, cld_mask_ice,
                     clwp_subset, ciwp_subset,
                     rel, rei,
                     *cloud_optical_props_in);
@@ -1749,23 +1735,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             Array<double,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
             Array<double,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
-            // Set the masks.
-            constexpr double mask_min_value = 1e-12; // DALES uses 1e-20.
-
-            Array<int,2> cld_mask_liq({n_col_in, n_lay});
-            for (int i=0; i<cld_mask_liq.size(); ++i)
-                cld_mask_liq.v()[i] = clwp_subset.v()[i] > mask_min_value;
-
-            Array<int,2> cld_mask_ice({n_col_in, n_lay});
-            for (int i=0; i<cld_mask_ice.size(); ++i)
-                cld_mask_ice.v()[i] = ciwp_subset.v()[i] > mask_min_value;
-
             // Compute the effective droplet radius.
             Array<double,2> rel({n_col_in, n_lay});
             Array<double,2> rei({n_col_in, n_lay});
 
             const double sig_g = 1.34;
-            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)) * 1e6; // Conversion to micron included.
+            const double fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
             // CvH: Numbers according to RCEMIP.
             const double Nc0 = 100.e6;
@@ -1783,20 +1758,18 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    double rel_value = cld_mask_liq({icol, ilay}) * fac *
-                        std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.));
+                    double rel_value = clwp_subset({icol, ilay}) > TF(0.) ? 
+                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : TF(0.);
 
-                    // Limit the values between 2.5 and 60.
-                    rel_value = std::max(2.5, std::min(rel_value, 60.));
-                    rel({icol, ilay}) = rel_value;
+                    // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
+                    rel({icol, ilay}) = std::max(2.5, std::min(rel_value, 21.5));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    double rei_value = cld_mask_ice({icol, ilay}) * 1.e6 *
-                        std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.));
+                    double rei_value = ciwp_subset({icol, ilay}) > TF(0.) ? 
+                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : TF(0.);
 
-                    // Limit the values between 2.5 and 200.
-                    rei_value = std::max(2.5, std::min(rei_value, 200.));
-                    rei({icol, ilay}) = rei_value;
+                    // Limit the values between 10. and 180 (limits of cloud optics lookup table).
+                    rei({icol, ilay}) = std::max(10., std::min(rei_value, 180.));
                 }
             }
 
@@ -1808,10 +1781,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 ciwp_subset.v()[i] *= 1e3;
 
             cloud_sw->cloud_optics(
-                    cld_mask_liq, cld_mask_ice,
                     clwp_subset, ciwp_subset,
                     rel, rei,
                     *cloud_optical_props_in);
+
+            // cloud_optical_props_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(
