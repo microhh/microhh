@@ -191,6 +191,27 @@ namespace rrtmgp_kernel_launcher
                 const_cast<TF*>(tau_in.ptr()), const_cast<TF*>(ssa_in.ptr()), const_cast<TF*>(g_in.ptr()),
                 &nbnd, const_cast<int*>(band_lims_gpoint.ptr()));
     }
+
+    template<typename TF> void delta_scale_2str_k(
+            int ncol, int nlay, int ngpt,
+            Array<TF,3>& tau_inout, Array<TF,3>& ssa_inout, Array<TF,3>& g_inout)
+    {
+        rrtmgp_kernels::delta_scale_2str_k(
+                &ncol, &nlay, &ngpt,
+                tau_inout.ptr(), ssa_inout.ptr(), g_inout.ptr());
+    }
+}
+
+template<typename TF>
+void Optical_props_2str<TF>::delta_scale(const Array<TF,3>& forward_frac)
+{
+    const int ncol = this->get_ncol();
+    const int nlay = this->get_nlay();
+    const int ngpt = this->get_ngpt();
+
+    rrtmgp_kernel_launcher::delta_scale_2str_k(
+            ncol, nlay, ngpt,
+            this->get_tau(), this->get_ssa(), this->get_g());
 }
 
 template<typename TF>

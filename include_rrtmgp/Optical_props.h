@@ -74,6 +74,9 @@ class Optical_props_arry : public Optical_props<TF>
         virtual const Array<TF,3>& get_ssa() const = 0;
         virtual const Array<TF,3>& get_g  () const = 0;
 
+        // Optional argument.
+        virtual void delta_scale(const Array<TF,3>& forward_frac=Array<TF,3>()) = 0;
+
         virtual void set_subset(
                 const std::unique_ptr<Optical_props_arry<TF>>& optical_props_sub,
                 const int col_s, const int col_e) = 0;
@@ -115,6 +118,8 @@ class Optical_props_1scl : public Optical_props_arry<TF>
         const Array<TF,3>& get_ssa() const { throw std::runtime_error("ssa is not available in this class"); }
         const Array<TF,3>& get_g  () const { throw std::runtime_error("g is available in this class"); }
 
+        void delta_scale(const Array<TF,3>& forward_frac=Array<TF,3>()) {}
+
     private:
         Array<TF,3> tau;
 };
@@ -146,6 +151,8 @@ class Optical_props_2str : public Optical_props_arry<TF>
         const Array<TF,3>& get_tau() const { return tau; }
         const Array<TF,3>& get_ssa() const { return ssa; }
         const Array<TF,3>& get_g  () const { return g; }
+
+        void delta_scale(const Array<TF,3>& forward_frac=Array<TF,3>());
 
     private:
         Array<TF,3> tau;

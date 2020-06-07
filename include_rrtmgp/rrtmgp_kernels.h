@@ -190,5 +190,9 @@ namespace rrtmgp_kernels
             int* ncol, int* nlev, int* ngpt,
             FLOAT_TYPE* tau_inout, FLOAT_TYPE* tau_in,
             int* nbnd, int* band_lims_gpoint);
+
+    extern "C" void delta_scale_2str_k(
+            int* ncol, int* nlev, int* ngpt,
+            FLOAT_TYPE* tau_inout, FLOAT_TYPE* ssa_inout, FLOAT_TYPE* g_inout);
 }
 #endif

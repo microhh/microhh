@@ -1785,7 +1785,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rel, rei,
                     *cloud_optical_props_in);
 
-            // cloud_optical_props_in->delta_scale();
+            cloud_optical_props_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(

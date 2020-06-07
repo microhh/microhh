@@ -76,5 +76,7 @@ class Gas_optics : public Optical_props<TF>
                 std::unique_ptr<Optical_props_arry<TF>>& optical_props,
                 Array<TF,2>& toa_src,
                 const Array<TF,2>& col_dry) const = 0;
+
+        virtual TF get_tsi() const = 0;
 };
 #endif
