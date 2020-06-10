@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -43,13 +43,11 @@ class Cloud_optics : public Optical_props<TF>
                 const Array<TF,3>& lut_extice, const Array<TF,3>& lut_ssaice, const Array<TF,3>& lut_asyice);
 
         void cloud_optics(
-                const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
                 const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
                 const Array<TF,2>& reliq, const Array<TF,2>& reice,
                 Optical_props_1scl<TF>& optical_props);
 
         void cloud_optics(
-                const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
                 const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
                 const Array<TF,2>& reliq, const Array<TF,2>& reice,
                 Optical_props_2str<TF>& optical_props);

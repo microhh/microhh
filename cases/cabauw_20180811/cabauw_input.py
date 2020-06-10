@@ -45,9 +45,13 @@ t0 = 6
 t1 = 19
 
 # Simple linearly stretched vertical grid:
-ktot = 256
 dz0 = 20
+ktot = 256
 z, zsize = grid_stretched(ktot, dz0, 0.008)
+
+# Lo-res version for testing.
+# ktot = 128
+# z, zsize = grid_stretched(ktot, dz0, 0.024)
 
 # Hi-res input file from LS2D
 f_hr  = nc4.Dataset('cabauw_input_hr.nc', 'r')

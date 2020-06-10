@@ -7,15 +7,15 @@
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
  *
- * Copyright 2015-2019,  Atmospheric and Environmental Research and
+ * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rrtmgp_cpp
+ * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
  *
- * Copyright 2019, Wageningen University & Research.
+ * Copyright 2020, Wageningen University & Research.
  *
  * Use and duplication is permitted under the terms of the
  * BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
@@ -68,37 +68,46 @@ Cloud_optics<TF>::Cloud_optics(
 }
 
 template<typename TF>
-void compute_from_table(
-        const int ncol, const int nlay, const int nbnd,
-        const Array<int,2>& mask, const Array<TF,2>& size, const int nsteps,
-        const TF step_size, const TF offset, const Array<TF,2>& table,
-        Array<TF,3>& out)
+void compute_all_from_table(
+        const int ncol, const int nlay, const int nbnd, const Array<BOOL_TYPE,2>& mask,
+        const Array<TF,2>& cwp, const Array<TF,2>& re,
+        const int nsteps, const TF step_size, const TF offset,
+        const Array<TF,2>& tau_table, const Array<TF,2>& ssa_table, const Array<TF,2>& asy_table,
+        Array<TF,3>& tau, Array<TF,3>& taussa, Array<TF,3>& taussag)
 {
-    for (int ilay=1; ilay<=nlay; ++ilay)
-        for (int icol=1; icol<=ncol; ++icol)
-        {
-            if (mask({icol, ilay}))
+    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
+        for (int ilay=1; ilay<=nlay; ++ilay)
+            for (int icol=1; icol<=ncol; ++icol)
             {
-                const int index = std::min(
-                        static_cast<int>((size({icol, ilay}) - offset) / step_size) + 1, nsteps-1);
-                const TF fint = (size({icol, ilay}) - offset) / step_size - (index-1);
+                if (mask({icol, ilay}))
+                {
+                    const int index = std::min(
+                            static_cast<int>((re({icol, ilay}) - offset) / step_size)+1, nsteps-1);
+                    const TF fint = (re({icol, ilay}) - offset) / step_size - (index-1);
 
-                for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-                    out({icol, ilay, ibnd}) =
-                            table({index, ibnd}) + fint * (table({index+1, ibnd}) - table({index, ibnd}));
+                    const TF tau_local = cwp({icol, ilay}) *
+                        (tau_table({index, ibnd}) + fint * (tau_table({index+1, ibnd}) - tau_table({index, ibnd})));
+                    const TF taussa_local = tau_local *
+                        (ssa_table({index, ibnd}) + fint * (ssa_table({index+1, ibnd}) - ssa_table({index, ibnd})));
+                    const TF taussag_local = taussa_local *
+                        (asy_table({index, ibnd}) + fint * (asy_table({index+1, ibnd}) - asy_table({index, ibnd})));
+
+                    tau    ({icol, ilay, ibnd}) = tau_local;
+                    taussa ({icol, ilay, ibnd}) = taussa_local;
+                    taussag({icol, ilay, ibnd}) = taussag_local;
+                }
+                else
+                {
+                    tau    ({icol, ilay, ibnd}) = TF(0.);
+                    taussa ({icol, ilay, ibnd}) = TF(0.);
+                    taussag({icol, ilay, ibnd}) = TF(0.);
+                }
             }
-            else
-            {
-                for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-                    out({icol, ilay, ibnd}) = TF(0.);
-            }
-        }
 }
 
 // Two-stream variant of cloud optics.
 template<typename TF>
 void Cloud_optics<TF>::cloud_optics(
-        const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
         const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
         const Array<TF,2>& reliq, const Array<TF,2>& reice,
         Optical_props_2str<TF>& optical_props)
@@ -110,60 +119,40 @@ void Cloud_optics<TF>::cloud_optics(
     Optical_props_2str<TF> clouds_liq(ncol, nlay, optical_props);
     Optical_props_2str<TF> clouds_ice(ncol, nlay, optical_props);
 
+    // Set the mask.
+    constexpr TF mask_min_value = TF(0.);
+    Array<BOOL_TYPE,2> liqmsk({ncol, nlay});
+    for (int i=0; i<liqmsk.size(); ++i)
+        liqmsk.v()[i] = clwp.v()[i] > mask_min_value;
+
+    Array<BOOL_TYPE,2> icemsk({ncol, nlay});
+    for (int i=0; i<icemsk.size(); ++i)
+        icemsk.v()[i] = ciwp.v()[i] > mask_min_value;
+
+    // Temporary arrays for storage.
+    Array<TF,3> ltau    ({ncol, nlay, nbnd});
+    Array<TF,3> ltaussa ({ncol, nlay, nbnd});
+    Array<TF,3> ltaussag({ncol, nlay, nbnd});
+
+    Array<TF,3> itau    ({ncol, nlay, nbnd});
+    Array<TF,3> itaussa ({ncol, nlay, nbnd});
+    Array<TF,3> itaussag({ncol, nlay, nbnd});
+
     // Liquid water.
-    compute_from_table(
-            ncol, nlay, nbnd, liqmsk, reliq,
-            this->liq_nsteps, this->liq_step_size,
-            this->radliq_lwr, this->lut_extliq,
-            clouds_liq.get_tau());
-
-    compute_from_table(
-            ncol, nlay, nbnd, liqmsk, reliq,
-            this->liq_nsteps, this->liq_step_size,
-            this->radliq_lwr, this->lut_ssaliq,
-            clouds_liq.get_ssa());
-
-    compute_from_table(
-            ncol, nlay, nbnd, liqmsk, reliq,
-            this->liq_nsteps, this->liq_step_size,
-            this->radliq_lwr, this->lut_asyliq,
-            clouds_liq.get_g());
-
-    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-        for (int ilay=1; ilay<=nlay; ++ilay)
-            #pragma ivdep
-            for (int icol=1; icol<=ncol; ++icol)
-                clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
+    compute_all_from_table(
+            ncol, nlay, nbnd, liqmsk, clwp, reliq,
+            this->liq_nsteps, this->liq_step_size, this->radliq_lwr,
+            this->lut_extliq, this->lut_ssaliq, this->lut_asyliq,
+            ltau, ltaussa, ltaussag);
 
     // Ice.
-    compute_from_table(
-            ncol, nlay, nbnd, icemsk, reice,
-            this->ice_nsteps, this->ice_step_size,
-            this->radice_lwr, this->lut_extice,
-            clouds_ice.get_tau());
+    compute_all_from_table(
+            ncol, nlay, nbnd, icemsk, ciwp, reice,
+            this->ice_nsteps, this->ice_step_size, this->radice_lwr,
+            this->lut_extice, this->lut_ssaice, this->lut_asyice,
+            itau, itaussa, itaussag);
 
-    compute_from_table(
-            ncol, nlay, nbnd, icemsk, reice,
-            this->ice_nsteps, this->ice_step_size,
-            this->radice_lwr, this->lut_ssaice,
-            clouds_ice.get_ssa());
-
-    compute_from_table(
-            ncol, nlay, nbnd, icemsk, reice,
-            this->ice_nsteps, this->ice_step_size,
-            this->radice_lwr, this->lut_asyice,
-            clouds_ice.get_g());
-
-    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-        for (int ilay=1; ilay<=nlay; ++ilay)
-            #pragma ivdep
-            for (int icol=1; icol<=ncol; ++icol)
-                clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
-
-    // Add the ice optical properties to those of the clouds.
-    add_to(
-            dynamic_cast<Optical_props_2str<double>&>(clouds_liq),
-            dynamic_cast<Optical_props_2str<double>&>(clouds_ice));
+    constexpr TF eps = std::numeric_limits<TF>::epsilon();
 
     // Process the calculated optical properties.
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
@@ -171,16 +160,19 @@ void Cloud_optics<TF>::cloud_optics(
             #pragma ivdep
             for (int icol=1; icol<=ncol; ++icol)
             {
-                optical_props.get_tau()({icol, ilay, ibnd}) = clouds_liq.get_tau()({icol, ilay, ibnd});
-                optical_props.get_ssa()({icol, ilay, ibnd}) = clouds_liq.get_ssa()({icol, ilay, ibnd});
-                optical_props.get_g  ()({icol, ilay, ibnd}) = clouds_liq.get_g  ()({icol, ilay, ibnd});
+                const TF tau = ltau({icol, ilay, ibnd}) + itau({icol, ilay, ibnd});
+                const TF taussa = ltaussa({icol, ilay, ibnd}) + itaussa({icol, ilay, ibnd});
+                const TF taussag = ltaussag({icol, ilay, ibnd}) + itaussag({icol, ilay, ibnd});
+
+                optical_props.get_tau()({icol, ilay, ibnd}) = tau;
+                optical_props.get_ssa()({icol, ilay, ibnd}) = taussa / std::max(tau, eps);
+                optical_props.get_g  ()({icol, ilay, ibnd}) = taussag / std::max(taussa, eps);
             }
 }
 
 // 1scl variant of cloud optics.
 template<typename TF>
 void Cloud_optics<TF>::cloud_optics(
-        const Array<int,2>& liqmsk, const Array<int,2>& icemsk,
         const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
         const Array<TF,2>& reliq, const Array<TF,2>& reice,
         Optical_props_1scl<TF>& optical_props)
@@ -192,45 +184,50 @@ void Cloud_optics<TF>::cloud_optics(
     Optical_props_1scl<TF> clouds_liq(ncol, nlay, optical_props);
     Optical_props_1scl<TF> clouds_ice(ncol, nlay, optical_props);
 
-    // Liquid water.
-    compute_from_table(
-            ncol, nlay, nbnd, liqmsk, reliq,
-            this->liq_nsteps, this->liq_step_size,
-            this->radliq_lwr, this->lut_extliq,
-            clouds_liq.get_tau());
+    // Set the mask.
+    constexpr TF mask_min_value = static_cast<TF>(0.);
+    Array<BOOL_TYPE,2> liqmsk({ncol, nlay});
+    for (int i=0; i<liqmsk.size(); ++i)
+        liqmsk.v()[i] = clwp.v()[i] > mask_min_value;
 
-    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-        for (int ilay=1; ilay<=nlay; ++ilay)
-            #pragma ivdep
-            for (int icol=1; icol<=ncol; ++icol)
-                clouds_liq.get_tau()({icol, ilay, ibnd}) *= clwp({icol, ilay});
+    Array<BOOL_TYPE,2> icemsk({ncol, nlay});
+    for (int i=0; i<icemsk.size(); ++i)
+        icemsk.v()[i] = ciwp.v()[i] > mask_min_value;
+
+    // Temporary arrays for storage.
+    Array<TF,3> ltau    ({ncol, nlay, nbnd});
+    Array<TF,3> ltaussa ({ncol, nlay, nbnd});
+    Array<TF,3> ltaussag({ncol, nlay, nbnd});
+
+    Array<TF,3> itau    ({ncol, nlay, nbnd});
+    Array<TF,3> itaussa ({ncol, nlay, nbnd});
+    Array<TF,3> itaussag({ncol, nlay, nbnd});
+
+    // Liquid water.
+    compute_all_from_table(
+            ncol, nlay, nbnd, liqmsk, clwp, reliq,
+            this->liq_nsteps, this->liq_step_size, this->radliq_lwr,
+            this->lut_extliq, this->lut_ssaliq, this->lut_asyliq,
+            ltau, ltaussa, ltaussag);
 
     // Ice.
-    compute_from_table(
-            ncol, nlay, nbnd, icemsk, reice,
-            this->ice_nsteps, this->ice_step_size,
-            this->radice_lwr, this->lut_extice,
-            clouds_ice.get_tau());
-
-    for (int ibnd=1; ibnd<=nbnd; ++ibnd)
-        for (int ilay=1; ilay<=nlay; ++ilay)
-            #pragma ivdep
-            for (int icol=1; icol<=ncol; ++icol)
-                clouds_ice.get_tau()({icol, ilay, ibnd}) *= ciwp({icol, ilay});
-
-    // Add the ice optical properties to those of the clouds.
-    add_to(
-            dynamic_cast<Optical_props_1scl<double>&>(clouds_liq),
-            dynamic_cast<Optical_props_1scl<double>&>(clouds_ice));
+    compute_all_from_table(
+            ncol, nlay, nbnd, icemsk, ciwp, reice,
+            this->ice_nsteps, this->ice_step_size, this->radice_lwr,
+            this->lut_extice, this->lut_ssaice, this->lut_asyice,
+            itau, itaussa, itaussag);
 
     // Process the calculated optical properties.
-    // CvH. I did not add the 1. - ssa multiplication as we do not combine 1scl and 2str.
-    // CvH. This is a redundant copy, why not move the data in directly?
     for (int ibnd=1; ibnd<=nbnd; ++ibnd)
         for (int ilay=1; ilay<=nlay; ++ilay)
             #pragma ivdep
             for (int icol=1; icol<=ncol; ++icol)
-                optical_props.get_tau()({icol, ilay, ibnd}) = clouds_liq.get_tau()({icol, ilay, ibnd});
+            {
+                const TF tau = (ltau({icol, ilay, ibnd}) - ltaussa({icol, ilay, ibnd}))
+                             + (itau({icol, ilay, ibnd}) - itaussa({icol, ilay, ibnd}));
+
+                optical_props.get_tau()({icol, ilay, ibnd}) = tau;
+            }
 }
 
 #ifdef FLOAT_SINGLE_RRTMGP
