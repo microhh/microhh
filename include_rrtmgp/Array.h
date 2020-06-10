@@ -228,6 +228,11 @@ class Array
             return a_sub;
         }
 
+        inline void fill(const T value)
+        {
+            std::fill(data.begin(), data.end(), value);
+        }
+
     private:
         std::array<int, N> dims;
         int ncells;

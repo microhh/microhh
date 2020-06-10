@@ -1169,64 +1169,75 @@ void Radiation_rrtmgp<TF>::exec(
                 const int day_of_year = int(timeloop.calc_day_of_year());
                 const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
                 this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
-                this->mu0 = std::max(this->mu0, Constants::mu0_min<double>);
 
-                const int n_bnd = kdist_sw->get_nband();
-
-                // Set the solar zenith angle and albedo.
-                Array<double,2> sfc_alb_dir({n_bnd, n_col});
-                Array<double,2> sfc_alb_dif({n_bnd, n_col});
-
-                for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+                if (is_day(this->mu0))
                 {
-                    sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-                    sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+                    const int n_bnd = kdist_sw->get_nband();
+
+                    // Set the solar zenith angle and albedo.
+                    Array<double,2> sfc_alb_dir({n_bnd, n_col});
+                    Array<double,2> sfc_alb_dif({n_bnd, n_col});
+
+                    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+                    {
+                        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
+                        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+                    }
+
+                    Array<double,1> mu0({n_col});
+                    mu0({1}) = this->mu0;
+
+                    solve_shortwave_column<double>(
+                            optical_props_sw,
+                            sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+                            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
+                            gas_concs_col,
+                            *kdist_sw,
+                            col_dry,
+                            p_lay_col, p_lev_col,
+                            t_lay_col, t_lev_col,
+                            mu0,
+                            sfc_alb_dir, sfc_alb_dif,
+                            tsi_scaling,
+                            n_lay_col);
                 }
-
-                Array<double,1> mu0({n_col});
-                mu0({1}) = this->mu0;
-
-                solve_shortwave_column<double>(
-                        optical_props_sw,
-                        sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                        sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
-                        gas_concs_col,
-                        *kdist_sw,
-                        col_dry,
-                        p_lay_col, p_lev_col,
-                        t_lay_col, t_lev_col,
-                        mu0,
-                        sfc_alb_dir, sfc_alb_dif,
-                        tsi_scaling,
-                        n_lay_col);
             }
 
-            Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+            if (is_day(this->mu0))
+            {
+                Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
 
-            exec_shortwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds);
+                exec_shortwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        compute_clouds);
 
-            calc_tendency(
-                    fields.sd.at("thlt_rad")->fld.data(),
-                    flux_up.ptr(), flux_dn.ptr(),
-                    fields.rhoref.data(), thermo.get_exner_vector().data(),
-                    gd.dz.data(),
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.igc, gd.jgc, gd.kgc,
-                    gd.icells, gd.ijcells,
-                    gd.imax, gd.imax*gd.jmax);
+                calc_tendency(
+                        fields.sd.at("thlt_rad")->fld.data(),
+                        flux_up.ptr(), flux_dn.ptr(),
+                        fields.rhoref.data(), thermo.get_exner_vector().data(),
+                        gd.dz.data(),
+                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.igc, gd.jgc, gd.kgc,
+                        gd.icells, gd.ijcells,
+                        gd.imax, gd.imax*gd.jmax);
 
-            store_surface_fluxes(
-                    sw_flux_up_sfc.data(), sw_flux_dn_sfc.data(),
-                    flux_up.ptr(), flux_dn.ptr(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.igc, gd.jgc,
-                    gd.icells, gd.ijcells,
-                    gd.imax);
+                store_surface_fluxes(
+                        sw_flux_up_sfc.data(), sw_flux_dn_sfc.data(),
+                        flux_up.ptr(), flux_dn.ptr(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.igc, gd.jgc,
+                        gd.icells, gd.ijcells,
+                        gd.imax);
+            }
+            else
+            {
+                // Set the surface fluxes to zero, for (e.g.) the land-surface model.
+                std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), TF(0));
+                std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), TF(0));
+            }
         }
 
         fields.release_tmp(t_lay);
@@ -1413,11 +1424,22 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     {
         Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
 
-        exec_shortwave(
-                thermo, timeloop, stats,
-                flux_up, flux_dn, flux_dn_dir, flux_net,
-                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                compute_clouds);
+        if (!is_day(mu0))
+        {
+            flux_up.fill(0.);
+            flux_dn.fill(0.);
+            flux_dn_dir.fill(0.);
+            flux_net.fill(0.);
+        }
+
+        if (is_day(mu0))
+        {
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds);
+        }
 
         save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
         save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
@@ -1425,11 +1447,14 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
         if (sw_clear_sky_stats)
         {
-            exec_shortwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                    !compute_clouds);
+            if (is_day(mu0))
+            {
+                exec_shortwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds);
+            }
 
             save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
             save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
@@ -1878,5 +1903,15 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 fluxes_left);
     }
 }
+
+
+template<typename TF>
+bool Radiation_rrtmgp<TF>::is_day(const double mu0)
+{
+    if (mu0 > Constants::mu0_min<double>)
+        return true;
+    return false;
+}
+
 template class Radiation_rrtmgp<double>;
 template class Radiation_rrtmgp<float>;

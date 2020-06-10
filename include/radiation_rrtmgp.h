@@ -111,6 +111,8 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
                 const bool);
 
+        bool is_day(double);  // Switch between day/night, based on sza
+
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
         // void exec_dump(Dump<TF>&, const int, Thermo<TF>&, Timeloop<TF>&) {};
@@ -122,6 +124,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
+
         double dt_rad;
         unsigned long idt_rad;
 
