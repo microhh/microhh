@@ -990,5 +990,22 @@ void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     }
 }
 
+#ifndef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::prepare_device()
+{
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::backward_device()
+{
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::clear_device()
+{
+}
+#endif
+
 template class Microphys_2mom_warm<double>;
 template class Microphys_2mom_warm<float>;

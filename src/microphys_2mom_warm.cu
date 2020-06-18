@@ -445,6 +445,27 @@ namespace sedimentation
 
 
     template<typename TF> __global__
+    void copy_rr_bot_g(
+                  TF* const __restrict__ rr_bot,
+                  const TF* const __restrict__ flux,
+                  const int istart, const int jstart, const int kstart,
+                  const int iend,   const int jend,
+                  const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = ij + kstart*ijcells;
+
+            rr_bot[ij] = -flux[ijk];
+        }
+    }
+
+
+    template<typename TF> __global__
     void calc_flux_div_g(TF* const __restrict__ fldt, const TF* const __restrict__ flux,
                          const TF* const __restrict__ dzi, const TF* const __restrict__ rho,
                          const int istart, const int jstart, const int kstart,
@@ -625,6 +646,14 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
         gd.icells, gd.ijcells);
     cuda_check_error();
 
+    // 8. Store the surface precipitation rate
+    sedimentation::copy_rr_bot_g<<<grid2dGPU, block2dGPU>>>(
+        rr_bot_g, flux_qr->fld_g,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,
+        gd.icells, gd.ijcells);
+    cuda_check_error();
+
     fields.release_tmp_g(cfl_qr);
     fields.release_tmp_g(slope_qr);
     fields.release_tmp_g(flux_qr);
@@ -751,6 +780,32 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 
     const unsigned long idt_lim = idt * cflmax / cfl;
     return idt_lim;
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::prepare_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize2d = gd.ijcells*sizeof(TF);
+
+    cuda_safe_call(cudaMalloc(&rr_bot_g,  memsize2d));
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::backward_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int dimemsize = gd.icells * sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy2D(rr_bot.data(), dimemsize, rr_bot_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::clear_device()
+{
+    cuda_safe_call(cudaFree(rr_bot_g));
 }
 #endif
 
