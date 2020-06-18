@@ -21,6 +21,8 @@
  */
 
 #include <cstdio>
+#include <assert.h>
+
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
@@ -45,6 +47,9 @@ namespace
             const TF thl, const TF qt, const TF p, const TF exn)
     {
         using Fast_math::pow2;
+
+        int niter = 0;
+        const int nitermax = 10;
 
         TF tnr_old = TF(1.e9);
 
@@ -73,7 +78,7 @@ namespace
         // Warm adjustment.
         if (tl >= T0<TF>)
         {
-            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 tnr_old = tnr;
                 qs = qsat_liq(p, tnr);
@@ -83,6 +88,8 @@ namespace
                 const TF f_prime = TF(1.) + Lv<TF>/cp<TF>*dqsatdT_liq(p, tnr);
 
                 tnr -= f / f_prime;
+
+                niter += 1;
             }
 
             qs = qsat_liq(p, tnr);
@@ -93,7 +100,7 @@ namespace
         // Cold adjustment.
         else
         {
-            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 tnr_old = tnr;
                 qs = qsat(p, tnr);
@@ -114,6 +121,8 @@ namespace
                     + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
 
                 tnr -= f / f_prime;
+
+                niter += 1;
             }
 
             const TF alpha_w = water_fraction(tnr);
@@ -127,6 +136,9 @@ namespace
             ans.t  = tnr;
             ans.qs = qs;
         }
+
+        // Raise exception if nitermax is reached.
+        assert(niter < nitermax);
 
         return ans;
     }
