@@ -21,8 +21,6 @@
  */
 
 #include <cstdio>
-#include <assert.h>
-
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
@@ -138,7 +136,11 @@ namespace
         }
 
         // Raise exception if nitermax is reached.
-        assert(niter < nitermax);
+        if (niter == nitermax)
+        {
+            printf("ERROR: saturation adjustment did not converge!\n");
+            asm("trap;");
+        }
 
         return ans;
     }
@@ -755,7 +757,6 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
     get_thermo_field_g(*output, "ql", false);
     column.calc_column("ql", output->fld_g, no_offset);
-
 
     fields.release_tmp_g(output);
 }
