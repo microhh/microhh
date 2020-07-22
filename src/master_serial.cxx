@@ -21,7 +21,10 @@
  */
 
 #ifndef USEMPI
+
 #include <sys/time.h>
+#include <stdexcept>
+
 #include "grid.h"
 #include "defines.h"
 #include "master.h"

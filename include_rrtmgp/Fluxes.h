@@ -26,6 +26,7 @@
 #define FLUXES_H
 
 #include <memory>
+#include <stdexcept>
 
 // Forward declarations.
 template<typename TF, int> class Array;

@@ -21,7 +21,10 @@
  */
 
 #ifdef USEMPI
+
 #include <cstdio>
+#include <stdexcept>
+
 #include "master.h"
 #include "grid.h"
 #include "defines.h"
