@@ -46,6 +46,9 @@ namespace
     {
         using Fast_math::pow2;
 
+        int niter = 0;
+        const int nitermax = 10;
+
         TF tnr_old = TF(1.e9);
 
         const TF tl = thl * exn;
@@ -73,7 +76,7 @@ namespace
         // Warm adjustment.
         if (tl >= T0<TF>)
         {
-            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 tnr_old = tnr;
                 qs = qsat_liq(p, tnr);
@@ -83,6 +86,8 @@ namespace
                 const TF f_prime = TF(1.) + Lv<TF>/cp<TF>*dqsatdT_liq(p, tnr);
 
                 tnr -= f / f_prime;
+
+                niter += 1;
             }
 
             qs = qsat_liq(p, tnr);
@@ -93,7 +98,7 @@ namespace
         // Cold adjustment.
         else
         {
-            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5))
+            while (fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 tnr_old = tnr;
                 qs = qsat(p, tnr);
@@ -114,6 +119,8 @@ namespace
                     + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
 
                 tnr -= f / f_prime;
+
+                niter += 1;
             }
 
             const TF alpha_w = water_fraction(tnr);
@@ -126,6 +133,13 @@ namespace
             ans.qi = alpha_i*ql_qi;
             ans.t  = tnr;
             ans.qs = qs;
+        }
+
+        // Raise exception if nitermax is reached.
+        if (niter == nitermax)
+        {
+            printf("ERROR: saturation adjustment did not converge!\n");
+            asm("trap;");
         }
 
         return ans;
@@ -743,7 +757,6 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
     get_thermo_field_g(*output, "ql", false);
     column.calc_column("ql", output->fld_g, no_offset);
-
 
     fields.release_tmp_g(output);
 }

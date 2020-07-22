@@ -66,13 +66,10 @@ class Microphys
         virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;
 
-        #ifdef USECUDA
         // GPU functions and variables.
-        //virtual void prepare_device() = 0;
-        //virtual void clear_device() = 0;
-        //virtual void forward_device() = 0;
-        //virtual void backward_device() = 0;
-        #endif
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
+        virtual void backward_device() = 0;
 
     protected:
         Master& master;
