@@ -26,6 +26,7 @@
 #define GAS_CONCS_H
 
 #include <map>
+#include <string>
 
 template<typename, int> class Array;
 
