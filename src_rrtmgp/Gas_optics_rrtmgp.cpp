@@ -2,7 +2,7 @@
  * This file is part of a C++ interface to the Radiative Transfer for Energetics (RTE)
  * and Rapid Radiative Transfer Model for GCM applications Parallel (RRTMGP).
  *
- * The original code is found at https://github.com/RobertPincus/rte-rrtmgp.
+ * The original code is found at https://github.com/earth-system-radiation/rte-rrtmgp.
  *
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
@@ -10,7 +10,7 @@
  * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
+ * This C++ interface can be downloaded from https://github.com/earth-system-radiation/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
@@ -75,7 +75,7 @@ namespace
         int nm = minor_gases_atm.dim(1);
         int tot_g = 0;
 
-        Array<int,1> gas_is_present({nm});
+        Array<BOOL_TYPE,1> gas_is_present({nm});
 
         for (int i=1; i<=nm; ++i)
         {
@@ -191,7 +191,7 @@ namespace
             const Array<std::string,1>& gas_names_red,
             const Array<int,3>& key_species,
             Array<int,3>& key_species_red,
-            Array<int,1>& key_species_present_init)
+            Array<BOOL_TYPE,1>& key_species_present_init)
     {
         const int np = key_species.dim(1);
         const int na = key_species.dim(2);
@@ -222,7 +222,7 @@ namespace
 
     void check_key_species_present_init(
             const Array<std::string,1>& gas_names,
-            const Array<int,1>& key_species_present_init
+            const Array<BOOL_TYPE,1>& key_species_present_init
             )
     {
         for (int i=1; i<=key_species_present_init.dim(1); ++i)
@@ -690,8 +690,8 @@ void Gas_optics_rrtmgp<TF>::init_abs_coeffs(
 
     // Create flavor list.
     // Reduce (remap) key_species list; checks that all key gases are present in incoming
-    Array<int, 3> key_species_red;
-    Array<int, 1> key_species_present_init; // CvH bool or int?
+    Array<int,3> key_species_red;
+    Array<BOOL_TYPE,1> key_species_present_init;
 
     create_key_species_reduce(
             gas_names, this->gas_names, key_species, key_species_red, key_species_present_init);
@@ -764,8 +764,8 @@ void Gas_optics_rrtmgp<TF>::get_col_dry(
     constexpr TF m_dry = 0.028964;
     constexpr TF m_h2o = 0.018016;
 
-    Array<double,2> delta_plev({col_dry.dim(1), col_dry.dim(2)});
-    Array<double,2> m_air     ({col_dry.dim(1), col_dry.dim(2)});
+    Array<TF,2> delta_plev({col_dry.dim(1), col_dry.dim(2)});
+    Array<TF,2> m_air     ({col_dry.dim(1), col_dry.dim(2)});
 
     for (int ilay=1; ilay<=col_dry.dim(2); ++ilay)
         for (int icol=1; icol<=col_dry.dim(1); ++icol)
@@ -941,11 +941,12 @@ namespace rrtmgp_kernel_launcher
             const Array<int,1>& idx_minor_scaling_upper,
             const Array<int,1>& kminor_start_lower,
             const Array<int,1>& kminor_start_upper,
-            Array<BOOL_TYPE,2>& tropo,
-            Array<TF,4>& col_mix, Array<TF,6>& fmajor, Array<TF,5>& fminor,
-            const Array<TF,2>& play, const Array<TF,2>& tlay, Array<TF,3>& col_gas,
-            Array<int,4>& jeta, Array<int,2>& jtemp, Array<int,2>& jpress,
-            Array<TF,3>& tau)
+            const Array<BOOL_TYPE,2>& tropo,
+            const Array<TF,4>& col_mix, const Array<TF,6>& fmajor,
+            const Array<TF,5>& fminor, const Array<TF,2>& play,
+            const Array<TF,2>& tlay, Array<TF,3>& col_gas,
+            const Array<int,4>& jeta, const Array<int,2>& jtemp,
+            const Array<int,2>& jpress, Array<TF,3>& tau)
     {
         rrtmgp_kernels::compute_tau_absorption(
             &ncol, &nlay, &nband, &ngpt,
@@ -970,10 +971,10 @@ namespace rrtmgp_kernel_launcher
             const_cast<int*>(idx_minor_scaling_upper.ptr()),
             const_cast<int*>(kminor_start_lower.ptr()),
             const_cast<int*>(kminor_start_upper.ptr()),
-            tropo.ptr(),
-            col_mix.ptr(), fmajor.ptr(), fminor.ptr(),
-            const_cast<TF*>(play.ptr()), const_cast<TF*>(tlay.ptr()), col_gas.ptr(),
-            jeta.ptr(), jtemp.ptr(), jpress.ptr(),
+            const_cast<BOOL_TYPE*>(tropo.ptr()),
+            const_cast<TF*>(col_mix.ptr()), const_cast<TF*>(fmajor.ptr()), const_cast<TF*>(fminor.ptr()),
+            const_cast<TF*>(play.ptr()), const_cast<TF*>(tlay.ptr()), const_cast<TF*>(col_gas.ptr()),
+            const_cast<int*>(jeta.ptr()), const_cast<int*>(jtemp.ptr()), const_cast<int*>(jpress.ptr()),
             tau.ptr());
     }
 

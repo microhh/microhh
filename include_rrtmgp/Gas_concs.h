@@ -2,7 +2,7 @@
  * This file is part of a C++ interface to the Radiative Transfer for Energetics (RTE)
  * and Rapid Radiative Transfer Model for GCM applications Parallel (RRTMGP).
  *
- * The original code is found at https://github.com/RobertPincus/rte-rrtmgp.
+ * The original code is found at https://github.com/earth-system-radiation/rte-rrtmgp.
  *
  * Contacts: Robert Pincus and Eli Mlawer
  * email: rrtmgp@aer.com
@@ -10,7 +10,7 @@
  * Copyright 2015-2020,  Atmospheric and Environmental Research and
  * Regents of the University of Colorado.  All right reserved.
  *
- * This C++ interface can be downloaded from https://github.com/microhh/rte-rrtmgp-cpp
+ * This C++ interface can be downloaded from https://github.com/earth-system-radiation/rte-rrtmgp-cpp
  *
  * Contact: Chiel van Heerwaarden
  * email: chiel.vanheerwaarden@wur.nl
@@ -27,6 +27,8 @@
 
 #include <map>
 #include <string>
+
+#include "define_bool.h"
 
 template<typename, int> class Array;
 
@@ -47,7 +49,7 @@ class Gas_concs
         const Array<TF,2>& get_vmr(const std::string& name) const;
 
         // Check if gas exists in map.
-        bool exists(const std::string& name) const;
+        BOOL_TYPE exists(const std::string& name) const;
 
     private:
         std::map<std::string, Array<TF,2>> gas_concs_map;
