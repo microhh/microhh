@@ -559,7 +559,6 @@ namespace
     }
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Boundary<TF>::calc_mo_stability(Thermo<TF>& thermo)
 {
@@ -575,6 +574,7 @@ void Boundary<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
 {
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Boundary<TF>::set_ghost_cells()
 {
@@ -773,11 +773,6 @@ void Boundary<TF>::update_slave_bcs()
                                     sbc.at(it.first).bcbot, it.second->visc,
                                     gd.kstart, gd.icells, gd.jcells, gd.ijcells);
     }
-}
-
-template<typename TF>
-void Boundary<TF>::update_bcs(Thermo<TF>& thermo)
-{
 }
 
 template<typename TF>

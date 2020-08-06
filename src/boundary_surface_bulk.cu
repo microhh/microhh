@@ -183,82 +183,99 @@ void Boundary_surface_bulk<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::calc_mo_stability(Thermo<TF>& thermo)
 {
-    auto& gd = grid.get_grid_data();
+}
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
+template<typename TF>
+void Boundary_surface_bulk<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
+{
+}
 
-    // For 2D field excluding ghost cells
-    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    dim3 gridGPU (gridi,  gridj,  1);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    // For 2D field including ghost cells
-    gridi = gd.icells/blocki + (gd.icells%blocki > 0);
-    gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    dim3 gridGPU2 (gridi,  gridj,  1);
-    dim3 blockGPU2(blocki, blockj, 1);
-
-    const TF zsl = gd.z[gd.kstart];
-
-    // Calculate dutot in tmp2
-    auto dutot = fields.get_tmp_g();
-
-    calculate_du_g<<<gridGPU, blockGPU>>>(
-        dutot->fld_g,
-        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-
-    cuda_check_error();
-
-    // 2D cyclic boundaries on dutot
-    boundary_cyclic.exec_2d_g(dutot->fld_g);
-
-
-    // Calculate surface momentum fluxes, excluding ghost cells
-    momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
-        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
-        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
-        dutot->fld_g, bulk_cm, zsl,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-    cuda_check_error();
-
-    // 2D cyclic boundaries on the surface fluxes
-    boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp.at("u")->grad_bot_g);
-    boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
-
-    // Calculate scalar fluxes, gradients and/or values, including ghost cells
-    for (auto it : fields.sp)
-    {
-        scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
-            it.second->flux_bot_g, it.second->grad_bot_g,
-            it.second->fld_g, it.second->fld_bot_g,
-            dutot->fld_g, bulk_cs.at(it.first), zsl,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-        cuda_check_error();
-        boundary_cyclic.exec_2d_g(it.second->flux_bot_g);
-        boundary_cyclic.exec_2d_g(it.second->grad_bot_g);
-    }
-
-    auto b= fields.get_tmp_g();
-    thermo.get_buoyancy_fluxbot_g(*b);
-    surface_scaling_g<<<gridGPU2, blockGPU2>>>(
-        ustar_g, obuk_g, dutot->fld_g, b->flux_bot_g, bulk_cm,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
-
-    fields.release_tmp_g(b);
-    fields.release_tmp_g(dutot);
-
+template<typename TF>
+void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
+{
 }
 #endif
+
+//#ifdef USECUDA
+//template<typename TF>
+//void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
+//{
+//    auto& gd = grid.get_grid_data();
+//
+//    const int blocki = gd.ithread_block;
+//    const int blockj = gd.jthread_block;
+//
+//    // For 2D field excluding ghost cells
+//    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+//    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+//    dim3 gridGPU (gridi,  gridj,  1);
+//    dim3 blockGPU(blocki, blockj, 1);
+//
+//    // For 2D field including ghost cells
+//    gridi = gd.icells/blocki + (gd.icells%blocki > 0);
+//    gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
+//    dim3 gridGPU2 (gridi,  gridj,  1);
+//    dim3 blockGPU2(blocki, blockj, 1);
+//
+//    const TF zsl = gd.z[gd.kstart];
+//
+//    // Calculate dutot in tmp2
+//    auto dutot = fields.get_tmp_g();
+//
+//    calculate_du_g<<<gridGPU, blockGPU>>>(
+//        dutot->fld_g,
+//        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
+//        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
+//        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+//
+//    cuda_check_error();
+//
+//    // 2D cyclic boundaries on dutot
+//    boundary_cyclic.exec_2d_g(dutot->fld_g);
+//
+//
+//    // Calculate surface momentum fluxes, excluding ghost cells
+//    momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
+//        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
+//        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
+//        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
+//        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
+//        dutot->fld_g, bulk_cm, zsl,
+//        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+//    cuda_check_error();
+//
+//    // 2D cyclic boundaries on the surface fluxes
+//    boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
+//    boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
+//    boundary_cyclic.exec_2d_g(fields.mp.at("u")->grad_bot_g);
+//    boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
+//
+//    // Calculate scalar fluxes, gradients and/or values, including ghost cells
+//    for (auto it : fields.sp)
+//    {
+//        scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
+//            it.second->flux_bot_g, it.second->grad_bot_g,
+//            it.second->fld_g, it.second->fld_bot_g,
+//            dutot->fld_g, bulk_cs.at(it.first), zsl,
+//            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+//        cuda_check_error();
+//        boundary_cyclic.exec_2d_g(it.second->flux_bot_g);
+//        boundary_cyclic.exec_2d_g(it.second->grad_bot_g);
+//    }
+//
+//    auto b= fields.get_tmp_g();
+//    thermo.get_buoyancy_fluxbot_g(*b);
+//    surface_scaling_g<<<gridGPU2, blockGPU2>>>(
+//        ustar_g, obuk_g, dutot->fld_g, b->flux_bot_g, bulk_cm,
+//        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+//
+//    fields.release_tmp_g(b);
+//    fields.release_tmp_g(dutot);
+//
+//}
+//#endif
 
 template class Boundary_surface_bulk<double>;
 template class Boundary_surface_bulk<float>;

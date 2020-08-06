@@ -328,7 +328,7 @@ void Boundary_surface<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
+void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -392,6 +392,27 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
     }
 
     fields.release_tmp_g(dutot);
+}
+
+template<typename TF>
+void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+
+    // For 2D field excluding ghost cells
+    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 gridGPU (gridi,  gridj,  1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    // For 2D field including ghost cells
+    gridi = gd.icells/blocki + (gd.icells%blocki > 0);
+    gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    dim3 gridGPU2 (gridi,  gridj,  1);
+    dim3 blockGPU2(blocki, blockj, 1);
 
     // Calculate surface momentum fluxes, excluding ghost cells
     surfm_flux_g<<<gridGPU, blockGPU>>>(
@@ -414,6 +435,21 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
         fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
         gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
+}
+
+template<typename TF>
+void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+
+    // For 2D field including ghost cells
+    int gridi = gd.icells/blocki + (gd.icells%blocki > 0);
+    int gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    dim3 gridGPU2 (gridi,  gridj,  1);
+    dim3 blockGPU2(blocki, blockj, 1);
 
     // Calculate scalar fluxes, gradients and/or values, including ghost cells
     for (auto it : fields.sp)
@@ -424,6 +460,12 @@ void Boundary_surface<TF>::update_bcs(Thermo<TF>& thermo)
             gd.icells,  gd.jcells, gd.kstart,
             gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
     cuda_check_error();
+}
+
+template<typename TF>
+void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
+{
+    throw std::runtime_error("boundary_surface::get_ra() is not implemented yet on the GPU");
 }
 #endif
 

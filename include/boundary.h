@@ -37,6 +37,8 @@ template<typename> class Diff;
 template<typename> class Thermo;
 template<typename> class Timedep;
 template<typename> class Stats;
+template<typename> class Column;
+template<typename> class Field3d;
 
 class Input;
 
@@ -147,7 +149,6 @@ class Boundary
         void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
 
     private:
-        virtual void update_bcs(Thermo<TF>&); // Update the boundary values.
         virtual void update_slave_bcs(); // Update the slave boundary values.
 };
 #endif

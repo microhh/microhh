@@ -26,6 +26,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 {
     throw std::runtime_error("Radiation_rrtmgp is not implemented yet on the GPU");
 }
+
+template<typename TF>
+std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(std::string name)
+{
+    throw std::runtime_error("Radiation_rrtmgp is not implemented yet on the GPU");
+}
 #endif
 
 template class Radiation_rrtmgp<double>;

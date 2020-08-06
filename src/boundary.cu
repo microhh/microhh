@@ -237,7 +237,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary<TF>::exec(Thermo<TF>& thermo)
+void Boundary<TF>::set_ghost_cells()
 {
     auto& gd = grid.get_grid_data();
 
@@ -248,23 +248,6 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
 
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
-
-    // Cyclic boundary conditions, do this before the bottom BC's.
-    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
-    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
-    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
-
-    for (auto& it : fields.sp)
-        boundary_cyclic.exec_g(it.second->fld_g);
-
-    // Calculate the boundary values.
-    update_bcs(thermo);
-}
-
-template<typename TF>
-void Boundary<TF>::set_ghost_cells()
-{
-    auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {

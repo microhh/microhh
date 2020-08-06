@@ -52,6 +52,30 @@ void Column<TF>::calc_column(
         }
     }
 }
+
+template<typename TF>
+void Column<TF>::calc_time_series(
+        std::string name, const TF* const restrict data, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+    {
+        // Check if coordinate is in range.
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+        {
+            const int i_col = col.coord[0] % gd.imax + gd.istart;
+            const int j_col = col.coord[1] % gd.jmax + gd.jstart;
+            const int ij = i_col + j_col*gd.icells;
+
+            cuda_safe_call(cudaMemcpy(
+                    &col.time_series.at(name).data, &data[ij], sizeof(TF), cudaMemcpyDeviceToHost));
+
+            col.time_series.at(name).data += offset;
+        }
+    }
+}
 #endif
 
 template class Column<double>;

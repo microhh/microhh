@@ -508,9 +508,6 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
 
-    dim3 grid1dGPU (gridi);
-    dim3 block1dGPU(blocki);
-
     const TF dti = 1./dt;
 
     // Calculate the cyclic BCs first.
