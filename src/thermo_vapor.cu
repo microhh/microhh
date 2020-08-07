@@ -232,16 +232,23 @@ void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 
         auto tmp = fields.get_tmp();
 
-        calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
-                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state_no_ql(
+                bs.pref.data(), bs.prefh.data(),
+                &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
+                bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
 
         fields.release_tmp(tmp);
 
         // Only half level pressure and bs.exner needed for BuoyancyTend()
         cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
         cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
     calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
@@ -291,16 +298,22 @@ void Thermo_vapor<TF>::get_thermo_field_g(
 
         auto tmp = fields.get_tmp();
 
-        calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
-                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state_no_ql(
+                bs.pref.data(), bs.prefh.data(),
+                &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
+                bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
 
         fields.release_tmp(tmp);
 
-        // Only half level pressure and bs.exner needed for BuoyancyTend()
-        cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.pref_g,    bs.pref.data(),    gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
 

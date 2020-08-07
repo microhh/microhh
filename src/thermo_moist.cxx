@@ -1041,7 +1041,7 @@ void Thermo_moist<TF>::get_thermo_field(
     else
         base = bs;
 
-    // Get_thermo_field() is called from subgrid-model (before thermo()), so re-calculate the base state.
+    // Get_thermo_field() is called from subgrid-model (before thermo->exec()), so re-calculate the base state.
     if (bs.swupdatebasestate)
         calc_base_state(
                 base.pref.data(),   base.prefh.data(),

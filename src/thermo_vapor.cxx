@@ -488,9 +488,15 @@ void Thermo_vapor<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
     calc_top_and_bot(bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
     // 4. Calculate the initial/reference base state
-    calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(), fields.rhoref.data(), fields.rhorefh.data(), bs.thvref.data(),
-                    bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
-                    gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+    calc_base_state_no_ql(
+            bs.pref.data(), bs.prefh.data(),
+            fields.rhoref.data(), fields.rhorefh.data(),
+            bs.thvref.data(), bs.thvrefh.data(),
+            bs.exnref.data(), bs.exnrefh.data(),
+            bs.thl0.data(), bs.qt0.data(),
+            bs.pbot,
+            gd.kstart, gd.kend,
+            gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
     if (bs.swbasestate == Basestate_type::boussinesq)
@@ -531,18 +537,29 @@ void Thermo_vapor<TF>::exec(const double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref, thvref to prevent overwriting base state
+    // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref(h), to prevent overwriting base state
     auto tmp = fields.get_tmp();
     if (bs.swupdatebasestate)
-        calc_base_state_no_ql(bs.pref.data(), bs.prefh.data(),
-                        &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells], &tmp->fld[3*gd.kcells],
-                        bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                        bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state_no_ql(
+                bs.pref.data(), bs.prefh.data(),
+                &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
+                bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
 
-    // extend later for gravity vector not normal to surface
-    calc_buoyancy_tend_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
-                           &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-                            bs.thvrefh.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+    calc_buoyancy_tend_2nd(
+            fields.mt.at("w")->fld.data(),
+            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+            bs.prefh.data(), &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
+            bs.thvrefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
     stats.calc_tend(*fields.mt.at("w"), tend_name);
@@ -601,9 +618,16 @@ void Thermo_vapor<TF>::get_thermo_field(
     if (bs.swupdatebasestate)
     {
         auto tmp = fields.get_tmp();
-        calc_base_state_no_ql(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
-                        &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(),
-                        fields.sp.at("qt")->fld_mean.data(), base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+        calc_base_state_no_ql(
+                base.pref.data(), base.prefh.data(),
+                &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells],
+                base.thvref.data(), base.thvrefh.data(),
+                base.exnref.data(), base.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                base.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
         fields.release_tmp(tmp);
     }
 
