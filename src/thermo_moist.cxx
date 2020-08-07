@@ -861,9 +861,14 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 
     // 4. Calculate the initial/reference base state
     calc_base_state(
-            bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
-            bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
-            gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+            bs.pref.data(),   bs.prefh.data(),
+            bs.rhoref.data(), bs.rhorefh.data(),
+            bs.thvref.data(), bs.thvrefh.data(),
+            bs.exnref.data(), bs.exnrefh.data(),
+            bs.thl0.data(), bs.qt0.data(),
+            bs.pbot,
+            gd.kstart, gd.kend,
+            gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
     if (bs.swbasestate == Basestate_type::boussinesq)
@@ -914,10 +919,15 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     if (bs.swupdatebasestate)
     {
         calc_base_state(
-                bs.pref.data(), bs.prefh.data(),
-                bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
-                bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+                bs.pref.data(),   bs.prefh.data(),
+                bs.rhoref.data(), bs.rhorefh.data(),
+                bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
     }
 
     // extend later for gravity vector not normal to surface
@@ -1031,16 +1041,19 @@ void Thermo_moist<TF>::get_thermo_field(
     else
         base = bs;
 
-    // BvS: get_thermo_field() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    // Pass dummy as rhoref,bs.thvref to prevent overwriting base state
+    // Get_thermo_field() is called from subgrid-model (before thermo()), so re-calculate the base state.
     if (bs.swupdatebasestate)
-    {
-        auto tmp = fields.get_tmp();
-        calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
-                        &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(),
-                        fields.sp.at("qt")->fld_mean.data(), base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
-        fields.release_tmp(tmp);
-    }
+        calc_base_state(
+                base.pref.data(),   base.prefh.data(),
+                base.rhoref.data(), base.rhorefh.data(),
+                base.thvref.data(), base.thvrefh.data(),
+                base.exnref.data(), base.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                base.pbot,
+                gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(),
+                gd.dzh.data());
 
     if (name == "b")
     {

@@ -418,7 +418,6 @@ void Model<TF>::exec()
                         radiation->exec_column(*column, *thermo, *timeloop);
                         column->exec(iter, time, itime);
                     }
-
                 }
 
                 // Exit the simulation when the runtime has been hit.
