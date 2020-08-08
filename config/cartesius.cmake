@@ -46,7 +46,6 @@ endif()
 if(USEICC)
     set(USER_CXX_FLAGS "-std=c++14 -restrict -DBOOL_TYPE=\"signed char\"")
     set(USER_CXX_FLAGS_RELEASE "-Ofast -xAVX -axCORE-AVX-I,CORE-AVX2,CORE-AVX512")
-    set(USER_FC_FLAGS " -DUSE_CBOOL")
     set(USER_FC_FLAGS_RELEASE "-Ofast -xAVX -axCORE-AVX-I,CORE-AVX2,CORE-AVX512")
     add_definitions(-DRESTRICTKEYWORD=restrict)
 else()
@@ -54,6 +53,7 @@ else()
     set(USER_CXX_FLAGS_RELEASE "-Ofast -march=ivybridge") # -march optimized for the CPU present in Cartesius GPU nodes
     add_definitions(-DRESTRICTKEYWORD=__restrict__)
 endif()
+add_definitions(-DUSE_CBOOL)
 
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
