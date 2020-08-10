@@ -518,6 +518,7 @@ namespace mp2d
                 nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
             }
 
+
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
         // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1

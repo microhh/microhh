@@ -837,7 +837,7 @@ namespace
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        TF cfl_max = TF(0.);
+        TF cflmax = TF(0.);
 
         constexpr TF V_Tmin = TF(0.1);
         constexpr TF V_Tmax = TF(10.);
@@ -893,10 +893,10 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const TF cfl = TF(0.25) * (w_qc[ijk-kk] + TF(2.)*w_qc[ijk] + w_qc[ijk+kk]) * dzi[k] * dt;
-                    cfl_max = std::max(cfl, cfl_max);
+                    cflmax = std::max(cfl, cflmax);
                 }
 
-        return cfl_max;
+        return cflmax;
     }
 }
 
@@ -909,7 +909,7 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
 
     N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
 
@@ -1093,7 +1093,7 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 }
 
-#ifndef USECUDA
+#ifndef USECUDA 
 template<typename TF>
 unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double dt)
 {
@@ -1152,7 +1152,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     // Prevent zero division.
     cfl = std::max(cfl, 1.e-5);
 
-    return idt * this->cfl_max / cfl;
+    return idt * this->cflmax / cfl;
 }
 #endif
 

@@ -169,7 +169,6 @@ template<typename TF>
 void Model<TF>::init()
 {
     master.init(*input);
-
     grid->init();
     fields->init(*input, *dump, *cross, sim_mode);
 
@@ -288,6 +287,7 @@ void Model<TF>::save()
 template<typename TF>
 void Model<TF>::exec()
 {
+
     if (sim_mode == Sim_mode::Init)
         return;
 

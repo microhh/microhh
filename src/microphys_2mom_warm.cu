@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+
 #include "boundary_cyclic.h"
 #include "thermo_moist_functions.h"
 #include "constants.h"
@@ -776,7 +777,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     fields.release_tmp_g(cfl_qr);
 
     // Limit CFL at some small non-zero number
-    cfl = std::max(cfl, cfl_min<TF>);
+    cfl = fmax(cfl, cfl_min<TF>);
 
     const unsigned long idt_lim = idt * cflmax / cfl;
     return idt_lim;

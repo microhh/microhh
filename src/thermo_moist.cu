@@ -167,7 +167,7 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency.
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 wt[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
@@ -197,7 +197,7 @@ namespace
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ssa.ql, ssa.qi, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
@@ -228,7 +228,7 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 bh[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
@@ -334,6 +334,25 @@ namespace
             qlh[ijk] = sat_adjust_g(thh, qth, ph[k], exnh[k]).ql; // Half level liquid water content
         }
     }
+
+    template<typename TF> __global__
+    void calc_ice_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
+                             TF* __restrict__ exn, TF* __restrict__ p,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            qi[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qi;
+        }
+    }
+
 
     /*
     // BvS: no longer used, base state is calculated at the host
@@ -580,7 +599,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     dim3 blockGPU2(blocki, blockj, 1);
 
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    if (bs.swupdatebasestate && (name == "b" || name == "ql" || name == "bh" || name == "qlh"))
+    if (bs.swupdatebasestate && (name != "N2"))
     {
         //calc_hydrostatic_pressure_g<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
         //                                          fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
@@ -648,6 +667,17 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
+    else if (name == "qi")
+    {
+        calc_ice_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
@@ -743,6 +773,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
+
 #endif
 
 #ifdef USECUDA

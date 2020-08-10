@@ -839,8 +839,7 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
-    if (bs.swupdatebasestate)
-        fields.set_calc_mean_profs(true);
+    fields.set_calc_mean_profs(true);
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
