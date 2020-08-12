@@ -450,9 +450,10 @@ void Model<TF>::exec()
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
-                            fields  ->backward_device();
-                            boundary->backward_device();
-                            thermo  ->backward_device();
+                            fields   ->backward_device();
+                            boundary ->backward_device();
+                            thermo   ->backward_device();
+                            microphys->backward_device();
                         }
                         #endif
 
@@ -601,9 +602,10 @@ void Model<TF>::setup_stats()
         {
             #pragma omp taskwait
             cpu_up_to_date = true;
-            fields  ->backward_device();
-            boundary->backward_device();
-            thermo  ->backward_device();
+            fields   ->backward_device();
+            boundary ->backward_device();
+            thermo   ->backward_device();
+            microphys->backward_device();
         }
         #endif
 

@@ -68,9 +68,9 @@ class Microphys_nsw6 : public Microphys<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
-        void prepare_device() {};
-        void clear_device() {};
-        void backward_device() {};
+        void prepare_device();
+        void clear_device();
+        void backward_device();
 
     private:
         using Microphys<TF>::swmicrophys;
@@ -94,5 +94,12 @@ class Microphys_nsw6 : public Microphys<TF>
         std::vector<TF> rr_bot; // Rain rate at the bottom.
         std::vector<TF> rs_bot; // Snow rate at the bottom.
         std::vector<TF> rg_bot; // Graupel rate at the bottom.
+
+        #ifdef USECUDA
+        TF* rr_bot_g;
+        TF* rs_bot_g;
+        TF* rg_bot_g;
+        #endif
+
 };
 #endif

@@ -202,22 +202,22 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
     }
 
     // Assign to a huge negative number in case of debug mode.
-    #ifdef __CUDACC_DEBUG__
-    auto& gd = grid.get_grid_data();
+    //#ifdef __CUDACC_DEBUG__
+    //auto& gd = grid.get_grid_data();
 
-    const int nblock = 256;
-    const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-    const TF  huge   = -1e30;
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
-    cuda_check_error();
-    #endif
+    //const int nblock = 256;
+    //const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
+    //const TF  huge   = -1e30;
+    //set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
+    //set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
+    //cuda_check_error();
+    //#endif
 
     return tmp;
 }

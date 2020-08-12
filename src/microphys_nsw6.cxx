@@ -1169,5 +1169,22 @@ void Microphys_nsw6<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     throw std::runtime_error(message);
 }
 
+#ifndef USECUDA 
+template<typename TF>
+void Microphys_nsw6<TF>::prepare_device()
+{
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::clear_device()
+{
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::backward_device()
+{
+}
+#endif
+
 template class Microphys_nsw6<double>;
 template class Microphys_nsw6<float>;
