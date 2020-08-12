@@ -1071,16 +1071,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         auto cfl = fields.get_tmp_g();
 
-        // DEBUG
-        sedimentation::fill_g<<<gridGPU, blockGPU>>>(
-                cfl->fld_g, TF(9999),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        const TF tmp_max = field3d_operators.calc_max_g(cfl->fld_g);    // DEBUG..
-
         sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
                 cfl->fld_g, w_q->fld_g, gd.dzi_g, TF(dt),
                 gd.istart, gd.iend,
@@ -1088,40 +1078,6 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
         cuda_check_error();
-
-        // DEBUG DEBUG!!!
-        /////////////////////////////////////////////////
-        const TF w_max   = field3d_operators.calc_max_g(w_q->fld_g);
-        const TF cfl_max = field3d_operators.calc_max_g(cfl->fld_g);
-
-        auto tmp1 = fields.get_tmp();
-        auto tmp2 = fields.get_tmp();
-
-        cuda_safe_call(cudaMemcpy(tmp1->fld.data(), w_q->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tmp2->fld.data(), cfl->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
-
-        TF max_w = 0;
-        TF max_c = 0;
-
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*gd.icells + k*gd.ijcells;
-
-                    max_w = std::max(max_w, tmp1->fld[ijk]);
-                    max_c = std::max(max_c, tmp2->fld[ijk]);
-                }
-
-        fields.release_tmp(tmp1);
-        fields.release_tmp(tmp2);
-
-        std::cout << "micro->exec()" << std::endl;
-        std::cout << "GPU: w_max: " << w_max << ", cfl_max: " << cfl_max << std::endl;
-        std::cout << "CPU: w_max: " << max_w << ", cfl_max: " << max_c << std::endl;
-        std::cout << "tmp_max before cfl: " << tmp_max << std::endl;
-        /////////////////////////////////////////////////
 
         fields.release_tmp_g(w_q);
 
@@ -1240,16 +1196,6 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
 
         auto cfl = fields.get_tmp_g();
 
-        // DEBUG
-        sedimentation::fill_g<<<gridGPU, blockGPU>>>(
-                cfl->fld_g, TF(9999),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        const TF tmp_max = field3d_operators.calc_max_g(cfl->fld_g);    // DEBUG..
-
         sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
                 cfl->fld_g, w_q->fld_g, gd.dzi_g, TF(dt),
                 gd.istart, gd.iend,
@@ -1258,39 +1204,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        const TF w_max   = field3d_operators.calc_max_g(w_q->fld_g);    // DEBUG..
         const TF cfl_max = field3d_operators.calc_max_g(cfl->fld_g);
-
-        // DEBUG DEBUG!!!
-        /////////////////////////////////////////////////
-        auto tmp1 = fields.get_tmp();
-        auto tmp2 = fields.get_tmp();
-
-        cuda_safe_call(cudaMemcpy(tmp1->fld.data(), w_q->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tmp2->fld.data(), cfl->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToHost));
-
-        TF max_w = 0;
-        TF max_c = 0;
-
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                #pragma ivdep
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*gd.icells + k*gd.ijcells;
-
-                    max_w = std::max(max_w, tmp1->fld[ijk]);
-                    max_c = std::max(max_c, tmp2->fld[ijk]);
-                }
-
-        fields.release_tmp(tmp1);
-        fields.release_tmp(tmp2);
-
-        std::cout << "micro->get_time_limit()" << std::endl;
-        std::cout << "GPU: w_max: " << w_max << ", cfl_max: " << cfl_max << std::endl;
-        std::cout << "CPU: w_max: " << max_w << ", cfl_max: " << max_c << std::endl;
-        std::cout << "tmp_max before cfl: " << tmp_max << std::endl;
-        /////////////////////////////////////////////////
 
         fields.release_tmp_g(w_q);
         fields.release_tmp_g(cfl);
@@ -1311,8 +1225,6 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
             qg_min<TF>, a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>);
 
     const TF cfl = std::max(TF(1.e-5), std::max(cfl_max_qr, std::max(cfl_max_qs, cfl_max_qg)));
-
-    std::cout << cfl << " " << cfl_max_qr << " " << cfl_max_qs << " " << cfl_max_qg << std::endl;
 
     return idt * this->cflmax / cfl;
 }
