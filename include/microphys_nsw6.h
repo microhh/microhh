@@ -71,6 +71,10 @@ class Microphys_nsw6 : public Microphys<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
+        void prepare_device() {};
+        void clear_device() {};
+        void backward_device() {};
+
     private:
         using Microphys<TF>::swmicrophys;
         using Microphys<TF>::master;

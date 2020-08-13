@@ -170,12 +170,9 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
-        #ifdef USECUDA
-        //void prepare_device() {};
-        //void clear_device() {};
-        //void forward_device() {};
-        //void backward_device() {};
-        #endif
+        void prepare_device();
+        void clear_device();
+        void backward_device();
 
     private:
         using Microphys<TF>::swmicrophys;
@@ -192,6 +189,10 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
+
+        #ifdef USECUDA
+        TF* rr_bot_g;
+        #endif
 
         const std::string tend_name = "micro";
         const std::string tend_longname = "Microphysics";

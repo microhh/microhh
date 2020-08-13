@@ -59,12 +59,9 @@ class Microphys_disabled : public Microphys<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
-        #ifdef USECUDA
-        //void prepare_device() {};
-        //void clear_device() {};
-        //void forward_device() {};
-        //void backward_device() {};
-        #endif
+        void prepare_device() {};
+        void clear_device() {};
+        void backward_device() {};
 
     private:
         using Microphys<TF>::swmicrophys;

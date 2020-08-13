@@ -432,11 +432,13 @@ void Model<TF>::exec()
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
-                            fields  ->backward_device();
-                            boundary->backward_device();
-                            thermo  ->backward_device();
+                            fields   ->backward_device();
+                            boundary ->backward_device();
+                            thermo   ->backward_device();
+                            microphys->backward_device();
                         }
                         #endif
+
                         #pragma omp task default(shared)
                         calculate_statistics(iter, time, itime, iotime, dt);
                     }
@@ -547,6 +549,7 @@ void Model<TF>::prepare_gpu()
     force   ->prepare_device();
     ib      ->prepare_device();
     // decay   ->prepare_device();
+    microphys->prepare_device();
     // // Prepare pressure last, for memory check
     pres    ->prepare_device();
 }
@@ -564,6 +567,7 @@ void Model<TF>::clear_gpu()
     force   ->clear_device();
     ib      ->clear_device();
     // decay   ->clear_device();
+    microphys->clear_device();
     // // Clear pressure last, for memory check
     pres    ->clear_device();
 }
@@ -665,6 +669,7 @@ void Model<TF>::setup_stats()
             }
         }
         stats->finalize_masks();
+
         if (stats->do_tendency())
         {
             calc_masks();

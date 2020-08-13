@@ -69,13 +69,10 @@ class Microphys
 
         virtual void get_surface_rain_rate(std::vector<TF>&) = 0;
 
-        #ifdef USECUDA
         // GPU functions and variables.
-        //virtual void prepare_device() = 0;
-        //virtual void clear_device() = 0;
-        //virtual void forward_device() = 0;
-        //virtual void backward_device() = 0;
-        #endif
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
+        virtual void backward_device() = 0;
 
     protected:
         Master& master;

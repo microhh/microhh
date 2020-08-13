@@ -22,9 +22,9 @@ z     = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 thl   = np.zeros(z.size)
 qt    = np.zeros(z.size)
 u     = np.zeros(z.size)
-ug    = np.zeros(z.size)
+ugeo  = np.zeros(z.size)
 v     = np.zeros(z.size)
-vg    = np.zeros(z.size)
+vgeo  = np.zeros(z.size)
 wls   = np.zeros(z.size)
 thlls = np.zeros(z.size)
 qtls  = np.zeros(z.size)
@@ -71,10 +71,10 @@ for k in range(kmax):
         wls[k] = -0.005
 
     # U and V component wind
-    u[k]  = -9.9 + 2.0e-3 * z[k]
-    ug[k] = u[k]
-    v[k]  = -3.8
-    vg[k] = v[k]
+    u[k] = -9.9 + 2.0e-3 * z[k]
+    v[k] = -3.8
+    ugeo[k] = u[k]
+    vgeo[k] = v[k]
 
     # Advective and radiative tendency thl
     thlls[k] = -2.5 / 86400.
@@ -98,9 +98,9 @@ nc_group_init = nc_file.createGroup("init");
 nc_thl   = nc_group_init.createVariable("thl"   , float_type, ("z"))
 nc_qt    = nc_group_init.createVariable("qt"    , float_type, ("z"))
 nc_u     = nc_group_init.createVariable("u"     , float_type, ("z"))
-nc_ug    = nc_group_init.createVariable("ug"    , float_type, ("z"))
+nc_ugeo  = nc_group_init.createVariable("u_geo" , float_type, ("z"))
 nc_v     = nc_group_init.createVariable("v"     , float_type, ("z"))
-nc_vg    = nc_group_init.createVariable("vg"    , float_type, ("z"))
+nc_vgeo  = nc_group_init.createVariable("v_geo" , float_type, ("z"))
 nc_wls   = nc_group_init.createVariable("w_ls"  , float_type, ("z"))
 nc_thlls = nc_group_init.createVariable("thl_ls", float_type, ("z"))
 nc_qtls  = nc_group_init.createVariable("qt_ls" , float_type, ("z"))
@@ -109,9 +109,9 @@ nc_z    [:] = z    [:]
 nc_thl  [:] = thl  [:]
 nc_qt   [:] = qt   [:]
 nc_u    [:] = u    [:]
-nc_ug   [:] = ug   [:]
+nc_ugeo [:] = ugeo [:]
 nc_v    [:] = v    [:]
-nc_vg   [:] = vg   [:]
+nc_vgeo [:] = vgeo [:]
 nc_wls  [:] = wls  [:]
 nc_thlls[:] = thlls[:]
 nc_qtls [:] = qtls [:]

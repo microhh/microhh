@@ -1,5 +1,5 @@
 # ARCH Linux / Manjaro
-if(USEMPI)
+if(USEMPI) 
   set(ENV{CC}  mpicc)    # C compiler for parallel build
   set(ENV{CXX} mpicxx)   # C++ compiler for parallel build
   set(ENV{FC}  mpif90)   # Fortran compiler for parallel build
@@ -53,4 +53,3 @@ if(USECUDA)
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
-add_definitions(-DUSE_CBOOL)
