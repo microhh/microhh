@@ -18,9 +18,9 @@ z     = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 thl   = np.zeros(np.size(z))
 qt    = np.zeros(np.size(z))
 u     = np.zeros(np.size(z))
-ug    = np.zeros(np.size(z))
 v     = np.zeros(np.size(z))
-vg    = np.zeros(np.size(z))
+ugeo  = np.zeros(np.size(z))
+vgeo  = np.zeros(np.size(z))
 wls   = np.zeros(np.size(z))
 thlls = np.zeros(np.size(z))
 qtls  = np.zeros(np.size(z))
@@ -53,8 +53,8 @@ for k in range(kmax):
     else:
         u[k] = -8.75 + (z[k]-700.)*(-4.61+8.75)/(3000.-700.)
 
-    # ug-wind component
-    ug[k] = -10. + 1.8e-3*z[k]
+    # ugeo-wind component
+    ugeo[k] = -10. + 1.8e-3*z[k]
 
     # large scale vertical velocity
     if(z[k] <= 1500):
@@ -88,9 +88,9 @@ nc_group_init = nc_file.createGroup("init");
 nc_thl   = nc_group_init.createVariable("thl"   , float_type, ("z"))
 nc_qt    = nc_group_init.createVariable("qt"    , float_type, ("z"))
 nc_u     = nc_group_init.createVariable("u"     , float_type, ("z"))
-nc_ug    = nc_group_init.createVariable("u_geo" , float_type, ("z"))
-nc_v     = nc_group_init.createVariable("v_geo" , float_type, ("z"))
-nc_vg    = nc_group_init.createVariable("vg"    , float_type, ("z"))
+nc_v     = nc_group_init.createVariable("v"     , float_type, ("z"))
+nc_ugeo  = nc_group_init.createVariable("u_geo" , float_type, ("z"))
+nc_vgeo  = nc_group_init.createVariable("v_geo" , float_type, ("z"))
 nc_wls   = nc_group_init.createVariable("w_ls"  , float_type, ("z"))
 nc_thlls = nc_group_init.createVariable("thl_ls", float_type, ("z"))
 nc_qtls  = nc_group_init.createVariable("qt_ls" , float_type, ("z"))
@@ -99,9 +99,9 @@ nc_z    [:] = z    [:]
 nc_thl  [:] = thl  [:]
 nc_qt   [:] = qt   [:]
 nc_u    [:] = u    [:]
-nc_ug   [:] = ug   [:]
+nc_ugeo [:] = ugeo [:]
 nc_v    [:] = v    [:]
-nc_vg   [:] = vg   [:]
+nc_vgeo [:] = vgeo [:]
 nc_wls  [:] = wls  [:]
 nc_thlls[:] = thlls[:]
 nc_qtls [:] = qtls [:]
