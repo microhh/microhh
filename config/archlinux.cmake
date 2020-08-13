@@ -4,12 +4,15 @@ if(USEMPI)
   set(ENV{CXX} mpicxx)   # C++ compiler for parallel build
   set(ENV{FC}  mpif90)   # Fortran compiler for parallel build
 else()
-  set(ENV{CC}  gcc)      # C compiler for serial build
-  set(ENV{CXX} g++)      # C++ compiler for serial build
-  set(ENV{FC}  gfortran) # Fortran compiler for serial build
+  # NOTE: CUDA is picky on which GCC version is used.
+  # See: https://gist.github.com/ax3l/9489132#user-content-nvcc
+  # GCC <= 8 is required for CUDA 10.2.xx
+  set(ENV{CC}  gcc-8)      # C compiler for serial build
+  set(ENV{CXX} g++-8)      # C++ compiler for serial build
+  set(ENV{FC}  gfortran-8) # Fortran compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "-std=c++14")
+set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
@@ -27,8 +30,11 @@ set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(LIBS ${LIBS} -rdynamic /opt/cuda/lib64/libcufft.so)
-  set(USER_CUDA_NVCC_FLAGS "-arch=sm_21")
+  set(CUFFT_LIB "/opt/cuda/lib64/libcufft.so")
+  set(LIBS ${LIBS} ${CUFFT_LIB} -rdynamic )
+  set(USER_CUDA_NVCC_FLAGS "-arch=sm_70")
+  list(APPEND CUDA_NVCC_FLAGS " -std=c++14")
+  set(USER_CUDA_NVCC_FLAGS_RELEASE "-Xptxas -O3 -use_fast_math")
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
