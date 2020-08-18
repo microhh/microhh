@@ -79,6 +79,7 @@ namespace
     template<typename TF> constexpr TF b_g = 3.; // Empirical constant for m_g.
 
     template<typename TF> constexpr TF c_r = 130.; // Empirical constant for v_r (wrong value in Tomita's paper).
+
     template<typename TF> constexpr TF c_s = 4.84; // Empirical constant for v_s.
     template<typename TF> constexpr TF c_g = 82.5; // Empirical constant for v_g.
 
@@ -612,7 +613,35 @@ namespace
                 qst[ijk] += rain_to_snow;
                 thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
 
-                   //  qrt[ijk] = fmax(TF(0.0), qrt[ijk]);
+                // Loss from ice.
+                qtt[ijk] -= ice_to_snow;
+                qst[ijk] += ice_to_snow;
+                thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
+
+                qtt[ijk] -= ice_to_graupel;
+                qgt[ijk] += ice_to_graupel;
+                thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
+
+                // Loss from snow.
+                qst[ijk] -= snow_to_graupel;
+                qgt[ijk] += snow_to_graupel;
+
+                qst[ijk] -= snow_to_vapor;
+                qtt[ijk] += snow_to_vapor;
+                thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+
+                qst[ijk] -= snow_to_rain;
+                qrt[ijk] += snow_to_rain;
+                thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
+
+                // Loss from graupel.
+                qgt[ijk] -= graupel_to_rain;
+                qrt[ijk] += graupel_to_rain;
+                thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
+
+                qgt[ijk] -= graupel_to_vapor;
+                qtt[ijk] += graupel_to_vapor;
+                thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
             }
         } // end for loop over k
     } // end conversion function
