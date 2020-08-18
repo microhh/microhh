@@ -132,25 +132,31 @@ namespace
 
         dim3 blockGPU(blocki, blockj, 1);
 
-        dim3 gridGPU1(1, 1, 1);
-        dim3 blockGPU1(1, 1, gd.kcells);
+        //dim3 gridGPU1(1, 1, 1);
+        //dim3 blockGPU1(1, 1, gd.kcells);
 
         set_to_val_g<<<gridGPU3, blockGPU>>>(
                 fld->fld_g, value,
                 gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+        cuda_check_error();
 
         set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
         set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
 
         set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
         set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
 
         set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
-
-        set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
-
         cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        //set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
+        //cuda_check_error();
     }
 }
 

@@ -138,7 +138,7 @@ namespace
         // Raise exception if nitermax is reached.
         if (niter == nitermax)
         {
-            printf("ERROR: saturation adjustment did not converge!\n");
+            printf("ERROR: saturation adjustment did not converge: thl=%f, qt=%f, p=%f\n", thl, qt, p);
             asm("trap;");
         }
 
