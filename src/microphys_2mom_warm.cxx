@@ -542,7 +542,7 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "", 70e6);
+    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";

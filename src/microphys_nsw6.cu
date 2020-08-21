@@ -151,13 +151,13 @@ namespace
             const TF* const __restrict__ ql, const TF* const __restrict__ qi,
             const TF* const __restrict__ rho, const TF* const __restrict__ exner, const TF* const __restrict__ p,
             const TF* const __restrict__ dzi, const TF* const __restrict__ dzhi,
-            const TF N_d, const TF dt,
+            const TF Nc0, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk, TF* const __restrict__ temp_array)
     {
-        // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)* log((N_d*TF(1.e-6)) / TF(2.e3));
+        // Tomita Eq. 51. Nc0 is converted from SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)* log((Nc0*TF(1.e-6)) / TF(2.e3));
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         //const int k = blockIdx.z + kstart;
@@ -357,9 +357,9 @@ namespace
                 // Tomita Eq. 54
                 const TF beta_2 = fmin( beta_gaut<TF>, beta_gaut<TF>*exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
+                // Tomita Eq. 50. Our Nc0 is SI units, so conversion is applied.
                 TF P_raut = !(has_liq) ? TF(0.) :
-                    TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                    TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*Nc0 / (D_d*rho[k]*ql[ijk]));
 
                 // Tomita Eq. 52
                 TF P_saut = !(has_ice) ? TF(0.) :
@@ -729,7 +729,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
            ql->fld_g, qi->fld_g,
            fields.rhoref_g, exner, p,
            gd.dzi_g, gd.dzhi_g,
-           this->N_d, TF(dt),
+           this->Nc0, TF(dt),
            gd.istart, gd.jstart, gd.kstart,
            gd.iend, gd.jend, gd.kend,
            gd.icells, gd.ijcells, temp_g->fld_g);
