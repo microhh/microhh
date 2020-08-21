@@ -910,7 +910,7 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
-    Nc0 = inputin.get_item<TF>("micro", "Nd", "");
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
