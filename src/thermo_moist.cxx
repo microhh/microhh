@@ -939,7 +939,7 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
     return Constants::ulhuge;
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -992,7 +992,7 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         throw std::runtime_error(message);
     }
 }
-#endif
+//#endif
 
 template<typename TF>
 bool Thermo_moist<TF>::has_mask(std::string mask_name)

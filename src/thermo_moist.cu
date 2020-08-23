@@ -793,71 +793,71 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-#ifdef USECUDA
-template<typename TF>
-void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
-{
-    if (mask_name == "ql")
-    {
-        auto ql  = fields.get_tmp();
-        auto qlh = fields.get_tmp();
-        auto ql_g = fields.get_tmp_g();
-
-        get_thermo_field_g(*ql_g, "ql", true);
-
-        fields.backward_field_device_3d(ql->fld.data(), ql_g->fld_g);
-        get_thermo_field_g(*ql_g, "ql_h", true);
-        fields.backward_field_device_3d(qlh->fld.data(), ql_g->fld_g);
-
-        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp_g(ql_g);
-        fields.release_tmp(ql);
-        fields.release_tmp(qlh);
-    }
-    else if (mask_name == "qlcore")
-    {
-        auto ql  = fields.get_tmp();
-        auto qlh = fields.get_tmp();
-        auto tmp_g = fields.get_tmp_g();
-
-        get_thermo_field_g(*tmp_g, "ql", true);
-        fields.backward_field_device_3d(ql->fld.data(), tmp_g->fld_g);
-        get_thermo_field_g(*tmp_g, "ql_h", true);
-        fields.backward_field_device_3d(qlh->fld.data(), tmp_g->fld_g);
-
-        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp(ql);
-        fields.release_tmp(qlh);
-
-        auto b = fields.get_tmp();
-        auto bh = fields.get_tmp();
-
-        get_thermo_field_g(*tmp_g, "b", true);
-        fields.backward_field_device_3d(b->fld.data(), tmp_g->fld_g);
-        get_thermo_field_g(*tmp_g, "b_h", true);
-        fields.backward_field_device_3d(bh->fld.data(), tmp_g->fld_g);
-
-        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
-        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
-
-        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
-        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
-
-        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp(b);
-        fields.release_tmp(bh);
-        fields.release_tmp_g(tmp_g);
-    }
-    else
-    {
-        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
-        throw std::runtime_error(message);
-    }
-}
-#endif
+//#ifdef USECUDA
+//template<typename TF>
+//void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+//{
+//    if (mask_name == "ql")
+//    {
+//        auto ql  = fields.get_tmp();
+//        auto qlh = fields.get_tmp();
+//        auto ql_g = fields.get_tmp_g();
+//
+//        get_thermo_field_g(*ql_g, "ql", true);
+//
+//        fields.backward_field_device_3d(ql->fld.data(), ql_g->fld_g);
+//        get_thermo_field_g(*ql_g, "ql_h", true);
+//        fields.backward_field_device_3d(qlh->fld.data(), ql_g->fld_g);
+//
+//        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp_g(ql_g);
+//        fields.release_tmp(ql);
+//        fields.release_tmp(qlh);
+//    }
+//    else if (mask_name == "qlcore")
+//    {
+//        auto ql  = fields.get_tmp();
+//        auto qlh = fields.get_tmp();
+//        auto tmp_g = fields.get_tmp_g();
+//
+//        get_thermo_field_g(*tmp_g, "ql", true);
+//        fields.backward_field_device_3d(ql->fld.data(), tmp_g->fld_g);
+//        get_thermo_field_g(*tmp_g, "ql_h", true);
+//        fields.backward_field_device_3d(qlh->fld.data(), tmp_g->fld_g);
+//
+//        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp(ql);
+//        fields.release_tmp(qlh);
+//
+//        auto b = fields.get_tmp();
+//        auto bh = fields.get_tmp();
+//
+//        get_thermo_field_g(*tmp_g, "b", true);
+//        fields.backward_field_device_3d(b->fld.data(), tmp_g->fld_g);
+//        get_thermo_field_g(*tmp_g, "b_h", true);
+//        fields.backward_field_device_3d(bh->fld.data(), tmp_g->fld_g);
+//
+//        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+//        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
+//
+//        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
+//        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
+//
+//        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp(b);
+//        fields.release_tmp(bh);
+//        fields.release_tmp_g(tmp_g);
+//    }
+//    else
+//    {
+//        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
+//        throw std::runtime_error(message);
+//    }
+//}
+//#endif
 
 template class Thermo_moist<double>;
 template class Thermo_moist<float>;
