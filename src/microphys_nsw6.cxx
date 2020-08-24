@@ -130,13 +130,13 @@ namespace
             const TF* const restrict ql, const TF* const restrict qi,
             const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
             const TF* const restrict dzi, const TF* const restrict dzhi,
-            const TF N_d, const TF dt,
+            const TF Nc0, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((N_d*TF(1.e-6)) / TF(2.e3));
+        // Tomita Eq. 51. Nc0 is converted from SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((Nc0*TF(1.e-6)) / TF(2.e3));
 
         for (int k=kstart; k<kend; ++k)
         {
@@ -328,15 +328,15 @@ namespace
                     // Tomita Eq. 54
                     const TF beta_2 = std::min( beta_gaut<TF>, beta_gaut<TF>*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                    // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
+                    // Tomita Eq. 50. Our Nc0 is SI units, so conversion is applied.
                     TF P_raut = !(has_liq) ? TF(0.) :
-                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*Nc0 / (D_d*rho[k]*ql[ijk]));
 
                     // // Kharoutdinov and Kogan autoconversion.
                     // TF P_raut = (has_liq) ?
                     //     TF(1350.)
                     //     * std::pow(ql[ijk], TF(2.47))
-                    //     * std::pow(N_d * TF(1.e-6), TF(-1.79))
+                    //     * std::pow(Nc0 * TF(1.e-6), TF(-1.79))
                     //     : TF(0.);
 
                     // Seifert and Beheng autoconversion.
@@ -344,7 +344,7 @@ namespace
                     // const TF k_cc = TF(9.44e9); // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
                     // const TF nu_c = TF(1.); // SB06, Table 1., same as UCLA-LES
                     // const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow2(nu_c+1);
-                    // const TF xc  = rho[k] * ql[ijk] / N_d; // Mean mass of cloud drops [kg]
+                    // const TF xc  = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
                     // const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
                     // const TF phi_au = TF(600.) * std::pow(tau, TF(0.68)) * pow3(TF(1.) - pow(tau, TF(0.68))); // UCLA-LES
 
@@ -910,9 +910,8 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
-
-    N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
@@ -1003,7 +1002,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             ql->fld.data(), qi->fld.data(),
             fields.rhoref.data(), exner.data(), p.data(),
             gd.dzi.data(), gd.dzhi.data(),
-            this->N_d, TF(dt),
+            this->Nc0, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
@@ -1198,6 +1197,23 @@ void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
     std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
+
+#ifndef USECUDA 
+template<typename TF>
+void Microphys_nsw6<TF>::prepare_device()
+{
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::clear_device()
+{
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::backward_device()
+{
+}
+#endif
 
 template class Microphys_nsw6<double>;
 template class Microphys_nsw6<float>;

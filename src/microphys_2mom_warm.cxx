@@ -519,6 +519,7 @@ namespace mp2d
                 nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
             }
 
+
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
         // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
@@ -542,7 +543,7 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "", 70e6);
+    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";

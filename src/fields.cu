@@ -75,6 +75,89 @@ namespace
                        + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
         }
     }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        if (i < icells && j < jcells && k < kcells)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] = value;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value,
+            const int icells, const int jcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij = i + j*icells;
+            fld[ij] = value;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value, const int kcells)
+    {
+        const int k = blockIdx.z;
+
+        if (k < kcells)
+            fld[k] = value;
+    }
+
+    template<typename TF>
+    void set_field3d_to_value(
+            Field3d<TF>* fld, const TF value, const Grid_data<TF>& gd)
+    {
+        const int blocki = gd.ithread_block;
+        const int blockj = gd.jthread_block;
+        const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+        const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+        dim3 gridGPU2(gridi, gridj, 1);
+        dim3 gridGPU3(gridi, gridj, gd.kcells);
+
+        dim3 blockGPU(blocki, blockj, 1);
+
+        //dim3 gridGPU1(1, 1, 1);
+        //dim3 blockGPU1(1, 1, gd.kcells);
+
+        set_to_val_g<<<gridGPU3, blockGPU>>>(
+                fld->fld_g, value,
+                gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        //set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
+        //cuda_check_error();
+    }
 }
 
 #ifdef USECUDA
@@ -184,16 +267,22 @@ void Fields<TF>::exec()
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 {
+    auto& gd = grid.get_grid_data();
     std::shared_ptr<Field3d<TF>> tmp;
 
     #pragma omp critical
     {
+        cudaDeviceSynchronize();
+
         // In case of insufficient tmp fields, allocate a new one.
         if (atmp_g.empty())
         {
             init_tmp_field_g();
             tmp = atmp_g.back();
             tmp->init_device();
+
+            // Initialise all values at zero
+            set_field3d_to_value(tmp.get(), TF(0), gd);
         }
         else
             tmp = atmp_g.back();
@@ -203,20 +292,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 
     // Assign to a huge negative number in case of debug mode.
     #ifdef __CUDACC_DEBUG__
-    auto& gd = grid.get_grid_data();
-
-    const int nblock = 256;
-    const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-    const TF  huge   = -1e30;
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
-    cuda_check_error();
+    set_field3d_to_value(tmp.get(), TF(-1e30), gd);
     #endif
 
     return tmp;
@@ -225,7 +301,11 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 template<typename TF>
 void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
 {
-    atmp_g.push_back(std::move(tmp));
+    #pragma omp critical
+    {
+        cudaDeviceSynchronize();
+        atmp_g.push_back(std::move(tmp));
+    }
 }
 #endif
 

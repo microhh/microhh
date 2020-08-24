@@ -138,7 +138,7 @@ namespace
         // Raise exception if nitermax is reached.
         if (niter == nitermax)
         {
-            printf("ERROR: saturation adjustment did not converge!\n");
+            printf("ERROR: saturation adjustment did not converge: thl=%f, qt=%f, p=%f\n", thl, qt, p);
             asm("trap;");
         }
 
@@ -167,7 +167,7 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency.
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 wt[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
@@ -197,7 +197,7 @@ namespace
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ssa.ql, ssa.qi, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
@@ -228,7 +228,7 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency
-            if (ssa.ql > 0)
+            if (ssa.ql + ssa.qi > 0)
                 bh[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k]);
             else
                 bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
@@ -334,6 +334,25 @@ namespace
             qlh[ijk] = sat_adjust_g(thh, qth, ph[k], exnh[k]).ql; // Half level liquid water content
         }
     }
+
+    template<typename TF> __global__
+    void calc_ice_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
+                             TF* __restrict__ exn, TF* __restrict__ p,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            qi[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qi;
+        }
+    }
+
 
     /*
     // BvS: no longer used, base state is calculated at the host
@@ -583,7 +602,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     dim3 blockGPU2(blocki, blockj, 1);
 
     // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    if (bs.swupdatebasestate && (name == "b" || name == "ql" || name == "bh" || name == "qlh"))
+    if (bs.swupdatebasestate && (name != "N2"))
     {
         //calc_hydrostatic_pressure_g<TF><<<1, 1>>>(bs.pref_g, bs.prefh_g, bs.exnref_g, bs.exnrefh_g,
         //                                          fields.sp.at("thl")->fld_mean_g, fields.sp.at("qt")->fld_mean_g,
@@ -651,6 +670,17 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
+    else if (name == "qi")
+    {
+        calc_ice_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
@@ -746,6 +776,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
+
 #endif
 
 #ifdef USECUDA
@@ -765,71 +796,71 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-#ifdef USECUDA
-template<typename TF>
-void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
-{
-    if (mask_name == "ql")
-    {
-        auto ql  = fields.get_tmp();
-        auto qlh = fields.get_tmp();
-        auto ql_g = fields.get_tmp_g();
-
-        get_thermo_field_g(*ql_g, "ql", true);
-
-        fields.backward_field_device_3d(ql->fld.data(), ql_g->fld_g);
-        get_thermo_field_g(*ql_g, "ql_h", true);
-        fields.backward_field_device_3d(qlh->fld.data(), ql_g->fld_g);
-
-        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp_g(ql_g);
-        fields.release_tmp(ql);
-        fields.release_tmp(qlh);
-    }
-    else if (mask_name == "qlcore")
-    {
-        auto ql  = fields.get_tmp();
-        auto qlh = fields.get_tmp();
-        auto tmp_g = fields.get_tmp_g();
-
-        get_thermo_field_g(*tmp_g, "ql", true);
-        fields.backward_field_device_3d(ql->fld.data(), tmp_g->fld_g);
-        get_thermo_field_g(*tmp_g, "ql_h", true);
-        fields.backward_field_device_3d(qlh->fld.data(), tmp_g->fld_g);
-
-        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp(ql);
-        fields.release_tmp(qlh);
-
-        auto b = fields.get_tmp();
-        auto bh = fields.get_tmp();
-
-        get_thermo_field_g(*tmp_g, "b", true);
-        fields.backward_field_device_3d(b->fld.data(), tmp_g->fld_g);
-        get_thermo_field_g(*tmp_g, "b_h", true);
-        fields.backward_field_device_3d(bh->fld.data(), tmp_g->fld_g);
-
-        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
-        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
-
-        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
-        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
-
-        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
-
-        fields.release_tmp(b);
-        fields.release_tmp(bh);
-        fields.release_tmp_g(tmp_g);
-    }
-    else
-    {
-        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
-        throw std::runtime_error(message);
-    }
-}
-#endif
+//#ifdef USECUDA
+//template<typename TF>
+//void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+//{
+//    if (mask_name == "ql")
+//    {
+//        auto ql  = fields.get_tmp();
+//        auto qlh = fields.get_tmp();
+//        auto ql_g = fields.get_tmp_g();
+//
+//        get_thermo_field_g(*ql_g, "ql", true);
+//
+//        fields.backward_field_device_3d(ql->fld.data(), ql_g->fld_g);
+//        get_thermo_field_g(*ql_g, "ql_h", true);
+//        fields.backward_field_device_3d(qlh->fld.data(), ql_g->fld_g);
+//
+//        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp_g(ql_g);
+//        fields.release_tmp(ql);
+//        fields.release_tmp(qlh);
+//    }
+//    else if (mask_name == "qlcore")
+//    {
+//        auto ql  = fields.get_tmp();
+//        auto qlh = fields.get_tmp();
+//        auto tmp_g = fields.get_tmp_g();
+//
+//        get_thermo_field_g(*tmp_g, "ql", true);
+//        fields.backward_field_device_3d(ql->fld.data(), tmp_g->fld_g);
+//        get_thermo_field_g(*tmp_g, "ql_h", true);
+//        fields.backward_field_device_3d(qlh->fld.data(), tmp_g->fld_g);
+//
+//        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp(ql);
+//        fields.release_tmp(qlh);
+//
+//        auto b = fields.get_tmp();
+//        auto bh = fields.get_tmp();
+//
+//        get_thermo_field_g(*tmp_g, "b", true);
+//        fields.backward_field_device_3d(b->fld.data(), tmp_g->fld_g);
+//        get_thermo_field_g(*tmp_g, "b_h", true);
+//        fields.backward_field_device_3d(bh->fld.data(), tmp_g->fld_g);
+//
+//        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+//        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
+//
+//        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
+//        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
+//
+//        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+//
+//        fields.release_tmp(b);
+//        fields.release_tmp(bh);
+//        fields.release_tmp_g(tmp_g);
+//    }
+//    else
+//    {
+//        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
+//        throw std::runtime_error(message);
+//    }
+//}
+//#endif
 
 template class Thermo_moist<double>;
 template class Thermo_moist<float>;

@@ -949,8 +949,7 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
-    if (bs.swupdatebasestate)
-        fields.set_calc_mean_profs(true);
+    fields.set_calc_mean_profs(true);
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
@@ -1050,7 +1049,7 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
     return Constants::ulhuge;
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -1103,7 +1102,7 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         throw std::runtime_error(message);
     }
 }
-#endif
+//#endif
 
 template<typename TF>
 bool Thermo_moist<TF>::has_mask(std::string mask_name)
