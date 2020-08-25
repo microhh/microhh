@@ -1172,7 +1172,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     // Prevent zero division.
     cfl = std::max(cfl, 1.e-5);
 
-    return idt * this->cfl_max / cfl;
+    return idt * this->cflmax / cfl;
 }
 #endif
 
