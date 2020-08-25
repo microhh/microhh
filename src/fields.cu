@@ -32,9 +32,12 @@
 #include "column.h"
 #include "constants.h"
 #include "tools.h"
+#include "fast_math.h"
 
 namespace
 {
+    namespace fm = Fast_math;
+
     // TODO use interp2 functions instead of manual interpolation
     template<typename TF> __global__
     void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
@@ -51,7 +54,9 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            mom[ijk] = (0.5*(u[ijk]+u[ijk+ii]) + 0.5*(v[ijk]+v[ijk+jj]) + 0.5*(w[ijk]+w[ijk+kk]))*dz[k];
+            mom[ijk] = (TF(0.5)*(u[ijk]+u[ijk+ii])
+                      + TF(0.5)*(v[ijk]+v[ijk+jj])
+                      + TF(0.5)*(w[ijk]+w[ijk+kk]))*dz[k];
         }
     }
 
@@ -70,9 +75,9 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2))
-                       + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2))
-                       + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
+            tke[ijk] = ( TF(0.5)*(fm::pow2(u[ijk])+fm::pow2(u[ijk+ii]))
+                       + TF(0.5)*(fm::pow2(v[ijk])+fm::pow2(v[ijk+jj]))
+                       + TF(0.5)*(fm::pow2(w[ijk])+fm::pow2(w[ijk+kk])))*dz[k];
         }
     }
 

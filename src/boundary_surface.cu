@@ -34,10 +34,13 @@
 #include "timedep.h"
 #include "monin_obukhov.h"
 #include "boundary_surface.h"
+#include "fast_math.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
+    namespace fm = Fast_math;
+
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
     template<typename TF> __device__
@@ -60,7 +63,7 @@ namespace
     TF calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
-        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / pow(du, TF(3));
+        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -68,7 +71,7 @@ namespace
     TF calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
-        const TF Ri = Constants::kappa<TF> * db * zsl / pow(du, TF(2));
+        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -90,8 +93,8 @@ namespace
             const int ijk = i + j*jj + kstart*kk;
             const TF minval = 1.e-1;
 
-            const TF du2 = pow(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]), TF(2))
-                         + pow(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]), TF(2));
+            const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                         + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
             dutot[ij] = fmax(pow(du2, TF(0.5)), minval);
         }
     }
@@ -116,7 +119,7 @@ namespace
             // case 1: fixed buoyancy flux and fixed ustar
             if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk[ij] = -pow(ustar[ij], TF(3)) / (Constants::kappa<TF>*bfluxbot[ij]);
+                obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF>*bfluxbot[ij]);
             }
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
@@ -197,16 +200,16 @@ namespace
                 const TF minval = 1.e-2;
 
                 // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-                const TF vonu2 = fmax(minval, TF(0.25)*( pow(v[ijk-ii]-vbot[ij-ii], TF(2)) + pow(v[ijk-ii+jj]-vbot[ij-ii+jj], TF(2))
-                                                       + pow(v[ijk   ]-vbot[ij   ], TF(2)) + pow(v[ijk   +jj]-vbot[ij   +jj], TF(2))) );
-                const TF uonv2 = fmax(minval, TF(0.25)*( pow(u[ijk-jj]-ubot[ij-jj], TF(2)) + pow(u[ijk+ii-jj]-ubot[ij+ii-jj], TF(2))
-                                                       + pow(u[ijk   ]-ubot[ij   ], TF(2)) + pow(u[ijk+ii   ]-ubot[ij+ii   ], TF(2))) );
+                const TF vonu2 = fmax(minval, TF(0.25)*( fm::pow2(v[ijk-ii]-vbot[ij-ii]) + fm::pow2(v[ijk-ii+jj]-vbot[ij-ii+jj])
+                                                       + fm::pow2(v[ijk   ]-vbot[ij   ]) + fm::pow2(v[ijk   +jj]-vbot[ij   +jj])) );
+                const TF uonv2 = fmax(minval, TF(0.25)*( fm::pow2(u[ijk-jj]-ubot[ij-jj]) + fm::pow2(u[ijk+ii-jj]-ubot[ij+ii-jj])
+                                                       + fm::pow2(u[ijk   ]-ubot[ij   ]) + fm::pow2(u[ijk+ii   ]-ubot[ij+ii   ])) );
 
-                const TF u2 = fmax(minval, pow(u[ijk]-ubot[ij], TF(2)));
-                const TF v2 = fmax(minval, pow(v[ijk]-vbot[ij], TF(2)));
+                const TF u2 = fmax(minval, fm::pow2(u[ijk]-ubot[ij]));
+                const TF v2 = fmax(minval, fm::pow2(v[ijk]-vbot[ij]));
 
-                const TF ustaronu4 = TF(0.5)*(pow(ustar[ij-ii], TF(4)) + pow(ustar[ij], TF(4)));
-                const TF ustaronv4 = TF(0.5)*(pow(ustar[ij-jj], TF(4)) + pow(ustar[ij], TF(4)));
+                const TF ustaronu4 = TF(0.5)*(fm::pow4(ustar[ij-ii]) + fm::pow4(ustar[ij]));
+                const TF ustaronv4 = TF(0.5)*(fm::pow4(ustar[ij-jj]) + fm::pow4(ustar[ij]));
 
                 ufluxbot[ij] = -copysign(TF(1.), u[ijk]-ubot[ij]) * pow(ustaronu4 / (TF(1.) + vonu2 / u2), TF(0.5));
                 vfluxbot[ij] = -copysign(TF(1.), v[ijk]-vbot[ij]) * pow(ustaronv4 / (TF(1.) + uonv2 / v2), TF(0.5));
