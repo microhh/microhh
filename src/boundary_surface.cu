@@ -35,6 +35,7 @@
 #include "monin_obukhov.h"
 #include "boundary_surface.h"
 #include "fast_math.h"
+#include "column.h"
 
 namespace
 {
@@ -469,6 +470,15 @@ template<typename TF>
 void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
 {
     throw std::runtime_error("boundary_surface::get_ra() is not implemented yet on the GPU");
+}
+
+
+template<typename TF>
+void Boundary_surface<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("obuk", obuk_g, no_offset);
+    column.calc_time_series("ustar", ustar_g, no_offset);
 }
 #endif
 

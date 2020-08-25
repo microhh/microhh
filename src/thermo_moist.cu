@@ -353,6 +353,29 @@ namespace
         }
     }
 
+    template<typename TF> __global__
+    void calc_thv_g(
+            TF* const __restrict__ thv,
+            const TF* const __restrict__ thl,
+            const TF* const __restrict__ qt,
+            const TF* const __restrict__ p,
+            const TF* const __restrict__ exn,
+            int istart, int jstart, int kstart,
+            int iend,   int jend,   int kend,
+            int icells, int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(thl[ijk], qt[ijk], p[k], exn[k]);
+            thv[ijk] = virtual_temperature(exn[k], thl[ijk], qt[ijk], ssa.ql, ssa.qi);
+        }
+    }
 
     /*
     // BvS: no longer used, base state is calculated at the host
@@ -680,13 +703,25 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
-
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, bs.thvref_g, gd.dzi_g,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "thv")
+    {
+        calc_thv_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.pref_g,
+            bs.exnref_g,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
@@ -786,11 +821,18 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp_g();
 
-    get_thermo_field_g(*output, "b", false);
-    column.calc_column("b", output->fld_g, no_offset);
+    get_thermo_field_g(*output, "thv", false);
+    column.calc_column("thv", output->fld_g, no_offset);
 
     get_thermo_field_g(*output, "ql", false);
     column.calc_column("ql", output->fld_g, no_offset);
+
+    get_thermo_field_g(*output, "qi", false);
+    column.calc_column("qi", output->fld_g, no_offset);
+
+    // Time series
+    column.calc_time_series("thl_bot", fields.ap.at("thl")->fld_bot_g, no_offset);
+    column.calc_time_series("qt_bot",  fields.ap.at("qt")->fld_bot_g,  no_offset);
 
     fields.release_tmp_g(output);
 }

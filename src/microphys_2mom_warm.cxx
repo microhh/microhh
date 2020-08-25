@@ -931,12 +931,14 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
     column.calc_time_series("rr", rr_bot.data(), no_offset);
 }
+#endif
 
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)

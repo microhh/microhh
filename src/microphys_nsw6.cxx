@@ -1083,6 +1083,7 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     stats.calc_stats_2d("rg", rg_bot, no_offset);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
 {
@@ -1091,6 +1092,7 @@ void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
     column.calc_time_series("rs", rs_bot.data(), no_offset);
     column.calc_time_series("rg", rg_bot.data(), no_offset);
 }
+#endif
 
 template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)

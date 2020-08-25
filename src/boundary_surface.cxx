@@ -619,6 +619,7 @@ void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("ustar", ustar, no_offset);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Boundary_surface<TF>::exec_column(Column<TF>& column)
 {
@@ -626,6 +627,7 @@ void Boundary_surface<TF>::exec_column(Column<TF>& column)
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
 }
+#endif
 
 template<typename TF>
 void Boundary_surface<TF>::set_values()

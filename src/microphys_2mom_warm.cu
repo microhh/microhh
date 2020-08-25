@@ -33,6 +33,7 @@
 #include "tools.h"
 #include "field3d_operators.h"
 #include "stats.h"
+#include "column.h"
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
 #include "microphys_sedi_kernels.h"
@@ -627,6 +628,13 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 #endif
 
 #ifdef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot_g, no_offset);
+}
+
 template<typename TF>
 void Microphys_2mom_warm<TF>::prepare_device()
 {

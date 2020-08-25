@@ -30,6 +30,7 @@
 #include "diff.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -923,6 +924,15 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     const TF cfl = std::max(TF(1.e-5), std::max(cfl_max_qr, std::max(cfl_max_qs, cfl_max_qg)));
 
     return idt * this->cflmax / cfl;
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot_g, no_offset);
+    column.calc_time_series("rs", rs_bot_g, no_offset);
+    column.calc_time_series("rg", rg_bot_g, no_offset);
 }
 
 template<typename TF>
