@@ -124,6 +124,7 @@ class Thermo_moist : public Thermo<TF>
         bool swcross_ql;
         bool swcross_qi;
         bool swcross_qsat;
+        bool swcross_qlqithv;
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 

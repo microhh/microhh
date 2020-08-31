@@ -49,6 +49,10 @@ using namespace Thermo_moist_functions;
 
 namespace
 {
+    // Help function(s) to switch between the different NetCDF data types
+    template<typename TF> TF netcdf_fp_fillvalue();
+    template<> double netcdf_fp_fillvalue<double>() { return NC_FILL_DOUBLE; }
+    template<> float  netcdf_fp_fillvalue<float>()  { return NC_FILL_FLOAT; }
 
     template<typename TF>
     void calc_top_and_bot(TF* restrict thl0, TF* restrict qt0,
@@ -320,6 +324,44 @@ namespace
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + index500*kk;
                 w500[ij] = w[ijk];
+            }
+    }
+
+    template<typename TF>
+    void calc_qlqicore_max_thv_prime(
+            TF* const restrict thv_prime,
+            const TF* restrict qlqi,
+            const TF* const restrict thv,
+            const TF* const restrict thv_mean,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*icells;
+                thv_prime[ij] = -Constants::dbig;
+
+                bool has_cloud = false;
+                for (int k=kstart; k<kend; k++)
+                {
+                    const int ijk = ij + k*ijcells;
+
+                    if (qlqi[ijk] > 0)
+                    {
+                        has_cloud = true;
+
+                        if (thv[ijk]-thv_mean[k] > thv_prime[ij])
+                            thv_prime[ij] = thv[ijk]-thv_mean[k];
+                    }
+                }
+
+                if (!has_cloud)
+                    thv_prime[ij] = netcdf_fp_fillvalue<TF>();
             }
     }
 
@@ -1503,6 +1545,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_ql = false;
         swcross_qi = false;
         swcross_qsat = false;
+        swcross_qlqithv = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water.
         const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
@@ -1510,12 +1553,14 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsatpath"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
+        const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
         std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
         std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
         std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
+        std::vector<std::string> qlqithvvars = cross.get_enabled_variables(allowed_crossvars_qlqithv);
 
         if (bvars.size() > 0)
             swcross_b  = true;
@@ -1529,12 +1574,16 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         if (qsatvars.size() > 0)
             swcross_qsat = true;
 
+        if (qlqithvvars.size() > 0)
+            swcross_qlqithv = true;
+
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
         crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
         crosslist.insert(crosslist.end(), qsatvars.begin(), qsatvars.end());
         crosslist.insert(crosslist.end(), miscvars.begin(), miscvars.end());
+        crosslist.insert(crosslist.end(), qlqithvvars.begin(), qlqithvvars.end());
     }
 }
 
@@ -1748,6 +1797,36 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 
     fields.release_tmp(output);
+
+    if (swcross_qlqithv)
+    {
+        auto qlqi = fields.get_tmp();
+        auto thv  = fields.get_tmp();
+
+        get_thermo_field(*qlqi, "ql_qi", false, true);
+        get_thermo_field(*thv,  "thv", false, true);
+
+        field3d_operators.calc_mean_profile(thv->fld_mean.data(), thv->fld.data());
+
+        for (auto& it : crosslist)
+        {
+            if (it == "qlqicore_max_thv_prime")
+            {
+                calc_qlqicore_max_thv_prime(
+                        thv->fld_bot.data(),
+                        qlqi->fld.data(), thv->fld.data(), thv->fld_mean.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                cross.cross_plane(thv->fld_bot.data(), "qlqicore_max_thv_prime", iotime);
+            }
+        }
+
+        fields.release_tmp(qlqi);
+        fields.release_tmp(thv);
+    }
 }
 
 template<typename TF>
