@@ -1544,6 +1544,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_b = false;
         swcross_ql = false;
         swcross_qi = false;
+        swcross_qlqi = false;
         swcross_qsat = false;
         swcross_qlqithv = false;
 
@@ -1551,6 +1552,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
         const std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqipath", "qlqibase", "qlqitop"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsatpath"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
@@ -1558,6 +1560,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
         std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
+        std::vector<std::string> qlqivars = cross.get_enabled_variables(allowed_crossvars_qlqi);
         std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
         std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
         std::vector<std::string> qlqithvvars = cross.get_enabled_variables(allowed_crossvars_qlqithv);
@@ -1571,6 +1574,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         if (qivars.size() > 0)
             swcross_qi = true;
 
+        if (qlqivars.size() > 0)
+            swcross_qlqi = true;
+
         if (qsatvars.size() > 0)
             swcross_qsat = true;
 
@@ -1581,6 +1587,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
         crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
+        crosslist.insert(crosslist.end(), qlqivars.begin(), qlqivars.end());
         crosslist.insert(crosslist.end(), qsatvars.begin(), qsatvars.end());
         crosslist.insert(crosslist.end(), miscvars.begin(), miscvars.end());
         crosslist.insert(crosslist.end(), qlqithvvars.begin(), qlqithvvars.end());
@@ -1772,6 +1779,19 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_simple(output->fld.data(), "qi", iotime, gd.sloc);
         if (it == "qipath")
             cross.cross_path(output->fld.data(), "qipath", iotime);
+    }
+
+    if (swcross_qlqi)
+        get_thermo_field(*output, "ql_qi", false, true);
+
+    for (auto& it : crosslist)
+    {
+        if (it == "qlqipath")
+            cross.cross_path(output->fld.data(), "qlqipath", iotime);
+        if (it == "qlqibase")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqibase", iotime);
+        if (it == "qlqitop")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqitop", iotime);
     }
 
     if (swcross_qsat)

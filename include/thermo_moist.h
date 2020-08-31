@@ -123,6 +123,7 @@ class Thermo_moist : public Thermo<TF>
         bool swcross_b;
         bool swcross_ql;
         bool swcross_qi;
+        bool swcross_qlqi;
         bool swcross_qsat;
         bool swcross_qlqithv;
 
