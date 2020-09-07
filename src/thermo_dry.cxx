@@ -289,7 +289,6 @@ namespace
         int kinv = kstart;
         for (int k=kstart+1; k<kend; ++k)
         {
-            std::cout << "calc_zi " << k << " " << fldmean[k] << "\n";
             grad = plusminus * (fldmean[k] - fldmean[k-1]);
             if (grad > maxgrad)
             {
