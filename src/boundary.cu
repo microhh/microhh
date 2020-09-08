@@ -93,6 +93,12 @@ namespace
             if (sw == Boundary_type::Dirichlet_type)
                 a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
 
+            else if (sw == Boundary_type::Off_type)
+            {
+                atop[ij] = TF(3./2.)*a[ijk] - TF(1./2.)*a[ijk-kk];
+                a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
+            }
+
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
         }
