@@ -166,10 +166,10 @@ namespace
 
     template<typename TF> __global__
     void evisc_neutral_g(
-            TF* __restrict__ evisc, TF* __restrict__ mlen,
+            TF* __restrict__ evisc, const TF* __restrict__ mlen,
             const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -180,6 +180,45 @@ namespace
         {
             const int ijk = i + j*jj + k*kk;
             evisc[ijk] = mlen[k] * sqrt(evisc[ijk]);
+        }
+    }
+
+    template<typename TF> __global__
+    void evisc_neutral_vandriest_g(
+            TF* __restrict__ evisc,
+            const TF* __restrict__ u, const TF* __restrict__ v,
+            const TF* __restrict__ mlen_smag, const TF* __restrict__ z, const TF* __restrict__ dzhi,
+            const TF zsize, const TF visc,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        const TF A_vandriest = TF(26.);
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int ijk_bot = i + j*jj + kstart*kk;
+            const int ijk_top = i + j*jj + kend*kk;
+
+            const TF u_tau_bot = pow(
+                    fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
+                  + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ), TF(0.25) );
+            const TF u_tau_top = pow(
+                    fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
+                  + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ), TF(0.25) );
+
+            const TF fac_bot = TF(1.) - exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
+            const TF fac_top = TF(1.) - exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
+
+            const TF fac = min(fac_bot, fac_top);
+
+            evisc[ijk] = fm::pow2(fac * mlen_smag[k]) * sqrt(evisc[ijk]);
         }
     }
 
@@ -457,7 +496,7 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
     else
     {
         for (int k=0; k<gd.kcells; ++k)
-            mlen[k] =  cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
+            mlen[k] = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
@@ -561,10 +600,13 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         // start with retrieving the stability information
         if (thermo.get_switch() == "0")
         {
-            evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g, mlen_g,
+            evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
+                fields.sd.at("evisc")->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+                mlen_g, gd.z_g, gd.dzhi_g,
+                gd.zsize, fields.visc,
                 gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
+                gd.iend, gd.jend, gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
