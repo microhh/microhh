@@ -83,7 +83,7 @@ class Microphys_nsw6 : public Microphys<TF>
         using Microphys<TF>::field3d_operators;
 
         bool swmicrobudget;     // Output full microphysics budget terms
-        TF cflmax;              // Max CFL number in microphysics sedimentation
+        double cflmax;          // Max CFL number in microphysics sedimentation
 
         std::vector<std::string> crosslist; // Cross-sections handled by this class
 
@@ -92,7 +92,6 @@ class Microphys_nsw6 : public Microphys<TF>
 
         // Variables for microphysics.
         TF Nc0; // Number concentration of cloud water (cm-3)
-        double cfl_max; // CFL due to precipitation.
 
         std::vector<TF> rr_bot; // Rain rate at the bottom.
         std::vector<TF> rs_bot; // Snow rate at the bottom.

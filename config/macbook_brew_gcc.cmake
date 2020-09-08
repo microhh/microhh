@@ -4,17 +4,17 @@ if(USEMPI)
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
   set(ENV{FC}  mpif90) # Fortran compiler for parallel build
 else()
-  set(ENV{CC}  gcc-9 ) # C compiler for serial build
-  set(ENV{CXX} g++-9 ) # C++ compiler for serial build
-  set(ENV{FC}  gfortran-9) # Fortran compiler for serial build
+  set(ENV{CC}  gcc-10) # C compiler for serial build
+  set(ENV{CXX} g++-10) # C++ compiler for serial build
+  set(ENV{FC}  gfortran-10) # Fortran compiler for serial build
 endif()
 
 set(GNU_SED "gsed")
 
-set(USER_CXX_FLAGS "-std=c++14 -DBOOL_TYPE=\"signed char\"")
+set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
-set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check -DUSE_CBOOL")
+set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
 set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
 set(USER_FC_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
@@ -36,3 +36,4 @@ if(USECUDA)
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
+add_definitions(-DUSE_CBOOL)

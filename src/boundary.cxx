@@ -148,6 +148,10 @@ void Boundary<TF>::process_bcs(Input& input)
         mbctop = Boundary_type::Neumann_type;
     else if (swtop == "neumann")
         mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "freeslip")
+        mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "off")
+        mbctop = Boundary_type::Off_type;
     else if (swtop == "ustar")
         mbctop = Boundary_type::Ustar_type;
     else
