@@ -477,7 +477,11 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    dim3 grid2dGPU (gridi, gridj);
+    // Contain the full icells and jcells in this grid.
+    const int grid2di  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int grid2dj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+    dim3 grid2dGPU (grid2di, grid2dj);
     dim3 block2dGPU(blocki, blockj);
 
     // Use surface model.
@@ -584,7 +588,6 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.icells, gd.jcells,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-
     }
 }
 #endif
@@ -704,6 +707,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     // Get maximum from tmp1 field
     double dnmul = field3d_operators.calc_max_g(tmp1->fld_g);
     dnmul = std::max(Constants::dsmall, dnmul);
+
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
     fields.release_tmp_g(tmp1);
