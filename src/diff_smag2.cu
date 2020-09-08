@@ -63,7 +63,7 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (k == kstart)
+            if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 strain2[ijk] = TF(2.)*(
                     // du/dx + du/dx
@@ -100,7 +100,7 @@ namespace
             }
             else
             {
-                strain2[ijk] =TF(2.)*(
+                strain2[ijk] = TF(2.)*(
                     // du/dx + du/dx
                     + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
                     // dv/dy + dv/dy
@@ -147,7 +147,7 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (k == kstart)
+            if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
@@ -164,11 +164,12 @@ namespace
         }
     }
 
-    template<typename TF, Surface_model surface_model> __global__
-    void evisc_neutral_g(TF* __restrict__ evisc, TF* __restrict__ mlen,
-                         const int istart, const int jstart, const int kstart,
-                         const int iend,   const int jend,   const int kend,
-                         const int jj,     const int kk)
+    template<typename TF> __global__
+    void evisc_neutral_g(
+            TF* __restrict__ evisc, TF* __restrict__ mlen,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int jj,     const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -178,10 +179,33 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            evisc[ijk]    = mlen[k] * sqrt(evisc[ijk]);
+            evisc[ijk] = mlen[k] * sqrt(evisc[ijk]);
         }
     }
 
+    template<typename TF> __global__
+    void calc_ghostcells_evisc(
+            TF* __restrict__ evisc,
+            const int icells, const int jcells,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int kb = kstart;
+            const int kt = kend-1;
+
+            const int ijkb = i + j*jj + kb*kk;
+            const int ijkt = i + j*jj + kt*kk;
+
+            evisc[ijkb-kk] = evisc[ijkb];
+            evisc[ijkt+kk] = evisc[ijkt];
+        }
+    }
+ 
     template<typename TF, Surface_model surface_model> __global__
     void diff_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
                     TF* __restrict__ evisc,
@@ -222,7 +246,7 @@ namespace
             const TF eviscnw = TF(0.25)*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]);
             const TF eviscsw = TF(0.25)*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]);
 
-            if (k == kstart)
+            if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 ut[ijk] +=
                     // du/dx + du/dx
@@ -246,7 +270,7 @@ namespace
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        + rhorefh[k  ] * fluxbotv[ij] ) / rhoref[k] * dzi[k];
             }
-            else if (k == kend-1)
+            else if (k == kend-1 && surface_model == Surface_model::Enabled)
             {
                 ut[ijk] +=
                     // du/dx + du/dx
@@ -338,7 +362,7 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (k == kstart)
+            if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
                 const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
@@ -354,7 +378,7 @@ namespace
                     + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                        + rhorefh[k  ] * fluxbot[ij] ) / rhoref[k] * dzi[k];
             }
-            else if (k == kend-1)
+            else if (k == kend-1 && surface_model == Surface_model::Enabled)
             {
                 const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
                 const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
@@ -453,6 +477,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
+    dim3 grid2dGPU (gridi, gridj);
+    dim3 block2dGPU(blocki, blockj);
+
     // Use surface model.
     if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
@@ -471,14 +498,12 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         // start with retrieving the stability information
         if (thermo.get_switch() == "0")
         {
-            evisc_neutral_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+            evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
-
-            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         }
         // assume buoyancy calculation is needed
         else
@@ -501,9 +526,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
             cuda_check_error();
 
             fields.release_tmp_g(tmp1);
-
-            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         }
+
+        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
     }
     // Do not use surface model.
     else
@@ -523,14 +548,12 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         // start with retrieving the stability information
         if (thermo.get_switch() == "0")
         {
-            evisc_neutral_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+            evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
-
-            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         }
         // assume buoyancy calculation is needed
         else
@@ -552,10 +575,16 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
-            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
-
             fields.release_tmp_g(tmp1);
         }
+
+        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+        calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
+                fields.sd.at("evisc")->fld_g,
+                gd.icells, gd.jcells,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
     }
 }
 #endif
