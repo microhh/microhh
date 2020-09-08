@@ -152,14 +152,14 @@ namespace
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
+                evisc[ijk] = fm::pow2(mlen[k]) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
-                evisc[ijk] = mlen[k] * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
+                evisc[ijk] = fm::pow2(mlen[k]) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
         }
     }
@@ -179,7 +179,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            evisc[ijk] = mlen[k] * sqrt(evisc[ijk]);
+            evisc[ijk] = fm::pow2(mlen[k]) * sqrt(evisc[ijk]);
         }
     }
 
@@ -489,7 +489,7 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
         for (int k=0; k<gd.kcells; ++k)
         {
             const TF mlen0 = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
-            mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
+            mlen[k] = pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+boundary.z0m), n))), 1./n);
         }
     }
     // Do not apply mixing length correction here.
