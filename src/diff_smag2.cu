@@ -440,20 +440,29 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
-    const TF n=2.;
-    TF mlen0;
-    TF *mlen = new TF[gd.kcells];
-    for (int k=0; k<gd.kcells; ++k)
+    std::vector<TF> mlen(gd.kcells);
+
+    // Wall damping according to Mason.
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
-        mlen0   = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
+        constexpr TF n = TF(2.);
+
+        for (int k=0; k<gd.kcells; ++k)
+        {
+            const TF mlen0 = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
+            mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa<TF>*(gd.z[k]+boundary.z0m), n))), 1./n), 2);
+        }
+    }
+    // Do not apply mixing length correction here.
+    else
+    {
+        for (int k=0; k<gd.kcells; ++k)
+            mlen[k] =  cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
     cuda_safe_call(cudaMalloc(&mlen_g, nmemsize));
-    cuda_safe_call(cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice));
-
-    delete[] mlen;
+    cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), nmemsize, cudaMemcpyHostToDevice));
 }
 #endif
 
