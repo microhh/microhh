@@ -253,6 +253,7 @@ namespace
                     TF* __restrict__ fluxbotv, TF* __restrict__ fluxtopv,
                     TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
                     TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                    const TF visc,
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend,
                     const int jj,     const int kk)
@@ -268,29 +269,35 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             // U
-            const TF eviscnu = TF(0.25)*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
-            const TF eviscsu = TF(0.25)*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
-            const TF evisctu = TF(0.25)*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
-            const TF eviscbu = TF(0.25)*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+            const TF evisceu = evisc[ijk   ] + visc;
+            const TF eviscwu = evisc[ijk-ii] + visc;
+            const TF eviscnu = TF(0.25)*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]) + visc;
+            const TF eviscsu = TF(0.25)*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]) + visc;
+            const TF evisctu = TF(0.25)*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]) + visc;
+            const TF eviscbu = TF(0.25)*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]) + visc;
 
             // V
-            const TF eviscev = TF(0.25)*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
-            const TF eviscwv = TF(0.25)*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
-            const TF evisctv = TF(0.25)*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
-            const TF eviscbv = TF(0.25)*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+            const TF eviscev = TF(0.25)*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]) + visc;
+            const TF eviscwv = TF(0.25)*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]) + visc;
+            const TF eviscnv = evisc[ijk   ] + visc;
+            const TF eviscsv = evisc[ijk-jj] + visc;
+            const TF evisctv = TF(0.25)*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]) + visc;
+            const TF eviscbv = TF(0.25)*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]) + visc;
 
             // W
-            const TF eviscew = TF(0.25)*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
-            const TF eviscww = TF(0.25)*(evisc[ijk-ii-kk] + evisc[ijk-ii] + evisc[ijk   -kk] + evisc[ijk   ]);
-            const TF eviscnw = TF(0.25)*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]);
-            const TF eviscsw = TF(0.25)*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]);
+            const TF eviscew = TF(0.25)*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]) + visc;
+            const TF eviscww = TF(0.25)*(evisc[ijk-ii-kk] + evisc[ijk-ii] + evisc[ijk   -kk] + evisc[ijk   ]) + visc;
+            const TF eviscnw = TF(0.25)*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]) + visc;
+            const TF eviscsw = TF(0.25)*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]) + visc;
+            const TF evisctw = evisc[ijk   ] + visc;
+            const TF eviscbw = evisc[ijk-kk] + visc;
 
             if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 ut[ijk] +=
                     // du/dx + du/dx
-                    + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
+                    + (  evisceu*(u[ijk+ii]-u[ijk   ])*dxi
+                       - eviscwu*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -303,8 +310,8 @@ namespace
                     + (  eviscev*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
-                    + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
+                    + (  eviscnv*(v[ijk+jj]-v[ijk   ])*dyi
+                       - eviscsv*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        + rhorefh[k  ] * fluxbotv[ij] ) / rhoref[k] * dzi[k];
@@ -313,8 +320,8 @@ namespace
             {
                 ut[ijk] +=
                     // du/dx + du/dx
-                    + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
+                    + (  evisceu*(u[ijk+ii]-u[ijk   ])*dxi
+                       - eviscwu*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -327,8 +334,8 @@ namespace
                     + (  eviscev*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
-                    + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
+                    + (  eviscnv*(v[ijk+jj]-v[ijk   ])*dyi
+                       - eviscsv*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (- rhorefh[k  ] * fluxtopv[ij]
                        - rhorefh[k-1] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k-1] * dzi[k-1];
@@ -341,15 +348,15 @@ namespace
                     + (  eviscnw*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
                        - eviscsw*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
                     // dw/dz + dw/dz
-                    + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
-                       - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * TF(2.) * dzhi[k];
+                    + (  rhoref[k  ] * evisctw*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+                       - rhoref[k-1] * eviscbw*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * TF(2.) * dzhi[k];
             }
             else
             {
                 ut[ijk] +=
                     // du/dx + du/dx
-                    + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
+                    + (  evisceu*(u[ijk+ii]-u[ijk   ])*dxi
+                       - eviscwu*(u[ijk   ]-u[ijk-ii])*dxi ) * TF(2.)*dxi
                     // du/dy + dv/dx
                     + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                        - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
@@ -362,8 +369,8 @@ namespace
                     + (  eviscev*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
                        - eviscwv*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
                     // dv/dy + dv/dy
-                    + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
+                    + (  eviscnv*(v[ijk+jj]-v[ijk   ])*dyi
+                       - eviscsv*(v[ijk   ]-v[ijk-jj])*dyi ) * TF(2.)*dyi
                     // dv/dz + dw/dy
                     + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                        - rhorefh[k  ] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
@@ -376,8 +383,8 @@ namespace
                     + (  eviscnw*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
                        - eviscsw*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
                     // dw/dz + dw/dz
-                    + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
-                       - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * TF(2.) * dzhi[k];
+                    + (  rhoref[k  ] * evisctw*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+                       - rhoref[k-1] * eviscbw*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * TF(2.) * dzhi[k];
             }
         }
     }
@@ -386,7 +393,8 @@ namespace
     void diff_c_g(TF* __restrict__ at, TF* __restrict__ a, TF* __restrict__ evisc,
                   TF* __restrict__ fluxbot, TF* __restrict__ fluxtop,
                   TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
-                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh, const TF tPri,
+                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                  const TF tPri, const TF visc,
                   const int istart, const int jstart, const int kstart,
                   const int iend,   const int jend,   const int kend,
                   const int jj,     const int kk)
@@ -403,11 +411,11 @@ namespace
 
             if (k == kstart && surface_model == Surface_model::Enabled)
             {
-                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
-                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
-                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
-                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
-                const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
+                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri + visc;
+                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri + visc;
+                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri + visc;
+                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri + visc;
+                const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])*tPri + visc;
 
                 at[ijk] +=
                     + (  evisce*(a[ijk+ii]-a[ijk   ])
@@ -419,11 +427,11 @@ namespace
             }
             else if (k == kend-1 && surface_model == Surface_model::Enabled)
             {
-                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
-                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
-                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
-                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
-                const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
+                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri + visc;
+                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri + visc;
+                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri + visc;
+                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri + visc;
+                const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])*tPri + visc;
 
                 at[ijk] +=
                     + (  evisce*(a[ijk+ii]-a[ijk   ])
@@ -435,12 +443,12 @@ namespace
             }
             else
             {
-                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
-                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
-                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
-                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
-                const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
-                const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
+                const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri + visc;
+                const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri + visc;
+                const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])*tPri + visc;
+                const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])*tPri + visc;
+                const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])*tPri + visc;
+                const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])*tPri + visc;
 
                 at[ijk] +=
                     + (  evisce*(a[ijk+ii]-a[ijk   ])
@@ -672,6 +680,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
                 fields.rhoref_g, fields.rhorefh_g,
+                fields.visc,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -682,7 +691,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                     it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                     gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
-                    fields.rhoref_g, fields.rhorefh_g, tPri,
+                    fields.rhoref_g, fields.rhorefh_g,
+                    tPri, it.second->visc,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
                     gd.icells, gd.ijcells);
@@ -699,6 +709,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
                 gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
                 fields.rhoref_g, fields.rhorefh_g,
+                fields.visc,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -709,7 +720,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                     it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                     gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
-                    fields.rhoref_g, fields.rhorefh_g, tPri,
+                    fields.rhoref_g, fields.rhorefh_g,
+                    tPri, it.second->visc,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
                     gd.icells, gd.ijcells);
