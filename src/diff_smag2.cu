@@ -41,7 +41,9 @@ namespace
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
-    template<typename TF> __global__
+    enum class Surface_model {Enabled, Disabled};
+
+    template<typename TF, Surface_model surface_model> __global__
     void strain2_g(TF* __restrict__ strain2,
                    TF* __restrict__ u,  TF* __restrict__ v,  TF* __restrict__ w,
                    TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
@@ -127,7 +129,7 @@ namespace
         }
     }
 
-    template<typename TF> __global__
+    template<typename TF, Surface_model surface_model> __global__
     void evisc_g(TF* __restrict__ evisc, TF* __restrict__ N2,
                  TF* __restrict__ bfluxbot, TF* __restrict__ ustar, TF* __restrict__ obuk,
                  TF* __restrict__ mlen,
@@ -162,7 +164,7 @@ namespace
         }
     }
 
-    template<typename TF> __global__
+    template<typename TF, Surface_model surface_model> __global__
     void evisc_neutral_g(TF* __restrict__ evisc, TF* __restrict__ mlen,
                          const int istart, const int jstart, const int kstart,
                          const int iend,   const int jend,   const int kend,
@@ -180,7 +182,7 @@ namespace
         }
     }
 
-    template<typename TF> __global__
+    template<typename TF, Surface_model surface_model> __global__
     void diff_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
                     TF* __restrict__ evisc,
                     TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
@@ -317,7 +319,7 @@ namespace
         }
     }
 
-    template<typename TF> __global__
+    template<typename TF, Surface_model surface_model> __global__
     void diff_c_g(TF* __restrict__ at, TF* __restrict__ a, TF* __restrict__ evisc,
                   TF* __restrict__ fluxbot, TF* __restrict__ fluxtop,
                   TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
@@ -451,53 +453,109 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
 
-    // Calculate total strain rate
-    strain2_g<<<gridGPU, blockGPU>>>(
-        fields.sd.at("evisc")->fld_g,
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-        boundary.ustar_g, boundary.obuk_g,
-        gd.z_g, gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);
-    cuda_check_error();
-
-    // start with retrieving the stability information
-    if (thermo.get_switch() == "0")
+    // Use surface model.
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
-        evisc_neutral_g<<<gridGPU, blockGPU>>>(
-            fields.sd.at("evisc")->fld_g, mlen_g,
+        // Calculate total strain rate
+        strain2_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+            fields.sd.at("evisc")->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
+            boundary.ustar_g, boundary.obuk_g,
+            gd.z_g, gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+        // start with retrieving the stability information
+        if (thermo.get_switch() == "0")
+        {
+            evisc_neutral_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+                fields.sd.at("evisc")->fld_g, mlen_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+        }
+        // assume buoyancy calculation is needed
+        else
+        {
+            // store the buoyancyflux in datafluxbot of tmp1
+            auto tmp1 = fields.get_tmp_g();
+            thermo.get_buoyancy_fluxbot_g(*tmp1);
+            // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
+            thermo.get_thermo_field_g(*tmp1, "N2", false);
+
+            // Calculate eddy viscosity
+            TF tPri = 1./tPr;
+            evisc_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+                fields.sd.at("evisc")->fld_g, tmp1->fld_g,
+                tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
+                mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            fields.release_tmp_g(tmp1);
+
+            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+        }
     }
-    // assume buoyancy calculation is needed
+    // Do not use surface model.
     else
     {
-        // store the buoyancyflux in datafluxbot of tmp1
-        auto tmp1 = fields.get_tmp_g();
-        thermo.get_buoyancy_fluxbot_g(*tmp1);
-        // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
-        thermo.get_thermo_field_g(*tmp1, "N2", false);
-
-        // Calculate eddy viscosity
-        TF tPri = 1./tPr;
-        evisc_g<<<gridGPU, blockGPU>>>(
-            fields.sd.at("evisc")->fld_g, tmp1->fld_g,
-            tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
-            mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
+        // Calculate total strain rate
+        strain2_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+            fields.sd.at("evisc")->fld_g,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
+            boundary.ustar_g, boundary.obuk_g,
+            gd.z_g, gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        fields.release_tmp_g(tmp1);
+        // start with retrieving the stability information
+        if (thermo.get_switch() == "0")
+        {
+            evisc_neutral_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+                fields.sd.at("evisc")->fld_g, mlen_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
 
-        boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+        }
+        // assume buoyancy calculation is needed
+        else
+        {
+            // store the buoyancyflux in datafluxbot of tmp1
+            auto tmp1 = fields.get_tmp_g();
+            thermo.get_buoyancy_fluxbot_g(*tmp1);
+            // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
+            thermo.get_thermo_field_g(*tmp1, "N2", false);
+
+            // Calculate eddy viscosity
+            TF tPri = 1./tPr;
+            evisc_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+                fields.sd.at("evisc")->fld_g, tmp1->fld_g,
+                tmp1->flux_bot_g, boundary.ustar_g, boundary.obuk_g,
+                mlen_g, tPri, boundary.z0m, gd.z[gd.kstart],
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
+
+            fields.release_tmp_g(tmp1);
+        }
     }
 }
 #endif
@@ -520,29 +578,60 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     const TF dyidyi = 1./(gd.dy * gd.dy);
     const TF tPri = 1./tPr;
 
-    diff_uvw_g<<<gridGPU, blockGPU>>>(
-            fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-            fields.sd.at("evisc")->fld_g,
-            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
-            fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
-            gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-            fields.rhoref_g, fields.rhorefh_g,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
-            gd.icells, gd.ijcells);
-    cuda_check_error();
-
-    for (auto it : fields.st)
-        diff_c_g<<<gridGPU, blockGPU>>>(
-                it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
-                fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
-                gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
-                fields.rhoref_g, fields.rhorefh_g, tPri,
+    // Use surface model.
+    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    {
+        diff_uvw_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+                fields.sd.at("evisc")->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
+                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
+                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+                fields.rhoref_g, fields.rhorefh_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
-    cuda_check_error();
+        cuda_check_error();
+
+        for (auto it : fields.st)
+            diff_c_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+                    it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
+                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
+                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
+                    fields.rhoref_g, fields.rhorefh_g, tPri,
+                    gd.istart, gd.jstart, gd.kstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    // Do not use surface model.
+    else
+    {
+        diff_uvw_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+                fields.sd.at("evisc")->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
+                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
+                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+                fields.rhoref_g, fields.rhorefh_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        for (auto it : fields.st)
+            diff_c_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+                    it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
+                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
+                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
+                    fields.rhoref_g, fields.rhorefh_g, tPri,
+                    gd.istart, gd.jstart, gd.kstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
 
     cudaDeviceSynchronize();
     stats.calc_tend(*fields.mt.at("u"), tend_name);

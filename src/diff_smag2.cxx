@@ -55,7 +55,7 @@ namespace
                       const int jj, const int kk)
     {
         const int ii = 1;
-        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
 
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
         if (surface_model == Surface_model::Enabled)
