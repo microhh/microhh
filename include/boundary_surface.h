@@ -90,7 +90,6 @@ class Boundary_surface : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-
         TF ustarin;
 
         std::vector<float> zL_sl;
@@ -102,6 +101,7 @@ class Boundary_surface : public Boundary<TF>
         #endif
 
         Boundary_type thermobc;
+        bool sw_lookup_solver;
 
     protected:
         // cross sections

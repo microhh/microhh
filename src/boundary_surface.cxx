@@ -64,9 +64,10 @@ namespace
     }
 
     template<typename TF>
-    TF calc_obuk_noslip_flux(const float* restrict zL, const float* restrict f,
-                             int& n,
-                             const TF du, const TF bfluxbot, const TF zsl)
+    TF calc_obuk_noslip_flux_lookup(
+            const float* restrict zL, const float* restrict f,
+            int& n,
+            const TF du, const TF bfluxbot, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / std::pow(du, 3);
@@ -74,14 +75,160 @@ namespace
     }
 
     template<typename TF>
-    TF calc_obuk_noslip_dirichlet(const float* restrict zL, const float* restrict f,
-                                  int& n,
-                                  const TF du, const TF db, const TF zsl)
+    TF calc_obuk_noslip_dirichlet_lookup(
+            const float* restrict zL, const float* restrict f,
+            int& n,
+            const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = Constants::kappa<TF> * db * zsl / std::pow(du, 2);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
+
+    template<typename TF>
+    TF calc_obuk_noslip_flux_iterative(
+            TF L, const TF du, TF bfluxbot, const TF zsl, const TF z0m)
+    {
+        TF L0;
+        TF Lstart, Lend;
+        TF fx, fxdif;
+
+        int m = 0;
+        int nlim = 10;
+
+        const TF Lmax = 1.e20;
+
+        // avoid bfluxbot to be zero
+        if (bfluxbot >= 0.)
+            bfluxbot = std::max(TF(Constants::dsmall), bfluxbot);
+        else
+            bfluxbot = std::min(-TF(Constants::dsmall), bfluxbot);
+
+        // allow for one restart
+        while (m <= 1)
+        {
+            // if L and bfluxbot are of the same sign, or the last calculation did not converge,
+            // the stability has changed and the procedure needs to be reset
+            if (L*bfluxbot >= 0.)
+            {
+                nlim = 200;
+                if (bfluxbot >= 0.)
+                    L = -Constants::dsmall;
+                else
+                    L = Constants::dsmall;
+            }
+
+            if (bfluxbot >= 0.)
+                L0 = -Constants::dhuge;
+            else
+                L0 = Constants::dhuge;
+
+            int n = 0;
+
+            // exit on convergence or on iteration count
+            while (std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
+            {
+                L0     = L;
+                fx     = zsl/L + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, L), 3);
+                Lstart = L - 0.001*L;
+                Lend   = L + 0.001*L;
+                fxdif  = ( (zsl/Lend   + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lend  ), 3))
+                         - (zsl/Lstart + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lstart), 3)) )
+                       / (Lend - Lstart);
+                L      = L - fx/fxdif;
+                ++n;
+            }
+
+            if (n < nlim && std::abs(L) < Lmax)
+                // Convergence has been reached
+                break;
+            else
+            {
+                // Convergence has not been reached, procedure restarted once
+                L = Constants::dsmall;
+                ++m;
+                nlim = 200;
+            }
+        }
+
+        if (m > 1)
+            std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
+
+        return L;
+    }
+
+    template<typename TF>
+    TF calc_obuk_noslip_dirichlet_iterative(
+            TF L, const TF du, TF db, const TF zsl, const TF z0m, const TF z0h)
+    {
+        TF L0;
+        TF Lstart, Lend;
+        TF fx, fxdif;
+
+        int m = 0;
+        int nlim = 10;
+
+        const TF Lmax = 1.e20;
+
+        // avoid db to be zero
+        if (db >= 0.)
+            db = std::max(TF(Constants::dsmall), db);
+        else
+            db = std::min(-TF(Constants::dsmall), db);
+
+        // allow for one restart
+        while (m <= 1)
+        {
+            // if L and db are of different sign, or the last calculation did not converge,
+            // the stability has changed and the procedure needs to be reset
+            if (L*db <= 0.)
+            {
+                nlim = 200;
+                if(db >= 0.)
+                    L = Constants::dsmall;
+                else
+                    L = -Constants::dsmall;
+            }
+
+            if (db >= 0.)
+                L0 = Constants::dhuge;
+            else
+                L0 = -Constants::dhuge;
+
+            int n = 0;
+
+            // exit on convergence or on iteration count
+            while (std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
+            {
+                L0     = L;
+                fx     = zsl/L - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, L) / std::pow(du * most::fm(zsl, z0m, L), 2);
+                Lstart = L - 0.001*L;
+                Lend   = L + 0.001*L;
+                fxdif  = ( (zsl/Lend   - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lend)   / std::pow(du * most::fm(zsl, z0m, Lend  ), 2))
+                         - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / std::pow(du * most::fm(zsl, z0m, Lstart), 2)) )
+                       / (Lend - Lstart);
+                L      = L - fx/fxdif;
+                ++n;
+            }
+
+            if (n < nlim && std::abs(L) < Lmax)
+                // Convergence has been reached
+                break;
+            else
+            {
+                // Convergence has not been reached, procedure restarted once
+                L = Constants::dsmall;
+                ++m;
+                nlim = 200;
+            }
+        }
+
+        if (m > 1)
+            std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
+
+        return L;
+    }
+
 
     template<typename TF>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
@@ -124,7 +271,7 @@ namespace
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_lookup_solver>
     void stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
                    TF* restrict u, TF* restrict v, TF* restrict b,
                    TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
@@ -179,7 +326,15 @@ namespace
                 for (int i=0; i<icells; ++i)
                 {
                     const int ij = i + j*jj;
-                    obuk [ij] = calc_obuk_noslip_flux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+
+                    // Switch between the iterative and lookup solver
+                    if (sw_lookup_solver)
+                        obuk[ij] = calc_obuk_noslip_flux_lookup(
+                                zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+                    else
+                        obuk[ij] = calc_obuk_noslip_flux_iterative(
+                                obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m);
+
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
         }
@@ -192,7 +347,15 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
                     const TF db = b[ijk] - bbot[ij] + db_ref;
-                    obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
+
+                    // Switch between the iterative and lookup solver
+                    if (sw_lookup_solver)
+                        obuk [ij] = calc_obuk_noslip_dirichlet_lookup(
+                                zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
+                    else
+                        obuk [ij] = calc_obuk_noslip_dirichlet_iterative(
+                                obuk[ij], dutot[ij], db, z[kstart], z0m, z0h);
+
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
         }
@@ -490,6 +653,9 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     z0m = inputin.get_item<TF>("boundary", "z0m", "");
     z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
+    // Switch between iterative and lookup Ri->L solver
+    sw_lookup_solver = inputin.get_item<bool>("boundary", "swlookupsolver", "");
+
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
     {
@@ -764,16 +930,28 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
         thermo.get_buoyancy_surf(*buoy, false);
         const TF db_ref = thermo.get_db_ref();
 
-        stability(
-                ustar.data(), obuk.data(), buoy->flux_bot.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                tmp->fld.data(), gd.z.data(),
-                zL_sl.data(), f_sl.data(), nobuk.data(),
-                z0m, z0h, db_ref,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells,
-                mbcbot, thermobc, boundary_cyclic);
+        if (sw_lookup_solver)
+            stability<TF, true>(
+                    ustar.data(), obuk.data(), buoy->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                    tmp->fld.data(), gd.z.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(),
+                    z0m, z0h, db_ref,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    mbcbot, thermobc, boundary_cyclic);
+        else
+            stability<TF, false>(
+                    ustar.data(), obuk.data(), buoy->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                    tmp->fld.data(), gd.z.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(),
+                    z0m, z0h, db_ref,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    mbcbot, thermobc, boundary_cyclic);
 
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);
