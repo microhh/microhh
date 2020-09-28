@@ -39,11 +39,13 @@
 #include "cross.h"
 #include "column.h"
 #include "monin_obukhov.h"
+#include "fast_math.h"
 
 namespace
 {
     // Make a shortcut in the file scope.
     namespace most = Monin_obukhov;
+    namespace fm = Fast_math;
 
     // Size of the lookup table.
     const int nzL = 10000; // Size of the lookup table for MO iterations.
@@ -98,16 +100,16 @@ namespace
 
         const TF Lmax = 1.e20;
 
-        // avoid bfluxbot to be zero
+        // Avoid bfluxbot to be zero
         if (bfluxbot >= 0.)
             bfluxbot = std::max(TF(Constants::dsmall), bfluxbot);
         else
             bfluxbot = std::min(-TF(Constants::dsmall), bfluxbot);
 
-        // allow for one restart
+        // Allow for one restart
         while (m <= 1)
         {
-            // if L and bfluxbot are of the same sign, or the last calculation did not converge,
+            // If L and bfluxbot are of the same sign, or the last calculation did not converge,
             // the stability has changed and the procedure needs to be reset
             if (L*bfluxbot >= 0.)
             {
@@ -125,15 +127,15 @@ namespace
 
             int n = 0;
 
-            // exit on convergence or on iteration count
+            // Exit on convergence or on iteration count
             while (std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
             {
                 L0     = L;
-                fx     = zsl/L + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, L), 3);
+                fx     = zsl/L + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, L));
                 Lstart = L - 0.001*L;
                 Lend   = L + 0.001*L;
-                fxdif  = ( (zsl/Lend   + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lend  ), 3))
-                         - (zsl/Lstart + Constants::kappa<TF>*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lstart), 3)) )
+                fxdif  = ( (zsl/Lend   + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, Lend  )))
+                         - (zsl/Lstart + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
                 L      = L - fx/fxdif;
                 ++n;
@@ -170,16 +172,16 @@ namespace
 
         const TF Lmax = 1.e20;
 
-        // avoid db to be zero
+        // Avoid db to be zero
         if (db >= 0.)
             db = std::max(TF(Constants::dsmall), db);
         else
             db = std::min(-TF(Constants::dsmall), db);
 
-        // allow for one restart
+        // Allow for one restart
         while (m <= 1)
         {
-            // if L and db are of different sign, or the last calculation did not converge,
+            // If L and db are of different sign, or the last calculation did not converge,
             // the stability has changed and the procedure needs to be reset
             if (L*db <= 0.)
             {
@@ -201,11 +203,11 @@ namespace
             while (std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
             {
                 L0     = L;
-                fx     = zsl/L - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, L) / std::pow(du * most::fm(zsl, z0m, L), 2);
+                fx     = zsl/L - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, L) / fm::pow2(du * most::fm(zsl, z0m, L));
                 Lstart = L - 0.001*L;
                 Lend   = L + 0.001*L;
-                fxdif  = ( (zsl/Lend   - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lend)   / std::pow(du * most::fm(zsl, z0m, Lend  ), 2))
-                         - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / std::pow(du * most::fm(zsl, z0m, Lstart), 2)) )
+                fxdif  = ( (zsl/Lend   - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lend)   / fm::pow2(du * most::fm(zsl, z0m, Lend  )))
+                         - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
                 L      = L - fx/fxdif;
                 ++n;
@@ -654,7 +656,7 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // Switch between iterative and lookup Ri->L solver
-    sw_lookup_solver = inputin.get_item<bool>("boundary", "swlookupsolver", "");
+    sw_lookup_solver = inputin.get_item<bool>("boundary", "swlookupsolver", "", true);
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
@@ -816,7 +818,8 @@ void Boundary_surface<TF>::set_values()
         set_ustar();
 
     // Prepare the lookup table for the surface solver
-    init_solver();
+    if (sw_lookup_solver)
+        init_solver();
 }
 
 template<typename TF>
