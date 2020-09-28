@@ -88,6 +88,9 @@ class Boundary
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
 
+        virtual void load(const int) {};
+        virtual void save(const int) {};
+
         // virtual void exec_cross();       ///< Execute cross sections of surface
 
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask

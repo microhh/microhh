@@ -710,7 +710,6 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
         ++it;
     }
 
-
     /*
     // Cross sections
     allowedcrossvars.push_back("ustar");
@@ -758,6 +757,69 @@ void Boundary_surface<TF>::init_surface()
             obuk[ij]  = Constants::dsmall;
             nobuk[ij] = 0;
         }
+}
+
+template<typename TF>
+void Boundary_surface<TF>::load(const int iotime)
+{
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_lookup_solver)
+    {
+        auto tmp1 = fields.get_tmp();
+
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "obuk", iotime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        int nerror = 0;
+        if (field3d_io.load_xy_slice(
+                obuk.data(), tmp1->fld.data(), filename))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error loading field(s)");
+
+        boundary_cyclic.exec_2d(obuk.data());
+
+        fields.release_tmp(tmp1);
+    }
+}
+
+template<typename TF>
+void Boundary_surface<TF>::save(const int iotime)
+{
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_lookup_solver)
+    {
+        auto tmp1 = fields.get_tmp();
+
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "obuk", iotime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        int nerror = 0;
+        if (field3d_io.save_xy_slice(
+                obuk.data(), tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error saving field(s)");
+
+        fields.release_tmp(tmp1);
+    }
 }
 
 /*

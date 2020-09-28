@@ -46,8 +46,10 @@ class Boundary_surface : public Boundary<TF>
 
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
-
         void exec_cross(int);
+
+        void load(const int);
+        void save(const int);
 
         using Boundary<TF>::ustar;
         using Boundary<TF>::obuk;

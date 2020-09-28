@@ -48,6 +48,9 @@ class Boundary_surface_bulk : public Boundary<TF>
         void exec_column(Column<TF>&);
         void exec_cross(int);
 
+        void load(const int) {};
+        void save(const int) {};
+
         using Boundary<TF>::ustar;
         using Boundary<TF>::obuk;
         using Boundary<TF>::z0m;

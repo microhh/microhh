@@ -241,6 +241,7 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
+    boundary->load(timeloop->get_iotime());
     boundary->create(*input, *input_nc, *stats, *column);
     boundary->set_values();
 
@@ -297,6 +298,7 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
+    boundary->save(timeloop->get_iotime());
     lsm->save(timeloop->get_iotime());
 }
 
@@ -498,6 +500,7 @@ void Model<TF>::exec()
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
                             lsm     ->save(iotime);
+                            boundary->save(iotime);
                         }
                     }
                 }
