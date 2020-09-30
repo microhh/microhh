@@ -277,14 +277,26 @@ namespace
 
     template<typename TF, bool sw_lookup_solver>
     void stability(
-            TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
-            TF* restrict u, TF* restrict v, TF* restrict b,
-            TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
-            TF* restrict dutot, const TF* restrict z,
-            const float* zL_sl, const float* f_sl, int* nobuk,
-            const TF z0m, const TF z0h, const TF db_ref,
+            TF* const restrict ustar,
+            TF* const restrict obuk,
+            const TF* const restrict bfluxbot,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict b,
+            const TF* const restrict ubot,
+            const TF* const restrict vbot,
+            const TF* const restrict bbot,
+            TF* const restrict dutot,
+            const TF* const restrict z,
+            const TF* const restrict z0m,
+            const TF* const restrict z0h,
+            const float* const zL_sl,
+            const float* const f_sl,
+            int* const nobuk,
+            const TF db_ref,
             const int istart, const int iend,
-            const int jstart, const int jend, const int kstart,
+            const int jstart, const int jend,
+            const int kstart,
             const int icells, const int jcells, const int kk,
             Boundary_type mbcbot, Boundary_type thermobc,
             Boundary_cyclic<TF>& boundary_cyclic)
@@ -293,7 +305,6 @@ namespace
         const int jj = icells;
 
         // Calculate total wind.
-        TF du2;
         const TF minval = 1.e-1;
 
         // First, interpolate the wind to the scalar location.
@@ -303,8 +314,8 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+                const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                             + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
                 // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
@@ -339,9 +350,9 @@ namespace
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                     else
                         obuk[ij] = calc_obuk_noslip_flux_iterative(
-                                obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m);
+                                obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m[ij]);
 
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
                 }
         }
         else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
@@ -360,21 +371,27 @@ namespace
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     else
                         obuk [ij] = calc_obuk_noslip_dirichlet_iterative(
-                                obuk[ij], dutot[ij], db, z[kstart], z0m, z0h);
+                                obuk[ij], dutot[ij], db, z[kstart], z0m[ij], z0h[ij]);
 
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
                 }
         }
     }
 
     template<typename TF>
     void stability_neutral(
-            TF* restrict ustar, TF* restrict obuk,
-            TF* restrict u, TF* restrict v,
-            TF* restrict ubot , TF* restrict vbot,
-            TF* restrict dutot, const TF* restrict z,
-            const TF z0m,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            TF* const restrict ustar,
+            TF* const restrict obuk,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict ubot,
+            const TF* const restrict vbot,
+            TF* const restrict dutot,
+            const TF* const restrict z,
+            const TF* const restrict z0m,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
             const int icells, const int jcells, const int kk,
             Boundary_type mbcbot,
             Boundary_cyclic<TF>& boundary_cyclic)
@@ -423,18 +440,25 @@ namespace
                 {
                     const int ij = i + j*jj;
                     obuk [ij] = -Constants::dbig;
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
+                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
                 }
         }
     }
 
     template<typename TF>
     void surfm(
-            TF* restrict ustar, TF* restrict obuk,
-            TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot,
-            TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot,
-            const TF zsl, const TF z0m, const Boundary_type bcbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            TF* const restrict ufluxbot,
+            TF* const restrict vfluxbot,
+            TF* const restrict ugradbot,
+            TF* const restrict vgradbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict u, const TF* const restrict ubot,
+            const TF* const restrict v, const TF* const restrict vbot,
+            const TF* const restrict z0m,
+            const TF zsl, const Boundary_type bcbot,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
             const int icells, const int jcells, const int kk,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
@@ -454,9 +478,9 @@ namespace
 
                     // interpolate the whole stability function rather than ustar or obuk
                     ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*
-                        (ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                        (ustar[ij-ii]*most::fm(zsl, z0m[ij-ii], obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m[ij], obuk[ij]));
                     vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*
-                        (ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                        (ustar[ij-jj]*most::fm(zsl, z0m[ij-jj], obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m[ij], obuk[ij]));
                 }
 
             boundary_cyclic.exec_2d(ufluxbot);
@@ -533,10 +557,16 @@ namespace
 
     template<typename TF>
     void surfs(
-            TF* restrict ustar, TF* restrict obuk, TF* restrict var,
-            TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot,
-            const TF zsl, const TF z0m, const TF z0h, const Boundary_type bcbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl, const Boundary_type bcbot,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
             const int icells, const int jcells, const int kk,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
@@ -551,7 +581,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
+                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
                     // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
                     // use the linearly interpolated grad, rather than the MO grad,
                     // to prevent giving unresolvable gradients to advection schemes
@@ -567,7 +597,7 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
+                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
                     // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
                     // use the linearly interpolated grad, rather than the MO grad,
                     // to prevent giving unresolvable gradients to advection schemes
@@ -582,7 +612,8 @@ namespace
             TF* const restrict ra,
             const TF* const restrict ustar,
             const TF* const restrict obuk,
-            const TF z0m, const TF z0h, const TF zsl,
+            const TF* const restrict z0h,
+            const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
@@ -592,7 +623,7 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h, obuk[ij]));
+                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
             }
     }
 }
@@ -754,17 +785,16 @@ void Boundary_surface<TF>::init_surface()
     nobuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
-    const int jj = gd.icells;
+    z0m_2d.resize(gd.ijcells);
+    z0h_2d.resize(gd.ijcells);
+
+    // BvS TMP
+    std::fill(z0m_2d.begin(), z0m_2d.end(), z0m);
+    std::fill(z0h_2d.begin(), z0h_2d.end(), z0h);
 
     // Initialize the obukhov length on a small number.
-    for (int j=0; j<gd.jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<gd.icells; ++i)
-        {
-            const int ij = i + j*jj;
-            obuk[ij]  = Constants::dsmall;
-            nobuk[ij] = 0;
-        }
+    std::fill(obuk.begin(),  obuk.end(), Constants::dsmall);
+    std::fill(nobuk.begin(), nobuk.end(), 0);
 }
 
 template<typename TF>
@@ -985,14 +1015,15 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         auto dutot = fields.get_tmp();
-        stability_neutral(ustar.data(), obuk.data(),
-                          fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                          fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                          dutot->fld.data(), gd.z.data(),
-                          z0m,
-                          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                          gd.icells, gd.jcells, gd.ijcells,
-                          mbcbot, boundary_cyclic);
+        stability_neutral(
+                ustar.data(), obuk.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
+                dutot->fld.data(), gd.z.data(), z0m_2d.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                mbcbot, boundary_cyclic);
         fields.release_tmp(dutot);
     }
     else
@@ -1005,23 +1036,27 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
 
         if (sw_lookup_solver)
             stability<TF, true>(
-                    ustar.data(), obuk.data(), buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                    ustar.data(), obuk.data(),
+                    buoy->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                    buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
+                    fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                     tmp->fld.data(), gd.z.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(),
-                    z0m, z0h, db_ref,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                    z0m_2d.data(), z0h_2d.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend, gd.kstart,
                     gd.icells, gd.jcells, gd.ijcells,
                     mbcbot, thermobc, boundary_cyclic);
         else
             stability<TF, false>(
-                    ustar.data(), obuk.data(), buoy->flux_bot.data(),
+                    ustar.data(), obuk.data(),
+                    buoy->flux_bot.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                     fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                     tmp->fld.data(), gd.z.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(),
-                    z0m, z0h, db_ref,
+                    z0m_2d.data(), z0h_2d.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                     gd.icells, gd.jcells, gd.ijcells,
                     mbcbot, thermobc, boundary_cyclic);
@@ -1037,10 +1072,14 @@ void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
     auto& gd = grid.get_grid_data();
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-    surfm(ustar.data(), obuk.data(),
-          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-          gd.z[gd.kstart], z0m, mbcbot,
+    surfm(fields.mp.at("u")->flux_bot.data(),
+          fields.mp.at("v")->flux_bot.data(),
+          fields.mp.at("u")->grad_bot.data(),
+          fields.mp.at("v")->grad_bot.data(),
+          ustar.data(), obuk.data(),
+          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
+          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
+          z0m_2d.data(), gd.z[gd.kstart], mbcbot,
           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
           gd.icells, gd.jcells, gd.ijcells,
           boundary_cyclic);
@@ -1052,10 +1091,14 @@ void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
     auto& gd = grid.get_grid_data();
 
     for (auto& it : fields.sp)
-        surfs(ustar.data(), obuk.data(), it.second->fld.data(),
-              it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-              gd.z[gd.kstart], z0m, z0h, sbc.at(it.first).bcbot,
-              gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+        surfs(it.second->fld_bot.data(),
+              it.second->grad_bot.data(),
+              it.second->flux_bot.data(),
+              ustar.data(), obuk.data(),
+              it.second->fld.data(), z0h_2d.data(),
+              gd.z[gd.kstart], sbc.at(it.first).bcbot,
+              gd.istart, gd.iend,
+              gd.jstart, gd.jend, gd.kstart,
               gd.icells, gd.jcells, gd.ijcells,
               boundary_cyclic);
 }
@@ -1068,7 +1111,8 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
     calc_ra(fld.flux_bot.data(),
             ustar.data(),
             obuk.data(),
-            z0m, z0h, gd.z[gd.kstart],
+            z0h_2d.data(),
+            gd.z[gd.kstart],
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
