@@ -51,8 +51,9 @@ namespace
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
     template<typename TF>
-    TF find_zL(const float* const restrict zL, const float* const restrict f,
-               int& n, const float Ri)
+    TF find_zL(
+            const float* const restrict zL, const float* const restrict f,
+            int& n, const float Ri)
     {
         // Determine search direction. All checks are at float accuracy.
         if ( (f[n]-Ri) > 0.f )
@@ -72,7 +73,7 @@ namespace
             const TF du, const TF bfluxbot, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / std::pow(du, 3);
+        const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
@@ -83,7 +84,7 @@ namespace
             const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = Constants::kappa<TF> * db * zsl / std::pow(du, 2);
+        const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
         return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
@@ -233,9 +234,10 @@ namespace
 
 
     template<typename TF>
-    void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
-                const Boundary_type sw, const TF aval, const TF visc, const TF offset,
-                const int icells, const int jcells)
+    void set_bc(
+            TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
+            const Boundary_type sw, const TF aval, const TF visc, const TF offset,
+            const int icells, const int jcells)
     {
         const int jj = icells;
 
@@ -274,16 +276,18 @@ namespace
     }
 
     template<typename TF, bool sw_lookup_solver>
-    void stability(TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
-                   TF* restrict u, TF* restrict v, TF* restrict b,
-                   TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
-                   TF* restrict dutot, const TF* restrict z,
-                   const float* zL_sl, const float* f_sl, int* nobuk,
-                   const TF z0m, const TF z0h, const TF db_ref,
-                   const int istart, const int iend, const int jstart, const int jend, const int kstart,
-                   const int icells, const int jcells, const int kk,
-                   Boundary_type mbcbot, Boundary_type thermobc,
-                   Boundary_cyclic<TF>& boundary_cyclic)
+    void stability(
+            TF* restrict ustar, TF* restrict obuk, TF* restrict bfluxbot,
+            TF* restrict u, TF* restrict v, TF* restrict b,
+            TF* restrict ubot , TF* restrict vbot, TF* restrict bbot,
+            TF* restrict dutot, const TF* restrict z,
+            const float* zL_sl, const float* f_sl, int* nobuk,
+            const TF z0m, const TF z0h, const TF db_ref,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_type mbcbot, Boundary_type thermobc,
+            Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
         const int jj = icells;
@@ -301,15 +305,15 @@ namespace
                 const int ijk = i + j*jj + kstart*kk;
                 du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
                     + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-                // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
             }
 
         boundary_cyclic.exec_2d(dutot);
 
-        // calculate Obukhov length
-        // case 1: fixed buoyancy flux and fixed ustar
+        // Calculate Obukhov length
+        // Case 1: fixed buoyancy flux and fixed ustar
         if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -320,7 +324,7 @@ namespace
                     obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF>*bfluxbot[ij]);
                 }
         }
-        // case 2: fixed buoyancy surface value and free ustar
+        // Case 2: fixed buoyancy surface value and free ustar
         else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
         {
             for (int j=0; j<jcells; ++j)
@@ -425,13 +429,14 @@ namespace
     }
 
     template<typename TF>
-    void surfm(TF* restrict ustar, TF* restrict obuk,
-               TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot,
-               TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot,
-               const TF zsl, const TF z0m, const Boundary_type bcbot,
-               const int istart, const int iend, const int jstart, const int jend, const int kstart,
-               const int icells, const int jcells, const int kk,
-               Boundary_cyclic<TF>& boundary_cyclic)
+    void surfm(
+            TF* restrict ustar, TF* restrict obuk,
+            TF* restrict u, TF* restrict ubot, TF* restrict ugradbot, TF* restrict ufluxbot,
+            TF* restrict v, TF* restrict vbot, TF* restrict vgradbot, TF* restrict vfluxbot,
+            const TF zsl, const TF z0m, const Boundary_type bcbot,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
         const int jj = icells;
@@ -448,8 +453,10 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     // interpolate the whole stability function rather than ustar or obuk
-                    ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-                    vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                    ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*
+                        (ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                    vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*
+                        (ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
                 }
 
             boundary_cyclic.exec_2d(ufluxbot);
@@ -468,10 +475,12 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
 
-                    const TF vonu2 = std::max(minval, TF(0.25)*( fm::pow2(v[ijk-ii]-vbot[ij-ii]) + fm::pow2(v[ijk-ii+jj]-vbot[ij-ii+jj])
-                                                               + fm::pow2(v[ijk   ]-vbot[ij   ]) + fm::pow2(v[ijk   +jj]-vbot[ij   +jj])) );
-                    const TF uonv2 = std::max(minval, TF(0.25)*( fm::pow2(u[ijk-jj]-ubot[ij-jj]) + fm::pow2(u[ijk+ii-jj]-ubot[ij+ii-jj])
-                                                               + fm::pow2(u[ijk   ]-ubot[ij   ]) + fm::pow2(u[ijk+ii   ]-ubot[ij+ii   ])) );
+                    const TF vonu2 = std::max(minval, TF(0.25)*(
+                                fm::pow2(v[ijk-ii]-vbot[ij-ii]) + fm::pow2(v[ijk-ii+jj]-vbot[ij-ii+jj])
+                              + fm::pow2(v[ijk   ]-vbot[ij   ]) + fm::pow2(v[ijk   +jj]-vbot[ij   +jj])) );
+                    const TF uonv2 = std::max(minval, TF(0.25)*(
+                                fm::pow2(u[ijk-jj]-ubot[ij-jj]) + fm::pow2(u[ijk+ii-jj]-ubot[ij+ii-jj])
+                              + fm::pow2(u[ijk   ]-ubot[ij   ]) + fm::pow2(u[ijk+ii   ]-ubot[ij+ii   ])) );
 
                     const TF u2 = std::max(minval, fm::pow2(u[ijk]-ubot[ij]) );
                     const TF v2 = std::max(minval, fm::pow2(v[ijk]-vbot[ij]) );
@@ -523,12 +532,13 @@ namespace
     }
 
     template<typename TF>
-    void surfs(TF* restrict ustar, TF* restrict obuk, TF* restrict var,
-               TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot,
-               const TF zsl, const TF z0m, const TF z0h, const Boundary_type bcbot,
-               const int istart, const int iend, const int jstart, const int jend, const int kstart,
-               const int icells, const int jcells, const int kk,
-               Boundary_cyclic<TF>& boundary_cyclic)
+    void surfs(
+            TF* restrict ustar, TF* restrict obuk, TF* restrict var,
+            TF* restrict varbot, TF* restrict vargradbot, TF* restrict varfluxbot,
+            const TF zsl, const TF z0m, const TF z0h, const Boundary_type bcbot,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
 
