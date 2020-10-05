@@ -906,12 +906,21 @@ void Boundary_surface<TF>::set_values()
     Boundary<TF>::set_values();
 
     // Override the boundary settings in order to enforce dirichlet BC for surface model.
-    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-           Boundary_type::Dirichlet_type, ubot, fields.visc, grid.utrans,
-           gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-           Boundary_type::Dirichlet_type, vbot, fields.visc, grid.vtrans,
-           gd.icells, gd.jcells);
+    set_bc<TF>(
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            Boundary_type::Dirichlet_type, ubot,
+            fields.visc, grid.utrans,
+            gd.icells, gd.jcells);
+
+    set_bc<TF>(
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("v")->grad_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            Boundary_type::Dirichlet_type, vbot,
+            fields.visc, grid.vtrans,
+            gd.icells, gd.jcells);
 
     // in case the momentum has a fixed ustar, set the value to that of the input
     if (mbcbot == Boundary_type::Ustar_type)
@@ -928,12 +937,19 @@ void Boundary_surface<TF>::set_ustar()
     auto& gd = grid.get_grid_data();
     const int jj = gd.icells;
 
-    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-           mbcbot, ubot, fields.visc, grid.utrans,
-           gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-           mbcbot, vbot, fields.visc, grid.vtrans,
-           gd.icells, gd.jcells);
+    set_bc<TF>(
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            mbcbot, ubot, fields.visc, grid.utrans,
+            gd.icells, gd.jcells);
+
+    set_bc<TF>(
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("v")->grad_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            mbcbot, vbot, fields.visc, grid.vtrans,
+            gd.icells, gd.jcells);
 
     for (int j=0; j<gd.jcells; ++j)
         #pragma ivdep
@@ -1116,6 +1132,18 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary_surface<TF>::get_z0m() const
+{
+    return z0m_2d;
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary_surface<TF>::get_z0h() const
+{
+    return z0h_2d;
 }
 #endif
 

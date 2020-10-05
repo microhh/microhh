@@ -38,7 +38,10 @@ class Boundary_surface : public Boundary<TF>
         void init(Input&, Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
         void set_values();
+
         void get_ra(Field3d<TF>&);
+        const std::vector<TF>& get_z0m() const;
+        const std::vector<TF>& get_z0h() const;
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);

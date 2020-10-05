@@ -38,7 +38,10 @@ class Boundary_surface_bulk : public Boundary<TF>
         void init(Input&, Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
         void set_values();
+
         void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
+        const std::vector<TF>& get_z0m() const;
+        const std::vector<TF>& get_z0h() const;
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);
@@ -55,7 +58,8 @@ class Boundary_surface_bulk : public Boundary<TF>
         using Boundary<TF>::obuk;
         using Boundary<TF>::z0m;
         using Boundary<TF>::z0h;
-
+        using Boundary<TF>::z0m_2d;
+        using Boundary<TF>::z0h_2d;
         using Boundary<TF>::ustar_g;
         using Boundary<TF>::obuk_g;
 

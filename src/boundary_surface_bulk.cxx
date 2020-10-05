@@ -207,16 +207,15 @@ void Boundary_surface_bulk<TF>::init_surface()
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
-    const int jj = gd.icells;
+    z0m_2d.resize(gd.ijcells);
+    z0h_2d.resize(gd.ijcells);
+
+    // BvS TMP
+    std::fill(z0m_2d.begin(), z0m_2d.end(), z0m);
+    std::fill(z0h_2d.begin(), z0h_2d.end(), z0h);
 
     // Initialize the obukhov length on a small number.
-    for (int j=0; j<gd.jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<gd.icells; ++i)
-        {
-            const int ij = i + j*jj;
-            obuk[ij]  = Constants::dsmall;
-        }
+    std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
 }
 
 template<typename TF>
@@ -295,6 +294,18 @@ void Boundary_surface_bulk<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
 {
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary_surface_bulk<TF>::get_z0m() const
+{
+    return z0m_2d;
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary_surface_bulk<TF>::get_z0h() const
+{
+    return z0h_2d;
 }
 #endif
 

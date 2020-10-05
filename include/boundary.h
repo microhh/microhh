@@ -92,11 +92,12 @@ class Boundary
         virtual void save(const int) {};
 
         // virtual void exec_cross();       ///< Execute cross sections of surface
-
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
         // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
         virtual void get_ra(Field3d<TF>&);  // Get the aerodynamic resistance
+        virtual const std::vector<TF>& get_z0m() const;
+        virtual const std::vector<TF>& get_z0h() const;
 
         std::string get_switch();
 
