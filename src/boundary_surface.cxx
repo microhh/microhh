@@ -275,7 +275,7 @@ namespace
         }
     }
 
-    template<typename TF, bool sw_lookup_solver>
+    template<typename TF, bool sw_constant_z0>
     void stability(
             TF* const restrict ustar,
             TF* const restrict obuk,
@@ -345,7 +345,7 @@ namespace
                     const int ij = i + j*jj;
 
                     // Switch between the iterative and lookup solver
-                    if (sw_lookup_solver)
+                    if (sw_constant_z0)
                         obuk[ij] = calc_obuk_noslip_flux_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                     else
@@ -366,7 +366,7 @@ namespace
                     const TF db = b[ijk] - bbot[ij] + db_ref;
 
                     // Switch between the iterative and lookup solver
-                    if (sw_lookup_solver)
+                    if (sw_constant_z0)
                         obuk [ij] = calc_obuk_noslip_dirichlet_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     else
@@ -691,8 +691,8 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    // Switch between iterative and lookup Ri->L solver
-    sw_lookup_solver = inputin.get_item<bool>("boundary", "swlookupsolver", "", true);
+    // Switch between heterogeneous and homogeneous z0's
+    sw_constant_z0 = inputin.get_item<bool>("boundary", "sw_constant_z0", "", true);
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
@@ -779,18 +779,22 @@ void Boundary_surface<TF>::init_surface(Input& input)
     auto& gd = grid.get_grid_data();
 
     obuk.resize(gd.ijcells);
-    nobuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
+
+    if (sw_constant_z0)
+        nobuk.resize(gd.ijcells);
 
     z0m.resize(gd.ijcells);
     z0h.resize(gd.ijcells);
 
-    // BvS TMP
-    const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
-    const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
+    if (sw_constant_z0)
+    {
+        const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
+        const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
 
-    std::fill(z0m.begin(), z0m.end(), z0m_hom);
-    std::fill(z0h.begin(), z0h.end(), z0h_hom);
+        std::fill(z0m.begin(), z0m.end(), z0m_hom);
+        std::fill(z0h.begin(), z0h.end(), z0h_hom);
+    }
 
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(),  obuk.end(), Constants::dsmall);
@@ -801,29 +805,44 @@ template<typename TF>
 void Boundary_surface<TF>::load(const int iotime)
 {
     // Obukhov length restart files are only needed for the iterative solver
-    if (!sw_lookup_solver)
+    if (!sw_constant_z0)
     {
         auto tmp1 = fields.get_tmp();
-
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", "obuk", iotime);
-        master.print_message("Saving \"%s\" ... ", filename);
-
         int nerror = 0;
-        if (field3d_io.load_xy_slice(
-                obuk.data(), tmp1->fld.data(), filename))
+
+        auto load_2d_field = [&](
+                TF* const restrict field, const std::string& name, const int itime)
         {
-            master.print_message("FAILED\n");
-            nerror += 1;
-        }
-        else
-            master.print_message("OK\n");
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            if (field3d_io.load_xy_slice(
+                    field, tmp1->fld.data(),
+                    filename))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+
+            boundary_cyclic.exec_2d(field);
+        };
+
+        load_2d_field(obuk.data(), "obuk", iotime);
+
+        // Read spatial z0 fields
+        load_2d_field(z0m.data(), "z0m", 0);
+        load_2d_field(z0h.data(), "z0h", 0);
 
         master.sum(&nerror, 1);
         if (nerror)
             throw std::runtime_error("Error loading field(s)");
 
-        boundary_cyclic.exec_2d(obuk.data());
+        //boundary_cyclic.exec_2d(obuk.data());
+        //boundary_cyclic.exec_2d(z0m.data());
+        //boundary_cyclic.exec_2d(z0h.data());
 
         fields.release_tmp(tmp1);
     }
@@ -833,7 +852,7 @@ template<typename TF>
 void Boundary_surface<TF>::save(const int iotime)
 {
     // Obukhov length restart files are only needed for the iterative solver
-    if (!sw_lookup_solver)
+    if (!sw_constant_z0)
     {
         auto tmp1 = fields.get_tmp();
 
@@ -927,7 +946,7 @@ void Boundary_surface<TF>::set_values()
         set_ustar();
 
     // Prepare the lookup table for the surface solver
-    if (sw_lookup_solver)
+    if (sw_constant_z0)
         init_solver();
 }
 
@@ -1054,7 +1073,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
         thermo.get_buoyancy_surf(*buoy, false);
         const TF db_ref = thermo.get_db_ref();
 
-        if (sw_lookup_solver)
+        if (sw_constant_z0)
             stability<TF, true>(
                     ustar.data(), obuk.data(),
                     buoy->flux_bot.data(),

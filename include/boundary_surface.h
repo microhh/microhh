@@ -107,7 +107,7 @@ class Boundary_surface : public Boundary<TF>
         #endif
 
         Boundary_type thermobc;
-        bool sw_lookup_solver;
+        bool sw_constant_z0;
 
     protected:
         // cross sections
