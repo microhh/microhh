@@ -653,7 +653,8 @@ Boundary_surface<TF>::~Boundary_surface()
 
 template<typename TF>
 void Boundary_surface<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     const std::string group_name = "default";
     Boundary<TF>::process_time_dependent(input, input_nc);
@@ -669,6 +670,12 @@ void Boundary_surface<TF>::create(
     {
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
+    }
+
+    if (cross.get_switch())
+    {
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk"};
+        cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
 
@@ -745,32 +752,6 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
         }
         ++it;
     }
-
-    /*
-    // Cross sections
-    allowedcrossvars.push_back("ustar");
-    allowedcrossvars.push_back("obuk");
-
-    // Read list of cross sections
-    nerror += inputin.get_list(&crosslist, "boundary", "crosslist" , "");
-
-    // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
-
-    // Check input list of cross variables (crosslist)
-    std::vector<std::string>::iterator it2=crosslist_global->begin();
-    while (it2 != crosslist_global->end())
-    {
-        if (std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
-        {
-            // Remove variable from global list, put in local list
-            crosslist.push_back(*it2);
-            crosslist_global->erase(it2); // erase() returns iterator of next element..
-        }
-        else
-            ++it2;
-    }
-    */
 }
 
 template<typename TF>
@@ -830,6 +811,7 @@ void Boundary_surface<TF>::load(const int iotime)
             boundary_cyclic.exec_2d(field);
         };
 
+        // Read Obukhov length
         load_2d_field(obuk.data(), "obuk", iotime);
 
         // Read spatial z0 fields
@@ -839,10 +821,6 @@ void Boundary_surface<TF>::load(const int iotime)
         master.sum(&nerror, 1);
         if (nerror)
             throw std::runtime_error("Error loading field(s)");
-
-        //boundary_cyclic.exec_2d(obuk.data());
-        //boundary_cyclic.exec_2d(z0m.data());
-        //boundary_cyclic.exec_2d(z0h.data());
 
         fields.release_tmp(tmp1);
     }
@@ -879,24 +857,17 @@ void Boundary_surface<TF>::save(const int iotime)
     }
 }
 
-/*
 template<typename TF>
-void Boundary_surface<TF>::exec_cross(int iotime)
+void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    int nerror = 0;
-
-    for (std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
+    for (auto& it : cross_list)
     {
-        if (*it == "ustar")
-            nerror += model->cross->cross_plane(ustar, fields->atmp["tmp1"]->data, "ustar",iotime);
-        else if (*it == "obuk")
-            nerror += model->cross->cross_plane(obuk,  fields->atmp["tmp1"]->data, "obuk",iotime);
+        if (it == "ustar")
+            cross.cross_plane(ustar.data(), "ustar", iotime);
+        else if (it == "obuk")
+            cross.cross_plane(obuk.data(), "obuk", iotime);
     }
-
-    if (nerror)
-        throw 1;
 }
-*/
 
 template<typename TF>
 void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)

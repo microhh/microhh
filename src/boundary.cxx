@@ -220,7 +220,8 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
 template<typename TF>
 void Boundary<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     process_time_dependent(input, input_nc);
 }

@@ -36,7 +36,7 @@ class Boundary_surface : public Boundary<TF>
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
         void set_values();
 
         void get_ra(Field3d<TF>&);
@@ -49,7 +49,7 @@ class Boundary_surface : public Boundary<TF>
 
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
-        void exec_cross(int);
+        void exec_cross(Cross<TF>&, unsigned long);
 
         void load(const int);
         void save(const int);
@@ -110,9 +110,8 @@ class Boundary_surface : public Boundary<TF>
         bool sw_constant_z0;
 
     protected:
-        // cross sections
-        // std::vector<std::string> crosslist;        // List with all crosses from ini file
-        // std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+        // Cross sections
+        std::vector<std::string> cross_list;         // List of active cross variables
 
         void update_slave_bcs();
 };

@@ -242,7 +242,7 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->load(timeloop->get_iotime());
-    boundary->create(*input, *input_nc, *stats, *column);
+    boundary->create(*input, *input_nc, *stats, *column, *cross);
     boundary->set_values();
 
     // Load the prognostic soil fields, and create/init soil
@@ -606,9 +606,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
         lsm      ->exec_cross(*cross, iotime);
+        boundary ->exec_cross(*cross, iotime);
 
         // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
-        // boundary->exec_cross(iotime);
     }
 
     // Save the 3d dumps to disk.

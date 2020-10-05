@@ -142,7 +142,8 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 
 template<typename TF>
 void Boundary_surface_bulk<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     const std::string group_name = "default";
 
