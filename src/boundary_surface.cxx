@@ -1127,18 +1127,6 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
             gd.jstart, gd.jend,
             gd.icells);
 }
-
-template<typename TF>
-const std::vector<TF>& Boundary_surface<TF>::get_z0m() const
-{
-    return z0m;
-}
-
-template<typename TF>
-const std::vector<TF>& Boundary_surface<TF>::get_z0h() const
-{
-    return z0h;
-}
 #endif
 
 template<typename TF>

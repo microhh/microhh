@@ -40,8 +40,10 @@ class Boundary_surface_bulk : public Boundary<TF>
         void set_values();
 
         void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
-        const std::vector<TF>& get_z0m() const;
-        const std::vector<TF>& get_z0h() const;
+        const std::vector<TF>& get_z0m() const { return z0m; };
+        const std::vector<TF>& get_z0h() const { return z0h; };
+        const std::vector<TF>& get_ustar() const { return ustar; };
+        const std::vector<TF>& get_obuk() const { return obuk; };
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);
@@ -53,15 +55,6 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         void load(const int) {};
         void save(const int) {};
-
-        using Boundary<TF>::ustar;
-        using Boundary<TF>::obuk;
-
-        using Boundary<TF>::z0m;
-        using Boundary<TF>::z0h;
-
-        using Boundary<TF>::ustar_g;
-        using Boundary<TF>::obuk_g;
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -90,7 +83,16 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         using Boundary<TF>::sbc;
 
-        // transfer coefficients
+        std::vector<TF> z0m;
+        std::vector<TF> z0h;
+
+        std::vector<TF> ustar;
+        std::vector<TF> obuk;
+
+        TF* obuk_g;
+        TF* ustar_g;
+
+        // Transfer coefficients
         TF bulk_cm;
         std::map<std::string, TF> bulk_cs;
 

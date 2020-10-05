@@ -1044,13 +1044,16 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
+    const std::vector<TF>& ustar = boundary.get_ustar();
+    const std::vector<TF>& obuk  = boundary.get_obuk();
+
     // Calculate strain rate using MO for velocity gradients lowest level.
     if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                boundary.ustar.data(), boundary.obuk.data(),
+                ustar.data(), obuk.data(),
                 gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1116,6 +1119,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
+        const std::vector<TF>& ustar = boundary.get_ustar();
+        const std::vector<TF>& obuk  = boundary.get_obuk();
+
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
@@ -1126,7 +1132,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("u")->flux_bot.data(),
                     fields.mp.at("v")->flux_bot.data(),
                     buoy_tmp->flux_bot.data(),
-                    boundary.ustar.data(), boundary.obuk.data(),
+                    ustar.data(), obuk.data(),
                     gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,

@@ -40,8 +40,10 @@ class Boundary_surface : public Boundary<TF>
         void set_values();
 
         void get_ra(Field3d<TF>&);
-        const std::vector<TF>& get_z0m() const;
-        const std::vector<TF>& get_z0h() const;
+        const std::vector<TF>& get_z0m() const { return z0m; };
+        const std::vector<TF>& get_z0h() const { return z0h; };
+        const std::vector<TF>& get_ustar() const { return ustar; };
+        const std::vector<TF>& get_obuk() const { return obuk; };
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);
@@ -53,17 +55,6 @@ class Boundary_surface : public Boundary<TF>
 
         void load(const int);
         void save(const int);
-
-        using Boundary<TF>::ustar;
-        using Boundary<TF>::obuk;
-        using Boundary<TF>::nobuk;
-
-        using Boundary<TF>::z0m;
-        using Boundary<TF>::z0h;
-
-        using Boundary<TF>::ustar_g;
-        using Boundary<TF>::obuk_g;
-        using Boundary<TF>::nobuk_g;
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -100,6 +91,17 @@ class Boundary_surface : public Boundary<TF>
 
         std::vector<float> zL_sl;
         std::vector<float> f_sl;
+
+        std::vector<TF> z0m;
+        std::vector<TF> z0h;
+
+        std::vector<TF> ustar;
+        std::vector<TF> obuk;
+        std::vector<int> nobuk;
+
+        TF* obuk_g;
+        TF* ustar_g;
+        int* nobuk_g;
 
         #ifdef USECUDA
         float* zL_sl_g;

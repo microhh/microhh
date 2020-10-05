@@ -96,9 +96,12 @@ class Boundary
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
         // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
-        virtual void get_ra(Field3d<TF>&);  // Get the aerodynamic resistance
+        // Get functions for various 2D fields
+        virtual void get_ra(Field3d<TF>&);
         virtual const std::vector<TF>& get_z0m() const;
         virtual const std::vector<TF>& get_z0h() const;
+        virtual const std::vector<TF>& get_ustar() const;
+        virtual const std::vector<TF>& get_obuk() const;
 
         std::string get_switch();
 
@@ -106,17 +109,6 @@ class Boundary
         virtual void prepare_device();
         virtual void forward_device();
         virtual void backward_device();
-
-        std::vector<TF> z0m;
-        std::vector<TF> z0h;
-
-        std::vector<TF> ustar;
-        std::vector<TF> obuk;
-        std::vector<int> nobuk;
-
-        TF* obuk_g;
-        TF* ustar_g;
-        int* nobuk_g;
 
     protected:
         Master& master;

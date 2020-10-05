@@ -800,6 +800,18 @@ const std::vector<TF>& Boundary<TF>::get_z0h() const
 }
 
 template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_ustar() const
+{
+    throw std::runtime_error("Function get_ustar() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_obuk() const
+{
+    throw std::runtime_error("Function get_obuk() not implemented in base boundary.");
+}
+
+template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {

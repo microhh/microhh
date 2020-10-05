@@ -297,18 +297,6 @@ template<typename TF>
 void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
 {
 }
-
-template<typename TF>
-const std::vector<TF>& Boundary_surface_bulk<TF>::get_z0m() const
-{
-    return z0m;
-}
-
-template<typename TF>
-const std::vector<TF>& Boundary_surface_bulk<TF>::get_z0h() const
-{
-    return z0h;
-}
 #endif
 
 template<typename TF>
