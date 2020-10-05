@@ -106,11 +106,8 @@ class Boundary
         virtual void forward_device();
         virtual void backward_device();
 
-        TF z0m;
-        TF z0h;
-
-        std::vector<TF> z0m_2d;
-        std::vector<TF> z0h_2d;
+        std::vector<TF> z0m;
+        std::vector<TF> z0h;
 
         std::vector<TF> ustar;
         std::vector<TF> obuk;

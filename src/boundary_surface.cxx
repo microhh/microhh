@@ -682,7 +682,7 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
     process_input(inputin, thermo);
 
     // 3. Allocate and initialize the 2D surface fields.
-    init_surface();
+    init_surface(inputin);
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
@@ -691,9 +691,6 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    z0m = inputin.get_item<TF>("boundary", "z0m", "");
-    z0h = inputin.get_item<TF>("boundary", "z0h", "");
-
     // Switch between iterative and lookup Ri->L solver
     sw_lookup_solver = inputin.get_item<bool>("boundary", "swlookupsolver", "", true);
 
@@ -777,7 +774,7 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::init_surface()
+void Boundary_surface<TF>::init_surface(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
@@ -785,12 +782,15 @@ void Boundary_surface<TF>::init_surface()
     nobuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
-    z0m_2d.resize(gd.ijcells);
-    z0h_2d.resize(gd.ijcells);
+    z0m.resize(gd.ijcells);
+    z0h.resize(gd.ijcells);
 
     // BvS TMP
-    std::fill(z0m_2d.begin(), z0m_2d.end(), z0m);
-    std::fill(z0h_2d.begin(), z0h_2d.end(), z0h);
+    const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
+    const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
+
+    std::fill(z0m.begin(), z0m.end(), z0m_hom);
+    std::fill(z0h.begin(), z0h.end(), z0h_hom);
 
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(),  obuk.end(), Constants::dsmall);
@@ -972,6 +972,10 @@ void Boundary_surface<TF>::init_solver()
 
     std::vector<TF> zL_tmp(nzL);
 
+    // BvS: TMP
+    const TF z0m_hom = z0m[0];
+    const TF z0h_hom = z0h[0];
+
     // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
     // and stretch up to -1e4 in the negative limit.
     // Alter next three values in case the range need to be changed.
@@ -1011,13 +1015,13 @@ void Boundary_surface<TF>::init_solver()
     {
         const TF zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
-            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
+            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m_hom, zsl/zL_sl[n]), 3);
     }
     else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
     {
         const TF zsl = gd.z[gd.kstart];
         for (int n=0; n<nzL; ++n)
-            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h, zsl/zL_sl[n]);
+            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m_hom, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h_hom, zsl/zL_sl[n]);
     }
 }
 
@@ -1035,7 +1039,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
                 ustar.data(), obuk.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                dutot->fld.data(), gd.z.data(), z0m_2d.data(),
+                dutot->fld.data(), gd.z.data(), z0m.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend, gd.kstart,
                 gd.icells, gd.jcells, gd.ijcells,
@@ -1058,7 +1062,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
                     buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
                     fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                     tmp->fld.data(), gd.z.data(),
-                    z0m_2d.data(), z0h_2d.data(),
+                    z0m.data(), z0h.data(),
                     zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend, gd.kstart,
@@ -1071,7 +1075,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
                     fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
                     tmp->fld.data(), gd.z.data(),
-                    z0m_2d.data(), z0h_2d.data(),
+                    z0m.data(), z0h.data(),
                     zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
                     gd.icells, gd.jcells, gd.ijcells,
@@ -1095,7 +1099,7 @@ void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
           ustar.data(), obuk.data(),
           fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
           fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
-          z0m_2d.data(), gd.z[gd.kstart], mbcbot,
+          z0m.data(), gd.z[gd.kstart], mbcbot,
           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
           gd.icells, gd.jcells, gd.ijcells,
           boundary_cyclic);
@@ -1111,7 +1115,7 @@ void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
               it.second->grad_bot.data(),
               it.second->flux_bot.data(),
               ustar.data(), obuk.data(),
-              it.second->fld.data(), z0h_2d.data(),
+              it.second->fld.data(), z0h.data(),
               gd.z[gd.kstart], sbc.at(it.first).bcbot,
               gd.istart, gd.iend,
               gd.jstart, gd.jend, gd.kstart,
@@ -1127,7 +1131,7 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
     calc_ra(fld.flux_bot.data(),
             ustar.data(),
             obuk.data(),
-            z0h_2d.data(),
+            z0h.data(),
             gd.z[gd.kstart],
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
@@ -1137,13 +1141,13 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
 template<typename TF>
 const std::vector<TF>& Boundary_surface<TF>::get_z0m() const
 {
-    return z0m_2d;
+    return z0m;
 }
 
 template<typename TF>
 const std::vector<TF>& Boundary_surface<TF>::get_z0h() const
 {
-    return z0h_2d;
+    return z0h;
 }
 #endif
 

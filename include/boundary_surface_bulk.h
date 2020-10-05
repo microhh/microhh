@@ -56,10 +56,10 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         using Boundary<TF>::ustar;
         using Boundary<TF>::obuk;
+
         using Boundary<TF>::z0m;
         using Boundary<TF>::z0h;
-        using Boundary<TF>::z0m_2d;
-        using Boundary<TF>::z0h_2d;
+
         using Boundary<TF>::ustar_g;
         using Boundary<TF>::obuk_g;
 
@@ -73,7 +73,7 @@ class Boundary_surface_bulk : public Boundary<TF>
 
     protected:
         void process_input(Input&, Thermo<TF>&); // Process and check the surface input
-        void init_surface(); // Allocate and initialize the surface arrays
+        void init_surface(Input&); // Allocate and initialize the surface arrays
 
     private:
         using Boundary<TF>::master;
