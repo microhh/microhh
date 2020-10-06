@@ -76,6 +76,7 @@ class Land_surface
         Grid<TF>& grid;
         Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         bool sw_land_surface;
         bool sw_homogeneous;
@@ -85,12 +86,12 @@ class Land_surface
 
         // Land-surface properties
         Tile_map<TF> tiles;
-        std::vector<TF> gD_coeff;                // Coefficient in response surface to VPD (Pa)
-        std::vector<TF> c_veg;                   // Vegetation fraction (-)
-        std::vector<TF> lai;                     // Leaf area index (-)
-        std::vector<TF> rs_veg_min;              // Minimum vegetation resistance (s m-1)
-        std::vector<TF> rs_soil_min;             // Minimum soil resistance (s m-1)
-        std::vector<TF> lambda;                  // Skin conductivity (W m-2 K-1)
+        std::vector<TF> gD_coeff;       // Coefficient in response surface to VPD (Pa)
+        std::vector<TF> c_veg;          // Vegetation fraction (-)
+        std::vector<TF> lai;            // Leaf area index (-)
+        std::vector<TF> rs_veg_min;     // Minimum vegetation resistance (s m-1)
+        std::vector<TF> rs_soil_min;    // Minimum soil resistance (s m-1)
+        std::vector<TF> lambda;         // Skin conductivity (W m-2 K-1)
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables

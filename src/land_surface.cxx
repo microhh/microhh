@@ -43,6 +43,7 @@
 #include "fast_math.h"
 #include "timeloop.h"
 #include "microphys.h"
+#include "boundary_cyclic.h"
 
 #include "land_surface.h"
 
@@ -162,6 +163,41 @@ namespace soil
 
         // Make sure the root fraction sums to one.
         root_frac[kstart] = TF(1) - root_frac_sum;
+    }
+
+    template<typename TF>
+    void calc_root_fraction(
+            TF* const restrict root_frac,
+            const TF* const restrict a_root,
+            const TF* const restrict b_root,
+            const TF* const restrict zh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                TF root_frac_sum = TF(0);
+
+                for (int k=kstart+1; k<kend; ++k)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    root_frac[ijk] = 0.5 * (exp(a_root[ij] * zh[k+1]) + \
+                                            exp(b_root[ij] * zh[k+1]) - \
+                                            exp(a_root[ij] * zh[k  ]) - \
+                                            exp(b_root[ij] * zh[k  ]));
+
+                    root_frac_sum += root_frac[ijk];
+                }
+
+                const int ijk = i +j*icells + kstart*ijcells;
+                // Make sure the root fraction sums to one.
+                root_frac[ijk] = TF(1) - root_frac_sum;
+            }
     }
 
     template<typename TF>
@@ -852,7 +888,8 @@ template<typename TF>
 Land_surface<TF>::Land_surface(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
         Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin)
+    master(masterin), grid(gridin), soil_grid(soilgridin),
+    fields(fieldsin), boundary_cyclic(master, grid)
 {
     sw_land_surface = inputin.get_item<bool>("land_surface", "sw_land_surface", "", false);
 
@@ -860,10 +897,6 @@ Land_surface<TF>::Land_surface(
     {
         sw_homogeneous   = inputin.get_item<bool>("land_surface", "sw_homogeneous", "", true);
         sw_free_drainage = inputin.get_item<bool>("land_surface", "sw_free_drainage", "", true);
-
-        // Checks on input & limitations
-        if (!sw_homogeneous)
-            throw std::runtime_error("Heterogeneous land surface input not (yet) implemented");
 
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
@@ -949,6 +982,9 @@ void Land_surface<TF>::init()
 
     gamma_T_dry.resize(lookup_table_size);
     rho_C.resize(lookup_table_size);
+
+    // Initialize the boundary cyclic.
+    boundary_cyclic.init();
 }
 
 template<typename TF>
@@ -967,18 +1003,18 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    Netcdf_group& soil_group = input_nc.get_group("soil");
+    Netcdf_group& init_group = input_nc.get_group("init");
+
     // Init the soil variables
     if (sw_homogeneous)
     {
         // Read initial profiles from input NetCDF file
-        Netcdf_group& soil_group = input_nc.get_group("soil");
-        Netcdf_group& init_group = input_nc.get_group("init");
-
         std::vector<TF> t_prof(sgd.ktot);
         std::vector<TF> theta_prof(sgd.ktot);
 
-        soil_group.get_variable(t_prof, "t", {0}, {sgd.ktot});
-        soil_group.get_variable(theta_prof, "theta", {0}, {sgd.ktot});
+        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
+        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
 
         // Initialise soil as spatially homogeneous
         soil::init_soil_homogeneous(
@@ -994,25 +1030,25 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
-
-        // Initialise the prognostic surface variables, and/or
-        // variables which are needed for consistent restarts.
-        std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
-
-        // Set initial surface potential temperature and humidity to the atmospheric values (...)
-        std::vector<TF> thl_1(1);
-        std::vector<TF> qt_1(1);
-
-        init_group.get_variable(thl_1, "thl", {0}, {1});
-        init_group.get_variable(qt_1,  "qt",  {0}, {1});
-
-        std::fill(
-                fields.sp.at("thl")->fld_bot.begin(),
-                fields.sp.at("thl")->fld_bot.begin()+agd.ijcells, thl_1[0]);
-        std::fill(
-                fields.sp.at("qt")->fld_bot.begin(),
-                fields.sp.at("qt")->fld_bot.begin()+agd.ijcells, qt_1[0]);
     }
+
+    // Initialise the prognostic surface variables, and/or
+    // variables which are needed for consistent restarts.
+    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+
+    // Set initial surface potential temperature and humidity to the atmospheric values (...)
+    std::vector<TF> thl_1(1);
+    std::vector<TF> qt_1(1);
+
+    init_group.get_variable(thl_1, "thl", {0}, {1});
+    init_group.get_variable(qt_1,  "qt",  {0}, {1});
+
+    std::fill(
+            fields.sp.at("thl")->fld_bot.begin(),
+            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
+    std::fill(
+            fields.sp.at("qt")->fld_bot.begin(),
+            fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
 }
 
 template<typename TF>
@@ -1034,9 +1070,10 @@ void Land_surface<TF>::create_fields_grid_stats(
     if (sw_homogeneous)
     {
         Netcdf_group& soil_group = input_nc.get_group("soil");
-        std::vector<int> soil_index_prof(sgd.ktot);
 
-        soil_group.get_variable<int>(soil_index_prof, "index", {0}, {sgd.ktot});
+        // Soil index
+        std::vector<int> soil_index_prof(sgd.ktot);
+        soil_group.get_variable<int>(soil_index_prof, "index_soil", {0}, {sgd.ktot});
 
         soil::init_soil_homogeneous<int>(
                 soil_index.data(), soil_index_prof.data(),
@@ -1045,41 +1082,34 @@ void Land_surface<TF>::create_fields_grid_stats(
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
 
-        // Calculate root fraction
-        const TF a_root = input.get_item<TF>("land_surface", "ar", "");
-        const TF b_root = input.get_item<TF>("land_surface", "br", "");
-
-        std::vector<TF> root_frac_column(sgd.kcells);
-        soil::calc_root_column(
-                root_frac_column.data(),
-                sgd.zh.data(),
-                a_root, b_root,
-                sgd.kstart, sgd.kend);
+        // Root fraction
+        std::vector<TF> root_frac_prof(sgd.ktot);
+        soil_group.get_variable<TF>(root_frac_prof, "root_frac", {0}, {sgd.ktot});
 
         soil::init_soil_homogeneous<TF>(
-                root_fraction.data(), root_frac_column.data(),
+                root_fraction.data(), root_frac_prof.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
                 agd.icells, agd.ijcells);
 
-        // Land-surface properties
         auto init_homogeneous = [&](std::vector<TF>& field, std::string name)
         {
             const TF value = input.get_item<TF>("land_surface", name.c_str(), "");
             std::fill(field.begin(), field.begin()+agd.ijcells, value);
         };
 
+        // Land-surface properties
         init_homogeneous(gD_coeff, "gD");
         init_homogeneous(c_veg, "c_veg");
         init_homogeneous(lai, "lai");
         init_homogeneous(rs_veg_min, "rs_veg_min");
         init_homogeneous(rs_soil_min, "rs_soil_min");
         init_homogeneous(lambda, "lambda");
-
-        // Set the canopy resistance of the liquid water tile at zero
-        std::fill(tiles.at("wet").rs.begin(), tiles.at("wet").rs.begin()+agd.ijcells, 0.);
     }
+
+    // Set the canopy resistance of the liquid water tile at zero
+    std::fill(tiles.at("wet").rs.begin(), tiles.at("wet").rs.begin()+agd.ijcells, 0.);
 
     // Read lookup table soil
     nc_lookup_table->get_variable<TF>(theta_res, "theta_res", {0}, {lookup_table_size});
@@ -1741,7 +1771,7 @@ void Land_surface<TF>::save(const int itime)
 }
 
 template<typename TF>
-void Land_surface<TF>::load(const int itime)
+void Land_surface<TF>::load(const int iotime)
 {
     if (!sw_land_surface)
         return;
@@ -1754,12 +1784,13 @@ void Land_surface<TF>::load(const int itime)
 
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
+    auto tmp3 = fields.get_tmp();
 
-    // Load the 3D soil fields (temperature and moisture)
-    auto load_3d_field = [&](TF* const restrict field, const std::string& name)
+    auto load_3d_field = [&](
+            TF* const restrict field, const std::string& name, const int time)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::sprintf(filename, "%s.%07d", name.c_str(), time);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_field3d(
@@ -1775,14 +1806,11 @@ void Land_surface<TF>::load(const int itime)
             master.print_message("OK\n");
     };
 
-    load_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
-    load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
-
-    // Surface temperature, humidity and liquid water content.
-    auto load_2d_field = [&](TF* const restrict field, const std::string& name)
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int time)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::sprintf(filename, "%s.%07d", name.c_str(), time);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -1794,19 +1822,47 @@ void Land_surface<TF>::load(const int itime)
         }
         else
             master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
     };
 
-    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
-    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
-    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+    // Load the 3D soil temperature and moisture fields.
+    load_3d_field(fields.sps.at("t")->fld.data(), "t_soil", iotime);
+    load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil", iotime);
+
+    // Load the surface temperature, humidity and liquid water content.
+    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
+    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
+    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
+
+    // In case of heterogeneous land-surface, read spatial properties.
+    if (!sw_homogeneous)
+    {
+        // 3D (soil) fields
+        // BvS: yikes.. Read soil index as float, round/cast to int... TO-DO: fix this!
+        load_3d_field(tmp3->fld.data(), "index_soil", 0);
+        for (int i=0; i<sgd.ncells; ++i)
+            soil_index[i] = std::round(tmp3->fld[i]);
+
+        load_3d_field(root_fraction.data(), "root_frac", 0);
+
+        // 2D (surface) fields
+        load_2d_field(gD_coeff.data(), "gD", 0);
+        load_2d_field(c_veg.data(), "c_veg", 0);
+        load_2d_field(lai.data(), "lai", 0);
+        load_2d_field(rs_veg_min.data(), "rs_veg_min", 0);
+        load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
+        load_2d_field(lambda.data(), "lambda_skin", 0);
+    }
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
+    fields.release_tmp(tmp3);
 
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Error loading soil fields");
+        throw std::runtime_error("Error loading land surface fields");
 }
 
 template class Land_surface<double>;
