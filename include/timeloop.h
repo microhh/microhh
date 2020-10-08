@@ -90,6 +90,7 @@ class Timeloop
         std::string get_datetime_utc_start_string() const;
         double calc_day_of_year() const;
         double calc_hour_of_day() const;
+        int get_year() const;
 
     private:
         Master& master;

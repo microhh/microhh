@@ -640,20 +640,48 @@ namespace
     template<typename TF>
     TF calc_cos_zenith_angle(
             const TF lat, const TF lon, const int day_of_year,
-            const TF seconds_since_midnight)
+            const TF seconds_since_midnight, const int year)
     {
-        constexpr TF pi = TF(M_PI);
-        constexpr TF twopi = TF(2.*M_PI);
+        /* Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
+                     Radiative Processes in Meteorology and Climatology.
+                     Elsevier, New York, 318 pp. */
 
-        const TF radlon = deg_to_rad(lon);
-        const TF radlat = deg_to_rad(lat);
+        const TF pi = TF(M_PI);
 
-        TF declination_angle = deg_to_rad(TF(23.45)) * std::cos(twopi * (TF(day_of_year) - TF(173)) / TF(365.25));
+        // Account for leap year
+        int days_per_year;
+        if ((year%4 == 0) && ((year%100 != 0) || (year%400 == 0)))
+            days_per_year = 366;
+        else
+            days_per_year = 365;
 
-        TF hour_angle = twopi * seconds_since_midnight/TF(TF(86400)) + radlon - pi;
+        // DOY in time calculations are zero based:
+        const int doy = day_of_year-1;
 
-        TF cos_zenith = std::sin(radlat)*std::sin(declination_angle)
-                      + std::cos(radlat)*std::cos(declination_angle)*std::cos(hour_angle);
+        // Lat/lon in radians
+        const TF radlat = lat * pi/TF(180);
+        const TF radlon = lon * pi/TF(180);
+
+        // DOY in range (0,2*pi)
+        const TF doy_pi = TF(2)*pi*doy/days_per_year;
+
+        // Solar declination angle
+        const TF declination_angle = \
+                TF(0.006918) - TF(0.399912) * std::cos(doy_pi) + TF(0.070257) * std::sin(doy_pi)
+              - TF(0.006758) * std::cos(TF(2)*doy_pi) + TF(0.000907) * std::sin(TF(2)*doy_pi)
+              - TF(0.002697) * std::cos(TF(3)*doy_pi) + TF(0.00148)  * std::sin(TF(3)*doy_pi);
+
+        // Hour angle in radians, using true solar time
+        const TF a1 = (TF(1.00554) * doy - TF( 6.28306)) * pi/TF(180);
+        const TF a2 = (TF(1.93946) * doy + TF(23.35089)) * pi/TF(180);
+        const TF a3 = (TF(7.67825) * std::sin(a1) + TF(10.09176) * std::sin(a2)) / TF(60);
+
+        const TF hour_solar_time = (seconds_since_midnight/TF(3600)) - a3 + radlon * (TF(180.)/pi/TF(15.0));
+        const TF hour_angle = (hour_solar_time-TF(12))*TF(15.0)*(pi/TF(180));
+
+        // Cosine of solar zenith angle
+        const TF cos_zenith = std::sin(radlat) * std::sin(declination_angle) +
+                              std::cos(radlat) * std::cos(declination_angle) * std::cos(hour_angle);
 
         return cos_zenith;
     }
@@ -1167,8 +1195,9 @@ void Radiation_rrtmgp<TF>::exec(
             {
                 // Update the solar zenith angle, and calculate new shortwave reference column
                 const int day_of_year = int(timeloop.calc_day_of_year());
+                const int year = timeloop.get_year();
                 const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-                this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight);
+                this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
 
                 if (is_day(this->mu0))
                 {

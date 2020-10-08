@@ -564,6 +564,16 @@ double Timeloop<TF>::calc_day_of_year() const
 }
 
 template<typename TF>
+int Timeloop<TF>::get_year() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    return tm_actual.tm_year;
+}
+
+template<typename TF>
 std::string Timeloop<TF>::get_datetime_utc_start_string() const
 {
     if (!flag_utc_time)
