@@ -690,7 +690,7 @@ namespace
 template<typename TF>
 Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-	Radiation<TF>(masterin, gridin, fieldsin, inputin)
+        Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
     swradiation = "rrtmgp";
 
@@ -702,7 +702,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
-	t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
+    t_sfc       = inputin.get_item<double>("radiation", "t_sfc"      , "");
     emis_sfc    = inputin.get_item<double>("radiation", "emis_sfc"   , "");
     sfc_alb_dir = inputin.get_item<double>("radiation", "sfc_alb_dir", "");
     sfc_alb_dif = inputin.get_item<double>("radiation", "sfc_alb_dif", "");
@@ -715,7 +715,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     }
     else
     {
-	    lat = inputin.get_item<TF>("radiation", "lat", "");
+        lat = inputin.get_item<TF>("radiation", "lat", "");
         lon = inputin.get_item<TF>("radiation", "lon", "");
     }
 
