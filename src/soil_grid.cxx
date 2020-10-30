@@ -43,7 +43,7 @@ Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
 
     if (sw_land_surface)
     {
-        gd.zsize = input.get_item<TF> ("land_surface", "zsize", "");
+        //gd.zsize = input.get_item<TF> ("land_surface", "zsize", "");
         gd.ktot  = input.get_item<int>("land_surface", "ktot",  "");
     }
 }
@@ -69,8 +69,8 @@ void Soil_grid<TF>::init()
     gd.kmaxh   = gd.ktot+1;
     gd.kgc     = 0;
 
-    gd.kcells  = gd.kmax +2*gd.kgc; 
-    gd.kcellsh = gd.kmaxh+2*gd.kgc; 
+    gd.kcells  = gd.kmax +2*gd.kgc;
+    gd.kcellsh = gd.kmaxh+2*gd.kgc;
 
     gd.ncells  = gd.kcells  * agd.ijcells;
     gd.ncellsh = gd.kcellsh * agd.ijcells;
@@ -105,11 +105,17 @@ void Soil_grid<TF>::create(Netcdf_handle& input_nc)
     std::rotate(gd.z.rbegin(), gd.z.rbegin() + gd.kstart, gd.z.rend());
 
     // Calculate the grid
-    for (int k=gd.kstart+1; k<gd.kend; ++k)
-        gd.zh[k] = 0.5*(gd.z[k-1] + gd.z[k]);
+    // NEW definition (like IFS; full level centered between two half levels):
+    gd.zh[gd.kend] = TF(0);
+    for (int k=gd.kend-1; k>=gd.kstart; --k)
+        gd.zh[k] = gd.zh[k+1] - TF(2)*(gd.zh[k+1]-gd.z[k]);
+    gd.zsize = gd.zh[gd.kstart];
 
-    gd.zh[gd.kend  ] = 0.;
-    gd.zh[gd.kstart] = gd.zsize;
+    // OLD definition (half level centered between two full levels):
+    //for (int k=gd.kstart+1; k<gd.kend; ++k)
+    //    gd.zh[k] = 0.5*(gd.z[k-1] + gd.z[k]);
+    //gd.zh[gd.kend  ] = 0.;
+    //gd.zh[gd.kstart] = gd.zsize;
 
     // Calculate grid spacing
     for (int k=gd.kstart; k<gd.kend; ++k)
@@ -118,15 +124,15 @@ void Soil_grid<TF>::create(Netcdf_handle& input_nc)
     for (int k=gd.kstart+1; k<gd.kend; ++k)
         gd.dzh[k] = gd.z[k] - gd.z[k-1];
 
-    gd.dzh[gd.kend  ] = 2*-gd.z[gd.kend-1];
-    gd.dzh[gd.kstart] = 2*(gd.z[gd.kstart] - gd.zh[gd.kstart]);
+    gd.dzh[gd.kend  ] = TF(2)*-gd.z[gd.kend-1];
+    gd.dzh[gd.kstart] = TF(2)*(gd.z[gd.kstart] - gd.zh[gd.kstart]);
 
     // Inverse grid spacings
     for (int k=gd.kstart; k<gd.kend; ++k)
-        gd.dzi[k] = 1./gd.dz[k];
+        gd.dzi[k] = TF(1.)/gd.dz[k];
 
     for (int k=gd.kstart; k<gd.kend+1; ++k)
-        gd.dzhi[k] = 1./gd.dzh[k];
+        gd.dzhi[k] = TF(1.)/gd.dzh[k];
 }
 
 template<typename TF>
