@@ -45,14 +45,23 @@ namespace
     enum class Surface_model {Enabled, Disabled};
 
     template <typename TF, Surface_model surface_model>
-    void calc_strain2(TF* restrict strain2,
-                      TF* restrict u, TF* restrict v, TF* restrict w,
-                      TF* restrict ufluxbot, TF* restrict vfluxbot,
-                      TF* restrict ustar, TF* restrict obuk,
-                      const TF* restrict z, const TF* restrict dzi, const TF* restrict dzhi,
-                      const TF dxi, const TF dyi,
-                      const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                      const int jj, const int kk)
+    void calc_strain2(
+            TF* const restrict strain2,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict ufluxbot,
+            const TF* const restrict vfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict z,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF dxi, const TF dyi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         const int ii = 1;
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
@@ -146,14 +155,24 @@ namespace
     }
 
     template <typename TF, Surface_model surface_model>
-    void calc_evisc_neutral(TF* restrict evisc,
-                            TF* restrict u, TF* restrict v, TF* restrict w,
-                            TF* restrict ufluxbot, TF* restrict vfluxbot,
-                            const TF* restrict z, const TF* restrict dz, const TF* restrict dzhi, const TF z0m,
-                            const TF dx, const TF dy, const TF zsize, const TF cs, const TF visc,
-                            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                            const int icells, const int jcells, const int ijcells,
-                            Boundary_cyclic<TF>& boundary_cyclic)
+    void calc_evisc_neutral(
+            TF* const restrict evisc,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict ufluxbot,
+            const TF* const restrict vfluxbot,
+            const TF* const restrict z,
+            const TF* const restrict dz,
+            const TF* const restrict dzhi,
+            const TF* const restrict z0m,
+            const TF dx, const TF dy, const TF zsize,
+            const TF cs, const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells,
+            Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -175,12 +194,14 @@ namespace
                     {
                         const int ijk_bot = i + j*jj + kstart*kk;
                         const int ijk_top = i + j*jj + kend*kk;
+
                         const TF u_tau_bot = std::pow(
                                 fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
                               + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ), TF(0.25) );
                         const TF u_tau_top = std::pow(
                                 fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
                               + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ), TF(0.25) );
+
                         const TF fac_bot = TF(1.) - std::exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
                         const TF fac_top = TF(1.) - std::exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
                         const TF fac = std::min( fac_bot, fac_top );
@@ -210,15 +231,18 @@ namespace
             {
                 // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], TF(1./3.));
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n_mason))), TF(1.)/n_mason);
-                const TF fac  = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
+                        const int ij  = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
-                        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
+
+                        // Mason mixing length
+                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+
+                        evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]);
                     }
             }
         }
@@ -227,16 +251,28 @@ namespace
     }
 
     template<typename TF, Surface_model surface_model>
-    void calc_evisc(TF* restrict evisc,
-                    TF* restrict u, TF* restrict v, TF* restrict w,  TF* restrict N2,
-                    TF* restrict ufluxbot, TF* restrict vfluxbot, TF* restrict bfluxbot,
-                    TF* restrict ustar, TF* restrict obuk,
-                    const TF* restrict z, const TF* restrict dz, const TF* restrict dzi,
-                    const TF dx, const TF dy,
-                    const TF z0m, const TF cs, const TF tPr,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                    const int icells, const int jcells, const int ijcells,
-                    Boundary_cyclic<TF>& boundary_cyclic)
+    void calc_evisc(
+            TF* const restrict evisc,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict N2,
+            const TF* const restrict ufluxbot,
+            const TF* const restrict vfluxbot,
+            const TF* const restrict bfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict z,
+            const TF* const restrict dz,
+            const TF* const restrict dzi,
+            const TF* const restrict z0m,
+            const TF dx, const TF dy,
+            const TF cs, const TF tPr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells,
+            Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
@@ -254,9 +290,11 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
+
                         // Add the buoyancy production to the TKE
                         TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
                         RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
+
                         evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                     }
             }
@@ -283,8 +321,6 @@ namespace
             // Bottom boundary, here strain is fully parametrized using MO.
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
             const TF mlen0 = cs*std::pow(dx*dy*dz[kstart], TF(1./3.));
-            const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m), n))), TF(1.)/n);
-            const TF fac = fm::pow2(mlen);
 
             for (int j=jstart; j<jend; ++j)
             {
@@ -293,30 +329,39 @@ namespace
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
+
                     // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
                     TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
-                    evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
+
+                    // Mason mixing length
+                    const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n))), TF(1.)/n);
+
+                    evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                 }
             }
 
             for (int k=kstart+1; k<kend; ++k)
             {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 const TF mlen0 = cs*std::pow(dx*dy*dz[k], TF(1./3.));
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m), n))), TF(1.)/n);
-                const TF fac = fm::pow2(mlen);
 
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
+                        const int ij  = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
+
                         // Add the buoyancy production to the TKE
                         TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
                         RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
-                        evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
+
+                        // Mason mixing length
+                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n))), TF(1.)/n);
+
+                        evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                     }
             }
         }
@@ -325,15 +370,24 @@ namespace
     }
 
     template <typename TF, Surface_model surface_model>
-    void diff_u(TF* restrict ut,
-                const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
-                const TF* restrict evisc,
-                const TF* restrict fluxbot, const TF* restrict fluxtop,
-                const TF* restrict rhoref, const TF* restrict rhorefh,
-                const TF visc,
-                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk)
+    void diff_u(
+            TF* const restrict ut,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF dxi, const TF dyi,
+            const TF* const restrict evisc,
+            const TF* const restrict fluxbot,
+            const TF* const restrict fluxtop,
+            const TF* const restrict rhoref,
+            const TF* const restrict rhorefh,
+            const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
 
@@ -418,15 +472,24 @@ namespace
     }
 
     template <typename TF, Surface_model surface_model>
-    void diff_v(TF* restrict vt,
-                const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
-                const TF* restrict evisc,
-                TF* restrict fluxbot, TF* restrict fluxtop,
-                TF* restrict rhoref, TF* restrict rhorefh,
-                const TF visc,
-                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk)
+    void diff_v(
+            TF* const restrict vt,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF dxi, const TF dyi,
+            const TF* const restrict evisc,
+            const TF* const restrict fluxbot,
+            const TF* const restrict fluxtop,
+            const TF* const restrict rhoref,
+            const TF* const restrict rhorefh,
+            const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
 
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
@@ -512,14 +575,22 @@ namespace
     }
 
     template <typename TF>
-    void diff_w(TF* restrict wt,
-                const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                const TF* restrict dzi, const TF* restrict dzhi, const TF dxi, const TF dyi,
-                const TF* restrict evisc,
-                const TF* restrict rhoref, const TF* restrict rhorefh,
-                const TF visc,
-                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk)
+    void diff_w(
+            TF* const restrict wt,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF dxi, const TF dyi,
+            const TF* const restrict evisc,
+            const TF* const restrict rhoref,
+            const TF* const restrict rhorefh,
+            const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         const int ii = 1;
 
@@ -549,14 +620,22 @@ namespace
     }
 
     template <typename TF, Surface_model surface_model>
-    void diff_c(TF* restrict at, const TF* restrict a,
-                const TF* restrict dzi, const TF* restrict dzhi, const TF dxidxi, const TF dyidyi,
-                const TF* restrict evisc,
-                const TF* restrict fluxbot, const TF* restrict fluxtop,
-                const TF* restrict rhoref, const TF* restrict rhorefh,
-                const TF tPr, const TF visc,
-                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                const int jj, const int kk)
+    void diff_c(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF dxidxi, const TF dyidyi,
+            const TF* const restrict evisc,
+            const TF* const restrict fluxbot,
+            const TF* const restrict fluxtop,
+            const TF* const restrict rhoref,
+            const TF* const restrict rhorefh,
+            const TF tPr, const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
 
@@ -633,9 +712,15 @@ namespace
     }
 
     template<typename TF>
-    TF calc_dnmul(TF* restrict evisc, const TF* restrict dzi, const TF dxidxi, const TF dyidyi, const TF tPr,
-                  const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                  const int jj, const int kk)
+    TF calc_dnmul(
+            const TF* const restrict evisc,
+            const TF* const restrict dzi,
+            const TF dxidxi, const TF dyidyi,
+            const TF tPr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         const TF tPrfac = std::min(TF(1.), tPr);
         TF dnmul = 0;
@@ -655,10 +740,14 @@ namespace
 
     template <typename TF, Surface_model surface_model>
     void calc_diff_flux_c(
-            TF* const restrict out, const TF* const restrict data, const TF* const restrict evisc,
+            TF* const restrict out,
+            const TF* const restrict data,
+            const TF* const restrict evisc,
             const TF* const restrict dzhi,
             const TF tPr, const TF visc,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
@@ -680,10 +769,15 @@ namespace
 
     template <typename TF, Surface_model surface_model>
     void calc_diff_flux_u(
-            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            TF* const restrict out,
+            const TF* const restrict data,
+            const TF* const restrict w,
+            const TF* const evisc,
             const TF dxi, const TF* const dzhi,
             const TF visc,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int icells, const int ijcells)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
@@ -705,10 +799,15 @@ namespace
 
     template <typename TF, Surface_model surface_model>
     void calc_diff_flux_v(
-            TF* const restrict out, const TF* const restrict data, const TF* const restrict w, const TF* const evisc,
+            TF* const restrict out,
+            const TF* const restrict data,
+            const TF* const restrict w,
+            const TF* const evisc,
             const TF dyi, const TF* const dzhi,
             const TF visc,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int icells, const int ijcells)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
@@ -729,9 +828,11 @@ namespace
 
     template<typename TF>
     void calc_diff_flux_bc(
-            TF* const restrict out, const TF* const restrict data,
-            const int istart, const int iend, const int jstart, const int jend, const int k,
-            const int icells, const int ijcells)
+            TF* const restrict out,
+            const TF* const restrict data,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int k, const int icells, const int ijcells)
     {
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -943,13 +1044,16 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
+    const std::vector<TF>& ustar = boundary.get_ustar();
+    const std::vector<TF>& obuk  = boundary.get_obuk();
+
     // Calculate strain rate using MO for velocity gradients lowest level.
     if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                boundary.ustar.data(), boundary.obuk.data(),
+                ustar.data(), obuk.data(),
                 gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -965,18 +1069,25 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
+    const std::vector<TF>& z0m = boundary.get_z0m();
+
     // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
     {
-         // Calculate eddy viscosity using MO at lowest model level
+        // Calculate eddy viscosity using MO at lowest model level
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), z0m.data(),
                     gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
 
@@ -984,46 +1095,67 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         else
             calc_evisc_neutral<TF, Surface_model::Disabled>(
                     fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), boundary.z0m,
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), z0m.data(),
                     gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
     }
     // assume buoyancy calculation is needed
     else
     {
-        // store the buoyancyflux in tmp1
+        // Store the buoyancy flux in tmp1
         auto& gd = grid.get_grid_data();
         auto buoy_tmp = fields.get_tmp();
         auto tmp = fields.get_tmp();
+
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
+
+        const std::vector<TF>& ustar = boundary.get_ustar();
+        const std::vector<TF>& obuk  = boundary.get_obuk();
 
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(), buoy_tmp->flux_bot.data(),
-                    boundary.ustar.data(), boundary.obuk.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                    gd.dx, gd.dy,
-                    boundary.z0m, this->cs, this->tPr,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    buoy_tmp->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    buoy_tmp->flux_bot.data(),
+                    ustar.data(), obuk.data(),
+                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    gd.dx, gd.dy, this->cs, this->tPr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
         else
             calc_evisc<TF, Surface_model::Disabled>(
                     fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(), buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(), buoy_tmp->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    buoy_tmp->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    buoy_tmp->flux_bot.data(),
                     nullptr, nullptr,
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(),
-                    gd.dx, gd.dy,
-                    boundary.z0m, this->cs, this->tPr,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    gd.dx, gd.dy, this->cs, this->tPr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
 

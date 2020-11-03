@@ -36,9 +36,14 @@ class Boundary_surface : public Boundary<TF>
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
         void set_values();
+
         void get_ra(Field3d<TF>&);
+        const std::vector<TF>& get_z0m() const { return z0m; };
+        const std::vector<TF>& get_z0h() const { return z0h; };
+        const std::vector<TF>& get_ustar() const { return ustar; };
+        const std::vector<TF>& get_obuk() const { return obuk; };
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);
@@ -46,18 +51,10 @@ class Boundary_surface : public Boundary<TF>
 
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
+        void exec_cross(Cross<TF>&, unsigned long);
 
-        void exec_cross(int);
-
-        using Boundary<TF>::ustar;
-        using Boundary<TF>::obuk;
-        using Boundary<TF>::nobuk;
-        using Boundary<TF>::z0m;
-        using Boundary<TF>::z0h;
-
-        using Boundary<TF>::ustar_g;
-        using Boundary<TF>::obuk_g;
-        using Boundary<TF>::nobuk_g;
+        void load(const int);
+        void save(const int);
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -69,7 +66,7 @@ class Boundary_surface : public Boundary<TF>
 
     protected:
         void process_input(Input&, Thermo<TF>&); // Process and check the surface input
-        void init_surface(); // Allocate and initialize the surface arrays
+        void init_surface(Input&); // Allocate and initialize the surface arrays
         void init_solver(); // Prepare the lookup table's for the surface layer solver
         void set_ustar(); // Set fixed ustar
 
@@ -90,11 +87,21 @@ class Boundary_surface : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-
         TF ustarin;
 
         std::vector<float> zL_sl;
         std::vector<float> f_sl;
+
+        std::vector<TF> z0m;
+        std::vector<TF> z0h;
+
+        std::vector<TF> ustar;
+        std::vector<TF> obuk;
+        std::vector<int> nobuk;
+
+        TF* obuk_g;
+        TF* ustar_g;
+        int* nobuk_g;
 
         #ifdef USECUDA
         float* zL_sl_g;
@@ -102,11 +109,11 @@ class Boundary_surface : public Boundary<TF>
         #endif
 
         Boundary_type thermobc;
+        bool sw_constant_z0;
 
     protected:
-        // cross sections
-        // std::vector<std::string> crosslist;        // List with all crosses from ini file
-        // std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+        // Cross sections
+        std::vector<std::string> cross_list;         // List of active cross variables
 
         void update_slave_bcs();
 };

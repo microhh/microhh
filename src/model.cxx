@@ -241,7 +241,8 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
-    boundary->create(*input, *input_nc, *stats, *column);
+    boundary->load(timeloop->get_iotime());
+    boundary->create(*input, *input_nc, *stats, *column, *cross);
     boundary->set_values();
 
     // Load the prognostic soil fields, and create/init soil
@@ -297,6 +298,7 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
+    boundary->save(timeloop->get_iotime());
     lsm->save(timeloop->get_iotime());
 }
 
@@ -498,6 +500,7 @@ void Model<TF>::exec()
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
                             lsm     ->save(iotime);
+                            boundary->save(iotime);
                         }
                     }
                 }
@@ -603,9 +606,9 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
         lsm      ->exec_cross(*cross, iotime);
+        boundary ->exec_cross(*cross, iotime);
 
         // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
-        // boundary->exec_cross(iotime);
     }
 
     // Save the 3d dumps to disk.

@@ -38,6 +38,7 @@ template<typename> class Thermo;
 template<typename> class Timedep;
 template<typename> class Stats;
 template<typename> class Column;
+template<typename> class Cross;
 template<typename> class Field3d;
 
 class Input;
@@ -72,7 +73,7 @@ class Boundary
         static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&); ///< Create the fields.
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&); ///< Create the fields.
 
         virtual void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
@@ -87,13 +88,20 @@ class Boundary
 
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
+        virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
 
-        // virtual void exec_cross();       ///< Execute cross sections of surface
+        virtual void load(const int) {};
+        virtual void save(const int) {};
 
         // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
         // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
-        virtual void get_ra(Field3d<TF>&);  // Get the aerodynamic resistance
+        // Get functions for various 2D fields
+        virtual void get_ra(Field3d<TF>&);
+        virtual const std::vector<TF>& get_z0m() const;
+        virtual const std::vector<TF>& get_z0h() const;
+        virtual const std::vector<TF>& get_ustar() const;
+        virtual const std::vector<TF>& get_obuk() const;
 
         std::string get_switch();
 
@@ -101,16 +109,6 @@ class Boundary
         virtual void prepare_device();
         virtual void forward_device();
         virtual void backward_device();
-
-        TF z0m;
-        TF z0h;
-        std::vector<TF> ustar;
-        std::vector<TF> obuk;
-        std::vector<int> nobuk;
-
-        TF* obuk_g;
-        TF* ustar_g;
-        int* nobuk_g;
 
     protected:
         Master& master;

@@ -115,6 +115,7 @@ std::string Boundary<TF>::get_switch()
     return swboundary;
 }
 
+
 template<typename TF>
 void Boundary<TF>::process_bcs(Input& input)
 {
@@ -219,7 +220,8 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
 template<typename TF>
 void Boundary<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     process_time_dependent(input, input_nc);
 }
@@ -786,7 +788,32 @@ void Boundary<TF>::get_ra(Field3d<TF>& fld)
 }
 
 template<typename TF>
-std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
+const std::vector<TF>& Boundary<TF>::get_z0m() const
+{
+    throw std::runtime_error("Function get_z0m() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_z0h() const
+{
+    throw std::runtime_error("Function get_z0h() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_ustar() const
+{
+    throw std::runtime_error("Function get_ustar() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_obuk() const
+{
+    throw std::runtime_error("Function get_obuk() not implemented in base boundary.");
+}
+
+template<typename TF>
+std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
+        Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");

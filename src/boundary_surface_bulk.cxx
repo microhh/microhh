@@ -142,7 +142,8 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 
 template<typename TF>
 void Boundary_surface_bulk<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column)
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     const std::string group_name = "default";
 
@@ -166,7 +167,7 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
     process_input(inputin, thermo);
 
     // 3. Allocate and initialize the 2D surface fields.
-    init_surface();
+    init_surface(inputin);
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
@@ -175,8 +176,6 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    z0m = inputin.get_item<TF>("boundary", "z0m", "");
-    z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot != Boundary_type::Dirichlet_type)
@@ -200,23 +199,25 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::init_surface()
+void Boundary_surface_bulk<TF>::init_surface(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
-    const int jj = gd.icells;
+    z0m.resize(gd.ijcells);
+    z0h.resize(gd.ijcells);
+
+    // BvS TMP
+    const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
+    const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
+
+    std::fill(z0m.begin(), z0m.end(), z0m_hom);
+    std::fill(z0h.begin(), z0h.end(), z0h_hom);
 
     // Initialize the obukhov length on a small number.
-    for (int j=0; j<gd.jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<gd.icells; ++i)
-        {
-            const int ij = i + j*jj;
-            obuk[ij]  = Constants::dsmall;
-        }
+    std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
 }
 
 template<typename TF>
