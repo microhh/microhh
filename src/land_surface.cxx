@@ -373,6 +373,7 @@ namespace soil
     void interp_2_vertical(
             TF* const restrict fldh,
             const TF* const restrict fld,
+            const TF* const restrict dz,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -391,6 +392,9 @@ namespace soil
                         fldh[ijk] = TF(0.5) * (fld[ijk] + fld[ijk-kk]);
                     else if(interpolation_type == Soil_interpolation_type::Max)
                         fldh[ijk] = std::max(fld[ijk], fld[ijk-kk]);
+                    else if(interpolation_type == Soil_interpolation_type::Harmonic_mean)
+                        fldh[ijk] = (dz[k-1]+dz[k])*(fld[ijk-kk]*fld[ijk]) /
+                                (fld[ijk-1]*dz[k] + fld[ijk]*dz[k-1]);
                 }
     }
 
@@ -1251,9 +1255,10 @@ void Land_surface<TF>::exec_soil()
             agd.icells, agd.ijcells);
 
     // Linear interpolation diffusivity to half levels
-    soil::interp_2_vertical<TF, Soil_interpolation_type::Mean>(
+    soil::interp_2_vertical<TF, Soil_interpolation_type::Harmonic_mean>(
             diffusivity_h.data(),
             diffusivity.data(),
+            sgd.dz.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
@@ -1319,6 +1324,7 @@ void Land_surface<TF>::exec_soil()
     soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
             diffusivity_h.data(),
             diffusivity.data(),
+            sgd.dz.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
@@ -1327,6 +1333,7 @@ void Land_surface<TF>::exec_soil()
     soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
             conductivity_h.data(),
             conductivity.data(),
+            sgd.dz.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
             sgd.kstart, sgd.kend,
