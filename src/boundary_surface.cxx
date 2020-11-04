@@ -227,7 +227,10 @@ namespace
         }
 
         if (m > 1)
-            std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
+        {
+            std::cout << "ERROR: no convergence obukhov iteration!" << std::endl;
+            std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L << std::endl;
+        }
 
         return L;
     }
@@ -674,7 +677,7 @@ void Boundary_surface<TF>::create(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -860,13 +863,25 @@ void Boundary_surface<TF>::save(const int iotime)
 template<typename TF>
 void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
+
     for (auto& it : cross_list)
     {
         if (it == "ustar")
             cross.cross_plane(ustar.data(), "ustar", iotime);
         else if (it == "obuk")
             cross.cross_plane(obuk.data(), "obuk", iotime);
+        else if (it == "ra")
+        {
+            calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+                    z0h.data(), gd.z[gd.kstart], gd.istart,
+                    gd.iend, gd.jstart, gd.jend, gd.icells);
+            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+        }
     }
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>
