@@ -39,6 +39,7 @@
 #include "constants.h"
 #include "radiation.h"
 #include "thermo.h"
+#include "thermo_moist_functions.h"
 #include "boundary.h"
 #include "fast_math.h"
 #include "timeloop.h"
@@ -49,6 +50,7 @@
 
 using namespace Constants;
 using namespace Fast_math;
+using namespace Thermo_moist_functions;
 
 namespace soil
 {
@@ -844,6 +846,34 @@ namespace lsm
     }
 
     template<typename TF>
+    void set_water_bcs(
+            TF* const restrict thl_bot,
+            TF* const restrict qt_bot,
+            const int* const restrict water_mask,
+            const TF* const restrict exnerh,
+            const TF* const restrict prefh,
+            const TF tskin_water,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int icells)
+    {
+        const TF exner_bot_i = TF(1.)/exnerh[kstart];
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                if (water_mask[ij])
+                {
+                    thl_bot[ij] = tskin_water * exner_bot_i;
+                    qt_bot [ij] = Thermo_moist_functions::qsat(prefh[kstart], tskin_water);
+                }
+            }
+    }
+
+    template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld_mean,
             const TF* const restrict fld_veg,
@@ -901,6 +931,14 @@ Land_surface<TF>::Land_surface(
     {
         sw_homogeneous   = inputin.get_item<bool>("land_surface", "sw_homogeneous", "", true);
         sw_free_drainage = inputin.get_item<bool>("land_surface", "sw_free_drainage", "", true);
+        sw_water         = inputin.get_item<bool>("land_surface", "sw_water", "", false);
+
+        // Checks...
+        if (sw_homogeneous && sw_water)
+            throw std::runtime_error("Homogeneous land-surface with water is not supported!\n");
+
+        if (sw_water)
+            tskin_water = inputin.get_item<TF>("land_surface", "tskin_water", "");
 
         // Create soil fields (temperature and volumetric water content)
         fields.init_prognostic_soil_field("t",     "Soil temperature", "K");
@@ -950,6 +988,9 @@ void Land_surface<TF>::init()
     rs_veg_min.resize(gd.ijcells);
     rs_soil_min.resize(gd.ijcells);
     lambda.resize(gd.ijcells);
+
+    if (sw_water)
+        water_mask.resize(gd.ijcells);
 
     interception.resize(gd.ijcells);
     throughfall.resize(gd.ijcells);
@@ -1447,6 +1488,8 @@ void Land_surface<TF>::exec_surface(
     TF* dqsatdT_bot = tmp2->grad_bot.data();
 
     const std::vector<TF>& rhorefh = thermo.get_rhorefh_vector();
+    const std::vector<TF>& exnerh = thermo.get_exnerh_vector();
+    const std::vector<TF>& prefh = thermo.get_ph_vector();
 
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
     boundary.get_ra(*tmp1);
@@ -1571,6 +1614,20 @@ void Land_surface<TF>::exec_surface(
             agd.jstart, agd.jend,
             agd.kstart,
             agd.icells, agd.ijcells);
+
+    if (sw_water)
+    {
+        // Set BCs for water grid points
+        lsm::set_water_bcs(
+                fields.sp.at("thl")->fld_bot.data(),
+                fields.sp.at("qt")->fld_bot.data(),
+                water_mask.data(),
+                exnerh.data(), prefh.data(),
+                tskin_water,
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.kstart, agd.icells);
+    }
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -1785,6 +1842,7 @@ void Land_surface<TF>::load(const int iotime)
 
     auto field3d_io = Field3d_io<TF>(master, grid);
     auto& sgd = soil_grid.get_grid_data();
+    auto& agd = grid.get_grid_data();
 
     const TF no_offset = 0.;
     int nerror = 0;
@@ -1850,6 +1908,14 @@ void Land_surface<TF>::load(const int iotime)
         load_3d_field(tmp3->fld.data(), "index_soil", 0);
         for (int i=0; i<sgd.ncells; ++i)
             soil_index[i] = std::round(tmp3->fld[i]);
+
+        if (sw_water)
+        {
+            // More yikes.. Read water mask as float, cast to bool
+            load_2d_field(tmp3->fld.data(), "water_mask", 0);
+            for (int i=0; i<agd.ijcells; ++i)
+                water_mask[i] = tmp3->fld[i] > TF(0.5) ? 1 : 0;
+        }
 
         load_3d_field(root_fraction.data(), "root_frac", 0);
 

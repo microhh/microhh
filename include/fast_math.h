@@ -21,6 +21,7 @@
  */
 
 #ifndef FAST_MATH_H
+#define FAST_MATH_H
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__

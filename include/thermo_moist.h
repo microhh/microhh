@@ -83,6 +83,7 @@ class Thermo_moist : public Thermo<TF>
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;
         const std::vector<TF>& get_exner_vector() const;
+        const std::vector<TF>& get_exnerh_vector() const;
         const std::vector<TF>& get_rhorefh_vector() const;
         TF get_db_ref() const;
 

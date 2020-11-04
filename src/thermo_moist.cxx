@@ -1404,6 +1404,12 @@ const std::vector<TF>& Thermo_moist<TF>::get_exner_vector() const
 }
 
 template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_exnerh_vector() const
+{
+    return bs.exnrefh;
+}
+
+template<typename TF>
 const std::vector<TF>& Thermo_moist<TF>::get_rhorefh_vector() const
 {
     return bs.rhorefh;

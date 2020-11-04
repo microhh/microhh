@@ -84,6 +84,7 @@ class Thermo
         virtual const std::vector<TF>& get_p_vector() const = 0;
         virtual const std::vector<TF>& get_ph_vector() const = 0;
         virtual const std::vector<TF>& get_exner_vector() const = 0;
+        virtual const std::vector<TF>& get_exnerh_vector() const = 0;
         virtual const std::vector<TF>& get_rhorefh_vector() const = 0;
         virtual TF get_db_ref() const = 0;
 

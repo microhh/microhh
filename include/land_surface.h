@@ -81,6 +81,9 @@ class Land_surface
         bool sw_land_surface;
         bool sw_homogeneous;
         bool sw_free_drainage;
+        bool sw_water;
+
+        TF tskin_water;
 
         void get_tiled_mean(std::vector<TF>&, std::string);
 
@@ -92,6 +95,8 @@ class Land_surface
         std::vector<TF> rs_veg_min;     // Minimum vegetation resistance (s m-1)
         std::vector<TF> rs_soil_min;    // Minimum soil resistance (s m-1)
         std::vector<TF> lambda;         // Skin conductivity (W m-2 K-1)
+
+        std::vector<int> water_mask;   // Mask for open water (-)
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables
