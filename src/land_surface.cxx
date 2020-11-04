@@ -867,8 +867,73 @@ namespace lsm
 
                 if (water_mask[ij])
                 {
+                    // Set surface values
                     thl_bot[ij] = tskin_water * exner_bot_i;
                     qt_bot [ij] = Thermo_moist_functions::qsat(prefh[kstart], tskin_water);
+                }
+            }
+    }
+
+    template<typename TF>
+    void set_water_tiles(
+            TF* const restrict c_veg,
+            TF* const restrict c_soil,
+            TF* const restrict c_wet,
+            TF* const restrict H_veg,
+            TF* const restrict H_soil,
+            TF* const restrict H_wet,
+            TF* const restrict LE_veg,
+            TF* const restrict LE_soil,
+            TF* const restrict LE_wet,
+            TF* const restrict G_veg,
+            TF* const restrict G_soil,
+            TF* const restrict G_wet,
+            TF* const restrict rs_veg,
+            TF* const restrict rs_soil,
+            TF* const restrict rs_wet,
+            const int* const restrict water_mask,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict thl_bot,
+            const TF* const restrict qt_bot,
+            const TF* const restrict ra,
+            const TF* const restrict rhoh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const TF rhocp = rhoh[kstart] * Constants::cp<TF>;
+        const TF rholv = rhoh[kstart] * Constants::Lv<TF>;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = ij + kstart*ijcells;
+
+                if (water_mask[ij])
+                {
+                    c_veg[ij]  = TF(0);
+                    c_soil[ij] = TF(0);
+                    c_wet[ij]  = TF(1);
+
+                    H_veg[ij]  = TF(0);
+                    H_soil[ij] = TF(0);
+                    H_wet[ij]  = rhocp / ra[ij] * (thl_bot[ij] - thl[ijk]);
+
+                    LE_veg[ij]  = TF(0);
+                    LE_soil[ij] = TF(0);
+                    LE_wet[ij]  = rholv / ra[ij] * (qt_bot[ij] - qt[ijk]);
+
+                    G_veg[ij]  = TF(0);
+                    G_soil[ij] = TF(0);
+                    G_wet[ij]  = TF(0);
+
+                    rs_veg[ij]  = TF(0);
+                    rs_soil[ij] = TF(0);
+                    rs_wet[ij]  = TF(0);
                 }
             }
     }
@@ -1256,7 +1321,8 @@ void Land_surface<TF>::create_fields_grid_stats(
     // Init the soil cross-sections
     if (cross.get_switch())
     {
-        std::vector<std::string> allowed_crossvars = {"t_soil", "theta_soil"};
+        std::vector<std::string> allowed_crossvars = {
+            "t_soil", "theta_soil", "wl", "G", "rs_veg", "rs_soil"};
         crosslist = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1627,6 +1693,35 @@ void Land_surface<TF>::exec_surface(
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 agd.kstart, agd.icells);
+
+        // Modify tile properties over water grid points
+        // NOTE: this is an ugly hack :'-(
+        lsm::set_water_tiles(
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                tiles.at("veg").H.data(),
+                tiles.at("soil").H.data(),
+                tiles.at("wet").H.data(),
+                tiles.at("veg").LE.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("wet").LE.data(),
+                tiles.at("veg").G.data(),
+                tiles.at("soil").G.data(),
+                tiles.at("wet").G.data(),
+                tiles.at("veg").rs.data(),
+                tiles.at("soil").rs.data(),
+                tiles.at("wet").rs.data(),
+                water_mask.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                fields.sp.at("qt")->fld_bot.data(),
+                ra, rhorefh.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.kstart,
+                agd.icells, agd.ijcells);
     }
 
     fields.release_tmp(tmp1);
@@ -1705,13 +1800,28 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (!sw_land_surface)
         return;
 
+    auto tmp1 = fields.get_tmp();
+
     for (auto& it : crosslist)
     {
         if (it == "t_soil")
             cross.cross_soil(fields.sps.at("t")->fld.data(), it, iotime);
         else if (it == "theta_soil")
             cross.cross_soil(fields.sps.at("theta")->fld.data(), it, iotime);
+        else if (it == "wl")
+            cross.cross_plane(fields.ap2d.at("wl").data(), "wl", iotime);
+        else if (it == "G")
+        {
+            get_tiled_mean(tmp1->fld_bot, "G");
+            cross.cross_plane(tmp1->fld_bot.data(), "G", iotime);
+        }
+        else if (it == "rs_veg")
+            cross.cross_plane(tiles.at("veg").rs.data(), "rs_veg", iotime);
+        else if (it == "rs_soil")
+            cross.cross_plane(tiles.at("soil").rs.data(), "rs_soil", iotime);
     }
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>

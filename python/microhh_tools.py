@@ -303,7 +303,7 @@ class Create_ncfile():
             dimensions,
             precision='',
             compression=True):
-        self.ncfile = nc.Dataset(filename, "w", clobber=False)
+        self.ncfile = nc.Dataset(filename, "w", clobber=True)
         if not precision:
             precision = 'f{}'.format(grid.TF)
         elif precision == 'single':
