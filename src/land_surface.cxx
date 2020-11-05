@@ -1724,6 +1724,10 @@ void Land_surface<TF>::exec_surface(
                 agd.icells, agd.ijcells);
     }
 
+    // Set ghost cells `thl_bot`, `qt_bot`, needed for surface scheme
+    boundary_cyclic.exec_2d(fields.sp.at("thl")->fld_bot.data());
+    boundary_cyclic.exec_2d(fields.sp.at("qt") ->fld_bot.data());
+
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
 
