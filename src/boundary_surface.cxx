@@ -167,6 +167,8 @@ namespace
                     const int ij = i + j*jj;
                     obuk[ij] = -std::pow(ustar[ij], static_cast<TF>(3)) / (Constants::kappa<TF>*bfluxbot[ij]);
                 }
+
+            boundary_cyclic.exec_2d(obuk);
         }
         // case 2: fixed buoyancy surface value and free ustar
         else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
@@ -179,6 +181,9 @@ namespace
                     obuk [ij] = calc_obuk_noslip_flux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
+
+            boundary_cyclic.exec_2d(obuk);
+            boundary_cyclic.exec_2d(ustar);
         }
         else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
         {
@@ -192,6 +197,9 @@ namespace
                     obuk [ij] = calc_obuk_noslip_dirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
                 }
+
+            boundary_cyclic.exec_2d(obuk);
+            boundary_cyclic.exec_2d(ustar);
         }
     }
 
