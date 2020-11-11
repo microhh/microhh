@@ -857,7 +857,9 @@ namespace lsm
             const int jstart, const int jend,
             const int kstart, const int icells)
     {
-        const TF exner_bot_i = TF(1.)/exnerh[kstart];
+        // Water temperature is fixed (for now..), so thl_bot and qt_bot are identical everywhere.
+        const TF thl_bot_val = tskin_water * TF(1.)/exnerh[kstart];
+        const TF qt_bot_val  = Thermo_moist_functions::qsat(prefh[kstart], tskin_water);
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -868,8 +870,8 @@ namespace lsm
                 if (water_mask[ij])
                 {
                     // Set surface values
-                    thl_bot[ij] = tskin_water * exner_bot_i;
-                    qt_bot [ij] = Thermo_moist_functions::qsat(prefh[kstart], tskin_water);
+                    thl_bot[ij] = thl_bot_val;
+                    qt_bot [ij] = qt_bot_val;
                 }
             }
     }
@@ -1730,7 +1732,6 @@ void Land_surface<TF>::exec_surface(
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
-
 }
 
 template<typename TF>
