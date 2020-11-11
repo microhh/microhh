@@ -50,10 +50,11 @@ namespace
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
             const TF* const restrict ustar,
             const TF* const restrict obuk,
+            const TF* const restrict z0m,
+            const TF* const restrict ubot,
+            const TF* const restrict vbot,
             const TF* const restrict z,
             const TF* const restrict dzi,
             const TF* const restrict dzhi,
@@ -66,6 +67,8 @@ namespace
         const int ii = 1;
         const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
 
+        const TF zsl = z[kstart];
+
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
         if (surface_model == Surface_model::Enabled)
         {
@@ -76,39 +79,51 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
 
+                    // Calculate du/dz and dv/dz at grid center, from interpolated wind speed.
+                    const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
+                    const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
+
+                    const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+                    const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+
+                    const TF dudz = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+                    const TF dvdz = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+
                     strain2[ijk] = TF(2.)*(
-                                   // du/dx + du/dx
-                                   + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
+                            // du/dx + du/dx
+                            + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
 
-                                   // dv/dy + dv/dy
-                                   + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
+                            // dv/dy + dv/dy
+                            + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
 
-                                   // dw/dz + dw/dz
-                                   + fm::pow2((w[ijk+kk]-w[ijk])*dzi[kstart])
+                            // dw/dz + dw/dz
+                            + fm::pow2((w[ijk+kk]-w[ijk])*dzi[kstart])
 
-                                   // du/dy + dv/dx
-                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
+                            // du/dy + dv/dx
+                            + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
+                            + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
+                            + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
+                            + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
-                                   // du/dz
-                                   + TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
+                            // du/dz
+                            //+ TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
+                            + TF(0.5) * fm::pow2(dudz)
 
-                                   // dw/dx
-                                   + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
-                                   + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
-                                   + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                                   + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
+                            // dw/dx
+                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
+                            + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
+                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
+                            + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
-                                   // dv/dz
-                                   + TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
+                            // dv/dz
+                            //+ TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
+                            + TF(0.5) * fm::pow2(dvdz)
 
-                                   // dw/dy
-                                   + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
-                                   + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
-                                   + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                                   + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
+                            // dw/dy
+                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
+                            + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
+                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
+                            + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
 
                     // add a small number to avoid zero divisions
                     strain2[ijk] += Constants::dsmall;
@@ -1046,30 +1061,42 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 
     const std::vector<TF>& ustar = boundary.get_ustar();
     const std::vector<TF>& obuk  = boundary.get_obuk();
+    const std::vector<TF>& z0m   = boundary.get_z0m();
 
     // Calculate strain rate using MO for velocity gradients lowest level.
     if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                ustar.data(), obuk.data(),
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(),
+                ustar.data(), obuk.data(), z0m.data(),
+                fields.mp.at("u")->fld_bot.data(),
+                fields.mp.at("v")->fld_bot.data(),
+                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                1./gd.dx, 1./gd.dy,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
     // Calculate strain rate using resolved boundaries.
     else
         calc_strain2<TF, Surface_model::Disabled>(
                 fields.sd.at("evisc")->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                fields.mp.at("u")->flux_bot.data(), fields.mp.at("v")->flux_bot.data(),
-                nullptr, nullptr,
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(), 1./gd.dx, 1./gd.dy,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(),
+                nullptr, nullptr, nullptr,
+                fields.mp.at("u")->fld_bot.data(),
+                fields.mp.at("v")->fld_bot.data(),
+                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                1./gd.dx, 1./gd.dy,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-    const std::vector<TF>& z0m = boundary.get_z0m();
 
     // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
