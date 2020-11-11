@@ -516,9 +516,13 @@ void Model<TF>::exec()
                         break;
 
                     // Load the data from disk.
-                    timeloop->load(timeloop->get_iotime());
-                    fields  ->load(timeloop->get_iotime());
-                    thermo  ->load(timeloop->get_iotime());
+                    const int iotime = timeloop->get_iotime();
+
+                    timeloop->load(iotime);
+                    fields  ->load(iotime);
+                    thermo  ->load(iotime);
+                    lsm     ->load(iotime);
+                    boundary->load(iotime);
 
                     // Reset tendencies
                     fields->reset_tendencies();
