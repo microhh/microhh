@@ -1125,8 +1125,8 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
         std::vector<TF> t_prof(sgd.ktot);
         std::vector<TF> theta_prof(sgd.ktot);
 
-        soil_group.get_variable(t_prof, "t", {0}, {sgd.ktot});
-        soil_group.get_variable(theta_prof, "theta", {0}, {sgd.ktot});
+        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
+        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
 
         // Initialise soil as spatially homogeneous
         soil::init_soil_homogeneous(
