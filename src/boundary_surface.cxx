@@ -370,10 +370,10 @@ namespace
 
                     // Switch between the iterative and lookup solver
                     if (sw_constant_z0)
-                        obuk [ij] = calc_obuk_noslip_dirichlet_lookup(
+                        obuk[ij] = calc_obuk_noslip_dirichlet_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     else
-                        obuk [ij] = calc_obuk_noslip_dirichlet_iterative(
+                        obuk[ij] = calc_obuk_noslip_dirichlet_iterative(
                                 obuk[ij], dutot[ij], db, z[kstart], z0m[ij], z0h[ij]);
 
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);

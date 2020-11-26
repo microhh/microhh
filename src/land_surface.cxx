@@ -396,7 +396,7 @@ namespace soil
                         fldh[ijk] = std::max(fld[ijk], fld[ijk-kk]);
                     else if(interpolation_type == Soil_interpolation_type::Harmonic_mean)
                         fldh[ijk] = (dz[k-1]+dz[k])*(fld[ijk-kk]*fld[ijk]) /
-                                (fld[ijk-1]*dz[k] + fld[ijk]*dz[k-1]);
+                                (fld[ijk-kk]*dz[k] + fld[ijk]*dz[k-1]);
                 }
     }
 
@@ -1561,6 +1561,7 @@ void Land_surface<TF>::exec_surface(
 
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
     boundary.get_ra(*tmp1);
+
     TF* ra = tmp1->flux_bot.data();
 
     // Get surface precipitation
