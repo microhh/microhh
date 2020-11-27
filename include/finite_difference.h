@@ -108,7 +108,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d) 
+        CUDA_MACRO inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d)
         {
             constexpr TF c0 = TF(7./12.);
             constexpr TF c1 = TF(1./12.);
@@ -116,7 +116,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d) 
+        CUDA_MACRO inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d)
         {
             constexpr TF c0 = TF(3./12.);
             constexpr TF c1 = TF(1./12.);
@@ -127,6 +127,31 @@ namespace Finite_difference
         CUDA_MACRO inline TF grad4(const TF a, const TF b, const TF c, const TF d)
         {
             return ( - cg0<TF>*(d-a) - cg1<TF>*(c-b) );
+        }
+    }
+
+    namespace O6
+    {
+        template<typename TF>
+        CUDA_MACRO inline TF interp6_ws(
+                const TF a, const TF b, const TF c, const TF d, const TF e, const TF f)
+        {
+            constexpr TF c0 = TF(37./60.);
+            constexpr TF c1 = TF(8./60.);
+            constexpr TF c2 = TF(1./60.);
+
+            return c0*(c+d) - c1*(b+e) + c2*(a+f);
+        }
+
+        template<typename TF>
+        CUDA_MACRO inline TF interp5_ws(
+                const TF a, const TF b, const TF c, const TF d, const TF e, const TF f)
+        {
+            constexpr TF c0 = TF(10./60.);
+            constexpr TF c1 = TF(5./60.);
+            constexpr TF c2 = TF(1./60.);
+
+            return c0*(d-c) - c1*(e-b) + c2*(f-a);
         }
     }
 }
