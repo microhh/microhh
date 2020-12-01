@@ -178,6 +178,7 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
+                    vt[ijk] +=
                              // u*dv/dx
                              - ( interp2(u[ijk+ii1-jj1], u[ijk+ii1]) * interp6_ws(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3])
                                - interp2(u[ijk    -jj1], u[ijk    ]) * interp6_ws(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]) ) * dxi
