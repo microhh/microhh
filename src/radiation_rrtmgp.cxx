@@ -1340,7 +1340,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         const unsigned long itime, const int iotime)
 {
     const bool do_stats  = stats.do_statistics(itime);
-    const bool do_cross  = cross.do_cross(itime);
+    const bool do_cross  = cross.do_cross(itime) && crosslist.size() > 0;
     const bool do_column = column.do_column(itime);
 
     // Return in case of no stats or cross section.
