@@ -1915,8 +1915,12 @@ void Land_surface<TF>::save(const int itime)
             master.print_message("OK\n");
     };
 
-    save_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
-    save_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
+    // Don't save the initial soil temperature/moisture for heterogeneous runs
+    if (sw_homogeneous || itime > 0)
+    {
+        save_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
+        save_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
+    }
 
     // Surface temperature, humidity and liquid water content.
     auto save_2d_field = [&](TF* const restrict field, const std::string& name)
