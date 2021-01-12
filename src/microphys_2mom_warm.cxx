@@ -113,8 +113,7 @@ namespace mp3d
                         const TF xc      = rho[k] * ql[ijk] / nc;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                         const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
-                        //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
-                        const TF au_tend = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
+                        const TF au_tend = rho_0<TF> * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
                                                (TF(1.) + phi_au / pow(TF(1.)-tau, 2)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
