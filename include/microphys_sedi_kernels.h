@@ -124,7 +124,7 @@ namespace Micro_sedimentation_kernels
         {
             const int ijk = i + j*icells + k*ijcells;
 
-            if (k == kend || cfl[ijk] < 1e-3)
+            if (k == kend || cfl[ijk] < TF(1e-3))
                 flux[ijk] = TF(0.);
             else
             {
