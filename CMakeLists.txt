@@ -20,29 +20,24 @@
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-cmake_minimum_required (VERSION 2.8.1)
+cmake_minimum_required (VERSION 2.8.12)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Set the precision of the build.
-if(NOT FLOAT_TYPE)
-  message(STATUS "Precision: Double (64-bits floats)")
-else()
-  string(STRIP ${FLOAT_TYPE} FLOAT_TYPE)
-  string(TOLOWER ${FLOAT_TYPE} FLOAT_TYPE)
-  if(FLOAT_TYPE STREQUAL "single")
-    add_definitions("-DFLOAT_SINGLE")
-    # Single precision RRTMGP is disabled as it is unsupported.
-    # add_definitions("-DFLOAT_SINGLE_RRTMGP")
-    message(STATUS "Precision: Single (32-bits floats)")
-  elseif(FLOAT_TYPE STREQUAL "double")
-    message(STATUS "Precision: Double (64-bits floats)")
-  else()
-    message(FATAL_ERROR "Illegal FLOAT_TYPE specified.")
-  endif()
-  # Set the RRTMGP float type always to double as single is not supported.
-  set(FLOAT_TYPE_RRTMGP "double")
+if(NOT USESP)
+  set(USESP FALSE)
 endif()
+if(USESP)
+  add_definitions("-DFLOAT_SINGLE")
+  # Single precision RRTMGP is disabled as it is unsupported.
+  # add_definitions("-DFLOAT_SINGLE_RRTMGP")
+  message(STATUS "Precision: Single (32-bits floats)")
+else()
+  message(STATUS "Precision: Double (64-bits floats)")
+endif()
+# Set the RRTMGP float type always to double as single is not supported.
+set(FLOAT_TYPE_RRTMGP "double")
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
 if(NOT USEMPI)
