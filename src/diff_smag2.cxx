@@ -255,7 +255,8 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         // Mason mixing length
-                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) +
+                                    TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]);
                     }

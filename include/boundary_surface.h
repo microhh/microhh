@@ -62,6 +62,10 @@ class Boundary_surface : public Boundary<TF>
         void clear_device();
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
+
+        TF* get_z0m_g() { return z0m_g; };
+        TF* get_ustar_g() { return ustar_g; };
+        TF* get_obuk_g() { return obuk_g; };
         #endif
 
     protected:

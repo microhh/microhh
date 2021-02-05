@@ -443,5 +443,25 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+TF* Boundary<TF>::get_z0m_g()
+{
+    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_ustar_g()
+{
+    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_obuk_g()
+{
+    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+}
+#endif
+
 template class Boundary<double>;
 template class Boundary<float>;
