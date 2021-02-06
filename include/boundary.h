@@ -103,6 +103,12 @@ class Boundary
         virtual const std::vector<TF>& get_ustar() const;
         virtual const std::vector<TF>& get_obuk() const;
 
+        #ifdef USECUDA
+        virtual TF* get_z0m_g();
+        virtual TF* get_ustar_g();
+        virtual TF* get_obuk_g();
+        #endif
+
         std::string get_switch();
 
         // GPU functions and variables
@@ -137,11 +143,10 @@ class Boundary
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
 
         void process_time_dependent(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
+
         #ifdef USECUDA
         void clear_device();
         #endif
-
-        // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
         void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.

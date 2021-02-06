@@ -45,8 +45,9 @@ namespace
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
     template<typename TF> __device__
-    TF find_Obuk_g(const float* const __restrict__ zL, const float* const __restrict__ f,
-                       int &n, const TF Ri, const TF zsl)
+    TF find_Obuk_g(
+            const float* const __restrict__ zL, const float* const __restrict__ f,
+            int &n, const TF Ri, const TF zsl)
     {
         // Determine search direction.
         if ((f[n]-Ri) > 0.f)
@@ -61,7 +62,8 @@ namespace
 
 
     template<typename TF> __device__
-    TF calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
+    TF calc_Obuk_noslip_flux_g(
+            float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
@@ -69,7 +71,8 @@ namespace
     }
 
     template<typename TF> __device__
-    TF calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
+    TF calc_Obuk_noslip_dirichlet_g(
+            float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
@@ -78,11 +81,12 @@ namespace
 
     /* Calculate absolute wind speed */
     template<typename TF> __global__
-    void du_tot_g(TF* __restrict__ dutot,
-                  TF* __restrict__ u,    TF* __restrict__ v,
-                  TF* __restrict__ ubot, TF* __restrict__ vbot,
-                  int istart, int jstart, int kstart,
-                  int iend,   int jend, int jj, int kk)
+    void du_tot_g(
+            TF* __restrict__ dutot,
+            TF* __restrict__ u,    TF* __restrict__ v,
+            TF* __restrict__ ubot, TF* __restrict__ vbot,
+            int istart, int jstart, int kstart,
+            int iend,   int jend, int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -101,13 +105,15 @@ namespace
     }
 
     template<typename TF> __global__
-    void stability_g(TF* __restrict__ ustar, TF* __restrict__ obuk,
-                     TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
-                     TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
-                     int* __restrict__ nobuk_g,
-                     TF z0m, TF z0h, TF db_ref, TF zsl,
-                     int icells, int jcells, int kstart, int jj, int kk,
-                     Boundary_type mbcbot, Boundary_type thermobc)
+    void stability_g(
+            TF* __restrict__ ustar, TF* __restrict__ obuk,
+            TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
+            TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
+            TF* __restrict__ z0m, TF* __restrict__ z0h,
+            int* __restrict__ nobuk_g,
+            TF db_ref, TF zsl,
+            int icells, int jcells, int kstart, int jj, int kk,
+            Boundary_type mbcbot, Boundary_type thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -126,23 +132,24 @@ namespace
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
                 obuk [ij] = calc_Obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
-                ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
                 obuk [ij] = calc_Obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
-                ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }
     }
 
     template<typename TF> __global__
-    void stability_neutral_g(TF* __restrict__ ustar, TF* __restrict__ obuk,
-                             TF* __restrict__ dutot, TF z0m, TF z0h, TF zsl,
-                             int icells, int jcells, int kstart, int jj, int kk,
-                             Boundary_type mbcbot, Boundary_type thermobc)
+    void stability_neutral_g(
+            TF* __restrict__ ustar, TF* __restrict__ obuk, TF* __restrict__ dutot,
+            TF* __restrict__ z0m, TF* __restrict__ z0h, const TF zsl,
+            int icells, int jcells, int kstart, int jj, int kk,
+            Boundary_type mbcbot, Boundary_type thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -160,26 +167,28 @@ namespace
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
                 obuk [ij] = -Constants::dbig;
-                ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 obuk [ij] = -Constants::dbig;
-                ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }
     }
 
     template<typename TF> __global__
-    void surfm_flux_g(TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-                      TF* __restrict__ u,        TF* __restrict__ v,
-                      TF* __restrict__ ubot,     TF* __restrict__ vbot,
-                      TF* __restrict__ ustar,    TF* __restrict__ obuk,
-                      TF zsl, TF z0m,
-                      int istart, int jstart, int kstart,
-                      int iend,   int jend, int jj, int kk,
-                      Boundary_type bcbot)
+    void surfm_flux_g(
+            TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
+            TF* __restrict__ u,        TF* __restrict__ v,
+            TF* __restrict__ ubot,     TF* __restrict__ vbot,
+            TF* __restrict__ ustar,    TF* __restrict__ obuk,
+            TF* __restrict__ z0m,
+            TF zsl,
+            int istart, int jstart, int kstart,
+            int iend,   int jend, int jj, int kk,
+            Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -193,8 +202,10 @@ namespace
             if (bcbot == Boundary_type::Dirichlet_type)
             {
                 // interpolate the whole stability function rather than ustar or obuk
-                ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
-                vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+                ufluxbot[ij] = -(u[ijk]-ubot[ij])*TF(0.5)*(ustar[ij-ii]*most::fm(zsl, z0m[ij], obuk[ij-ii]) +
+                                                           ustar[ij]   *most::fm(zsl, z0m[ij], obuk[ij]));
+                vfluxbot[ij] = -(v[ijk]-vbot[ij])*TF(0.5)*(ustar[ij-jj]*most::fm(zsl, z0m[ij], obuk[ij-jj]) +
+                                                           ustar[ij]   *most::fm(zsl, z0m[ij], obuk[ij]));
             }
             else if (bcbot == Boundary_type::Ustar_type)
             {
@@ -219,10 +230,11 @@ namespace
     }
 
     template<typename TF> __global__
-    void surfm_grad_g(TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
-                      TF* __restrict__ u,        TF* __restrict__ v,
-                      TF* __restrict__ ubot,     TF* __restrict__ vbot, TF zsl,
-                      int icells, int jcells, int kstart, int jj, int kk)
+    void surfm_grad_g(
+            TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
+            TF* __restrict__ u,        TF* __restrict__ v,
+            TF* __restrict__ ubot,     TF* __restrict__ vbot, TF zsl,
+            int icells, int jcells, int kstart, int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -238,12 +250,14 @@ namespace
     }
 
     template<typename TF> __global__
-    void surfs_g(TF* __restrict__ varfluxbot, TF* __restrict__ vargradbot,
-                 TF* __restrict__ varbot,     TF* __restrict__ var,
-                 TF* __restrict__ ustar,      TF* __restrict__ obuk, TF zsl, TF z0h,
-                 int icells, int jcells, int kstart,
-                 int jj, int kk,
-                 Boundary_type bcbot)
+    void surfs_g(
+            TF* __restrict__ varfluxbot, TF* __restrict__ vargradbot,
+            TF* __restrict__ varbot,     TF* __restrict__ var,
+            TF* __restrict__ ustar,      TF* __restrict__ obuk,
+            TF* __restrict__ z0h,
+            TF zsl, int icells, int jcells, int kstart,
+            int jj, int kk,
+            Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -255,12 +269,12 @@ namespace
 
             if (bcbot == Boundary_type::Dirichlet_type)
             {
-                varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
+                varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
                 vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
             }
             else if (bcbot == Boundary_type::Flux_type)
             {
-                varbot[ij]     = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
+                varbot[ij]     = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
                 vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
             }
         }
@@ -279,6 +293,8 @@ void Boundary_surface<TF>::prepare_device()
 
     cuda_safe_call(cudaMalloc(&obuk_g,  dmemsize2d));
     cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
+    cuda_safe_call(cudaMalloc(&z0m_g,   dmemsize2d));
+    cuda_safe_call(cudaMalloc(&z0h_g,   dmemsize2d));
     cuda_safe_call(cudaMalloc(&nobuk_g, imemsize2d));
 
     cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
@@ -286,6 +302,8 @@ void Boundary_surface<TF>::prepare_device()
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(z0m_g,   dimemsize, z0m.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(z0h_g,   dimemsize, z0h.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), nzL*sizeof(float), cudaMemcpyHostToDevice));
@@ -303,6 +321,8 @@ void Boundary_surface<TF>::forward_device()
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(z0m_g,   dimemsize, z0m.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(z0h_g,   dimemsize, z0h.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
@@ -325,6 +345,8 @@ void Boundary_surface<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
+    cuda_safe_call(cudaFree(z0m_g));
+    cuda_safe_call(cudaFree(z0h_g));
     cuda_safe_call(cudaFree(nobuk_g));
     cuda_safe_call(cudaFree(zL_sl_g));
     cuda_safe_call(cudaFree(f_sl_g ));
@@ -356,7 +378,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
 
     du_tot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.icells, gd.ijcells);
@@ -371,7 +393,7 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
         // Calculate ustar and Obukhov length, including ghost cells
         stability_neutral_g<<<gridGPU2, blockGPU2>>>(
             ustar_g, obuk_g,
-            dutot->fld_g, z0m, z0h, gd.z[gd.kstart],
+            dutot->fld_g, z0m_g, z0h_g, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc);
         cuda_check_error();
     }
@@ -386,8 +408,8 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
             ustar_g, obuk_g,
             buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
             dutot->fld_g, zL_sl_g, f_sl_g,
-            nobuk_g,
-            z0m, z0h, db_ref, gd.z[gd.kstart],
+            z0m_g, z0h_g, nobuk_g,
+            db_ref, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells,
             mbcbot, thermobc);
         cuda_check_error();
@@ -423,7 +445,7 @@ void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
         fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
         fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
-        ustar_g, obuk_g, gd.z[gd.kstart], z0m,
+        ustar_g, obuk_g, z0m_g, gd.z[gd.kstart],
         gd.istart, gd.jstart, gd.kstart,
         gd.iend, gd.jend, gd.icells, gd.ijcells, mbcbot);
     cuda_check_error();
@@ -460,7 +482,7 @@ void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
         surfs_g<<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g, it.second->grad_bot_g,
             it.second->fld_bot_g,  it.second->fld_g,
-            ustar_g, obuk_g, gd.z[gd.kstart], z0h,
+            ustar_g, obuk_g, z0h_g, gd.z[gd.kstart],
             gd.icells,  gd.jcells, gd.kstart,
             gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
     cuda_check_error();
@@ -471,7 +493,6 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
 {
     throw std::runtime_error("boundary_surface::get_ra() is not implemented yet on the GPU");
 }
-
 
 template<typename TF>
 void Boundary_surface<TF>::exec_column(Column<TF>& column)

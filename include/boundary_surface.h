@@ -62,6 +62,10 @@ class Boundary_surface : public Boundary<TF>
         void clear_device();
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
+
+        TF* get_z0m_g() { return z0m_g; };
+        TF* get_ustar_g() { return ustar_g; };
+        TF* get_obuk_g() { return obuk_g; };
         #endif
 
     protected:
@@ -99,11 +103,13 @@ class Boundary_surface : public Boundary<TF>
         std::vector<TF> obuk;
         std::vector<int> nobuk;
 
+        #ifdef USECUDA
+        TF* z0m_g;
+        TF* z0h_g;
         TF* obuk_g;
         TF* ustar_g;
         int* nobuk_g;
 
-        #ifdef USECUDA
         float* zL_sl_g;
         float* f_sl_g;
         #endif
