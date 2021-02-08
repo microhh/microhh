@@ -68,6 +68,7 @@ namespace
 
             if (k == kstart && surface_model == Surface_model::Enabled)
             {
+
                 // Calculate du/dz and dv/dz at grid center, from interpolated wind speed.
                 const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
                 const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
@@ -171,6 +172,16 @@ namespace
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
 
                 const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
+            }
+            else if (surface_model == Surface_model::Enabled)
+            {
+                // Add the buoyancy production to the TKE
+                TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
+                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+
+                // Mason mixing length
+                const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                 evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else
