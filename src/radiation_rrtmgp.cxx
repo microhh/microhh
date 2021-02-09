@@ -776,6 +776,7 @@ void Radiation_rrtmgp<TF>::create(
     {
         const std::string group_name = "radiation";
         stats.add_time_series("sza", "solar zenith angle", "rad", group_name);
+        stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
     }
 
     // Get the allowed cross sections from the cross list
@@ -1491,6 +1492,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
 
         stats.set_time_series("sza", std::acos(mu0));
+        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
     }
 
     fields.release_tmp(tmp);
