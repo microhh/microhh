@@ -685,6 +685,25 @@ namespace
 
         return cos_zenith;
     }
+
+    template<typename TF>
+    TF calc_sun_distance_factor(const TF frac_doy)
+    {
+        // Based on: An Introduction to Atmospheric Radiation, Liou, Eq. 2.2.9.
+        constexpr TF an [] = {1.000110, 0.034221, 0.000719};
+        constexpr TF bn [] = {0,        0.001280, 0.000077};
+
+        const TF pi = TF(M_PI);
+
+        // NOTE: DOY in time calculations are zero based
+        const TF t = TF(2)*pi*(frac_doy-TF(1))/TF(365);
+
+        TF factor = TF(0);
+        for (int n=0; n<3; ++n)
+            factor += an[n]*std::cos(TF(n)*t) + bn[n]*std::sin(TF(n)*t);
+
+        return factor;
+    }
 }
 
 template<typename TF>
@@ -776,6 +795,7 @@ void Radiation_rrtmgp<TF>::create(
     {
         const std::string group_name = "radiation";
         stats.add_time_series("sza", "solar zenith angle", "rad", group_name);
+        stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
     }
 
     // Get the allowed cross sections from the cross list
@@ -1199,6 +1219,10 @@ void Radiation_rrtmgp<TF>::exec(
                 const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
                 this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
 
+                // Calculate correction factor for impact Sun's distance on the solar "constant"
+                const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+                this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+
                 if (is_day(this->mu0))
                 {
                     const int n_bnd = kdist_sw->get_nband();
@@ -1491,6 +1515,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
 
         stats.set_time_series("sza", std::acos(mu0));
+        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
     }
 
     fields.release_tmp(tmp);
