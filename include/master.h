@@ -52,6 +52,13 @@ struct MPI_data
     #endif
 };
 
+class Single_process_runtime_error : public std::runtime_error
+{
+    public:
+        Single_process_runtime_error(const std::string& what) :
+            std::runtime_error(what) {}
+};
+
 class Master
 {
     public:
@@ -60,6 +67,7 @@ class Master
 
         void start();
         void init(Input&);
+        void abort();
 
         double get_wall_clock_time();
         bool at_wall_clock_limit();

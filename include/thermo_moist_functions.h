@@ -275,7 +275,7 @@ namespace Thermo_moist_functions
         {
             std::string error = "Non-converging saturation adjustment: thl, qt, p = "
                 + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
-            throw std::runtime_error(error);
+            throw Single_process_runtime_error(error);
         }
 
         return ans;

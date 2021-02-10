@@ -79,6 +79,8 @@ void Master::init(Input& input)
     allocated = true;
 }
 
+void Master::abort() {}
+
 double Master::get_wall_clock_time()
 {
     timeval timestruct;

@@ -56,11 +56,25 @@ int main(int argc, char *argv[])
     }
 
     // Catch any exceptions and return 1.
+
+    // Catch a throw on a single process that leads to deadlocks.
+    // This can happen in iterative procedures in kernels, but should
+    // be omitted in any case possible.
+    catch (const Single_process_runtime_error& e)
+    {
+        master.print_message("EXCEPTION ON SINGLE PROCESS: %s\n", e.what());
+        master.abort();
+        return 1;
+    }
+
+    // This catches all regular exceptions.
     catch (const std::exception& e)
     {
         master.print_message("EXCEPTION: %s\n", e.what());
         return 1;
     }
+
+    // This should never happen, and is a sign that debugging is urgent.
     catch (...)
     {
         master.print_message("UNHANDLED EXCEPTION!\n");

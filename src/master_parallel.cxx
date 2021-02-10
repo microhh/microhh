@@ -164,6 +164,11 @@ void Master::init(Input& input)
     allocated = true;
 }
 
+void Master::abort()
+{
+    MPI_Abort(MPI_COMM_WORLD, 1);
+}
+
 double Master::get_wall_clock_time()
 {
     return MPI_Wtime();
