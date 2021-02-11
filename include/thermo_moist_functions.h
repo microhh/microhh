@@ -275,7 +275,13 @@ namespace Thermo_moist_functions
         {
             std::string error = "Non-converging saturation adjustment: thl, qt, p = "
                 + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
             throw std::runtime_error(error);
+            #endif
         }
 
         return ans;
