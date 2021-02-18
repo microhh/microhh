@@ -427,6 +427,15 @@ void Model<TF>::exec()
                     const int iotime = timeloop->get_iotime();
                     const double dt = timeloop->get_dt();
 
+                    // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
+                    {
+                        radiation->exec_all_stats(
+                                *stats, *cross, *dump, *column,
+                                *thermo, *timeloop,
+                                itime, iotime);
+                    }
+
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
@@ -453,8 +462,10 @@ void Model<TF>::exec()
                         boundary ->exec_column(*column);
                         lsm      ->exec_column(*column);
                         microphys->exec_column(*column);
+
                         column   ->exec(iter, time, itime);
                     }
+
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -599,7 +610,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
         lsm      ->exec_stats(*stats);
-        // radiation->exec_stats(*stats, *thermo, *timeloop);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -611,8 +621,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         ib       ->exec_cross(*cross, iotime);
         lsm      ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
-
-        // radiation->exec_cross(*cross, iotime, *thermo, *timeloop);
     }
 
     // Save the 3d dumps to disk.
@@ -621,14 +629,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
-        // radiation->exec_dump(*dump, iotime, *thermo, *timeloop);
     }
-
-    // Handle the routines that share computations between stats, cross, and dump.
-    radiation->exec_all_stats(
-            *stats, *cross, *dump, *column,
-            *thermo, *timeloop,
-            itime, iotime);
 
     if (stats->do_statistics(itime))
         stats->exec(iteration, time, itime);

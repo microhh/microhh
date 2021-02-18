@@ -110,7 +110,9 @@ class Land_surface
         std::vector<TF> root_fraction;  // Root fraction per soil layer (-)
 
         std::vector<TF> interception;   // Interception rain/dew by surface (m s-1)
-        std::vector<TF> throughfall;    // Throughfall rain/dew into soil (m s-1)
+        std::vector<TF> throughfall;    // Throughfall rain/dew onto soil (m s-1)
+        std::vector<TF> infiltration;   // Infiltration moisture into soil (m s-1)
+        std::vector<TF> runoff;         // Surface runoff from soil (m s-1)
 
         // Soil cross-sections
         std::vector<std::string> crosslist;

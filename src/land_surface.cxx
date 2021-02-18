@@ -261,7 +261,7 @@ namespace soil
                     const int si = soil_index[ijk];
 
                     // Heat conductivity at saturation (from IFS code..)
-                    const TF lambda_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
+                    const TF gamma_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
                                             * pow(Constants::gamma_T_water<TF>, theta[ijk])
                                             * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
 
@@ -269,7 +269,7 @@ namespace soil
                     const TF kersten = log10(std::max(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
 
                     // Heat conductivity soil [IFS eq 8.62] (W m-1 K-1)
-                    gamma[ijk] = kersten * (lambda_T_sat - gamma_dry[si]) + gamma_dry[si];
+                    gamma[ijk] = kersten * (gamma_T_sat - gamma_dry[si]) + gamma_dry[si];
 
                     // Heat diffusivity (m2 s-1)
                     kappa[ijk] = gamma[ijk] / rho_C[si];
@@ -371,6 +371,40 @@ namespace soil
                 }
     }
 
+    template<typename TF>
+    void calc_infiltration(
+            TF* const restrict infiltration,
+            TF* const restrict runoff,
+            const TF* const restrict throughfall,
+            const TF* const restrict theta,
+            const TF* const restrict theta_sat,
+            const TF* const restrict kappa_max,
+            const TF* const restrict gamma_max,
+            const TF* const restrict dz,
+            const int* const restrict soil_index,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kend,
+            const int icells, const int ijcells)
+    {
+        const TF dz2i = TF(1)/(TF(0.5)*dz[kend-1]);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                const int ijk = i + j*icells + (kend-1)*ijcells;
+                const int si  = soil_index[ijk];
+
+                const TF i_max = std::min(TF(0),
+                        -(kappa_max[si] * (theta_sat[si] - theta[ijk]) * dz2i + gamma_max[si]));
+
+                infiltration[ij] = std::min(TF(0), std::max(throughfall[ij], i_max));
+                runoff[ij]       = std::min(TF(0), throughfall[ij] - infiltration[ij]);
+            }
+    }
+
     template<typename TF, Soil_interpolation_type interpolation_type>
     void interp_2_vertical(
             TF* const restrict fldh,
@@ -432,7 +466,7 @@ namespace soil
             TF* const restrict conductivity_h,
             const TF* const restrict LE_soil,
             const TF* const restrict tile_frac_soil,
-            const TF* const restrict throughfall,
+            const TF* const restrict infiltration,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -446,7 +480,7 @@ namespace soil
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*icells;
-                flux_top[ij] = tile_frac_soil[ij] * LE_soil[ij] * fac + throughfall[ij];
+                flux_top[ij] = tile_frac_soil[ij] * LE_soil[ij] * fac + infiltration[ij];
                 flux_bot[ij] = TF(0);
 
                 // Set free drainage bottom BC:
@@ -611,6 +645,9 @@ namespace lsm
             {
                 const int ij  = i + j*icells;
 
+                // Convert rain rate from kg m-2 s-1 to m s-1
+                const TF rr_ms = rain_rate[ij]/Constants::rho_w<TF>;
+
                 // Max `wl` accounting for vegetation fraction and LAI
                 const TF wlm = Constants::wlmax<TF> * (TF(1) - c_veg[ij] + c_veg[ij] * lai[ij]);
 
@@ -628,7 +665,7 @@ namespace lsm
 
                 // Tendency due to interception of precipitation by vegetation
                 // Rain rate is positive downwards, so minus is excluded.
-                const TF wl_tend_precip = intercept_eff * c_veg[ij] * rain_rate[ij];
+                const TF wl_tend_precip = intercept_eff * c_veg[ij] * rr_ms;
 
                 // Total and limited tendencies
                 const TF wl_tend_sum = wl_tend_liq + wl_tend_dew + wl_tend_precip;
@@ -636,8 +673,8 @@ namespace lsm
 
                 // Diagnose throughfall and interception
                 throughfall[ij] =
-                    -(TF(1)-c_veg[ij]) * rain_rate[ij]
-                    -(TF(1)-intercept_eff) * c_veg[ij] * rain_rate[ij] +
+                    -(TF(1)-c_veg[ij]) * rr_ms
+                    -(TF(1)-intercept_eff) * c_veg[ij] * rr_ms +
                     std::min(TF(0), wl_tend_lim - wl_tend_sum);
 
                 interception[ij] = std::max(TF(0), wl_tend_lim);
@@ -1061,6 +1098,8 @@ void Land_surface<TF>::init()
 
     interception.resize(gd.ijcells);
     throughfall.resize(gd.ijcells);
+    infiltration.resize(gd.ijcells);
+    runoff.resize(gd.ijcells);
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
@@ -1284,6 +1323,10 @@ void Land_surface<TF>::create_fields_grid_stats(
         stats.add_time_series("LE", "Latent heat flux", "W m-2", group_name);
         stats.add_time_series("G",  "Soil heat flux", "W m-2", group_name);
 
+        // Surface water balance
+        stats.add_time_series("infiltration", "Infiltration precipitation/dew into soil", "kg m-2 s-1", group_name);
+        stats.add_time_series("runoff", "Soil water runoff", "kg m-2 s-1", group_name);
+
         // Tiled variables
         std::string name;
         std::string desc;
@@ -1448,6 +1491,23 @@ void Land_surface<TF>::exec_soil()
             sgd.kstart, sgd.kend,
             agd.icells, agd.ijcells);
 
+    // Calculate infiltration/runoff
+    soil::calc_infiltration(
+            infiltration.data(),
+            runoff.data(),
+            throughfall.data(),
+            fields.sps.at("theta")->fld.data(),
+            theta_sat.data(),
+            kappa_theta_max.data(),
+            gamma_theta_max.data(),
+            sgd.dz.data(),
+            soil_index.data(),
+            agd.istart, agd.iend,
+            agd.jstart, agd.jend,
+            sgd.kend,
+            agd.icells, agd.ijcells);
+
+
     // Set the boundary conditions.
     // Top = evaporation from bare soil tile.
     // Bottom = optionally free drainage (or else closed)
@@ -1458,7 +1518,7 @@ void Land_surface<TF>::exec_soil()
                 conductivity_h.data(),
                 tiles.at("soil").LE.data(),
                 tiles.at("soil").fraction.data(),
-                throughfall.data(),
+                infiltration.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -1470,7 +1530,7 @@ void Land_surface<TF>::exec_soil()
                 conductivity_h.data(),
                 tiles.at("soil").LE.data(),
                 tiles.at("soil").fraction.data(),
-                throughfall.data(),
+                infiltration.data(),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 sgd.kstart, sgd.kend,
@@ -1564,7 +1624,7 @@ void Land_surface<TF>::exec_surface(
 
     TF* ra = tmp1->flux_bot.data();
 
-    // Get surface precipitation
+    // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
     microphys.get_surface_rain_rate(tmp1->fld_bot);
     TF* rain_rate = tmp1->fld_bot.data();
 
@@ -1760,6 +1820,21 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
 
     get_tiled_mean(tmp1->fld_bot, "G");
     stats.calc_stats_2d("G", tmp1->fld_bot, offset);
+
+    // Surface water balance
+    auto to_kgm2s = [&](std::vector<TF>& field)
+    {
+        // Conversion m s-1 to kg m-2 s-1, and positive sign (like e.g. rain rate)
+        tmp1->fld_bot = field;
+        for (int n=0; n<agd.ijcells; ++n)
+            tmp1->fld_bot[n] *= -Constants::rho_w<TF>;
+    };
+
+    to_kgm2s(infiltration);
+    stats.calc_stats_2d("infiltration", tmp1->fld_bot, offset);
+
+    to_kgm2s(runoff);
+    stats.calc_stats_2d("runoff", tmp1->fld_bot, offset);
 
     // Tiled variables
     std::string name;
