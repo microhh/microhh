@@ -786,12 +786,16 @@ namespace lsm
             const TF* const restrict dqsatdT_bot,
             const TF* const restrict ra,
             const TF* const restrict rs,
-            const TF* const restrict lambda,
+            const TF* const restrict lambda_stable,
+            const TF* const restrict lambda_unstable,
             const TF* const restrict sw_dn,
             const TF* const restrict sw_up,
             const TF* const restrict lw_dn,
             const TF* const restrict lw_up,
+            const TF* const restrict b,
+            const TF* const restrict b_bot,
             const TF* const restrict rhorefh,
+            const TF db_ref,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
@@ -808,10 +812,14 @@ namespace lsm
                 // Disable canopy resistance in case of dew fall
                 const TF rs_lim = qsat_bot[ij] < qt[ijk] ? TF(0) : rs[ij];
 
+                // Switch conductivity skin layer stable/unstable conditions
+                const TF db = b[ijk] - b_bot[ij] + db_ref;
+                const TF lambda = db > 0 ? lambda_stable[ij] : lambda_unstable[ij];
+
                 // Recuring factors
                 const TF fH  = rhorefh[kstart] * cp<TF> / ra[ij];
                 const TF fLE = rhorefh[kstart] * Lv<TF> / (ra[ij] + rs_lim);
-                const TF fG  = lambda[ij];
+                const TF fG  = lambda;
 
                 // Net radiation; negative sign = net input of energy at surface
                 const TF Qnet = -(sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij]);
@@ -1091,7 +1099,8 @@ void Land_surface<TF>::init()
     lai.resize(gd.ijcells);
     rs_veg_min.resize(gd.ijcells);
     rs_soil_min.resize(gd.ijcells);
-    lambda.resize(gd.ijcells);
+    lambda_stable.resize(gd.ijcells);
+    lambda_unstable.resize(gd.ijcells);
 
     if (sw_water)
         water_mask.resize(gd.ijcells);
@@ -1256,7 +1265,8 @@ void Land_surface<TF>::create_fields_grid_stats(
         init_homogeneous(lai, "lai");
         init_homogeneous(rs_veg_min, "rs_veg_min");
         init_homogeneous(rs_soil_min, "rs_soil_min");
-        init_homogeneous(lambda, "lambda");
+        init_homogeneous(lambda_stable, "lambda_stable");
+        init_homogeneous(lambda_unstable, "lambda_unstable");
     }
 
     // Set the canopy resistance of the liquid water tile at zero
@@ -1595,8 +1605,10 @@ void Land_surface<TF>::exec_surface(
 
     // Get 2D slices from 3D tmp field
     // TO-DO: add check for sufficient vertical levels in tmp field....
+    // TO-DO: add 2D tmp fields!!!
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
+    auto buoy = fields.get_tmp();
 
     int kk = 0;
     TF* f1  = &(tmp1->fld.data()[kk*agd.ijcells]); kk+=1;
@@ -1614,6 +1626,10 @@ void Land_surface<TF>::exec_surface(
     TF* vpd = tmp2->flux_bot.data();
     TF* qsat_bot = tmp2->flux_top.data();
     TF* dqsatdT_bot = tmp2->grad_bot.data();
+
+    // Surface and lowest model level buoyancy:
+    thermo.get_buoyancy_surf(*buoy, false);
+    const TF db_ref = thermo.get_db_ref();
 
     const std::vector<TF>& rhorefh = thermo.get_rhorefh_vector();
     const std::vector<TF>& exnerh = thermo.get_exnerh_vector();
@@ -1683,10 +1699,15 @@ void Land_surface<TF>::exec_surface(
                 fields.sp.at("qt")->fld.data(),
                 fields.sps.at("t")->fld.data(),
                 T_bot, qsat_bot, dqsatdT_bot,
-                ra, tile.second.rs.data(), lambda.data(),
+                ra, tile.second.rs.data(),
+                lambda_stable.data(),
+                lambda_unstable.data(),
                 sw_dn.data(), sw_up.data(),
                 lw_dn.data(), lw_up.data(),
+                buoy->fld.data(),
+                buoy->fld_bot.data(),
                 rhorefh.data(),
+                db_ref,
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 agd.kstart, sgd.kend,
@@ -1793,6 +1814,7 @@ void Land_surface<TF>::exec_surface(
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
+    fields.release_tmp(buoy);
 }
 
 template<typename TF>
@@ -2120,7 +2142,8 @@ void Land_surface<TF>::load(const int iotime)
         load_2d_field(lai.data(), "lai", 0);
         load_2d_field(rs_veg_min.data(), "rs_veg_min", 0);
         load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
-        load_2d_field(lambda.data(), "lambda_skin", 0);
+        load_2d_field(lambda_stable.data(), "lambda_stable", 0);
+        load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
     }
 
     fields.release_tmp(tmp1);
