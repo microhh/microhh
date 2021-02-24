@@ -240,4 +240,22 @@ class Array
         std::array<int, N> strides;
         std::array<int, N> offsets;
 };
+
+template<typename T, int N>
+bool any_vals_outside(const Array<T, N>& array, const T lower_limit, const T upper_limit)
+{
+    return std::any_of(
+            array.v().begin(),
+            array.v().end(),
+            [lower_limit, upper_limit](T val){ return (val < lower_limit) || (val > upper_limit); });
+}
+
+template<typename T, int N>
+bool any_vals_less_than(const Array<T, N>& array, const T lower_limit)
+{
+    return std::any_of(
+            array.v().begin(),
+            array.v().end(),
+            [lower_limit](T val){ return (val < lower_limit); });
+}
 #endif

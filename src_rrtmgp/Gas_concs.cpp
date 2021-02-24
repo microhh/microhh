@@ -45,6 +45,13 @@ Gas_concs<TF>::Gas_concs(const Gas_concs& gas_concs_ref, const int start, const 
 template<typename TF>
 void Gas_concs<TF>::set_vmr(const std::string& name, const TF data)
 {
+    // Check the data.
+    if ( (data < TF(0.)) || (data > TF(1.)) )
+    {
+        std::string error("Gas concentration " + name + " is out of range");
+        throw std::range_error(error);
+    }
+
     Array<TF,2> data_2d({1, 1});
     data_2d({1, 1}) = data;
 
@@ -58,6 +65,13 @@ void Gas_concs<TF>::set_vmr(const std::string& name, const TF data)
 template<typename TF>
 void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,1>& data)
 {
+    // Check the data.
+    if (any_vals_outside(data, TF(0.), TF(1.)))
+    {
+        std::string error("Gas concentration " + name + " is out of range");
+        throw std::range_error(error);
+    }
+
     Array<TF,2> data_2d(data.v(), {1, data.dim(1)});
 
     if (this->exists(name))
@@ -70,6 +84,13 @@ void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,1>& data)
 template<typename TF>
 void Gas_concs<TF>::set_vmr(const std::string& name, const Array<TF,2>& data_2d)
 {
+    // Check the data.
+    if (any_vals_outside(data_2d, TF(0.), TF(1.)))
+    {
+        std::string error("Gas concentration " + name + " is out of range");
+        throw std::range_error(error);
+    }
+
     if (this->exists(name))
         gas_concs_map.at(name) = data_2d;
     else

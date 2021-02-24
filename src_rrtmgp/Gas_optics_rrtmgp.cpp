@@ -22,12 +22,9 @@
  *
  */
 
-#include <cmath>
 #include <numeric>
+#include <cmath>
 #include <boost/algorithm/string.hpp>
-// #include <xtensor/xarray.hpp>
-// #include <xtensor/xadapt.hpp>
-// #include "xtensor/xnoalias.hpp"
 
 #include "Gas_concs.h"
 #include "Gas_optics_rrtmgp.h"
@@ -374,21 +371,6 @@ namespace
                     const int ijk_out = k + j*jj_out + i*ii_out;
                     out[ijk_out] = in[ijk_in];
                 }
-    }
-
-    template<typename TF>
-    inline void reorder123x321_test(
-            TF* out, const TF* in,
-            const size_t d1, const size_t d2, const size_t d3)
-    {
-        const size_t size = d1*d2*d3;
-        const std::array<size_t, 3> in_shape = { d1, d2, d3 };
-        const std::array<size_t, 3> out_shape = { d3, d2, d1 };
-
-        const auto a_in = xt::adapt<xt::layout_type::column_major>(in, size, xt::no_ownership(), in_shape);
-        auto a_out = xt::adapt<xt::layout_type::column_major>(out, size, xt::no_ownership(), out_shape);
-
-        xt::noalias(a_out) = xt::transpose(a_out);
     }
     */
 }
@@ -801,6 +783,23 @@ void Gas_optics_rrtmgp<TF>::gas_optics(
     const int ngpt = this->get_ngpt();
     const int nband = this->get_nband();
 
+    // Check if any of the values is out of range.
+    if (any_vals_outside(play, this->press_ref_min, this->press_ref_max))
+        throw std::range_error("play is out of range");
+    if (any_vals_outside(plev, this->press_ref_min, this->press_ref_max))
+        throw std::range_error("plev is out of range");
+
+    if (any_vals_outside(tlay, this->temp_ref_min, this->temp_ref_max))
+        throw std::range_error("tlay is out of range");
+    if (any_vals_outside(tlev, this->temp_ref_min, this->temp_ref_max))
+        throw std::range_error("tlev is out of range");
+    if (any_vals_outside(tsfc, this->temp_ref_min, this->temp_ref_max))
+        throw std::range_error("tsfc is out of range");
+
+    if (any_vals_less_than(col_dry, TF(0.)))
+        throw std::range_error("col_dry is out of range");
+    // End of checks.
+
     Array<int,2> jtemp({play.dim(1), play.dim(2)});
     Array<int,2> jpress({play.dim(1), play.dim(2)});
     Array<BOOL_TYPE,2> tropo({play.dim(1), play.dim(2)});
@@ -838,6 +837,19 @@ void Gas_optics_rrtmgp<TF>::gas_optics(
     const int nlay = play.dim(2);
     const int ngpt = this->get_ngpt();
     const int nband = this->get_nband();
+
+    // Check if any of the values is out of range.
+    if (any_vals_outside(play, this->press_ref_min, this->press_ref_max))
+        throw std::range_error("play is out of range");
+    if (any_vals_outside(plev, this->press_ref_min, this->press_ref_max))
+        throw std::range_error("plev is out of range");
+
+    if (any_vals_outside(tlay, this->temp_ref_min, this->temp_ref_max))
+        throw std::range_error("tlay is out of range");
+
+    if (any_vals_less_than(col_dry, TF(0.)))
+        throw std::range_error("col_dry is out of range");
+    // End of checks.
 
     Array<int,2> jtemp({play.dim(1), play.dim(2)});
     Array<int,2> jpress({play.dim(1), play.dim(2)});
