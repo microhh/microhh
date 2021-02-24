@@ -32,7 +32,7 @@ def calc_p_q_T_thl_o3(z):
     q_tb = q_0 * np.exp(-z_t/z_q1) * np.exp(-(z_t/z_q2)**2)
     q -= q_tb + q_t
 
-    i_above_zt = np.where(z > z_t)
+    i_above_zt = np.where(z >= z_t)
     q[i_above_zt] = q_t
     
     gamma = 6.7e-3
@@ -71,7 +71,7 @@ nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=T
 
 ### RADIATION INIT ###
 # Radiation profiles.
-z_top = 100.e3
+z_top = 70.e3
 dz = 500.
 z  = np.arange(dz/2, z_top, dz)
 zh = np.arange(   0, z_top-dz/2, dz)
