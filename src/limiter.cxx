@@ -58,6 +58,9 @@ namespace
     {
         const TF dti = TF(1.)/dt;
 
+        // Add epsilon, to make sure the final result ends just above zero.
+        constexpr TF eps = std::numeric_limits<TF>::epsilon();
+
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -65,7 +68,7 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const TF a_new = a[ijk] + dt*at[ijk];
-                    at[ijk] += (a_new < TF(0.)) ? -a_new * dti : TF(0.);
+                    at[ijk] += (a_new < TF(0.)) ? (-a_new + eps) * dti : TF(0.);
                 }
     }
 }
