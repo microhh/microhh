@@ -800,7 +800,7 @@ void Radiation_rrtmgp<TF>::create(
         std::cout << "SINGLE PROCESS EXCEPTION: " << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
         #else
-        throw std::runtime_error(error);
+        throw e;
         #endif
     }
 
@@ -1551,7 +1551,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         std::cout << "SINGLE PROCESS EXCEPTION: " << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
         #else
-        throw std::runtime_error(error);
+        throw e;
         #endif
     }
 
