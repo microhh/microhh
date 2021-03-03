@@ -800,7 +800,8 @@ namespace lsm
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
-            const int icells, const int ijcells)
+            const int icells, const int ijcells,
+            bool is_cold_start)
     {
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -830,7 +831,12 @@ namespace lsm
                     fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot[ij] - qsat_bot[ij]) +
                     lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*pow4(T_bot[ij]);
                 const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*pow3(T_bot[ij]);
-                const TF T_bot_new = (num + cs_veg[ij]/dt*T_bot[ij]) / (denom + cs_veg[ij]/dt);
+
+                TF T_bot_new;
+                if (!is_cold_start)
+                    T_bot_new = (num + cs_veg[ij]/dt*T_bot[ij]) / (denom + cs_veg[ij]/dt);
+                else
+                    T_bot_new = num / denom;
 
                 // Update qsat with linearised relation, to make sure that the SEB closes
                 const TF qsat_new = qsat_bot[ij] + dqsatdT_bot[ij] * (T_bot_new - T_bot[ij]);
@@ -1697,6 +1703,9 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     // Solve the surface energy balance
+    const int iter = timeloop.get_iteration();
+    const bool is_cold_start = iter == 0 ? true : false;
+
     for (auto& tile : tiles)
         lsm::calc_fluxes(
                 tile.second.H.data(), tile.second.LE.data(),
@@ -1717,7 +1726,8 @@ void Land_surface<TF>::exec_surface(
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 agd.kstart, sgd.kend,
-                agd.icells, agd.ijcells);
+                agd.icells, agd.ijcells,
+                is_cold_start);
 
     // Calculate dynamic tile fractions
     lsm::calc_tile_fractions(
