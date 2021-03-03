@@ -222,7 +222,9 @@ if not nl['land_surface']['sw_homogeneous']:
     lsm_input.lai[:,:] = 2.6
     lsm_input.rs_veg_min[:,:] = 100.
     lsm_input.rs_soil_min[:,:] = 50.
-    lsm_input.lambda_skin[:,:] = 5.
+    lsm_input.lambda_stable[:,:] = 5.
+    lsm_input.lambda_unstable[:,:] = 5.
+    lsm_input.cs_veg[:,:] = 0.
     lsm_input.water_mask[:,:] = 0
     lsm_input.t_soil[:,:,:] = t_soil[:,np.newaxis,np.newaxis]
     lsm_input.index_soil[:,:,:] = index_soil[:,np.newaxis,np.newaxis]

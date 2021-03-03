@@ -25,8 +25,9 @@ class LSM_input:
         # List of fields which are written to the binary input files for MicroHH
         self.fields_2d = [
                 'c_veg', 'z0m', 'z0h', 'gD', 'lai',
-                'rs_veg_min', 'rs_soil_min', 'lambda_skin',
-                'water_mask']
+                'rs_veg_min', 'rs_soil_min',
+                'lambda_stable', 'lambda_unstable',
+                'cs_veg', 'water_mask']
         self.fields_3d = [
                 't_soil', 'theta_soil', 'index_soil', 'root_frac']
 
