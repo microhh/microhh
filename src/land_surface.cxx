@@ -454,7 +454,7 @@ namespace soil
                 const int ijk = ij + (kend-1)*ijcells;  // Top soil layer
                 const int si  = soil_index[ijk];
 
-                flux_top[ij] = G[ij] / rho_C[si];
+                flux_top[ij] = -G[ij] / rho_C[si];
                 flux_bot[ij] = TF(0);
             }
     }
@@ -788,6 +788,7 @@ namespace lsm
             const TF* const restrict rs,
             const TF* const restrict lambda_stable,
             const TF* const restrict lambda_unstable,
+            const TF* const restrict cs_veg,
             const TF* const restrict sw_dn,
             const TF* const restrict sw_up,
             const TF* const restrict lw_dn,
@@ -795,7 +796,7 @@ namespace lsm
             const TF* const restrict b,
             const TF* const restrict b_bot,
             const TF* const restrict rhorefh,
-            const TF db_ref,
+            const TF db_ref, const TF dt,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
@@ -819,17 +820,17 @@ namespace lsm
                 // Recuring factors
                 const TF fH  = rhorefh[kstart] * cp<TF> / ra[ij];
                 const TF fLE = rhorefh[kstart] * Lv<TF> / (ra[ij] + rs_lim);
-                const TF fG  = lambda;
 
                 // Net radiation; negative sign = net input of energy at surface
-                const TF Qnet = -(sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij]);
+                const TF Qnet = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij];
 
                 // Solve for the new surface temperature
-                const TF num = -(Qnet - lw_up[ij]
-                        - fH * T[ij] + (qsat_bot[ij] - dqsatdT_bot[ij] * T_bot[ij] - qt[ijk]) * fLE
-                        - fG * T_soil[ijk_s] - TF(3) * sigma_b<TF> * pow4(T_bot[ij]));
-                const TF denom = (fH + fLE * dqsatdT_bot[ij] + fG + TF(4) * sigma_b<TF> * pow3(T_bot[ij]));
-                const TF T_bot_new = num / denom;
+                const TF num =
+                    Qnet + lw_up[ij] + fH*T[ij] +
+                    fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot[ij] - qsat_bot[ij]) +
+                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*pow4(T_bot[ij]);
+                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*pow3(T_bot[ij]);
+                const TF T_bot_new = (num + cs_veg[ij]/dt*T_bot[ij]) / (denom + cs_veg[ij]/dt);
 
                 // Update qsat with linearised relation, to make sure that the SEB closes
                 const TF qsat_new = qsat_bot[ij] + dqsatdT_bot[ij] * (T_bot_new - T_bot[ij]);
@@ -837,7 +838,7 @@ namespace lsm
                 // Calculate surface fluxes
                 H [ij] = fH  * (T_bot_new - T[ij]);
                 LE[ij] = fLE * (qsat_new - qt[ijk]);
-                G [ij] = fG  * (T_soil[ijk_s] - T_bot_new);
+                G [ij] = lambda * (T_bot_new - T_soil[ijk_s]);
             }
     }
 
@@ -1101,6 +1102,7 @@ void Land_surface<TF>::init()
     rs_soil_min.resize(gd.ijcells);
     lambda_stable.resize(gd.ijcells);
     lambda_unstable.resize(gd.ijcells);
+    cs_veg.resize(gd.ijcells);
 
     if (sw_water)
         water_mask.resize(gd.ijcells);
@@ -1267,6 +1269,7 @@ void Land_surface<TF>::create_fields_grid_stats(
         init_homogeneous(rs_soil_min, "rs_soil_min");
         init_homogeneous(lambda_stable, "lambda_stable");
         init_homogeneous(lambda_unstable, "lambda_unstable");
+        init_homogeneous(cs_veg, "cs_veg");
     }
 
     // Set the canopy resistance of the liquid water tile at zero
@@ -1644,6 +1647,8 @@ void Land_surface<TF>::exec_surface(
     microphys.get_surface_rain_rate(tmp1->fld_bot);
     TF* rain_rate = tmp1->fld_bot.data();
 
+    const double subdt = timeloop.get_sub_time_step();
+
     // Calculate root fraction weighted mean soil water content
     soil::calc_root_weighted_mean_theta(
             theta_mean_n,
@@ -1702,12 +1707,13 @@ void Land_surface<TF>::exec_surface(
                 ra, tile.second.rs.data(),
                 lambda_stable.data(),
                 lambda_unstable.data(),
+                cs_veg.data(),
                 sw_dn.data(), sw_up.data(),
                 lw_dn.data(), lw_up.data(),
                 buoy->fld.data(),
                 buoy->fld_bot.data(),
                 rhorefh.data(),
-                db_ref,
+                db_ref, TF(subdt),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 agd.kstart, sgd.kend,
@@ -1726,7 +1732,6 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     // Calculate changes in the liquid water reservoir
-    const double subdt = timeloop.get_sub_time_step();
 
     lsm::calc_liquid_water_reservoir(
             fields.at2d.at("wl").data(),
@@ -2144,6 +2149,7 @@ void Land_surface<TF>::load(const int iotime)
         load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
         load_2d_field(lambda_stable.data(), "lambda_stable", 0);
         load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
+        load_2d_field(cs_veg.data(), "cs_veg", 0);
     }
 
     fields.release_tmp(tmp1);

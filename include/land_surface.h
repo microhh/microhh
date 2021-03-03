@@ -96,6 +96,7 @@ class Land_surface
         std::vector<TF> rs_soil_min;     // Minimum soil resistance (s m-1)
         std::vector<TF> lambda_stable;   // Skin conductivity stable conditions (W m-2 K-1)
         std::vector<TF> lambda_unstable; // Skin conductivity unstable conditions (W m-2 K-1)
+        std::vector<TF> cs_veg;          // Heat capacity skin layer (J K-1 m-2)
 
         std::vector<int> water_mask;   // Mask for open water (-)
 
