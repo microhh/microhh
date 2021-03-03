@@ -42,7 +42,6 @@ from copy import deepcopy
 # General help functions
 # -------------------------
 
-
 def _int_or_float_or_str(value):
     """ Helper function: convert a string to int/float/str """
     try:
@@ -252,12 +251,17 @@ class Read_grid:
         self.fin = open(filename, 'rb')
 
         self.dim = {}
+
+        self.dim['zh'] = np.zeros(ktot+1)
+
         self.dim['x'] = self.read(itot)
         self.dim['xh'] = self.read(itot)
         self.dim['y'] = self.read(jtot)
         self.dim['yh'] = self.read(jtot)
         self.dim['z'] = self.read(ktot)
-        self.dim['zh'] = self.read(ktot)
+        self.dim['zh'][:-1] = self.read(ktot)
+
+        self.dim['zh'][-1] = self.dim['z'][-1] + 2*(self.dim['z'][-1] - self.dim['zh'][-2])
 
         self.fin.close()
         del self.fin
@@ -310,6 +314,9 @@ class Create_ncfile():
             precision = 'f4'
         else:
             precision = 'f8'
+
+        half_level_vars = ['w', 'sw_flux_dn', 'sw_flux_up', 'lw_flux_dn', 'lw_flux_up']
+
         if(varname == 'u'):
             try:
                 dimensions['xh'] = dimensions.pop('x')
@@ -320,11 +327,12 @@ class Create_ncfile():
                 dimensions['yh'] = dimensions.pop('y')
             except KeyError:
                 pass
-        if(varname == 'w'):
+        if(varname in half_level_vars):
             try:
                 dimensions['zh'] = dimensions.pop('z')
             except KeyError:
                 pass
+
         # create dimensions in netCDF file
         self.dim = {}
         self.dimvar = {}
@@ -334,6 +342,7 @@ class Create_ncfile():
                 key, precision, (key))
             if key != 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
+
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(
                 self.sortdims(

@@ -79,6 +79,7 @@ def convert_to_nc(variables):
 
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
+
                 for t in range(niter):
                     for k in range(len(indexes_local)):
                         index = indexes_local[k]
