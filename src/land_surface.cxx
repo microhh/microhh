@@ -574,19 +574,12 @@ namespace lsm
     void init_tile(Surface_tile<TF>& tile, const int ijcells)
     {
         tile.fraction.resize(ijcells);
-
         tile.rs.resize(ijcells);
-
         tile.H.resize(ijcells);
         tile.LE.resize(ijcells);
         tile.G.resize(ijcells);
-
-        tile.T_bot.resize(ijcells);
+        tile.S.resize(ijcells);
         tile.thl_bot.resize(ijcells);
-        tile.qt_bot.resize(ijcells);
-
-        tile.thl_fluxbot.resize(ijcells);
-        tile.qt_fluxbot.resize(ijcells);
     }
 
     template<typename TF>
@@ -778,10 +771,11 @@ namespace lsm
             TF* const restrict H,
             TF* const restrict LE,
             TF* const restrict G,
+            TF* const restrict S,
+            TF* const restrict thl_bot,
             const TF* const restrict T,
             const TF* const restrict qt,
             const TF* const restrict T_soil,
-            const TF* const restrict T_bot,
             const TF* const restrict qsat_bot,
             const TF* const restrict dqsatdT_bot,
             const TF* const restrict ra,
@@ -796,13 +790,17 @@ namespace lsm
             const TF* const restrict b,
             const TF* const restrict b_bot,
             const TF* const restrict rhorefh,
+            const TF* const restrict exnerh,
             const TF db_ref, const TF dt,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
             const int icells, const int ijcells,
-            bool is_cold_start)
+            bool use_cs_veg)
     {
+        const TF exner_bot = exnerh[kstart];
+        const TF rho_bot = rhorefh[kstart];
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -811,16 +809,21 @@ namespace lsm
                 const int ijk   = ij + kstart*ijcells;
                 const int ijk_s = ij + (kend_soil-1)*ijcells;
 
+                const TF T_bot = thl_bot[ij] * exner_bot;
+
                 // Disable canopy resistance in case of dew fall
                 const TF rs_lim = qsat_bot[ij] < qt[ijk] ? TF(0) : rs[ij];
+
+                // Switch between skin heat capacity or not
+                const TF cs_veg_lim = use_cs_veg ? cs_veg[ij] : TF(0);
 
                 // Switch conductivity skin layer stable/unstable conditions
                 const TF db = b[ijk] - b_bot[ij] + db_ref;
                 const TF lambda = db > 0 ? lambda_stable[ij] : lambda_unstable[ij];
 
                 // Recuring factors
-                const TF fH  = rhorefh[kstart] * cp<TF> / ra[ij];
-                const TF fLE = rhorefh[kstart] * Lv<TF> / (ra[ij] + rs_lim);
+                const TF fH  = rho_bot * cp<TF> / ra[ij];
+                const TF fLE = rho_bot * Lv<TF> / (ra[ij] + rs_lim);
 
                 // Net radiation; negative sign = net input of energy at surface
                 const TF Qnet = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij];
@@ -828,23 +831,23 @@ namespace lsm
                 // Solve for the new surface temperature
                 const TF num =
                     Qnet + lw_up[ij] + fH*T[ij] +
-                    fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot[ij] - qsat_bot[ij]) +
-                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*pow4(T_bot[ij]);
-                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*pow3(T_bot[ij]);
-
-                TF T_bot_new;
-                if (!is_cold_start)
-                    T_bot_new = (num + cs_veg[ij]/dt*T_bot[ij]) / (denom + cs_veg[ij]/dt);
-                else
-                    T_bot_new = num / denom;
+                    fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
+                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*pow4(T_bot);
+                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*pow3(T_bot);
+                const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
 
                 // Update qsat with linearised relation, to make sure that the SEB closes
-                const TF qsat_new = qsat_bot[ij] + dqsatdT_bot[ij] * (T_bot_new - T_bot[ij]);
+                const TF dT_bot = T_bot_new - T_bot;
+                const TF qsat_new  = qsat_bot[ij] + dqsatdT_bot[ij] * dT_bot;
 
                 // Calculate surface fluxes
                 H [ij] = fH  * (T_bot_new - T[ij]);
                 LE[ij] = fLE * (qsat_new - qt[ijk]);
                 G [ij] = lambda * (T_bot_new - T_soil[ijk_s]);
+                S [ij] = cs_veg_lim * (T_bot_new - T_bot)/dt;
+
+                // Update surface potential temperature tile
+                thl_bot[ij] = T_bot_new / exner_bot;
             }
     }
 
@@ -1217,6 +1220,12 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
     std::fill(
             fields.sp.at("qt")->fld_bot.begin(),
             fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
+
+    // Init surface temperature tiles
+    for (auto& tile : tiles)
+        std::fill(
+                tile.second.thl_bot.begin(),
+                tile.second.thl_bot.end(), thl_1[0]);
 }
 
 template<typename TF>
@@ -1341,6 +1350,7 @@ void Land_surface<TF>::create_fields_grid_stats(
         stats.add_time_series("H",  "Sensible heat flux", "W m-2", group_name);
         stats.add_time_series("LE", "Latent heat flux", "W m-2", group_name);
         stats.add_time_series("G",  "Soil heat flux", "W m-2", group_name);
+        stats.add_time_series("S",  "Storage heat flux", "W m-2", group_name);
 
         // Surface water balance
         stats.add_time_series("infiltration", "Infiltration precipitation/dew into soil", "kg m-2 s-1", group_name);
@@ -1365,6 +1375,10 @@ void Land_surface<TF>::create_fields_grid_stats(
 
             name = "G_" + tile.first;
             desc = "Soil heat flux " + tile.second.long_name;
+            stats.add_time_series(name, desc, "W m-2", group_name);
+
+            name = "S_" + tile.first;
+            desc = "Storage heat flux " + tile.second.long_name;
             stats.add_time_series(name, desc, "W m-2", group_name);
 
             name = "rs_" + tile.first;
@@ -1703,16 +1717,17 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     // Solve the surface energy balance
-    const int iter = timeloop.get_iteration();
-    const bool is_cold_start = iter == 0 ? true : false;
-
     for (auto& tile : tiles)
+    {
+        const bool use_cs_veg = tile.first=="soil" ? false : true;
+
         lsm::calc_fluxes(
                 tile.second.H.data(), tile.second.LE.data(),
-                tile.second.G.data(), T_a,
+                tile.second.G.data(), tile.second.S.data(),
+                tile.second.thl_bot.data(), T_a,
                 fields.sp.at("qt")->fld.data(),
                 fields.sps.at("t")->fld.data(),
-                T_bot, qsat_bot, dqsatdT_bot,
+                qsat_bot, dqsatdT_bot,
                 ra, tile.second.rs.data(),
                 lambda_stable.data(),
                 lambda_unstable.data(),
@@ -1722,12 +1737,14 @@ void Land_surface<TF>::exec_surface(
                 buoy->fld.data(),
                 buoy->fld_bot.data(),
                 rhorefh.data(),
+                exnerh.data(),
                 db_ref, TF(subdt),
                 agd.istart, agd.iend,
                 agd.jstart, agd.jend,
                 agd.kstart, sgd.kend,
                 agd.icells, agd.ijcells,
-                is_cold_start);
+                use_cs_veg);
+    }
 
     // Calculate dynamic tile fractions
     lsm::calc_tile_fractions(
@@ -1858,6 +1875,9 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
     get_tiled_mean(tmp1->fld_bot, "G");
     stats.calc_stats_2d("G", tmp1->fld_bot, offset);
 
+    get_tiled_mean(tmp1->fld_bot, "S");
+    stats.calc_stats_2d("S", tmp1->fld_bot, offset);
+
     // Surface water balance
     auto to_kgm2s = [&](std::vector<TF>& field)
     {
@@ -1881,6 +1901,7 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_stats_2d("H_" +tile.first, tile.second.H, offset);
         stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, offset);
         stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
+        stats.calc_stats_2d("S_" +tile.first, tile.second.S, offset);
         stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
     }
 
@@ -1986,6 +2007,19 @@ void Land_surface<TF>::get_tiled_mean(std::vector<TF>& mean, std::string name)
                 agd.jstart, agd.jend,
                 agd.icells);
 
+    else if (name == "S")
+        lsm::calc_tiled_mean(
+                mean.data(),
+                tiles.at("veg").S.data(),
+                tiles.at("soil").S.data(),
+                tiles.at("wet").S.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.icells);
+
     else
     {
         std::string err = "Cannot get tiled mean of variable \"" + name + "\"";
@@ -2054,8 +2088,12 @@ void Land_surface<TF>::save(const int itime)
     };
 
     save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
+
     save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
     save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    for (auto& tile : tiles)
+        save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -2129,8 +2167,12 @@ void Land_surface<TF>::load(const int iotime)
 
     // Load the surface temperature, humidity and liquid water content.
     load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
+
     load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
     load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
+
+    for (auto& tile : tiles)
+        load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
 
     // In case of heterogeneous land-surface, read spatial properties.
     if (!sw_homogeneous)
