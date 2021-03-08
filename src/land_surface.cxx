@@ -1400,7 +1400,20 @@ void Land_surface<TF>::create_fields_grid_stats(
     if (cross.get_switch())
     {
         std::vector<std::string> allowed_crossvars = {
-            "t_soil", "theta_soil", "wl", "G", "rs_veg", "rs_soil"};
+            "t_soil", "theta_soil", "wl", "G"};
+
+        // Cross-sections of properties per sub-grid tile
+        for (auto& tile : tiles)
+        {
+            allowed_crossvars.push_back("fraction_" + tile.first);
+            allowed_crossvars.push_back("rs_" + tile.first);
+            allowed_crossvars.push_back("H_" + tile.first);
+            allowed_crossvars.push_back("LE_" + tile.first);
+            allowed_crossvars.push_back("G_" + tile.first);
+            allowed_crossvars.push_back("S_" + tile.first);
+            allowed_crossvars.push_back("thl_bot_" + tile.first);
+        }
+
         crosslist = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1954,10 +1967,24 @@ void Land_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             get_tiled_mean(tmp1->fld_bot, "G");
             cross.cross_plane(tmp1->fld_bot.data(), "G", iotime);
         }
-        else if (it == "rs_veg")
-            cross.cross_plane(tiles.at("veg").rs.data(), "rs_veg", iotime);
-        else if (it == "rs_soil")
-            cross.cross_plane(tiles.at("soil").rs.data(), "rs_soil", iotime);
+
+        for (auto& tile : tiles)
+        {
+            if (it == "fraction_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).fraction.data(), "fraction_" + tile.first, iotime);
+            else if (it == "rs_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).rs.data(), "rs_" + tile.first, iotime);
+            else if (it == "H_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).H.data(), "H_" + tile.first, iotime);
+            else if (it == "LE_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).LE.data(), "LE_" + tile.first, iotime);
+            else if (it == "G_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).G.data(), "G_" + tile.first, iotime);
+            else if (it == "S_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).S.data(), "S_" + tile.first, iotime);
+            else if (it == "thl_bot_" + tile.first)
+                cross.cross_plane(tiles.at(tile.first).thl_bot.data(), "thl_bot_" + tile.first, iotime);
+        }
     }
 
     fields.release_tmp(tmp1);
