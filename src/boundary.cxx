@@ -325,6 +325,9 @@ void Boundary<TF>::set_values()
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
             }
+            else
+                master.print_message("OK\n");
+
             fields.release_tmp(tmp);
         }
         else
