@@ -101,6 +101,10 @@ namespace
 
         const TF Lmax = 1.e20;
 
+        // Limiter max z/L stable conditions:
+        const TF zL_max_stable = 10.;
+        const TF L_min_stable = zsl/zL_max_stable;
+
         // Avoid bfluxbot to be zero
         if (bfluxbot >= 0.)
             bfluxbot = std::max(TF(Constants::dsmall), bfluxbot);
@@ -118,7 +122,7 @@ namespace
                 if (bfluxbot >= 0.)
                     L = -Constants::dsmall;
                 else
-                    L = Constants::dsmall;
+                    L = L_min_stable;
             }
 
             if (bfluxbot >= 0.)
@@ -139,6 +143,10 @@ namespace
                          - (zsl/Lstart + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
                 L      = L - fx/fxdif;
+
+                // Limit L for stable conditions (similar to the limits of the lookup table)
+                if (L >= TF(0) && L < L_min_stable)
+                    L = L_min_stable;
                 ++n;
             }
 
@@ -148,7 +156,11 @@ namespace
             else
             {
                 // Convergence has not been reached, procedure restarted once
-                L = Constants::dsmall;
+                if (bfluxbot >= 0.)
+                    L = -Constants::dsmall;
+                else
+                    L = L_min_stable;
+
                 ++m;
                 nlim = 200;
             }
@@ -229,7 +241,7 @@ namespace
         if (m > 1)
         {
             std::cout << "ERROR: no convergence obukhov iteration!" << std::endl;
-            std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L << std::endl;
+            std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L <<  std::endl;
         }
 
         return L;
@@ -782,7 +794,8 @@ void Boundary_surface<TF>::init_surface(Input& input)
 
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(),  obuk.end(), Constants::dsmall);
-    std::fill(nobuk.begin(), nobuk.end(), 0);
+    if (sw_constant_z0)
+        std::fill(nobuk.begin(), nobuk.end(), 0);
 }
 
 template<typename TF>
