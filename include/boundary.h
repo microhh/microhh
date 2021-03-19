@@ -102,6 +102,7 @@ class Boundary
         virtual const std::vector<TF>& get_z0h() const;
         virtual const std::vector<TF>& get_ustar() const;
         virtual const std::vector<TF>& get_obuk() const;
+        virtual void get_duvdz(std::vector<TF>&, std::vector<TF>&);
 
         #ifdef USECUDA
         virtual TF* get_z0m_g();

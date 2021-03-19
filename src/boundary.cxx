@@ -815,17 +815,18 @@ const std::vector<TF>& Boundary<TF>::get_obuk() const
 }
 
 template<typename TF>
+void Boundary<TF>::get_duvdz(std::vector<TF>& dudz, std::vector<TF>& dvdz)
+{
+    throw std::runtime_error("Function get_duvdz() not implemented in base boundary.");
+}
+
+template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // else if (swboundary == "surface_patch")
-    //     return new Boundary_surface_patch(modelin, inputin);
-    // else if (swboundary == "patch")
-    //     return new Boundary_patch(modelin, inputin);
-    // else if (swboundary == "default")
     if (swboundary == "default")
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
     else if (swboundary == "surface")
