@@ -260,11 +260,7 @@ namespace
             const TF* const restrict v,
             const TF* const restrict w,
             const TF* const restrict N2,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
-            const TF* const restrict bfluxbot,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
+            const TF* const restrict dbdz,
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict dzi,
@@ -333,9 +329,10 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
 
-                    // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
+                    // TODO use the thermal expansion coefficient from the input later,
+                    // what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
-                    TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+                    TF RitPrratio = dbdz[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
                     // Mason mixing length
@@ -1136,8 +1133,10 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        const std::vector<TF>& ustar = boundary.get_ustar();
-        const std::vector<TF>& obuk  = boundary.get_obuk();
+        //const std::vector<TF>& ustar = boundary.get_ustar();
+        //const std::vector<TF>& obuk  = boundary.get_obuk();
+
+        boundary.get_dbdz(buoy_tmp->grad_bot, buoy_tmp->flux_bot);
 
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
             calc_evisc<TF, Surface_model::Enabled>(
@@ -1146,10 +1145,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    buoy_tmp->flux_bot.data(),
-                    ustar.data(), obuk.data(),
+                    buoy_tmp->grad_bot.data(),
                     gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
@@ -1164,10 +1160,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    buoy_tmp->flux_bot.data(),
-                    nullptr, nullptr,
+                    nullptr,
                     gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,

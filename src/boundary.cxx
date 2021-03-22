@@ -797,27 +797,15 @@ const std::vector<TF>& Boundary<TF>::get_z0m() const
 }
 
 template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_z0h() const
-{
-    throw std::runtime_error("Function get_z0h() not implemented in base boundary.");
-}
-
-template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_ustar() const
-{
-    throw std::runtime_error("Function get_ustar() not implemented in base boundary.");
-}
-
-template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_obuk() const
-{
-    throw std::runtime_error("Function get_obuk() not implemented in base boundary.");
-}
-
-template<typename TF>
 void Boundary<TF>::get_duvdz(std::vector<TF>& dudz, std::vector<TF>& dvdz)
 {
     throw std::runtime_error("Function get_duvdz() not implemented in base boundary.");
+}
+
+template<typename TF>
+void Boundary<TF>::get_dbdz(std::vector<TF>& dbdz, std::vector<TF>& bfluxbot)
+{
+    throw std::runtime_error("Function get_dbdz() not implemented in base boundary.");
 }
 
 template<typename TF>

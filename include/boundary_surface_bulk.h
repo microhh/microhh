@@ -39,12 +39,11 @@ class Boundary_surface_bulk : public Boundary<TF>
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
         void set_values();
 
-        void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
+        void get_ra(Field3d<TF>&) { throw std::runtime_error(
+                "Function get_ra() not implemented in boundary_surface_bulk.");}
         const std::vector<TF>& get_z0m() const { return z0m; };
-        const std::vector<TF>& get_z0h() const { return z0h; };
-        const std::vector<TF>& get_ustar() const { return ustar; };
-        const std::vector<TF>& get_obuk() const { return obuk; };
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
+        void get_dbdz(std::vector<TF>&, std::vector<TF>&);
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);

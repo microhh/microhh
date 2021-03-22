@@ -41,10 +41,8 @@ class Boundary_surface : public Boundary<TF>
 
         void get_ra(Field3d<TF>&);
         const std::vector<TF>& get_z0m() const { return z0m; };
-        const std::vector<TF>& get_z0h() const { return z0h; };
-        const std::vector<TF>& get_ustar() const { return ustar; };
-        const std::vector<TF>& get_obuk() const { return obuk; };
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
+        void get_dbdz(std::vector<TF>&, std::vector<TF>&);
 
         void calc_mo_stability(Thermo<TF>&);
         void calc_mo_bcs_momentum(Thermo<TF>&);

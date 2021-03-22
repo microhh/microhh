@@ -681,6 +681,26 @@ namespace
                 dvdz[ij] = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
             }
     }
+
+    template<typename TF>
+    void calc_dbdz(
+            TF* const restrict dbdz,
+            const TF* const restrict bfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                dbdz[ij] = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]);
+            }
+    }
 }
 
 template<typename TF>
@@ -1216,6 +1236,21 @@ void Boundary_surface<TF>::get_duvdz(
             gd.jstart, gd.jend,
             gd.kstart,
             gd.icells, gd.ijcells);
+}
+
+template<typename TF>
+void Boundary_surface<TF>::get_dbdz(
+        std::vector<TF>& dbdz, std::vector<TF>& bfluxbot)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_dbdz(
+            dbdz.data(), bfluxbot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 }
 #endif
 
