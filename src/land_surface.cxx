@@ -580,6 +580,7 @@ namespace lsm
         tile.G.resize(ijcells);
         tile.S.resize(ijcells);
         tile.thl_bot.resize(ijcells);
+        tile.qt_bot.resize(ijcells);
     }
 
     template<typename TF>
@@ -773,6 +774,7 @@ namespace lsm
             TF* const restrict G,
             TF* const restrict S,
             TF* const restrict thl_bot,
+            TF* const restrict qt_bot,
             const TF* const restrict T,
             const TF* const restrict qt,
             const TF* const restrict T_soil,
@@ -846,8 +848,9 @@ namespace lsm
                 G [ij] = lambda * (T_bot_new - T_soil[ijk_s]);
                 S [ij] = cs_veg_lim * (T_bot_new - T_bot)/dt;
 
-                // Update surface potential temperature tile
+                // Update skin values
                 thl_bot[ij] = T_bot_new / exner_bot;
+                qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Lv<TF>);
             }
     }
 
@@ -1223,9 +1226,15 @@ void Land_surface<TF>::create_cold_start(Input& input, Netcdf_handle& input_nc)
 
     // Init surface temperature tiles
     for (auto& tile : tiles)
+    {
         std::fill(
                 tile.second.thl_bot.begin(),
                 tile.second.thl_bot.end(), thl_1[0]);
+
+        std::fill(
+                tile.second.qt_bot.begin(),
+                tile.second.qt_bot.end(), qt_1[0]);
+    }
 }
 
 template<typename TF>
@@ -1737,7 +1746,9 @@ void Land_surface<TF>::exec_surface(
         lsm::calc_fluxes(
                 tile.second.H.data(), tile.second.LE.data(),
                 tile.second.G.data(), tile.second.S.data(),
-                tile.second.thl_bot.data(), T_a,
+                tile.second.thl_bot.data(),
+                tile.second.qt_bot.data(),
+                T_a,
                 fields.sp.at("qt")->fld.data(),
                 fields.sps.at("t")->fld.data(),
                 qsat_bot, dqsatdT_bot,
@@ -2120,7 +2131,10 @@ void Land_surface<TF>::save(const int itime)
     save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
 
     for (auto& tile : tiles)
+    {
         save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
+        save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
+    }
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
@@ -2199,7 +2213,10 @@ void Land_surface<TF>::load(const int iotime)
     load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
 
     for (auto& tile : tiles)
+    {
         load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
+        load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
+    }
 
     // In case of heterogeneous land-surface, read spatial properties.
     if (!sw_homogeneous)

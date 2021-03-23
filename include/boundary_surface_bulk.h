@@ -45,9 +45,9 @@ class Boundary_surface_bulk : public Boundary<TF>
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
         void get_dbdz(std::vector<TF>&, std::vector<TF>&);
 
-        void calc_mo_stability(Thermo<TF>&);
-        void calc_mo_bcs_momentum(Thermo<TF>&);
-        void calc_mo_bcs_scalars(Thermo<TF>&);
+        void calc_mo_stability(Thermo<TF>&, Land_surface<TF>&);
+        void calc_mo_bcs_momentum(Thermo<TF>&, Land_surface<TF>&);
+        void calc_mo_bcs_scalars(Thermo<TF>&, Land_surface<TF>&);
 
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);

@@ -595,6 +595,24 @@ namespace
     }
 
     template<typename TF>
+    void calc_buoyancy_bot(
+            TF* const restrict b_bot,
+            const TF* const restrict thl_bot,
+            const TF* const restrict qt_bot,
+            const TF* const restrict thvrefh,
+            const int icells, const int jcells, const int kstart)
+    {
+        // assume no liquid water at the lowest model level
+        for (int j=0; j<jcells; j++)
+            #pragma ivdep
+            for (int i=0; i<icells; i++)
+            {
+                const int ij  = i + j*icells;
+                b_bot[ij] = buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
+            }
+    }
+
+    template<typename TF>
     void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
                                TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
                                const int icells, const int jcells, const int kstart,
@@ -1336,39 +1354,55 @@ void Thermo_moist<TF>::get_land_surface_fields(Field3d<TF>& tmp)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_moist<TF>::get_buoyancy_surf(
+        Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     Background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(),
-                      fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
-                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
-                      base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
+    calc_buoyancy_bot(
+            b.fld.data(), b.fld_bot.data(),
+            fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
+            base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+            gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
+template<typename TF>
+void Thermo_moist<TF>::get_buoyancy_surf(
+        std::vector<TF>& b_bot, std::vector<TF>& thl_bot, std::vector<TF>& qt_bot)
+{
+    auto& gd = grid.get_grid_data();
+
+    calc_buoyancy_bot(
+            b_bot.data(), thl_bot.data(), qt_bot.data(),
+            bs.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+}
 
 template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     Background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+            gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -1421,6 +1455,8 @@ TF Thermo_moist<TF>::get_db_ref() const
     auto& gd = grid.get_grid_data();
     return Constants::grav<TF>/bs.thvref[gd.kstart]*(bs.thvref[gd.kstart] - bs.thvrefh[gd.kstart]);
 }
+
+
 
 template<typename TF>
 void Thermo_moist<TF>::get_prog_vars(std::vector<std::string>& list)

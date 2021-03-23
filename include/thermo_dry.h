@@ -67,6 +67,8 @@ class Thermo_dry : public Thermo<TF>
         void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool);
         void get_buoyancy_surf(Field3d<TF>&, bool);
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
+            { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
         void get_buoyancy_fluxbot(Field3d<TF>&, bool);
         void get_temperature_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;

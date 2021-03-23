@@ -97,6 +97,8 @@ class Thermo_vapor : public Thermo<TF>
         #endif
 
         // Functions which are not implemented and throw error
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
+            { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_land_surface_fields(Field3d<TF>&)

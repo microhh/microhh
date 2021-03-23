@@ -66,6 +66,8 @@ class Thermo_buoy : public Thermo<TF>
         TF get_buoyancy_diffusivity();
 
         // Functions which are not implemented and throw error
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
+            { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
         void get_temperature_bot(Field3d<TF>&, bool)
             { throw std::runtime_error("Function get_temperature_bot not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const

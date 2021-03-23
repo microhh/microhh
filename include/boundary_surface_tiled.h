@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_SURFACE_H
-#define BOUNDARY_SURFACE_H
+#ifndef BOUNDARY_SURFACE_TILED_H
+#define BOUNDARY_SURFACE_TILED_H
 
 #include "boundary.h"
 #include "stats.h"
@@ -29,11 +29,25 @@
 template<typename> class Diff;
 
 template<typename TF>
-class Boundary_surface : public Boundary<TF>
+struct MO_surface_tile
+{
+    std::vector<TF> obuk;   // Obukhov length (m)
+    std::vector<TF> ustar;  // Friction velocity (m s-1)
+
+    std::vector<TF> z0m;    // Roughness length momentum (m)
+    std::vector<TF> z0h;    // Roughness length scalars (m)
+};
+
+template<typename TF>
+using MO_tile_map = std::map<std::string, MO_surface_tile<TF>>;
+
+
+template<typename TF>
+class Boundary_surface_tiled : public Boundary<TF>
 {
     public:
-        Boundary_surface(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        ~Boundary_surface();
+        Boundary_surface_tiled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Boundary_surface_tiled();
 
         void init(Input&, Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
@@ -55,23 +69,9 @@ class Boundary_surface : public Boundary<TF>
         void load(const int);
         void save(const int);
 
-        #ifdef USECUDA
-        // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS
-
-        TF* get_z0m_g() { return z0m_g; };
-        TF* get_ustar_g() { return ustar_g; };
-        TF* get_obuk_g() { return obuk_g; };
-        #endif
-
     protected:
-        void process_input(Input&, Thermo<TF>&); // Process and check the surface input
+        void check_settings(); // Check input settings
         void init_surface(Input&); // Allocate and initialize the surface arrays
-        void init_solver(); // Prepare the lookup table's for the surface layer solver
-        void set_ustar(); // Set fixed ustar
 
     private:
         using Boundary<TF>::master;
@@ -90,36 +90,24 @@ class Boundary_surface : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-        TF ustarin;
+        // Switch between namelist or 2D field input z0m/h
+        bool sw_constant_z0;
 
-        std::vector<float> zL_sl;
-        std::vector<float> f_sl;
+        // Tile properties
+        MO_tile_map<TF> tiles;
 
-        std::vector<TF> z0m;
-        std::vector<TF> z0h;
-
+        // Tile averaged quantities
         std::vector<TF> ustar;
         std::vector<TF> obuk;
-        std::vector<int> nobuk;
 
-        #ifdef USECUDA
-        TF* z0m_g;
-        TF* z0h_g;
-        TF* obuk_g;
-        TF* ustar_g;
-        int* nobuk_g;
-
-        float* zL_sl_g;
-        float* f_sl_g;
-        #endif
+        // Only used for `mlen` calculation in diffusion:
+        std::vector<TF> z0m;
 
         Boundary_type thermobc;
-        bool sw_constant_z0;
 
     protected:
         // Cross sections
         std::vector<std::string> cross_list;         // List of active cross variables
-
         void update_slave_bcs();
 };
 #endif
