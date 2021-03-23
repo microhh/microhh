@@ -260,7 +260,7 @@ namespace
             const TF* const restrict v,
             const TF* const restrict w,
             const TF* const restrict N2,
-            const TF* const restrict dbdz,
+            const TF* const restrict bgradbot,
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict dzi,
@@ -332,7 +332,7 @@ namespace
                     // TODO use the thermal expansion coefficient from the input later,
                     // what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
-                    TF RitPrratio = dbdz[ij] / evisc[ijk] / tPr;
+                    TF RitPrratio = bgradbot[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
                     // Mason mixing length
@@ -1133,9 +1133,6 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        //const std::vector<TF>& ustar = boundary.get_ustar();
-        //const std::vector<TF>& obuk  = boundary.get_obuk();
-
         boundary.get_dbdz(buoy_tmp->grad_bot, buoy_tmp->flux_bot);
 
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
@@ -1146,7 +1143,8 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
                     buoy_tmp->grad_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
@@ -1161,7 +1159,8 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
                     nullptr,
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
