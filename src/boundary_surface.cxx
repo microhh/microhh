@@ -343,6 +343,7 @@ namespace
             boundary_cyclic.exec_2d(ufluxbot);
             boundary_cyclic.exec_2d(vfluxbot);
         }
+
         // the flux is known, calculate the surface value and gradient
         else if (bcbot == Boundary_type::Ustar_type)
         {

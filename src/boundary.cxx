@@ -795,6 +795,12 @@ void Boundary<TF>::get_ra(Field3d<TF>& fld)
 }
 
 template<typename TF>
+void Boundary<TF>::get_ra(Field3d<TF>& fld, std::string tile)
+{
+    throw std::runtime_error("Function get_ra() (tiled) not implemented in base boundary.");
+}
+
+template<typename TF>
 const std::vector<TF>& Boundary<TF>::get_z0m() const
 {
     throw std::runtime_error("Function get_z0m() not implemented in base boundary.");

@@ -54,6 +54,7 @@ class Boundary_surface_tiled : public Boundary<TF>
         void set_values();
 
         void get_ra(Field3d<TF>&);
+        void get_ra(Field3d<TF>&, std::string);
         const std::vector<TF>& get_z0m() const { return z0m; };
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
         void get_dbdz(std::vector<TF>&, std::vector<TF>&);
@@ -94,7 +95,7 @@ class Boundary_surface_tiled : public Boundary<TF>
         bool sw_constant_z0;
 
         // Tile properties
-        MO_tile_map<TF> tiles;
+        MO_tile_map<TF> mo_tiles;
 
         // Tile averaged quantities
         std::vector<TF> ustar;

@@ -41,6 +41,8 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         void get_ra(Field3d<TF>&) { throw std::runtime_error(
                 "Function get_ra() not implemented in boundary_surface_bulk.");}
+        void get_ra(Field3d<TF>&, std::string) { throw std::runtime_error(
+                "Function get_ra() (tiled) not implemented in boundary_surface_bulk.");}
         const std::vector<TF>& get_z0m() const { return z0m; };
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
         void get_dbdz(std::vector<TF>&, std::vector<TF>&);

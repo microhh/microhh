@@ -858,23 +858,27 @@ namespace lsm
     void calc_bcs(
             TF* const restrict thl_bot,
             TF* const restrict qt_bot,
-            const TF* const restrict thl,
-            const TF* const restrict qt,
+            TF* const restrict thl_fluxbot,
+            TF* const restrict qt_fluxbot,
             const TF* const restrict H_veg,
             const TF* const restrict H_soil,
             const TF* const restrict H_wet,
             const TF* const restrict LE_veg,
             const TF* const restrict LE_soil,
             const TF* const restrict LE_wet,
+            const TF* const restrict thl_bot_veg,
+            const TF* const restrict thl_bot_soil,
+            const TF* const restrict thl_bot_wet,
+            const TF* const restrict qt_bot_veg,
+            const TF* const restrict qt_bot_soil,
+            const TF* const restrict qt_bot_wet,
             const TF* const restrict tile_frac_veg,
             const TF* const restrict tile_frac_soil,
             const TF* const restrict tile_frac_wet,
-            const TF* const restrict ra,
             const TF* const restrict rhorefh,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
+            const int kstart, const int icells)
     {
         const TF rhocp_i = TF(1) / (rhorefh[kstart] * cp<TF>);
         const TF rholv_i = TF(1) / (rhorefh[kstart] * Lv<TF>);
@@ -884,22 +888,28 @@ namespace lsm
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                const int ijk = ij + kstart*ijcells;
 
                 // Tile averaged surface fluxes
-                const TF wthl = (
+                thl_fluxbot[ij] = (
                     tile_frac_veg [ij] * H_veg [ij] +
                     tile_frac_soil[ij] * H_soil[ij] +
                     tile_frac_wet [ij] * H_wet [ij] ) * rhocp_i;
 
-                const TF wqt = (
+                qt_fluxbot[ij] = (
                     tile_frac_veg [ij] * LE_veg [ij] +
                     tile_frac_soil[ij] * LE_soil[ij] +
                     tile_frac_wet [ij] * LE_wet [ij] ) * rholv_i;
 
-                // Calculate surface values
-                thl_bot[ij] = thl[ijk] + wthl * ra[ij];
-                qt_bot [ij] = qt[ijk]  + wqt  * ra[ij];
+                // Tile averaged surface values
+                thl_bot[ij] = (
+                    tile_frac_veg [ij] * thl_bot_veg [ij] +
+                    tile_frac_soil[ij] * thl_bot_soil[ij] +
+                    tile_frac_wet [ij] * thl_bot_wet [ij] );
+
+                qt_bot[ij] = (
+                    tile_frac_veg [ij] * qt_bot_veg [ij] +
+                    tile_frac_soil[ij] * qt_bot_soil[ij] +
+                    tile_frac_wet [ij] * qt_bot_wet [ij] );
             }
     }
 
@@ -1681,7 +1691,7 @@ void Land_surface<TF>::exec_surface(
     const std::vector<TF>& prefh = thermo.get_ph_vector();
 
     // Get surface aerodynamic resistance (calculated in tmp1->flux_bot...)
-    boundary.get_ra(*tmp1);
+    //boundary.get_ra(*tmp1);
 
     TF* ra = tmp1->flux_bot.data();
 
@@ -1743,6 +1753,9 @@ void Land_surface<TF>::exec_surface(
     {
         const bool use_cs_veg = tile.first=="soil" ? false : true;
 
+        // Get aerodynamic resistance for current tile;
+        boundary.get_ra(*tmp1, tile.first);
+
         lsm::calc_fluxes(
                 tile.second.H.data(), tile.second.LE.data(),
                 tile.second.G.data(), tile.second.S.data(),
@@ -1783,7 +1796,6 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     // Calculate changes in the liquid water reservoir
-
     lsm::calc_liquid_water_reservoir(
             fields.at2d.at("wl").data(),
             interception.data(),
@@ -1801,25 +1813,50 @@ void Land_surface<TF>::exec_surface(
             agd.icells);
 
     // Solve bottom boundary condition back
+    //lsm::calc_bcs(
+    //        fields.sp.at("thl")->fld_bot.data(),
+    //        fields.sp.at("qt")->fld_bot.data(),
+    //        fields.sp.at("thl")->fld.data(),
+    //        fields.sp.at("qt")->fld.data(),
+    //        tiles.at("veg").H.data(),
+    //        tiles.at("soil").H.data(),
+    //        tiles.at("wet").H.data(),
+    //        tiles.at("veg").LE.data(),
+    //        tiles.at("soil").LE.data(),
+    //        tiles.at("wet").LE.data(),
+    //        tiles.at("veg").fraction.data(),
+    //        tiles.at("soil").fraction.data(),
+    //        tiles.at("wet").fraction.data(),
+    //        ra, rhorefh.data(),
+    //        agd.istart, agd.iend,
+    //        agd.jstart, agd.jend,
+    //        agd.kstart,
+    //        agd.icells, agd.ijcells);
+
     lsm::calc_bcs(
             fields.sp.at("thl")->fld_bot.data(),
             fields.sp.at("qt")->fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->flux_bot.data(),
             tiles.at("veg").H.data(),
             tiles.at("soil").H.data(),
             tiles.at("wet").H.data(),
             tiles.at("veg").LE.data(),
             tiles.at("soil").LE.data(),
             tiles.at("wet").LE.data(),
+            tiles.at("veg").thl_bot.data(),
+            tiles.at("soil").thl_bot.data(),
+            tiles.at("wet").thl_bot.data(),
+            tiles.at("veg").qt_bot.data(),
+            tiles.at("soil").qt_bot.data(),
+            tiles.at("wet").qt_bot.data(),
             tiles.at("veg").fraction.data(),
             tiles.at("soil").fraction.data(),
             tiles.at("wet").fraction.data(),
-            ra, rhorefh.data(),
+            rhorefh.data(),
             agd.istart, agd.iend,
             agd.jstart, agd.jend,
-            agd.kstart,
-            agd.icells, agd.ijcells);
+            agd.kstart, agd.icells);
 
     if (sw_water)
     {
