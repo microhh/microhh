@@ -63,6 +63,7 @@ class Land_surface
 
         bool get_switch() { return sw_land_surface; }
         Tile_map<TF>& get_tiles() { return tiles; }
+        void set_tile_fractions();
 
         void save(int);
         void load(int);

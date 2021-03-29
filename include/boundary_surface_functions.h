@@ -23,6 +23,7 @@
 #ifndef BOUNDARY_SURFACE_FUNCTIONS_H
 #define BOUNDARY_SURFACE_FUNCTIONS_H
 
+#include <iostream>
 #include "constants.h"
 #include "monin_obukhov.h"
 

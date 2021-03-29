@@ -343,6 +343,10 @@ void Model<TF>::exec()
                 // Set the cyclic BCs of the prognostic 3D fields.
                 fields->set_prognostic_cyclic_bcs();
 
+                // Set tile fractions land-surface model first,
+                // as they are needed by the tiled SL solver
+                lsm->set_tile_fractions();
+
                 // Calculate Monin-Obukhov parameters (L, u*).
                 boundary->calc_mo_stability(*thermo, *lsm);
                 boundary->calc_mo_bcs_momentum(*thermo, *lsm);
@@ -381,7 +385,10 @@ void Model<TF>::exec()
 
                 // Update surface properties.
                 if (lsm->get_switch())
+                {
+                    boundary->calc_mo_stability(*thermo, *lsm);
                     boundary->calc_mo_bcs_scalars(*thermo, *lsm);
+                }
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();

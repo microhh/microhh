@@ -937,7 +937,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         diff_u<TF, Surface_model::Enabled>(
                 fields.mt.at("u")->fld.data(),
@@ -1046,7 +1046,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 
     const std::vector<TF>& z0m   = boundary.get_z0m();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         // Calculate strain rate using MO for velocity gradients lowest level.
         // Calculate (MO) gradients in tmp fields
@@ -1089,7 +1089,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         // Calculate eddy viscosity using MO at lowest model level
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1135,7 +1135,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 
         boundary.get_dbdz(buoy_tmp->grad_bot, buoy_tmp->flux_bot);
 
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1205,7 +1205,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         // Calculate the boundary fluxes.
         calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);

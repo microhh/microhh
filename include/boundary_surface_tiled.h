@@ -33,9 +33,6 @@ struct MO_surface_tile
 {
     std::vector<TF> obuk;   // Obukhov length (m)
     std::vector<TF> ustar;  // Friction velocity (m s-1)
-
-    std::vector<TF> z0m;    // Roughness length momentum (m)
-    std::vector<TF> z0h;    // Roughness length scalars (m)
 };
 
 template<typename TF>
@@ -100,8 +97,7 @@ class Boundary_surface_tiled : public Boundary<TF>
         // Tile averaged quantities
         std::vector<TF> ustar;
         std::vector<TF> obuk;
-
-        // Only used for `mlen` calculation in diffusion:
+        std::vector<TF> z0h;
         std::vector<TF> z0m;
 
         Boundary_type thermobc;

@@ -54,7 +54,8 @@ namespace
 
     template<typename TF>
     TF find_zL(
-            const float* const restrict zL, const float* const restrict f,
+            const float* const restrict zL,
+            const float* const restrict f,
             int& n, const float Ri)
     {
         // Determine search direction. All checks are at float accuracy.

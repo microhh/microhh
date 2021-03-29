@@ -56,8 +56,6 @@ namespace
     {
         tile.obuk.resize(ijcells);
         tile.ustar.resize(ijcells);
-        tile.z0m.resize(ijcells);
-        tile.z0h.resize(ijcells);
     }
 
     template<typename TF>
@@ -255,80 +253,51 @@ namespace
     }
 
     template<typename TF>
-    void calc_effective_ra(
-            TF* const restrict ra,
-            const TF* const restrict thl,
-            const TF* const restrict qt,
-            const TF* const restrict thl_bot,
-            const TF* const restrict qt_bot,
-            const TF* const restrict thl_fluxbot,
-            const TF* const restrict qt_fluxbot,
+    void surfs(
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
+            const int kstart, const int icells,
+            const int jcells, const int ijcells)
     {
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
+        const int jj = icells;
+        const int kk = ijcells;
 
-                ra[ij] = (thl_bot[ij] - thl[ijk]) / thl_fluxbot[ij];
+        for (int j=0; j<jcells; ++j)
+            #pragma ivdep
+            for (int i=0; i<icells; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                varfluxbot[ij] = ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]) * (varbot[ij] - var[ijk]);
+                vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
             }
     }
 
-//    template<typename TF>
-//    void surfs(
-//            TF* const restrict varbot,
-//            TF* const restrict vargradbot,
-//            TF* const restrict varfluxbot,
-//            const TF* const restrict ustar,
-//            const TF* const restrict obuk,
-//            const TF* const restrict var,
-//            const TF* const restrict z0h,
-//            const TF zsl, const Boundary_type bcbot,
-//            const int istart, const int iend,
-//            const int jstart, const int jend, const int kstart,
-//            const int icells, const int jcells, const int kk,
-//            Boundary_cyclic<TF>& boundary_cyclic)
-//    {
-//        const int jj = icells;
-//
-//        // the surface value is known, calculate the flux and gradient
-//        if (bcbot == Boundary_type::Dirichlet_type)
-//        {
-//            for (int j=0; j<jcells; ++j)
-//                #pragma ivdep
-//                for (int i=0; i<icells; ++i)
-//                {
-//                    const int ij  = i + j*jj;
-//                    const int ijk = i + j*jj + kstart*kk;
-//                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
-//                    // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-//                    // use the linearly interpolated grad, rather than the MO grad,
-//                    // to prevent giving unresolvable gradients to advection schemes
-//                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
-//                }
-//        }
-//        else if (bcbot == Boundary_type::Flux_type)
-//        {
-//            // the flux is known, calculate the surface value and gradient
-//            for (int j=0; j<jcells; ++j)
-//                #pragma ivdep
-//                for (int i=0; i<icells; ++i)
-//                {
-//                    const int ij  = i + j*jj;
-//                    const int ijk = i + j*jj + kstart*kk;
-//                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
-//                    // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-//                    // use the linearly interpolated grad, rather than the MO grad,
-//                    // to prevent giving unresolvable gradients to advection schemes
-//                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
-//                }
-//        }
-//    }
+    template<typename TF>
+    void set_bc(
+            TF* const restrict a,
+            const TF aval, const TF offset,
+            const int icells, const int jcells)
+    {
+        const int jj = icells;
+
+        for (int j=0; j<jcells; ++j)
+            #pragma ivdep
+            for (int i=0; i<icells; ++i)
+            {
+                const int ij = i + j*jj;
+                a[ij] = aval - offset;
+            }
+    }
 }
 
 template<typename TF>
@@ -405,20 +374,20 @@ void Boundary_surface_tiled<TF>::init_surface(Input& input)
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
     z0m.resize(gd.ijcells);
+    z0h.resize(gd.ijcells);
 
     // Switch between constant (from .ini) or spatial varying z0's
     sw_constant_z0 = input.get_item<TF>("boundary", "sw_constant_z0", "", true);
 
     // Init roughness lengths
     if (sw_constant_z0)
-        for (auto& tile : mo_tiles)
-        {
-            const TF z0m = input.get_item<TF>("boundary", "z0m", tile.first);
-            const TF z0h = input.get_item<TF>("boundary", "z0h", tile.first);
+    {
+        const TF z0m_c = input.get_item<TF>("boundary", "z0m", "");
+        const TF z0h_c = input.get_item<TF>("boundary", "z0h", "");
 
-            std::fill(tile.second.z0m.begin(), tile.second.z0m.end(), z0m);
-            std::fill(tile.second.z0h.begin(), tile.second.z0h.end(), z0m);
-        }
+        std::fill(z0m.begin(), z0m.end(), z0m_c);
+        std::fill(z0h.begin(), z0h.end(), z0h_c);
+    }
 
     // Initialize the obukhov lengths on a small number.
     for (auto& tile : mo_tiles)
@@ -455,6 +424,21 @@ void Boundary_surface_tiled<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Boundary_surface_tiled<TF>::set_values()
 {
+    auto& gd = grid.get_grid_data();
+
+    // Call the base class function.
+    Boundary<TF>::set_values();
+
+    // Override the boundary settings in order to enforce dirichlet BC for surface model.
+    set_bc<TF>(
+            fields.mp.at("u")->fld_bot.data(),
+            ubot, grid.utrans,
+            gd.icells, gd.jcells);
+
+    set_bc<TF>(
+            fields.mp.at("v")->fld_bot.data(),
+            ubot, grid.utrans,
+            gd.icells, gd.jcells);
 }
 
 #ifndef USECUDA
@@ -504,8 +488,8 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
                 dutot->fld_bot.data(),
                 buoy->fld.data(),
                 buoy->fld_bot.data(),
-                tile.second.z0m.data(),
-                tile.second.z0h.data(),
+                z0m.data(),
+                z0h.data(),
                 db_ref, gd.z[gd.kstart],
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -574,42 +558,35 @@ void Boundary_surface_tiled<TF>::calc_mo_bcs_scalars(
         Thermo<TF>& thermo, Land_surface<TF>& lsm)
 {
     auto& gd = grid.get_grid_data();
-    auto tmp  = fields.get_tmp();
 
-    // Calculate "effective" aerodynamic resistance
-    calc_effective_ra(
-            tmp->fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            fields.sp.at("qt")->fld_bot.data(),
-            fields.sp.at("thl")->flux_bot.data(),
-            fields.sp.at("qt")->flux_bot.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
-
-    throw 1;
-
-    //for (auto& it : fields.sp)
-    //    surfs(it.second->fld_bot.data(),
-    //          it.second->grad_bot.data(),
-    //          it.second->flux_bot.data(),
-    //          ustar.data(), obuk.data(),
-    //          it.second->fld.data(), z0h.data(),
-    //          gd.z[gd.kstart], sbc.at(it.first).bcbot,
-    //          gd.istart, gd.iend,
-    //          gd.jstart, gd.jend, gd.kstart,
-    //          gd.icells, gd.jcells, gd.ijcells,
-    //          boundary_cyclic);
-
-    fields.release_tmp(tmp);
+    for (auto& it : fields.sp)
+    {
+        surfs(it.second->fld_bot.data(),
+              it.second->grad_bot.data(),
+              it.second->flux_bot.data(),
+              ustar.data(), obuk.data(),
+              it.second->fld.data(), z0h.data(),
+              gd.z[gd.kstart],
+              gd.istart, gd.iend,
+              gd.jstart, gd.jend,
+              gd.kstart, gd.icells,
+              gd.jcells, gd.ijcells);
+    }
 }
 
 template<typename TF>
 void Boundary_surface_tiled<TF>::get_ra(Field3d<TF>& fld)
 {
+    auto& gd = grid.get_grid_data();
+
+    calc_ra(fld.flux_bot.data(),
+            ustar.data(),
+            obuk.data(),
+            z0h.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 }
 
 template<typename TF>
@@ -620,7 +597,7 @@ void Boundary_surface_tiled<TF>::get_ra(Field3d<TF>& fld, std::string tile)
     calc_ra(fld.flux_bot.data(),
             mo_tiles.at(tile).ustar.data(),
             mo_tiles.at(tile).obuk.data(),
-            mo_tiles.at(tile).z0h.data(),
+            z0h.data(),
             gd.z[gd.kstart],
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
@@ -631,12 +608,37 @@ template<typename TF>
 void Boundary_surface_tiled<TF>::get_duvdz(
         std::vector<TF>& dudz, std::vector<TF>& dvdz)
 {
+    auto& gd = grid.get_grid_data();
+
+    Boundary_surface_functions::calc_duvdz(
+            dudz.data(), dvdz.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
 }
 
 template<typename TF>
 void Boundary_surface_tiled<TF>::get_dbdz(
         std::vector<TF>& dbdz, std::vector<TF>& bfluxbot)
 {
+    auto& gd = grid.get_grid_data();
+
+    Boundary_surface_functions::calc_dbdz(
+            dbdz.data(), bfluxbot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 }
 #endif
 
