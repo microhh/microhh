@@ -50,47 +50,6 @@ namespace
     namespace fm = Fast_math;
     namespace bsf = Boundary_surface_functions;
 
-    // Size of the lookup table.
-    const int nzL = 10000; // Size of the lookup table for MO iterations.
-
-    template<typename TF>
-    TF find_zL(
-            const float* const restrict zL,
-            const float* const restrict f,
-            int& n, const float Ri)
-    {
-        // Determine search direction. All checks are at float accuracy.
-        if ( (f[n]-Ri) > 0.f )
-            while ( (f[n-1]-Ri) > 0.f && n > 0.f) { --n; }
-        else
-            while ( (f[n]-Ri) < 0.f && n < (nzL-1) ) { ++n; }
-
-        const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-
-        return zL0;
-    }
-
-    template<typename TF>
-    TF calc_obuk_noslip_flux_lookup(
-            const float* restrict zL, const float* restrict f,
-            int& n,
-            const TF du, const TF bfluxbot, const TF zsl)
-    {
-        // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
-        return zsl/find_zL<TF>(zL, f, n, Ri);
-    }
-
-    template<typename TF>
-    TF calc_obuk_noslip_dirichlet_lookup(
-            const float* restrict zL, const float* restrict f,
-            int& n,
-            const TF du, const TF db, const TF zsl)
-    {
-        // Calculate the appropriate Richardson number and reduce precision.
-        const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return zsl/find_zL<TF>(zL, f, n, Ri);
-    }
 
     template<typename TF>
     void set_bc(
@@ -205,7 +164,7 @@ namespace
 
                     // Switch between the iterative and lookup solver
                     if (sw_constant_z0)
-                        obuk[ij] = calc_obuk_noslip_flux_lookup(
+                        obuk[ij] = bsf::calc_obuk_noslip_flux_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                     else
                         obuk[ij] = bsf::calc_obuk_noslip_flux_iterative(
@@ -226,7 +185,7 @@ namespace
 
                     // Switch between the iterative and lookup solver
                     if (sw_constant_z0)
-                        obuk[ij] = calc_obuk_noslip_dirichlet_lookup(
+                        obuk[ij] = bsf::calc_obuk_noslip_dirichlet_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     else
                         obuk[ij] = bsf::calc_obuk_noslip_dirichlet_iterative(
@@ -464,26 +423,6 @@ namespace
                     vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
                 }
         }
-    }
-
-    template<typename TF>
-    void calc_ra(
-            TF* const restrict ra,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
-            const TF* const restrict z0h,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int icells)
-    {
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*icells;
-                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
-            }
     }
 }
 
@@ -731,7 +670,8 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "ra")
         {
-            calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+            bsf::calc_ra(
+                    tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
             cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
@@ -829,62 +769,15 @@ void Boundary_surface<TF>::init_solver()
 {
     auto& gd = grid.get_grid_data();
 
-    zL_sl.resize(nzL);
-    f_sl.resize(nzL);
+    zL_sl.resize(nzL_lut);
+    f_sl.resize(nzL_lut);
 
-    std::vector<TF> zL_tmp(nzL);
-
-    // BvS: TMP
-    const TF z0m_hom = z0m[0];
-    const TF z0h_hom = z0h[0];
-
-    // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
-    // and stretch up to -1e4 in the negative limit.
-    // Alter next three values in case the range need to be changed.
-    const TF zL_min = -1.e4;
-    const TF zLrange_min = -5.;
-    const TF zLrange_max = 10.;
-
-    TF dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
-    zL_tmp[0] = -zLrange_max;
-    for (int n=1; n<9*nzL/10; ++n)
-        zL_tmp[n] = zL_tmp[n-1] + dzL;
-
-    // Stretch the remainder of the z/L values far down for free convection.
-    const TF zLend = -(zL_min - zLrange_min);
-
-    // Find stretching that ends up at the correct value using geometric progression.
-    TF r  = 1.01;
-    TF r0 = Constants::dhuge;
-    while (std::abs( (r-r0)/r0 ) > 1.e-10)
-    {
-        r0 = r;
-        r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL/10.) ) );
-    }
-
-    for (int n=9*nzL/10; n<nzL; ++n)
-    {
-        zL_tmp[n] = zL_tmp[n-1] + dzL;
-        dzL *= r;
-    }
-
-    // Calculate the final array and delete the temporary array.
-    for (int n=0; n<nzL; ++n)
-        zL_sl[n] = -zL_tmp[nzL-n-1];
-
-    // Calculate the evaluation function.
-    if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
-    {
-        const TF zsl = gd.z[gd.kstart];
-        for (int n=0; n<nzL; ++n)
-            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m_hom, zsl/zL_sl[n]), 3);
-    }
-    else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-    {
-        const TF zsl = gd.z[gd.kstart];
-        for (int n=0; n<nzL; ++n)
-            f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m_hom, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h_hom, zsl/zL_sl[n]);
-    }
+    bsf::prepare_lut(
+        zL_sl.data(),
+        f_sl.data(),
+        z0m[0], z0h[0],
+        gd.z[gd.kstart], nzL_lut,
+        mbcbot, thermobc);
 }
 
 #ifndef USECUDA
@@ -993,7 +886,8 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_ra(fld.flux_bot.data(),
+    bsf::calc_ra(
+            fld.flux_bot.data(),
             ustar.data(),
             obuk.data(),
             z0h.data(),
@@ -1009,7 +903,7 @@ void Boundary_surface<TF>::get_duvdz(
 {
     auto& gd = grid.get_grid_data();
 
-    Boundary_surface_functions::calc_duvdz(
+    bsf::calc_duvdz(
             dudz.data(), dvdz.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -1031,7 +925,7 @@ void Boundary_surface<TF>::get_dbdz(
 {
     auto& gd = grid.get_grid_data();
 
-    Boundary_surface_functions::calc_dbdz(
+    bsf::calc_dbdz(
             dbdz.data(), bfluxbot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],

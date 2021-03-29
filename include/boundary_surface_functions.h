@@ -33,6 +33,66 @@ namespace Boundary_surface_functions
     namespace most = Monin_obukhov;
 
     template<typename TF>
+    void prepare_lut(
+        float* const restrict zL_sl,
+        float* const restrict f_sl,
+        const TF z0m,
+        const TF z0h,
+        const TF zsl,
+        const int nzL_lut,
+        const Boundary_type mbcbot,
+        const Boundary_type thermobc)
+    {
+        std::vector<TF> zL_tmp(nzL_lut);
+
+        // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
+        // and stretch up to -1e4 in the negative limit.
+        // Alter next three values in case the range need to be changed.
+        const TF zL_min = -1.e4;
+        const TF zLrange_min = -5.;
+        const TF zLrange_max = 10.;
+
+        TF dzL = (zLrange_max - zLrange_min) / (9.*nzL_lut/10.-1.);
+        zL_tmp[0] = -zLrange_max;
+        for (int n=1; n<9*nzL_lut/10; ++n)
+            zL_tmp[n] = zL_tmp[n-1] + dzL;
+
+        // Stretch the remainder of the z/L values far down for free convection.
+        const TF zLend = -(zL_min - zLrange_min);
+
+        // Find stretching that ends up at the correct value using geometric progression.
+        TF r  = 1.01;
+        TF r0 = Constants::dhuge;
+        while (std::abs( (r-r0)/r0 ) > 1.e-10)
+        {
+            r0 = r;
+            r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL_lut/10.) ) );
+        }
+
+        for (int n=9*nzL_lut/10; n<nzL_lut; ++n)
+        {
+            zL_tmp[n] = zL_tmp[n-1] + dzL;
+            dzL *= r;
+        }
+
+        // Calculate the final array and delete the temporary array.
+        for (int n=0; n<nzL_lut; ++n)
+            zL_sl[n] = -zL_tmp[nzL_lut-n-1];
+
+        // Calculate the evaluation function.
+        if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
+        {
+            for (int n=0; n<nzL_lut; ++n)
+                f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
+        }
+        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
+        {
+            for (int n=0; n<nzL_lut; ++n)
+                f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h, zsl/zL_sl[n]);
+        }
+    }
+
+    template<typename TF>
     void calc_duvdz(
             TF* const restrict dudz,
             TF* const restrict dvdz,
@@ -90,6 +150,45 @@ namespace Boundary_surface_functions
                 const int ij  = i + j*icells;
                 dbdz[ij] = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]);
             }
+    }
+
+    template<typename TF>
+    TF find_zL(
+            const float* const restrict zL,
+            const float* const restrict f,
+            int& n, const float Ri)
+    {
+        // Determine search direction. All checks are at float accuracy.
+        if ( (f[n]-Ri) > 0.f )
+            while ( (f[n-1]-Ri) > 0.f && n > 0.f) { --n; }
+        else
+            while ( (f[n]-Ri) < 0.f && n < (nzL_lut-1) ) { ++n; }
+
+        const TF zL0 = (n == 0 || n == nzL_lut-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+        return zL0;
+    }
+
+    template<typename TF>
+    TF calc_obuk_noslip_flux_lookup(
+            const float* restrict zL, const float* restrict f,
+            int& n,
+            const TF du, const TF bfluxbot, const TF zsl)
+    {
+        // Calculate the appropriate Richardson number and reduce precision.
+        const float Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
+        return zsl/find_zL<TF>(zL, f, n, Ri);
+    }
+
+    template<typename TF>
+    TF calc_obuk_noslip_dirichlet_lookup(
+            const float* restrict zL, const float* restrict f,
+            int& n,
+            const TF du, const TF db, const TF zsl)
+    {
+        // Calculate the appropriate Richardson number and reduce precision.
+        const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        return zsl/find_zL<TF>(zL, f, n, Ri);
     }
 
     template<typename TF>
@@ -249,6 +348,26 @@ namespace Boundary_surface_functions
         }
 
         return L;
+    }
+
+    template<typename TF>
+    void calc_ra(
+            TF* const restrict ra,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict z0h,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
+            }
     }
 }
 #endif

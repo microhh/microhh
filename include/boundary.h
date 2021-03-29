@@ -47,6 +47,9 @@ class Input;
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
 
+// Size of lookup table in Boundary_surface
+const int nzL_lut = 10000;
+
 /**
  * Structure containing the boundary options and values per 3d field.
  */

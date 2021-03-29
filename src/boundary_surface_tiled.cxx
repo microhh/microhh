@@ -233,26 +233,6 @@ namespace
     }
 
     template<typename TF>
-    void calc_ra(
-            TF* const restrict ra,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
-            const TF* const restrict z0h,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int icells)
-    {
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*icells;
-                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
-            }
-    }
-
-    template<typename TF>
     void surfs(
             TF* const restrict varbot,
             TF* const restrict vargradbot,
@@ -512,7 +492,8 @@ void Boundary_surface_tiled<TF>::exec_cross(Cross<TF>& cross, unsigned long ioti
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "ra")
         {
-            calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+            bsf::calc_ra(
+                    tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
             cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
@@ -532,7 +513,8 @@ void Boundary_surface_tiled<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
 
-    calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+    bsf::calc_ra(
+            tmp1->flux_bot.data(), ustar.data(), obuk.data(),
             z0h.data(), gd.z[gd.kstart], gd.istart,
             gd.iend, gd.jstart, gd.jend, gd.icells);
     stats.calc_stats_2d("ra", tmp1->flux_bot, no_offset);
@@ -551,7 +533,8 @@ void Boundary_surface_tiled<TF>::exec_column(Column<TF>& column)
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
 
-    calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+    bsf::calc_ra(
+            tmp1->flux_bot.data(), ustar.data(), obuk.data(),
             z0h.data(), gd.z[gd.kstart], gd.istart,
             gd.iend, gd.jstart, gd.jend, gd.icells);
     column.calc_time_series("ra", tmp1->flux_bot.data(), no_offset);
@@ -718,7 +701,8 @@ void Boundary_surface_tiled<TF>::get_ra(Field3d<TF>& fld)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_ra(fld.flux_bot.data(),
+    bsf::calc_ra(
+            fld.flux_bot.data(),
             ustar.data(),
             obuk.data(),
             z0h.data(),
@@ -733,7 +717,8 @@ void Boundary_surface_tiled<TF>::get_ra(Field3d<TF>& fld, std::string tile)
 {
     auto& gd = grid.get_grid_data();
 
-    calc_ra(fld.flux_bot.data(),
+    bsf::calc_ra(
+            fld.flux_bot.data(),
             mo_tiles.at(tile).ustar.data(),
             mo_tiles.at(tile).obuk.data(),
             z0h.data(),
@@ -749,7 +734,7 @@ void Boundary_surface_tiled<TF>::get_duvdz(
 {
     auto& gd = grid.get_grid_data();
 
-    Boundary_surface_functions::calc_duvdz(
+    bsf::calc_duvdz(
             dudz.data(), dvdz.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -771,7 +756,7 @@ void Boundary_surface_tiled<TF>::get_dbdz(
 {
     auto& gd = grid.get_grid_data();
 
-    Boundary_surface_functions::calc_dbdz(
+    bsf::calc_dbdz(
             dbdz.data(), bfluxbot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],
