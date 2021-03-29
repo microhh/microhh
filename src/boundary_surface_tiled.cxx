@@ -423,11 +423,79 @@ void Boundary_surface_tiled<TF>::init_surface(Input& input)
 template<typename TF>
 void Boundary_surface_tiled<TF>::load(const int iotime)
 {
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_constant_z0)
+    {
+        auto tmp1 = fields.get_tmp();
+        int nerror = 0;
+
+        auto load_2d_field = [&](
+                TF* const restrict field, const std::string& name, const int time)
+        {
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), time);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            if (field3d_io.load_xy_slice(
+                    field, tmp1->fld.data(),
+                    filename))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+
+            boundary_cyclic.exec_2d(field);
+        };
+
+        for (auto& tile : mo_tiles)
+            load_2d_field(tile.second.obuk.data(), "obuk_" + tile.first, iotime);
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error loading land surface fields");
+
+        fields.release_tmp(tmp1);
+    }
 }
 
 template<typename TF>
 void Boundary_surface_tiled<TF>::save(const int iotime)
 {
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_constant_z0)
+    {
+        auto tmp1 = fields.get_tmp();
+        int nerror = 0;
+
+        auto save_2d_field = [&](TF* const restrict field, const std::string& name)
+        {
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+            master.print_message("Saving \"%s\" ... ", filename);
+
+            const int kslice = 0;
+            if (field3d_io.save_xy_slice(
+                    field, tmp1->fld.data(),
+                    filename, kslice))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+        };
+
+        for (auto& tile : mo_tiles)
+            save_2d_field(tile.second.obuk.data(), "obuk_" + tile.first);
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error saving field(s)");
+
+        fields.release_tmp(tmp1);
+    }
 }
 
 template<typename TF>

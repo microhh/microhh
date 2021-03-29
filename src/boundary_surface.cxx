@@ -31,6 +31,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "diff.h"
+#include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_functions.h"
 #include "defines.h"
