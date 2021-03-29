@@ -311,6 +311,10 @@ Boundary_surface_tiled<TF>::Boundary_surface_tiled(
     mo_tiles.emplace("veg",  MO_surface_tile<TF>{});
     mo_tiles.emplace("soil", MO_surface_tile<TF>{});
     mo_tiles.emplace("wet",  MO_surface_tile<TF>{});
+
+    mo_tiles.at("veg" ).long_name = "vegetation";
+    mo_tiles.at("soil").long_name = "bare soil";
+    mo_tiles.at("wet" ).long_name = "wet skin";
 }
 
 template<typename TF>
@@ -323,6 +327,28 @@ void Boundary_surface_tiled<TF>::create(
         Input& input, Netcdf_handle& input_nc,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
+    const std::string group_name = "default";
+
+    // add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
+        stats.add_time_series("obuk", "Obukhov length", "m", group_name);
+        stats.add_time_series("ra", "Aerodynamic resistance", "s m-1", group_name);
+    }
+
+    if (column.get_switch())
+    {
+        column.add_time_series("ustar", "Surface friction velocity", "m s-1");
+        column.add_time_series("obuk", "Obukhov length", "m");
+        column.add_time_series("ra", "Aerodynamic resistance", "s m-1");
+    }
+
+    if (cross.get_switch())
+    {
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+        cross_list = cross.get_enabled_variables(allowed_crossvars);
+    }
 }
 
 template<typename TF>
@@ -407,17 +433,62 @@ void Boundary_surface_tiled<TF>::save(const int iotime)
 template<typename TF>
 void Boundary_surface_tiled<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    auto& gd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
+
+    for (auto& it : cross_list)
+    {
+        if (it == "ustar")
+            cross.cross_plane(ustar.data(), "ustar", iotime);
+        else if (it == "obuk")
+            cross.cross_plane(obuk.data(), "obuk", iotime);
+        else if (it == "ra")
+        {
+            calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+                    z0h.data(), gd.z[gd.kstart], gd.istart,
+                    gd.iend, gd.jstart, gd.jend, gd.icells);
+            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+        }
+    }
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>
 void Boundary_surface_tiled<TF>::exec_stats(Stats<TF>& stats)
 {
+    auto& gd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
+
+    const TF no_offset = 0.;
+    stats.calc_stats_2d("obuk", obuk, no_offset);
+    stats.calc_stats_2d("ustar", ustar, no_offset);
+
+    calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+            z0h.data(), gd.z[gd.kstart], gd.istart,
+            gd.iend, gd.jstart, gd.jend, gd.icells);
+    stats.calc_stats_2d("ra", tmp1->flux_bot, no_offset);
+
+    fields.release_tmp(tmp1);
 }
 
 #ifndef USECUDA
 template<typename TF>
 void Boundary_surface_tiled<TF>::exec_column(Column<TF>& column)
 {
+    auto& gd = grid.get_grid_data();
+    auto tmp1 = fields.get_tmp();
+
+    const TF no_offset = 0.;
+    column.calc_time_series("obuk", obuk.data(), no_offset);
+    column.calc_time_series("ustar", ustar.data(), no_offset);
+
+    calc_ra(tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+            z0h.data(), gd.z[gd.kstart], gd.istart,
+            gd.iend, gd.jstart, gd.jend, gd.icells);
+    column.calc_time_series("ra", tmp1->flux_bot.data(), no_offset);
+
+    fields.release_tmp(tmp1);
 }
 #endif
 

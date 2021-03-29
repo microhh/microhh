@@ -59,12 +59,17 @@ ft  = ~abl
 
 th = np.zeros(grid_les.ktot)
 qt = np.zeros(grid_les.ktot)
+u  = np.zeros(grid_les.ktot)
+ug = np.zeros(grid_les.ktot)
 
 th[abl] = th_b
 th[ft ] = th_b + dth + (grid_les.z[ft]-zi)*dthdz
 
 qt[abl] = qt_b
 qt[ft ] = qt_b + dqt + (grid_les.z[ft]-zi)*dqtdz
+
+u[:] = 5.
+ug[:] = 5.
 
 # Interpolate AFGL ozone onto LES grid:
 o3 = np.interp(grid_les.z, afgl.z, afgl.o3)
@@ -166,6 +171,8 @@ add_nc_var(nc, 'z', ('z'), grid_les.z)
 # Initial profiles:
 add_nc_var(nc_init, 'thl', ('z'), th)
 add_nc_var(nc_init, 'qt',  ('z'), qt)
+add_nc_var(nc_init, 'u',   ('z'), u)
+add_nc_var(nc_init, 'ug',  ('z'), ug)
 
 add_nc_var(nc_init, 'h2o', ('z'), qt/(ep-ep*qt))
 add_nc_var(nc_init, 'o3',  ('z'), o3*1e-6)

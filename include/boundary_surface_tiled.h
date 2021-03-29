@@ -31,6 +31,7 @@ template<typename> class Diff;
 template<typename TF>
 struct MO_surface_tile
 {
+    std::string long_name;  // Descriptive name of tile
     std::vector<TF> obuk;   // Obukhov length (m)
     std::vector<TF> ustar;  // Friction velocity (m s-1)
 };
