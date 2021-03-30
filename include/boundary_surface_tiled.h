@@ -34,6 +34,7 @@ struct MO_surface_tile
     std::string long_name;  // Descriptive name of tile
     std::vector<TF> obuk;   // Obukhov length (m)
     std::vector<TF> ustar;  // Friction velocity (m s-1)
+    std::vector<int> nobuk; // Index in LUT
 };
 
 template<typename TF>
@@ -71,6 +72,7 @@ class Boundary_surface_tiled : public Boundary<TF>
     protected:
         void check_settings(); // Check input settings
         void init_surface(Input&); // Allocate and initialize the surface arrays
+        void init_solver(); // Prepare the lookup table's for the surface layer solver
 
     private:
         using Boundary<TF>::master;
@@ -91,6 +93,10 @@ class Boundary_surface_tiled : public Boundary<TF>
 
         // Switch between namelist or 2D field input z0m/h
         bool sw_constant_z0;
+
+        std::vector<float> zL_sl;
+        std::vector<float> f_sl;
+        std::vector<int> nobuk;
 
         // Tile properties
         MO_tile_map<TF> mo_tiles;

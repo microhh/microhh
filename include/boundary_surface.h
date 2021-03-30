@@ -96,13 +96,13 @@ class Boundary_surface : public Boundary<TF>
 
         std::vector<float> zL_sl;
         std::vector<float> f_sl;
+        std::vector<int> nobuk;
 
         std::vector<TF> z0m;
         std::vector<TF> z0h;
 
         std::vector<TF> ustar;
         std::vector<TF> obuk;
-        std::vector<int> nobuk;
 
         #ifdef USECUDA
         TF* z0m_g;

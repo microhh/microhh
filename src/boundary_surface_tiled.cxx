@@ -52,10 +52,18 @@ namespace
     namespace bsf = Boundary_surface_functions;
 
     template<typename TF>
-    void init_tile(MO_surface_tile<TF>& tile, const int ijcells)
+    void init_tile(
+            MO_surface_tile<TF>& tile,
+            const int ijcells, const bool constant_z0)
     {
         tile.obuk.resize(ijcells);
         tile.ustar.resize(ijcells);
+
+        if (constant_z0)
+        {
+            tile.nobuk.resize(ijcells);
+            std::fill(tile.nobuk.begin(), tile.nobuk.end(), 0);
+        }
     }
 
     template<typename TF>
@@ -135,15 +143,18 @@ namespace
             }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_constant_z0>
     void stability(
             TF* const restrict ustar,
             TF* const restrict obuk,
+            int* const restrict nobuk,
             const TF* const restrict dutot,
             const TF* const restrict b,
             const TF* const restrict bbot,
             const TF* const restrict z0m,
             const TF* const restrict z0h,
+            const float* const restrict zL_sl,
+            const float* const restrict f_sl,
             const TF db_ref,
             const TF zsl,
             const int istart, const int iend,
@@ -164,8 +175,13 @@ namespace
                 const int ijk = i + j*jj + kstart*kk;
                 const TF db = b[ijk] - bbot[ij] + db_ref;
 
-                obuk[ij] = bsf::calc_obuk_noslip_dirichlet_iterative(
-                        obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+                if (sw_constant_z0)
+                    obuk[ij] = bsf::calc_obuk_noslip_dirichlet_lookup(
+                            zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
+                else
+                    obuk[ij] = bsf::calc_obuk_noslip_dirichlet_iterative(
+                            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
     }
@@ -345,6 +361,15 @@ void Boundary_surface_tiled<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    // save the bc of the first thermo field in case thermo is enabled
+    std::vector<std::string> thermolist;
+    thermo.get_prog_vars(thermolist);
+    auto it = thermolist.begin();
+    if (it != thermolist.end())
+        thermobc = sbc[*it].bcbot;
+    else
+        thermobc = Boundary_type::Flux_type;
 }
 
 template<typename TF>
@@ -372,9 +397,12 @@ void Boundary_surface_tiled<TF>::init_surface(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
+    // Switch between constant (from .ini) or spatial varying z0's
+    sw_constant_z0 = input.get_item<TF>("boundary", "sw_constant_z0", "", true);
+
     // Allocate the surface tiles
     for (auto& tile : mo_tiles)
-        init_tile(tile.second, gd.ijcells);
+        init_tile(tile.second, gd.ijcells, sw_constant_z0);
 
     // Grid point mean quantities
     obuk.resize(gd.ijcells);
@@ -382,20 +410,18 @@ void Boundary_surface_tiled<TF>::init_surface(Input& input)
     z0m.resize(gd.ijcells);
     z0h.resize(gd.ijcells);
 
-    // Switch between constant (from .ini) or spatial varying z0's
-    sw_constant_z0 = input.get_item<TF>("boundary", "sw_constant_z0", "", true);
-
     // Init roughness lengths
     if (sw_constant_z0)
     {
-        const TF z0m_c = input.get_item<TF>("boundary", "z0m", "");
-        const TF z0h_c = input.get_item<TF>("boundary", "z0h", "");
+        const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
+        const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
 
-        std::fill(z0m.begin(), z0m.end(), z0m_c);
-        std::fill(z0h.begin(), z0h.end(), z0h_c);
+        std::fill(z0m.begin(), z0m.end(), z0m_hom);
+        std::fill(z0h.begin(), z0h.end(), z0h_hom);
     }
 
     // Initialize the obukhov lengths on a small number.
+    // This is overwritten during warm starts
     for (auto& tile : mo_tiles)
         std::fill(tile.second.obuk.begin(), tile.second.obuk.end(), Constants::dsmall);
 }
@@ -431,6 +457,10 @@ void Boundary_surface_tiled<TF>::load(const int iotime)
 
         for (auto& tile : mo_tiles)
             load_2d_field(tile.second.obuk.data(), "obuk_" + tile.first, iotime);
+
+        // Read spatial z0 fields
+        load_2d_field(z0m.data(), "z0m", 0);
+        load_2d_field(z0h.data(), "z0h", 0);
 
         master.sum(&nerror, 1);
         if (nerror)
@@ -561,6 +591,27 @@ void Boundary_surface_tiled<TF>::set_values()
             fields.mp.at("v")->fld_bot.data(),
             ubot, grid.utrans,
             gd.icells, gd.jcells);
+
+    // Prepare the lookup table for the surface solver
+    if (sw_constant_z0)
+        init_solver();
+}
+
+// Prepare the surface layer solver.
+template<typename TF>
+void Boundary_surface_tiled<TF>::init_solver()
+{
+    auto& gd = grid.get_grid_data();
+
+    zL_sl.resize(nzL_lut);
+    f_sl.resize(nzL_lut);
+
+    bsf::prepare_lut(
+        zL_sl.data(),
+        f_sl.data(),
+        z0m[0], z0h[0],
+        gd.z[gd.kstart], nzL_lut,
+        mbcbot, thermobc);
 }
 
 #ifndef USECUDA
@@ -604,19 +655,38 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
                 lsm_tiles.at(tile.first).qt_bot);
 
         // Calculate ustar and Obukhov length
-        stability(
-                tile.second.ustar.data(),
-                tile.second.obuk.data(),
-                dutot->fld_bot.data(),
-                buoy->fld.data(),
-                buoy->fld_bot.data(),
-                z0m.data(),
-                z0h.data(),
-                db_ref, gd.z[gd.kstart],
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells);
+        if (sw_constant_z0)
+            stability<TF, true>(
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    tile.second.nobuk.data(),
+                    dutot->fld_bot.data(),
+                    buoy->fld.data(),
+                    buoy->fld_bot.data(),
+                    z0m.data(),
+                    z0h.data(),
+                    zL_sl.data(), f_sl.data(),
+                    db_ref, gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells);
+        else
+            stability<TF, false>(
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    nullptr,
+                    dutot->fld_bot.data(),
+                    buoy->fld.data(),
+                    buoy->fld_bot.data(),
+                    z0m.data(),
+                    z0h.data(),
+                    nullptr, nullptr,
+                    db_ref, gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells);
     }
 
     // Calculate tile fraction averaged friction velocity
