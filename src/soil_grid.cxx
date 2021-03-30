@@ -39,7 +39,7 @@ template<typename TF>
 Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin), grid(gridin)
 {
-    sw_land_surface = input.get_item<bool>("land_surface", "sw_land_surface", "", false);
+    sw_land_surface = input.get_item<bool>("land_surface", "swlandsurface", "", false);
 
     if (sw_land_surface)
     {

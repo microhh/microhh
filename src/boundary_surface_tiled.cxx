@@ -398,7 +398,7 @@ void Boundary_surface_tiled<TF>::init_surface(Input& input)
     auto& gd = grid.get_grid_data();
 
     // Switch between constant (from .ini) or spatial varying z0's
-    sw_constant_z0 = input.get_item<TF>("boundary", "sw_constant_z0", "", true);
+    sw_constant_z0 = input.get_item<TF>("boundary", "swconstantz0", "", true);
 
     // Allocate the surface tiles
     for (auto& tile : mo_tiles)

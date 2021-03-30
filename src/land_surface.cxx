@@ -1050,13 +1050,13 @@ Land_surface<TF>::Land_surface(
     master(masterin), grid(gridin), soil_grid(soilgridin),
     fields(fieldsin), boundary_cyclic(master, grid)
 {
-    sw_land_surface = inputin.get_item<bool>("land_surface", "sw_land_surface", "", false);
+    sw_land_surface = inputin.get_item<bool>("land_surface", "swlandsurface", "", false);
 
     if (sw_land_surface)
     {
-        sw_homogeneous   = inputin.get_item<bool>("land_surface", "sw_homogeneous", "", true);
-        sw_free_drainage = inputin.get_item<bool>("land_surface", "sw_free_drainage", "", true);
-        sw_water         = inputin.get_item<bool>("land_surface", "sw_water", "", false);
+        sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
+        sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
+        sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
 
         // Checks...
         if (sw_homogeneous && sw_water)

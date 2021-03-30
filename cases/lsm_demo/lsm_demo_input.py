@@ -204,7 +204,7 @@ add_nc_var(nc_rad, 'o2',  (), 0.2095)
 # Soil profiles:
 add_nc_var(nc_soil, 'z', ('z'), z_soil)
 
-if nl['land_surface']['sw_homogeneous']:
+if nl['land_surface']['swhomogeneous']:
     add_nc_var(nc_soil, 't_soil', ('z'), t_soil)
     add_nc_var(nc_soil, 'theta_soil', ('z'), theta_soil)
     add_nc_var(nc_soil, 'root_frac', ('z'), root_frac)
@@ -215,7 +215,7 @@ nc.close()
 # -------------------------------------------
 # Create input for heterogeneous land surface
 # -------------------------------------------
-if not nl['land_surface']['sw_homogeneous']:
+if not nl['land_surface']['swhomogeneous']:
 
     # Help class to simplify writing the input files for heterogeneous land surfaces:
     lsm_input = LSM_input(

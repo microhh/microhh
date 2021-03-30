@@ -497,7 +497,7 @@ template<typename TF>
 void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     // Switch between heterogeneous and homogeneous z0's
-    sw_constant_z0 = inputin.get_item<bool>("boundary", "sw_constant_z0", "", true);
+    sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
