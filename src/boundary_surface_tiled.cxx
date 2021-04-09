@@ -311,6 +311,8 @@ Boundary_surface_tiled<TF>::Boundary_surface_tiled(
     mo_tiles.at("veg" ).long_name = "vegetation";
     mo_tiles.at("soil").long_name = "bare soil";
     mo_tiles.at("wet" ).long_name = "wet skin";
+
+    sw_tile_stats  = inputin.get_item<bool>("boundary", "swtilestats", "", false);
 }
 
 template<typename TF>
@@ -331,6 +333,27 @@ void Boundary_surface_tiled<TF>::create(
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
         stats.add_time_series("ra", "Aerodynamic resistance", "s m-1", group_name);
+
+        if (sw_tile_stats)
+        {
+            // Tiled variables
+            std::string name;
+            std::string desc;
+            for (auto& tile : mo_tiles)
+            {
+                name = "ustar_" + tile.first;
+                desc = "Surface friction velocity " + tile.second.long_name;
+                stats.add_time_series(name, desc, "m s-1", group_name);
+
+                name = "obuk_" + tile.first;
+                desc = "Obukhov length " + tile.second.long_name;
+                stats.add_time_series(name, desc, "m", group_name);
+
+                name = "ra_" + tile.first;
+                desc = "Aerodynamic resistance " + tile.second.long_name;
+                stats.add_time_series(name, desc, "s m-1", group_name);
+            }
+        }
     }
 
     if (column.get_switch())
@@ -338,6 +361,27 @@ void Boundary_surface_tiled<TF>::create(
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
         column.add_time_series("ra", "Aerodynamic resistance", "s m-1");
+
+        if (sw_tile_stats)
+        {
+            // Tiled variables
+            std::string name;
+            std::string desc;
+            for (auto& tile : mo_tiles)
+            {
+                name = "ustar_" + tile.first;
+                desc = "Surface friction velocity " + tile.second.long_name;
+                column.add_time_series(name, desc, "m s-1");
+
+                name = "obuk_" + tile.first;
+                desc = "Obukhov length " + tile.second.long_name;
+                column.add_time_series(name, desc, "m");
+
+                name = "ra_" + tile.first;
+                desc = "Aerodynamic resistance " + tile.second.long_name;
+                column.add_time_series(name, desc, "s m-1");
+            }
+        }
     }
 
     if (cross.get_switch())
@@ -549,6 +593,23 @@ void Boundary_surface_tiled<TF>::exec_stats(Stats<TF>& stats)
             gd.iend, gd.jstart, gd.jend, gd.icells);
     stats.calc_stats_2d("ra", tmp1->flux_bot, no_offset);
 
+    if (sw_tile_stats)
+    {
+        for (auto& tile : mo_tiles)
+        {
+            stats.calc_stats_2d("obuk_" + tile.first, tile.second.obuk, no_offset);
+            stats.calc_stats_2d("ustar_" + tile.first, tile.second.ustar, no_offset);
+
+            bsf::calc_ra(
+                    tmp1->flux_bot.data(),
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    z0h.data(), gd.z[gd.kstart], gd.istart,
+                    gd.iend, gd.jstart, gd.jend, gd.icells);
+            stats.calc_stats_2d("ra_" + tile.first, tmp1->flux_bot, no_offset);
+        }
+    }
+
     fields.release_tmp(tmp1);
 }
 
@@ -568,6 +629,23 @@ void Boundary_surface_tiled<TF>::exec_column(Column<TF>& column)
             z0h.data(), gd.z[gd.kstart], gd.istart,
             gd.iend, gd.jstart, gd.jend, gd.icells);
     column.calc_time_series("ra", tmp1->flux_bot.data(), no_offset);
+
+    if (sw_tile_stats)
+    {
+        for (auto& tile : mo_tiles)
+        {
+            column.calc_time_series("obuk_" + tile.first, tile.second.obuk.data(), no_offset);
+            column.calc_time_series("ustar_" + tile.first, tile.second.ustar.data(), no_offset);
+
+            bsf::calc_ra(
+                    tmp1->flux_bot.data(),
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    z0h.data(), gd.z[gd.kstart], gd.istart,
+                    gd.iend, gd.jstart, gd.jend, gd.icells);
+            column.calc_time_series("ra_" + tile.first, tmp1->flux_bot.data(), no_offset);
+        }
+    }
 
     fields.release_tmp(tmp1);
 }

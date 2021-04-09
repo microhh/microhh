@@ -87,6 +87,7 @@ class Land_surface
         bool sw_homogeneous;
         bool sw_free_drainage;
         bool sw_water;
+        bool sw_tile_stats;
 
         TF tskin_water;
 

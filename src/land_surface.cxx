@@ -904,6 +904,27 @@ namespace lsm
     }
 
     template<typename TF>
+    void check_qtbot(
+            TF* const restrict qt_bot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                if (qt_bot[ij] < TF(0))
+                {
+                    std::cout << "Warning: limiting qt_bot >= 0" << std::endl;
+                    qt_bot[ij] = TF(0);
+                }
+            }
+    }
+
+    template<typename TF>
     void set_water_bcs(
             TF* const restrict thl_bot,
             TF* const restrict qt_bot,
@@ -1057,6 +1078,7 @@ Land_surface<TF>::Land_surface(
         sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
         sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
         sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
+        sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
 
         // Checks...
         if (sw_homogeneous && sw_water)
@@ -1368,39 +1390,41 @@ void Land_surface<TF>::create_fields_grid_stats(
         stats.add_time_series("LE", "Latent heat flux", "W m-2", group_name);
         stats.add_time_series("G",  "Soil heat flux", "W m-2", group_name);
         stats.add_time_series("S",  "Storage heat flux", "W m-2", group_name);
-
-        // Surface water balance
+        stats.add_time_series("rs",  "Storage heat flux", "W m-2", group_name);
         stats.add_time_series("infiltration", "Infiltration precipitation/dew into soil", "kg m-2 s-1", group_name);
         stats.add_time_series("runoff", "Soil water runoff", "kg m-2 s-1", group_name);
 
-        // Tiled variables
-        std::string name;
-        std::string desc;
-        for (auto& tile : tiles)
+        if (sw_tile_stats)
         {
-            name = "c_" + tile.first;
-            desc = "Tile fraction " + tile.second.long_name;
-            stats.add_time_series(name, desc, "-", group_name);
+            // Tiled variables
+            std::string name;
+            std::string desc;
+            for (auto& tile : tiles)
+            {
+                name = "c_" + tile.first;
+                desc = "Tile fraction " + tile.second.long_name;
+                stats.add_time_series(name, desc, "-", group_name);
 
-            name = "H_" + tile.first;
-            desc = "Sensible heat flux " + tile.second.long_name;
-            stats.add_time_series(name, desc, "W m-2", group_name);
+                name = "H_" + tile.first;
+                desc = "Sensible heat flux " + tile.second.long_name;
+                stats.add_time_series(name, desc, "W m-2", group_name);
 
-            name = "LE_" + tile.first;
-            desc = "Latent heat flux " + tile.second.long_name;
-            stats.add_time_series(name, desc, "W m-2", group_name);
+                name = "LE_" + tile.first;
+                desc = "Latent heat flux " + tile.second.long_name;
+                stats.add_time_series(name, desc, "W m-2", group_name);
 
-            name = "G_" + tile.first;
-            desc = "Soil heat flux " + tile.second.long_name;
-            stats.add_time_series(name, desc, "W m-2", group_name);
+                name = "G_" + tile.first;
+                desc = "Soil heat flux " + tile.second.long_name;
+                stats.add_time_series(name, desc, "W m-2", group_name);
 
-            name = "S_" + tile.first;
-            desc = "Storage heat flux " + tile.second.long_name;
-            stats.add_time_series(name, desc, "W m-2", group_name);
+                name = "S_" + tile.first;
+                desc = "Storage heat flux " + tile.second.long_name;
+                stats.add_time_series(name, desc, "W m-2", group_name);
 
-            name = "rs_" + tile.first;
-            desc = "Surface resistance " + tile.second.long_name;
-            stats.add_time_series(name, desc, "s m-1", group_name);
+                name = "rs_" + tile.first;
+                desc = "Surface resistance " + tile.second.long_name;
+                stats.add_time_series(name, desc, "s m-1", group_name);
+            }
         }
     }
 
@@ -1411,6 +1435,40 @@ void Land_surface<TF>::create_fields_grid_stats(
         column.add_time_series("H",  "Sensible heat flux", "W m-2");
         column.add_time_series("LE", "Latent heat flux", "W m-2");
         column.add_time_series("G",  "Soil heat flux", "W m-2");
+        column.add_time_series("S",  "Storage heat flux", "W m-2");
+
+        if (sw_tile_stats)
+        {
+            // Tiled variables
+            std::string name;
+            std::string desc;
+            for (auto& tile : tiles)
+            {
+                name = "c_" + tile.first;
+                desc = "Tile fraction " + tile.second.long_name;
+                column.add_time_series(name, desc, "-");
+
+                name = "H_" + tile.first;
+                desc = "Sensible heat flux " + tile.second.long_name;
+                column.add_time_series(name, desc, "W m-2");
+
+                name = "LE_" + tile.first;
+                desc = "Latent heat flux " + tile.second.long_name;
+                column.add_time_series(name, desc, "W m-2");
+
+                name = "G_" + tile.first;
+                desc = "Soil heat flux " + tile.second.long_name;
+                column.add_time_series(name, desc, "W m-2");
+
+                name = "S_" + tile.first;
+                desc = "Storage heat flux " + tile.second.long_name;
+                column.add_time_series(name, desc, "W m-2");
+
+                name = "rs_" + tile.first;
+                desc = "Surface resistance " + tile.second.long_name;
+                column.add_time_series(name, desc, "s m-1");
+            }
+        }
     }
 
     // Init the soil cross-sections
@@ -1847,6 +1905,13 @@ void Land_surface<TF>::exec_surface(
             agd.kstart,
             agd.icells, agd.ijcells);
 
+    //lsm::check_qtbot(
+    //        fields.sp.at("qt")->fld_bot.data(),
+    //        agd.istart, agd.iend,
+    //        agd.jstart, agd.jend,
+    //        agd.icells);
+
+
     if (sw_water)
     {
         // Set BCs for water grid points
@@ -1945,15 +2010,17 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("runoff", tmp1->fld_bot, offset);
 
     // Tiled variables
-    std::string name;
-    for (auto& tile : tiles)
+    if (sw_tile_stats)
     {
-        stats.calc_stats_2d("c_" +tile.first, tile.second.fraction, offset);
-        stats.calc_stats_2d("H_" +tile.first, tile.second.H, offset);
-        stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, offset);
-        stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
-        stats.calc_stats_2d("S_" +tile.first, tile.second.S, offset);
-        stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
+        for (auto& tile : tiles)
+        {
+            stats.calc_stats_2d("c_" +tile.first, tile.second.fraction, offset);
+            stats.calc_stats_2d("H_" +tile.first, tile.second.H, offset);
+            stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, offset);
+            stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
+            stats.calc_stats_2d("S_" +tile.first, tile.second.S, offset);
+            stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
+        }
     }
 
     fields.release_tmp(tmp1);
@@ -1980,6 +2047,22 @@ void Land_surface<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(tmp1->fld_bot, "G");
     column.calc_time_series("G", tmp1->fld_bot.data(), offset);
+
+    get_tiled_mean(tmp1->fld_bot, "S");
+    column.calc_time_series("S", tmp1->fld_bot.data(), offset);
+
+    if (sw_tile_stats)
+    {
+        for (auto& tile : tiles)
+        {
+            column.calc_time_series("c_" +tile.first, tile.second.fraction.data(), offset);
+            column.calc_time_series("H_" +tile.first, tile.second.H.data(), offset);
+            column.calc_time_series("LE_"+tile.first, tile.second.LE.data(), offset);
+            column.calc_time_series("G_" +tile.first, tile.second.G.data(), offset);
+            column.calc_time_series("S_" +tile.first, tile.second.S.data(), offset);
+            column.calc_time_series("rs_"+tile.first, tile.second.rs.data(), offset);
+        }
+    }
 
     fields.release_tmp(tmp1);
 }
@@ -2078,6 +2161,19 @@ void Land_surface<TF>::get_tiled_mean(std::vector<TF>& mean, std::string name)
                 tiles.at("veg").S.data(),
                 tiles.at("soil").S.data(),
                 tiles.at("wet").S.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                agd.icells);
+
+    else if (name == "rs")
+        lsm::calc_tiled_mean(
+                mean.data(),
+                tiles.at("veg").rs.data(),
+                tiles.at("soil").rs.data(),
+                tiles.at("wet").rs.data(),
                 tiles.at("veg").fraction.data(),
                 tiles.at("soil").fraction.data(),
                 tiles.at("wet").fraction.data(),

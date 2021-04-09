@@ -91,6 +91,8 @@ class Boundary_surface_tiled : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
+        bool sw_tile_stats;
+
         // Switch between namelist or 2D field input z0m/h
         bool sw_constant_z0;
 
