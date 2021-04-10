@@ -148,7 +148,7 @@ namespace Boundary_surface_functions
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                dbdz[ij] = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]);
+                dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
             }
     }
 

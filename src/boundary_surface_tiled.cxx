@@ -96,16 +96,23 @@ namespace
             TF* const restrict obuk,
             const TF* const restrict bfluxbot,
             const TF* const restrict ustar,
+            const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
     {
+        const TF zL_max = TF(10);
+        const TF L_min_stable = zsl/zL_max;
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
+
+                if (obuk[ij] > TF(0) && obuk[ij] < L_min_stable)
+                    obuk[ij] = L_min_stable;
             }
     }
 
@@ -786,6 +793,7 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
             obuk.data(),
             buoy->flux_bot.data(),
             ustar.data(),
+            gd.z[gd.kstart],
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);

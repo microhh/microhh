@@ -904,27 +904,6 @@ namespace lsm
     }
 
     template<typename TF>
-    void check_qtbot(
-            TF* const restrict qt_bot,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int icells)
-    {
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*icells;
-
-                if (qt_bot[ij] < TF(0))
-                {
-                    std::cout << "Warning: limiting qt_bot >= 0" << std::endl;
-                    qt_bot[ij] = TF(0);
-                }
-            }
-    }
-
-    template<typename TF>
     void set_water_bcs(
             TF* const restrict thl_bot,
             TF* const restrict qt_bot,
@@ -1904,13 +1883,6 @@ void Land_surface<TF>::exec_surface(
             agd.jstart, agd.jend,
             agd.kstart,
             agd.icells, agd.ijcells);
-
-    //lsm::check_qtbot(
-    //        fields.sp.at("qt")->fld_bot.data(),
-    //        agd.istart, agd.iend,
-    //        agd.jstart, agd.jend,
-    //        agd.icells);
-
 
     if (sw_water)
     {

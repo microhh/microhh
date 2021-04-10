@@ -386,7 +386,7 @@ void Model<TF>::exec()
                 // Update surface properties.
                 if (lsm->get_switch())
                 {
-                    boundary->calc_mo_stability(*thermo, *lsm);
+                    //boundary->calc_mo_stability(*thermo, *lsm);
                     boundary->calc_mo_bcs_scalars(*thermo, *lsm);
                 }
 
