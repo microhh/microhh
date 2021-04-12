@@ -68,8 +68,8 @@ th[ft ] = th_b + dth + (grid_les.z[ft]-zi)*dthdz
 qt[abl] = qt_b
 qt[ft ] = qt_b + dqt + (grid_les.z[ft]-zi)*dqtdz
 
-u[:] = 0.
-ug[:] = 0.
+u[:] = 5.
+ug[:] = 5.
 
 # Interpolate AFGL ozone onto LES grid:
 o3 = np.interp(grid_les.z, afgl.z, afgl.o3)

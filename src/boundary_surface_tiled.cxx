@@ -113,9 +113,6 @@ namespace
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
                 obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], zL_min<TF>), zL_max<TF>);
-
-                if (i==istart && j==jstart)
-                    std::cout << "SL, bulk, obuk=" << obuk[ij] << ", ustar=" << ustar[ij] << ", B0=" << bfluxbot[ij] << std::endl;
             }
     }
 
@@ -197,13 +194,6 @@ namespace
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
 
                 bfluxbot[ij] = - ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
-
-                if (i==istart && j==jstart)
-                    std::cout << "SL, tile=" << name
-                              << ", obuk=" << obuk[ij]
-                              << ", ustar=" << ustar[ij]
-                              << ", bfluxbot=" << bfluxbot[ij]
-                              << std::endl;
             }
     }
 

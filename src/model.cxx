@@ -335,8 +335,6 @@ void Model<TF>::exec()
             // start the time loop
             while (true)
             {
-                std::cout << "---- start timeloop ----" << std::endl;
-
                 // Update the time dependent parameters.
                 boundary->update_time_dependent(*timeloop);
                 thermo  ->update_time_dependent(*timeloop);
