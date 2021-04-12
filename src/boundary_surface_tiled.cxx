@@ -344,21 +344,22 @@ void Boundary_surface_tiled<TF>::create(
         if (sw_tile_stats)
         {
             // Tiled variables
+            std::string group_name_tiles = "tiles";
             std::string name;
             std::string desc;
             for (auto& tile : mo_tiles)
             {
                 name = "ustar_" + tile.first;
                 desc = "Surface friction velocity " + tile.second.long_name;
-                stats.add_time_series(name, desc, "m s-1", group_name);
+                stats.add_time_series(name, desc, "m s-1", group_name_tiles);
 
                 name = "obuk_" + tile.first;
                 desc = "Obukhov length " + tile.second.long_name;
-                stats.add_time_series(name, desc, "m", group_name);
+                stats.add_time_series(name, desc, "m", group_name_tiles);
 
                 name = "ra_" + tile.first;
                 desc = "Aerodynamic resistance " + tile.second.long_name;
-                stats.add_time_series(name, desc, "s m-1", group_name);
+                stats.add_time_series(name, desc, "s m-1", group_name_tiles);
             }
         }
     }

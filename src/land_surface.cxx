@@ -1376,33 +1376,34 @@ void Land_surface<TF>::create_fields_grid_stats(
         if (sw_tile_stats)
         {
             // Tiled variables
+            std::string group_name_tiles = "tiles";
             std::string name;
             std::string desc;
             for (auto& tile : tiles)
             {
                 name = "c_" + tile.first;
                 desc = "Tile fraction " + tile.second.long_name;
-                stats.add_time_series(name, desc, "-", group_name);
+                stats.add_time_series(name, desc, "-", group_name_tiles);
 
                 name = "H_" + tile.first;
                 desc = "Sensible heat flux " + tile.second.long_name;
-                stats.add_time_series(name, desc, "W m-2", group_name);
+                stats.add_time_series(name, desc, "W m-2", group_name_tiles);
 
                 name = "LE_" + tile.first;
                 desc = "Latent heat flux " + tile.second.long_name;
-                stats.add_time_series(name, desc, "W m-2", group_name);
+                stats.add_time_series(name, desc, "W m-2", group_name_tiles);
 
                 name = "G_" + tile.first;
                 desc = "Soil heat flux " + tile.second.long_name;
-                stats.add_time_series(name, desc, "W m-2", group_name);
+                stats.add_time_series(name, desc, "W m-2", group_name_tiles);
 
                 name = "S_" + tile.first;
                 desc = "Storage heat flux " + tile.second.long_name;
-                stats.add_time_series(name, desc, "W m-2", group_name);
+                stats.add_time_series(name, desc, "W m-2", group_name_tiles);
 
                 name = "rs_" + tile.first;
                 desc = "Surface resistance " + tile.second.long_name;
-                stats.add_time_series(name, desc, "s m-1", group_name);
+                stats.add_time_series(name, desc, "s m-1", group_name_tiles);
             }
         }
     }
