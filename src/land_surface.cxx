@@ -851,6 +851,9 @@ namespace lsm
                 // Update skin values
                 thl_bot[ij] = T_bot_new / exner_bot;
                 qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Lv<TF>);
+
+                if (i==istart && j==jstart)
+                    std::cout << "LSM, tile: " << name << ", ra=" << ra[ij] << ", thl_bot=" << thl_bot[ij] << ", qt_bot=" << qt_bot[ij] << std::endl;
             }
     }
 
@@ -900,6 +903,9 @@ namespace lsm
                 // Calculate surface values
                 thl_bot[ij] = thl[ijk] + wthl * ra[ij];
                 qt_bot [ij] = qt[ijk]  + wqt  * ra[ij];
+
+                if (i==istart && j==jstart)
+                    std::cout << "LSM, bulk, ra=" << ra[ij] << ", thl_bot=" << thl_bot[ij] << ", qt_bot=" << qt_bot[ij] << std::endl;
             }
     }
 

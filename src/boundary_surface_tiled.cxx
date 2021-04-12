@@ -112,6 +112,9 @@ namespace
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
                 obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], zL_min<TF>), zL_max<TF>);
+
+                if (i==istart && j==jstart)
+                    std::cout << "SL, bulk, obuk=" << obuk[ij] << ", ustar=" << ustar[ij] << ", B0=" << bfluxbot[ij] << std::endl;
             }
     }
 
@@ -167,7 +170,8 @@ namespace
             const int jstart, const int jend,
             const int kstart,
             const int icells, const int jcells,
-            const int ijcells)
+            const int ijcells,
+            const std::string name)
     {
         const int ii = 1;
         const int jj = icells;
@@ -189,6 +193,9 @@ namespace
                             obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
 
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+
+                if (i==istart && j==jstart)
+                    std::cout << "SL, tile=" << name << ", obuk=" << obuk[ij] << ", ustar=" << ustar[ij] << std::endl;
             }
     }
 
@@ -755,7 +762,8 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells);
+                    gd.icells, gd.jcells, gd.ijcells,
+                    tile.first);
         else
             stability<TF, false>(
                     tile.second.ustar.data(),
@@ -771,7 +779,8 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells);
+                    gd.icells, gd.jcells, gd.ijcells,
+                    tile.first);
     }
 
     // Calculate tile fraction averaged friction velocity
