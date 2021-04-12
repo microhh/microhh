@@ -32,6 +32,10 @@ namespace Boundary_surface_functions
     namespace fm = Fast_math;
     namespace most = Monin_obukhov;
 
+    // Limits on Obukhov length:
+    template<typename TF> constexpr TF zL_max = 10.;
+    template<typename TF> constexpr TF zL_min = -1.e4;
+
     template<typename TF>
     void prepare_lut(
         float* const restrict zL_sl,
@@ -48,17 +52,15 @@ namespace Boundary_surface_functions
         // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
         // and stretch up to -1e4 in the negative limit.
         // Alter next three values in case the range need to be changed.
-        const TF zL_min = -1.e4;
         const TF zLrange_min = -5.;
-        const TF zLrange_max = 10.;
 
-        TF dzL = (zLrange_max - zLrange_min) / (9.*nzL_lut/10.-1.);
-        zL_tmp[0] = -zLrange_max;
+        TF dzL = (zL_max<TF> - zLrange_min) / (9.*nzL_lut/10.-1.);
+        zL_tmp[0] = -zL_max<TF>;
         for (int n=1; n<9*nzL_lut/10; ++n)
             zL_tmp[n] = zL_tmp[n-1] + dzL;
 
         // Stretch the remainder of the z/L values far down for free convection.
-        const TF zLend = -(zL_min - zLrange_min);
+        const TF zLend = -(zL_min<TF> - zLrange_min);
 
         // Find stretching that ends up at the correct value using geometric progression.
         TF r  = 1.01;
@@ -205,8 +207,7 @@ namespace Boundary_surface_functions
         const TF Lmax = 1.e20;
 
         // Limiter max z/L stable conditions:
-        const TF zL_max_stable = 10.;
-        const TF L_min_stable = zsl/zL_max_stable;
+        const TF L_min_stable = zsl/zL_max<TF>;
 
         // Avoid bfluxbot to be zero
         if (bfluxbot >= 0.)
@@ -272,7 +273,7 @@ namespace Boundary_surface_functions
         if (m > 1)
             std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
 
-        return L;
+        return zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
     }
 
     template<typename TF>
@@ -347,7 +348,7 @@ namespace Boundary_surface_functions
             std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L <<  std::endl;
         }
 
-        return L;
+        return zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
     }
 
     template<typename TF>

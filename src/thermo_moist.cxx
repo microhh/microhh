@@ -1571,10 +1571,6 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
         column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
         column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
-
-        // Time series
-        column.add_time_series("thl_bot", "Surface liquid water potential temperature", "K");
-        column.add_time_series("qt_bot", "Surface total specific humidity", "kg kg-1");
     }
 }
 
@@ -1758,10 +1754,6 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
     get_thermo_field(*output, "qi", false, true);
     column.calc_column("qi", output->fld.data(), no_offset);
-
-    // Time series
-    column.calc_time_series("thl_bot", fields.ap.at("thl")->fld_bot.data(), no_offset);
-    column.calc_time_series("qt_bot", fields.ap.at("qt")->fld_bot.data(), no_offset);
 
     fields.release_tmp(output);
 }

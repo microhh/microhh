@@ -51,6 +51,10 @@ namespace
     namespace fm = Fast_math;
     namespace bsf = Boundary_surface_functions;
 
+    // Limits on Obukhov length:
+    template<typename TF> constexpr TF zL_max = 10.;
+    template<typename TF> constexpr TF zL_min = -1.e4;
+
     template<typename TF>
     void init_tile(
             MO_surface_tile<TF>& tile,
@@ -101,18 +105,13 @@ namespace
             const int jstart, const int jend,
             const int icells)
     {
-        const TF zL_max = TF(10);
-        const TF L_min_stable = zsl/zL_max;
-
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
-
-                if (obuk[ij] > TF(0) && obuk[ij] < L_min_stable)
-                    obuk[ij] = L_min_stable;
+                obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], zL_min<TF>), zL_max<TF>);
             }
     }
 

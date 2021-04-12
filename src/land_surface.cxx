@@ -1404,6 +1404,14 @@ void Land_surface<TF>::create_fields_grid_stats(
                 name = "rs_" + tile.first;
                 desc = "Surface resistance " + tile.second.long_name;
                 stats.add_time_series(name, desc, "s m-1", group_name_tiles);
+
+                name = "thl_bot_" + tile.first;
+                desc = "Surface potential temperature " + tile.second.long_name;
+                stats.add_time_series(name, desc, "K", group_name_tiles);
+
+                name = "qt_bot_" + tile.first;
+                desc = "Surface specific humidity " + tile.second.long_name;
+                stats.add_time_series(name, desc, "kg kg-1", group_name_tiles);
             }
         }
     }
@@ -1447,6 +1455,14 @@ void Land_surface<TF>::create_fields_grid_stats(
                 name = "rs_" + tile.first;
                 desc = "Surface resistance " + tile.second.long_name;
                 column.add_time_series(name, desc, "s m-1");
+
+                name = "thl_bot_" + tile.first;
+                desc = "Surface potential temperature " + tile.second.long_name;
+                column.add_time_series(name, desc, "K");
+
+                name = "qt_bot_" + tile.first;
+                desc = "Surface specific humidity " + tile.second.long_name;
+                column.add_time_series(name, desc, "kg kg-1");
             }
         }
     }
@@ -1750,6 +1766,10 @@ void Land_surface<TF>::exec_surface(
     microphys.get_surface_rain_rate(tmp1->fld_bot);
     TF* rain_rate = tmp1->fld_bot.data();
 
+    // HACK
+    //if (timeloop.get_time() > 1800 && master.get_mpiid() == 0)
+    //    std::fill(tmp1->fld_bot.begin(), tmp1->fld_bot.end(), TF(1./3600.));
+
     const double subdt = timeloop.get_sub_time_step();
 
     // Calculate root fraction weighted mean soil water content
@@ -1993,6 +2013,8 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
             stats.calc_stats_2d("G_" +tile.first, tile.second.G, offset);
             stats.calc_stats_2d("S_" +tile.first, tile.second.S, offset);
             stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
+            stats.calc_stats_2d("thl_bot_"+tile.first, tile.second.thl_bot, offset);
+            stats.calc_stats_2d("qt_bot_"+tile.first, tile.second.thl_bot, offset);
         }
     }
 
@@ -2034,6 +2056,8 @@ void Land_surface<TF>::exec_column(Column<TF>& column)
             column.calc_time_series("G_" +tile.first, tile.second.G.data(), offset);
             column.calc_time_series("S_" +tile.first, tile.second.S.data(), offset);
             column.calc_time_series("rs_"+tile.first, tile.second.rs.data(), offset);
+            column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot.data(), offset);
+            column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot.data(), offset);
         }
     }
 
