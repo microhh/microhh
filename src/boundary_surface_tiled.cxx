@@ -62,6 +62,7 @@ namespace
     {
         tile.obuk.resize(ijcells);
         tile.ustar.resize(ijcells);
+        tile.bfluxbot.resize(ijcells);
 
         if (constant_z0)
         {
@@ -156,6 +157,7 @@ namespace
     void stability(
             TF* const restrict ustar,
             TF* const restrict obuk,
+            TF* const restrict bfluxbot,
             int* const restrict nobuk,
             const TF* const restrict dutot,
             const TF* const restrict b,
@@ -194,8 +196,14 @@ namespace
 
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
 
+                bfluxbot[ij] = - ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+
                 if (i==istart && j==jstart)
-                    std::cout << "SL, tile=" << name << ", obuk=" << obuk[ij] << ", ustar=" << ustar[ij] << std::endl;
+                    std::cout << "SL, tile=" << name
+                              << ", obuk=" << obuk[ij]
+                              << ", ustar=" << ustar[ij]
+                              << ", bfluxbot=" << bfluxbot[ij]
+                              << std::endl;
             }
     }
 
@@ -751,6 +759,7 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
             stability<TF, true>(
                     tile.second.ustar.data(),
                     tile.second.obuk.data(),
+                    tile.second.bfluxbot.data(),
                     tile.second.nobuk.data(),
                     dutot->fld_bot.data(),
                     buoy->fld.data(),
@@ -768,6 +777,7 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
             stability<TF, false>(
                     tile.second.ustar.data(),
                     tile.second.obuk.data(),
+                    tile.second.bfluxbot.data(),
                     nullptr,
                     dutot->fld_bot.data(),
                     buoy->fld.data(),
@@ -795,6 +805,21 @@ void Boundary_surface_tiled<TF>::calc_mo_stability(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells, gd.jcells);
+
+    // Calculate tile fraction averaged buoyancy flux
+    calc_tiled_mean(
+            // ustar.data(),
+            buoy->flux_bot.data(),
+            mo_tiles.at("veg").bfluxbot.data(),
+            mo_tiles.at("soil").bfluxbot.data(),
+            mo_tiles.at("wet").bfluxbot.data(),
+            lsm_tiles.at("veg").fraction.data(),
+            lsm_tiles.at("soil").fraction.data(),
+            lsm_tiles.at("wet").fraction.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.jcells);
+
 
     // Calculate Obukhov length from mean buoyancy
     // flux and mean friction velocity

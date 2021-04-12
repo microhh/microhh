@@ -34,6 +34,7 @@ struct MO_surface_tile
     std::string long_name;  // Descriptive name of tile
     std::vector<TF> obuk;   // Obukhov length (m)
     std::vector<TF> ustar;  // Friction velocity (m s-1)
+    std::vector<TF> bfluxbot;  // Friction velocity (m s-1)
     std::vector<int> nobuk; // Index in LUT
 };
 
