@@ -2014,7 +2014,7 @@ void Land_surface<TF>::exec_stats(Stats<TF>& stats)
             stats.calc_stats_2d("S_" +tile.first, tile.second.S, offset);
             stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, offset);
             stats.calc_stats_2d("thl_bot_"+tile.first, tile.second.thl_bot, offset);
-            stats.calc_stats_2d("qt_bot_"+tile.first, tile.second.thl_bot, offset);
+            stats.calc_stats_2d("qt_bot_"+tile.first, tile.second.qt_bot, offset);
         }
     }
 
