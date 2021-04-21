@@ -837,6 +837,25 @@ namespace
                 st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
+
+    template<typename TF>
+    void advec_flux_s_lim(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = flux_lim(w[ijk], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
+                }
+    }
 }
 
 template<typename TF>
@@ -966,10 +985,16 @@ void Advec_2i3<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& f
     }
     else if (fld.loc == gd.sloc)
     {
-        advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        if (std::find(sp_limit.begin(), sp_limit.end(), fld.name) != sp_limit.end())
+            advec_flux_s_lim(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            advec_flux_s(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
     else
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
