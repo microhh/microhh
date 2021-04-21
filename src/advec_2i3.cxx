@@ -35,6 +35,9 @@ template<typename TF>
 Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
+    fluxlimit_list = inputin.get_list<std::string>(
+            "advec", "fluxlimit_list", "", std::vector<std::string>());
+
     const int igc = 2;
     const int jgc = 2;
     const int kgc = 2;
@@ -650,7 +653,69 @@ namespace
 
                          - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
+    }
+
+
+    // Implementation flux limiter according to Koren, 1993.
+    template<typename TF>
+    inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    {
+        const TF eps = std::numeric_limits<TF>::epsilon();
+
+        if (u >= TF(0.))
+        {
+            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF phi = std::max(
+                    TF(0.),
+                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
         }
+        else
+        {
+            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
+            const TF phi = std::max(
+                    TF(0.),
+                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
+        }
+    }
+
+    template<typename TF>
+    void advec_s_lim(
+            TF* const restrict st, const TF* const restrict s,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict dzi, const TF dx, const TF dy,
+            const TF* const restrict rhoref, const TF* const restrict rhorefh,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    st[ijk] +=
+                             - ( flux_lim(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                               - flux_lim(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+
+                             - ( flux_lim(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                               - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
+
+                             - ( rhorefh[k+1] * flux_lim(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                               - rhorefh[k  ] * flux_lim(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                }
+    }
 
     template<typename TF>
     void advec_flux_u(
@@ -778,6 +843,14 @@ namespace
 template<typename TF>
 void Advec_2i3<TF>::create(Stats<TF>& stats)
 {
+    for (auto& s : fields.sp)
+    {
+        if (std::find(fluxlimit_list.begin(), fluxlimit_list.end(), s.first) != fluxlimit_list.end())
+            sp_limit.push_back(s.first);
+        else
+            sp_no_limit.push_back(s.first);
+    }
+
     stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
@@ -843,13 +916,27 @@ void Advec_2i3<TF>::exec(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    for (auto& it : fields.st)
-        advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
+    for (const std::string& s : sp_limit)
+    {
+        advec_s_lim(
+                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dxi, gd.dyi,
+                gd.dzi.data(), gd.dx, gd.dy,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+    }
+
+    for (const std::string& s : sp_no_limit)
+    {
+        advec_s(
+                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                gd.dzi.data(), gd.dx, gd.dy,
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
