@@ -263,8 +263,9 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
-
 }
+
+
 #ifndef USECUDA
 template <typename TF>
 void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
@@ -281,6 +282,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     }
 }
 #endif
+
 
 template<typename TF>
 void Boundary<TF>::set_values()
@@ -325,6 +327,9 @@ void Boundary<TF>::set_values()
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
             }
+            else
+                master.print_message("OK\n");
+
             fields.release_tmp(tmp);
         }
         else
