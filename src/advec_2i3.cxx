@@ -655,31 +655,6 @@ namespace
             }
     }
 
-
-    // Implementation flux limiter according to Koren, 1993.
-    template<typename TF>
-    inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
-    {
-        const TF eps = std::numeric_limits<TF>::epsilon();
-
-        if (u >= TF(0.))
-        {
-            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
-        }
-        else
-        {
-            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
-        }
-    }
-
     template<typename TF>
     void advec_s_lim(
             TF* const restrict st, const TF* const restrict s,
@@ -916,27 +891,13 @@ void Advec_2i3<TF>::exec(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    for (const std::string& s : sp_limit)
-    {
-        advec_s_lim(
-                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
+    for (auto& it : fields.st)
+        advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
+                gd.dzi.data(), gd.dxi, gd.dyi,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-    }
-
-    for (const std::string& s : sp_no_limit)
-    {
-        advec_s(
-                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                gd.dzi.data(), gd.dx, gd.dy,
-                fields.rhoref.data(), fields.rhorefh.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
