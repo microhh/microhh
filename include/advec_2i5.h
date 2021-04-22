@@ -60,5 +60,9 @@ class Advec_2i5 : public Advec<TF>
 
         const std::string tend_name = "advec";
         const std::string tend_longname = "Advection";
+
+        std::vector<std::string> fluxlimit_list;
+        std::vector<std::string> sp_limit;
+        std::vector<std::string> sp_no_limit;
 };
 #endif

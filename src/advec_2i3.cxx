@@ -30,6 +30,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
+#include "advec_monotonic.h"
 
 template<typename TF>
 Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -40,7 +41,7 @@ Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 
     const int igc = 2;
     const int jgc = 2;
-    const int kgc = 2;
+    const int kgc = (fluxlimit_list.empty()) ? 1 : 2;
     grid.set_minimum_ghost_cells(igc, jgc, kgc);
 }
 
@@ -51,6 +52,7 @@ namespace
 {
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
+    using namespace Advec_monotonic;
 
     template<typename TF>
     TF calc_cfl(
@@ -655,66 +657,6 @@ namespace
             }
     }
 
-    // Implementation flux limiter according to Koren, 1993.
-    template<typename TF>
-    inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
-    {
-        const TF eps = std::numeric_limits<TF>::epsilon();
-
-        if (u >= TF(0.))
-        {
-            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
-        }
-        else
-        {
-            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
-        }
-    }
-
-    template<typename TF>
-    void advec_s_lim(
-            TF* const restrict st, const TF* const restrict s,
-            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict dzi, const TF dx, const TF dy,
-            const TF* const restrict rhoref, const TF* const restrict rhorefh,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int jj1 = 1*jj;
-        const int jj2 = 2*jj;
-        const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-
-        const TF dxi = TF(1.)/dx;
-        const TF dyi = TF(1.)/dy;
-
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj1 + k*kk1;
-                    st[ijk] +=
-                             - ( flux_lim(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                               - flux_lim(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
-
-                             - ( flux_lim(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                               - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
-
-                             - ( rhorefh[k+1] * flux_lim(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                               - rhorefh[k  ] * flux_lim(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
-                }
-    }
 
     template<typename TF>
     void advec_flux_u(
@@ -838,24 +780,6 @@ namespace
             }
     }
 
-    template<typename TF>
-    void advec_flux_s_lim(
-            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-
-        for (int k=kstart; k<kend+1; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    st[ijk] = flux_lim(w[ijk], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
-                }
-    }
 }
 
 template<typename TF>
