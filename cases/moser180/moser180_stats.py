@@ -5,7 +5,7 @@ from matplotlib.pyplot import *
 sample_size = 60
 plotens = True
 
-stats = nc.Dataset("moser180_default_0000000.nc","r")
+stats = nc.Dataset("moser180.default.0000000.nc","r")
 end = len(stats.variables["time"][:])
 stats.close()
 start = max(0, end - sample_size)
@@ -61,7 +61,7 @@ uw_viscMoser  = Moseruw[:,7]
 uw_dissMoser  = Moseruw[:,2]
 uw_rdstrMoser = Moseruw[:,4]
 
-stats = nc.Dataset("moser180_default_0000000.nc","r")
+stats = nc.Dataset("moser180.default.0000000.nc","r")
 t  = stats.variables["time"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]

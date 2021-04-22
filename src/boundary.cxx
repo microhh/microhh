@@ -329,7 +329,6 @@ void Boundary<TF>::process_time_dependent(
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
-
     // Time varying 2D sbot input:
     swtimedep_sbot_2d = input.get_item<bool>("boundary", "swtimedep_sbot_2d", "", false);
 
@@ -391,6 +390,8 @@ void Boundary<TF>::process_time_dependent(
         fields.release_tmp(tmp);
     }
 }
+
+
 #ifndef USECUDA
 template <typename TF>
 void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
@@ -486,6 +487,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     }
 }
 #endif
+
 
 template<typename TF>
 void Boundary<TF>::set_values()
