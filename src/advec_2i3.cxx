@@ -30,14 +30,18 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
+#include "advec_monotonic.h"
 
 template<typename TF>
 Advec_2i3<TF>::Advec_2i3(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
+    fluxlimit_list = inputin.get_list<std::string>(
+            "advec", "fluxlimit_list", "", std::vector<std::string>());
+
     const int igc = 2;
     const int jgc = 2;
-    const int kgc = 2;
+    const int kgc = (fluxlimit_list.empty()) ? 1 : 2;
     grid.set_minimum_ghost_cells(igc, jgc, kgc);
 }
 
@@ -48,6 +52,7 @@ namespace
 {
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
+    using namespace Advec_monotonic;
 
     template<typename TF>
     TF calc_cfl(
@@ -650,7 +655,8 @@ namespace
 
                          - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
-        }
+    }
+
 
     template<typename TF>
     void advec_flux_u(
@@ -773,11 +779,20 @@ namespace
                 st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
+
 }
 
 template<typename TF>
 void Advec_2i3<TF>::create(Stats<TF>& stats)
 {
+    for (auto& s : fields.sp)
+    {
+        if (std::find(fluxlimit_list.begin(), fluxlimit_list.end(), s.first) != fluxlimit_list.end())
+            sp_limit.push_back(s.first);
+        else
+            sp_no_limit.push_back(s.first);
+    }
+
     stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
@@ -843,13 +858,27 @@ void Advec_2i3<TF>::exec(Stats<TF>& stats)
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    for (auto& it : fields.st)
-        advec_s(it.second->fld.data(), fields.sp.at(it.first)->fld.data(),
+    for (const std::string& s : sp_limit)
+    {
+        advec_s_lim(
+                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                gd.dzi.data(), gd.dx, gd.dy,
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+
+    for (const std::string& s : sp_no_limit)
+    {
+        advec_s(
+                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 gd.dzi.data(), gd.dxi, gd.dyi,
                 fields.rhoref.data(), fields.rhorefh.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+    }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
@@ -880,10 +909,16 @@ void Advec_2i3<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& f
     }
     else if (fld.loc == gd.sloc)
     {
-        advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        if (std::find(sp_limit.begin(), sp_limit.end(), fld.name) != sp_limit.end())
+            advec_flux_s_lim(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            advec_flux_s(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
     else
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
