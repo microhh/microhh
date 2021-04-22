@@ -36,7 +36,9 @@ class Boundary_surface : public Boundary<TF>
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
+        void create(
+                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
+                Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
         void set_values();
 
         void get_ra(Field3d<TF>&);

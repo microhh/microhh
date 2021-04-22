@@ -242,7 +242,7 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->load(timeloop->get_iotime());
-    boundary->create(*input, *input_nc, *stats, *column, *cross);
+    boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
     // Load the prognostic soil fields, and create/init soil
