@@ -46,6 +46,7 @@
 #include "radiation.h"
 #include "microphys.h"
 #include "decay.h"
+#include "chemistry.h"
 #include "limiter.h"
 #include "stats.h"
 #include "budget.h"
@@ -133,6 +134,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        chemistry = std::make_shared<Chemistry  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -190,6 +192,7 @@ void Model<TF>::init()
     microphys->init();
     radiation->init(*timeloop);
     decay->init(*input);
+    chemistry-> init(*input);
     budget->init();
     lsm->init();
 
@@ -261,6 +264,7 @@ void Model<TF>::load()
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
+    chemistry->create(*timeloop, sim_name, *input_nc, *stats);
     limiter->create(*stats);
 
     // Cross and dump both need to be called at/near the
@@ -269,6 +273,7 @@ void Model<TF>::load()
     cross->create();
     dump->create();
 
+    boundary->set_values();
     pres->set_values();
     pres->create(*stats);
     advec->create(*stats);
@@ -399,6 +404,9 @@ void Model<TF>::exec()
 
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
+
+                // Apply the chemistry.
+                chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -610,6 +618,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
         lsm      ->exec_stats(*stats);
+        chemistry->exec_stats(iteration, time, *stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -830,4 +839,4 @@ void Model<TF>::print_status()
 }
 
 template class Model<double>;
-template class Model<float>;
+//template class Model<float>;
