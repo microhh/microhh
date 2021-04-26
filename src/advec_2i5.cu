@@ -52,10 +52,13 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
+        const int ii3 = 3;
         const int jj1 = 1*jj;
         const int jj2 = 2*jj;
+        const int jj3 = 3*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -128,10 +131,13 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
+        const int ii3 = 3;
         const int jj1 = 1*jj;
         const int jj2 = 2*jj;
+        const int jj3 = 3*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -204,10 +210,13 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
+        const int ii3 = 3;
         const int jj1 = 1*jj;
         const int jj2 = 2*jj;
+        const int jj3 = 3*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -270,10 +279,13 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
+        const int ii3 = 3;
         const int jj1 = 1*jj;
         const int jj2 = 2*jj;
+        const int jj3 = 3*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -345,10 +357,13 @@ namespace
 
         const int ii1 = 1;
         const int ii2 = 2;
+        const int ii3 = 3;
         const int jj1 = 1*jj;
         const int jj2 = 2*jj;
+        const int jj3 = 3*jj;
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
         const int ijk = i + j*jj + k*kk;
 
