@@ -370,52 +370,76 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             st[ijk] +=
-                - ( u[ijk+ii1] * interp4_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                  - u[ijk    ] * interp4_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                - ( u[ijk+ii1] * interp6_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2], s[ijk+ii3])
+                  - u[ijk    ] * interp6_ws(s[ijk-ii3], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2]) ) * dxi
 
-                + ( fabs(u[ijk+ii1]) * interp3_ws(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                  - fabs(u[ijk    ]) * interp3_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                + ( fabs(u[ijk+ii1]) * interp5_ws(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2], s[ijk+ii3])
+                  - fabs(u[ijk    ]) * interp5_ws(s[ijk-ii3], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2]) ) * dxi
 
-                - ( v[ijk+jj1] * interp4_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                  - v[ijk    ] * interp4_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
+                - ( v[ijk+jj1] * interp6_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2], s[ijk+jj3])
+                  - v[ijk    ] * interp6_ws(s[ijk-jj3], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2]) ) * dyi
 
-                + ( fabs(v[ijk+jj1]) * interp3_ws(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                  - fabs(v[ijk    ]) * interp3_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi;
+                + ( fabs(v[ijk+jj1]) * interp5_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2], s[ijk+jj3])
+                  - fabs(v[ijk    ]) * interp5_ws(s[ijk-jj3], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2]) ) * dyi;
 
             if (k == kstart)
             {
                 st[ijk] +=
-                    - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    // w*ds/dz -> second order interpolation for fluxtop, fluxbot=0 as w=0
+                    - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])) / rhoref[k] * dzi[k];
             }
             else if (k == kstart+1)
             {
                 st[ijk] +=
+                    // w*ds/dz -> second order interpolation for fluxbot, fourth order for fluxtop
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                      - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
+                      - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k]
 
-                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
+            }
+            else if (k == kstart+2)
+            {
+                st[ijk] +=
+                    // w*ds/dz -> fourth order interpolation for fluxbot, sixth for fluxtop
+                    - ( rhorefh[k+1] * w[ijk+kk1] * interp6_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
+                      - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k]
+
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp5_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
+                      - rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            }
+            else if (k == kend-3)
+            {
+                st[ijk] +=
+                    // w*ds/dz -> fourth order interpolation for fluxtop, sixth order for fluxbot
+                    - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                      - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k]
+
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                      - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-2)
             {
                 st[ijk] +=
+                    // w*ds/dz -> second order interpolation for fluxtop, fourth order for fluxbot
                     - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
-                      - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                      - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k]
 
-                    - ( rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    + ( -rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
             else if (k == kend-1)
             {
                 st[ijk] +=
-                    - (-rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
+                    // w*ds/dz -> second order interpolation for fluxbot, fluxtop=0 as w=0
+                    - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
             }
             else
             {
                 st[ijk] +=
-                    - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                      - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    - ( rhorefh[k+1] * w[ijk+kk1] * interp6_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
+                      - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k]
 
-                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                      - rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                    + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp5_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
+                      - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
         }
     }
@@ -427,7 +451,7 @@ namespace
                     const TF* __restrict__ dzi, const TF dxi, const TF dyi,
                     const int jj, const int kk,
                     const int istart, const int jstart, const int kstart,
-                    const int iend,   const int jend,   const int kend)
+                    const int iend, const int jend, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
