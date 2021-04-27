@@ -304,8 +304,18 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swwls = Large_scale_subsidence_type::Disabled;
     else if (swwls_in == "1")
     {
-        swwls = Large_scale_subsidence_type::Enabled;
+        swwls = Large_scale_subsidence_type::Mean_field;
         fields.set_calc_mean_profs(true);
+    }
+    else if (swwls_in == "2")
+    {
+        swwls = Large_scale_subsidence_type::Local_field;
+        fields.set_calc_mean_profs(true);
+
+        #ifdef USECUDA
+        throw std::runtime_error("Local field subsidence not yet included for GPU");
+        #endif
+
     }
     else
     {
@@ -357,7 +367,7 @@ void Force<TF>::init()
         for (auto& it : lslist)
             lsprofs[it] = std::vector<TF>(gd.kcells);
     }
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
         wls.resize(gd.kcells);
 
     if (swnudge == Nudging_type::Enabled)
@@ -466,15 +476,29 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
 
     // Get the large scale vertical velocity from the input
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
     {
         group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
 
         const TF offset = 0;
         tdep_wls->create_timedep_prof(input_nc, offset);
+
+        // Initialize statistics output also for u,v,w - SvdLinden, 27.04.21
+        // for now: do it separately for clarity, later possibly iterate over field-list at.. but then exception for w needed (see option below)
+
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name_subs, tend_longname_subs);
+        stats.add_tendency(*fields.mt.at("v"), "z", tend_name_subs, tend_longname_subs);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name_subs, tend_longname_subs);
+
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
+
+        for (auto& it : fields.at) // all tendency fields
+            if ( it.first == "w" ) // it is a structure (?), first element contains name, second element is pointer to field (?)
+                stats.add_tendency(*it.second, "zh", tend_name_subs, tend_longname_subs);
+            else 
+
     }
 }
 
@@ -542,7 +566,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
     {
         for (auto& it : fields.st)
         {
@@ -599,7 +623,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
 }
 #endif
