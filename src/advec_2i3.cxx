@@ -779,7 +779,6 @@ namespace
                 st[ijk+kk1] = 0; // Impose no flux through top wall.
             }
     }
-
 }
 
 template<typename TF>
