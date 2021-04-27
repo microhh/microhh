@@ -463,7 +463,7 @@ namespace
         else
         {
             const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
-            const TF phi = std::max(
+            const TF phi = max(
                     TF(0.),
                     min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
             return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
@@ -496,14 +496,14 @@ namespace
         {
             const int ijk = i + j*jj1 + k*kk1;
             st[ijk] +=
-                     - ( flux_lim(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-                       - flux_lim(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+                     - ( flux_lim_g(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                       - flux_lim_g(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
-                     - ( flux_lim(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
+                     - ( flux_lim_g(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                       - flux_lim_g(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
-                     - ( rhorefh[k+1] * flux_lim(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                       - rhorefh[k  ] * flux_lim(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                     - ( rhorefh[k+1] * flux_lim_g(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                       - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
         }
     }
 
@@ -638,7 +638,7 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
     for (const std::string& s : sp_limit)
     {
         advec_s_lim_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(s)->fld_g, fields.sp.at(it.first)->fld_g,
+                fields.st.at(s)->fld_g, fields.sp.at(s)->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
                 fields.rhoref_g, fields.rhorefh_g,
                 gd.dzi_g, gd.dxi, gd.dyi,
@@ -651,7 +651,7 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
     for (const std::string& s : sp_no_limit)
     {
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(s)->fld_g, fields.sp.at(it.first)->fld_g,
+                fields.st.at(s)->fld_g, fields.sp.at(s)->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
                 fields.rhoref_g, fields.rhorefh_g,
                 gd.dzi_g, gd.dxi, gd.dyi,
