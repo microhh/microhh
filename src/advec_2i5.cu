@@ -343,13 +343,14 @@ namespace
 
 
     template<typename TF> __global__
-    void advec_s_g(TF* __restrict__ st, const TF* __restrict__ s, const TF* __restrict__ u,
-                   const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
-                   const TF* __restrict__ dzi, const TF dxi, const TF dyi,
-                   const int jj, int kk,
-                   const int istart, const int jstart, const int kstart,
-                   const int iend,   const int jend,   const int kend)
+    void advec_s_g(
+            TF* __restrict__ st, const TF* __restrict__ s,
+            const TF* __restrict__ u, const TF* __restrict__ v,  const TF* __restrict__ w,
+            const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+            const TF* __restrict__ dzi, const TF dxi, const TF dyi,
+            const int jj, int kk,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -441,6 +442,68 @@ namespace
                     + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp5_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
                       - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
+        }
+    }
+
+
+    // Implementation flux limiter according to Koren, 1993.
+    template<typename TF> __device__
+    inline TF flux_lim_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    {
+        const TF eps = TF(1.e-12);
+
+        if (u >= TF(0.))
+        {
+            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF phi = max(
+                    TF(0.),
+                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+        }
+        else
+        {
+            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
+            const TF phi = std::max(
+                    TF(0.),
+                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
+        }
+    }
+
+
+    template<typename TF> __global__
+    void advec_s_lim_g(
+            TF* __restrict__ st, const TF* __restrict__ s,
+            const TF* __restrict__ u, const TF* __restrict__ v,  const TF* __restrict__ w,
+            const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+            const TF* __restrict__ dzi, const TF dxi, const TF dyi,
+            const int jj, int kk,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*jj;
+        const int jj2 = 2*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+            st[ijk] +=
+                     - ( flux_lim(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                       - flux_lim(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+
+                     - ( flux_lim(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                       - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
+
+                     - ( rhorefh[k+1] * flux_lim(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                       - rhorefh[k  ] * flux_lim(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
         }
     }
 
@@ -572,14 +635,30 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
         gd.iend, gd.jend, gd.kend);
     cuda_check_error();
 
-    for (auto& it : fields.st)
+    for (const std::string& s : sp_limit)
+    {
+        advec_s_lim_g<TF><<<gridGPU, blockGPU>>>(
+                fields.st.at(s)->fld_g, fields.sp.at(it.first)->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+                fields.rhoref_g, fields.rhorefh_g,
+                gd.dzi_g, gd.dxi, gd.dyi,
+                gd.icells, gd.ijcells,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend, gd.jend, gd.kend);
+    }
+    cuda_check_error();
+
+    for (const std::string& s : sp_no_limit)
+    {
         advec_s_g<TF><<<gridGPU, blockGPU>>>(
-            it.second->fld_g, fields.sp.at(it.first)->fld_g,
-            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
-            gd.icells, gd.ijcells,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend, gd.jend, gd.kend);
+                fields.st.at(s)->fld_g, fields.sp.at(it.first)->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+                fields.rhoref_g, fields.rhorefh_g,
+                gd.dzi_g, gd.dxi, gd.dyi,
+                gd.icells, gd.ijcells,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend, gd.jend, gd.kend);
+    }
     cuda_check_error();
 
     cudaDeviceSynchronize();
