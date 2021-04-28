@@ -7,3 +7,4 @@ build*
 *.00*00
 cases/tm5_ifs/microhh
 cases/tm5_ifs/*.png
+*.nc
