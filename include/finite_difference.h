@@ -108,7 +108,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d) 
+        CUDA_MACRO inline TF interp4_ws(const TF a, const TF b, const TF c, const TF d)
         {
             constexpr TF c0 = TF(7./12.);
             constexpr TF c1 = TF(1./12.);
@@ -116,7 +116,7 @@ namespace Finite_difference
         }
 
         template<typename TF>
-        CUDA_MACRO inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d) 
+        CUDA_MACRO inline TF interp3_ws(const TF a, const TF b, const TF c, const TF d)
         {
             constexpr TF c0 = TF(3./12.);
             constexpr TF c1 = TF(1./12.);
