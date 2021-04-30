@@ -283,18 +283,18 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        // do kstart+1 and kend-1 separately!! here, "manually" correct wls velocity (interp to non-exisisting values)
+        // should not be needed to do kend-1 separately ? CHECK?
 
         // use an upwind differentiation
         for (int k=kstart+1; k<kend; ++k) // for (int k=kstart+2; k<kend-1; ++k)
         {
-            if ( interp2( wls[k], wls[k+1] ) > 0.) // formeel ook in conditie interp2
+            if ( interp2( wls[k-1], wls[k] ) > 0.) // formeel ook in conditie interp2
             {
                 for (int j=jstart; j<jend; ++j)
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        st[ijk] -=  interp2( wls[k], wls[k+1] ) * (s[ijk]-s[ijk-kk])*dzi[k]; // HIER DUS dz !! maar waar begint dz[kstart] +1 of niet??
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1]; // HIER DUS dz !! maar waar begint dz[kstart] +1 of niet??
                     }
             }
             else
@@ -303,7 +303,7 @@ namespace
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        st[ijk] -=  interp2( wls[k], wls[k+1] ) * (s[ijk+kk]-s[ijk])*dzi[k+1];
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
                     }
             }
         }

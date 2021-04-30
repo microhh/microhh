@@ -425,7 +425,7 @@ namespace
                     }
                 }
             }
-       
+
         return std::make_pair(path, nmask_proj);
     }
 
