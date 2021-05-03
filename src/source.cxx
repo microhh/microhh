@@ -30,6 +30,7 @@
 #include "fields.h"
 #include "source.h"
 #include "defines.h"
+#include "fast_math.h"
 
 namespace
 {
@@ -44,7 +45,7 @@ namespace
 
         for (; i<iend; ++i)
         {
-            if ( x[i]-x0 + 4*sigma_x > 0 )
+            if ( x[i]-x0 + TF(4)*sigma_x > TF(0) )
             {
                 range[0] = i;
                 break;
@@ -56,7 +57,7 @@ namespace
         {
             range[1] = iend;
 
-            if ( x[i]-x0-line_x - 4*sigma_x > 0 )
+            if ( x[i]-x0-line_x - TF(4)*sigma_x > TF(0) )
             {
                 range[1] = i;
                 break;
@@ -159,6 +160,7 @@ TF Source<TF>::calc_norm(
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
         std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z)
 {
+    namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
 
     TF sum = 0.;
@@ -177,36 +179,63 @@ TF Source<TF>::calc_norm(
                     if (line_x != 0)
                     {
                         if (x[i] >= x0+line_x)
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                         else if (x[i]<=x0)
-                            blob_norm = exp(-pow(x[i]-x0,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0)       /fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                         else
-                            blob_norm = exp(- pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                     }
                     else if (line_y != 0)
                     {
                         if (y[j] >= y0+line_y)
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                         else if (y[j]<=y0)
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0)       /fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                         else
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
 
                     }
                     else if (line_z != 0)
                     {
                         if (z[k] >= z0+line_z)
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                         else if (z[k]<=z0)
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0,2.0)/pow(sigma_z,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0)       /fm::pow2(sigma_z));
                         else
-                            blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0));
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
                     }
                     else
-                        blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob_norm = exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                 }
                 else
-                    blob_norm = 0;
+                    blob_norm = TF(0);
 
                 sum += blob_norm*gd.dx*gd.dy*gd.dz[k];
             }
@@ -225,6 +254,7 @@ void Source<TF>::calc_source(
         std::vector<int> range_x, std::vector<int> range_y, std::vector<int> range_z,
         const TF strength, TF norm)
 {
+    namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
 
     TF sum = 0.;
@@ -246,32 +276,59 @@ void Source<TF>::calc_source(
                 if (line_x != 0)
                 {
                     if (x[i + range_x[0]] >= x0+line_x)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                     else if (x[i + range_x[0]]<=x0)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0)       /fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(-pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                 }
                 else if (line_y != 0)
                 {
                     if (y[j + range_y[0]] >= y0+line_y)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                     else if (y[j + range_y[0]]<=y0)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0)       /fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                 }
                 else if (line_z != 0)
                 {
                     if (z[k + range_z[0]] >= z0+line_z)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
                     else if (z[k + range_z[0]]<=z0)
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0,2.0)/pow(sigma_z,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k + range_z[0]]-z0)       /fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0));
+                        blob[ijk] = strength/norm*exp(
+                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y));
                 }
                 else
-                    blob[ijk] = strength/norm*exp(-pow(x[i + range_x[0]]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j + range_y[0]]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k + range_z[0]]-z0-line_z,2.0)/pow(sigma_z,2.0));
+                    blob[ijk] = strength/norm*exp(
+                            - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
+                            - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
+                            - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
 
                 sum += blob[ijk]*gd.dx*gd.dy*gd.dz[k + range_z[0]];
             }
