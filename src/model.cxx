@@ -341,7 +341,7 @@ void Model<TF>::exec()
                 force   ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
-                fields->set_prognostic_cyclic_bcs();
+                boundary->set_prognostic_cyclic_bcs();
 
                 // Calculate Monin-Obukhov parameters (L, u*).
                 boundary->calc_mo_stability(*thermo);

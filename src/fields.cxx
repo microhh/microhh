@@ -1225,22 +1225,6 @@ void Fields<TF>::reset_tendencies()
         reset_field(fld3d.second->fld.data(), gd.ncells);
 }
 
-#ifndef USECUDA
-template<typename TF>
-void Fields<TF>::set_prognostic_cyclic_bcs()
-{
-    /* Set cyclic boundary conditions of the
-       prognostic 3D fields */
-
-    boundary_cyclic.exec(mp.at("u")->fld.data());
-    boundary_cyclic.exec(mp.at("v")->fld.data());
-    boundary_cyclic.exec(mp.at("w")->fld.data());
-
-    for (auto& it : sp)
-        boundary_cyclic.exec(it.second->fld.data());
-}
-#endif
-
 
 template class Fields<double>;
 template class Fields<float>;

@@ -34,6 +34,7 @@
 #include "finite_difference.h"
 
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 
 // Boundary schemes.
 #include "boundary.h"
@@ -150,6 +151,7 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     grid(gridin),
     fields(fieldsin),
     boundary_cyclic(master, grid),
+    boundary_outflow(master, grid),
     field3d_io(master, grid)
 {
     swboundary = "default";
@@ -261,6 +263,8 @@ void Boundary<TF>::process_bcs(Input& input)
     // 2D sbot input:
     sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
 
+    // Read the scalars for which free inflow / outflow conditions are applied.
+    scalar_outflow = input.get_list<std::string>("boundary", "scalar_outflow", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -393,6 +397,27 @@ void Boundary<TF>::process_time_dependent(
 
 
 #ifndef USECUDA
+template<typename TF>
+void Boundary<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
+
+    for (auto& it : fields.sp)
+        boundary_cyclic.exec(it.second->fld.data());
+
+    // Overwrite here the ghost cells for the scalars with outflow BCs
+    for (auto& s : scalar_outflow)
+        boundary_outflow.exec(fields.sp.at(s)->fld.data());
+}
+#endif
+
+
+#ifndef USECUDA
 template <typename TF>
 void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
@@ -413,7 +438,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
             itime_sbot_2d_prev = itime_sbot_2d_next;
             itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
-            const unsigned long iotime1 = int(itime_sbot_2d_next / iiotimeprec);
+            const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
 
             int nerror = 0;
 
