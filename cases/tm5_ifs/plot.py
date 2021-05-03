@@ -3,7 +3,7 @@ from pylab import *
 import numpy as np
 import sys
 
-slist = 'hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2'
+slist = 'hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2,oh'
 #slist = 'hcho,isopooh,isop,mvkmacr,no,o3,oh'
 specs = slist.split(',')
 profs = []
@@ -41,13 +41,13 @@ flux = np.array(flux)
 #        ax.plot(flux[i,j,:], zaxh)
 #    ax.set_xlabel(spec + '(m/s)')
 #    ax.set_ylabel('z (m)')
-print(profs.shape)
+np = profs.shape[1]
 for i,spec in enumerate(specs):
     f,ax = subplots()
-    for j in range(0,110,5):
+    for j in range(0,np,1):
         ax.plot(profs[i,j,:], zax)
     ax.errorbar(profs[i,-1,:],zax, xerr=sqrt(error[i,-1,:]), fmt='.')
     ax.set_xlabel(spec + '(ppb)')
     ax.set_ylabel('z (m)')
     ax.set_ylim((0,3000))
-    f.savefig(spec+'ed_48_1e1.png')
+    f.savefig(spec+'ed_small_ed100.png')

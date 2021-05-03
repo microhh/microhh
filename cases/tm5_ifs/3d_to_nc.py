@@ -37,11 +37,11 @@ def convert_to_nc(variables):
             'z': range(ktot),
             'y': range(jtot),
             'x': range(itot)}
-        if variable is 'u':
+        if variable == 'u':
             dim['xh'] = dim.pop('x')
-        if variable is 'v':
+        if variable == 'v':
             dim['yh'] = dim.pop('y')
-        if variable is 'w':
+        if variable == 'w':
             dim['zh'] = dim.pop('z')
         try:
             ncfile = mht.Create_ncfile(
@@ -151,9 +151,12 @@ grid = mht.Read_grid(itot, jtot, ktot)
 
 chunks = [variables[i::nprocs] for i in range(nprocs)]
 
-pool = Pool(processes=nprocs)
+print(chunks)
+convert_to_nc(chunks[0])
 
-pool.imap_unordered(convert_to_nc, chunks)
+#pool = Pool(processes=nprocs)
 
-pool.close()
-pool.join()
+#pool.imap_unordered(convert_to_nc, chunks)
+
+#pool.close()
+#pool.join()
