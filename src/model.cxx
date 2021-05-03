@@ -445,6 +445,7 @@ void Model<TF>::exec()
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
+
                         #ifdef USECUDA
                         if (!cpu_up_to_date)
                         {

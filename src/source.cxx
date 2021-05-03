@@ -205,6 +205,9 @@ TF Source<TF>::calc_norm(
                     else
                         blob_norm = exp(-pow(x[i]-x0-line_x,2.0)/pow(sigma_x,2.0) - pow(y[j]-y0-line_y,2.0)/pow(sigma_y,2.0) - pow(z[k]-z0-line_z,2.0)/pow(sigma_z,2.0));
                 }
+                else
+                    blob_norm = 0;
+
                 sum += blob_norm*gd.dx*gd.dy*gd.dz[k];
             }
 
