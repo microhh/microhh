@@ -4,7 +4,10 @@
 .vscode
 build*
 .*
-*.00*00
+*.00*0
 cases/tm5_ifs/microhh
 cases/tm5_ifs/*.png
 *.nc
+*.gif
+*.mpeg
+cases/tm5_ifs/__pycache__/microhh_tools.cpython-38.pyc

@@ -150,7 +150,6 @@ grid = mht.Read_grid(itot, jtot, ktot)
 
 
 chunks = [variables[i::nprocs] for i in range(nprocs)]
-
 print(chunks)
 convert_to_nc(chunks[0])
 

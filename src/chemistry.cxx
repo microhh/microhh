@@ -260,7 +260,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		vdrooh = TF(0.008)/dz[k];   // 1/s
 		vdh2o2 = TF(0.018)/dz[k];   // 1/s
 //		// emission/deposition fluxes:
-		eno      = TF(0.0)*CFACTOR/dz[k];    // molecules/cm3/s
+		// eno      = TF(0.0)*CFACTOR/dz[k];    // molecules/cm3/s
 		erh      = TF(1.0)*CFACTOR/dz[k];
 	    }
             else {
@@ -272,7 +272,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		vdrooh = TF(0.0);
 		vdh2o2 = TF(0.0);
 		// emission/deposition fluxes:
-		eno      = TF(0.0);
+		//eno      = TF(0.0);
 		erh      = TF(0.0);
 	    }
 //		    vdo3   = TF(0.005)/(TF)1e3;   // 1/s
@@ -289,9 +289,13 @@ double CFACTOR;                          /* Conversion factor for concentration 
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-		    if (k==kstart and i==iend/2 and j==jend/2) {
-			    eno = TF(0.1)*CFACTOR;
+		    if (k==2 and i==iend/2 and j==jend/2) {
+			    eno = TF(10.0)*CFACTOR;
 		    }
+		    else {
+			    eno = TF(0.0)*CFACTOR;
+		    }
+
                     const int ijk = i + j*jj + k*kk;
 		    const TF C_H2O = std::max(qt[ijk]*xmair*C_M/xmh2o,(TF)1.0);                   // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
 		    const TF TEMP = Temp[ijk];
