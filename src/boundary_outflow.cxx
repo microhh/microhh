@@ -24,47 +24,61 @@
 #include "grid.h"
 #include "boundary_outflow.h"
 
-
 namespace
 {
-    template<typename TF>
-    void compute_outflow_2nd(
+    template<typename TF, Edge_location location>
+    void set_neumann(
             TF* const restrict a,
-            const int iend, const int igc,
+            const int istart, const int iend, const int igc,
+            const int jstart, const int jend, const int jgc,
             const int icells, const int jcells, const int kcells,
             const int ijcells)
     {
         const int ii = 1;
+        int ijk;
+        int ijk_gc;
 
         // Set the ghost cells using extrapolation.
-        for (int k=0; k<kcells; ++k)
-            for (int j=0; j<jcells; ++j)
-                for (int i=0; i<igc; ++i)
-                {
-                    const int ijk    = (iend-1-i) + j*icells + k*ijcells;
-                    const int ijk_gc = (iend+i  ) + j*icells + k*ijcells;
-                    a[ijk_gc] = a[ijk];
-                }
-    }
+        if (location == Edge_location::West || location == Edge_location::East)
+        {
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    for (int i=0; i<igc; ++i)
+                    {
+                        if (location == Edge_location::West)
+                        {
+                            ijk    = (istart+i  ) + j*icells + k*ijcells;
+                            ijk_gc = (istart-1-i) + j*icells + k*ijcells;
+                        }
+                        else if (location == Edge_location::East)
+                        {
+                            ijk    = (iend-1-i) + j*icells + k*ijcells;
+                            ijk_gc = (iend+i  ) + j*icells + k*ijcells;
+                        }
 
-    template<typename TF>
-    void compute_inflow_2nd(
-            TF* const restrict a,// const TF value,
-            const int istart, const int igc,
-            const int icells, const int jcells, const int kcells,
-            const int ijcells)
-    {
-        const int ii = 1;
+                        a[ijk_gc] = a[ijk];
+                    }
+        }
+        else if (location == Edge_location::North || location == Edge_location::South)
+        {
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jgc; ++j)
+                    for (int i=0; i<icells; ++i)
+                    {
+                        if (location == Edge_location::South)
+                        {
+                            ijk    = i + (jstart+j  )*icells + k*ijcells;
+                            ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
+                        }
+                        else if (location == Edge_location::North)
+                        {
+                            ijk    = i + (jend-1-j)*icells + k*ijcells;
+                            ijk_gc = i + (jend+j  )*icells + k*ijcells;
+                        }
 
-        // Set the ghost cells using extrapolation.
-        for (int k=0; k<kcells; ++k)
-            for (int j=0; j<jcells; ++j)
-                for (int i=0; i<igc; ++i)
-                {
-                    const int ijk    = (istart+i  ) + j*icells + k*ijcells;
-                    const int ijk_gc = (istart-1-i) + j*icells + k*ijcells;
-                    a[ijk_gc] = a[ijk];
-                }
+                        a[ijk_gc] = a[ijk];
+                    }
+        }
     }
 
     template<typename TF>
@@ -130,38 +144,54 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // Outflow
-    if (md.mpicoordx == md.npx-1)
+    if (grid.get_spatial_order() == Grid_order::Fourth)
     {
-        if (grid.get_spatial_order() == Grid_order::Second)
-            compute_outflow_2nd(
-                    data,
-                    gd.iend, gd.igc,
+        // Dirichlet BCs on west boundary, Neumann on east boundary,
+        // cyclic BCs on north-south boundaries
+        if (md.mpicoordx == 0)
+            compute_inflow_4th(
+                    data, TF(0.),
+                    gd.istart,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
 
-        else if (grid.get_spatial_order() == Grid_order::Fourth)
+        else if (md.mpicoordx == md.npx-1)
             compute_outflow_4th(
                     data,
                     gd.iend,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
     }
-
-    // Inflow
-    if (md.mpicoordx == 0)
+    else if (grid.get_spatial_order() == Grid_order::Second)
     {
-        if (grid.get_spatial_order() == Grid_order::Second)
-            compute_inflow_2nd(
-                    data,// TF(0.),
-                    gd.istart, gd.igc,
+        // Neumann BCs on all boundaries
+        if (md.mpicoordx == 0)
+            set_neumann<TF, Edge_location::West>(
+                    data,
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.kgc,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
+        else if (md.mpicoordx == md.npx-1)
+            set_neumann<TF, Edge_location::East>(
+                    data,
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.kgc,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
 
-        else if (grid.get_spatial_order() == Grid_order::Fourth)
-            compute_inflow_4th(
-                    data, TF(0.),
-                    gd.istart,
+        if (md.mpicoordy == 0)
+            set_neumann<TF, Edge_location::South>(
+                    data,
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.kgc,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
+        else if (md.mpicoordy == md.npy-1)
+            set_neumann<TF, Edge_location::North>(
+                    data,
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.kgc,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
     }

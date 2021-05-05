@@ -30,6 +30,8 @@
 class Master;
 template<typename> class Grid;
 
+enum class Edge_location {West, East, South, North};
+
 template<typename TF>
 class Boundary_outflow
 {
