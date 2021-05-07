@@ -520,23 +520,6 @@ void Fields<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-#ifdef USECUDA
-template<typename TF>
-void Fields<TF>::set_prognostic_cyclic_bcs()
-{
-    /* Set cyclic boundary conditions of the
-       prognostic 3D fields */
-
-    boundary_cyclic.exec_g(mp.at("u")->fld_g);
-    boundary_cyclic.exec_g(mp.at("v")->fld_g);
-    boundary_cyclic.exec_g(mp.at("w")->fld_g);
-
-    for (auto& it : sp)
-        boundary_cyclic.exec_g(it.second->fld_g);
-}
-#endif
-
-
 
 template class Fields<double>;
 template class Fields<float>;
