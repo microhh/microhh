@@ -80,7 +80,6 @@ class Fields
         void exec_column(Column<TF>&);   ///< Output the column
 
         void reset_tendencies();
-        void set_prognostic_cyclic_bcs();
 
         void init_momentum_field(
                 const std::string&, const std::string&,

@@ -27,6 +27,7 @@
 
 #include "timedep.h"
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 #include "field3d_io.h"
 
 class Master;
@@ -89,6 +90,8 @@ class Boundary
         virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
+        void set_prognostic_cyclic_bcs();
+
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
@@ -125,6 +128,7 @@ class Boundary
         Fields<TF>& fields;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;
+        Boundary_outflow<TF> boundary_outflow;
 
         std::string swboundary;
 
@@ -143,6 +147,7 @@ class Boundary
 
         // Spatial sbot input:
         std::vector<std::string> sbot_2d_list;
+        std::vector<std::string> scalar_outflow;
 
         // Time varying spatial sbot input:
         bool swtimedep_sbot_2d;

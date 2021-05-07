@@ -317,7 +317,9 @@ namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
+        const int ii2 = 2;
         const int jj = icells;
+        const int jj2 = 2*icells;
 
         // Calculate total wind.
         const TF minval = 1.e-1;
@@ -329,8 +331,20 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                             + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+
+                const TF u_filtered = TF(1./9) *
+                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
+                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
+                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
+
+                const TF v_filtered = TF(1./9) *
+                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
+                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
+                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
+
+                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+
                 // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
@@ -412,10 +426,11 @@ namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
+        const int ii2 = 2;
         const int jj = icells;
+        const int jj2 = 2*icells;
 
         // calculate total wind
-        TF du2;
         const TF minval = 1.e-1;
 
         // first, interpolate the wind to the scalar location
@@ -425,9 +440,21 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-                // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+
+                const TF u_filtered = TF(1./9) *
+                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
+                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
+                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
+
+                const TF v_filtered = TF(1./9) *
+                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
+                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
+                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
+
+                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+
+                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
                 // otherwise evisc at k = kstart blows up
                 dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
             }

@@ -31,30 +31,38 @@ void Grid<TF>::prepare_device()
     gd.ithread_block = min(256, 16 * ((gd.itot / 16) + (gd.itot % 16 > 0)));
     gd.jthread_block = 256 / gd.ithread_block;
 
+    const int imemsize = gd.icells*sizeof(TF);
+    const int jmemsize = gd.jcells*sizeof(TF);
     const int kmemsize = gd.kcells*sizeof(TF);
 
-    cuda_safe_call(cudaMalloc((void**)&gd.z_g    , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.zh_g   , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dz_g   , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzh_g  , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzi_g  , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzhi_g , kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzi4_g , kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.x_g,     imemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.y_g,     jmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.z_g,     kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.zh_g,    kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.dz_g,    kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.dzh_g,   kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.dzi_g,   kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.dzhi_g,  kmemsize));
+    cuda_safe_call(cudaMalloc((void**)&gd.dzi4_g,  kmemsize));
     cuda_safe_call(cudaMalloc((void**)&gd.dzhi4_g, kmemsize));
 
-    cuda_safe_call(cudaMemcpy(gd.z_g    , gd.z.data()    , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.zh_g   , gd.zh.data()   , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.dz_g   , gd.dz.data()   , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.dzh_g  , gd.dzh.data()  , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.dzi_g  , gd.dzi.data()  , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.dzhi_g , gd.dzhi.data() , kmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(gd.dzi4_g , gd.dzi4.data() , kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.x_g,     gd.x.data(),     imemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.y_g,     gd.y.data(),     jmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.z_g,     gd.z.data(),     kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.zh_g,    gd.zh.data(),    kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.dz_g,    gd.dz.data(),    kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.dzh_g,   gd.dzh.data(),   kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.dzi_g,   gd.dzi.data(),   kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.dzhi_g,  gd.dzhi.data(),  kmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gd.dzi4_g,  gd.dzi4.data(),  kmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(gd.dzhi4_g, gd.dzhi4.data(), kmemsize, cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
 void Grid<TF>::clear_device()
 {
+    cuda_safe_call(cudaFree(gd.x_g    ));
+    cuda_safe_call(cudaFree(gd.y_g    ));
     cuda_safe_call(cudaFree(gd.z_g    ));
     cuda_safe_call(cudaFree(gd.zh_g   ));
     cuda_safe_call(cudaFree(gd.dz_g   ));

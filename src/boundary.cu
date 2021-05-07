@@ -445,6 +445,25 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
 #ifdef USECUDA
 template<typename TF>
+void Boundary<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
+
+    for (auto& it : fields.sp)
+        boundary_cyclic.exec_g(it.second->fld_g);
+
+    // Overwrite here the ghost cells for the scalars with outflow BCs
+    for (auto& s : scalar_outflow)
+        boundary_outflow.exec(fields.sp.at(s)->fld_g);
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
 TF* Boundary<TF>::get_z0m_g()
 {
     throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
