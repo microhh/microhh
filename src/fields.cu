@@ -520,6 +520,5 @@ void Fields<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-
 template class Fields<double>;
 template class Fields<float>;

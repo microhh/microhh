@@ -101,6 +101,8 @@ struct Grid_data
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 
+    TF* x_g;
+    TF* y_g;
     TF* z_g;
     TF* zh_g;
     TF* dz_g;

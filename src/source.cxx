@@ -129,30 +129,6 @@ void Source<TF>::create(Input& input)
     }
 }
 
-// Add the source to the fields. This function is called in the main time loop.
-template<typename TF>
-void Source<TF>::exec()
-{
-    auto& gd = grid.get_grid_data();
-
-    auto blob = fields.get_tmp();
-
-    for (int n=0; n<sourcelist.size(); ++n)
-    {
-        calc_source(
-                blob->fld.data(),
-                gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
-                gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
-                gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z,
-                strength[n], norm[n]);
-
-        add_source(fields.st[sourcelist[n]]->fld.data(), blob->fld.data(), shape[n].range_x, shape[n].range_y, shape[n].range_z);
-    }
-
-    fields.release_tmp(blob);
-}
-
 template<typename TF>
 TF Source<TF>::calc_norm(
         const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
@@ -244,6 +220,34 @@ TF Source<TF>::calc_norm(
 
     return sum;
 }
+
+// Add the source to the fields. This function is called in the main time loop.
+#ifndef USECUDA
+template<typename TF>
+void Source<TF>::exec()
+{
+    auto& gd = grid.get_grid_data();
+
+    auto blob = fields.get_tmp();
+
+    for (int n=0; n<sourcelist.size(); ++n)
+    {
+        calc_source(
+                blob->fld.data(),
+                gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
+                gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
+                gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
+                shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                strength[n], norm[n]);
+
+        add_source(
+                fields.st[sourcelist[n]]->fld.data(), blob->fld.data(),
+                shape[n].range_x, shape[n].range_y, shape[n].range_z);
+    }
+
+    fields.release_tmp(blob);
+}
+
 
 template<typename TF>
 void Source<TF>::calc_source(
@@ -360,6 +364,7 @@ void Source<TF>::add_source(TF* const restrict st, const TF* const restrict blob
                 st[ijk] += blob[cdf];
             }
 }
+#endif
 
 template class Source<double>;
 template class Source<float>;
