@@ -138,6 +138,7 @@ Boundary_outflow<TF>::~Boundary_outflow()
 {
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Boundary_outflow<TF>::exec(TF* const restrict data)
 {
@@ -155,7 +156,7 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
 
-        else if (md.mpicoordx == md.npx-1)
+        if (md.mpicoordx == md.npx-1)
             compute_outflow_4th(
                     data,
                     gd.iend,
@@ -172,7 +173,8 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
                     gd.jstart, gd.jend, gd.kgc,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
-        else if (md.mpicoordx == md.npx-1)
+
+        if (md.mpicoordx == md.npx-1)
             set_neumann<TF, Edge_location::East>(
                     data,
                     gd.istart, gd.iend, gd.igc,
@@ -187,7 +189,8 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
                     gd.jstart, gd.jend, gd.kgc,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
-        else if (md.mpicoordy == md.npy-1)
+
+        if (md.mpicoordy == md.npy-1)
             set_neumann<TF, Edge_location::North>(
                     data,
                     gd.istart, gd.iend, gd.igc,
@@ -196,6 +199,7 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
                     gd.ijcells);
     }
 }
+#endif
 
 template class Boundary_outflow<double>;
 template class Boundary_outflow<float>;
