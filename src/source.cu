@@ -48,15 +48,16 @@ namespace
             const TF y0, const TF sigma_y, const TF line_y,
             const TF z0, const TF sigma_z, const TF line_z,
             const TF strength, const TF norm,
-            const int i0, const int j0, const int k0,
-            const int ni, const int nj, const int nk,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + i0;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + j0;
-        const int k  = blockIdx.z + k0;
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
 
-        if (i < i0+ni && j < j0+nj && k < k0+nk)
+        if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*icells + k*ijcells;
 
@@ -128,50 +129,38 @@ void Source<TF>::exec()
     auto& gd = grid.get_grid_data();
 
     for (int n=0; n<sourcelist.size(); ++n)
-        calc_source(
+    {
+        const int range[3] = {
+                shape[n].range_x[1]-shape[n].range_x[0],
+                shape[n].range_y[1]-shape[n].range_y[0],
+                shape[n].range_z[1]-shape[n].range_z[0]};
+
+        if (range[0] == 0 || range[1] == 0 || range[2] == 0)
+            continue;
+
+        const int blocki = 16;
+        const int blockj = 16;
+
+        const int gridi  = range[0]/blocki + (range[0]%blocki > 0);
+        const int gridj  = range[1]/blockj + (range[1]%blockj > 0);
+
+        dim3 gridGPU (gridi, gridj, range[2]);
+        dim3 blockGPU(blocki, blockj, 1);
+
+        calc_source_g<<<gridGPU, blockGPU>>>(
                 fields.st[sourcelist[n]]->fld_g,
-                gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
-                gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
-                gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z,
-                strength[n], norm[n]);
-}
+                gd.x_g, gd.y_g, gd.z_g,
+                source_x0[n], sigma_x[n], line_x[n],
+                source_y0[n], sigma_y[n], line_y[n],
+                source_z0[n], sigma_z[n], line_z[n],
+                strength[n], norm[n],
+                shape[n].range_x[0], shape[n].range_x[1],
+                shape[n].range_y[0], shape[n].range_y[1],
+                shape[n].range_z[0], shape[n].range_z[1],
+                gd.icells, gd.ijcells);
 
-template<typename TF>
-void Source<TF>::calc_source(
-        TF* const restrict st,
-        const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
-        const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
-        const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
-        std::vector<int> range_x, std::vector<int> range_y, std::vector<int> range_z,
-        const TF strength, TF norm)
-{
-    namespace fm = Fast_math;
-    auto& gd = grid.get_grid_data();
-
-    const int range[3] = {range_x[1]-range_x[0], range_y[1]-range_y[0], range_z[1]-range_z[0]};
-
-    const int blocki = 16;
-    const int blockj = 16;
-
-    const int gridi  = range[0]/blocki + (range[0]%blocki > 0);
-    const int gridj  = range[1]/blockj + (range[1]%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, range[2]);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    calc_source_g<<<gridGPU, blockGPU>>>(
-            st,
-            gd.x_g, gd.y_g, gd.z_g,
-            x0, sigma_x, line_x,
-            y0, sigma_y, line_y,
-            z0, sigma_z, line_z,
-            strength, norm,
-            range_x[0], range_y[0], range_z[0],
-            range[0], range[1], range[2],
-            gd.icells, gd.ijcells);
-
-    cuda_check_error();
+        cuda_check_error();
+    }
 }
 #endif
 

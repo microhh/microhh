@@ -76,13 +76,6 @@ class Source
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 std::vector<int>, std::vector<int>, std::vector<int>);
-
-        void calc_source(
-                TF* const, const TF* const, const TF, const TF, const TF,
-                const TF* const, const TF, const TF, const TF,
-                const TF* const, const TF, const TF, const TF,
-                std::vector<int>, std::vector<int>, std::vector<int>,
-                const TF, TF);
 };
 #endif
 

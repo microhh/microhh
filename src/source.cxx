@@ -34,6 +34,8 @@
 
 namespace
 {
+    namespace fm = Fast_math;
+
     template<typename TF>
     std::vector<int> calc_shape(
             const TF* restrict x, const TF x0, const TF sigma_x, const TF line_x, int istart, int iend)
@@ -66,6 +68,93 @@ namespace
 
         return range;
     }
+
+    template<typename TF>
+    void calc_source(
+            TF* const __restrict__ st,
+            const TF* const restrict x,
+            const TF* const restrict y,
+            const TF* const restrict z,
+            const TF x0, const TF sigma_x, const TF line_x,
+            const TF y0, const TF sigma_y, const TF line_y,
+            const TF z0, const TF sigma_z, const TF line_z,
+            const TF strength, const TF norm,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        if (iend == istart || jend == jstart || kend == kstart)
+            return;
+
+        for(int k = kstart; k<kend; ++k)
+            for(int j = jstart; j<jend; ++j)
+                for(int i = istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if (line_x != 0)
+                    {
+                        if (x[i] >= x0+line_x)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                        else if (x[i] <= x0)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0)       /fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                        else
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    }
+                    else if (line_y != 0)
+                    {
+                        if (y[j] >= y0+line_y)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                        else if (y[j] <= y0)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0)       /fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                        else
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    }
+                    else if (line_z != 0)
+                    {
+                        if (z[k] >= z0+line_z)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                        else if (z[k] <= z0)
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0)       /fm::pow2(sigma_z));
+                        else
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
+                    }
+                    else
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                }
+
+
+        }
+
+
 }
 
 // Constructor: read values from ini file that do not need info from other classes
@@ -128,6 +217,28 @@ void Source<TF>::create(Input& input)
                 shape[n].range_x, shape[n].range_y, shape[n].range_z);
     }
 }
+
+// Add the source to the fields. This function is called in the main time loop.
+#ifndef USECUDA
+template<typename TF>
+void Source<TF>::exec()
+{
+    auto& gd = grid.get_grid_data();
+
+    for (int n=0; n<sourcelist.size(); ++n)
+        calc_source(
+                fields.st[sourcelist[n]]->fld.data(),
+                gd.x.data(), gd.y.data(), gd.z.data(),
+                source_x0[n], sigma_x[n], line_x[n],
+                source_y0[n], sigma_y[n], line_y[n],
+                source_z0[n], sigma_z[n], line_z[n],
+                strength[n], norm[n],
+                shape[n].range_x[0], shape[n].range_x[1],
+                shape[n].range_y[0], shape[n].range_y[1],
+                shape[n].range_z[0], shape[n].range_z[1],
+                gd.icells, gd.ijcells);
+}
+#endif
 
 template<typename TF>
 TF Source<TF>::calc_norm(
@@ -221,104 +332,6 @@ TF Source<TF>::calc_norm(
     return sum;
 }
 
-// Add the source to the fields. This function is called in the main time loop.
-#ifndef USECUDA
-template<typename TF>
-void Source<TF>::exec()
-{
-    auto& gd = grid.get_grid_data();
-
-    for (int n=0; n<sourcelist.size(); ++n)
-        calc_source(
-                fields.st[sourcelist[n]]->fld.data(),
-                gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
-                gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
-                gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z,
-                strength[n], norm[n]);
-}
-
-template<typename TF>
-void Source<TF>::calc_source(
-        TF* const restrict st,
-        const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
-        const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
-        const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
-        std::vector<int> range_x, std::vector<int> range_y, std::vector<int> range_z,
-        const TF strength, TF norm)
-{
-    namespace fm = Fast_math;
-    auto& gd = grid.get_grid_data();
-
-    // Return if one of the blob dimensions is zero:
-    if (range_x[0] == range_x[1] || range_y[0] == range_y[1] || range_z[0] == range_z[1])
-        return;
-
-    for(int k = range_z[0]; k<range_z[1]; ++k)
-        for(int j = range_y[0]; j<range_y[1]; ++j)
-            for(int i = range_x[0]; i<range_x[1]; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-
-                if (line_x != 0)
-                {
-                    if (x[i] >= x0+line_x)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (x[i] <= x0)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0)       /fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                    else
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                }
-                else if (line_y != 0)
-                {
-                    if (y[j] >= y0+line_y)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (y[j] <= y0)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0)       /fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                    else
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                }
-                else if (line_z != 0)
-                {
-                    if (z[k] >= z0+line_z)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (z[k] <= z0)
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0)       /fm::pow2(sigma_z));
-                    else
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
-                }
-                else
-                    st[ijk] += strength/norm*exp(
-                            - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                            - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                            - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
-            }
-}
-#endif
 
 template class Source<double>;
 template class Source<float>;
