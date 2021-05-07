@@ -83,8 +83,6 @@ class Source
                 const TF* const, const TF, const TF, const TF,
                 std::vector<int>, std::vector<int>, std::vector<int>,
                 const TF, TF);
-
-        void add_source(TF* const, const TF* const, std::vector<int>, std::vector<int>, std::vector<int>);
 };
 #endif
 

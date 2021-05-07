@@ -173,12 +173,6 @@ void Source<TF>::calc_source(
 
     cuda_check_error();
 }
-
-template<typename TF>
-void Source<TF>::add_source(TF* const restrict st, const TF* const restrict blob,
-        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z)
-{
-}
 #endif
 
 template class Source<double>;

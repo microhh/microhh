@@ -228,30 +228,19 @@ void Source<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
 
-    auto blob = fields.get_tmp();
-
     for (int n=0; n<sourcelist.size(); ++n)
-    {
         calc_source(
-                blob->fld.data(),
+                fields.st[sourcelist[n]]->fld.data(),
                 gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
                 gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                 shape[n].range_x, shape[n].range_y, shape[n].range_z,
                 strength[n], norm[n]);
-
-        add_source(
-                fields.st[sourcelist[n]]->fld.data(), blob->fld.data(),
-                shape[n].range_x, shape[n].range_y, shape[n].range_z);
-    }
-
-    fields.release_tmp(blob);
 }
-
 
 template<typename TF>
 void Source<TF>::calc_source(
-        TF* const restrict blob,
+        TF* const restrict st,
         const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
         const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
@@ -261,107 +250,72 @@ void Source<TF>::calc_source(
     namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
 
-    TF sum = 0.;
-    const int ii = 1;
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
+    // Return if one of the blob dimensions is zero:
+    if (range_x[0] == range_x[1] || range_y[0] == range_y[1] || range_z[0] == range_z[1])
+        return;
 
-    const int range[3] = {range_x[1]-range_x[0], range_y[1]-range_y[0], range_z[1]-range_z[0]};
-
-    for(int k = 0; k<range[2]; ++k)
-        for(int j = 0; j<range[1]; ++j)
-            for(int i = 0; i<range[0]; ++i)
+    for(int k = range_z[0]; k<range_z[1]; ++k)
+        for(int j = range_y[0]; j<range_y[1]; ++j)
+            for(int i = range_x[0]; i<range_x[1]; ++i)
             {
-                const int ijk = i + j*range[0] + k*range[0]*range[1];
-
-                if (range_x[0] == range_x[1] || range_y[0] == range_y[1] || range_z[0] == range_z[1])
-                    break;
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
 
                 if (line_x != 0)
                 {
-                    if (x[i + range_x[0]] >= x0+line_x)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (x[i + range_x[0]]<=x0)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0)       /fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
+                    if (x[i] >= x0+line_x)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    else if (x[i] <= x0)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0)       /fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                 }
                 else if (line_y != 0)
                 {
-                    if (y[j + range_y[0]] >= y0+line_y)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (y[j + range_y[0]]<=y0)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0)       /fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
+                    if (y[j] >= y0+line_y)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    else if (y[j] <= y0)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0)       /fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                 }
                 else if (line_z != 0)
                 {
-                    if (z[k + range_z[0]] >= z0+line_z)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
-                    else if (z[k + range_z[0]]<=z0)
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k + range_z[0]]-z0)       /fm::pow2(sigma_z));
+                    if (z[k] >= z0+line_z)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    else if (z[k] <= z0)
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                - fm::pow2(z[k]-z0)       /fm::pow2(sigma_z));
                     else
-                        blob[ijk] = strength/norm*exp(
-                                - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y));
+                        st[ijk] += strength/norm*exp(
+                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
                 }
                 else
-                    blob[ijk] = strength/norm*exp(
-                            - fm::pow2(x[i + range_x[0]]-x0-line_x)/fm::pow2(sigma_x)
-                            - fm::pow2(y[j + range_y[0]]-y0-line_y)/fm::pow2(sigma_y)
-                            - fm::pow2(z[k + range_z[0]]-z0-line_z)/fm::pow2(sigma_z));
-
-                sum += blob[ijk]*gd.dx*gd.dy*gd.dz[k + range_z[0]];
-            }
-
-    master.sum(&sum,1);
-}
-
-template<typename TF>
-void Source<TF>::add_source(TF* const restrict st, const TF* const restrict blob,
-        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z)
-{
-    auto& gd = grid.get_grid_data();
-
-    const int jj = gd.icells;
-    const int kk = gd.ijcells;
-
-    const int range[3] = {range_x[1]-range_x[0], range_y[1]-range_y[0], range_z[1]-range_z[0]};
-
-    for (int k=range_z[0]; k<range_z[1]; ++k)
-        for (int j=range_y[0]; j<range_y[1]; ++j)
-            for (int i=range_x[0]; i<range_x[1]; ++i)
-            {
-                if (range_x[0] == range_x[1] || range_y[0] == range_y[1] || range_z[0] == range_z[1])
-                    break;
-
-                const int ijk = i + j*jj + k*kk;
-                const int cdf = i - range_x[0] + (j-range_y[0])*range[0] + (k - range_z[0])*range[0]*range[1];
-
-                st[ijk] += blob[cdf];
+                    st[ijk] += strength/norm*exp(
+                            - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                            - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                            - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
             }
 }
 #endif
