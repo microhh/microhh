@@ -166,4 +166,3 @@ void Source<TF>::exec()
 
 template class Source<double>;
 template class Source<float>;
-

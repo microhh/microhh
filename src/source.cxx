@@ -150,11 +150,7 @@ namespace
                                 - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
                                 - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
                 }
-
-
         }
-
-
 }
 
 // Constructor: read values from ini file that do not need info from other classes
@@ -332,7 +328,5 @@ TF Source<TF>::calc_norm(
     return sum;
 }
 
-
 template class Source<double>;
 template class Source<float>;
-
