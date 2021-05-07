@@ -29,7 +29,7 @@
 
 namespace
 {
-    template<typename TF, Edge_location location>__global__
+    template<typename TF, Edge_location location> __global__
     void set_neumann_g(
             TF* const __restrict__ fld,
             const int istart, const int iend, const int igc,
@@ -78,6 +78,53 @@ namespace
             }
         }
     }
+
+    template<typename TF> __global__
+    void compute_outflow_4th(
+            TF* const restrict a,
+            const int iend, const int icells,
+            const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int j  = blockIdx.x*blockDim.x + threadIdx.x;
+        const int k  = blockIdx.y*blockDim.y + threadIdx.y;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int ii3 = 3;
+
+        if (j < jcells && k < kcells)
+        {
+            const int ijk = (iend-1) + j*icells + k*ijcells;
+            a[ijk+ii1] = TF(2.)*a[ijk] - TF( 3./2.)*a[ijk-ii1] + TF(1./2.)*a[ijk-ii2];
+            a[ijk+ii2] = TF(3.)*a[ijk] - TF( 7./2.)*a[ijk-ii1] + TF(3./2.)*a[ijk-ii2];
+            a[ijk+ii3] = TF(5.)*a[ijk] - TF(15./2.)*a[ijk-ii1] + TF(7./2.)*a[ijk-ii2];
+        }
+    }
+
+    template<typename TF> __global__
+    void compute_inflow_4th(
+            TF* const restrict a,
+            const TF value,
+            const int istart, const int icells,
+            const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int j  = blockIdx.x*blockDim.x + threadIdx.x;
+        const int k  = blockIdx.y*blockDim.y + threadIdx.y;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int ii3 = 3;
+
+        if (j < jcells && k < kcells)
+        {
+            const int ijk = istart + j*icells + k*ijcells;
+            a[ijk-ii1] = value + TF( 9./8.)*a[ijk] - TF( 14./8.)*a[ijk+ii1] + TF( 5./8.)*a[ijk+ii2];
+            a[ijk-ii2] = value + TF(33./8.)*a[ijk] - TF( 54./8.)*a[ijk+ii1] + TF(21./8.)*a[ijk+ii2];
+            a[ijk-ii3] = value + TF(65./8.)*a[ijk] - TF(110./8.)*a[ijk+ii1] + TF(45./8.)*a[ijk+ii2];
+        }
+    }
 }
 
 #ifdef USECUDA
@@ -89,21 +136,32 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
 
     if (grid.get_spatial_order() == Grid_order::Fourth)
     {
+        const int blocki = gd.jthread_block;
+        const int blockj = 64;
+
+        const int gridi  = gd.jcells/blocki + (gd.jcells%blocki > 0);
+        const int gridj  = gd.kcells/blockj + (gd.kcells%blockj > 0);
+
+        dim3 grid2dGPU (gridi, gridj);
+        dim3 block2dGPU(blocki, blockj);
+
         // Dirichlet BCs on west boundary, Neumann on east boundary,
         // cyclic BCs on north-south boundaries
-        //if (md.mpicoordx == 0)
-        //    compute_inflow_4th(
-        //            data, TF(0.),
-        //            gd.istart,
-        //            gd.icells, gd.jcells, gd.kcells,
-        //            gd.ijcells);
+        if (md.mpicoordx == 0)
+            compute_inflow_4th<<<grid2dGPU, block2dGPU>>>(
+                    data, TF(0),
+                    gd.istart,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
 
-        //else if (md.mpicoordx == md.npx-1)
-        //    compute_outflow_4th(
-        //            data,
-        //            gd.iend,
-        //            gd.icells, gd.jcells, gd.kcells,
-        //            gd.ijcells);
+        if (md.mpicoordx == md.npx-1)
+            compute_outflow_4th<<<grid2dGPU, block2dGPU>>>(
+                    data,
+                    gd.iend,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
+
+        cuda_check_error();
     }
     else if (grid.get_spatial_order() == Grid_order::Second)
     {
@@ -162,6 +220,8 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
                     gd.jstart, gd.jend, gd.kgc,
                     gd.icells, gd.jcells, gd.kcells,
                     gd.ijcells);
+
+        cuda_check_error();
     }
 }
 #endif
