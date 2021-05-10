@@ -165,12 +165,12 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
     }
     else if (grid.get_spatial_order() == Grid_order::Second)
     {
-        const int blockk = 32;
+        const int blockk = 4;
         const int gridk  = gd.kcells/blockk + (gd.kcells%blockk > 0);
 
         // Grid x-direction
         const int blocki_x = gd.igc;
-        const int blockj_x = gd.jthread_block;
+        const int blockj_x = 64;
 
         const int gridi_x  = 1;
         const int gridj_x  = gd.jcells/blockj_x + (gd.jcells%blockj_x > 0);
@@ -179,7 +179,7 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
         dim3 blockGPU_x(blocki_x, blockj_x, blockk);
 
         // Grid y-direction
-        const int blocki_y = gd.ithread_block;
+        const int blocki_y = 64;
         const int blockj_y = gd.jgc;
 
         const int gridi_y  = gd.icells/blocki_y + (gd.icells%blocki_y > 0);
