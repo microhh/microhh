@@ -75,7 +75,8 @@ class Source
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
-                std::vector<int>, std::vector<int>, std::vector<int>);
+                std::vector<int>, std::vector<int>, std::vector<int>,
+		TF *const __restrict);
 };
 #endif
 

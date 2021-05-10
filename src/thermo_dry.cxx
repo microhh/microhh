@@ -90,6 +90,7 @@ namespace
                 {
                     const int ijk = i + j*jj+ k*kk;
                     T[ijk] = exnref[k]*thref[k] + (th[ijk]-thref[k]);
+
                 }
     }
 

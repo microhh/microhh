@@ -210,7 +210,8 @@ void Source<TF>::create(Input& input)
                 gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
                 gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z);
+                shape[n].range_x, shape[n].range_y, shape[n].range_z,
+		fields.rhoref.data());
     }
 }
 
@@ -241,7 +242,8 @@ TF Source<TF>::calc_norm(
         const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
         const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
-        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z)
+        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z,
+	TF* const restrict rhoref)
 {
     namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
@@ -250,6 +252,9 @@ TF Source<TF>::calc_norm(
     TF blob_norm = 0.;
     const int jj = gd.icells;
     const int kk = gd.ijcells;
+    const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
+
+
 
     for (int k=gd.kstart; k<gd.kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
@@ -319,8 +324,10 @@ TF Source<TF>::calc_norm(
                 }
                 else
                     blob_norm = TF(0);
+// emissions come in kmol tracers/s and are added to gridboxes in ppb/s unit. rhoref (kg/m3) divided by xmair (kg/kmol) transfers to units kmol air.
+// emission (E in kmol tracer/s) are added as E/norm. Units is thus kmol tracer/kmol air per s. The factor 1e-9 transfers to ppb/s
+                sum += blob_norm*gd.dx*gd.dy*gd.dz[k]*(TF)1e-9*rhoref[k]/xmair;   // unit m3*kg/m3*kmol/kg-->kmol   and then to ppb-1. 
 
-                sum += blob_norm*gd.dx*gd.dy*gd.dz[k];
             }
 
     master.sum(&sum, 1);

@@ -3,13 +3,13 @@ from pylab import *
 import numpy as np
 import sys
 
-slist = 'hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2,oh'
+slist = 'co2,no,no2,o3,rh,ho2,hno3,h2o2,rooh,ro2,hcho,oh'
 #slist = 'hcho,isopooh,isop,mvkmacr,no,o3,oh'
 specs = slist.split(',')
 profs = []
 error = []
 flux = []
-with Dataset("tm5_ifs.default.0011160.nc") as x:
+with Dataset("jaenswalde.default.0003600.nc") as x:
     zax = x.variables['z'][:]
     zaxh = x.variables['zh'][:]
     z = x.groups['default']
@@ -21,13 +21,13 @@ with Dataset("tm5_ifs.default.0011160.nc") as x:
             spece = spec+'_flux'
             flux.append(z.variables[spece][:])
     z = x.groups['thermo']
-    thl = z.variables['thl'][:]
-    thl_2 = z.variables['thl_2'][:]
+    th = z.variables['th'][:]
+    th_2 = z.variables['th_2'][:]
 
 f,ax = subplots()
-for th in thl:
-    ax.plot(th[:], zax)
-ax.plot(thl[-1,:],zax, 'ro')
+for thx in th:
+    ax.plot(thx[:], zax)
+ax.plot(th[-1,:],zax, 'ro')
 ax.set_ylabel('z (m)')
 f.savefig('theta_ed_48_1e1.png')
 profs = np.array(profs)

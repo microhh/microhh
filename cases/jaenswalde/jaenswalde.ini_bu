@@ -23,10 +23,16 @@ swdiff=smag2
 dnmax=0.4
 
 [thermo]
-swthermo=dry
-swbasestate=boussinesq
+swbasestate=anelastic
+swthermo=vapor
 thref0=300.
 pbot=100000.
+swupdatebasestate=1
+
+[micro]
+swmicro=0
+swmicrobudget=1
+cflmax=2.0
 
 [force]
 swlspres=0
@@ -34,26 +40,30 @@ swls=0
 swwls=0
 
 [boundary]
+swtimedep=1
+timedeplist=thl_sbot, qt_sbot
 mbcbot=noslip
 mbctop=freeslip
 sbcbot=flux
 sbctop=neumann
 sbot=0
 stop=0
-sbot[th]=0.2
-stop[th]=0.003
+sbot[thl]=0.2
+stop[thl]=0.003
+sbot[qt]=0.0
+stop[qt]=-4e-6
 swboundary=surface
 z0m=0.1
 z0h=0.1
-scalar_outflow=co2,no
+scalar_outflow=co2,hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2
 
 [fields]
 visc=1.e-5
 svisc=1.e-5
 slist =co2,hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2
-
 rndseed=2
-rndamp[th]=0.1
+rndamp[thl]=0.1
+rndamp[qt]=2.5e-5
 rndz=300.
 rndexp=2.
 
@@ -82,13 +92,13 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=10800
-dt=1.0
+endtime=3600
+dt=1.
 dtmax=5.0
-savetime=180
+savetime=1800
 outputiter=5
 adaptivestep=true
-starttime=3600
+starttime=0
 rkorder=3
 
 [stats]
@@ -97,11 +107,11 @@ sampletime=60
 
 [dump]
 swdump=1
-sampletime=180
+sampletime=3600
 dumplist=oh
 
 [cross]
-swcross=1
+swcross=0
 sampletime=60
 crosslist=co2,co2path
 xy=75,150,200,400

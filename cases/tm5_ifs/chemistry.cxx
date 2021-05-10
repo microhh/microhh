@@ -198,6 +198,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
             TF* restrict oh,
 	    const TF* const restrict jval, const TF* const restrict emval,
 	    TF* restrict rfa, TF& trfa,
+	    const TF* restrict qt,
 	    const TF* restrict Temp, const TF rkdt, const TF switch_dt,
 	    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk, const TF* const restrict dz, TF* const restrict rhoref)
@@ -247,7 +248,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	trfa += rkdt;
         for (int k=kstart; k<kend; ++k)
             {	
-	    //printf("%i  %12.3e  %12.3e \n",k,trfa,rkdt);
+	    // printf("%i  %12.3e  %12.3e \n",k,trfa,rkdt);
 	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chemistry!
 	    const TF CFACTOR = C_M*(TF)1e-9 ;               // from ppb (units mixing ratio) to molecules/cm3
             if (k==kstart) {
@@ -296,10 +297,10 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    //}
 
                     const int ijk = i + j*jj + k*kk;
-		    const TF C_H2O = C_M*0.01;    // for now assume one percent
-		    //const TF TEMP = Temp[ijk];
-		    const TF TEMP = 298.0;
+		    const TF C_H2O = std::max(qt[ijk]*xmair*C_M/xmh2o,(TF)1.0);                   // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
+		    const TF TEMP = Temp[ijk];
 		    const TF zh2 = H2*CFACTOR;
+		    //const TF TEMP = 298.0;
 		    // convert to molecules per cm3:
                     VAR[ind_HNO3]    = std::max(hno3[ijk]*CFACTOR,(TF)0.0);
 		    VAR[ind_CO  ]    = std::max(co[ijk]*CFACTOR,(TF)0.0);
@@ -328,7 +329,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
                     RCONST[11] = (ARR3(3.8E-13,780.,TEMP)*(1.-(1./(1.+ARR3(498.,-1160.,
                                 TEMP)))));
                     RCONST[12] = (ARR3(3.8E-13,780.,TEMP)*(1./(1.+ARR3(498.,-1160.,
-                               TEMP))));
+                                TEMP))));
                     RCONST[13] = (ARR3(3.8E-12,200.,TEMP));
                     RCONST[14] = (TROE_cooh(5.9E-33,1.4,1.1E-12,-1.3,1.5E-13,-0.6,2.1E9,
                                 -6.1,0.6,C_M,TEMP));
@@ -372,14 +373,13 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    FIX[indf_DUMMY] = (TF)1.0;    // species added to emit   
 		    
 		    
-	            // printf("%i  %12.3e  %12.3e \n",k,FIX[indf_OH],FIX[indf_CH4]);
-	            // printf(" %12.3e  %12.3e  %12.3e  ",VAR[ind_O3],VAR[ind_NO],VAR[ind_NO2]);
-	            // printf(" %12.3e  %12.3e  %12.3e  ",VAR[ind_RH],VAR[ind_ROOH],VAR[ind_HCHO]);
-	            // printf(" %12.3e  %12.3e  %12.3e  \n",VAR[ind_HO2],VAR[ind_H2O2],VAR[ind_CO]);
-		    // for (int l=0;l<NREACT;++l) printf(" %i %12.3e ",l,RCONST[l]);
+	            //printf("%i  %12.3e  %12.3e \n",k,FIX[1],FIX[2]);
+	            //printf(" %12.3e  %12.3e  %12.3e  ",VAR[ind_O3],VAR[ind_NO],VAR[ind_NO2]);
+	            //printf(" %12.3e  %12.3e  %12.3e  ",VAR[ind_RH],VAR[ind_ROOH],VAR[ind_HCHO]);
+	            //printf(" %12.3e  %12.3e  %12.3e \n",VAR[ind_NO3],VAR[ind_N2O5],VAR[ind_HO2]);
 
 		    oh[ijk] = FIX[indf_OH]/CFACTOR;
-		    // printf("OH ijk conc %f \n", oh[ijk]);
+		    //printf("OH ijk conc %f \n", oh[ijk]);
 
 		    Fun(VAR,FIX,RCONST,Vdot,RF);
 
@@ -725,14 +725,28 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 
     // determine sub time step:, with other advection scheme, might need to be changed
     TF rkdt = 0.0;
+    printf("dt: %f    sdt: %f rkdt: %f \n",dt,sdt,rkdt);
     if (abs(sdt/dt - (TF)1./(TF)3.) < (TF)1e-5)
+    {
+            printf("Here \n");
 	    rkdt = dt*(TF)1./(TF)3.;
+    }
     else if (abs(sdt/dt - (TF)15./(TF)16.) < (TF)1e-5)
+    {
+            printf("Here1 \n");
 	    rkdt = dt*(TF)5./(TF)12.;
+    }
     else if (abs(sdt/dt - (TF)8./(TF)15.) < (TF)1e-5)
+    {
+            printf("Here2 \n");
 	    rkdt = dt*(TF)1./(TF)4.;
+    }
     else
+    {
+            printf("Here3 \n");
 	    throw std::runtime_error("Invalid time step in RK3");
+    }
+    printf("-->dt: %f    sdt: %f rkdt: %f \n",dt,sdt,rkdt);
  
     pss<TF>(
 	    fields.st.at("hno3")   ->fld.data(), fields.sp.at("hno3")->fld.data(), 
@@ -749,6 +763,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.sd.at("oh")->fld.data(), 
 	    jval,emval,
 	    rfa.data(), trfa,
+	    fields.st.at("qt") ->fld.data(),
 	    Temp ->fld.data(), rkdt, switch_dt,
 	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
 	    gd.icells, gd.ijcells, gd.dz.data(), fields.rhoref.data());
