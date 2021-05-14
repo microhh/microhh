@@ -792,13 +792,19 @@ const std::vector<TF>& Boundary<TF>::get_z0m() const
 }
 
 template<typename TF>
-void Boundary<TF>::get_duvdz(std::vector<TF>& dudz, std::vector<TF>& dvdz)
+const std::vector<TF>& Boundary<TF>::get_dudz() const
 {
-    throw std::runtime_error("Function get_duvdz() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dudz() not implemented in base boundary.");
 }
 
 template<typename TF>
-void Boundary<TF>::get_dbdz(std::vector<TF>& dbdz, std::vector<TF>& bfluxbot)
+const std::vector<TF>& Boundary<TF>::get_dvdz() const
+{
+    throw std::runtime_error("Function get_dvdz() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_dbdz() const
 {
     throw std::runtime_error("Function get_dbdz() not implemented in base boundary.");
 }

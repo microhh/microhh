@@ -100,11 +100,11 @@ class Boundary
         // Get functions for various 2D fields
         virtual void get_ra(Field3d<TF>&);
         virtual void get_ra(Field3d<TF>&, std::string);
-        virtual const std::vector<TF>& get_z0m() const;
 
-        // Functions to get the MO surface gradients
-        virtual void get_duvdz(std::vector<TF>&, std::vector<TF>&);
-        virtual void get_dbdz(std::vector<TF>&, std::vector<TF>&);
+        virtual const std::vector<TF>& get_z0m() const;
+        virtual const std::vector<TF>& get_dudz() const;
+        virtual const std::vector<TF>& get_dvdz() const;
+        virtual const std::vector<TF>& get_dbdz() const;
 
         #ifdef USECUDA
         virtual TF* get_z0m_g();

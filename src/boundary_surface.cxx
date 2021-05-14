@@ -923,50 +923,6 @@ void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
             gd.jstart, gd.jend,
             gd.icells);
 }
-
-template<typename TF>
-void Boundary_surface<TF>::get_duvdz(
-        std::vector<TF>& dudz, std::vector<TF>& dvdz)
-{
-    auto& gd = grid.get_grid_data();
-
-    // Hack
-    dudz = dudz_mo;
-    dvdz = dvdz_mo;
-
-    //bsf::calc_duvdz(
-    //        dudz.data(), dvdz.data(),
-    //        fields.mp.at("u")->fld.data(),
-    //        fields.mp.at("v")->fld.data(),
-    //        fields.mp.at("u")->fld_bot.data(),
-    //        fields.mp.at("v")->fld_bot.data(),
-    //        fields.mp.at("u")->flux_bot.data(),
-    //        fields.mp.at("v")->flux_bot.data(),
-    //        ustar.data(), obuk.data(), z0m.data(),
-    //        gd.z[gd.kstart],
-    //        gd.istart, gd.iend,
-    //        gd.jstart, gd.jend,
-    //        gd.kstart,
-    //        gd.icells, gd.ijcells);
-}
-
-template<typename TF>
-void Boundary_surface<TF>::get_dbdz(
-        std::vector<TF>& dbdz, std::vector<TF>& bfluxbot)
-{
-    auto& gd = grid.get_grid_data();
-
-    // Hack
-    dbdz = dbdz_mo;
-
-    //bsf::calc_dbdz(
-    //        dbdz.data(), bfluxbot.data(),
-    //        ustar.data(), obuk.data(),
-    //        gd.z[gd.kstart],
-    //        gd.istart, gd.iend,
-    //        gd.jstart, gd.jend,
-    //        gd.icells);
-}
 #endif
 
 template<typename TF>
