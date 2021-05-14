@@ -38,10 +38,7 @@
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
-#include "boundary_surface_tiled.h"
 #include "boundary_surface_bulk.h"
-// #include "boundary_surface_patch.h"
-// #include "boundary_patch.h"
 
 namespace
 {
@@ -570,19 +567,7 @@ namespace
 }
 
 template<typename TF>
-void Boundary<TF>::calc_mo_stability(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-}
-
-template<typename TF>
-void Boundary<TF>::calc_mo_bcs_momentum(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-}
-
-template<typename TF>
-void Boundary<TF>::calc_mo_bcs_scalars(
+void Boundary<TF>::exec(
         Thermo<TF>& thermo, Land_surface<TF>& lsm)
 {
 }
@@ -829,8 +814,6 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         return std::make_shared<Boundary<TF>>(master, grid, fields, input);
     else if (swboundary == "surface")
         return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
-    else if (swboundary == "surface_tiled")
-        return std::make_shared<Boundary_surface_tiled<TF>>(master, grid, fields, input);
     else if (swboundary == "surface_bulk")
         return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
     else

@@ -560,6 +560,10 @@ void Boundary_surface<TF>::init_surface(Input& input)
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
+    dudz_mo.resize(gd.ijcells);
+    dvdz_mo.resize(gd.ijcells);
+    dbdz_mo.resize(gd.ijcells);
+
     if (sw_constant_z0)
         nobuk.resize(gd.ijcells);
 
@@ -576,7 +580,12 @@ void Boundary_surface<TF>::init_surface(Input& input)
     }
 
     // Initialize the obukhov length on a small number.
-    std::fill(obuk.begin(),  obuk.end(), Constants::dsmall);
+    std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
+
+    // Also initialise ustar at small number, to prevent div/0
+    // in calculation surface gradients during cold start.
+    std::fill(ustar.begin(), ustar.end(), Constants::dsmall);
+
     if (sw_constant_z0)
         std::fill(nobuk.begin(), nobuk.end(), 0);
 }
@@ -782,7 +791,7 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::calc_mo_stability(
+void Boundary_surface<TF>::exec(
         Thermo<TF>& thermo, Land_surface<TF>& lsm)
 {
     auto& gd = grid.get_grid_data();
@@ -840,15 +849,9 @@ void Boundary_surface<TF>::calc_mo_stability(
         fields.release_tmp(buoy);
         fields.release_tmp(tmp);
     }
-}
-
-template<typename TF>
-void Boundary_surface<TF>::calc_mo_bcs_momentum(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-    auto& gd = grid.get_grid_data();
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
+    // Momentum:
     surfm(fields.mp.at("u")->flux_bot.data(),
           fields.mp.at("v")->flux_bot.data(),
           fields.mp.at("u")->grad_bot.data(),
@@ -860,14 +863,24 @@ void Boundary_surface<TF>::calc_mo_bcs_momentum(
           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
           gd.icells, gd.jcells, gd.ijcells,
           boundary_cyclic);
-}
 
-template<typename TF>
-void Boundary_surface<TF>::calc_mo_bcs_scalars(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-    auto& gd = grid.get_grid_data();
+    // Calculate MO gradients
+    bsf::calc_duvdz(
+            dudz_mo.data(), dvdz_mo.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
 
+    // Scalars:
     for (auto& it : fields.sp)
         surfs(it.second->fld_bot.data(),
               it.second->grad_bot.data(),
@@ -879,6 +892,20 @@ void Boundary_surface<TF>::calc_mo_bcs_scalars(
               gd.jstart, gd.jend, gd.kstart,
               gd.icells, gd.jcells, gd.ijcells,
               boundary_cyclic);
+
+    // Calculate MO gradients
+    auto buoy = fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(*buoy, false);
+
+    bsf::calc_dbdz(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    fields.release_tmp(buoy);
 }
 
 template<typename TF>
@@ -903,20 +930,24 @@ void Boundary_surface<TF>::get_duvdz(
 {
     auto& gd = grid.get_grid_data();
 
-    bsf::calc_duvdz(
-            dudz.data(), dvdz.data(),
-            fields.mp.at("u")->fld.data(),
-            fields.mp.at("v")->fld.data(),
-            fields.mp.at("u")->fld_bot.data(),
-            fields.mp.at("v")->fld_bot.data(),
-            fields.mp.at("u")->flux_bot.data(),
-            fields.mp.at("v")->flux_bot.data(),
-            ustar.data(), obuk.data(), z0m.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
+    // Hack
+    dudz = dudz_mo;
+    dvdz = dvdz_mo;
+
+    //bsf::calc_duvdz(
+    //        dudz.data(), dvdz.data(),
+    //        fields.mp.at("u")->fld.data(),
+    //        fields.mp.at("v")->fld.data(),
+    //        fields.mp.at("u")->fld_bot.data(),
+    //        fields.mp.at("v")->fld_bot.data(),
+    //        fields.mp.at("u")->flux_bot.data(),
+    //        fields.mp.at("v")->flux_bot.data(),
+    //        ustar.data(), obuk.data(), z0m.data(),
+    //        gd.z[gd.kstart],
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.kstart,
+    //        gd.icells, gd.ijcells);
 }
 
 template<typename TF>
@@ -925,13 +956,16 @@ void Boundary_surface<TF>::get_dbdz(
 {
     auto& gd = grid.get_grid_data();
 
-    bsf::calc_dbdz(
-            dbdz.data(), bfluxbot.data(),
-            ustar.data(), obuk.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+    // Hack
+    dbdz = dbdz_mo;
+
+    //bsf::calc_dbdz(
+    //        dbdz.data(), bfluxbot.data(),
+    //        ustar.data(), obuk.data(),
+    //        gd.z[gd.kstart],
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.icells);
 }
 #endif
 

@@ -83,13 +83,10 @@ class Boundary
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
-        virtual void calc_mo_stability(Thermo<TF>&, Land_surface<TF>&); ///< Calculate the MO stability parameters
-        virtual void calc_mo_bcs_momentum(Thermo<TF>&, Land_surface<TF>&); ///< Calculate the surface BCs for momentum
-        virtual void calc_mo_bcs_scalars(Thermo<TF>&, Land_surface<TF>&); ///< Calculate the surface BCs for scalars
-
         virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
+        virtual void exec(Thermo<TF>&, Land_surface<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface

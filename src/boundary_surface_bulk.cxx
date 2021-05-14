@@ -209,6 +209,10 @@ void Boundary_surface_bulk<TF>::init_surface(Input& input)
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
+    dudz_mo.resize(gd.ijcells);
+    dvdz_mo.resize(gd.ijcells);
+    dbdz_mo.resize(gd.ijcells);
+
     z0m.resize(gd.ijcells);
     z0h.resize(gd.ijcells);
 
@@ -245,7 +249,7 @@ void Boundary_surface_bulk<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_stability(
+void Boundary_surface_bulk<TF>::exec(
         Thermo<TF>& thermo, Land_surface<TF>& lsm)
 {
     auto& gd = grid.get_grid_data();
@@ -254,18 +258,20 @@ void Boundary_surface_bulk<TF>::calc_mo_stability(
     auto dutot = fields.get_tmp();
 
     // Calculate total wind speed difference with surface
-    calculate_du(dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    calculate_du(
+            dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
     boundary_cyclic.exec_2d(dutot->fld.data());
 
     // Calculate surface momentum fluxes and gradients
-    momentum_fluxgrad(fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
-                    fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
-                    fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
-                    dutot->fld.data(), bulk_cm, zsl,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    momentum_fluxgrad(
+            fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
+            fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
+            dutot->fld.data(), bulk_cm, zsl,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     boundary_cyclic.exec_2d(fields.mp.at("u")->flux_bot.data());
     boundary_cyclic.exec_2d(fields.mp.at("v")->flux_bot.data());
@@ -290,28 +296,10 @@ void Boundary_surface_bulk<TF>::calc_mo_stability(
 
     fields.release_tmp(b);
     fields.release_tmp(dutot);
-}
 
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_momentum(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-}
-
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
-{
-}
-
-template<typename TF>
-void Boundary_surface_bulk<TF>::get_duvdz(
-        std::vector<TF>& dudz, std::vector<TF>& dvdz)
-{
-    auto& gd = grid.get_grid_data();
-
+    // Calculate MO gradients
     Boundary_surface_functions::calc_duvdz(
-            dudz.data(), dvdz.data(),
+            dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
             fields.mp.at("u")->fld_bot.data(),
@@ -324,6 +312,45 @@ void Boundary_surface_bulk<TF>::get_duvdz(
             gd.jstart, gd.jend,
             gd.kstart,
             gd.icells, gd.ijcells);
+
+    auto buoy = fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(*buoy, false);
+
+    Boundary_surface_functions::calc_dbdz(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    fields.release_tmp(buoy);
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::get_duvdz(
+        std::vector<TF>& dudz, std::vector<TF>& dvdz)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Hack
+    dudz = dudz_mo;
+    dvdz = dvdz_mo;
+
+    //Boundary_surface_functions::calc_duvdz(
+    //        dudz.data(), dvdz.data(),
+    //        fields.mp.at("u")->fld.data(),
+    //        fields.mp.at("v")->fld.data(),
+    //        fields.mp.at("u")->fld_bot.data(),
+    //        fields.mp.at("v")->fld_bot.data(),
+    //        fields.mp.at("u")->flux_bot.data(),
+    //        fields.mp.at("v")->flux_bot.data(),
+    //        ustar.data(), obuk.data(), z0m.data(),
+    //        gd.z[gd.kstart],
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.kstart,
+    //        gd.icells, gd.ijcells);
 }
 
 template<typename TF>
@@ -332,13 +359,15 @@ void Boundary_surface_bulk<TF>::get_dbdz(
 {
     auto& gd = grid.get_grid_data();
 
-    Boundary_surface_functions::calc_dbdz(
-            dbdz.data(), bfluxbot.data(),
-            ustar.data(), obuk.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+    dbdz = dbdz_mo;
+
+    //Boundary_surface_functions::calc_dbdz(
+    //        dbdz.data(), bfluxbot.data(),
+    //        ustar.data(), obuk.data(),
+    //        gd.z[gd.kstart],
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.icells);
 }
 #endif
 

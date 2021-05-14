@@ -347,12 +347,11 @@ void Model<TF>::exec()
                 // as they are needed by the tiled SL solver
                 lsm->set_tile_fractions();
 
-                // Calculate Monin-Obukhov parameters (L, u*).
-                boundary->calc_mo_stability(*thermo, *lsm);
-                boundary->calc_mo_bcs_momentum(*thermo, *lsm);
-                if (!lsm->get_switch())
-                    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
-                boundary->set_ghost_cells();
+                //boundary->calc_mo_stability(*thermo, *lsm);
+                //boundary->calc_mo_bcs_momentum(*thermo, *lsm);
+                //if (!lsm->get_switch())
+                //    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
+                //boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
                 fields->exec();
@@ -378,17 +377,22 @@ void Model<TF>::exec()
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
+                // Calculate Monin-Obukhov parameters (L, u*), and calculate
+                // surface fluxes, gradients, ...
+                boundary->exec(*thermo, *lsm);
+                boundary->set_ghost_cells();
+
                 // Calculate interactive land-surface, and
                 // soil temperature and moisture tendencies.
                 lsm->exec_surface(*radiation, *thermo, *microphys, *boundary, *timeloop);
                 lsm->exec_soil();
 
                 // Update surface properties.
-                if (lsm->get_switch())
-                {
-                    //boundary->calc_mo_stability(*thermo, *lsm);
-                    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
-                }
+                //if (lsm->get_switch())
+                //{
+                //    //boundary->calc_mo_stability(*thermo, *lsm);
+                //    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
+                //}
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();

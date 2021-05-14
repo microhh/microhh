@@ -46,10 +46,7 @@ class Boundary_surface : public Boundary<TF>
         void get_duvdz(std::vector<TF>&, std::vector<TF>&);
         void get_dbdz(std::vector<TF>&, std::vector<TF>&);
 
-        void calc_mo_stability(Thermo<TF>&, Land_surface<TF>&);
-        void calc_mo_bcs_momentum(Thermo<TF>&, Land_surface<TF>&);
-        void calc_mo_bcs_scalars(Thermo<TF>&, Land_surface<TF>&);
-
+        void exec(Thermo<TF>&, Land_surface<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -103,6 +100,10 @@ class Boundary_surface : public Boundary<TF>
 
         std::vector<TF> ustar;
         std::vector<TF> obuk;
+
+        std::vector<TF> dudz_mo;
+        std::vector<TF> dvdz_mo;
+        std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
         TF* z0m_g;
