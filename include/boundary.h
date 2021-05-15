@@ -86,7 +86,7 @@ class Boundary
         virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
-        virtual void exec(Thermo<TF>&, Land_surface<TF>&);
+        virtual void exec(Thermo<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface

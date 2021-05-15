@@ -567,8 +567,7 @@ namespace
 }
 
 template<typename TF>
-void Boundary<TF>::exec(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
+void Boundary<TF>::exec(Thermo<TF>& thermo)
 {
 }
 

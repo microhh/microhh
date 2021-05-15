@@ -49,7 +49,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
 
-        void exec(Thermo<TF>&, Land_surface<TF>&);
+        void exec(Thermo<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long) {};

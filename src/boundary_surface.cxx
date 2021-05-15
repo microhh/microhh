@@ -593,63 +593,19 @@ void Boundary_surface<TF>::init_surface(Input& input)
 template<typename TF>
 void Boundary_surface<TF>::load(const int iotime)
 {
-    // Obukhov length restart files are only needed for the iterative solver
-    if (!sw_constant_z0)
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
     {
-        auto tmp1 = fields.get_tmp();
-        int nerror = 0;
-
-        auto load_2d_field = [&](
-                TF* const restrict field, const std::string& name, const int itime)
-        {
-            char filename[256];
-            std::sprintf(filename, "%s.%07d", name.c_str(), itime);
-            master.print_message("Loading \"%s\" ... ", filename);
-
-            if (field3d_io.load_xy_slice(
-                    field, tmp1->fld.data(),
-                    filename))
-            {
-                master.print_message("FAILED\n");
-                nerror += 1;
-            }
-            else
-                master.print_message("OK\n");
-
-            boundary_cyclic.exec_2d(field);
-        };
-
-        // Read Obukhov length
-        load_2d_field(obuk.data(), "obuk", iotime);
-
-        // Read spatial z0 fields
-        load_2d_field(z0m.data(), "z0m", 0);
-        load_2d_field(z0h.data(), "z0h", 0);
-
-        master.sum(&nerror, 1);
-        if (nerror)
-            throw std::runtime_error("Error loading field(s)");
-
-        fields.release_tmp(tmp1);
-    }
-}
-
-template<typename TF>
-void Boundary_surface<TF>::save(const int iotime)
-{
-    // Obukhov length restart files are only needed for the iterative solver
-    if (!sw_constant_z0)
-    {
-        auto tmp1 = fields.get_tmp();
-
         char filename[256];
-        std::sprintf(filename, "%s.%07d", "obuk", iotime);
-        master.print_message("Saving \"%s\" ... ", filename);
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
 
-        const int kslice = 0;
-        int nerror = 0;
-        if (field3d_io.save_xy_slice(
-                obuk.data(), tmp1->fld.data(), filename, kslice))
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -657,12 +613,74 @@ void Boundary_surface<TF>::save(const int iotime)
         else
             master.print_message("OK\n");
 
-        master.sum(&nerror, 1);
-        if (nerror)
-            throw std::runtime_error("Error saving field(s)");
+        boundary_cyclic.exec_2d(field);
+    };
 
-        fields.release_tmp(tmp1);
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_constant_z0)
+    {
+        // Read Obukhov length
+        load_2d_field(obuk.data(), "obuk", iotime);
+
+        // Read spatial z0 fields
+        load_2d_field(z0m.data(), "z0m", 0);
+        load_2d_field(z0h.data(), "z0h", 0);
     }
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error loading field(s)");
+
+    fields.release_tmp(tmp1);
+}
+
+template<typename TF>
+void Boundary_surface<TF>::save(const int iotime)
+{
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto save_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Obukhov length restart files are only needed for the iterative solver
+    if (!sw_constant_z0)
+        save_2d_field(obuk.data(), "obuk", iotime);
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error saving field(s)");
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>
@@ -791,8 +809,7 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::exec(
-        Thermo<TF>& thermo, Land_surface<TF>& lsm)
+void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 

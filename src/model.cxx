@@ -53,7 +53,6 @@
 #include "cross.h"
 #include "dump.h"
 #include "model.h"
-#include "land_surface.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -128,14 +127,11 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        lsm       = std::make_shared<Land_surface<TF>>(master, *grid, *soil_grid, *fields, *input);
-
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
-
 
         stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *fields, *advec, *diff, *input);
         column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
@@ -191,7 +187,6 @@ void Model<TF>::init()
     radiation->init(*timeloop);
     decay->init(*input);
     budget->init();
-    lsm->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -245,10 +240,6 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats, *column, *cross);
     boundary->set_values();
 
-    // Load the prognostic soil fields, and create/init soil
-    lsm->load(timeloop->get_iotime());
-    lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross, *column);
-
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
@@ -283,7 +274,6 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input_nc);
     fields->create(*input, *input_nc);
-    lsm->create_cold_start(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
@@ -299,7 +289,6 @@ void Model<TF>::save()
     thermo->save(timeloop->get_iotime());
 
     boundary->save(timeloop->get_iotime());
-    lsm->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -343,16 +332,6 @@ void Model<TF>::exec()
                 // Set the cyclic BCs of the prognostic 3D fields.
                 fields->set_prognostic_cyclic_bcs();
 
-                // Set tile fractions land-surface model first,
-                // as they are needed by the tiled SL solver
-                lsm->set_tile_fractions();
-
-                //boundary->calc_mo_stability(*thermo, *lsm);
-                //boundary->calc_mo_bcs_momentum(*thermo, *lsm);
-                //if (!lsm->get_switch())
-                //    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
-                //boundary->set_ghost_cells();
-
                 // Calculate the field means, in case needed.
                 fields->exec();
 
@@ -379,20 +358,8 @@ void Model<TF>::exec()
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
-                boundary->exec(*thermo, *lsm);
+                boundary->exec(*thermo);
                 boundary->set_ghost_cells();
-
-                // Calculate interactive land-surface, and
-                // soil temperature and moisture tendencies.
-                lsm->exec_surface(*radiation, *thermo, *microphys, *boundary, *timeloop);
-                lsm->exec_soil();
-
-                // Update surface properties.
-                //if (lsm->get_switch())
-                //{
-                //    //boundary->calc_mo_stability(*thermo, *lsm);
-                //    boundary->calc_mo_bcs_scalars(*thermo, *lsm);
-                //}
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();
@@ -471,7 +438,6 @@ void Model<TF>::exec()
                         thermo   ->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
                         boundary ->exec_column(*column);
-                        lsm      ->exec_column(*column);
                         microphys->exec_column(*column);
 
                         column   ->exec(iter, time, itime);
@@ -521,7 +487,6 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
-                            lsm     ->save(iotime);
                             boundary->save(iotime);
                         }
                     }
@@ -543,7 +508,6 @@ void Model<TF>::exec()
                     timeloop->load(iotime);
                     fields  ->load(iotime);
                     thermo  ->load(iotime);
-                    lsm     ->load(iotime);
                     boundary->load(iotime);
 
                     // Reset tendencies
@@ -620,7 +584,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
-        lsm      ->exec_stats(*stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -630,7 +593,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
-        lsm      ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
     }
 
