@@ -56,8 +56,6 @@ namespace
         const int jj2 = 2*jj;
         const int jj3 = 3*jj;
         const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -72,9 +70,8 @@ namespace
                 - ( interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp6_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2], u[ijk+jj3])
                   - interp2(v[ijk-ii1    ], v[ijk    ]) * interp6_ws(u[ijk-jj3], u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2]) ) * dyi
 
-                - ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk])
-                  - rhorefh[k  ] * interp2(w[ijk-ii   ], w[ijk   ]) * interp2(u[ijk-kk], u[ijk   ]) ) / rhoref[k] * dzi[k];
-            }
+                - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
+                  - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
         }
     }
 
@@ -99,8 +96,6 @@ namespace
         const int jj2 = 2*jj;
         const int jj3 = 3*jj;
         const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -115,8 +110,8 @@ namespace
                 - ( interp2(v[ijk        ], v[ijk+jj1]) * interp6_ws(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3])
                   - interp2(v[ijk-jj1    ], v[ijk    ]) * interp6_ws(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) ) * dyi
 
-                - ( rhorefh[k+1] * interp2(w[ijk-jj+kk], w[ijk+kk]) * interp2(v[ijk   ], v[ijk+kk])
-                  - rhorefh[k  ] * interp2(w[ijk-jj   ], w[ijk   ]) * interp2(v[ijk-kk], v[ijk   ]) ) / rhoref[k] * dzi[k];
+                - ( rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1])
+                  - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) / rhoref[k] * dzi[k];
         }
     }
 
@@ -141,8 +136,6 @@ namespace
         const int jj2 = 2*jj;
         const int jj3 = 3*jj;
         const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -157,8 +150,8 @@ namespace
                 - ( interp2(v[ijk+jj1-kk], v[ijk+jj1]) * interp6_ws(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2], w[ijk+jj3])
                   - interp2(v[ijk    -kk], v[ijk    ]) * interp6_ws(w[ijk-jj3], w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2]) ) * dyi
 
-                - ( rhoref[k  ] * interp2(w[ijk   ], w[ijk+kk]) * interp2(w[ijk   ], w[ijk+kk])
-                  - rhoref[k-1] * interp2(w[ijk-kk], w[ijk   ]) * interp2(w[ijk-kk], w[ijk   ]) ) / rhorefh[k] * dzhi[k];
+                - ( rhoref[k  ] * interp2(w[ijk    ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
+                  - rhoref[k-1] * interp2(w[ijk-kk1], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) / rhorefh[k] * dzhi[k];
         }
     }
 
@@ -184,8 +177,6 @@ namespace
         const int jj2 = 2*jj;
         const int jj3 = 3*jj;
         const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
 
         if (i < iend && j < jend && k < kend)
         {
@@ -198,8 +189,8 @@ namespace
                 - ( v[ijk+jj1] * interp6_ws(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2], s[ijk+jj3])
                   - v[ijk    ] * interp6_ws(s[ijk-jj3], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2]) ) * dyi
 
-                - ( rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
-                  - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
+                - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
+                  - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
         }
     }
 
@@ -285,8 +276,6 @@ namespace
         const int jj2 = 2*jj;
         const int jj3 = 3*jj;
         const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
 
         const int ijk = i + j*jj + k*kk;
 
@@ -294,7 +283,7 @@ namespace
         {
             tmp1[ijk] = fabs(interp6_ws(u[ijk-ii2], u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]))*dxi
                       + fabs(interp6_ws(v[ijk-jj2], v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]))*dyi
-                      + fabs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
+                      + fabs(interp2(w[ijk], w[ijk+kk1]))*dzi[k];
         }
     }
 }
