@@ -470,6 +470,41 @@ namespace
         }
     }
 
+    inline TF flux_lim_bot_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    {
+        const TF eps = TF(1.e-12);
+
+        if (u >= TF(0.))
+        {
+            return u*sm1;
+        }
+        else
+        {
+            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
+            const TF phi = max(
+                    TF(0.),
+                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
+        }
+    }
+
+    inline TF flux_lim_top_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    {
+        const TF eps = TF(1.e-12);
+
+        if (u >= TF(0.))
+        {
+            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF phi = max(
+                    TF(0.),
+                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+        }
+        else
+        {
+            return u*sp1;
+        }
+    }
 
     template<typename TF> __global__
     void advec_s_lim_g(
@@ -502,8 +537,35 @@ namespace
                      - ( flux_lim_g(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                        - flux_lim_g(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
-                     - ( rhorefh[k+1] * flux_lim_g(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                       - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            if (k >= kstart+2 && k < kend-2)
+            {
+                st[ijk] +=
+                         - ( rhorefh[k+1] * flux_lim_g(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                           - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            }
+            else (k = kstart)
+            {
+                st[ijk] +=
+                         - ( rhorefh[k+1] * flux_lim_bot_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
+            }
+            else (k = kstart+1)
+            {
+                st[ijk] +=
+                         - ( rhorefh[k+1] * flux_lim_g    (w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                           - rhorefh[k  ] * flux_lim_bot_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            }
+            else (k = kend-2)
+            {
+                st[ijk] +=
+                         - ( rhorefh[k+1] * flux_lim_top_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                           - rhorefh[k  ] * flux_lim_g    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            }
+            else (k = kend-1)
+            {
+                st[ijk] +=
+                         - (
+                           - rhorefh[k  ] * flux_lim_top_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+            }
         }
     }
 
