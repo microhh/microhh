@@ -219,6 +219,7 @@ namespace
         }
     }
 
+    template<typename TF> __device__
     inline TF flux_lim_bot_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
     {
         const TF eps = TF(1.e-12);
@@ -237,6 +238,7 @@ namespace
         }
     }
 
+    template<typename TF> __device__
     inline TF flux_lim_top_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
     {
         const TF eps = TF(1.e-12);
@@ -284,7 +286,7 @@ namespace
                        - flux_lim_g(u[ijk    ], s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
 
                      - ( flux_lim_g(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-                       - flux_lim_g(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
+                       - flux_lim_g(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi;
 
             if (k >= kstart+2 && k < kend-2)
             {
@@ -292,24 +294,24 @@ namespace
                          - ( rhorefh[k+1] * flux_lim_g(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                            - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else (k = kstart)
+            else if (k == kstart)
             {
                 st[ijk] +=
                          - ( rhorefh[k+1] * flux_lim_bot_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
             }
-            else (k = kstart+1)
+            else if (k == kstart+1)
             {
                 st[ijk] +=
                          - ( rhorefh[k+1] * flux_lim_g    (w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                            - rhorefh[k  ] * flux_lim_bot_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else (k = kend-2)
+            else if (k == kend-2)
             {
                 st[ijk] +=
                          - ( rhorefh[k+1] * flux_lim_top_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                            - rhorefh[k  ] * flux_lim_g    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else (k = kend-1)
+            else if (k == kend-1)
             {
                 st[ijk] +=
                          - (
