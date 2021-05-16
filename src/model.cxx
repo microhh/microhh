@@ -255,7 +255,7 @@ void Model<TF>::load()
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
-    source->create(*input);
+    source->create(*input, *input_nc);
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
@@ -405,7 +405,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Add point and line sources of scalars.
-                source->exec();
+                source->exec(*timeloop);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);

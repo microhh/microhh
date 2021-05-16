@@ -24,6 +24,8 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Timeloop;
+template<typename> class Timedep;
 class Input;
 
 template<typename TF>
@@ -34,9 +36,9 @@ class Source
         ~Source(); // Destructor of the buffer class.
 
         void init();
-        void create(Input&);
+        void create(Input&, Netcdf_handle&);
 
-        void exec(); // Add the tendencies created by the damping.
+        void exec(Timeloop<TF>&); // Add the tendencies created by the damping.
 
     private:
         Master& master;     // Reference to master class.
@@ -70,6 +72,12 @@ class Source
         std::vector<TF> line_y;
         std::vector<TF> line_z;
         std::vector<TF> norm;
+
+        // Timedep source location
+        bool swtimedep;
+        std::map<std::string, Timedep<TF>*> tdep_source_x0;
+        std::map<std::string, Timedep<TF>*> tdep_source_y0;
+        std::map<std::string, Timedep<TF>*> tdep_source_z0;
 
         TF calc_norm(
                 const TF* const, const TF, const TF, const TF,

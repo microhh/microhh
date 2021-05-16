@@ -31,6 +31,7 @@
 #include "source.h"
 #include "defines.h"
 #include "fast_math.h"
+#include "timedep.h"
 
 namespace
 {
@@ -174,6 +175,9 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         line_x    = input.get_list<TF>("source", "line_x"   , "");
         line_y    = input.get_list<TF>("source", "line_y"   , "");
         line_z    = input.get_list<TF>("source", "line_z"   , "");
+
+        // Timedep source location
+        swtimedep = input.get_item<bool>("source", "swtimedep", "", false);
     }
 }
 
@@ -195,7 +199,7 @@ void Source<TF>::init()
 
 // Create function: read information from ini file that does need info from other class.
 template<typename TF>
-void Source<TF>::create(Input& input)
+void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
@@ -212,14 +216,59 @@ void Source<TF>::create(Input& input)
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                 shape[n].range_x, shape[n].range_y, shape[n].range_z);
     }
+
+    // Create timedep
+    if (swtimedep)
+    {
+        for (int n=0; n<source_x0.size(); ++n)
+        {
+            std::string name_x = "source_x0_" + std::to_string(n);
+            std::string name_y = "source_y0_" + std::to_string(n);
+            std::string name_z = "source_z0_" + std::to_string(n);
+
+            tdep_source_x0.emplace(name_x, new Timedep<TF>(master, grid, name_x, true));
+            tdep_source_y0.emplace(name_y, new Timedep<TF>(master, grid, name_y, true));
+            tdep_source_z0.emplace(name_z, new Timedep<TF>(master, grid, name_z, true));
+
+            tdep_source_x0.at(name_x)->create_timedep(input_nc);
+            tdep_source_y0.at(name_y)->create_timedep(input_nc);
+            tdep_source_z0.at(name_z)->create_timedep(input_nc);
+        }
+    }
 }
 
 // Add the source to the fields. This function is called in the main time loop.
 #ifndef USECUDA
 template<typename TF>
-void Source<TF>::exec()
+void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+
+    if (swtimedep)
+    {
+        // Update source locations, and calculate new norm's
+        for (int n=0; n<sourcelist.size(); ++n)
+        {
+            std::string name_x = "source_x0_" + std::to_string(n);
+            std::string name_y = "source_y0_" + std::to_string(n);
+            std::string name_z = "source_z0_" + std::to_string(n);
+
+            tdep_source_x0.at(name_x)->update_time_dependent(source_x0[n], timeloop);
+            tdep_source_y0.at(name_y)->update_time_dependent(source_y0[n], timeloop);
+            tdep_source_z0.at(name_z)->update_time_dependent(source_z0[n], timeloop);
+
+            // Shape of the source in each direction
+            shape[n].range_x = calc_shape(gd.x.data(), source_x0[n], sigma_x[n], line_x[n], gd.istart, gd.iend);
+            shape[n].range_y = calc_shape(gd.y.data(), source_y0[n], sigma_y[n], line_y[n], gd.jstart, gd.jend);
+            shape[n].range_z = calc_shape(gd.z.data(), source_z0[n], sigma_z[n], line_z[n], gd.kstart, gd.kend);
+
+            norm[n] = calc_norm(
+                    gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
+                    gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
+                    gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
+                    shape[n].range_x, shape[n].range_y, shape[n].range_z);
+        }
+    }
 
     for (int n=0; n<sourcelist.size(); ++n)
         calc_source(
