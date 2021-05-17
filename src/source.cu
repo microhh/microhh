@@ -124,9 +124,12 @@ namespace
 // Add the source to the fields. This function is called in the main time loop.
 #ifdef USECUDA
 template<typename TF>
-void Source<TF>::exec()
+void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+
+    if (swtimedep)
+        throw std::runtime_error("Moving sources not (yet) implemented on GPU!");
 
     for (int n=0; n<sourcelist.size(); ++n)
     {

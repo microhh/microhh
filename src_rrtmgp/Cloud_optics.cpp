@@ -22,6 +22,7 @@
  *
  */
 
+#include <limits>
 #include "Cloud_optics.h"
 
 template<typename TF>

@@ -37,10 +37,6 @@ namespace Advec_monotonic
 
         if (u >= TF(0.))
         {
-            // const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
-            // const TF phi = std::max(
-            //         TF(0.),
-            //         std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
             return u*sm1;
         }
         else
@@ -52,6 +48,27 @@ namespace Advec_monotonic
             return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
         }
     }
+
+    // Implementation flux limiter according to Koren, 1993.
+    template<typename TF>
+    inline TF flux_lim_top(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    {
+        const TF eps = std::numeric_limits<TF>::epsilon();
+
+        if (u >= TF(0.))
+        {
+            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF phi = std::max(
+                    TF(0.),
+                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+        }
+        else
+        {
+            return u*sp1;
+        }
+    }
+
     template<typename TF>
     void advec_s_lim(
             TF* const restrict st, const TF* const restrict s,
@@ -136,7 +153,7 @@ namespace Advec_monotonic
                            - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                          // No flux through bottom wall.
-                         - ( rhorefh[k+1] * flux_lim_bot(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                         - ( rhorefh[k+1] * flux_lim_top(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
                            - rhorefh[k  ] * flux_lim    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
 
@@ -154,7 +171,7 @@ namespace Advec_monotonic
                            - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                          - ( // No flux through boundary
-                           - rhorefh[k  ] * flux_lim_bot(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                           - rhorefh[k  ] * flux_lim_top(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
     }
 
