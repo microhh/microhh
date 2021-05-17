@@ -297,8 +297,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 
                     const int ijk = i + j*jj + k*kk;
 		    const TF C_H2O = C_M*0.01;    // for now assume one percent
-		    //const TF TEMP = Temp[ijk];
-		    const TF TEMP = 298.0;
+		    const TF TEMP = Temp[ijk];
 		    const TF zh2 = H2*CFACTOR;
 		    // convert to molecules per cm3:
                     VAR[ind_HNO3]    = std::max(hno3[ijk]*CFACTOR,(TF)0.0);

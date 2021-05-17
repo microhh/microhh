@@ -14,3 +14,4 @@ cases/tm5_ifs/__pycache__/microhh_tools.cpython-38.pyc
 *.png
 cases/jaenswalde/jaenswalde.out
 cases/jaenswalde/microhh
+*.csv

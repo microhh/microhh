@@ -9,7 +9,7 @@ specs = slist.split(',')
 profs = []
 error = []
 flux = []
-with Dataset("jaenswalde.default.0003600.nc") as x:
+with Dataset("jaenswalde.default.0010800.nc") as x:
     zax = x.variables['z'][:]
     zaxh = x.variables['zh'][:]
     z = x.groups['default']
