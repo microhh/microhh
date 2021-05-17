@@ -412,7 +412,7 @@ void Model<TF>::exec()
 
                 // Apply the chemistry and add sources.
                 chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
-                source->exec();
+                source->exec(*timeloop);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
