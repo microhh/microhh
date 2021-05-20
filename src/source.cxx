@@ -227,14 +227,17 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
             std::string name_x = "source_x0_" + std::to_string(n);
             std::string name_y = "source_y0_" + std::to_string(n);
             std::string name_z = "source_z0_" + std::to_string(n);
+            std::string name_strength = "source_strength_" + std::to_string(n);
 
             tdep_source_x0.emplace(name_x, new Timedep<TF>(master, grid, name_x, true));
             tdep_source_y0.emplace(name_y, new Timedep<TF>(master, grid, name_y, true));
             tdep_source_z0.emplace(name_z, new Timedep<TF>(master, grid, name_z, true));
+            tdep_source_strength.emplace(name_strength, new Timedep<TF>(master, grid, name_strength, true));
 
             tdep_source_x0.at(name_x)->create_timedep(input_nc, timedep_dim);
             tdep_source_y0.at(name_y)->create_timedep(input_nc, timedep_dim);
             tdep_source_z0.at(name_z)->create_timedep(input_nc, timedep_dim);
+            tdep_source_strength.at(name_strength)->create_timedep(input_nc, timedep_dim);
         }
     }
 }
@@ -254,10 +257,12 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
             std::string name_x = "source_x0_" + std::to_string(n);
             std::string name_y = "source_y0_" + std::to_string(n);
             std::string name_z = "source_z0_" + std::to_string(n);
+            std::string name_strength = "source_strength_" + std::to_string(n);
 
             tdep_source_x0.at(name_x)->update_time_dependent(source_x0[n], timeloop);
             tdep_source_y0.at(name_y)->update_time_dependent(source_y0[n], timeloop);
             tdep_source_z0.at(name_z)->update_time_dependent(source_z0[n], timeloop);
+            tdep_source_strength.at(name_strength)->update_time_dependent(strength[n], timeloop);
 
             // Shape of the source in each direction
             shape[n].range_x = calc_shape(gd.x.data(), source_x0[n], sigma_x[n], line_x[n], gd.istart, gd.iend);

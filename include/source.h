@@ -78,6 +78,7 @@ class Source
         std::map<std::string, Timedep<TF>*> tdep_source_x0;
         std::map<std::string, Timedep<TF>*> tdep_source_y0;
         std::map<std::string, Timedep<TF>*> tdep_source_z0;
+        std::map<std::string, Timedep<TF>*> tdep_source_strength;
 
         TF calc_norm(
                 const TF* const, const TF, const TF, const TF,
