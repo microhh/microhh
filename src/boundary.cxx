@@ -315,12 +315,14 @@ void Boundary<TF>::process_time_dependent(
         // See if there is data available for the surface boundary conditions.
         for (auto& it : fields.sp)
         {
+            std::string timedep_dim = "time_surface";
             std::string name = it.first+"_sbot";
+
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep(input_nc);
+                tdep_bc.at(it.first)->create_timedep(input_nc, timedep_dim);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);

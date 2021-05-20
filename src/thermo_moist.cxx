@@ -1042,7 +1042,8 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     create_basestate(inputin, input_nc);
 
     // 7. Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Init the toolbox classes.
     boundary_cyclic.init();

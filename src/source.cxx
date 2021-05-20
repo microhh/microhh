@@ -220,6 +220,8 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
     // Create timedep
     if (swtimedep)
     {
+        std::string timedep_dim = "time_source";
+
         for (int n=0; n<source_x0.size(); ++n)
         {
             std::string name_x = "source_x0_" + std::to_string(n);
@@ -230,9 +232,9 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
             tdep_source_y0.emplace(name_y, new Timedep<TF>(master, grid, name_y, true));
             tdep_source_z0.emplace(name_z, new Timedep<TF>(master, grid, name_z, true));
 
-            tdep_source_x0.at(name_x)->create_timedep(input_nc);
-            tdep_source_y0.at(name_y)->create_timedep(input_nc);
-            tdep_source_z0.at(name_z)->create_timedep(input_nc);
+            tdep_source_x0.at(name_x)->create_timedep(input_nc, timedep_dim);
+            tdep_source_y0.at(name_y)->create_timedep(input_nc, timedep_dim);
+            tdep_source_z0.at(name_z)->create_timedep(input_nc, timedep_dim);
         }
     }
 }
