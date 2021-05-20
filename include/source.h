@@ -73,8 +73,9 @@ class Source
         std::vector<TF> line_z;
         std::vector<TF> norm;
 
-        // Timedep source location
-        bool swtimedep;
+        // Timedep source location and strength
+        bool swtimedep_location;
+        bool swtimedep_strength;
         std::map<std::string, Timedep<TF>*> tdep_source_x0;
         std::map<std::string, Timedep<TF>*> tdep_source_y0;
         std::map<std::string, Timedep<TF>*> tdep_source_z0;
