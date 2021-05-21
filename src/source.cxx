@@ -267,7 +267,8 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
                     gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
                     gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                     gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                    shape[n].range_x, shape[n].range_y, shape[n].range_z);
+                    shape[n].range_x, shape[n].range_y, shape[n].range_z,
+		    fields.rhoref.data());
         }
     }
 
