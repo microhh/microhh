@@ -450,8 +450,8 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
-        tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
+        tdep_geo.at("u_geo")->update_time_dependent_prof_g(ug_g, timeloop);
+        tdep_geo.at("v_geo")->update_time_dependent_prof_g(vg_g, timeloop);
     }
 
     if (swwls == Large_scale_subsidence_type::Enabled)
