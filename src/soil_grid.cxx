@@ -39,13 +39,11 @@ template<typename TF>
 Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
     master(masterin), grid(gridin)
 {
-    sw_land_surface = input.get_item<bool>("land_surface", "swlandsurface", "", false);
+    std::string boundary_switch = input.get_item<std::string>("boundary", "swboundary", "", "default");
+    sw_land_surface = (boundary_switch == "surface_lsm");
 
     if (sw_land_surface)
-    {
-        //gd.zsize = input.get_item<TF> ("land_surface", "zsize", "");
         gd.ktot  = input.get_item<int>("land_surface", "ktot",  "");
-    }
 }
 
 template<typename TF>
