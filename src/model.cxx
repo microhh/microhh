@@ -119,7 +119,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
         fft       = std::make_shared<FFT<TF>>      (master, *grid);
 
-        boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
+        boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);

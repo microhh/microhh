@@ -29,6 +29,7 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "diff.h"
 #include "boundary.h"
@@ -411,8 +412,10 @@ namespace
 }
 
 template<typename TF>
-Boundary_surface<TF>::Boundary_surface(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Boundary<TF>(masterin, gridin, fieldsin, inputin)
+Boundary_surface<TF>::Boundary_surface(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+        Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     swboundary = "surface";
 

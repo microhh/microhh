@@ -33,6 +33,7 @@
 class Master;
 class Netcdf_handle;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Diff;
 template<typename> class Thermo;
@@ -72,10 +73,11 @@ template<typename TF>
 class Boundary
 {
     public:
-        Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
+        Boundary(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
         virtual ~Boundary(); ///< Destructor of the boundary class.
 
-        static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
+        static std::shared_ptr<Boundary> factory(
+            Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
         virtual void create(
@@ -99,9 +101,6 @@ class Boundary
         virtual void load(const int) {};
         virtual void save(const int) {};
 
-        // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
-        // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
-
         // Get functions for various 2D fields
         virtual const std::vector<TF>& get_z0m() const;
         virtual const std::vector<TF>& get_dudz() const;
@@ -124,6 +123,7 @@ class Boundary
     protected:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;

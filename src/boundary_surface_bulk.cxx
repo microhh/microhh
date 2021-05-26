@@ -25,6 +25,7 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "boundary_surface_bulk.h"
@@ -124,8 +125,10 @@ namespace
 }
 
 template<typename TF>
-Boundary_surface_bulk<TF>::Boundary_surface_bulk(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Boundary<TF>(masterin, gridin, fieldsin, inputin)
+Boundary_surface_bulk<TF>::Boundary_surface_bulk(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+    Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     swboundary = "surface_bulk";
 

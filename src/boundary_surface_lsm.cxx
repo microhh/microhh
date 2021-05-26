@@ -29,6 +29,7 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "diff.h"
 #include "boundary.h"
@@ -42,6 +43,7 @@
 #include "column.h"
 #include "monin_obukhov.h"
 #include "fast_math.h"
+#include "netcdf_interface.h"
 
 namespace
 {
@@ -49,7 +51,10 @@ namespace
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
     namespace bsf = Boundary_surface_functions;
+}
 
+namespace bs
+{
     template<typename TF, bool sw_constant_z0>
     void stability(
             TF* const restrict ustar,
@@ -294,27 +299,6 @@ namespace
 
             boundary_cyclic.exec_2d(ufluxbot);
             boundary_cyclic.exec_2d(vfluxbot);
-
-            // CvH: I think that the problem is not closed, since both the fluxes and the surface values
-            // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
-            // should not update the surface values with those that belong to the flux. This procedure needs
-            // to be checked more carefully.
-            /*
-            // calculate the surface values
-            for (int j=grid->jstart; j<grid->jend; ++j)
-                #pragma ivdep
-                for (int i=grid->istart; i<grid->iend; ++i)
-                {
-                ij  = i + j*jj;
-                ijk = i + j*jj + kstart*kk;
-                // interpolate the whole stability function rather than ustar or obuk
-                ubot[ij] = 0.;// ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
-                vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
-            }
-
-            grid->boundary_cyclic_2d(ubot);
-            grid->boundary_cyclic_2d(vbot);
-            */
         }
 
         for (int j=0; j<jcells; ++j)
@@ -383,19 +367,71 @@ namespace
     }
 }
 
+namespace lsm
+{
+    template<typename TF>
+    void init_tile(Surface_tile<TF>& tile, const int ijcells)
+    {
+        tile.fraction.resize(ijcells);
+        tile.thl_bot.resize(ijcells);
+        tile.qt_bot.resize(ijcells);
+
+        tile.obuk.resize(ijcells);
+        tile.ustar.resize(ijcells);
+        tile.bfluxbot.resize(ijcells);
+        tile.nobuk.resize(ijcells);
+
+        tile.rs.resize(ijcells);
+        tile.H.resize(ijcells);
+        tile.LE.resize(ijcells);
+        tile.G.resize(ijcells);
+        tile.S.resize(ijcells);
+    }
+}
+
 template<typename TF>
-Boundary_surface_lsm<TF>::Boundary_surface_lsm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Boundary<TF>(masterin, gridin, fieldsin, inputin)
+Boundary_surface_lsm<TF>::Boundary_surface_lsm(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+        Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     swboundary = "surface_lsm";
 
-    #ifdef USECUDA
-    ustar_g = 0;
-    obuk_g  = 0;
-    nobuk_g = 0;
-    zL_sl_g = 0;
-    f_sl_g  = 0;
-    #endif
+    // Read .ini settings:
+    sw_constant_z0   = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
+
+    sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
+    sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
+    sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
+    sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
+
+    if (sw_water)
+        tskin_water = inputin.get_item<TF>("land_surface", "tskin_water", "");
+
+    // Create prognostic 2D and 3D fields;
+    fields.init_prognostic_soil_field("t", "Soil temperature", "K");
+    fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");
+    fields.init_prognostic_2d_field("wl");
+
+    // Create surface tiles:
+    for (auto& name : tile_names)
+        tiles.emplace(name, Surface_tile<TF>{});
+
+    // Open NetCDF file with soil lookup table:
+    nc_lookup_table =
+        std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
+
+    // Checks:
+    if (sw_homogeneous && sw_water)
+        throw std::runtime_error("Homogeneous land-surface with water is not supported!\n");
+
+    //#ifdef USECUDA
+    //ustar_g = 0;
+    //obuk_g  = 0;
+    //nobuk_g = 0;
+    //zL_sl_g = 0;
+    //f_sl_g  = 0;
+    //#endif
 }
 
 template<typename TF>
@@ -436,76 +472,35 @@ void Boundary_surface_lsm<TF>::create(
 template<typename TF>
 void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
-    // 1. Process the boundary conditions now all fields are registered.
+    // Surface-layer
+    // Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
 
-    // 2. Read and check the boundary_surface specific settings.
+    // Read and check the boundary_surface specific settings.
     process_input(inputin, thermo);
 
-    // 3. Allocate and initialize the 2D surface fields.
+    // Allocate and initialize the 2D surface fields.
     init_surface(inputin);
+    init_lsm();
 
-    // 4. Initialize the boundary cyclic.
+    // Initialize the boundary cyclic.
     boundary_cyclic.init();
 }
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    // Switch between heterogeneous and homogeneous z0's
-    sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
-
-    // crash in case fixed gradient is prescribed
-    if (mbcbot == Boundary_type::Neumann_type)
-    {
-        std::string msg = "Neumann bc is not supported in surface model";
-        throw std::runtime_error(msg);
-    }
-    // read the ustar value only if fixed fluxes are prescribed
-    else if (mbcbot == Boundary_type::Ustar_type)
-        ustarin = inputin.get_item<TF>("boundary", "ustar", "");
-
-    // process the scalars
-    for (auto& it : sbc)
-    {
-        // crash in case fixed gradient is prescribed
-        if (it.second.bcbot == Boundary_type::Neumann_type)
-        {
-            std::string msg = "Fixed Gradient bc is not supported in surface model";
-            throw std::runtime_error(msg);
-        }
-
-        // crash in case of fixed momentum flux and dirichlet bc for scalar
-        if (it.second.bcbot == Boundary_type::Dirichlet_type && mbcbot == Boundary_type::Ustar_type)
-        {
-            std::string msg = "Fixed Ustar bc in combination with Dirichlet bc for scalars is not supported";
-            throw std::runtime_error(msg);
-        }
-    }
-
     // check whether the prognostic thermo vars are of the same type
     std::vector<std::string> thermolist;
     thermo.get_prog_vars(thermolist);
 
-    auto it = thermolist.begin();
-
     // save the bc of the first thermo field in case thermo is enabled
+    auto it = thermolist.begin();
     if (it != thermolist.end())
         thermobc = sbc[*it].bcbot;
     else
-        // Set the thermobc to Flux_type to avoid ininitialized errors.
+        // Set the thermobc to Flux_type to avoid uninitialized errors.
         thermobc = Boundary_type::Flux_type;
-
-    while (it != thermolist.end())
-    {
-        if (sbc[*it].bcbot != thermobc)
-        {
-
-            std::string msg = "All thermo variables need to have the same bc type";
-            throw std::runtime_error(msg);
-        }
-        ++it;
-    }
 }
 
 template<typename TF>
@@ -544,6 +539,70 @@ void Boundary_surface_lsm<TF>::init_surface(Input& input)
 
     if (sw_constant_z0)
         std::fill(nobuk.begin(), nobuk.end(), 0);
+}
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::init_lsm()
+{
+    auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    // Allocate the surface tiles
+    for (auto& tile : tiles)
+        lsm::init_tile(tile.second, gd.ijcells);
+    tiles.at("veg" ).long_name = "vegetation";
+    tiles.at("soil").long_name = "bare soil";
+    tiles.at("wet" ).long_name = "wet skin";
+
+    gD_coeff.resize(gd.ijcells);
+    c_veg.resize(gd.ijcells);
+    lai.resize(gd.ijcells);
+    rs_veg_min.resize(gd.ijcells);
+    rs_soil_min.resize(gd.ijcells);
+    lambda_stable.resize(gd.ijcells);
+    lambda_unstable.resize(gd.ijcells);
+    cs_veg.resize(gd.ijcells);
+
+    if (sw_water)
+        water_mask.resize(gd.ijcells);
+
+    interception.resize(gd.ijcells);
+    throughfall.resize(gd.ijcells);
+    infiltration.resize(gd.ijcells);
+    runoff.resize(gd.ijcells);
+
+    // Resize the vectors which contain the soil properties
+    soil_index.resize(sgd.ncells);
+
+    diffusivity.resize   (sgd.ncells);
+    diffusivity_h.resize (sgd.ncellsh);
+    conductivity.resize  (sgd.ncells);
+    conductivity_h.resize(sgd.ncellsh);
+    source.resize        (sgd.ncells);
+
+    root_fraction.resize(sgd.ncells);
+
+    // Resize the lookup table
+    lookup_table_size = nc_lookup_table->get_dimension_size("index");
+
+    theta_res.resize(lookup_table_size);
+    theta_wp.resize(lookup_table_size);
+    theta_fc.resize(lookup_table_size);
+    theta_sat.resize(lookup_table_size);
+
+    gamma_theta_sat.resize(lookup_table_size);
+    vg_a.resize(lookup_table_size);
+    vg_l.resize(lookup_table_size);
+    vg_n.resize(lookup_table_size);
+
+    vg_m.resize(lookup_table_size);
+    kappa_theta_max.resize(lookup_table_size);
+    kappa_theta_min.resize(lookup_table_size);
+    gamma_theta_max.resize(lookup_table_size);
+    gamma_theta_min.resize(lookup_table_size);
+
+    gamma_T_dry.resize(lookup_table_size);
+    rho_C.resize(lookup_table_size);
 }
 
 template<typename TF>
@@ -739,7 +798,7 @@ void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         auto dutot = fields.get_tmp();
-        stability_neutral(
+        bs::stability_neutral(
                 ustar.data(), obuk.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                 fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
@@ -759,7 +818,7 @@ void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
         const TF db_ref = thermo.get_db_ref();
 
         if (sw_constant_z0)
-            stability<TF, true>(
+            bs::stability<TF, true>(
                     ustar.data(), obuk.data(),
                     buoy->flux_bot.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
@@ -773,7 +832,7 @@ void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
                     gd.icells, gd.jcells, gd.ijcells,
                     mbcbot, thermobc, boundary_cyclic);
         else
-            stability<TF, false>(
+            bs::stability<TF, false>(
                     ustar.data(), obuk.data(),
                     buoy->flux_bot.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
@@ -791,7 +850,7 @@ void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     // Momentum:
-    surfm(fields.mp.at("u")->flux_bot.data(),
+    bs::surfm(fields.mp.at("u")->flux_bot.data(),
           fields.mp.at("v")->flux_bot.data(),
           fields.mp.at("u")->grad_bot.data(),
           fields.mp.at("v")->grad_bot.data(),
@@ -821,7 +880,7 @@ void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
 
     // Scalars:
     for (auto& it : fields.sp)
-        surfs(it.second->fld_bot.data(),
+        bs::surfs(it.second->fld_bot.data(),
               it.second->grad_bot.data(),
               it.second->flux_bot.data(),
               ustar.data(), obuk.data(),

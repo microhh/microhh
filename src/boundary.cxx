@@ -145,13 +145,11 @@ namespace
 }
 
 template<typename TF>
-Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin),
-    grid(gridin),
-    fields(fieldsin),
-    boundary_cyclic(master, grid),
-    boundary_outflow(master, grid),
-    field3d_io(master, grid)
+Boundary<TF>::Boundary(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+        master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin),
+        boundary_cyclic(master, grid), boundary_outflow(master, grid), field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -1038,50 +1036,26 @@ const std::vector<TF>& Boundary<TF>::get_dbdz() const
 
 template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
-        Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
+        Master& master, Grid<TF>& grid, Soil_grid<TF>& soil_grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
     if (swboundary == "default")
-        return std::make_shared<Boundary<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface")
-        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface_bulk")
-        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface_lsm")
-        return std::make_shared<Boundary_surface_lsm<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface_lsm<TF>>(master, grid, soil_grid, fields, input);
     else
     {
         std::string msg = swboundary + " is an illegal value for swboundary";
         throw std::runtime_error(msg);
     }
 }
-/*
-template<typename TF>
-void Boundary<TF>::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        fieldh->fld_bot[i] = 1;
 
-    // Set atmospheric mask
-    for (int i=0; i<grid.ncells; ++i)
-    {
-        field ->data[i] = 1;
-        fieldh->data[i] = 1;
-    }
-}
-
-template<typename TF>
-void Boundary<TF>::get_surface_mask(Field3d* field)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        field->fld_bot[i] = 1;
-}
-
-*/
 template<typename TF>
 void Boundary<TF>::prepare_device()
 {

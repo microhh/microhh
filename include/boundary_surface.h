@@ -32,7 +32,7 @@ template<typename TF>
 class Boundary_surface : public Boundary<TF>
 {
     public:
-        Boundary_surface(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Boundary_surface(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
@@ -75,6 +75,7 @@ class Boundary_surface : public Boundary<TF>
     private:
         using Boundary<TF>::master;
         using Boundary<TF>::grid;
+        using Boundary<TF>::soil_grid;
         using Boundary<TF>::fields;
         using Boundary<TF>::boundary_cyclic;
         using Boundary<TF>::swboundary;
