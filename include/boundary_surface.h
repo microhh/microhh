@@ -39,10 +39,6 @@ class Boundary_surface : public Boundary<TF>
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
         void set_values();
 
-        void get_ra(Field3d<TF>&);
-        void get_ra(Field3d<TF>&, std::string) { throw std::runtime_error(
-                "Function get_ra() (tiled) not implemented in boundary_surface");}
-
         const std::vector<TF>& get_z0m()  const { return z0m; };
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }

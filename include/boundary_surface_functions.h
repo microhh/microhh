@@ -37,6 +37,48 @@ namespace Boundary_surface_functions
     template<typename TF> constexpr TF zL_min = -1.e4;
 
     template<typename TF>
+    void set_bc(
+            TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
+            const Boundary_type sw, const TF aval, const TF visc, const TF offset,
+            const int icells, const int jcells)
+    {
+        const int jj = icells;
+
+        if (sw == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    a[ij] = aval - offset;
+                }
+        }
+        else if (sw == Boundary_type::Neumann_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    agrad[ij] = aval;
+                    aflux[ij] = -aval*visc;
+                }
+        }
+        else if (sw == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    aflux[ij] = aval;
+                    agrad[ij] = -aval/visc;
+                }
+        }
+    }
+
+    template<typename TF>
     void prepare_lut(
         float* const restrict zL_sl,
         float* const restrict f_sl,

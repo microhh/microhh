@@ -32,7 +32,7 @@
 #include "fields.h"
 #include "diff.h"
 #include "boundary.h"
-#include "boundary_surface.h"
+#include "boundary_surface_lsm.h"
 #include "boundary_surface_functions.h"
 #include "defines.h"
 #include "constants.h"
@@ -384,10 +384,10 @@ namespace
 }
 
 template<typename TF>
-Boundary_surface<TF>::Boundary_surface(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+Boundary_surface_lsm<TF>::Boundary_surface_lsm(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Boundary<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swboundary = "surface";
+    swboundary = "surface_lsm";
 
     #ifdef USECUDA
     ustar_g = 0;
@@ -399,7 +399,7 @@ Boundary_surface<TF>::Boundary_surface(Master& masterin, Grid<TF>& gridin, Field
 }
 
 template<typename TF>
-Boundary_surface<TF>::~Boundary_surface()
+Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
 {
     #ifdef USECUDA
     clear_device();
@@ -407,35 +407,34 @@ Boundary_surface<TF>::~Boundary_surface()
 }
 
 template<typename TF>
-void Boundary_surface<TF>::create(
+void Boundary_surface_lsm<TF>::create(
         Input& input, Netcdf_handle& input_nc,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
 {
     const std::string group_name = "default";
-    Boundary<TF>::process_time_dependent(input, input_nc);
 
-    // add variables to the statistics
-    if (stats.get_switch())
-    {
-        stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
-        stats.add_time_series("obuk", "Obukhov length", "m", group_name);
-    }
+    //// add variables to the statistics
+    //if (stats.get_switch())
+    //{
+    //    stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
+    //    stats.add_time_series("obuk", "Obukhov length", "m", group_name);
+    //}
 
-    if (column.get_switch())
-    {
-        column.add_time_series("ustar", "Surface friction velocity", "m s-1");
-        column.add_time_series("obuk", "Obukhov length", "m");
-    }
+    //if (column.get_switch())
+    //{
+    //    column.add_time_series("ustar", "Surface friction velocity", "m s-1");
+    //    column.add_time_series("obuk", "Obukhov length", "m");
+    //}
 
-    if (cross.get_switch())
-    {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
-        cross_list = cross.get_enabled_variables(allowed_crossvars);
-    }
+    //if (cross.get_switch())
+    //{
+    //    const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+    //    cross_list = cross.get_enabled_variables(allowed_crossvars);
+    //}
 }
 
 template<typename TF>
-void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
     // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
@@ -451,7 +450,7 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     // Switch between heterogeneous and homogeneous z0's
     sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
@@ -510,7 +509,7 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::init_surface(Input& input)
+void Boundary_surface_lsm<TF>::init_surface(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
@@ -548,7 +547,7 @@ void Boundary_surface<TF>::init_surface(Input& input)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::load(const int iotime)
+void Boundary_surface_lsm<TF>::load(const int iotime)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
@@ -599,7 +598,7 @@ void Boundary_surface<TF>::load(const int iotime)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::save(const int iotime)
+void Boundary_surface_lsm<TF>::save(const int iotime)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
@@ -641,50 +640,50 @@ void Boundary_surface<TF>::save(const int iotime)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
-    auto tmp1 = fields.get_tmp();
+    //auto tmp1 = fields.get_tmp();
+    //
+    //for (auto& it : cross_list)
+    //{
+    //    if (it == "ustar")
+    //        cross.cross_plane(ustar.data(), "ustar", iotime);
+    //    else if (it == "obuk")
+    //        cross.cross_plane(obuk.data(), "obuk", iotime);
+    //    else if (it == "ra")
+    //    {
+    //        bsf::calc_ra(
+    //                tmp1->flux_bot.data(), ustar.data(), obuk.data(),
+    //                z0h.data(), gd.z[gd.kstart], gd.istart,
+    //                gd.iend, gd.jstart, gd.jend, gd.icells);
+    //        cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+    //    }
+    //}
 
-    for (auto& it : cross_list)
-    {
-        if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
-        else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
-        else if (it == "ra")
-        {
-            bsf::calc_ra(
-                    tmp1->flux_bot.data(), ustar.data(), obuk.data(),
-                    z0h.data(), gd.z[gd.kstart], gd.istart,
-                    gd.iend, gd.jstart, gd.jend, gd.icells);
-            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
-        }
-    }
-
-    fields.release_tmp(tmp1);
+    //fields.release_tmp(tmp1);
 }
 
 template<typename TF>
-void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
+void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;
-    stats.calc_stats_2d("obuk", obuk, no_offset);
-    stats.calc_stats_2d("ustar", ustar, no_offset);
+    //stats.calc_stats_2d("obuk", obuk, no_offset);
+    //stats.calc_stats_2d("ustar", ustar, no_offset);
 }
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::exec_column(Column<TF>& column)
+void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
-    column.calc_time_series("obuk", obuk.data(), no_offset);
-    column.calc_time_series("ustar", ustar.data(), no_offset);
+    //column.calc_time_series("obuk", obuk.data(), no_offset);
+    //column.calc_time_series("ustar", ustar.data(), no_offset);
 }
 #endif
 
 template<typename TF>
-void Boundary_surface<TF>::set_values()
+void Boundary_surface_lsm<TF>::set_values()
 {
     auto& gd = grid.get_grid_data();
 
@@ -708,48 +707,14 @@ void Boundary_surface<TF>::set_values()
             fields.visc, grid.vtrans,
             gd.icells, gd.jcells);
 
-    // in case the momentum has a fixed ustar, set the value to that of the input
-    if (mbcbot == Boundary_type::Ustar_type)
-        set_ustar();
-
     // Prepare the lookup table for the surface solver
     if (sw_constant_z0)
         init_solver();
 }
 
-template<typename TF>
-void Boundary_surface<TF>::set_ustar()
-{
-    auto& gd = grid.get_grid_data();
-    const int jj = gd.icells;
-
-    bsf::set_bc<TF>(
-            fields.mp.at("u")->fld_bot.data(),
-            fields.mp.at("u")->grad_bot.data(),
-            fields.mp.at("u")->flux_bot.data(),
-            mbcbot, ubot, fields.visc, grid.utrans,
-            gd.icells, gd.jcells);
-
-    bsf::set_bc<TF>(
-            fields.mp.at("v")->fld_bot.data(),
-            fields.mp.at("v")->grad_bot.data(),
-            fields.mp.at("v")->flux_bot.data(),
-            mbcbot, vbot, fields.visc, grid.vtrans,
-            gd.icells, gd.jcells);
-
-    for (int j=0; j<gd.jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<gd.icells; ++i)
-        {
-            const int ij = i + j*jj;
-            // Limit ustar at 1e-4 to avoid zero divisions.
-            ustar[ij] = std::max(static_cast<TF>(0.0001), ustarin);
-        }
-}
-
 // Prepare the surface layer solver.
 template<typename TF>
-void Boundary_surface<TF>::init_solver()
+void Boundary_surface_lsm<TF>::init_solver()
 {
     auto& gd = grid.get_grid_data();
 
@@ -766,7 +731,7 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -884,11 +849,11 @@ void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
 #endif
 
 template<typename TF>
-void Boundary_surface<TF>::update_slave_bcs()
+void Boundary_surface_lsm<TF>::update_slave_bcs()
 {
     // This function does nothing when the surface model is enabled, because
     // the fields are computed by the surface model in update_bcs.
 }
 
-template class Boundary_surface<double>;
-template class Boundary_surface<float>;
+template class Boundary_surface_lsm<double>;
+template class Boundary_surface_lsm<float>;

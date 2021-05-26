@@ -39,6 +39,7 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_bulk.h"
+#include "boundary_surface_lsm.h"
 
 namespace
 {
@@ -773,18 +774,6 @@ void Boundary<TF>::update_slave_bcs()
 }
 
 template<typename TF>
-void Boundary<TF>::get_ra(Field3d<TF>& fld)
-{
-    throw std::runtime_error("Function get_ra() not implemented in base boundary.");
-}
-
-template<typename TF>
-void Boundary<TF>::get_ra(Field3d<TF>& fld, std::string tile)
-{
-    throw std::runtime_error("Function get_ra() (tiled) not implemented in base boundary.");
-}
-
-template<typename TF>
 const std::vector<TF>& Boundary<TF>::get_z0m() const
 {
     throw std::runtime_error("Function get_z0m() not implemented in base boundary.");
@@ -821,6 +810,8 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
     else if (swboundary == "surface_bulk")
         return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
+    else if (swboundary == "surface_lsm")
+        return std::make_shared<Boundary_surface_lsm<TF>>(master, grid, fields, input);
     else
     {
         std::string msg = swboundary + " is an illegal value for swboundary";

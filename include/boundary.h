@@ -98,9 +98,6 @@ class Boundary
         // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
         // Get functions for various 2D fields
-        virtual void get_ra(Field3d<TF>&);
-        virtual void get_ra(Field3d<TF>&, std::string);
-
         virtual const std::vector<TF>& get_z0m() const;
         virtual const std::vector<TF>& get_dudz() const;
         virtual const std::vector<TF>& get_dvdz() const;
