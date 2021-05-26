@@ -80,7 +80,6 @@ class Fields
         void exec_column(Column<TF>&);   ///< Output the column
 
         void reset_tendencies();
-        void set_prognostic_cyclic_bcs();
 
         void init_momentum_field(
                 const std::string&, const std::string&,
@@ -207,10 +206,12 @@ class Fields
                 std::vector<std::string>&,
                 std::vector<std::string>&);
 
-        // // masks
+        // Masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
-        // void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);
-        // void calc_mask_wmin (double*, double*, double*, int*, int*, int*, double*);
+
+        // User input surface (or XY) masks
+        std::vector<std::string> xymasklist;
+        std::map<std::string, std::vector<TF>> xymasks;
 
         // perturbations
         TF rndamp;

@@ -526,8 +526,12 @@ Stats<TF>::Stats(
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
-        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
 
+        // Add user XY masks
+        std::vector<std::string> xymasklist = inputin.get_list<std::string>("stats", "xymasklist", "", std::vector<std::string>());
+        masklist.insert(masklist.end(), xymasklist.begin(), xymasklist.end());
+
+        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
         // Anything without an underscore is mean value, so should be on the whitelist

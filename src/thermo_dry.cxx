@@ -89,7 +89,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj+ k*kk;
-                    T[ijk] = exnref[k]*thref[k] + (th[ijk]-thref[k]);
+                    T[ijk] = exnref[k]*th[ijk];
                 }
     }
 
@@ -107,7 +107,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj+ k*kk;
-                    T[ijk] = exnrefh[k]*threfh[k] + (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
+                    T[ijk] = exnrefh[k]*interp2(th[ijk-kk], th[ijk]);
                 }
     }
 
@@ -125,7 +125,7 @@ namespace
             {
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+                T_bot[ij] = exnrefh[kstart]*interp2(th[ijk-kk], th[ijk]);
             }
     }
 
@@ -282,6 +282,33 @@ namespace
     }
 
     template<typename TF>
+    void calc_hydrostatic_pressure(
+                         TF* const restrict pref,   TF* const restrict prefh,
+                         TF* const restrict exnref, TF* const restrict exnrefh,
+                         const TF* const restrict thref,  const TF* const restrict threfh,
+                         const TF* const restrict z, const TF* const restrict zh,
+                         const TF* const restrict dz, const TF* const restrict dzh,
+                         const TF* const restrict dzhi, const TF pbot,
+                         const int kstart, const int kend, const int kcells)
+    {
+        prefh[kstart] = pbot;
+        pref [kstart] = pbot * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * threfh[kstart] * exner(prefh[kstart])));
+        for (int k=kstart+1; k<kend+1; ++k)
+        {
+            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
+            pref [k] = pref [k-1] * std::exp(-grav<TF> * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
+        }
+        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
+
+        // Calculate exner
+        for (int k=0; k<kcells; ++k)
+        {
+            exnref[k]  = exner(pref[k] );
+            exnrefh[k] = exner(prefh[k]);
+        }
+    }
+
+    template<typename TF>
     int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
     {
         TF maxgrad = 0.;
@@ -391,6 +418,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     }
     else
     {
+        bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
         bs.thref0 = inputin.get_item<TF>("thermo", "thref0", "");
 
         // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx.
@@ -399,13 +427,23 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
             bs.thref[k]  = bs.thref0;
             bs.threfh[k] = bs.thref0;
         }
+
+        // Calculate hydrostatic pressure
+        calc_hydrostatic_pressure(
+                bs.pref.data(), bs.prefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                bs.thref.data(), bs.threfh.data(),
+                gd.z.data(), gd.zh.data(),
+                gd.dz.data(), gd.dzh.data(), gd.dzhi.data(),
+                bs.pbot, gd.kstart, gd.kend, gd.kcells);
     }
 
     // Init the toolbox classes.
     boundary_cyclic.init();
 
     // Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Set up output classes
     create_stats(stats);

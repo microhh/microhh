@@ -93,7 +93,6 @@ namespace
                             + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
                             // du/dz
-                            //+ TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
                             + TF(0.5) * fm::pow2(ugradbot[ij])
 
                             // dw/dx
@@ -103,7 +102,6 @@ namespace
                             + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
                             // dv/dz
-                            //+ TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
                             + TF(0.5) * fm::pow2(vgradbot[ij])
 
                             // dw/dy
@@ -180,7 +178,7 @@ namespace
         const int kk = ijcells;
 
         // Wall damping constant.
-        constexpr TF n_mason = TF(2.);
+        constexpr TF n_mason = TF(1.);
         constexpr TF A_vandriest = TF(26.);
 
         if (surface_model == Surface_model::Disabled)
@@ -329,8 +327,7 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
 
-                    // TODO use the thermal expansion coefficient from the input later,
-                    // what to do if there is no buoyancy?
+                    // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
                     TF RitPrratio = bgradbot[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));

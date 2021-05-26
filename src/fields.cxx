@@ -110,6 +110,37 @@ namespace
     }
 
     template<typename TF>
+    void set_xy_mask(
+            TF* const restrict mask,
+            TF* const restrict maskh,
+            const TF* const restrict xymask,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+                    mask[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+                }
+
+        for (int k=kstart; k<kend+1; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+                    maskh[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+                }
+    }
+
+    template<typename TF>
     TF calc_momentum_2nd(
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict dz, const TF itot_jtot_zsize,
@@ -290,6 +321,10 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
 
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
+
+    // Add user specified XY masks as available masks
+    xymasklist = input.get_list<std::string>("stats", "xymasklist", "", std::vector<std::string>());
+    available_masks.insert(available_masks.end(), xymasklist.begin(), xymasklist.end());
 }
 
 template<typename TF>
@@ -362,6 +397,10 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     // Create help arrays for statistics.
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+
+    // Allocate user XY masks
+    for (auto& mask : xymasklist)
+        xymasks.emplace(mask, std::vector<TF>(gd.ijcells));
 
     // Set up output classes
     create_dump(dump);
@@ -520,18 +559,45 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     auto& gd = grid.get_grid_data();
 
-    // Interpolate w to full level:
-    auto wf = get_tmp();
-    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+    // User XY masks
+    if (xymasks.find(mask_name) != xymasks.end())
+    {
+        auto mask  = get_tmp();
+        auto maskh = get_tmp();
 
-    // Calculate masks
-    const TF threshold = 0;
-    if (mask_name == "wplus")
-        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
-    else if (mask_name == "wmin")
-        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+        std::fill(mask->fld.begin(), mask->fld.end(), TF(0));
+        std::fill(maskh->fld.begin(), maskh->fld.end(), TF(0));
 
-    release_tmp(wf);
+        set_xy_mask(
+                mask->fld.data(),
+                maskh->fld.data(),
+                xymasks.at(mask_name).data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.kend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        const TF threshold = TF(0.5);
+        stats.set_mask_thres(mask_name, *mask, *maskh, threshold, Stats_mask_type::Plus);
+
+        release_tmp(mask);
+        release_tmp(maskh);
+    }
+    else
+    {
+        // Interpolate w to full level:
+        auto wf = get_tmp();
+        grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+
+        // Calculate masks
+        const TF threshold = 0;
+        if (mask_name == "wplus")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
+        else if (mask_name == "wmin")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+
+        release_tmp(wf);
+    }
 }
 
 template<typename TF>
@@ -1031,6 +1097,23 @@ void Fields<TF>::load(int n)
         }
     }
 
+    // Load surface (XY) masks
+    for (auto& mask : xymasks)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", mask.first.c_str(), n);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                mask.second.data(), tmp1->fld.data(), filename))
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+            master.print_message("OK\n");
+    }
+
     release_tmp(tmp1);
     release_tmp(tmp2);
 
@@ -1237,22 +1320,6 @@ void Fields<TF>::reset_tendencies()
     for (auto& fld3d : at)
         reset_field(fld3d.second->fld.data(), gd.ncells);
 }
-
-#ifndef USECUDA
-template<typename TF>
-void Fields<TF>::set_prognostic_cyclic_bcs()
-{
-    /* Set cyclic boundary conditions of the
-       prognostic 3D fields */
-
-    boundary_cyclic.exec(mp.at("u")->fld.data());
-    boundary_cyclic.exec(mp.at("v")->fld.data());
-    boundary_cyclic.exec(mp.at("w")->fld.data());
-
-    for (auto& it : sp)
-        boundary_cyclic.exec(it.second->fld.data());
-}
-#endif
 
 
 template class Fields<double>;

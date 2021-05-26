@@ -375,13 +375,14 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     auto& gd = grid.get_grid_data();
     Netcdf_group& group_nc = input_nc.get_group("init");
 
+    std::string timedep_dim = "time_ls";
+
     if (swlspres == Large_scale_pressure_type::Fixed_flux)
     {
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_pres, tend_longname_pres);
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-
         group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
         group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
         std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
@@ -389,7 +390,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
         const TF offset = 0;
         for (auto& it : tdep_geo)
-            it.second->create_timedep_prof(input_nc, offset);
+            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
 
@@ -415,7 +416,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Process the time dependent data
         const TF offset = 0;
         for (auto& it : tdep_ls)
-            it.second->create_timedep_prof(input_nc, offset);
+            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
 
         for (std::string& it : lslist)
             stats.add_tendency(*fields.at.at(it), "z", tend_name_ls, tend_longname_ls);
@@ -460,7 +461,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             else
                 offset = 0;
 
-            it.second->create_timedep_prof(input_nc, offset);
+            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
             stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
         }
     }
@@ -472,7 +473,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
 
         const TF offset = 0;
-        tdep_wls->create_timedep_prof(input_nc, offset);
+        tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
     }

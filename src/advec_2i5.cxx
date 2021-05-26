@@ -30,26 +30,32 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
-
-using namespace Finite_difference::O2;
-using namespace Finite_difference::O4;
-using namespace Finite_difference::O6;
+#include "advec_monotonic.h"
 
 template<typename TF>
 Advec_2i5<TF>::Advec_2i5(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Advec<TF>(masterin, gridin, fieldsin, inputin)
 {
+    fluxlimit_list = inputin.get_list<std::string>(
+            "advec", "fluxlimit_list", "", std::vector<std::string>());
+
     const int igc = 3;
     const int jgc = 3;
-    const int kgc = 1;
+    const int kgc = (fluxlimit_list.empty()) ? 1 : 2;
     grid.set_minimum_ghost_cells(igc, jgc, kgc);
 }
 
 template<typename TF>
 Advec_2i5<TF>::~Advec_2i5() {}
 
+
 namespace
 {
+    using namespace Finite_difference::O2;
+    using namespace Finite_difference::O4;
+    using namespace Finite_difference::O6;
+    using namespace Advec_monotonic;
+
     template<typename TF>
     TF calc_cfl(
             const TF* const restrict u,
@@ -231,10 +237,11 @@ namespace
                 ut[ijk] +=
                         // w*du/dz -> second order interpolation for fluxbot, fourth order for fluxtop
                         - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
-                          - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2   (u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k]
+                          - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(   u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k]
 
                         + ( rhorefh[k+1] * std::abs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
+
 
         k = kstart+2;
         for (int j=jstart; j<jend; ++j)
@@ -262,7 +269,8 @@ namespace
                         - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4_ws(u[ijk-kk1   ], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                           - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp6_ws(u[ijk-kk3], u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k]
 
-                        - ( rhorefh[k  ] * std::abs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp5_ws(u[ijk-kk3], u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                        + ( rhorefh[k+1] * std::abs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
+                          - rhorefh[k  ] * std::abs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp5_ws(u[ijk-kk3], u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
 
         k = kend-2;
@@ -721,76 +729,201 @@ namespace
 
     template<typename TF>
     void advec_flux_u(
-            TF* const restrict st,
-            const TF* const restrict s,
-            const TF* const restrict w,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const int ii = 1;
+        const int ii1 = 1;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
 
-        for (int k=kstart; k<kend+1; ++k)
+        int k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
+                st[ijk] = interp2(w[ijk-ii1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+            }
+
+        k = kstart+2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          interp2(w[ijk-ii1], w[ijk])  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(interp2(w[ijk-ii1], w[ijk])) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        for (int k=kstart+3; k<kend-2; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-
-                    // TODO: calculate correct fluxes!
-                    st[ijk] = interp2(w[ijk-ii], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] =          interp2(w[ijk-ii1], w[ijk])  * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2])
+                            - std::abs(interp2(w[ijk-ii1], w[ijk])) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2]);
                 }
+
+        k = kend-2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          interp2(w[ijk-ii1], w[ijk])  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(interp2(w[ijk-ii1], w[ijk])) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = interp2(w[ijk-ii1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
+            }
     }
 
     template<typename TF>
     void advec_flux_v(
-            TF* const restrict st,
-            const TF* const restrict s,
-            const TF* const restrict w,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        for (int k=kstart; k<kend+1; ++k)
+        const int jj1 = 1*jj;
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
+
+        int k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
+                st[ijk] = interp2(w[ijk-jj1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+            }
+
+        k = kstart+2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          interp2(w[ijk-jj1], w[ijk])  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(interp2(w[ijk-jj1], w[ijk])) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        for (int k=kstart+3; k<kend-2; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-
-                    // todo: calculate correct fluxes!
-                    st[ijk] = interp2(w[ijk-jj], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] =          interp2(w[ijk-jj1], w[ijk])  * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2])
+                            - std::abs(interp2(w[ijk-jj1], w[ijk])) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2]);
                 }
+
+        k = kend-2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          interp2(w[ijk-jj1], w[ijk])  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(interp2(w[ijk-jj1], w[ijk])) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = interp2(w[ijk-jj1], w[ijk]) * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
+            }
     }
 
     template<typename TF>
     void advec_flux_s(
-            TF* const restrict st,
-            const TF* const restrict s,
-            const TF* const restrict w,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        for (int k=kstart; k<kend+1; ++k)
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+        const int kk3 = 3*kk;
+
+        int k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk-kk1] = 0; // Impose no flux through bottom wall.
+                st[ijk] = w[ijk] * interp2(s[ijk-kk1], s[ijk]);
+            }
+
+        k = kstart+2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          w[ijk]  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(w[ijk]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        for (int k=kstart+3; k<kend-2; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-
-                    // TODO: calculate correct fluxes!
-                    st[ijk] = w[ijk] * interp2(s[ijk-kk], s[ijk]);
+                    st[ijk] =          w[ijk]  * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2])
+                            - std::abs(w[ijk]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2]);
                 }
+
+        k = kend-2;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] =          w[ijk]  * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1])
+                        - std::abs(w[ijk]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]);
+            }
+
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = w[ijk] * interp2(s[ijk-kk1], s[ijk]);
+                st[ijk+kk1] = 0; // Impose no flux through top wall.
+            }
     }
 }
 
 template<typename TF>
 void Advec_2i5<TF>::create(Stats<TF>& stats)
 {
+    for (auto& s : fields.sp)
+    {
+        if (std::find(fluxlimit_list.begin(), fluxlimit_list.end(), s.first) != fluxlimit_list.end())
+            sp_limit.push_back(s.first);
+        else
+            sp_no_limit.push_back(s.first);
+    }
+
     stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
     stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
@@ -877,9 +1010,10 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-    for (auto& it : fields.st)
-        advec_s(it.second->fld.data(),
-                fields.sp.at(it.first)->fld.data(),
+    for (const std::string& s : sp_no_limit)
+    {
+        advec_s(fields.st.at(s)->fld.data(),
+                fields.sp.at(s)->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
@@ -889,6 +1023,18 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+    }
+
+    for (const std::string& s : sp_limit)
+    {
+        advec_s_lim(
+                fields.st.at(s)->fld.data(), fields.sp.at(s)->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
+                gd.dzi.data(), gd.dx, gd.dy,
+                fields.rhoref.data(), fields.rhorefh.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
@@ -919,10 +1065,16 @@ void Advec_2i5<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& f
     }
     else if (fld.loc == gd.sloc)
     {
-        advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        if (std::find(sp_limit.begin(), sp_limit.end(), fld.name) != sp_limit.end())
+            advec_flux_s_lim(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            advec_flux_s(
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
     else
         throw std::runtime_error("Advec_2i5 cannot deliver flux field at that location");

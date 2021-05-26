@@ -34,6 +34,7 @@
 #include "finite_difference.h"
 
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 
 // Boundary schemes.
 #include "boundary.h"
@@ -83,6 +84,64 @@ namespace
                 }
         }
     }
+
+    template<typename TF>
+    void set_bc_2d(
+            TF* const restrict a,
+            TF* const restrict agrad,
+            TF* const restrict aflux,
+            const TF* const restrict aval,
+            const Boundary_type sw, const TF visc, const TF offset,
+            const int icells, const int jcells)
+    {
+        const int jj = icells;
+
+        if (sw == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    a[ij] = aval[ij] - offset;
+                }
+        }
+        else if (sw == Boundary_type::Neumann_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    agrad[ij] = aval[ij];
+                    aflux[ij] = -aval[ij]*visc;
+                }
+        }
+        else if (sw == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    aflux[ij] = aval[ij];
+                    agrad[ij] = -aval[ij]/visc;
+                }
+        }
+    }
+
+    template<typename TF>
+    void interp_sbot_time(
+            TF* const restrict fld,
+            const TF* const restrict fld_prev,
+            const TF* const restrict fld_next,
+            const TF fac0, const TF fac1,
+            const int ijcells,
+            std::string name)
+    {
+        for (int i=0; i<ijcells; ++i)
+            fld[i] = fac0*fld_prev[i] + fac1*fld_next[i];
+    }
 }
 
 template<typename TF>
@@ -91,6 +150,7 @@ Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
     grid(gridin),
     fields(fieldsin),
     boundary_cyclic(master, grid),
+    boundary_outflow(master, grid),
     field3d_io(master, grid)
 {
     swboundary = "default";
@@ -118,6 +178,7 @@ std::string Boundary<TF>::get_switch()
 template<typename TF>
 void Boundary<TF>::process_bcs(Input& input)
 {
+
     std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
     std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
@@ -198,7 +259,11 @@ void Boundary<TF>::process_bcs(Input& input)
         }
     }
 
+    // 2D sbot input:
     sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
+
+    // Read the scalars for which free inflow / outflow conditions are applied.
+    scalar_outflow = input.get_list<std::string>("boundary", "scalar_outflow", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -220,18 +285,23 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary<TF>::create(
         Input& input, Netcdf_handle& input_nc,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
+        Stats<TF>& stats, Column<TF>& column,
+        Cross<TF>& cross, Timeloop<TF>& timeloop)
 {
-    process_time_dependent(input, input_nc);
+    process_time_dependent(input, input_nc, timeloop);
 }
 
 
 template<typename TF>
-void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
+void Boundary<TF>::process_time_dependent(
+        Input& input, Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     // get the list of time varying variables
     bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
-    std::vector<std::string> timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
+    std::vector<std::string> timedeplist = input.get_list<std::string>(
+            "boundary", "timedeplist", "", std::vector<std::string>());
 
     if (swtimedep)
     {
@@ -244,12 +314,14 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
         // See if there is data available for the surface boundary conditions.
         for (auto& it : fields.sp)
         {
+            std::string timedep_dim = "time_surface";
             std::string name = it.first+"_sbot";
+
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep(input_nc);
+                tdep_bc.at(it.first)->create_timedep(input_nc, timedep_dim);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -262,8 +334,90 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
+    // Time varying 2D sbot input:
+    swtimedep_sbot_2d = input.get_item<bool>("boundary", "swtimedep_sbot_2d", "", false);
 
+    if (swtimedep_sbot_2d)
+    {
+        sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+
+        for (auto& fld : sbot_2d_list)
+        {
+            sbot_2d_prev.emplace(fld, std::vector<TF>(gd.ijcells));
+            sbot_2d_next.emplace(fld, std::vector<TF>(gd.ijcells));
+        }
+
+        const double time = timeloop.get_time();
+        const double ifactor = timeloop.get_ifactor();
+        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+        // Read first two input times
+        // IO time in integer format
+        itime_sbot_2d_prev = ifactor * int(time/sbot_2d_loadtime) * sbot_2d_loadtime;
+        itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+
+        // IO time accounting for iotimeprec
+        const unsigned long iotime0 = int(itime_sbot_2d_prev / iiotimeprec);
+        const unsigned long iotime1 = int(itime_sbot_2d_next / iiotimeprec);
+
+        auto tmp = fields.get_tmp();
+        int nerror = 0;
+
+        auto load_2d_field = [&](
+                TF* const restrict field, const std::string& name, const int time)
+        {
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), time);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            if (field3d_io.load_xy_slice(
+                    field, tmp->fld.data(), filename))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+
+            boundary_cyclic.exec_2d(field);
+        };
+
+        for (auto& fld : sbot_2d_list)
+        {
+            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot", iotime0);
+            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot", iotime1);
+        }
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error loading time dependent sbot fields");
+
+        fields.release_tmp(tmp);
+    }
 }
+
+
+#ifndef USECUDA
+template<typename TF>
+void Boundary<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
+
+    for (auto& it : fields.sp)
+        boundary_cyclic.exec(it.second->fld.data());
+
+    // Overwrite here the ghost cells for the scalars with outflow BCs
+    for (auto& s : scalar_outflow)
+        boundary_outflow.exec(fields.sp.at(s)->fld.data());
+}
+#endif
+
+
 #ifndef USECUDA
 template <typename TF>
 void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
@@ -272,14 +426,94 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     const TF no_offset = 0.;
 
-    for (auto& it : tdep_bc)
+    if (swtimedep_sbot_2d)
     {
-        it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
-        set_bc<TF>(fields.sp.at(it.first)->fld_bot.data(), fields.sp.at(it.first)->grad_bot.data(), fields.sp.at(it.first)->flux_bot.data(),
-                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset, gd.icells, gd.jcells);
+        auto tmp = fields.get_tmp();
+        unsigned long itime = timeloop.get_itime();
+
+        if (itime > itime_sbot_2d_next)
+        {
+            // Read new surface sbot fields
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+            itime_sbot_2d_prev = itime_sbot_2d_next;
+            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
+
+            int nerror = 0;
+
+            // Swap 2D input fields
+            for (auto& fld : sbot_2d_list)
+            {
+                sbot_2d_prev.at(fld) = sbot_2d_next.at(fld);
+
+                // Read new time step
+                char filename[256];
+                std::string name = fld + "_bot";
+                std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                if (field3d_io.load_xy_slice(
+                        sbot_2d_next.at(fld).data(), tmp->fld.data(), filename))
+                {
+                    master.print_message("FAILED\n");
+                    nerror += 1;
+                }
+                else
+                    master.print_message("OK\n");
+
+                boundary_cyclic.exec_2d(sbot_2d_next.at(fld).data());
+            }
+
+            master.sum(&nerror, 1);
+            if (nerror)
+                throw std::runtime_error("Error loading time dependent sbot fields");
+        }
+
+        // Interpolate sbot to current time
+        const TF fac1 = TF(itime - itime_sbot_2d_prev ) / TF(itime_sbot_2d_next - itime_sbot_2d_prev);
+        const TF fac0 = TF(1) - fac1;
+
+        for (auto& fld : sbot_2d_list)
+        {
+            interp_sbot_time(
+                    tmp->fld_bot.data(),
+                    sbot_2d_prev.at(fld).data(),
+                    sbot_2d_next.at(fld).data(),
+                    fac0, fac1, gd.ijcells, fld);
+
+            set_bc_2d(
+                    fields.sp.at(fld)->fld_bot.data(),
+                    fields.sp.at(fld)->grad_bot.data(),
+                    fields.sp.at(fld)->flux_bot.data(),
+                    tmp->fld_bot.data(),
+                    sbc.at(fld).bcbot,
+                    fields.sp.at(fld)->visc,
+                    no_offset, gd.icells, gd.jcells);
+        }
+
+        fields.release_tmp(tmp);
+    }
+    else
+    {
+        for (auto& it : tdep_bc)
+        {
+            it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
+
+            set_bc<TF>(
+                fields.sp.at(it.first)->fld_bot.data(),
+                fields.sp.at(it.first)->grad_bot.data(),
+                fields.sp.at(it.first)->flux_bot.data(),
+                sbc.at(it.first).bcbot,
+                sbc.at(it.first).bot,
+                fields.sp.at(it.first)->visc,
+                no_offset, gd.icells, gd.jcells);
+        }
     }
 }
 #endif
+
 
 template<typename TF>
 void Boundary<TF>::set_values()
@@ -304,9 +538,14 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        // Load 2D fields for bottom boundary from disk.
-        if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        if (swtimedep_sbot_2d && std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
+            // The time dependent 2D bc's are set in `update_time_dependent()`.
+            continue;
+        }
+        else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        {
+            // Load 2D fields for bottom boundary from disk.
             std::string filename = it.first + "_bot.0000000";
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 

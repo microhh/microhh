@@ -27,6 +27,7 @@
 
 #include "timedep.h"
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 #include "field3d_io.h"
 
 class Master;
@@ -40,7 +41,7 @@ template<typename> class Stats;
 template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Field3d;
-template<typename> class Land_surface;
+template<typename> class Timeloop;
 
 class Input;
 
@@ -77,7 +78,9 @@ class Boundary
         static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&); ///< Create the fields.
+        virtual void create(
+                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
+                Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
 
         virtual void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
@@ -85,6 +88,8 @@ class Boundary
 
         virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
+
+        void set_prognostic_cyclic_bcs();
 
         virtual void exec(Thermo<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
@@ -122,6 +127,7 @@ class Boundary
         Fields<TF>& fields;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;
+        Boundary_outflow<TF> boundary_outflow;
 
         std::string swboundary;
 
@@ -138,11 +144,20 @@ class Boundary
 
         std::map<std::string, Timedep<TF>*> tdep_bc;
 
+        // Spatial sbot input:
         std::vector<std::string> sbot_2d_list;
+        std::vector<std::string> scalar_outflow;
+
+        // Time varying spatial sbot input:
+        bool swtimedep_sbot_2d;
+        unsigned int sbot_2d_loadtime;
+        std::map<std::string, std::vector<TF>> sbot_2d_prev;
+        std::map<std::string, std::vector<TF>> sbot_2d_next;
+        unsigned long itime_sbot_2d_prev;
+        unsigned long itime_sbot_2d_next;
 
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
-
-        void process_time_dependent(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
+        void process_time_dependent(Input&, Netcdf_handle&, Timeloop<TF>&); ///< Process the time dependent settings from the ini file.
 
         #ifdef USECUDA
         void clear_device();

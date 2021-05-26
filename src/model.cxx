@@ -53,6 +53,7 @@
 #include "cross.h"
 #include "dump.h"
 #include "model.h"
+#include "source.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -131,6 +132,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
         stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *fields, *advec, *diff, *input);
@@ -187,6 +190,7 @@ void Model<TF>::init()
     radiation->init(*timeloop);
     decay->init(*input);
     budget->init();
+    source->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -237,12 +241,13 @@ void Model<TF>::load()
     fields->create_column(*column);
 
     boundary->load(timeloop->get_iotime());
-    boundary->create(*input, *input_nc, *stats, *column, *cross);
+    boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
+    source->create(*input, *input_nc);
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
@@ -330,7 +335,7 @@ void Model<TF>::exec()
                 force   ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
-                fields->set_prognostic_cyclic_bcs();
+                boundary->set_prognostic_cyclic_bcs();
 
                 // Calculate the field means, in case needed.
                 fields->exec();
@@ -377,6 +382,9 @@ void Model<TF>::exec()
 
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
+
+                // Add point and line sources of scalars.
+                source->exec(*timeloop);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);

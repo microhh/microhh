@@ -146,11 +146,12 @@ Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 template<typename TF>
 void Boundary_surface_bulk<TF>::create(
         Input& input, Netcdf_handle& input_nc,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
+        Stats<TF>& stats, Column<TF>& column,
+        Cross<TF>& cross, Timeloop<TF>& timeloop)
 {
     const std::string group_name = "default";
 
-    Boundary<TF>::process_time_dependent(input, input_nc);
+    Boundary<TF>::process_time_dependent(input, input_nc, timeloop);
 
     // add variables to the statistics
     if (stats.get_switch())
