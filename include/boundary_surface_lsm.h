@@ -28,6 +28,8 @@
 
 template<typename> class Diff;
 
+enum class Soil_interpolation_type {Mean, Max, Harmonic_mean};
+
 template<typename TF>
 struct Surface_tile
 {

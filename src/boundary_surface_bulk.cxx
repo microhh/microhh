@@ -29,7 +29,7 @@
 #include "fields.h"
 #include "thermo.h"
 #include "boundary_surface_bulk.h"
-#include "boundary_surface_functions.h"
+#include "boundary_surface_kernels.h"
 #include "monin_obukhov.h"
 #include "constants.h"
 
@@ -37,6 +37,7 @@ namespace
 {
     namespace fm = Fast_math;
     namespace most = Monin_obukhov;
+    namespace bsk = Boundary_surface_kernels;
 
     template<typename TF>
     void calculate_du(
@@ -301,7 +302,7 @@ void Boundary_surface_bulk<TF>::exec(Thermo<TF>& thermo)
     fields.release_tmp(dutot);
 
     // Calculate MO gradients
-    Boundary_surface_functions::calc_duvdz(
+    bsk::calc_duvdz(
             dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -319,7 +320,7 @@ void Boundary_surface_bulk<TF>::exec(Thermo<TF>& thermo)
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(*buoy, false);
 
-    Boundary_surface_functions::calc_dbdz(
+    bsk::calc_dbdz(
             dbdz_mo.data(), buoy->flux_bot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],

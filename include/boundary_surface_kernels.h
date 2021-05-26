@@ -20,14 +20,14 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_SURFACE_FUNCTIONS_H
-#define BOUNDARY_SURFACE_FUNCTIONS_H
+#ifndef BOUNDARY_SURFACE_KERNELS_H
+#define BOUNDARY_SURFACE_KERNELS_H
 
 #include <iostream>
 #include "constants.h"
 #include "monin_obukhov.h"
 
-namespace Boundary_surface_functions
+namespace Boundary_surface_kernels
 {
     namespace fm = Fast_math;
     namespace most = Monin_obukhov;

@@ -34,7 +34,7 @@
 #include "diff.h"
 #include "boundary.h"
 #include "boundary_surface.h"
-#include "boundary_surface_functions.h"
+#include "boundary_surface_kernels.h"
 #include "defines.h"
 #include "constants.h"
 #include "thermo.h"
@@ -49,7 +49,7 @@ namespace
     // Make a shortcut in the file scope.
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
-    namespace bsf = Boundary_surface_functions;
+    namespace bsk = Boundary_surface_kernels;
 
     template<typename TF, bool sw_constant_z0>
     void stability(
@@ -136,10 +136,10 @@ namespace
 
                     // Switch between the iterative and lookup solver
                     if (sw_constant_z0)
-                        obuk[ij] = bsf::calc_obuk_noslip_flux_lookup(
+                        obuk[ij] = bsk::calc_obuk_noslip_flux_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                     else
-                        obuk[ij] = bsf::calc_obuk_noslip_flux_iterative(
+                        obuk[ij] = bsk::calc_obuk_noslip_flux_iterative(
                                 obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m[ij]);
 
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
@@ -157,10 +157,10 @@ namespace
 
                     // Switch between the iterative and lookup solver
                     if (sw_constant_z0)
-                        obuk[ij] = bsf::calc_obuk_noslip_dirichlet_lookup(
+                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
                                 zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
                     else
-                        obuk[ij] = bsf::calc_obuk_noslip_dirichlet_iterative(
+                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
                                 obuk[ij], dutot[ij], db, z[kstart], z0m[ij], z0h[ij]);
 
                     ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
@@ -685,7 +685,7 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "ra")
         {
-            bsf::calc_ra(
+            bsk::calc_ra(
                     tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
@@ -723,7 +723,7 @@ void Boundary_surface<TF>::set_values()
     Boundary<TF>::set_values();
 
     // Override the boundary settings in order to enforce dirichlet BC for surface model.
-    bsf::set_bc<TF>(
+    bsk::set_bc<TF>(
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
@@ -731,7 +731,7 @@ void Boundary_surface<TF>::set_values()
             fields.visc, grid.utrans,
             gd.icells, gd.jcells);
 
-    bsf::set_bc<TF>(
+    bsk::set_bc<TF>(
             fields.mp.at("v")->fld_bot.data(),
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
@@ -754,14 +754,14 @@ void Boundary_surface<TF>::set_ustar()
     auto& gd = grid.get_grid_data();
     const int jj = gd.icells;
 
-    bsf::set_bc<TF>(
+    bsk::set_bc<TF>(
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             mbcbot, ubot, fields.visc, grid.utrans,
             gd.icells, gd.jcells);
 
-    bsf::set_bc<TF>(
+    bsk::set_bc<TF>(
             fields.mp.at("v")->fld_bot.data(),
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
@@ -787,7 +787,7 @@ void Boundary_surface<TF>::init_solver()
     zL_sl.resize(nzL_lut);
     f_sl.resize(nzL_lut);
 
-    bsf::prepare_lut(
+    bsk::prepare_lut(
         zL_sl.data(),
         f_sl.data(),
         z0m[0], z0h[0],
@@ -870,7 +870,7 @@ void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
           boundary_cyclic);
 
     // Calculate MO gradients
-    bsf::calc_duvdz(
+    bsk::calc_duvdz(
             dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -902,7 +902,7 @@ void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(*buoy, false);
 
-    bsf::calc_dbdz(
+    bsk::calc_dbdz(
             dbdz_mo.data(), buoy->flux_bot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],
