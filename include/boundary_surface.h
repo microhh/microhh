@@ -36,9 +36,7 @@ class Boundary_surface : public Boundary<TF>
         ~Boundary_surface();
 
         void init(Input&, Thermo<TF>&);
-        void create(
-                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
-                Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
 
         const std::vector<TF>& get_z0m()  const { return z0m; };

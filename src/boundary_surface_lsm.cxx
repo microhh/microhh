@@ -34,6 +34,7 @@
 #include "grid.h"
 #include "soil_grid.h"
 #include "fields.h"
+#include "soil_field3d.h"
 #include "diff.h"
 #include "defines.h"
 #include "constants.h"
@@ -383,7 +384,6 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
 
     // Read .ini settings:
     sw_constant_z0   = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
-
     sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
     sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
@@ -421,9 +421,83 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
 template<typename TF>
 Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
+    //#ifdef USECUDA
+    //clear_device();
+    //#endif
+}
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    Netcdf_group& soil_group = input_nc.get_group("soil");
+    Netcdf_group& init_group = input_nc.get_group("init");
+
+    // Init the soil variables
+    if (sw_homogeneous)
+    {
+        // Read initial profiles from input NetCDF file
+        std::vector<TF> t_prof(sgd.ktot);
+        std::vector<TF> theta_prof(sgd.ktot);
+
+        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
+        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
+
+        // Initialise soil as spatially homogeneous
+        sk::init_soil_homogeneous(
+                fields.sps.at("t")->fld.data(), t_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+
+        sk::init_soil_homogeneous(
+                fields.sps.at("theta")->fld.data(), theta_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+    }
+
+    // Initialise the prognostic surface variables, and/or
+    // variables which are needed for consistent restarts.
+    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+
+    // Set initial surface potential temperature and humidity to the atmospheric values (...)
+    std::vector<TF> thl_1(1);
+    std::vector<TF> qt_1(1);
+
+    init_group.get_variable(thl_1, "thl", {0}, {1});
+    init_group.get_variable(qt_1,  "qt",  {0}, {1});
+
+    std::fill(
+            fields.sp.at("thl")->fld_bot.begin(),
+            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
+    std::fill(
+            fields.sp.at("qt")->fld_bot.begin(),
+            fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
+
+    // Init surface temperature tiles
+    for (auto& tile : tiles)
+    {
+        std::fill(
+                tile.second.thl_bot.begin(),
+                tile.second.thl_bot.end(), thl_1[0]);
+
+        std::fill(
+                tile.second.qt_bot.begin(),
+                tile.second.qt_bot.end(), qt_1[0]);
+    }
+
+    // Init surface fluxes to some small non-zero value
+    std::fill(
+            fields.sp.at("thl")->flux_bot.begin(),
+            fields.sp.at("thl")->flux_bot.end(), Constants::dsmall);
+    std::fill(
+            fields.sp.at("qt")->flux_bot.begin(),
+            fields.sp.at("qt")->flux_bot.end(), Constants::dsmall);
 }
 
 template<typename TF>
@@ -464,8 +538,8 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
     process_input(inputin, thermo);
 
     // Allocate and initialize the 2D surface fields.
-    init_surface(inputin);
-    init_lsm();
+    init_surface_layer(inputin);
+    init_land_surface();
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
@@ -474,21 +548,23 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface_lsm<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    // check whether the prognostic thermo vars are of the same type
+    // Check whether the prognostic thermo vars are of the same type
     std::vector<std::string> thermolist;
     thermo.get_prog_vars(thermolist);
 
-    // save the bc of the first thermo field in case thermo is enabled
-    auto it = thermolist.begin();
-    if (it != thermolist.end())
-        thermobc = sbc[*it].bcbot;
-    else
-        // Set the thermobc to Flux_type to avoid uninitialized errors.
-        thermobc = Boundary_type::Flux_type;
+    // Boundary_surface_lsm only supports Dirichlet BCs
+    if (mbcbot != Boundary_type::Dirichlet_type)
+        throw std::runtime_error("swboundary=surface_lsm requires mbcbot=noslip");
+
+    for (auto& it : sbc)
+        if (it.second.bcbot != Boundary_type::Dirichlet_type)
+            throw std::runtime_error("swboundary_surface_lsm requires sbcbot=dirichlet");
+
+    thermobc = Boundary_type::Dirichlet_type;
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::init_surface(Input& input)
+void Boundary_surface_lsm<TF>::init_surface_layer(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
@@ -499,20 +575,21 @@ void Boundary_surface_lsm<TF>::init_surface(Input& input)
     dvdz_mo.resize(gd.ijcells);
     dbdz_mo.resize(gd.ijcells);
 
-    if (sw_constant_z0)
-        nobuk.resize(gd.ijcells);
-
     z0m.resize(gd.ijcells);
     z0h.resize(gd.ijcells);
 
     if (sw_constant_z0)
     {
+        nobuk.resize(gd.ijcells);
+
         const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
         const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
 
         std::fill(z0m.begin(), z0m.end(), z0m_hom);
         std::fill(z0h.begin(), z0h.end(), z0h_hom);
+        std::fill(nobuk.begin(), nobuk.end(), 0);
     }
+    // else: z0m and z0h are read from 2D input files in `load()`.
 
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
@@ -520,13 +597,10 @@ void Boundary_surface_lsm<TF>::init_surface(Input& input)
     // Also initialise ustar at small number, to prevent div/0
     // in calculation surface gradients during cold start.
     std::fill(ustar.begin(), ustar.end(), Constants::dsmall);
-
-    if (sw_constant_z0)
-        std::fill(nobuk.begin(), nobuk.end(), 0);
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::init_lsm()
+void Boundary_surface_lsm<TF>::init_land_surface()
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
@@ -557,44 +631,48 @@ void Boundary_surface_lsm<TF>::init_lsm()
 
     // Resize the vectors which contain the soil properties
     soil_index.resize(sgd.ncells);
-
-    diffusivity.resize   (sgd.ncells);
-    diffusivity_h.resize (sgd.ncellsh);
-    conductivity.resize  (sgd.ncells);
+    diffusivity.resize(sgd.ncells);
+    diffusivity_h.resize(sgd.ncellsh);
+    conductivity.resize(sgd.ncells);
     conductivity_h.resize(sgd.ncellsh);
-    source.resize        (sgd.ncells);
-
+    source.resize(sgd.ncells);
     root_fraction.resize(sgd.ncells);
 
-    // Resize the lookup table
-    lookup_table_size = nc_lookup_table->get_dimension_size("index");
+    // Resize the lookup table with van Genuchten parameters
+    const int size = nc_lookup_table->get_dimension_size("index");
 
-    theta_res.resize(lookup_table_size);
-    theta_wp.resize(lookup_table_size);
-    theta_fc.resize(lookup_table_size);
-    theta_sat.resize(lookup_table_size);
+    theta_res.resize(size);
+    theta_wp.resize(size);
+    theta_fc.resize(size);
+    theta_sat.resize(size);
 
-    gamma_theta_sat.resize(lookup_table_size);
-    vg_a.resize(lookup_table_size);
-    vg_l.resize(lookup_table_size);
-    vg_n.resize(lookup_table_size);
+    gamma_theta_sat.resize(size);
+    vg_a.resize(size);
+    vg_l.resize(size);
+    vg_n.resize(size);
+    vg_m.resize(size);
 
-    vg_m.resize(lookup_table_size);
-    kappa_theta_max.resize(lookup_table_size);
-    kappa_theta_min.resize(lookup_table_size);
-    gamma_theta_max.resize(lookup_table_size);
-    gamma_theta_min.resize(lookup_table_size);
+    kappa_theta_max.resize(size);
+    kappa_theta_min.resize(size);
+    gamma_theta_max.resize(size);
+    gamma_theta_min.resize(size);
 
-    gamma_T_dry.resize(lookup_table_size);
-    rho_C.resize(lookup_table_size);
+    gamma_T_dry.resize(size);
+    rho_C.resize(size);
 }
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::load(const int iotime)
 {
-    auto tmp1 = fields.get_tmp();
-    int nerror = 0;
+    auto& sgd = soil_grid.get_grid_data();
 
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    int nerror = 0;
+    const TF no_offset = TF(0);
+
+    // Lambda function to load 2D fields.
     auto load_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -615,8 +693,29 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
         boundary_cyclic.exec_2d(field);
     };
 
+    // Lambda function to load 3D soil fields.
+    auto load_3d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_field3d(
+                field,
+                tmp1->fld.data(), tmp2->fld.data(),
+                filename, no_offset,
+                sgd.kstart, sgd.kend))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
     // MO gradients are always needed, as the calculation of the
-    // eddy viscosity use the gradients from the previous time step.
+    // eddy viscosity uses the gradients from the previous time step.
     load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
     load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
@@ -632,25 +731,81 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
         load_2d_field(z0h.data(), "z0h", 0);
     }
 
+    // Load the 3D soil temperature and moisture fields.
+    load_3d_field(fields.sps.at("t")->fld.data(), "t_soil", iotime);
+    load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil", iotime);
+
+    // Load the surface temperature, humidity and liquid water content.
+    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
+
+    //load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
+    //load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
+
+    //load_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot", iotime);
+    //load_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot", iotime);
+
+    //for (auto& tile : tiles)
+    //{
+    //    load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
+    //    load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
+    //}
+
+    // In case of heterogeneous land-surface, read spatial properties.
+    //if (!sw_homogeneous)
+    //{
+    //    // 3D (soil) fields
+    //    // BvS: yikes.. Read soil index as float, round/cast to int... TO-DO: fix this!
+    //    load_3d_field(tmp3->fld.data(), "index_soil", 0);
+    //    for (int i=0; i<sgd.ncells; ++i)
+    //        soil_index[i] = std::round(tmp3->fld[i]);
+
+    //    if (sw_water)
+    //    {
+    //        // More yikes.. Read water mask as float, cast to bool
+    //        load_2d_field(tmp3->fld.data(), "water_mask", 0);
+    //        for (int i=0; i<agd.ijcells; ++i)
+    //            water_mask[i] = tmp3->fld[i] > TF(0.5) ? 1 : 0;
+    //    }
+
+    //    load_3d_field(root_fraction.data(), "root_frac", 0);
+
+    //    // 2D (surface) fields
+    //    load_2d_field(gD_coeff.data(), "gD", 0);
+    //    load_2d_field(c_veg.data(), "c_veg", 0);
+    //    load_2d_field(lai.data(), "lai", 0);
+    //    load_2d_field(rs_veg_min.data(), "rs_veg_min", 0);
+    //    load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
+    //    load_2d_field(lambda_stable.data(), "lambda_stable", 0);
+    //    load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
+    //    load_2d_field(cs_veg.data(), "cs_veg", 0);
+    //}
+
     // Check for any failures.
     master.sum(&nerror, 1);
     if (nerror)
         throw std::runtime_error("Error loading field(s)");
 
     fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
 }
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::save(const int iotime)
 {
-    auto tmp1 = fields.get_tmp();
-    int nerror = 0;
+    auto& sgd = soil_grid.get_grid_data();
 
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    int nerror = 0;
+    const TF no_offset = TF(0);
+
+    // Lambda function to save 2D fields.
     auto save_2d_field = [&](
-            TF* const restrict field, const std::string& name, const int itime)
+            TF* const restrict field, const std::string& name)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
 
         const int kslice = 0;
@@ -664,15 +819,56 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
             master.print_message("OK\n");
     };
 
+    // Lambda function to save the 3D soil fields.
+    auto save_3d_field = [&](TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        if (field3d_io.save_field3d(
+                field, tmp1->fld.data(), tmp2->fld.data(),
+                filename, no_offset,
+                sgd.kstart, sgd.kend))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
     // MO gradients are always needed, as the calculation of the
     // eddy viscosity use the gradients from the previous time step.
-    save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
-    save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
-    save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+    save_2d_field(dudz_mo.data(), "dudz_mo");
+    save_2d_field(dvdz_mo.data(), "dvdz_mo");
+    save_2d_field(dbdz_mo.data(), "dbdz_mo");
 
-    // Obukhov length restart files are only needed for the iterative solver
+    // Obukhov length restart files are only needed for the iterative solver.
     if (!sw_constant_z0)
-        save_2d_field(obuk.data(), "obuk", iotime);
+        save_2d_field(obuk.data(), "obuk");
+
+    // Don't save the initial soil temperature/moisture for heterogeneous runs.
+    if (sw_homogeneous || iotime > 0)
+    {
+        save_3d_field(fields.sps.at("t")->fld.data(), "t_soil");
+        save_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil");
+    }
+
+    // Surface fields.
+    save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
+
+    //save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    //save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    //save_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot");
+    //save_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot");
+
+    //for (auto& tile : tiles)
+    //{
+    //    save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
+    //    save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
+    //}
 
     // Check for any failures.
     master.sum(&nerror, 1);
@@ -680,6 +876,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
         throw std::runtime_error("Error saving field(s)");
 
     fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
 }
 
 template<typename TF>

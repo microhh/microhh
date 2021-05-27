@@ -293,6 +293,7 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
+    boundary->create_cold_start(*input_nc);
     boundary->save(timeloop->get_iotime());
 }
 

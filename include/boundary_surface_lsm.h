@@ -65,6 +65,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         ~Boundary_surface_lsm();
 
         void init(Input&, Thermo<TF>&);
+        void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
         void set_values();
 
@@ -83,21 +84,21 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS
+        //void prepare_device();
+        //void clear_device();
+        //void forward_device();  // TMP BVS
+        //void backward_device(); // TMP BVS
 
-        TF* get_z0m_g() { return z0m_g; };
-        TF* get_ustar_g() { return ustar_g; };
-        TF* get_obuk_g() { return obuk_g; };
+        //TF* get_z0m_g() { return z0m_g; };
+        //TF* get_ustar_g() { return ustar_g; };
+        //TF* get_obuk_g() { return obuk_g; };
         #endif
 
     protected:
         void process_input(Input&, Thermo<TF>&); // Process and check the surface input
-        void init_surface(Input&); // Allocate and initialize the surface arrays
-        void init_lsm(); // Allocate and initialize the surface arrays
-        void init_solver(); // Prepare the lookup table's for the surface layer solver
+        void init_surface_layer(Input&);         // Allocate and initialize the surface layer arrays
+        void init_land_surface();                // Allocate and initialize the land surface arrays
+        void init_solver();                      // Prepare the lookup table's for the surface layer solver
 
     private:
         using Boundary<TF>::master;
@@ -126,8 +127,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         TF tskin_water;
 
-        std::vector<std::string> tile_names {
-            "veg", "soil" ,"wet"};
+        std::vector<std::string> tile_names {"veg", "soil" ,"wet"};
         Tile_map<TF> tiles;
 
         std::vector<float> zL_sl;
@@ -146,7 +146,6 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         // Lookup tables van Genuchten parameterisation
         std::shared_ptr<Netcdf_file> nc_lookup_table;
-        int lookup_table_size;
 
         // Soil cross-sections
         std::vector<std::string> crosslist;

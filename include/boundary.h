@@ -80,6 +80,7 @@ class Boundary
             Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        void create_cold_start(Netcdf_handle&) {}; ///< Create fields for cold start.
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
                 Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
