@@ -208,7 +208,7 @@ if nl['land_surface']['swhomogeneous']:
     add_nc_var(nc_soil, 't_soil', ('z'), t_soil)
     add_nc_var(nc_soil, 'theta_soil', ('z'), theta_soil)
     add_nc_var(nc_soil, 'root_frac', ('z'), root_frac)
-    add_nc_var(nc_soil, 'index_soil', ('z'), index_soil, np.int)
+    add_nc_var(nc_soil, 'index_soil', ('z'), index_soil, np.int32)
 
 nc.close()
 

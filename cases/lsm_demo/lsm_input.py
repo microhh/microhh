@@ -112,11 +112,11 @@ class LSM_input:
         dimy = nc.createDimension('y', self.jtot)
         dimz = nc.createDimension('z', self.ktot)
 
-        var_x = nc.createVariable('x', np.float, 'x')
-        var_y = nc.createVariable('y', np.float, 'y')
+        var_x = nc.createVariable('x', 'f8', 'x')
+        var_y = nc.createVariable('y', 'f8', 'y')
 
-        var_lon = nc.createVariable('lon', np.float, ('y','x'))
-        var_lat = nc.createVariable('lat', np.float, ('y','x'))
+        var_lon = nc.createVariable('lon', 'f8', ('y','x'))
+        var_lat = nc.createVariable('lat', 'f8', ('y','x'))
 
         var_x[:] = self.x[:]
         var_y[:] = self.y[:]
@@ -127,12 +127,12 @@ class LSM_input:
         # Fields needed for offline LSM:
         for field in self.fields_2d:
             data = getattr(self, field)
-            var  = nc.createVariable(field, np.float, ('y','x'))
+            var  = nc.createVariable(field, 'f8', ('y','x'))
             var[:] = data[:]
 
         for field in self.fields_3d:
             data = getattr(self, field)
-            var  = nc.createVariable(field, np.float, ('z','y','x'))
+            var  = nc.createVariable(field, 'f8', ('z','y','x'))
             var[:] = data[:]
 
         nc.close()
