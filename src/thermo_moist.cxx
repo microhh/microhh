@@ -858,7 +858,8 @@ template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Thermo<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(masterin, gridin),
-    field3d_operators(master, grid, fieldsin)
+    field3d_operators(master, grid, fieldsin),
+    field3d_io(master, grid)
 {
     auto& gd = grid.get_grid_data();
 
@@ -956,6 +957,32 @@ void Thermo_moist<TF>::save(const int iotime)
         fclose(pFile);
     }
 
+    auto tmp1 = fields.get_tmp();
+
+    // Save surface values thl + qt, which are needed for bitwise identical restarts
+    auto save_2d_field = [&](
+            TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    fields.release_tmp(tmp1);
+
     master.sum(&nerror, 1);
 
     if (nerror)
@@ -992,6 +1019,34 @@ void Thermo_moist<TF>::load(const int iotime)
             fclose(pFile);
         }
     }
+
+    auto tmp1 = fields.get_tmp();
+
+    // Lambda function to load 2D fields.
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
+    };
+
+    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    fields.release_tmp(tmp1);
 
     // Communicate the file read error over all procs.
     master.sum(&nerror, 1);

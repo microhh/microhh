@@ -119,6 +119,7 @@ class Thermo_moist : public Thermo<TF>
 
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_operators<TF> field3d_operators;
+        Field3d_io<TF> field3d_io;
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file

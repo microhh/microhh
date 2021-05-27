@@ -921,6 +921,9 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+        // For cold start, initialise surface values with first model level values
+        std::fill(f.second->fld_bot.begin(), f.second->fld_bot.end(), prof[0]);
     }
 }
 

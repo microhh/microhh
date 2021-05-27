@@ -337,6 +337,7 @@ void Model<TF>::exec()
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
+                boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
                 fields->exec();

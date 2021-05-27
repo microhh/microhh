@@ -72,6 +72,7 @@ namespace
         int nm = minor_gases_atm.dim(1);
         int tot_g = 0;
 
+
         Array<BOOL_TYPE,1> gas_is_present({nm});
 
         for (int i=1; i<=nm; ++i)
