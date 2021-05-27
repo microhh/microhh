@@ -36,6 +36,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         ~Boundary_surface_bulk();
 
         void init(Input&, Thermo<TF>&);
+        void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
 

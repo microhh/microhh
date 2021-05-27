@@ -289,6 +289,10 @@ void Boundary<TF>::create(
     process_time_dependent(input, input_nc, timeloop);
 }
 
+template<typename TF>
+void Boundary<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
+}
 
 template<typename TF>
 void Boundary<TF>::process_time_dependent(

@@ -66,7 +66,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         void init(Input&, Thermo<TF>&);
         void create_cold_start(Netcdf_handle&);
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
 
         const std::vector<TF>& get_z0m()  const { return z0m; };
@@ -99,6 +99,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         void init_surface_layer(Input&);         // Allocate and initialize the surface layer arrays
         void init_land_surface();                // Allocate and initialize the land surface arrays
         void init_solver();                      // Prepare the lookup table's for the surface layer solver
+        void create_stats(Stats<TF>&, Column<TF>&, Cross<TF>&);
 
     private:
         using Boundary<TF>::master;

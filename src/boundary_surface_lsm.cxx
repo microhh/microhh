@@ -426,111 +426,128 @@ Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
     //#endif
 }
 
+#ifndef USECUDA
 template<typename TF>
-void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
+void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
 {
-    auto& agd = grid.get_grid_data();
-    auto& sgd = soil_grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
 
-    Netcdf_group& soil_group = input_nc.get_group("soil");
-    Netcdf_group& init_group = input_nc.get_group("init");
-
-    // Init the soil variables
-    if (sw_homogeneous)
+    // Start with retrieving the stability information.
+    if (thermo.get_switch() == "0")
     {
-        // Read initial profiles from input NetCDF file
-        std::vector<TF> t_prof(sgd.ktot);
-        std::vector<TF> theta_prof(sgd.ktot);
+        auto dutot = fields.get_tmp();
+        bs::stability_neutral(
+                ustar.data(), obuk.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
+                dutot->fld.data(), gd.z.data(), z0m.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                mbcbot, boundary_cyclic);
+        fields.release_tmp(dutot);
+    }
+    else
+    {
+        auto buoy = fields.get_tmp();
+        auto tmp = fields.get_tmp();
 
-        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
-        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
+        thermo.get_buoyancy_surf(*buoy, false);
+        const TF db_ref = thermo.get_db_ref();
 
-        // Initialise soil as spatially homogeneous
-        sk::init_soil_homogeneous(
-                fields.sps.at("t")->fld.data(), t_prof.data(),
-                agd.istart, agd.iend,
-                agd.jstart, agd.jend,
-                sgd.kstart, sgd.kend,
-                agd.icells, agd.ijcells);
+        if (sw_constant_z0)
+            bs::stability<TF, true>(
+                    ustar.data(), obuk.data(),
+                    buoy->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                    buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
+                    fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                    tmp->fld.data(), gd.z.data(),
+                    z0m.data(), z0h.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    mbcbot, thermobc, boundary_cyclic);
+        else
+            bs::stability<TF, false>(
+                    ustar.data(), obuk.data(),
+                    buoy->flux_bot.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
+                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
+                    tmp->fld.data(), gd.z.data(),
+                    z0m.data(), z0h.data(),
+                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    mbcbot, thermobc, boundary_cyclic);
 
-        sk::init_soil_homogeneous(
-                fields.sps.at("theta")->fld.data(), theta_prof.data(),
-                agd.istart, agd.iend,
-                agd.jstart, agd.jend,
-                sgd.kstart, sgd.kend,
-                agd.icells, agd.ijcells);
+        fields.release_tmp(buoy);
+        fields.release_tmp(tmp);
     }
 
-    // Initialise the prognostic surface variables, and/or
-    // variables which are needed for consistent restarts.
-    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
+    // Momentum:
+    bs::surfm(fields.mp.at("u")->flux_bot.data(),
+          fields.mp.at("v")->flux_bot.data(),
+          fields.mp.at("u")->grad_bot.data(),
+          fields.mp.at("v")->grad_bot.data(),
+          ustar.data(), obuk.data(),
+          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
+          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
+          z0m.data(), gd.z[gd.kstart], mbcbot,
+          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
+          gd.icells, gd.jcells, gd.ijcells,
+          boundary_cyclic);
 
-    // Set initial surface potential temperature and humidity to the atmospheric values (...)
-    std::vector<TF> thl_1(1);
-    std::vector<TF> qt_1(1);
+    // Calculate MO gradients
+    bsk::calc_duvdz(
+            dudz_mo.data(), dvdz_mo.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
 
-    init_group.get_variable(thl_1, "thl", {0}, {1});
-    init_group.get_variable(qt_1,  "qt",  {0}, {1});
+    // Scalars:
+    for (auto& it : fields.sp)
+        bs::surfs(it.second->fld_bot.data(),
+              it.second->grad_bot.data(),
+              it.second->flux_bot.data(),
+              ustar.data(), obuk.data(),
+              it.second->fld.data(), z0h.data(),
+              gd.z[gd.kstart], sbc.at(it.first).bcbot,
+              gd.istart, gd.iend,
+              gd.jstart, gd.jend, gd.kstart,
+              gd.icells, gd.jcells, gd.ijcells,
+              boundary_cyclic);
 
-    std::fill(
-            fields.sp.at("thl")->fld_bot.begin(),
-            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
-    std::fill(
-            fields.sp.at("qt")->fld_bot.begin(),
-            fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
+    // Calculate MO gradients
+    auto buoy = fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(*buoy, false);
 
-    // Init surface temperature tiles
-    for (auto& tile : tiles)
-    {
-        std::fill(
-                tile.second.thl_bot.begin(),
-                tile.second.thl_bot.end(), thl_1[0]);
+    bsk::calc_dbdz(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 
-        std::fill(
-                tile.second.qt_bot.begin(),
-                tile.second.qt_bot.end(), qt_1[0]);
-    }
-
-    // Init surface fluxes to some small non-zero value
-    std::fill(
-            fields.sp.at("thl")->flux_bot.begin(),
-            fields.sp.at("thl")->flux_bot.end(), Constants::dsmall);
-    std::fill(
-            fields.sp.at("qt")->flux_bot.begin(),
-            fields.sp.at("qt")->flux_bot.end(), Constants::dsmall);
+    fields.release_tmp(buoy);
 }
-
-template<typename TF>
-void Boundary_surface_lsm<TF>::create(
-        Input& input, Netcdf_handle& input_nc,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
-{
-    const std::string group_name = "default";
-
-    //// add variables to the statistics
-    //if (stats.get_switch())
-    //{
-    //    stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
-    //    stats.add_time_series("obuk", "Obukhov length", "m", group_name);
-    //}
-
-    //if (column.get_switch())
-    //{
-    //    column.add_time_series("ustar", "Surface friction velocity", "m s-1");
-    //    column.add_time_series("obuk", "Obukhov length", "m");
-    //}
-
-    //if (cross.get_switch())
-    //{
-    //    const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
-    //    cross_list = cross.get_enabled_variables(allowed_crossvars);
-    //}
-}
+#endif
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 {
-    // Surface-layer
     // Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
 
@@ -659,6 +676,193 @@ void Boundary_surface_lsm<TF>::init_land_surface()
 
     gamma_T_dry.resize(size);
     rho_C.resize(size);
+}
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    Netcdf_group& soil_group = input_nc.get_group("soil");
+    Netcdf_group& init_group = input_nc.get_group("init");
+
+    // Init the soil variables
+    if (sw_homogeneous)
+    {
+        // Read initial profiles from input NetCDF file
+        std::vector<TF> t_prof(sgd.ktot);
+        std::vector<TF> theta_prof(sgd.ktot);
+
+        soil_group.get_variable(t_prof, "t_soil", {0}, {sgd.ktot});
+        soil_group.get_variable(theta_prof, "theta_soil", {0}, {sgd.ktot});
+
+        // Initialise soil as spatially homogeneous
+        sk::init_soil_homogeneous(
+                fields.sps.at("t")->fld.data(), t_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+
+        sk::init_soil_homogeneous(
+                fields.sps.at("theta")->fld.data(), theta_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+    }
+    // else: these fields will be provided by the user as binary input files.
+
+    // Initialise the prognostic surface variables, and/or
+    // variables which are needed for consistent restarts.
+    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+
+    // Set initial surface potential temperature and humidity to the atmospheric values (...)
+    std::vector<TF> thl_1(1);
+    std::vector<TF> qt_1(1);
+
+    init_group.get_variable(thl_1, "thl", {0}, {1});
+    init_group.get_variable(qt_1,  "qt",  {0}, {1});
+
+    std::fill(
+            fields.sp.at("thl")->fld_bot.begin(),
+            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
+    std::fill(
+            fields.sp.at("qt")->fld_bot.begin(),
+            fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
+
+    // Init surface temperature tiles
+    for (auto& tile : tiles)
+    {
+        std::fill(
+                tile.second.thl_bot.begin(),
+                tile.second.thl_bot.end(), thl_1[0]);
+
+        std::fill(
+                tile.second.qt_bot.begin(),
+                tile.second.qt_bot.end(), qt_1[0]);
+    }
+
+    // Init surface fluxes to some small non-zero value
+    std::fill(
+            fields.sp.at("thl")->flux_bot.begin(),
+            fields.sp.at("thl")->flux_bot.end(), Constants::dsmall);
+    std::fill(
+            fields.sp.at("qt")->flux_bot.begin(),
+            fields.sp.at("qt")->flux_bot.end(), Constants::dsmall);
+}
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::create(
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column,
+        Cross<TF>& cross, Timeloop<TF>& timeloop)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    // Setup statiscics, cross-sections and column statistics
+    create_stats(stats, column, cross);
+
+    // Init soil properties
+    if (sw_homogeneous)
+    {
+        Netcdf_group& soil_group = input_nc.get_group("soil");
+
+        // Soil index
+        std::vector<int> soil_index_prof(sgd.ktot);
+        soil_group.get_variable<int>(soil_index_prof, "index_soil", {0}, {sgd.ktot});
+
+        sk::init_soil_homogeneous<int>(
+                soil_index.data(), soil_index_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+
+        // Root fraction
+        std::vector<TF> root_frac_prof(sgd.ktot);
+        soil_group.get_variable<TF>(root_frac_prof, "root_frac", {0}, {sgd.ktot});
+
+        sk::init_soil_homogeneous<TF>(
+                root_fraction.data(), root_frac_prof.data(),
+                agd.istart, agd.iend,
+                agd.jstart, agd.jend,
+                sgd.kstart, sgd.kend,
+                agd.icells, agd.ijcells);
+
+        // Lambda function to read namelist value, and init 2D field homogeneous.
+        auto init_homogeneous = [&](std::vector<TF>& field, std::string name)
+        {
+            const TF value = input.get_item<TF>("land_surface", name.c_str(), "");
+            std::fill(field.begin(), field.begin()+agd.ijcells, value);
+        };
+
+        // Land-surface properties
+        init_homogeneous(gD_coeff, "gD");
+        init_homogeneous(c_veg, "c_veg");
+        init_homogeneous(lai, "lai");
+        init_homogeneous(rs_veg_min, "rs_veg_min");
+        init_homogeneous(rs_soil_min, "rs_soil_min");
+        init_homogeneous(lambda_stable, "lambda_stable");
+        init_homogeneous(lambda_unstable, "lambda_unstable");
+        init_homogeneous(cs_veg, "cs_veg");
+    }
+    // else: these fields are read from 2D input files in `boundary->load()`.
+
+    // Set the canopy resistance of the liquid water tile at zero
+    std::fill(tiles.at("wet").rs.begin(), tiles.at("wet").rs.begin()+agd.ijcells, 0.);
+
+    // Read the lookup table with soil properties
+    const int size = nc_lookup_table->get_dimension_size("index");
+    nc_lookup_table->get_variable<TF>(theta_res, "theta_res", {0}, {size});
+    nc_lookup_table->get_variable<TF>(theta_wp,  "theta_wp",  {0}, {size});
+    nc_lookup_table->get_variable<TF>(theta_fc,  "theta_fc",  {0}, {size});
+    nc_lookup_table->get_variable<TF>(theta_sat, "theta_sat", {0}, {size});
+
+    nc_lookup_table->get_variable<TF>(gamma_theta_sat, "gamma_sat", {0}, {size});
+
+    nc_lookup_table->get_variable<TF>(vg_a, "alpha", {0}, {size});
+    nc_lookup_table->get_variable<TF>(vg_l, "l",     {0}, {size});
+    nc_lookup_table->get_variable<TF>(vg_n, "n",     {0}, {size});
+
+    // Calculate derived properties of the lookup table
+    sk::calc_soil_properties(
+            kappa_theta_min.data(), kappa_theta_max.data(),
+            gamma_theta_min.data(), gamma_theta_max.data(), vg_m.data(),
+            gamma_T_dry.data(), rho_C.data(),
+            vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
+            theta_res.data(), theta_sat.data(), theta_fc.data(), size);
+}
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::create_stats(
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const std::string group_name = "default";
+
+    // add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
+        stats.add_time_series("obuk", "Obukhov length", "m", group_name);
+    }
+
+    if (column.get_switch())
+    {
+        column.add_time_series("ustar", "Surface friction velocity", "m s-1");
+        column.add_time_series("obuk", "Obukhov length", "m");
+    }
+
+    if (cross.get_switch())
+    {
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+        cross_list = cross.get_enabled_variables(allowed_crossvars);
+    }
 }
 
 template<typename TF>
@@ -969,124 +1173,6 @@ void Boundary_surface_lsm<TF>::init_solver()
         mbcbot, thermobc);
 }
 
-#ifndef USECUDA
-template<typename TF>
-void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
-{
-    auto& gd = grid.get_grid_data();
-
-    // Start with retrieving the stability information.
-    if (thermo.get_switch() == "0")
-    {
-        auto dutot = fields.get_tmp();
-        bs::stability_neutral(
-                ustar.data(), obuk.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                dutot->fld.data(), gd.z.data(), z0m.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend, gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells,
-                mbcbot, boundary_cyclic);
-        fields.release_tmp(dutot);
-    }
-    else
-    {
-        auto buoy = fields.get_tmp();
-        auto tmp = fields.get_tmp();
-
-        thermo.get_buoyancy_surf(*buoy, false);
-        const TF db_ref = thermo.get_db_ref();
-
-        if (sw_constant_z0)
-            bs::stability<TF, true>(
-                    ustar.data(), obuk.data(),
-                    buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                    buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
-                    fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
-                    z0m.data(), z0h.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend, gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    mbcbot, thermobc, boundary_cyclic);
-        else
-            bs::stability<TF, false>(
-                    ustar.data(), obuk.data(),
-                    buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
-                    z0m.data(), z0h.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    mbcbot, thermobc, boundary_cyclic);
-
-        fields.release_tmp(buoy);
-        fields.release_tmp(tmp);
-    }
-
-    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-    // Momentum:
-    bs::surfm(fields.mp.at("u")->flux_bot.data(),
-          fields.mp.at("v")->flux_bot.data(),
-          fields.mp.at("u")->grad_bot.data(),
-          fields.mp.at("v")->grad_bot.data(),
-          ustar.data(), obuk.data(),
-          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
-          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
-          z0m.data(), gd.z[gd.kstart], mbcbot,
-          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-          gd.icells, gd.jcells, gd.ijcells,
-          boundary_cyclic);
-
-    // Calculate MO gradients
-    bsk::calc_duvdz(
-            dudz_mo.data(), dvdz_mo.data(),
-            fields.mp.at("u")->fld.data(),
-            fields.mp.at("v")->fld.data(),
-            fields.mp.at("u")->fld_bot.data(),
-            fields.mp.at("v")->fld_bot.data(),
-            fields.mp.at("u")->flux_bot.data(),
-            fields.mp.at("v")->flux_bot.data(),
-            ustar.data(), obuk.data(), z0m.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
-
-    // Scalars:
-    for (auto& it : fields.sp)
-        bs::surfs(it.second->fld_bot.data(),
-              it.second->grad_bot.data(),
-              it.second->flux_bot.data(),
-              ustar.data(), obuk.data(),
-              it.second->fld.data(), z0h.data(),
-              gd.z[gd.kstart], sbc.at(it.first).bcbot,
-              gd.istart, gd.iend,
-              gd.jstart, gd.jend, gd.kstart,
-              gd.icells, gd.jcells, gd.ijcells,
-              boundary_cyclic);
-
-    // Calculate MO gradients
-    auto buoy = fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*buoy, false);
-
-    bsk::calc_dbdz(
-            dbdz_mo.data(), buoy->flux_bot.data(),
-            ustar.data(), obuk.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    fields.release_tmp(buoy);
-}
-#endif
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::update_slave_bcs()
