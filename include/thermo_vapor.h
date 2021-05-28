@@ -101,7 +101,9 @@ class Thermo_vapor : public Thermo<TF>
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_land_surface_fields(Field3d<TF>&)
+        void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
+                std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
         const std::vector<TF>& get_rhorefh_vector() const
             { throw std::runtime_error("Function get_rhorefh_vector not implemented"); }

@@ -1384,18 +1384,20 @@ void Thermo_moist<TF>::get_radiation_fields(
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_land_surface_fields(Field3d<TF>& tmp)
+void Thermo_moist<TF>::get_land_surface_fields(
+        std::vector<TF>& T_bot, std::vector<TF>& T_a, std::vector<TF>& vpd,
+        std::vector<TF>& qsat, std::vector<TF>& dqsatdT)
 {
     /* Calculate the thermo fields required by the LSM in
        2D slices in the 3D tmp field */
     auto& gd = grid.get_grid_data();
 
     calc_land_surface_fields(
-            tmp.fld_bot.data(),   // T_bot
-            tmp.fld_top.data(),   // T first model level
-            tmp.flux_bot.data(),  // VPD first model level
-            tmp.flux_top.data(),  // qsat(T_bot)
-            tmp.grad_bot.data(),  // dqsatdT(T_bot)
+            T_bot.data(),
+            T_a.data(),
+            vpd.data(),
+            qsat.data(),
+            dqsatdT.data(),
             fields.sp.at("thl")->fld_bot.data(),
             fields.sp.at("thl")->fld.data(),
             fields.sp.at("qt")->fld.data(),

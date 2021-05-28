@@ -187,8 +187,9 @@ class Fields
         int n_tmp_fields_xy;   ///< Number of temporary fields.
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
-        std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
+
+        std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
 
         std::mutex tmp_fld_mutex;
 

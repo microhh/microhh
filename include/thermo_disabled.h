@@ -86,7 +86,9 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function get_thermo_field not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_land_surface_fields(Field3d<TF>&)
+        void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
+                std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
         void get_buoyancy_surf(Field3d<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }

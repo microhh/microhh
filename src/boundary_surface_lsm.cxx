@@ -45,6 +45,8 @@
 #include "monin_obukhov.h"
 #include "fast_math.h"
 #include "netcdf_interface.h"
+#include "radiation.h"
+#include "microphys.h"
 
 #include "boundary_surface_kernels.h"
 #include "land_surface_kernels.h"
@@ -428,9 +430,64 @@ Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_lsm<TF>::exec(Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    // Retrieve necessary data from other classes.
+    // Get references to surface radiation fluxes
+    std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
+    std::vector<TF>& sw_up = radiation.get_surface_radiation("sw_up");
+    std::vector<TF>& lw_dn = radiation.get_surface_radiation("lw_down");
+    std::vector<TF>& lw_up = radiation.get_surface_radiation("lw_up");
+
+    // Get (near-) surface thermo
+    auto T_bot = fields.get_tmp_xy();
+    auto T_a = fields.get_tmp_xy();
+    auto vpd = fields.get_tmp_xy();
+    auto qsat_bot = fields.get_tmp_xy();
+    auto dqsatdT_bot = fields.get_tmp_xy();
+
+    thermo.get_land_surface_fields(
+        *T_bot, *T_a, *vpd, *qsat_bot, *dqsatdT_bot);
+
+    // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
+    auto rain_rate = fields.get_tmp_xy();
+    microphys.get_surface_rain_rate(*rain_rate);
+
+
+
+
+
+
+
+
+
+    // XY tmp fields for intermediate calculations
+    auto f1  = fields.get_tmp_xy();
+    auto f2  = fields.get_tmp_xy();
+    auto f2b = fields.get_tmp_xy();
+    auto f3  = fields.get_tmp_xy();
+
+
+    fields.release_tmp_xy(T_bot);
+    fields.release_tmp_xy(T_a);
+    fields.release_tmp_xy(vpd);
+    fields.release_tmp_xy(qsat_bot);
+    fields.release_tmp_xy(dqsatdT_bot);
+
+    fields.release_tmp_xy(rain_rate);
+
+    fields.release_tmp_xy(f1);
+    fields.release_tmp_xy(f2);
+    fields.release_tmp_xy(f2b);
+    fields.release_tmp_xy(f3);
+
+
+
 
     // Start with retrieving the stability information.
     if (thermo.get_switch() == "0")

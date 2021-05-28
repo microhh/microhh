@@ -802,7 +802,9 @@ void Boundary_surface<TF>::init_solver()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::exec(Thermo<TF>& thermo)
+void Boundary_surface<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 

@@ -809,7 +809,9 @@ namespace
 }
 
 template<typename TF>
-void Boundary<TF>::exec(Thermo<TF>& thermo)
+void Boundary<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
 }
 

@@ -365,7 +365,7 @@ void Model<TF>::exec()
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
-                boundary->exec(*thermo);
+                boundary->exec(*thermo, *radiation, *microphys, *timeloop);
                 boundary->set_ghost_cells();
 
                 // Set the immersed boundary conditions for scalars.

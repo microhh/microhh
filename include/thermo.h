@@ -81,7 +81,8 @@ class Thermo
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
-        virtual void get_land_surface_fields(Field3d<TF>&) = 0;
+        virtual void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
         virtual const std::vector<TF>& get_p_vector() const = 0;
         virtual const std::vector<TF>& get_ph_vector() const = 0;
         virtual const std::vector<TF>& get_exner_vector() const = 0;

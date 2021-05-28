@@ -43,6 +43,8 @@ template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
+template<typename> class Radiation;
+template<typename> class Microphys;
 
 class Input;
 
@@ -94,7 +96,7 @@ class Boundary
 
         void set_prognostic_cyclic_bcs();
 
-        virtual void exec(Thermo<TF>&);
+        virtual void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface

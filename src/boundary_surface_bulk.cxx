@@ -259,7 +259,9 @@ void Boundary_surface_bulk<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::exec(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     const TF zsl = gd.z[gd.kstart];
