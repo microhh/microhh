@@ -71,8 +71,8 @@ class Thermo_vapor : public Thermo<TF>
         bool check_field_exists(std::string name);
         void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         // CvH the function below could be implemented for thermo vapor as the vapor is available.
-        void get_buoyancy_surf(Field3d<TF>&, bool);
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool);
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool);
+        void get_buoyancy_fluxbot(std::vector<TF>&, bool);
         void get_temperature_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;

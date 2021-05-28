@@ -301,9 +301,14 @@ void Boundary_surface_bulk<TF>::exec(
     }
 
     auto b= fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*b, false);
-    surface_scaling(ustar.data(), obuk.data(), dutot->fld.data(), b->flux_bot.data(), bulk_cm,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    thermo.get_buoyancy_fluxbot(b->flux_bot, false);
+    surface_scaling(
+            ustar.data(), obuk.data(),
+            dutot->fld.data(), b->flux_bot.data(),
+            bulk_cm,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 
     fields.release_tmp(b);
     fields.release_tmp(dutot);
@@ -325,7 +330,7 @@ void Boundary_surface_bulk<TF>::exec(
             gd.icells, gd.ijcells);
 
     auto buoy = fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*buoy, false);
+    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
     bsk::calc_dbdz(
             dbdz_mo.data(), buoy->flux_bot.data(),

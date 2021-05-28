@@ -509,7 +509,8 @@ void Boundary_surface_lsm<TF>::exec(
         auto buoy = fields.get_tmp();
         auto tmp = fields.get_tmp();
 
-        thermo.get_buoyancy_surf(*buoy, false);
+        thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
+        thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
         const TF db_ref = thermo.get_db_ref();
 
         if (sw_constant_z0)
@@ -588,7 +589,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate MO gradients
     auto buoy = fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*buoy, false);
+    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
     bsk::calc_dbdz(
             dbdz_mo.data(), buoy->flux_bot.data(),

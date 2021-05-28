@@ -90,11 +90,11 @@ class Thermo_disabled : public Thermo<TF>
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
-        void get_buoyancy_surf(Field3d<TF>&, bool)
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool)
+        void get_buoyancy_fluxbot(std::vector<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented"); }
         int get_bl_depth()
             { throw std::runtime_error("Function get_bl_depth not implemented"); };

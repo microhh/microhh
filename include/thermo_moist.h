@@ -76,9 +76,9 @@ class Thermo_moist : public Thermo<TF>
         void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
-        void get_buoyancy_surf(Field3d<TF>&, bool);
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool);
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool);
+        void get_buoyancy_fluxbot(std::vector<TF>&, bool);
         void get_temperature_bot(Field3d<TF>&, bool);
         const std::vector<TF>& get_p_vector() const;
         const std::vector<TF>& get_ph_vector() const;

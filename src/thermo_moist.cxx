@@ -1413,7 +1413,7 @@ void Thermo_moist<TF>::get_land_surface_fields(
 
 template<typename TF>
 void Thermo_moist<TF>::get_buoyancy_surf(
-        Field3d<TF>& b, bool is_stat)
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1424,15 +1424,20 @@ void Thermo_moist<TF>::get_buoyancy_surf(
         base = bs;
 
     calc_buoyancy_bot(
-            b.fld.data(), b.fld_bot.data(),
-            fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
-            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
-            base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
+            b.data(), bbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->fld_bot.data(),
+            base.thvref.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(
-            b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-            gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(
+    //        b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+    //        fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+    //        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -1447,7 +1452,8 @@ void Thermo_moist<TF>::get_buoyancy_surf(
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_moist<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1458,9 +1464,14 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
         base = bs;
 
     calc_buoyancy_fluxbot(
-            b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-            fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-            gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+            bfluxbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->flux_bot.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -1832,7 +1843,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
-        get_buoyancy_fluxbot(*output, true);
+        get_buoyancy_fluxbot(output->flux_bot, true);
     }
 
     for (auto& it : crosslist)

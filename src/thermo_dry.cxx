@@ -544,36 +544,47 @@ void Thermo_dry<TF>::get_thermo_field(
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            bfluxbot.data(),
+            fields.sp.at("th")->flux_bot.data(),
+            base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_surf(
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
+    calc_buoyancy_bot(
+            b.data(), bbot.data(),
+            fields.sp.at("th")->fld.data(),
+            fields.sp.at("th")->fld_bot.data(),
+            base.thref.data(), base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
-                      base.thref.data(), base.threfh.data(),
-                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
+    //                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -754,8 +765,8 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     auto b = fields.get_tmp();
     b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
-    get_buoyancy_surf(*b, true);
-    get_buoyancy_fluxbot(*b, true);
+    get_buoyancy_surf(b->fld, b->fld_bot, true);
+    get_buoyancy_fluxbot(b->flux_bot, true);
 
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
@@ -808,7 +819,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*b, "b", false, true);
-        get_buoyancy_fluxbot(*b, true);
+        get_buoyancy_fluxbot(b->flux_bot, true);
     }
 
     for (auto& it : crosslist)
