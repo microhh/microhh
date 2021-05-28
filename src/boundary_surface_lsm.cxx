@@ -437,126 +437,92 @@ void Boundary_surface_lsm<TF>::exec(
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-    // Retrieve necessary data from other classes.
-    // Get references to surface radiation fluxes
-    std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
-    std::vector<TF>& sw_up = radiation.get_surface_radiation("sw_up");
-    std::vector<TF>& lw_dn = radiation.get_surface_radiation("lw_down");
-    std::vector<TF>& lw_up = radiation.get_surface_radiation("lw_up");
-
-    // Get (near-) surface thermo
-    auto T_bot = fields.get_tmp_xy();
-    auto T_a = fields.get_tmp_xy();
-    auto vpd = fields.get_tmp_xy();
-    auto qsat_bot = fields.get_tmp_xy();
-    auto dqsatdT_bot = fields.get_tmp_xy();
-
-    thermo.get_land_surface_fields(
-        *T_bot, *T_a, *vpd, *qsat_bot, *dqsatdT_bot);
-
-    // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
-    auto rain_rate = fields.get_tmp_xy();
-    microphys.get_surface_rain_rate(*rain_rate);
-
-
-
-
-
-
-
-
-
-    // XY tmp fields for intermediate calculations
-    auto f1  = fields.get_tmp_xy();
-    auto f2  = fields.get_tmp_xy();
-    auto f2b = fields.get_tmp_xy();
-    auto f3  = fields.get_tmp_xy();
-
-
-    fields.release_tmp_xy(T_bot);
-    fields.release_tmp_xy(T_a);
-    fields.release_tmp_xy(vpd);
-    fields.release_tmp_xy(qsat_bot);
-    fields.release_tmp_xy(dqsatdT_bot);
-
-    fields.release_tmp_xy(rain_rate);
-
-    fields.release_tmp_xy(f1);
-    fields.release_tmp_xy(f2);
-    fields.release_tmp_xy(f2b);
-    fields.release_tmp_xy(f3);
-
-
-
-
+    // -------------------------
+    // Surface layer calculation
+    // -------------------------
     // Start with retrieving the stability information.
-    if (thermo.get_switch() == "0")
-    {
-        auto dutot = fields.get_tmp();
-        bs::stability_neutral(
-                ustar.data(), obuk.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                dutot->fld.data(), gd.z.data(), z0m.data(),
+    auto buoy = fields.get_tmp();
+    auto tmp = fields.get_tmp();
+
+    thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
+    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+    const TF db_ref = thermo.get_db_ref();
+
+    if (sw_constant_z0)
+        bs::stability<TF, true>(
+                ustar.data(),
+                obuk.data(),
+                buoy->flux_bot.data(),
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                buoy->fld.data(),
+                fields.mp.at("u")->fld_bot.data(),
+                fields.mp.at("v")->fld_bot.data(),
+                buoy->fld_bot.data(),
+                tmp->fld.data(), gd.z.data(),
+                z0m.data(), z0h.data(),
+                zL_sl.data(), f_sl.data(),
+                nobuk.data(), db_ref,
                 gd.istart, gd.iend,
-                gd.jstart, gd.jend, gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells,
-                mbcbot, boundary_cyclic);
-        fields.release_tmp(dutot);
-    }
+                gd.jstart, gd.jend,
+                gd.kstart, gd.icells,
+                gd.jcells, gd.ijcells,
+                mbcbot, thermobc,
+                boundary_cyclic);
     else
-    {
-        auto buoy = fields.get_tmp();
-        auto tmp = fields.get_tmp();
+        bs::stability<TF, false>(
+                ustar.data(), obuk.data(),
+                buoy->flux_bot.data(),
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                buoy->fld.data(),
+                fields.mp.at("u")->fld_bot.data(),
+                fields.mp.at("v")->fld_bot.data(),
+                buoy->fld_bot.data(),
+                tmp->fld.data(), gd.z.data(),
+                z0m.data(), z0h.data(),
+                zL_sl.data(), f_sl.data(),
+                nobuk.data(), db_ref,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.icells,
+                gd.jcells, gd.ijcells,
+                mbcbot, thermobc,
+                boundary_cyclic);
 
-        thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
-        thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
-        const TF db_ref = thermo.get_db_ref();
-
-        if (sw_constant_z0)
-            bs::stability<TF, true>(
-                    ustar.data(), obuk.data(),
-                    buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                    buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
-                    fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
-                    z0m.data(), z0h.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend, gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    mbcbot, thermobc, boundary_cyclic);
-        else
-            bs::stability<TF, false>(
-                    ustar.data(), obuk.data(),
-                    buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
-                    z0m.data(), z0h.data(),
-                    zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    mbcbot, thermobc, boundary_cyclic);
-
-        fields.release_tmp(buoy);
-        fields.release_tmp(tmp);
-    }
+    fields.release_tmp(buoy);
+    fields.release_tmp(tmp);
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-    // Momentum:
-    bs::surfm(fields.mp.at("u")->flux_bot.data(),
-          fields.mp.at("v")->flux_bot.data(),
-          fields.mp.at("u")->grad_bot.data(),
-          fields.mp.at("v")->grad_bot.data(),
-          ustar.data(), obuk.data(),
-          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
-          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
-          z0m.data(), gd.z[gd.kstart], mbcbot,
-          gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
-          gd.icells, gd.jcells, gd.ijcells,
-          boundary_cyclic);
+    bs::surfm(
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),
+            fields.mp.at("v")->grad_bot.data(),
+            ustar.data(), obuk.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            z0m.data(), gd.z[gd.kstart], mbcbot,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.icells,
+            gd.jcells, gd.ijcells,
+            boundary_cyclic);
+
+    for (auto& it : fields.sp)
+        bs::surfs(it.second->fld_bot.data(),
+              it.second->grad_bot.data(),
+              it.second->flux_bot.data(),
+              ustar.data(), obuk.data(),
+              it.second->fld.data(), z0h.data(),
+              gd.z[gd.kstart], sbc.at(it.first).bcbot,
+              gd.istart, gd.iend,
+              gd.jstart, gd.jend,
+              gd.kstart, gd.icells,
+              gd.jcells, gd.ijcells,
+              boundary_cyclic);
 
     // Calculate MO gradients
     bsk::calc_duvdz(
@@ -574,20 +540,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    // Scalars:
-    for (auto& it : fields.sp)
-        bs::surfs(it.second->fld_bot.data(),
-              it.second->grad_bot.data(),
-              it.second->flux_bot.data(),
-              ustar.data(), obuk.data(),
-              it.second->fld.data(), z0h.data(),
-              gd.z[gd.kstart], sbc.at(it.first).bcbot,
-              gd.istart, gd.iend,
-              gd.jstart, gd.jend, gd.kstart,
-              gd.icells, gd.jcells, gd.ijcells,
-              boundary_cyclic);
-
-    // Calculate MO gradients
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
@@ -600,6 +552,126 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
 
     fields.release_tmp(buoy);
+
+    // -------------------------------
+    // Land-surface + soil calculation
+    // -------------------------------
+    // Retrieve necessary data from other classes.
+    // Get references to surface radiation fluxes
+    std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
+    std::vector<TF>& sw_up = radiation.get_surface_radiation("sw_up");
+    std::vector<TF>& lw_dn = radiation.get_surface_radiation("lw_down");
+    std::vector<TF>& lw_up = radiation.get_surface_radiation("lw_up");
+
+    // Get (near-) surface thermo
+    auto T_bot = fields.get_tmp_xy();
+    auto T_a = fields.get_tmp_xy();
+    auto vpd = fields.get_tmp_xy();
+    auto qsat_bot = fields.get_tmp_xy();
+    auto dqsatdT_bot = fields.get_tmp_xy();
+
+    thermo.get_land_surface_fields(
+        *T_bot, *T_a, *vpd, *qsat_bot, *dqsatdT_bot);
+
+    // NOTE: `get_buoyancy_surf` calculates the first model level buoyancy only,
+    //       but since this is written at `kstart`, we can't use a 2D slice...
+    //auto b_a = fields.get_tmp_xy();
+    auto b = fields.get_tmp();
+    auto b_bot = fields.get_tmp_xy();
+
+    thermo.get_buoyancy_surf(b->fld, *b_bot, false);
+    const TF db_ref = thermo.get_db_ref();
+
+    const std::vector<TF>& rhorefh = thermo.get_rhorefh_vector();
+    const std::vector<TF>& exnerh = thermo.get_exnerh_vector();
+    const std::vector<TF>& prefh = thermo.get_ph_vector();
+
+    // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
+    auto rain_rate = fields.get_tmp_xy();
+    microphys.get_surface_rain_rate(*rain_rate);
+
+    // XY tmp fields for intermediate calculations
+    auto f1  = fields.get_tmp_xy();
+    auto f2  = fields.get_tmp_xy();
+    auto f2b = fields.get_tmp_xy();
+    auto f3  = fields.get_tmp_xy();
+    auto theta_mean_n = fields.get_tmp_xy();
+
+    const double subdt = timeloop.get_sub_time_step();
+
+    // ------------------------------------
+    // LSM calculations
+    // ------------------------------------
+    // Calculate root fraction weighted mean soil water content
+    sk::calc_root_weighted_mean_theta(
+            (*theta_mean_n).data(),
+            fields.sps.at("theta")->fld.data(),
+            soil_index.data(),
+            root_fraction.data(),
+            theta_wp.data(),
+            theta_fc.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+
+    // Calculate vegetation/soil resistance functions `f`
+    lsmk::calc_resistance_functions(
+            (*f1).data(), (*f2).data(),
+            (*f2b).data(), (*f3).data(),
+            sw_dn.data(),
+            fields.sps.at("theta")->fld.data(),
+            (*theta_mean_n).data(),
+            (*vpd).data(),
+            gD_coeff.data(),
+            c_veg.data(),
+            theta_wp.data(),
+            theta_fc.data(),
+            theta_res.data(),
+            soil_index.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kend,
+            gd.icells, gd.ijcells);
+
+    //// Calculate canopy resistance per tile
+    lsmk::calc_canopy_resistance(
+            tiles.at("veg").rs.data(),
+            rs_veg_min.data(), lai.data(),
+            (*f1).data(), (*f2).data(), (*f3).data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    lsmk::calc_soil_resistance(
+            tiles.at("soil").rs.data(),
+            rs_soil_min.data(), (*f2b).data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+
+
+    fields.release_tmp_xy(T_bot);
+    fields.release_tmp_xy(T_a);
+    fields.release_tmp_xy(vpd);
+    fields.release_tmp_xy(qsat_bot);
+    fields.release_tmp_xy(dqsatdT_bot);
+
+    //fields.release_tmp_xy(b_a);
+    fields.release_tmp(b);
+    fields.release_tmp_xy(b_bot);
+
+    fields.release_tmp_xy(rain_rate);
+
+    fields.release_tmp_xy(f1);
+    fields.release_tmp_xy(f2);
+    fields.release_tmp_xy(f2b);
+    fields.release_tmp_xy(f3);
+    fields.release_tmp_xy(theta_mean_n);
+
+
+
 }
 #endif
 
