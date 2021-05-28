@@ -140,6 +140,9 @@ class Fields
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
 
+        std::shared_ptr<std::vector<TF>> get_tmp_xy();
+        void release_tmp_xy(std::shared_ptr<std::vector<TF>>&);
+
         #ifdef USECUDA
         std::shared_ptr<Field3d<TF>> get_tmp_g();
         void release_tmp_g(std::shared_ptr<Field3d<TF>>&);
@@ -181,8 +184,10 @@ class Fields
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
+        int n_tmp_fields_xy;   ///< Number of temporary fields.
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
+        std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 
         std::mutex tmp_fld_mutex;

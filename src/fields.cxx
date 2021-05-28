@@ -551,6 +551,44 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 }
 
 template<typename TF>
+std::shared_ptr<std::vector<TF>> Fields<TF>::get_tmp_xy()
+{
+    auto& gd = grid.get_grid_data();
+    std::shared_ptr<std::vector<TF>> tmp;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (atmp_xy.empty())
+        {
+            static int ntmp_xy = 0;
+            ++ntmp_xy;
+            std::string fldname = "tmp_xy" + std::to_string(ntmp_xy);
+            std::string message = "Allocating temporary XY field: " + fldname;
+            master.print_message(message);
+
+            atmp_xy.push_back(std::make_shared<std::vector<TF>>(gd.ijcells));
+            tmp = atmp_xy.back();
+        }
+        else
+            tmp = atmp_xy.back();
+
+        atmp_xy.pop_back();
+    }
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_xy(std::shared_ptr<std::vector<TF>>& tmp)
+{
+    if (tmp == nullptr)
+        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+
+    atmp_xy.push_back(std::move(tmp));
+}
+
+template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     // We don't have to do anything for the default mask
