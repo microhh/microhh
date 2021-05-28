@@ -62,177 +62,101 @@ namespace
     namespace sk = Soil_kernels;
 }
 
-namespace bs
+namespace
 {
-    template<typename TF, bool sw_constant_z0>
-    void stability(
-            TF* const restrict ustar,
-            TF* const restrict obuk,
-            const TF* const restrict bfluxbot,
+    template<typename TF>
+    void calc_dutot(
+            TF* const restrict dutot,
             const TF* const restrict u,
             const TF* const restrict v,
-            const TF* const restrict b,
             const TF* const restrict ubot,
             const TF* const restrict vbot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int ii2 = 2;
+        const int jj = icells;
+        const int jj2 = 2*icells;
+        const int kk = ijcells;
+
+        // Calculate total wind.
+        const TF minval = 1.e-1;
+
+        // Interpolate the wind (3x3 mean) to the scalar location.
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                const TF u_filtered = TF(1./9) *
+                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
+                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
+                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
+
+                const TF v_filtered = TF(1./9) *
+                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
+                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
+                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
+
+                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+
+                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+                // otherwise evisc at k = kstart blows up
+                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
+            }
+    }
+
+    template<typename TF, bool sw_constant_z0>
+    void calc_obuk_ustar_ra(
+            TF* const restrict ustar,
+            TF* const restrict obuk,
+            TF* const restrict ra,
+            const TF* const restrict b,
             const TF* const restrict bbot,
-            TF* const restrict dutot,
-            const TF* const restrict z,
+            const TF* const restrict dutot,
             const TF* const restrict z0m,
             const TF* const restrict z0h,
             const float* const zL_sl,
             const float* const f_sl,
             int* const nobuk,
             const TF db_ref,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int jcells, const int kk,
-            Boundary_type mbcbot, Boundary_type thermobc,
-            Boundary_cyclic<TF>& boundary_cyclic)
+            const TF zsl,
+            const int icells,
+            const int jcells,
+            const int ijcells,
+            const int kstart)
     {
         const int ii = 1;
         const int jj = icells;
+        const int kk = ijcells;
 
-        // Calculate total wind.
-        const TF minval = 1.e-1;
-
-        // First, interpolate the wind to the scalar location.
-        for (int j=jstart; j<jend; ++j)
+        for (int j=0; j<jcells; ++j)
             #pragma ivdep
-            for (int i=istart; i<iend; ++i)
+            for (int i=0; i<icells; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                             + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-                // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
+                const TF db = b[ijk] - bbot[ij] + db_ref;
+
+                // Switch between the iterative and lookup solver
+                if (sw_constant_z0)
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
+                            zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
+                else
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
+                            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
             }
-
-        boundary_cyclic.exec_2d(dutot);
-
-        // Calculate Obukhov length
-        // Case 1: fixed buoyancy flux and fixed ustar
-        if (mbcbot == Boundary_type::Ustar_type && thermobc == Boundary_type::Flux_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-                    obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF>*bfluxbot[ij]);
-                }
-        }
-        // Case 2: fixed buoyancy surface value and free ustar
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-
-                    // Switch between the iterative and lookup solver
-                    if (sw_constant_z0)
-                        obuk[ij] = bsk::calc_obuk_noslip_flux_lookup(
-                                zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
-                    else
-                        obuk[ij] = bsk::calc_obuk_noslip_flux_iterative(
-                                obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m[ij]);
-
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
-                }
-        }
-        else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + kstart*kk;
-                    const TF db = b[ijk] - bbot[ij] + db_ref;
-
-                    // Switch between the iterative and lookup solver
-                    if (sw_constant_z0)
-                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
-                                zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
-                    else
-                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
-                                obuk[ij], dutot[ij], db, z[kstart], z0m[ij], z0h[ij]);
-
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
-                }
-        }
     }
 
-    template<typename TF>
-    void stability_neutral(
-            TF* const restrict ustar,
-            TF* const restrict obuk,
-            const TF* const restrict u,
-            const TF* const restrict v,
-            const TF* const restrict ubot,
-            const TF* const restrict vbot,
-            TF* const restrict dutot,
-            const TF* const restrict z,
-            const TF* const restrict z0m,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int jcells, const int kk,
-            Boundary_type mbcbot,
-            Boundary_cyclic<TF>& boundary_cyclic)
-    {
-        const int ii = 1;
-        const int jj = icells;
-
-        // calculate total wind
-        TF du2;
-        const TF minval = 1.e-1;
-
-        // first, interpolate the wind to the scalar location
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-                // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-                // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
-            }
-
-        boundary_cyclic.exec_2d(dutot);
-
-        // set the Obukhov length to a very large negative number
-        // case 1: fixed buoyancy flux and fixed ustar
-        if (mbcbot == Boundary_type::Ustar_type)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij = i + j*jj;
-                    obuk[ij] = -Constants::dbig;
-                }
-        }
-        // case 2: free ustar
-        else if (mbcbot == Boundary_type::Dirichlet_type)
-        {
-            for (int j=0; j<jcells; ++j)
-                #pragma ivdep
-                for (int i=0; i<icells; ++i)
-                {
-                    const int ij = i + j*jj;
-                    obuk [ij] = -Constants::dbig;
-                    ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m[ij], obuk[ij]);
-                }
-        }
-    }
 
     template<typename TF>
     void surfm(
@@ -437,126 +361,27 @@ void Boundary_surface_lsm<TF>::exec(
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-    // -------------------------
-    // Surface layer calculation
-    // -------------------------
-    // Start with retrieving the stability information.
-    auto buoy = fields.get_tmp();
-    auto tmp = fields.get_tmp();
+    //
+    // Calculate tile independant properties
+    //
+    auto dutot = fields.get_tmp_xy();
 
-    thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
-    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
-    const TF db_ref = thermo.get_db_ref();
-
-    if (sw_constant_z0)
-        bs::stability<TF, true>(
-                ustar.data(),
-                obuk.data(),
-                buoy->flux_bot.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                buoy->fld.data(),
-                fields.mp.at("u")->fld_bot.data(),
-                fields.mp.at("v")->fld_bot.data(),
-                buoy->fld_bot.data(),
-                tmp->fld.data(), gd.z.data(),
-                z0m.data(), z0h.data(),
-                zL_sl.data(), f_sl.data(),
-                nobuk.data(), db_ref,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.icells,
-                gd.jcells, gd.ijcells,
-                mbcbot, thermobc,
-                boundary_cyclic);
-    else
-        bs::stability<TF, false>(
-                ustar.data(), obuk.data(),
-                buoy->flux_bot.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                buoy->fld.data(),
-                fields.mp.at("u")->fld_bot.data(),
-                fields.mp.at("v")->fld_bot.data(),
-                buoy->fld_bot.data(),
-                tmp->fld.data(), gd.z.data(),
-                z0m.data(), z0h.data(),
-                zL_sl.data(), f_sl.data(),
-                nobuk.data(), db_ref,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.icells,
-                gd.jcells, gd.ijcells,
-                mbcbot, thermobc,
-                boundary_cyclic);
-
-    fields.release_tmp(buoy);
-    fields.release_tmp(tmp);
-
-    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-    bs::surfm(
-            fields.mp.at("u")->flux_bot.data(),
-            fields.mp.at("v")->flux_bot.data(),
-            fields.mp.at("u")->grad_bot.data(),
-            fields.mp.at("v")->grad_bot.data(),
-            ustar.data(), obuk.data(),
-            fields.mp.at("u")->fld.data(),
-            fields.mp.at("u")->fld_bot.data(),
-            fields.mp.at("v")->fld.data(),
-            fields.mp.at("v")->fld_bot.data(),
-            z0m.data(), gd.z[gd.kstart], mbcbot,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.icells,
-            gd.jcells, gd.ijcells,
-            boundary_cyclic);
-
-    for (auto& it : fields.sp)
-        bs::surfs(it.second->fld_bot.data(),
-              it.second->grad_bot.data(),
-              it.second->flux_bot.data(),
-              ustar.data(), obuk.data(),
-              it.second->fld.data(), z0h.data(),
-              gd.z[gd.kstart], sbc.at(it.first).bcbot,
-              gd.istart, gd.iend,
-              gd.jstart, gd.jend,
-              gd.kstart, gd.icells,
-              gd.jcells, gd.ijcells,
-              boundary_cyclic);
-
-    // Calculate MO gradients
-    bsk::calc_duvdz(
-            dudz_mo.data(), dvdz_mo.data(),
+    calc_dutot(
+            (*dutot).data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("v")->fld_bot.data(),
-            fields.mp.at("u")->flux_bot.data(),
-            fields.mp.at("v")->flux_bot.data(),
-            ustar.data(), obuk.data(), z0m.data(),
-            gd.z[gd.kstart],
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    auto buoy = fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+    boundary_cyclic.exec_2d((*dutot).data());
 
-    bsk::calc_dbdz(
-            dbdz_mo.data(), buoy->flux_bot.data(),
-            ustar.data(), obuk.data(),
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    fields.release_tmp(buoy);
-
-    // -------------------------------
-    // Land-surface + soil calculation
-    // -------------------------------
+    //
     // Retrieve necessary data from other classes.
+    //
     // Get references to surface radiation fluxes
     std::vector<TF>& sw_dn = radiation.get_surface_radiation("sw_down");
     std::vector<TF>& sw_up = radiation.get_surface_radiation("sw_up");
@@ -596,12 +421,13 @@ void Boundary_surface_lsm<TF>::exec(
     auto f2b = fields.get_tmp_xy();
     auto f3  = fields.get_tmp_xy();
     auto theta_mean_n = fields.get_tmp_xy();
+    auto ra = fields.get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
 
-    // ------------------------------------
+    //
     // LSM calculations
-    // ------------------------------------
+    //
     // Calculate root fraction weighted mean soil water content
     sk::calc_root_weighted_mean_theta(
             (*theta_mean_n).data(),
@@ -650,7 +476,45 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             gd.icells);
 
+    // Loop over tiles
+    for (auto& tile : tiles)
+    {
+        // Calculate surface buoyancy tile.
+        thermo.get_buoyancy_surf(
+                *b_bot, tile.second.thl_bot, tile.second.qt_bot);
 
+        // Calculate stability parameters.
+        if (sw_constant_z0)
+            calc_obuk_ustar_ra<TF, true>(
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    (*ra).data(),
+                    b->fld.data(),
+                    (*b_bot).data(),
+                    (*dutot).data(),
+                    z0m.data(), z0h.data(),
+                    zL_sl.data(), f_sl.data(),
+                    tile.second.nobuk.data(),
+                    db_ref, gd.z[gd.kstart],
+                    gd.icells, gd.jcells,
+                    gd.ijcells, gd.kstart);
+        else
+            calc_obuk_ustar_ra<TF, false>(
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    (*ra).data(),
+                    b->fld.data(),
+                    (*b_bot).data(),
+                    (*dutot).data(),
+                    z0m.data(), z0h.data(),
+                    nullptr, nullptr, nullptr,
+                    db_ref, gd.z[gd.kstart],
+                    gd.icells, gd.jcells,
+                    gd.ijcells, gd.kstart);
+    }
+
+
+    fields.release_tmp_xy(dutot);
 
     fields.release_tmp_xy(T_bot);
     fields.release_tmp_xy(T_a);
@@ -669,6 +533,127 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_xy(f2b);
     fields.release_tmp_xy(f3);
     fields.release_tmp_xy(theta_mean_n);
+    fields.release_tmp_xy(ra);
+
+
+
+
+
+    throw 1;
+
+//    // Start with retrieving the stability information.
+//    auto buoy = fields.get_tmp();
+//    auto tmp = fields.get_tmp();
+//
+//    thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
+//    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+//    //const TF db_ref = thermo.get_db_ref();
+//
+//    if (sw_constant_z0)
+//        bs::stability<TF, true>(
+//                ustar.data(),
+//                obuk.data(),
+//                buoy->flux_bot.data(),
+//                fields.mp.at("u")->fld.data(),
+//                fields.mp.at("v")->fld.data(),
+//                buoy->fld.data(),
+//                fields.mp.at("u")->fld_bot.data(),
+//                fields.mp.at("v")->fld_bot.data(),
+//                buoy->fld_bot.data(),
+//                tmp->fld.data(), gd.z.data(),
+//                z0m.data(), z0h.data(),
+//                zL_sl.data(), f_sl.data(),
+//                nobuk.data(), db_ref,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.kstart, gd.icells,
+//                gd.jcells, gd.ijcells,
+//                mbcbot, thermobc,
+//                boundary_cyclic);
+//    else
+//        bs::stability<TF, false>(
+//                ustar.data(), obuk.data(),
+//                buoy->flux_bot.data(),
+//                fields.mp.at("u")->fld.data(),
+//                fields.mp.at("v")->fld.data(),
+//                buoy->fld.data(),
+//                fields.mp.at("u")->fld_bot.data(),
+//                fields.mp.at("v")->fld_bot.data(),
+//                buoy->fld_bot.data(),
+//                tmp->fld.data(), gd.z.data(),
+//                z0m.data(), z0h.data(),
+//                zL_sl.data(), f_sl.data(),
+//                nobuk.data(), db_ref,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.kstart, gd.icells,
+//                gd.jcells, gd.ijcells,
+//                mbcbot, thermobc,
+//                boundary_cyclic);
+//
+//    fields.release_tmp(buoy);
+//    fields.release_tmp(tmp);
+//
+//    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
+//    bs::surfm(
+//            fields.mp.at("u")->flux_bot.data(),
+//            fields.mp.at("v")->flux_bot.data(),
+//            fields.mp.at("u")->grad_bot.data(),
+//            fields.mp.at("v")->grad_bot.data(),
+//            ustar.data(), obuk.data(),
+//            fields.mp.at("u")->fld.data(),
+//            fields.mp.at("u")->fld_bot.data(),
+//            fields.mp.at("v")->fld.data(),
+//            fields.mp.at("v")->fld_bot.data(),
+//            z0m.data(), gd.z[gd.kstart], mbcbot,
+//            gd.istart, gd.iend,
+//            gd.jstart, gd.jend,
+//            gd.kstart, gd.icells,
+//            gd.jcells, gd.ijcells,
+//            boundary_cyclic);
+//
+//    for (auto& it : fields.sp)
+//        bs::surfs(it.second->fld_bot.data(),
+//              it.second->grad_bot.data(),
+//              it.second->flux_bot.data(),
+//              ustar.data(), obuk.data(),
+//              it.second->fld.data(), z0h.data(),
+//              gd.z[gd.kstart], sbc.at(it.first).bcbot,
+//              gd.istart, gd.iend,
+//              gd.jstart, gd.jend,
+//              gd.kstart, gd.icells,
+//              gd.jcells, gd.ijcells,
+//              boundary_cyclic);
+//
+//    // Calculate MO gradients
+//    bsk::calc_duvdz(
+//            dudz_mo.data(), dvdz_mo.data(),
+//            fields.mp.at("u")->fld.data(),
+//            fields.mp.at("v")->fld.data(),
+//            fields.mp.at("u")->fld_bot.data(),
+//            fields.mp.at("v")->fld_bot.data(),
+//            fields.mp.at("u")->flux_bot.data(),
+//            fields.mp.at("v")->flux_bot.data(),
+//            ustar.data(), obuk.data(), z0m.data(),
+//            gd.z[gd.kstart],
+//            gd.istart, gd.iend,
+//            gd.jstart, gd.jend,
+//            gd.kstart,
+//            gd.icells, gd.ijcells);
+
+    //auto buoy = fields.get_tmp();
+    //thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+
+    //bsk::calc_dbdz(
+    //        dbdz_mo.data(), buoy->flux_bot.data(),
+    //        ustar.data(), obuk.data(),
+    //        gd.z[gd.kstart],
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.icells);
+
+    //fields.release_tmp(buoy);
+
 
 
 
@@ -1078,11 +1063,11 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
     //load_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot", iotime);
     //load_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot", iotime);
 
-    //for (auto& tile : tiles)
-    //{
-    //    load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
-    //    load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
-    //}
+    for (auto& tile : tiles)
+    {
+        load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
+        load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
+    }
 
     // In case of heterogeneous land-surface, read spatial properties.
     //if (!sw_homogeneous)
@@ -1198,11 +1183,11 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
     //save_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot");
     //save_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot");
 
-    //for (auto& tile : tiles)
-    //{
-    //    save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
-    //    save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
-    //}
+    for (auto& tile : tiles)
+    {
+        save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
+        save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
+    }
 
     // Check for any failures.
     master.sum(&nerror, 1);
