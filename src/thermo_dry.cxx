@@ -620,6 +620,28 @@ const std::vector<TF>& Thermo_dry<TF>::get_exner_vector() const
 }
 
 template<typename TF>
+const std::vector<TF>& Thermo_dry<TF>::get_basestate_vector(std::string name) const
+{
+    if (name == "pref")
+        return bs.pref;
+    else if (name == "prefh")
+        return bs.prefh;
+    else if (name == "exnref")
+        return bs.exnref;
+    else if (name == "exnrefh")
+        return bs.exnrefh;
+    else if (name == "thref")
+        return bs.thref;
+    else if (name == "threfh")
+        return bs.threfh;
+    else
+    {
+        std::string error = "Thermo_dry::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
+}
+
+template<typename TF>
 TF Thermo_dry<TF>::get_db_ref() const
 {
     auto& gd = grid.get_grid_data();

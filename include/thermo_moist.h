@@ -85,6 +85,7 @@ class Thermo_moist : public Thermo<TF>
         const std::vector<TF>& get_exner_vector() const;
         const std::vector<TF>& get_exnerh_vector() const;
         const std::vector<TF>& get_rhorefh_vector() const;
+        const std::vector<TF>& get_basestate_vector(std::string) const;
         TF get_db_ref() const;
 
         void get_land_surface_fields(

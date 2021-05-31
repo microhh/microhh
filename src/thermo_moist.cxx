@@ -1519,6 +1519,32 @@ const std::vector<TF>& Thermo_moist<TF>::get_rhorefh_vector() const
 }
 
 template<typename TF>
+const std::vector<TF>& Thermo_moist<TF>::get_basestate_vector(std::string name) const
+{
+    if (name == "pref")
+        return bs.pref;
+    else if (name == "prefh")
+        return bs.prefh;
+    else if (name == "exnref")
+        return bs.exnref;
+    else if (name == "exnrefh")
+        return bs.exnrefh;
+    else if (name == "rhoref")
+        return bs.rhoref;
+    else if (name == "rhorefh")
+        return bs.rhorefh;
+    else if (name == "thvref")
+        return bs.thvref;
+    else if (name == "thvrefh")
+        return bs.thvrefh;
+    else
+    {
+        std::string error = "Thermo_moist::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
+}
+
+template<typename TF>
 TF Thermo_moist<TF>::get_db_ref() const
 {
     auto& gd = grid.get_grid_data();

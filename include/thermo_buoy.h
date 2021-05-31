@@ -87,6 +87,8 @@ class Thermo_buoy : public Thermo<TF>
             { throw std::runtime_error("Function get_exnerh_vector not implemented"); }
         const std::vector<TF>& get_rhorefh_vector() const
             { throw std::runtime_error("Function get_rhorefh_vector not implemented"); }
+        const std::vector<TF>& get_basestate_vector(std::string) const
+            { throw std::runtime_error("Function get_basestate_vector not implemented"); }
 
         // Empty functions that are allowed to pass.
         void init() {}
