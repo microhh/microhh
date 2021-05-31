@@ -25,12 +25,19 @@
 
 #include "constants.h"
 #include "thermo_moist_functions.h"
+#include "boundary_surface_kernels.h"
+#include "monin_obukhov.h"
+#include "fast_math.h"
 
 using namespace Constants;
-using namespace Thermo_moist_functions;
 
 namespace Land_surface_kernels
 {
+    namespace tmf = Thermo_moist_functions;
+    namespace most = Monin_obukhov;
+    namespace bsk = Boundary_surface_kernels;
+    namespace fm = Fast_math;
+
     template<typename TF>
     void init_tile(Surface_tile<TF>& tile, const int ijcells)
     {
@@ -301,8 +308,8 @@ namespace Land_surface_kernels
                 const TF num =
                     Qnet + lw_up[ij] + fH*T[ij] +
                     fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
-                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*pow4(T_bot);
-                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*pow3(T_bot);
+                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*fm::pow4(T_bot);
+                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*fm::pow3(T_bot);
                 const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
 
                 // Update qsat with linearised relation, to make sure that the SEB closes
@@ -318,6 +325,159 @@ namespace Land_surface_kernels
                 // Update skin values
                 thl_bot[ij] = T_bot_new / exner_bot;
                 qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Lv<TF>);
+            }
+    }
+
+    template<typename TF>
+    void calc_stability_and_fluxes(
+            TF* const restrict H,
+            TF* const restrict LE,
+            TF* const restrict G,
+            TF* const restrict S,
+            TF* const restrict thl_bot,
+            TF* const restrict qt_bot,
+            TF* const restrict ustar,
+            TF* const restrict obuk,
+            TF* const restrict bfluxbot,
+            const TF* const restrict sw_dn,
+            const TF* const restrict sw_up,
+            const TF* const restrict lw_dn,
+            const TF* const restrict lw_up,
+            const TF* const restrict du_tot,
+            const TF* const restrict T,
+            const TF* const restrict qt,
+            const TF* const restrict b,
+            const TF* const restrict T_soil,
+            const TF* const restrict rs,
+            const TF* const restrict z0m,
+            const TF* const restrict z0h,
+            const TF* const restrict lambda_stable,
+            const TF* const restrict lambda_unstable,
+            const TF* const restrict cs_veg,
+            const TF* const restrict rhorefh,
+            const TF* const restrict exnerh,
+            const TF* const restrict thvrefh,
+            const TF* const restrict prefh,
+            const TF db_ref, const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend_soil,
+            const int icells, const int ijcells,
+            const bool use_cs_veg,
+            const std::string name)
+    {
+        const TF thvref_bot = thvrefh[kstart];
+        const TF exner_bot = exnerh[kstart];
+        const TF rho_bot = rhorefh[kstart];
+        const TF p_bot = prefh[kstart];
+
+        int max_iters = 0;
+
+        const TF eps_thl = TF(1e-8);
+        const TF max_step = TF(10);
+        const TF eps_seb = TF(1e-3);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij    = i + j*icells;
+                const int ijk   = ij + kstart*ijcells;
+                const int ijk_s = ij + (kend_soil-1)*ijcells;
+
+                int it;
+                const int max_it = 1000; // usually 2-4 is enough...
+                for (it=0; it<=max_it; ++it)
+                {
+                    const TF T_bot = thl_bot[ij] * exner_bot;
+                    const TF qsat_bot = tmf::qsat(p_bot, T_bot);
+
+                    // Disable canopy resistance in case of dew fall
+                    const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
+
+                    // Switch between skin heat capacity or not
+                    const TF cs_veg_lim = use_cs_veg ? cs_veg[ij] : TF(0);
+
+                    // Surface layer calculations
+                    const TF bbot = tmf::buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
+                    const TF db = b[ijk] - bbot + db_ref;
+
+                    // AARGH, for now limited to iterative solver....
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
+                            obuk[ij], du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
+                    ustar[ij] = du_tot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+
+                    const TF ra = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
+
+                    // Switch conductivity skin layer stable/unstable conditions
+                    const TF lambda = db > 0 ? lambda_stable[ij] : lambda_unstable[ij];
+
+                    // Calculate fluxes
+                    H[ij]  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
+                    LE[ij] = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ij]);
+                    G[ij]  = lambda * (T_bot - T_soil[ijk_s]);
+                    const TF lw_up_n = sigma_b<TF> * fm::pow4(T_bot);
+
+                    const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
+                    const TF seb = Qn - H[ij] - LE[ij] - G[ij];
+
+                    if (std::abs(seb) < eps_seb)
+                    {
+                        bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+                        qt_bot[ij] = qt[ijk] + LE[ij] * ra / (rho_bot * Lv<TF>);
+                        break;
+                    }
+
+                    // Solve for perturbed thl_bot
+                    const TF T_bot_p = (thl_bot[ij]+eps_thl) * exner_bot;
+                    const TF qsat_bot_p = tmf::qsat(p_bot, T_bot_p);
+
+                    // Disable canopy resistance in case of dew fall
+                    const TF rs_lim_p = qsat_bot_p < qt[ijk] ? TF(0) : rs[ij];
+
+                    // Surface layer calculations
+                    const TF bbot_p = tmf::buoyancy_no_ql((thl_bot[ij]+eps_thl), qt_bot[ij], thvrefh[kstart]);
+                    const TF db_p = b[ijk] - bbot_p + db_ref;
+
+                    // AARGH, for now limited to iterative solver....
+                    // NOTE: I left obuk[ij] as a starting point here......
+                    const TF obuk_p = bsk::calc_obuk_noslip_dirichlet_iterative(
+                            obuk[ij], du_tot[ij], db_p, zsl, z0m[ij], z0h[ij]);
+                    const TF ustar_p = du_tot[ij] * most::fm(zsl, z0m[ij], obuk_p);
+
+                    const TF ra_p = TF(1) / (ustar_p * most::fh(zsl, z0h[ij], obuk_p));
+
+                    // Switch conductivity skin layer stable/unstable conditions
+                    const TF lambda_p = db_p > 0 ? lambda_stable[ij] : lambda_unstable[ij];
+
+                    // Calculate fluxes
+                    const TF H_p  = rho_bot * cp<TF> / ra_p * (T_bot_p - T[ij]);
+                    const TF LE_p = rho_bot * Lv<TF> / (ra_p + rs_lim) * (qsat_bot_p - qt[ij]);
+                    const TF G_p  = lambda * (T_bot_p - T_soil[ijk_s]);
+                    const TF lw_up_n_p = sigma_b<TF> * fm::pow4(T_bot_p);
+
+                    const TF Qn_p = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n_p;
+                    const TF seb_p = Qn_p - H_p - LE_p - G_p;
+
+                    const TF slope = (seb_p - seb) / eps_thl;
+                    const TF dtheta = -seb / slope;
+
+                    const TF max_step = TF(10);
+                    thl_bot[ij] += std::max(-max_step, std::min(dtheta, max_step));
+                }
+
+                max_iters = std::max(max_iters, it);
+
+                if (it == max_it)
+                {
+                    std::string error = "SEB solver did not converge!";
+                    #ifdef USEMPI
+                        std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+                        MPI_Abort(MPI_COMM_WORLD, 1);
+                    #else
+                        throw std::runtime_error(error);
+                    #endif
+                }
             }
     }
 

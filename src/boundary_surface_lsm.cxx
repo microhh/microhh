@@ -407,9 +407,10 @@ void Boundary_surface_lsm<TF>::exec(
     thermo.get_buoyancy_surf(b->fld, *b_bot, false);
     const TF db_ref = thermo.get_db_ref();
 
-    const std::vector<TF>& rhorefh = thermo.get_rhorefh_vector();
-    const std::vector<TF>& exnerh = thermo.get_exnerh_vector();
-    const std::vector<TF>& prefh = thermo.get_ph_vector();
+    const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhorefh");
+    const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvrefh");
+    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnrefh");
+    const std::vector<TF>& prefh = thermo.get_basestate_vector("prefh");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
     auto rain_rate = fields.get_tmp_xy();
@@ -427,7 +428,18 @@ void Boundary_surface_lsm<TF>::exec(
 
     //
     // LSM calculations
-    //
+    // Calculate dynamic tile fractions
+    lsmk::calc_tile_fractions(
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            fields.ap2d.at("wl").data(),
+            c_veg.data(),
+            lai.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
     // Calculate root fraction weighted mean soil water content
     sk::calc_root_weighted_mean_theta(
             (*theta_mean_n).data(),
@@ -460,7 +472,7 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kend,
             gd.icells, gd.ijcells);
 
-    //// Calculate canopy resistance per tile
+    // Calculate canopy resistance per tile
     lsmk::calc_canopy_resistance(
             tiles.at("veg").rs.data(),
             rs_veg_min.data(), lai.data(),
@@ -479,39 +491,44 @@ void Boundary_surface_lsm<TF>::exec(
     // Loop over tiles
     for (auto& tile : tiles)
     {
-        // Calculate surface buoyancy tile.
-        thermo.get_buoyancy_surf(
-                *b_bot, tile.second.thl_bot, tile.second.qt_bot);
+        bool use_cs_veg = (tile.first == "veg");
 
-        // Calculate stability parameters.
-        if (sw_constant_z0)
-            calc_obuk_ustar_ra<TF, true>(
-                    tile.second.ustar.data(),
-                    tile.second.obuk.data(),
-                    (*ra).data(),
-                    b->fld.data(),
-                    (*b_bot).data(),
-                    (*dutot).data(),
-                    z0m.data(), z0h.data(),
-                    zL_sl.data(), f_sl.data(),
-                    tile.second.nobuk.data(),
-                    db_ref, gd.z[gd.kstart],
-                    gd.icells, gd.jcells,
-                    gd.ijcells, gd.kstart);
-        else
-            calc_obuk_ustar_ra<TF, false>(
-                    tile.second.ustar.data(),
-                    tile.second.obuk.data(),
-                    (*ra).data(),
-                    b->fld.data(),
-                    (*b_bot).data(),
-                    (*dutot).data(),
-                    z0m.data(), z0h.data(),
-                    nullptr, nullptr, nullptr,
-                    db_ref, gd.z[gd.kstart],
-                    gd.icells, gd.jcells,
-                    gd.ijcells, gd.kstart);
+        // Solve SEB and SL combined
+        lsmk::calc_stability_and_fluxes(
+                tile.second.H.data(),
+                tile.second.LE.data(),
+                tile.second.G.data(),
+                tile.second.S.data(),
+                tile.second.thl_bot.data(),
+                tile.second.qt_bot.data(),
+                tile.second.ustar.data(),
+                tile.second.obuk.data(),
+                tile.second.bfluxbot.data(),
+                sw_dn.data(), sw_up.data(),
+                lw_dn.data(), lw_up.data(),
+                (*dutot).data(),
+                (*T_a).data(),
+                fields.sp.at("qt")->fld.data(),
+                b->fld.data(),
+                fields.sps.at("t")->fld.data(),
+                tile.second.rs.data(),
+                z0m.data(), z0h.data(),
+                lambda_stable.data(),
+                lambda_unstable.data(),
+                cs_veg.data(),
+                rhorefh.data(),
+                exnrefh.data(),
+                thvrefh.data(),
+                prefh.data(),
+                db_ref, gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, sgd.kend,
+                gd.icells, gd.ijcells,
+                use_cs_veg,
+                tile.first);
     }
+
 
 
     fields.release_tmp_xy(dutot);
@@ -534,129 +551,6 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_xy(f3);
     fields.release_tmp_xy(theta_mean_n);
     fields.release_tmp_xy(ra);
-
-
-
-
-
-    throw 1;
-
-//    // Start with retrieving the stability information.
-//    auto buoy = fields.get_tmp();
-//    auto tmp = fields.get_tmp();
-//
-//    thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
-//    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
-//    //const TF db_ref = thermo.get_db_ref();
-//
-//    if (sw_constant_z0)
-//        bs::stability<TF, true>(
-//                ustar.data(),
-//                obuk.data(),
-//                buoy->flux_bot.data(),
-//                fields.mp.at("u")->fld.data(),
-//                fields.mp.at("v")->fld.data(),
-//                buoy->fld.data(),
-//                fields.mp.at("u")->fld_bot.data(),
-//                fields.mp.at("v")->fld_bot.data(),
-//                buoy->fld_bot.data(),
-//                tmp->fld.data(), gd.z.data(),
-//                z0m.data(), z0h.data(),
-//                zL_sl.data(), f_sl.data(),
-//                nobuk.data(), db_ref,
-//                gd.istart, gd.iend,
-//                gd.jstart, gd.jend,
-//                gd.kstart, gd.icells,
-//                gd.jcells, gd.ijcells,
-//                mbcbot, thermobc,
-//                boundary_cyclic);
-//    else
-//        bs::stability<TF, false>(
-//                ustar.data(), obuk.data(),
-//                buoy->flux_bot.data(),
-//                fields.mp.at("u")->fld.data(),
-//                fields.mp.at("v")->fld.data(),
-//                buoy->fld.data(),
-//                fields.mp.at("u")->fld_bot.data(),
-//                fields.mp.at("v")->fld_bot.data(),
-//                buoy->fld_bot.data(),
-//                tmp->fld.data(), gd.z.data(),
-//                z0m.data(), z0h.data(),
-//                zL_sl.data(), f_sl.data(),
-//                nobuk.data(), db_ref,
-//                gd.istart, gd.iend,
-//                gd.jstart, gd.jend,
-//                gd.kstart, gd.icells,
-//                gd.jcells, gd.ijcells,
-//                mbcbot, thermobc,
-//                boundary_cyclic);
-//
-//    fields.release_tmp(buoy);
-//    fields.release_tmp(tmp);
-//
-//    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
-//    bs::surfm(
-//            fields.mp.at("u")->flux_bot.data(),
-//            fields.mp.at("v")->flux_bot.data(),
-//            fields.mp.at("u")->grad_bot.data(),
-//            fields.mp.at("v")->grad_bot.data(),
-//            ustar.data(), obuk.data(),
-//            fields.mp.at("u")->fld.data(),
-//            fields.mp.at("u")->fld_bot.data(),
-//            fields.mp.at("v")->fld.data(),
-//            fields.mp.at("v")->fld_bot.data(),
-//            z0m.data(), gd.z[gd.kstart], mbcbot,
-//            gd.istart, gd.iend,
-//            gd.jstart, gd.jend,
-//            gd.kstart, gd.icells,
-//            gd.jcells, gd.ijcells,
-//            boundary_cyclic);
-//
-//    for (auto& it : fields.sp)
-//        bs::surfs(it.second->fld_bot.data(),
-//              it.second->grad_bot.data(),
-//              it.second->flux_bot.data(),
-//              ustar.data(), obuk.data(),
-//              it.second->fld.data(), z0h.data(),
-//              gd.z[gd.kstart], sbc.at(it.first).bcbot,
-//              gd.istart, gd.iend,
-//              gd.jstart, gd.jend,
-//              gd.kstart, gd.icells,
-//              gd.jcells, gd.ijcells,
-//              boundary_cyclic);
-//
-//    // Calculate MO gradients
-//    bsk::calc_duvdz(
-//            dudz_mo.data(), dvdz_mo.data(),
-//            fields.mp.at("u")->fld.data(),
-//            fields.mp.at("v")->fld.data(),
-//            fields.mp.at("u")->fld_bot.data(),
-//            fields.mp.at("v")->fld_bot.data(),
-//            fields.mp.at("u")->flux_bot.data(),
-//            fields.mp.at("v")->flux_bot.data(),
-//            ustar.data(), obuk.data(), z0m.data(),
-//            gd.z[gd.kstart],
-//            gd.istart, gd.iend,
-//            gd.jstart, gd.jend,
-//            gd.kstart,
-//            gd.icells, gd.ijcells);
-
-    //auto buoy = fields.get_tmp();
-    //thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
-
-    //bsk::calc_dbdz(
-    //        dbdz_mo.data(), buoy->flux_bot.data(),
-    //        ustar.data(), obuk.data(),
-    //        gd.z[gd.kstart],
-    //        gd.istart, gd.iend,
-    //        gd.jstart, gd.jend,
-    //        gd.icells);
-
-    //fields.release_tmp(buoy);
-
-
-
-
 }
 #endif
 
