@@ -711,37 +711,19 @@ void Thermo_vapor<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_p_vector() const
-{
-    return bs.pref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_ph_vector() const
-{
-    return bs.prefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_exner_vector() const
-{
-    return bs.exnref;
-}
-
-template<typename TF>
 const std::vector<TF>& Thermo_vapor<TF>::get_basestate_vector(std::string name) const
 {
-    if (name == "pref")
+    if (name == "p")
         return bs.pref;
-    else if (name == "prefh")
+    else if (name == "ph")
         return bs.prefh;
-    else if (name == "exnref")
+    else if (name == "exner")
         return bs.exnref;
-    else if (name == "exnrefh")
+    else if (name == "exnerh")
         return bs.exnrefh;
-    else if (name == "thvref")
+    else if (name == "thv")
         return bs.thvref;
-    else if (name == "thvrefh")
+    else if (name == "thvh")
         return bs.thvrefh;
     else
     {

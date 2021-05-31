@@ -103,10 +103,6 @@ class Thermo_dry : public Thermo<TF>
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
-        const std::vector<TF>& get_rhorefh_vector() const
-            { throw std::runtime_error("Function get_rhorefh_vector not implemented"); }
-        const std::vector<TF>& get_exnerh_vector() const
-            { throw std::runtime_error("Function get_exnerh_vector not implemented"); }
 
         // Empty functions that are allowed to pass.
         void create_basestate(Input&, Netcdf_handle&) {};

@@ -407,10 +407,10 @@ void Boundary_surface_lsm<TF>::exec(
     thermo.get_buoyancy_surf(b->fld, *b_bot, false);
     const TF db_ref = thermo.get_db_ref();
 
-    const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhorefh");
-    const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvrefh");
-    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnrefh");
-    const std::vector<TF>& prefh = thermo.get_basestate_vector("prefh");
+    const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhoh");
+    const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvh");
+    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnerh");
+    const std::vector<TF>& prefh = thermo.get_basestate_vector("ph");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
     auto rain_rate = fields.get_tmp_xy();

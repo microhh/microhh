@@ -80,11 +80,6 @@ class Thermo_moist : public Thermo<TF>
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
         void get_buoyancy_fluxbot(std::vector<TF>&, bool);
         void get_temperature_bot(Field3d<TF>&, bool);
-        const std::vector<TF>& get_p_vector() const;
-        const std::vector<TF>& get_ph_vector() const;
-        const std::vector<TF>& get_exner_vector() const;
-        const std::vector<TF>& get_exnerh_vector() const;
-        const std::vector<TF>& get_rhorefh_vector() const;
         const std::vector<TF>& get_basestate_vector(std::string) const;
         TF get_db_ref() const;
 
