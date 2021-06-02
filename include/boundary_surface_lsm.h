@@ -119,8 +119,9 @@ class Boundary_surface_lsm : public Boundary<TF>
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
-        bool sw_constant_z0;
+        void get_tiled_mean(std::vector<TF>&, std::string);
 
+        bool sw_constant_z0;
         bool sw_homogeneous;
         bool sw_free_drainage;
         bool sw_water;
