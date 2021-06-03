@@ -128,6 +128,9 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
+    if (!swsource)
+        return;
+
     if (swtimedep_location || swtimedep_strength)
         throw std::runtime_error("Time varying and/or moving sources not (yet) implemented on GPU!");
 

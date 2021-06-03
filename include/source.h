@@ -54,7 +54,7 @@ class Source
 
         std::vector<Shape> shape;
 
-        std::string swsource;
+        bool swsource;
 
         TF x0;
         TF y0;
