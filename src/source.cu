@@ -128,8 +128,8 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
-    if (swtimedep)
-        throw std::runtime_error("Moving sources not (yet) implemented on GPU!");
+    if (swtimedep_location || swtimedep_strength)
+        throw std::runtime_error("Time varying and/or moving sources not (yet) implemented on GPU!");
 
     for (int n=0; n<sourcelist.size(); ++n)
     {
