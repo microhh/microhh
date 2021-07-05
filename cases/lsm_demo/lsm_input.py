@@ -3,7 +3,7 @@ import numpy as np
 import os, sys
 
 class LSM_input:
-    def __init__(self, itot, jtot, ktot, TF=np.float64, debug=False):
+    def __init__(self, itot, jtot, ktot, TF=np.float64, debug=False, exclude_fields=[]):
         """
         Data structure for the required input for the MicroHH LSM.
 
@@ -15,12 +15,14 @@ class LSM_input:
                             np.float32 for single precision).
             debug (bool, default: False) : Switch to fill the emtpy fields with a large negative number,
                                            to ensure that every grid point is initialized before saving.
+            exclude_fields (list) : Exclude default fields.
         """
 
         self.itot = itot
         self.jtot = jtot
         self.ktot = ktot
         self.debug = debug
+        self.exclude_fields = exclude_fields
 
         # List of fields which are written to the binary input files for MicroHH
         self.fields_2d = [
@@ -85,13 +87,10 @@ class LSM_input:
             else:
                 data.tofile(bin_file)
 
-        for fld in self.fields_2d:
-            data = getattr(self, fld)
-            save_bin(data, '{}.0000000'.format(os.path.join(path,fld)))
-
-        for fld in self.fields_3d:
-            data = getattr(self, fld)
-            save_bin(data, '{}.0000000'.format(os.path.join(path,fld)))
+        for fld in self.fields_2d + self.fields_3d:
+            if fld not in self.exclude_fields:
+                data = getattr(self, fld)
+                save_bin(data, '{}.0000000'.format(os.path.join(path,fld)))
 
 
     def save_netcdf(self, nc_file, allow_overwrite=False):
@@ -126,14 +125,16 @@ class LSM_input:
 
         # Fields needed for offline LSM:
         for field in self.fields_2d:
-            data = getattr(self, field)
-            var  = nc.createVariable(field, 'f8', ('y','x'))
-            var[:] = data[:]
+            if field not in self.exclude_fields:
+                data = getattr(self, field)
+                var  = nc.createVariable(field, 'f8', ('y','x'))
+                var[:] = data[:]
 
         for field in self.fields_3d:
-            data = getattr(self, field)
-            var  = nc.createVariable(field, 'f8', ('z','y','x'))
-            var[:] = data[:]
+            if field not in self.exclude_fields:
+                data = getattr(self, field)
+                var  = nc.createVariable(field, 'f8', ('z','y','x'))
+                var[:] = data[:]
 
         nc.close()
 

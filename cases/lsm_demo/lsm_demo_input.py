@@ -215,16 +215,25 @@ nc.close()
 # -------------------------------------------
 # Create input for heterogeneous land surface
 # -------------------------------------------
+if not nl['boundary']['swconstantz0']:
+
+    z0m = np.zeros((jtot, itot), dtype=TF)
+    z0h = np.zeros((jtot, itot), dtype=TF)
+
+    z0m[:,:] = 0.1
+    z0h[:,:] = 0.01
+
+    z0m.tofile('z0m.0000000')
+    z0h.tofile('z0h.0000000')
+
 if not nl['land_surface']['swhomogeneous']:
 
     # Help class to simplify writing the input files for heterogeneous land surfaces:
     lsm_input = LSM_input(
-            itot, jtot, nl['land_surface']['ktot'], TF=TF, debug=True)
+            itot, jtot, nl['land_surface']['ktot'], TF=TF, debug=True, exclude_fields=['z0m','z0h'])
 
     # Initialise all values:
     lsm_input.c_veg[:,:] = 0.95
-    lsm_input.z0m[:,:] = 0.075
-    lsm_input.z0h[:,:] = 0.003
     lsm_input.gD[:,:] = 0.
     lsm_input.lai[:,:] = 2.6
     lsm_input.rs_veg_min[:,:] = 100.
