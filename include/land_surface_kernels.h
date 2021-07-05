@@ -328,7 +328,7 @@ namespace Land_surface_kernels
             }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_constant_z0>
     void calc_stability_and_fluxes(
             TF* const restrict H,
             TF* const restrict LE,
@@ -338,6 +338,7 @@ namespace Land_surface_kernels
             TF* const restrict qt_bot,
             TF* const restrict ustar,
             TF* const restrict obuk,
+            int* const restrict nobuk,
             TF* const restrict bfluxbot,
             const TF* const restrict sw_dn,
             const TF* const restrict sw_up,
@@ -358,6 +359,8 @@ namespace Land_surface_kernels
             const TF* const restrict exnerh,
             const TF* const restrict thvrefh,
             const TF* const restrict prefh,
+            const float* const restrict f_sl,
+            const float* const restrict zL_sl,
             const TF db_ref, const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -373,9 +376,9 @@ namespace Land_surface_kernels
 
         int max_iters = 0;
 
-        const TF eps_thl = TF(1e-8);
-        const TF max_step = TF(10);
-        const TF eps_seb = TF(1e-3);
+        const TF eps_thl = TF(1e-6);
+        const TF max_step = TF(1);
+        const TF eps_seb = TF(1e-1);
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -386,8 +389,8 @@ namespace Land_surface_kernels
                 const int ijk_s = ij + (kend_soil-1)*ijcells;
 
                 int it;
-                const int max_it = 1000; // usually 2-4 is enough...
-                for (it=0; it<=max_it; ++it)
+                const int max_it = 100; // usually 2-4 is enough...
+                for (it=0; it<max_it; ++it)
                 {
                     const TF T_bot = thl_bot[ij] * exner_bot;
                     const TF qsat_bot = tmf::qsat(p_bot, T_bot);
@@ -402,9 +405,13 @@ namespace Land_surface_kernels
                     const TF bbot = tmf::buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
                     const TF db = b[ijk] - bbot + db_ref;
 
-                    // AARGH, for now limited to iterative solver....
-                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
-                            obuk[ij], du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
+                    if (sw_constant_z0)
+                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
+                                zL_sl, f_sl, nobuk[ij], du_tot[ij], db, zsl);
+                    else
+                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
+                                obuk[ij], du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
+
                     ustar[ij] = du_tot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
 
                     const TF ra = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
@@ -420,6 +427,15 @@ namespace Land_surface_kernels
 
                     const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
                     const TF seb = Qn - H[ij] - LE[ij] - G[ij];
+
+                    if (it > max_it-10)
+                    {
+                        std::cout << "------- " << name << " , it="  << it << " -------" << std::endl;
+                        std::cout << "thl_bot=" << thl_bot[ij] << " , qsat_bot=" << qsat_bot << " , db=" << db << std::endl;
+                        std::cout << "obuk=" << obuk[ij] << " , ustar=" << ustar[ij] << " , ra=" << ra << std::endl;
+                        std::cout << "H=" << H[ij] << " , LE=" << LE[ij] << " , G=" << G[ij] << " , L_up=" << lw_up_n << std::endl;
+                        std::cout << "Qn=" << Qn << " , seb=" << seb << std::endl;
+                    }
 
                     if (std::abs(seb) < eps_seb)
                     {
@@ -441,8 +457,14 @@ namespace Land_surface_kernels
 
                     // AARGH, for now limited to iterative solver....
                     // NOTE: I left obuk[ij] as a starting point here......
-                    const TF obuk_p = bsk::calc_obuk_noslip_dirichlet_iterative(
-                            obuk[ij], du_tot[ij], db_p, zsl, z0m[ij], z0h[ij]);
+                    TF obuk_p;
+                    if (sw_constant_z0)
+                        obuk_p = bsk::calc_obuk_noslip_dirichlet_lookup(
+                                zL_sl, f_sl, nobuk[ij], du_tot[ij], db_p, zsl);
+                    else
+                        obuk_p = bsk::calc_obuk_noslip_dirichlet_iterative(
+                                obuk[ij], du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
+
                     const TF ustar_p = du_tot[ij] * most::fm(zsl, z0m[ij], obuk_p);
 
                     const TF ra_p = TF(1) / (ustar_p * most::fh(zsl, z0h[ij], obuk_p));
@@ -462,7 +484,15 @@ namespace Land_surface_kernels
                     const TF slope = (seb_p - seb) / eps_thl;
                     const TF dtheta = -seb / slope;
 
-                    const TF max_step = TF(10);
+                    if (it > max_it-10)
+                    {
+                        std::cout << "--------- Perturbed: ----------" << std::endl;
+                        std::cout << "obuk=" << obuk_p << " , ustar=" << ustar_p << " , ra=" << ra_p << std::endl;
+                        std::cout << "H=" << H_p << " , LE=" << LE_p << " , G=" << G_p << " , L_up=" << lw_up_n_p << std::endl;
+                        std::cout << "Qn=" << Qn_p << " , seb=" << seb_p << std::endl;
+                        std::cout << "slope=" << slope << " , dTs=" << dtheta << std::endl;
+                    }
+
                     thl_bot[ij] += std::max(-max_step, std::min(dtheta, max_step));
                 }
 
@@ -470,7 +500,7 @@ namespace Land_surface_kernels
 
                 if (it == max_it)
                 {
-                    std::string error = "SEB solver did not converge!";
+                    std::string error = "SEB solver did not converge for tile: \"" + name + "\"";
                     #ifdef USEMPI
                         std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
                         MPI_Abort(MPI_COMM_WORLD, 1);
@@ -479,6 +509,8 @@ namespace Land_surface_kernels
                     #endif
                 }
             }
+
+            std::cout << name << " max iters=" << max_iters << std::endl;
     }
 
     template<typename TF>

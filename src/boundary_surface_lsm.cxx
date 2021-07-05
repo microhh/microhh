@@ -446,39 +446,80 @@ void Boundary_surface_lsm<TF>::exec(
         bool use_cs_veg = (tile.first == "veg");
 
         // Solve SEB and SL combined
-        lsmk::calc_stability_and_fluxes(
-                tile.second.H.data(),
-                tile.second.LE.data(),
-                tile.second.G.data(),
-                tile.second.S.data(),
-                tile.second.thl_bot.data(),
-                tile.second.qt_bot.data(),
-                tile.second.ustar.data(),
-                tile.second.obuk.data(),
-                tile.second.bfluxbot.data(),
-                sw_dn.data(), sw_up.data(),
-                lw_dn.data(), lw_up.data(),
-                (*dutot).data(),
-                (*T_a).data(),
-                fields.sp.at("qt")->fld.data(),
-                buoy->fld.data(),
-                fields.sps.at("t")->fld.data(),
-                tile.second.rs.data(),
-                z0m.data(), z0h.data(),
-                lambda_stable.data(),
-                lambda_unstable.data(),
-                cs_veg.data(),
-                rhorefh.data(),
-                exnrefh.data(),
-                thvrefh.data(),
-                prefh.data(),
-                db_ref, gd.z[gd.kstart],
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, sgd.kend,
-                gd.icells, gd.ijcells,
-                use_cs_veg,
-                tile.first);
+        if (sw_constant_z0)
+            lsmk::calc_stability_and_fluxes<TF, true>(
+                    tile.second.H.data(),
+                    tile.second.LE.data(),
+                    tile.second.G.data(),
+                    tile.second.S.data(),
+                    tile.second.thl_bot.data(),
+                    tile.second.qt_bot.data(),
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    tile.second.nobuk.data(),
+                    tile.second.bfluxbot.data(),
+                    sw_dn.data(), sw_up.data(),
+                    lw_dn.data(), lw_up.data(),
+                    (*dutot).data(),
+                    (*T_a).data(),
+                    fields.sp.at("qt")->fld.data(),
+                    buoy->fld.data(),
+                    fields.sps.at("t")->fld.data(),
+                    tile.second.rs.data(),
+                    z0m.data(), z0h.data(),
+                    lambda_stable.data(),
+                    lambda_unstable.data(),
+                    cs_veg.data(),
+                    rhorefh.data(),
+                    exnrefh.data(),
+                    thvrefh.data(),
+                    prefh.data(),
+                    f_sl.data(),
+                    zL_sl.data(),
+                    db_ref, gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells,
+                    use_cs_veg,
+                    tile.first);
+        else
+            lsmk::calc_stability_and_fluxes<TF, false>(
+                    tile.second.H.data(),
+                    tile.second.LE.data(),
+                    tile.second.G.data(),
+                    tile.second.S.data(),
+                    tile.second.thl_bot.data(),
+                    tile.second.qt_bot.data(),
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    tile.second.nobuk.data(),
+                    tile.second.bfluxbot.data(),
+                    sw_dn.data(), sw_up.data(),
+                    lw_dn.data(), lw_up.data(),
+                    (*dutot).data(),
+                    (*T_a).data(),
+                    fields.sp.at("qt")->fld.data(),
+                    buoy->fld.data(),
+                    fields.sps.at("t")->fld.data(),
+                    tile.second.rs.data(),
+                    z0m.data(), z0h.data(),
+                    lambda_stable.data(),
+                    lambda_unstable.data(),
+                    cs_veg.data(),
+                    rhorefh.data(),
+                    exnrefh.data(),
+                    thvrefh.data(),
+                    prefh.data(),
+                    f_sl.data(),
+                    zL_sl.data(),
+                    db_ref, gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells,
+                    use_cs_veg,
+                    tile.first);
     }
 
     // Calculate tile averaged surface fluxes and values.
@@ -486,84 +527,14 @@ void Boundary_surface_lsm<TF>::exec(
     const TF rholvi = TF(1) / (rhorefh[gd.kstart] * Constants::Lv<TF>);
 
     // Surface fluxes.
-    calc_tiled_mean(
-            fields.sp.at("thl")->flux_bot.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").H.data(),
-            tiles.at("soil").H.data(),
-            tiles.at("wet").H.data(),
-            rhocpi,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    calc_tiled_mean(
-            fields.sp.at("qt")->flux_bot.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").LE.data(),
-            tiles.at("soil").LE.data(),
-            tiles.at("wet").LE.data(),
-            rholvi,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    calc_tiled_mean(
-            ustar.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").ustar.data(),
-            tiles.at("soil").ustar.data(),
-            tiles.at("wet").ustar.data(),
-            TF(1),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    calc_tiled_mean(
-            buoy->flux_bot.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").bfluxbot.data(),
-            tiles.at("soil").bfluxbot.data(),
-            tiles.at("wet").bfluxbot.data(),
-            TF(1),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+    get_tiled_mean(fields.sp.at("thl")->flux_bot, "H", rhocpi);
+    get_tiled_mean(fields.sp.at("qt")->flux_bot, "LE", rholvi);
+    get_tiled_mean(ustar, "ustar", TF(1));
+    get_tiled_mean(buoy->flux_bot, "bfluxbot", TF(1));
 
     // Surface values.
-    calc_tiled_mean(
-            fields.sp.at("thl")->fld_bot.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").thl_bot.data(),
-            tiles.at("soil").thl_bot.data(),
-            tiles.at("wet").thl_bot.data(),
-            TF(1),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-
-    calc_tiled_mean(
-            fields.sp.at("qt")->fld_bot.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            tiles.at("veg").qt_bot.data(),
-            tiles.at("soil").qt_bot.data(),
-            tiles.at("wet").qt_bot.data(),
-            TF(1),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+    get_tiled_mean(fields.sp.at("thl")->fld_bot, "thl_bot", TF(1));
+    get_tiled_mean(fields.sp.at("qt")->fld_bot, "qt_bot", TF(1));
 
     // Calculate bulk Obukhov length.
     calc_bulk_obuk(
@@ -1225,13 +1196,13 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
 
-    get_tiled_mean(*fld_mean, "H");
+    get_tiled_mean(*fld_mean, "H", TF(1));
     stats.calc_stats_2d("H", *fld_mean, no_offset);
 
-    get_tiled_mean(*fld_mean, "LE");
+    get_tiled_mean(*fld_mean, "LE", TF(1));
     stats.calc_stats_2d("LE", *fld_mean, no_offset);
 
-    get_tiled_mean(*fld_mean, "G");
+    get_tiled_mean(*fld_mean, "G", TF(1));
     stats.calc_stats_2d("G", *fld_mean, no_offset);
 
     stats.calc_stats_2d("rs_veg", tiles.at("veg").rs, no_offset);
@@ -1323,7 +1294,8 @@ void Boundary_surface_lsm<TF>::update_slave_bcs()
 
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::get_tiled_mean(std::vector<TF>& fld_out, std::string name)
+void Boundary_surface_lsm<TF>::get_tiled_mean(
+    std::vector<TF>& fld_out, std::string name, const TF fac)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1331,6 +1303,7 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(std::vector<TF>& fld_out, std::str
     TF* fld_soil;
     TF* fld_wet;
 
+    // Yikes..
     if (name == "H")
     {
         fld_veg  = tiles.at("veg").H.data();
@@ -1349,6 +1322,30 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(std::vector<TF>& fld_out, std::str
         fld_soil = tiles.at("soil").G.data();
         fld_wet  = tiles.at("wet").G.data();
     }
+    else if (name == "bfluxbot")
+    {
+        fld_veg  = tiles.at("veg").bfluxbot.data();
+        fld_soil = tiles.at("soil").bfluxbot.data();
+        fld_wet  = tiles.at("wet").bfluxbot.data();
+    }
+    else if (name == "ustar")
+    {
+        fld_veg  = tiles.at("veg").ustar.data();
+        fld_soil = tiles.at("soil").ustar.data();
+        fld_wet  = tiles.at("wet").ustar.data();
+    }
+    else if (name == "thl_bot")
+    {
+        fld_veg  = tiles.at("veg").thl_bot.data();
+        fld_soil = tiles.at("soil").thl_bot.data();
+        fld_wet  = tiles.at("wet").thl_bot.data();
+    }
+    else if (name == "qt_bot")
+    {
+        fld_veg  = tiles.at("veg").qt_bot.data();
+        fld_soil = tiles.at("soil").qt_bot.data();
+        fld_wet  = tiles.at("wet").qt_bot.data();
+    }
     else
         throw std::runtime_error("Cannot calculate tiled mean for variable \"" + name + "\"\\n");
 
@@ -1360,7 +1357,7 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(std::vector<TF>& fld_out, std::str
             fld_veg,
             fld_soil,
             fld_wet,
-            TF(1),
+            fac,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
