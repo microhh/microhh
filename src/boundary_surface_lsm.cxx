@@ -25,6 +25,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 
 #include "boundary_surface_lsm.h"
 #include "boundary.h"
@@ -378,6 +379,9 @@ void Boundary_surface_lsm<TF>::exec(
 
     const double subdt = timeloop.get_sub_time_step();
 
+    const int iter = timeloop.get_iteration();
+    const int subs = timeloop.get_substep();
+
     //
     // LSM calculations
     // Calculate dynamic tile fractions
@@ -482,7 +486,8 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart, sgd.kend,
                     gd.icells, gd.ijcells,
                     use_cs_veg,
-                    tile.first);
+                    tile.first,
+                    iter, subs);
         else
             lsmk::calc_stability_and_fluxes<TF, false>(
                     tile.second.H.data(),
@@ -519,7 +524,8 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart, sgd.kend,
                     gd.icells, gd.ijcells,
                     use_cs_veg,
-                    tile.first);
+                    tile.first,
+                    iter, subs);
     }
 
     // Calculate tile averaged surface fluxes and values.
@@ -1283,7 +1289,6 @@ void Boundary_surface_lsm<TF>::init_solver()
         gd.z[gd.kstart], nzL_lut,
         mbcbot, thermobc);
 }
-
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::update_slave_bcs()

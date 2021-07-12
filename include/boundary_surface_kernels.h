@@ -326,10 +326,19 @@ namespace Boundary_surface_kernels
         TF Lstart, Lend;
         TF fx, fxdif;
 
+
         int m = 0;
         int nlim = 10;
-
         const TF Lmax = 1.e20;
+
+        const TF L_min_stable = zsl / zL_max<TF>;
+
+        // The solver does not have a solution for large Ri numbers,
+        // i.e. the `fx` equation below has no zero crossing.
+        // The limit of 0.13 typically results in a minimum (positive) L of ~1
+        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        if (Ri > TF(0.13))
+            return L_min_stable;
 
         // Avoid db to be zero
         if (db >= 0.)
@@ -346,7 +355,7 @@ namespace Boundary_surface_kernels
             {
                 nlim = 200;
                 if(db >= 0.)
-                    L = Constants::dsmall;
+                    L = L_min_stable;
                 else
                     L = -Constants::dsmall;
             }
@@ -369,6 +378,10 @@ namespace Boundary_surface_kernels
                          - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
                 L      = L - fx/fxdif;
+
+                if (L >= TF(0) && L < L_min_stable)
+                    L = L_min_stable;
+
                 ++n;
             }
 
@@ -378,7 +391,11 @@ namespace Boundary_surface_kernels
             else
             {
                 // Convergence has not been reached, procedure restarted once
-                L = Constants::dsmall;
+                if (db >= TF(0))
+                    L = L_min_stable;
+                else
+                    L = -Constants::dsmall;
+
                 ++m;
                 nlim = 200;
             }
@@ -390,7 +407,12 @@ namespace Boundary_surface_kernels
             std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L <<  std::endl;
         }
 
-        return zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
+        // Limit tails:
+        TF L_lim = zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
+        // Limit large values of L (~in line with LUT)
+        //L_lim = std::min(std::max(L_lim, TF(-1e6)), TF(1e6));
+
+        return L_lim;
     }
 
     template<typename TF>
