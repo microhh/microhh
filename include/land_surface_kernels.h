@@ -429,7 +429,7 @@ namespace Land_surface_kernels
 
         // Lambda function for calculating SEB closure (SEB = Qn - H - LE - G).
         auto calc_seb_closure = [&](
-                const TF thl_bot, TF& qt_bot, TF& obuk, bool sw_constant_z0,
+                const TF thl_bot, const TF qt_bot, TF& obuk, bool sw_constant_z0,
                 const int ij, const int ijk, const int ijk_s)
         {
             const TF T_bot = thl_bot * exner_bot;
@@ -463,9 +463,6 @@ namespace Land_surface_kernels
 
             const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
             const TF seb = Qn - H - LE - G;
-
-            // Update qt_bot
-            qt_bot = qt[ijk] + LE * ra / (rho_bot * Lv<TF>);
 
             return seb;
         };
@@ -520,15 +517,8 @@ namespace Land_surface_kernels
                     const TF slope = (seb_1 - seb_0) / eps_thl;
                     const TF dtheta = std::max(-max_dtheta, std::min(-seb_0 / slope, max_dtheta));
 
-                    // Exit for very large slopes, where dSEB/dthl_bot is very large
-                    //if (std::abs(slope) > max_slope)
-                    //{
-                    //    std::cout << "WARNING: SEB solver not converged..." << std::endl;
-                    //    break;
-                    //}
-
                     // Increment thl_bot
-                    thl_bot[ij] += dtheta;
+                    thl_bot[ij] += TF(0.5)*dtheta;
                 }
 
                 // Calculate/set final values
@@ -553,6 +543,9 @@ namespace Land_surface_kernels
                 LE[ij] = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
                 G[ij]  = lambda * (T_bot - T_soil[ijk_s]);
                 bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+
+                // Update qt_bot
+                qt_bot[ij] = qt[ijk] + LE[ij] * ra / (rho_bot * Lv<TF>);
 
                 if (it == max_it)
                 {
