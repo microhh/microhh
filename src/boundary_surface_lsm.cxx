@@ -267,6 +267,7 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
     sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
+    sw_iter_seb      = inputin.get_item<bool>("land_surface", "switerseb", "", false);
 
     if (sw_water)
         tskin_water = inputin.get_item<TF>("land_surface", "tskin_water", "");
@@ -449,44 +450,136 @@ void Boundary_surface_lsm<TF>::exec(
     {
         bool use_cs_veg = (tile.first == "veg");
 
-        lsmk::calc_stability_and_fluxes(
-                tile.second.H.data(),
-                tile.second.LE.data(),
-                tile.second.G.data(),
-                tile.second.S.data(),
-                tile.second.thl_bot.data(),
-                tile.second.qt_bot.data(),
-                tile.second.ustar.data(),
-                tile.second.obuk.data(),
-                tile.second.nobuk.data(),
-                tile.second.bfluxbot.data(),
-                sw_dn.data(), sw_up.data(),
-                lw_dn.data(), lw_up.data(),
-                (*dutot).data(),
-                (*T_a).data(),
-                fields.sp.at("qt")->fld.data(),
-                buoy->fld.data(),
-                fields.sps.at("t")->fld.data(),
-                tile.second.rs.data(),
-                z0m.data(), z0h.data(),
-                lambda_stable.data(),
-                lambda_unstable.data(),
-                cs_veg.data(),
-                rhorefh.data(),
-                exnrefh.data(),
-                thvrefh.data(),
-                prefh.data(),
-                f_sl.data(),
-                zL_sl.data(),
-                db_ref, gd.z[gd.kstart],
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, sgd.kend,
-                gd.icells, gd.ijcells,
-                use_cs_veg,
-                sw_constant_z0,
-                tile.first,
-                iter, subs);
+        if (sw_iter_seb)
+        {
+            //
+            // Iteratively calculate thl_bot, qt_bot, and obuk/ustar/ra,
+            // such that the SEB closes (Qn = H + LE + G).
+            //
+            lsmk::calc_stability_and_fluxes(
+                    tile.second.H.data(),
+                    tile.second.LE.data(),
+                    tile.second.G.data(),
+                    tile.second.S.data(),
+                    tile.second.thl_bot.data(),
+                    tile.second.qt_bot.data(),
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    tile.second.nobuk.data(),
+                    tile.second.bfluxbot.data(),
+                    sw_dn.data(), sw_up.data(),
+                    lw_dn.data(), lw_up.data(),
+                    (*dutot).data(),
+                    (*T_a).data(),
+                    fields.sp.at("qt")->fld.data(),
+                    buoy->fld.data(),
+                    fields.sps.at("t")->fld.data(),
+                    tile.second.rs.data(),
+                    z0m.data(), z0h.data(),
+                    lambda_stable.data(),
+                    lambda_unstable.data(),
+                    cs_veg.data(),
+                    rhorefh.data(),
+                    exnrefh.data(),
+                    thvrefh.data(),
+                    prefh.data(),
+                    f_sl.data(),
+                    zL_sl.data(),
+                    db_ref, gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells,
+                    use_cs_veg,
+                    sw_constant_z0,
+                    tile.first,
+                    iter, subs);
+        }
+        else
+        {
+            //
+            // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
+            // from previous time step (= old method, similar to DALES).
+            // 2) Calculate new thl_bot such that SEB closes.
+            //
+            thermo.get_buoyancy_surf(
+                    buoy->fld_bot,
+                    tile.second.thl_bot,
+                    tile.second.qt_bot);
+
+            // Calculate Obuk, ustar, and ra.
+            if (sw_constant_z0)
+                lsmk::calc_stability<TF, true>(
+                        tile.second.ustar.data(),
+                        tile.second.obuk.data(),
+                        tile.second.bfluxbot.data(),
+                        (*ra).data(),
+                        tile.second.nobuk.data(),
+                        (*dutot).data(),
+                        buoy->fld.data(),
+                        buoy->fld_bot.data(),
+                        z0m.data(), z0h.data(),
+                        zL_sl.data(),
+                        f_sl.data(),
+                        db_ref, gd.z[gd.kstart],
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart,
+                        gd.icells, gd.jcells,
+                        gd.ijcells);
+            else
+                lsmk::calc_stability<TF, false>(
+                        tile.second.ustar.data(),
+                        tile.second.obuk.data(),
+                        tile.second.bfluxbot.data(),
+                        (*ra).data(),
+                        tile.second.nobuk.data(),
+                        (*dutot).data(),
+                        buoy->fld.data(),
+                        buoy->fld_bot.data(),
+                        z0m.data(), z0h.data(),
+                        zL_sl.data(),
+                        f_sl.data(),
+                        db_ref, gd.z[gd.kstart],
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart,
+                        gd.icells, gd.jcells,
+                        gd.ijcells);
+
+            // Calculate surface fluxes
+            lsmk::calc_fluxes(
+                    tile.second.H.data(),
+                    tile.second.LE.data(),
+                    tile.second.G.data(),
+                    tile.second.S.data(),
+                    tile.second.thl_bot.data(),
+                    tile.second.qt_bot.data(),
+                    (*T_a).data(),
+                    fields.sp.at("qt")->fld.data(),
+                    fields.sps.at("t")->fld.data(),
+                    (*qsat_bot).data(),
+                    (*dqsatdT_bot).data(),
+                    (*ra).data(),
+                    tile.second.rs.data(),
+                    lambda_stable.data(),
+                    lambda_unstable.data(),
+                    cs_veg.data(),
+                    sw_dn.data(),
+                    sw_up.data(),
+                    lw_dn.data(),
+                    lw_up.data(),
+                    buoy->fld.data(),
+                    buoy->fld_bot.data(),
+                    rhorefh.data(),
+                    exnrefh.data(),
+                    db_ref, TF(subdt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells,
+                    use_cs_veg, tile.first);
+            }
     }
 
     // Calculate tile averaged surface fluxes and values.

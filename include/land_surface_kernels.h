@@ -243,6 +243,53 @@ namespace Land_surface_kernels
             }
     }
 
+    template<typename TF, bool sw_constant_z0>
+    void calc_stability(
+            TF* const restrict ustar,
+            TF* const restrict obuk,
+            TF* const restrict bfluxbot,
+            TF* const restrict ra,
+            int* const restrict nobuk,
+            const TF* const restrict dutot,
+            const TF* const restrict b,
+            const TF* const restrict bbot,
+            const TF* const restrict z0m,
+            const TF* const restrict z0h,
+            const float* const restrict zL_sl,
+            const float* const restrict f_sl,
+            const TF db_ref,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int jcells,
+            const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int j=0; j<jcells; ++j)
+            #pragma ivdep
+            for (int i=0; i<icells; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                const TF db = b[ijk] - bbot[ij] + db_ref;
+
+                if (sw_constant_z0)
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
+                            zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
+                else
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
+                            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
+                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+                bfluxbot[ij] = - ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
+            }
+    }
+
     template<typename TF>
     void calc_fluxes(
             TF* const restrict H,
