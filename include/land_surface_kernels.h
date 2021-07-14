@@ -481,8 +481,7 @@ namespace Land_surface_kernels
                     //}
 
                     // Increment thl_bot
-                    const TF fac = it < 10 ? TF(1) : TF(0.5);
-                    thl_bot[ij] += fac*dtheta;
+                    thl_bot[ij] += dtheta;
                 }
 
                 // Calculate/set final values
