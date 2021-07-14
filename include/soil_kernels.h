@@ -431,7 +431,7 @@ namespace Soil_kernels
             }
     }
 
-    template<typename TF, bool sw_free_drainage>
+    template<typename TF>
     void set_bcs_moisture(
             TF* const restrict flux_top,
             TF* const restrict flux_bot,
@@ -439,6 +439,7 @@ namespace Soil_kernels
             const TF* const restrict LE_soil,
             const TF* const restrict tile_frac_soil,
             const TF* const restrict infiltration,
+            const bool sw_free_drainage,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -447,6 +448,7 @@ namespace Soil_kernels
         const TF fac = TF(1) / (rho_w<TF> * Lv<TF>);
 
         const int kk = ijcells;
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -462,6 +464,27 @@ namespace Soil_kernels
                 else
                     conductivity_h[ijk] = TF(0);
             }
+
+        if (sw_free_drainage)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    conductivity_h[ijk] = conductivity_h[ijk+kk];
+                }
+        }
+        else
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    conductivity_h[ijk] = TF(0);
+                }
+        }
     }
 
     template<typename TF, bool sw_source_term, bool sw_conductivity_term>
