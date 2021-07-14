@@ -638,8 +638,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
 
-    std::fill((*rain_rate).begin(), (*rain_rate).end(), 0.5/3600.);
-
     // Calculate changes in the liquid water reservoir
     lsmk::calc_liquid_water_reservoir(
             fields.at2d.at("wl").data(),
