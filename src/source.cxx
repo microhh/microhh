@@ -159,9 +159,9 @@ template<typename TF>
 Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input) :
     master(master), grid(grid), fields(fields)
 {
-    swsource = input.get_item<std::string>("source", "swsource", "", "0");
+    swsource = input.get_item<bool>("source", "swsource", "", 0);
 
-    if (swsource == "1")
+    if (swsource)
     {
         sourcelist = input.get_list<std::string>("source", "sourcelist", "");
 
@@ -191,7 +191,7 @@ Source<TF>::~Source()
 template<typename TF>
 void Source<TF>::init()
 {
-    if (swsource == "1")
+    if (swsource)
     {
         shape.resize(source_x0.size());
         norm.resize(source_x0.size());
