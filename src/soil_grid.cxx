@@ -44,6 +44,8 @@ Soil_grid<TF>::Soil_grid(Master& masterin, Grid<TF>& gridin, Input& input) :
 
     if (sw_land_surface)
         gd.ktot  = input.get_item<int>("land_surface", "ktot",  "");
+    else
+        gd.is_enabled = false;
 }
 
 template<typename TF>
@@ -84,6 +86,8 @@ void Soil_grid<TF>::init()
     gd.zh  .resize(gd.kcellsh);
     gd.dzh .resize(gd.kcellsh);
     gd.dzhi.resize(gd.kcellsh);
+
+    gd.is_enabled = true;
 }
 
 /**

@@ -34,6 +34,8 @@ template<typename> class Grid;
 template<typename TF>
 struct Soil_grid_data
 {
+    bool is_enabled;  // Is the soil grid active/initialised?
+
     int ktot;   // Total number of full level grid cells in the z-direction.
     int kmax;   // Number of full level grid cells in the z-direction for one process.
     int kmaxh;  // Number of half level grid point in the z-direction for one process.

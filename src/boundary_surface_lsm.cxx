@@ -1216,13 +1216,18 @@ void Boundary_surface_lsm<TF>::create_stats(
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
 
-        // LSM
+        // Land surface
+        stats.add_time_series("rs_veg", "Canopy resistance", "s m-1", group_name);
+        stats.add_time_series("rs_soil", "Soil resistance", "s m-1", group_name);
+        stats.add_time_series("wl", "Liquid water reservoir", "m", group_name);
+
         stats.add_time_series("H", "Surface sensible heat flux", "W m-2", group_name);
         stats.add_time_series("LE", "Surface latent heat flux", "W m-2", group_name);
         stats.add_time_series("G", "Surface soil heat flux", "W m-2", group_name);
 
-        stats.add_time_series("rs_veg", "Canopy resistance", "s m-1", group_name);
-        stats.add_time_series("rs_soil", "Soil resistance", "s m-1", group_name);
+        // Soil
+        stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
+        stats.add_prof("theta", "Soil volumetric water content", "-", "zs", group_name);
 
         if (sw_tile_stats)
             for (auto& tile : tiles)
@@ -1245,11 +1250,17 @@ void Boundary_surface_lsm<TF>::create_stats(
     {
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
+
+        column.add_time_series("H", "Surface sensible heat flux", "W m-2");
+        column.add_time_series("LE", "Surface latent heat flux", "W m-2");
+        column.add_time_series("G", "Surface soil heat flux", "W m-2");
+
+        column.add_time_series("wl", "Liquid water reservoir", "m");
     }
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1476,25 +1487,19 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
-    //auto tmp1 = fields.get_tmp();
-    //
-    //for (auto& it : cross_list)
-    //{
-    //    if (it == "ustar")
-    //        cross.cross_plane(ustar.data(), "ustar", iotime);
-    //    else if (it == "obuk")
-    //        cross.cross_plane(obuk.data(), "obuk", iotime);
-    //    else if (it == "ra")
-    //    {
-    //        bsk::calc_ra(
-    //                tmp1->flux_bot.data(), ustar.data(), obuk.data(),
-    //                z0h.data(), gd.z[gd.kstart], gd.istart,
-    //                gd.iend, gd.jstart, gd.jend, gd.icells);
-    //        cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
-    //    }
-    //}
+    auto tmp1 = fields.get_tmp();
 
-    //fields.release_tmp(tmp1);
+    for (auto& it : cross_list)
+    {
+        if (it == "ustar")
+            cross.cross_plane(ustar.data(), "ustar", iotime);
+        else if (it == "obuk")
+            cross.cross_plane(obuk.data(), "obuk", iotime);
+        else if (it == "wl")
+            cross.cross_plane(fields.ap2d.at("wl").data(), "wl", iotime);
+    }
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>
@@ -1504,8 +1509,14 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 
     auto fld_mean = fields.get_tmp_xy();
 
+    // Surface layer
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
+
+    // Land-surface
+    stats.calc_stats_2d("wl", fields.ap2d.at("wl"), no_offset);
+    stats.calc_stats_2d("rs_veg", tiles.at("veg").rs, no_offset);
+    stats.calc_stats_2d("rs_soil", tiles.at("soil").rs, no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     stats.calc_stats_2d("H", *fld_mean, no_offset);
@@ -1516,8 +1527,9 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     get_tiled_mean(*fld_mean, "G", TF(1));
     stats.calc_stats_2d("G", *fld_mean, no_offset);
 
-    stats.calc_stats_2d("rs_veg", tiles.at("veg").rs, no_offset);
-    stats.calc_stats_2d("rs_soil", tiles.at("soil").rs, no_offset);
+    // Soil
+    stats.calc_stats_soil("t", fields.sps.at("t")->fld, no_offset);
+    stats.calc_stats_soil("theta", fields.sps.at("theta")->fld, no_offset);
 
     if (sw_tile_stats)
         for (auto& tile : tiles)
@@ -1543,8 +1555,23 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
-    //column.calc_time_series("obuk", obuk.data(), no_offset);
-    //column.calc_time_series("ustar", ustar.data(), no_offset);
+
+    auto fld_mean = fields.get_tmp_xy();
+
+    column.calc_time_series("obuk", obuk.data(), no_offset);
+    column.calc_time_series("ustar", ustar.data(), no_offset);
+    column.calc_time_series("wl", fields.ap2d.at("wl").data(), no_offset);
+
+    get_tiled_mean(*fld_mean, "H", TF(1));
+    column.calc_time_series("H", (*fld_mean).data(), no_offset);
+
+    get_tiled_mean(*fld_mean, "LE", TF(1));
+    column.calc_time_series("LE", (*fld_mean).data(), no_offset);
+
+    get_tiled_mean(*fld_mean, "G", TF(1));
+    column.calc_time_series("G", (*fld_mean).data(), no_offset);
+
+    fields.release_tmp_xy(fld_mean);
 }
 #endif
 
