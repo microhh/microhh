@@ -354,7 +354,6 @@ void Boundary_surface_lsm<TF>::exec(
 
     // NOTE: `get_buoyancy_surf` calculates the first model level buoyancy only,
     //       but since this is written at `kstart`, we can't use a 2D slice...
-    //auto b_a = fields.get_tmp_xy();
     auto buoy = fields.get_tmp();
     auto b_bot = fields.get_tmp_xy();
 
@@ -385,6 +384,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     //
     // LSM calculations
+    //
     // Calculate dynamic tile fractions
     lsmk::calc_tile_fractions(
             tiles.at("veg").fraction.data(),
@@ -445,7 +445,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             gd.icells);
 
-    // Loop over tiles
+    // Loop over tiles, and calculate tile properties and fluxes
     for (auto& tile : tiles)
     {
         bool use_cs_veg = (tile.first == "veg");
@@ -596,6 +596,10 @@ void Boundary_surface_lsm<TF>::exec(
     get_tiled_mean(fields.sp.at("thl")->fld_bot, "thl_bot", TF(1));
     get_tiled_mean(fields.sp.at("qt")->fld_bot, "qt_bot", TF(1));
 
+    // Set ghost cells `thl_bot`, `qt_bot`, needed for surface scheme
+    boundary_cyclic.exec_2d(fields.sp.at("thl")->fld_bot.data());
+    boundary_cyclic.exec_2d(fields.sp.at("qt") ->fld_bot.data());
+
     // Calculate bulk Obukhov length.
     calc_bulk_obuk(
             obuk.data(),
@@ -633,6 +637,269 @@ void Boundary_surface_lsm<TF>::exec(
             fields.sp.at("qt")->fld_bot.data(),
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
+
+    std::fill((*rain_rate).begin(), (*rain_rate).end(), 0.5/3600.);
+
+    // Calculate changes in the liquid water reservoir
+    lsmk::calc_liquid_water_reservoir(
+            fields.at2d.at("wl").data(),
+            interception.data(),
+            throughfall.data(),
+            fields.ap2d.at("wl").data(),
+            tiles.at("veg").LE.data(),
+            tiles.at("soil").LE.data(),
+            tiles.at("wet").LE.data(),
+            tiles.at("veg").fraction.data(),
+            tiles.at("soil").fraction.data(),
+            tiles.at("wet").fraction.data(),
+            (*rain_rate).data(),
+            c_veg.data(),
+            lai.data(), subdt,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    if (sw_water)
+    {
+        //// Set BCs for water grid points
+        //lsm::set_water_bcs(
+        //        fields.sp.at("thl")->fld_bot.data(),
+        //        fields.sp.at("qt")->fld_bot.data(),
+        //        water_mask.data(),
+        //        exnerh.data(), prefh.data(),
+        //        tskin_water,
+        //        agd.istart, agd.iend,
+        //        agd.jstart, agd.jend,
+        //        agd.kstart, agd.icells);
+
+        //// Modify tile properties over water grid points
+        //// NOTE: this is an ugly hack :'-(
+        //lsm::set_water_tiles(
+        //        tiles.at("veg").fraction.data(),
+        //        tiles.at("soil").fraction.data(),
+        //        tiles.at("wet").fraction.data(),
+        //        tiles.at("veg").H.data(),
+        //        tiles.at("soil").H.data(),
+        //        tiles.at("wet").H.data(),
+        //        tiles.at("veg").LE.data(),
+        //        tiles.at("soil").LE.data(),
+        //        tiles.at("wet").LE.data(),
+        //        tiles.at("veg").G.data(),
+        //        tiles.at("soil").G.data(),
+        //        tiles.at("wet").G.data(),
+        //        tiles.at("veg").rs.data(),
+        //        tiles.at("soil").rs.data(),
+        //        tiles.at("wet").rs.data(),
+        //        water_mask.data(),
+        //        fields.sp.at("thl")->fld.data(),
+        //        fields.sp.at("qt")->fld.data(),
+        //        fields.sp.at("thl")->fld_bot.data(),
+        //        fields.sp.at("qt")->fld_bot.data(),
+        //        tmp1->flux_bot.data(),
+        //        rhorefh.data(),
+        //        agd.istart, agd.iend,
+        //        agd.jstart, agd.jend,
+        //        agd.kstart,
+        //        agd.icells, agd.ijcells);
+    }
+
+    //
+    // Calculate soil tendencies
+    //
+//    auto& agd = grid.get_grid_data();
+//    auto& sgd = soil_grid.get_grid_data();
+//
+//    auto tmp1 = fields.get_tmp();
+//
+//    // Only soil moisture has a source and conductivity term
+//    const bool sw_source_term_t = false;
+//    const bool sw_conductivity_term_t = false;
+//    const bool sw_source_term_theta = true;
+//    const bool sw_conductivity_term_theta = true;
+//
+//    //
+//    // Soil temperature
+//    //
+//    // Calculate the thermal diffusivity at full levels
+//    soil::calc_thermal_properties(
+//            diffusivity.data(),
+//            conductivity.data(),
+//            soil_index.data(),
+//            fields.sps.at("theta")->fld.data(),
+//            theta_sat.data(),
+//            gamma_T_dry.data(),
+//            rho_C.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Linear interpolation diffusivity to half levels
+//    soil::interp_2_vertical<TF, Soil_interpolation_type::Harmonic_mean>(
+//            diffusivity_h.data(),
+//            diffusivity.data(),
+//            sgd.dz.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Set flux boundary conditions at top and bottom of soil column
+//    // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
+//    get_tiled_mean(tmp1->fld_bot, "G");
+//
+//    soil::set_bcs_temperature(
+//            fields.sps.at("t")->flux_top.data(),
+//            fields.sps.at("t")->flux_bot.data(),
+//            tmp1->fld_bot.data(),
+//            rho_C.data(),
+//            soil_index.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Calculate diffusive tendency
+//    soil::diff_explicit<TF, sw_source_term_t, sw_conductivity_term_t>(
+//            fields.sts.at("t")->fld.data(),
+//            fields.sps.at("t")->fld.data(),
+//            diffusivity_h.data(),
+//            conductivity_h.data(),
+//            source.data(),
+//            fields.sps.at("t")->flux_top.data(),
+//            fields.sps.at("t")->flux_bot.data(),
+//            sgd.dzi.data(), sgd.dzhi.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    //
+//    // Soil moisture
+//    //
+//    // Calculate the hydraulic diffusivity and conductivity at full levels
+//    soil::calc_hydraulic_properties(
+//            diffusivity.data(),
+//            conductivity.data(),
+//            soil_index.data(),
+//            fields.sps.at("theta")->fld.data(),
+//            theta_sat.data(),
+//            theta_res.data(),
+//            vg_a.data(),
+//            vg_l.data(),
+//            vg_m.data(),
+//            gamma_theta_sat.data(),
+//            gamma_theta_min.data(),
+//            gamma_theta_max.data(),
+//            kappa_theta_min.data(),
+//            kappa_theta_max.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Interpolation diffusivity and conductivity to half levels,
+//    // using the IFS method, which uses the max value from the
+//    // two surrounding grid points.
+//    soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
+//            diffusivity_h.data(),
+//            diffusivity.data(),
+//            sgd.dz.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    soil::interp_2_vertical<TF, Soil_interpolation_type::Max>(
+//            conductivity_h.data(),
+//            conductivity.data(),
+//            sgd.dz.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Calculate infiltration/runoff
+//    soil::calc_infiltration(
+//            infiltration.data(),
+//            runoff.data(),
+//            throughfall.data(),
+//            fields.sps.at("theta")->fld.data(),
+//            theta_sat.data(),
+//            kappa_theta_max.data(),
+//            gamma_theta_max.data(),
+//            sgd.dz.data(),
+//            soil_index.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Set the boundary conditions.
+//    // Top = evaporation from bare soil tile.
+//    // Bottom = optionally free drainage (or else closed)
+//    if (sw_free_drainage)
+//        soil::set_bcs_moisture<TF, true>(
+//                fields.sps.at("theta")->flux_top.data(),
+//                fields.sps.at("theta")->flux_bot.data(),
+//                conductivity_h.data(),
+//                tiles.at("soil").LE.data(),
+//                tiles.at("soil").fraction.data(),
+//                infiltration.data(),
+//                agd.istart, agd.iend,
+//                agd.jstart, agd.jend,
+//                sgd.kstart, sgd.kend,
+//                agd.icells, agd.ijcells);
+//    else
+//        soil::set_bcs_moisture<TF, false>(
+//                fields.sps.at("theta")->flux_top.data(),
+//                fields.sps.at("theta")->flux_bot.data(),
+//                conductivity_h.data(),
+//                tiles.at("soil").LE.data(),
+//                tiles.at("soil").fraction.data(),
+//                infiltration.data(),
+//                agd.istart, agd.iend,
+//                agd.jstart, agd.jend,
+//                sgd.kstart, sgd.kend,
+//                agd.icells, agd.ijcells);
+//
+//    // Calculate root water extraction
+//    lsm::scale_tile_with_fraction(
+//            tmp1->fld_bot.data(),
+//            tiles.at("veg").LE.data(),
+//            tiles.at("veg").fraction.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            agd.icells);
+//
+//    soil::calc_root_water_extraction(
+//            source.data(),
+//            tmp1->fld_top.data(),   // tmp field
+//            fields.sps.at("theta")->fld.data(),
+//            root_fraction.data(),
+//            tmp1->fld_bot.data(),
+//            sgd.dzi.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    // Calculate diffusive tendency
+//    soil::diff_explicit<TF, sw_source_term_theta, sw_conductivity_term_theta>(
+//            fields.sts.at("theta")->fld.data(),
+//            fields.sps.at("theta")->fld.data(),
+//            diffusivity_h.data(),
+//            conductivity_h.data(),
+//            source.data(),
+//            fields.sps.at("theta")->flux_top.data(),
+//            fields.sps.at("theta")->flux_bot.data(),
+//            sgd.dzi.data(), sgd.dzhi.data(),
+//            agd.istart, agd.iend,
+//            agd.jstart, agd.jend,
+//            sgd.kstart, sgd.kend,
+//            agd.icells, agd.ijcells);
+//
+//    fields.release_tmp(tmp1);
 
 
     fields.release_tmp_xy(dutot);
