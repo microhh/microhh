@@ -429,7 +429,7 @@ namespace Land_surface_kernels
 
         // Lambda function for calculating SEB closure (SEB = Qn - H - LE - G).
         auto calc_seb_closure = [&](
-                const TF thl_bot, const TF qt_bot, TF& obuk, bool sw_constant_z0,
+                const TF thl_bot, TF& qt_bot, TF& obuk, bool sw_constant_z0,
                 const int ij, const int ijk, const int ijk_s)
         {
             const TF T_bot = thl_bot * exner_bot;
@@ -465,7 +465,7 @@ namespace Land_surface_kernels
             const TF seb = Qn - H - LE - G;
 
             // Update qt_bot
-            //qt_bot = qt[ijk] + LE * ra / (rho_bot * Lv<TF>);
+            qt_bot = qt[ijk] + LE * ra / (rho_bot * Lv<TF>);
 
             return seb;
         };
@@ -520,8 +520,15 @@ namespace Land_surface_kernels
                     const TF slope = (seb_1 - seb_0) / eps_thl;
                     const TF dtheta = std::max(-max_dtheta, std::min(-seb_0 / slope, max_dtheta));
 
+                    // Exit for very large slopes, where dSEB/dthl_bot is very large
+                    //if (std::abs(slope) > max_slope)
+                    //{
+                    //    std::cout << "WARNING: SEB solver not converged..." << std::endl;
+                    //    break;
+                    //}
+
                     // Increment thl_bot
-                    thl_bot[ij] += 0.5*dtheta;
+                    thl_bot[ij] += dtheta;
                 }
 
                 // Calculate/set final values
