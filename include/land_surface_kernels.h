@@ -330,7 +330,8 @@ namespace Land_surface_kernels
             }
     }
 
-    template<typename TF, bool sw_constant_z0>
+    //template<typename TF, bool sw_constant_z0>
+    template<typename TF>
     void calc_stability_and_fluxes(
             TF* const restrict H,
             TF* const restrict LE,
@@ -369,6 +370,7 @@ namespace Land_surface_kernels
             const int kstart, const int kend_soil,
             const int icells, const int ijcells,
             const bool use_cs_veg,
+            const bool sw_constant_z0,
             const std::string name,
             const int iter,
             const int subs)
@@ -378,10 +380,61 @@ namespace Land_surface_kernels
         const TF rho_bot = rhorefh[kstart];
         const TF p_bot = prefh[kstart];
 
+        // Lambda function for calculating SEB closure (SEB = Qn - H - LE - G).
+        auto calc_seb_closure = [&](
+                const TF thl_bot, TF& qt_bot, TF& obuk, bool sw_constant_z0,
+                const int ij, const int ijk, const int ijk_s)
+        {
+            const TF T_bot = thl_bot * exner_bot;
+            const TF qsat_bot = tmf::qsat(p_bot, T_bot);
+
+            // Disable canopy resistance in case of dew fall
+            const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
+
+            // Surface layer calculations
+            const TF bbot = tmf::buoyancy_no_ql(thl_bot, qt_bot, thvref_bot);
+            const TF db = b[ijk] - bbot + db_ref;
+
+            if (sw_constant_z0)
+                obuk = bsk::calc_obuk_noslip_dirichlet_lookup(
+                        zL_sl, f_sl, nobuk[ij], du_tot[ij], db, zsl);
+            else
+                obuk = bsk::calc_obuk_noslip_dirichlet_iterative(
+                            obuk, du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
+
+            const TF ustar = du_tot[ij] * most::fm(zsl, z0m[ij], obuk);
+            const TF ra = TF(1) / (ustar * most::fh(zsl, z0h[ij], obuk));
+
+            // Switch conductivity skin layer stable/unstable conditions
+            const TF lambda = db > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
+
+            // Calculate fluxes
+            const TF H  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
+            const TF LE = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
+            const TF G  = lambda * (T_bot - T_soil[ijk_s]);
+            const TF lw_up_n = sigma_b<TF> * fm::pow4(T_bot);
+
+            const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
+            const TF seb = Qn - H - LE - G;
+
+            // Update qt_bot
+            qt_bot = qt[ijk] + LE * ra / (rho_bot * Lv<TF>);
+
+            return seb;
+        };
+
         int max_iters = 0;
 
         const TF eps_thl = TF(1e-6);
         const TF eps_seb = TF(1e-1);
+
+        const TF max_step = TF(1);
+        const TF min_step = TF(0.001);
+        const int max_it = 1000;
+
+        const TF max_slope = TF(100);
+
+        int did_not_converge = 0;
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -392,159 +445,117 @@ namespace Land_surface_kernels
                 const int ijk_s = ij + (kend_soil-1)*ijcells;
 
                 TF qt_bot_p = qt_bot[ij];
+                TF obuk_p = obuk[ij];
+
+                // Store data for debugging output
+                const TF thl_bot_in = thl_bot[ij];
+                const TF qt_bot_in = qt_bot[ij];
+                const TF obuk_in = obuk[ij];
 
                 int it;
-                const int max_it = 10000; // usually <10 is enough...
                 for (it=0; it<max_it; ++it)
                 {
-                    TF max_step;
-                    if (it < 10)
-                        max_step = TF(1);
-                    else if (it < 100)
-                        max_step = TF(0.1);
-                    else if (it < 1000)
-                        max_step = TF(0.01);
-                    else
-                        max_step = TF(0.001);
+                    const TF max_dtheta = max_step + it * (min_step-max_step)/(max_it-1);
 
-                    // ---------------------------
                     // Solve for actual thl_bot
-                    // ---------------------------
-                    const TF T_bot = thl_bot[ij] * exner_bot;
-                    const TF qsat_bot = tmf::qsat(p_bot, T_bot);
+                    const TF seb_0 = calc_seb_closure(
+                            thl_bot[ij], qt_bot[ij], obuk[ij], sw_constant_z0, ij, ijk, ijk_s);
 
-                    // Disable canopy resistance in case of dew fall
-                    const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
-
-                    // Switch between skin heat capacity or not
-                    const TF cs_veg_lim = use_cs_veg ? cs_veg[ij] : TF(0);
-
-                    // Surface layer calculations
-                    const TF bbot = tmf::buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
-                    const TF db = b[ijk] - bbot + db_ref;
-
-                    if (sw_constant_z0)
-                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
-                                zL_sl, f_sl, nobuk[ij], du_tot[ij], db, zsl);
-                    else
-                        obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
-                                obuk[ij], du_tot[ij], db, zsl, z0m[ij], z0h[ij]);
-
-                    ustar[ij] = du_tot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-                    const TF ra = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
-
-                    // Switch conductivity skin layer stable/unstable conditions
-                    const TF lambda = db > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
-
-                    // Calculate fluxes
-                    H[ij]  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
-                    LE[ij] = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
-                    G[ij]  = lambda * (T_bot - T_soil[ijk_s]);
-                    const TF lw_up_n = sigma_b<TF> * fm::pow4(T_bot);
-
-                    const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
-                    const TF seb = Qn - H[ij] - LE[ij] - G[ij];
-
-                    // Update surface value qt
-                    qt_bot[ij] = qt[ijk] + LE[ij] * ra / (rho_bot * Lv<TF>);
-
-                    if (std::abs(seb) < eps_seb)
-                    {
-                        bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+                    // Exit if SEB closes (Qn = H+LE+G)
+                    if (std::abs(seb_0) < eps_seb)
                         break;
-                    }
 
-                    // ---------------------------
-                    // Solve for perturbed thl_bot
-                    // ---------------------------
-                    const TF thl_bot_p = thl_bot[ij] + eps_thl;
+                    // Solve for perturbued thl_bot
+                    const TF seb_1 = calc_seb_closure(
+                            thl_bot[ij]+eps_thl, qt_bot_p, obuk_p, sw_constant_z0, ij, ijk, ijk_s);
 
-                    const TF T_bot_p = thl_bot_p * exner_bot;
-                    const TF qsat_bot_p = tmf::qsat(p_bot, T_bot_p);
+                    // Calculate increment thl_bot
+                    const TF slope = (seb_1 - seb_0) / eps_thl;
+                    const TF dtheta = std::max(-max_dtheta, std::min(-seb_0 / slope, max_dtheta));
 
-                    // Disable canopy resistance in case of dew fall
-                    const TF rs_lim_p = qsat_bot_p < qt[ijk] ? TF(0) : rs[ij];
+                    // Exit for very large slopes, where dSEB/dthl_bot is very large
+                    //if (std::abs(slope) > max_slope)
+                    //{
+                    //    std::cout << "WARNING: SEB solver not converged..." << std::endl;
+                    //    break;
+                    //}
 
-                    // Surface layer calculations
-                    const TF bbot_p = tmf::buoyancy_no_ql(thl_bot_p, qt_bot_p, thvrefh[kstart]);
-                    const TF db_p = b[ijk] - bbot_p + db_ref;
-
-                    TF obuk_p;
-                    if (sw_constant_z0)
-                        obuk_p = bsk::calc_obuk_noslip_dirichlet_lookup(
-                                zL_sl, f_sl, nobuk[ij], du_tot[ij], db_p, zsl);
-                    else
-                    {
-                        // NOTE: I left obuk[ij] as a starting point here,
-                        // otherwise we need to save a restart file for it..
-                        obuk_p = bsk::calc_obuk_noslip_dirichlet_iterative(
-                                obuk[ij], du_tot[ij], db_p, zsl, z0m[ij], z0h[ij]);
-                    }
-
-                    const TF ustar_p = du_tot[ij] * most::fm(zsl, z0m[ij], obuk_p);
-                    const TF ra_p = TF(1) / (ustar_p * most::fh(zsl, z0h[ij], obuk_p));
-
-                    // Switch conductivity skin layer stable/unstable conditions
-                    const TF lambda_p = db_p > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
-
-                    // Calculate fluxes
-                    const TF H_p  = rho_bot * cp<TF> / ra_p * (T_bot_p - T[ij]);
-                    const TF LE_p = rho_bot * Lv<TF> / (ra_p + rs_lim_p) * (qsat_bot_p - qt[ijk]);
-                    const TF G_p  = lambda_p * (T_bot_p - T_soil[ijk_s]);
-                    const TF lw_up_n_p = sigma_b<TF> * fm::pow4(T_bot_p);
-
-                    const TF Qn_p = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n_p;
-                    const TF seb_p = Qn_p - H_p - LE_p - G_p;
-
-                    const TF slope = (seb_p - seb) / eps_thl;
-                    const TF dtheta = -seb / slope;
-
-                    // Update surface value qt
-                    qt_bot_p = qt[ijk] + LE_p * ra_p / (rho_bot * Lv<TF>);
-
-                    thl_bot[ij] += std::max(-max_step, std::min(dtheta, max_step));
+                    // Increment thl_bot
+                    const TF fac = it < 10 ? TF(1) : TF(0.5);
+                    thl_bot[ij] += fac*dtheta;
                 }
 
-                max_iters = std::max(max_iters, it);
+                // Calculate/set final values
+                const TF T_bot = thl_bot[ij] * exner_bot;
+                const TF qsat_bot = tmf::qsat(p_bot, T_bot);
+
+                // Disable canopy resistance in case of dew fall
+                const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
+
+                // Surface layer calculations
+                const TF bbot = tmf::buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvref_bot);
+                const TF db = b[ijk] - bbot + db_ref;
+
+                ustar[ij] = du_tot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+                const TF ra = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
+
+                // Switch conductivity skin layer stable/unstable conditions
+                const TF lambda = db > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
+
+                // Calculate fluxes
+                H[ij]  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
+                LE[ij] = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
+                G[ij]  = lambda * (T_bot - T_soil[ijk_s]);
+                bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
 
                 if (it == max_it)
                 {
-                    //std::cout << "========================" << std::endl;
-                    //std::cout << i << " " << j << " " <<  iter << " " << subs << " " << name << std::endl;
-                    //std::cout << "Input:" << std::endl;
-                    //std::cout << std::setprecision(20) << "thl_bot = " << thl_bot_in << std::endl;
-                    //std::cout << std::setprecision(20) << "qt_bot = " << qt_bot_in << std::endl;
-                    //std::cout << std::setprecision(20) << "T_a = " << T[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "qt = " << qt[ijk] << std::endl;
-                    //std::cout << std::setprecision(20) << "du_tot = " << du_tot[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "T_soil = " << T_soil[ijk_s] << std::endl;
-                    //std::cout << std::setprecision(20) << "sw_dn = " << sw_dn[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "sw_up = " << sw_up[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "lw_dn = " << lw_dn[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "lw_up = " << lw_up[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "exner_bot = " << exner_bot << std::endl;
-                    //std::cout << std::setprecision(20) << "p_bot = " << p_bot << std::endl;
-                    //std::cout << std::setprecision(20) << "rho_bot = " << rho_bot << std::endl;
-                    //std::cout << std::setprecision(20) << "rs = " << rs[ij] << std::endl;
-                    //std::cout << std::setprecision(20) << "b = " << b[ijk] << std::endl;
-                    //std::cout << std::setprecision(20) << "db_ref = " << db_ref << std::endl;
-                    //std::cout << std::setprecision(20) << "thvrefh = " << thvrefh[kstart] << std::endl;
-                    //std::cout << std::setprecision(20) << "obuk = " << obuk_in << std::endl;
+                    did_not_converge += 1;
+
+                    std::cout << i << " " << j << " " <<  iter << " " << subs << " " << name << std::endl;
+                    std::cout << "Input:" << std::endl;
+                    std::cout << std::setprecision(20) << "thl_bot = " << thl_bot_in << std::endl;
+                    std::cout << std::setprecision(20) << "qt_bot = " << qt_bot_in << std::endl;
+                    std::cout << std::setprecision(20) << "T_a = " << T[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "qt = " << qt[ijk] << std::endl;
+                    std::cout << std::setprecision(20) << "du_tot = " << du_tot[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "T_soil = " << T_soil[ijk_s] << std::endl;
+                    std::cout << std::setprecision(20) << "sw_dn = " << sw_dn[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "sw_up = " << sw_up[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "lw_dn = " << lw_dn[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "lw_up = " << lw_up[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "exner_bot = " << exner_bot << std::endl;
+                    std::cout << std::setprecision(20) << "p_bot = " << p_bot << std::endl;
+                    std::cout << std::setprecision(20) << "rho_bot = " << rho_bot << std::endl;
+                    std::cout << std::setprecision(20) << "rs = " << rs[ij] << std::endl;
+                    std::cout << std::setprecision(20) << "b = " << b[ijk] << std::endl;
+                    std::cout << std::setprecision(20) << "db_ref = " << db_ref << std::endl;
+                    std::cout << std::setprecision(20) << "thvrefh = " << thvrefh[kstart] << std::endl;
+                    std::cout << std::setprecision(20) << "obuk = " << obuk_in << std::endl;
+
+                    // NOTE BvS: I'm letting the non-converged iteration pass for now.
+                    // In all situations that I have seen, the iteration does not converge
+                    // when `slope` (dSEB/dthl_bot) becomes very large. In those case,
+                    // the solver is more or less converged, and just jumping between
+                    // two almost similar `thl_bot` values.
 
                     std::string error = "SEB solver did not converge for tile: \"" + name + "\"";
-
-                    std::cout << error << std::endl;
-                    //#ifdef USEMPI
-                    //    std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
-                    //    MPI_Abort(MPI_COMM_WORLD, 1);
-                    //#else
-                    //    throw std::runtime_error(error);
-                    //#endif
+                    #ifdef USEMPI
+                        std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+                        MPI_Abort(MPI_COMM_WORLD, 1);
+                    #else
+                        throw std::runtime_error(error);
+                    #endif
                 }
+
+                // Just for statistics...
+                max_iters = std::max(max_iters, it);
             }
 
-            if (max_iters >= 20)
-                std::cout << "Tile \"" + name + "\" required: " << max_iters << " SEB iterations!" << std::endl;
+            if (did_not_converge > 0)
+                std::cout << "Tile \"" + name + "\", SEB solver did not converge for: " << did_not_converge << " grid points!" << std::endl;
+            else if (max_iters >= 10)
+                std::cout << "Tile \"" + name + "\" required: " << max_iters << " SEB iterations..." << std::endl;
     }
 
     template<typename TF>
