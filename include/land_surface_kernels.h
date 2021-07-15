@@ -359,7 +359,7 @@ namespace Land_surface_kernels
                 const TF num =
                     Qnet + lw_up[ij] + fH*T[ij] +
                     fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
-                    lambda*T_soil[ijk_s] + TF(3)*emis_sfc*sigma_b<TF>*fm::pow4(T_bot);
+                    lambda*T_soil[ijk_s] + TF(3)*emis_sfc*sigma_b<TF>*fm::pow4(T_bot) - (TF(1)-emis_sfc) * lw_dn[ij];
                 const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*emis_sfc*sigma_b<TF>*fm::pow3(T_bot);
                 const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
 
