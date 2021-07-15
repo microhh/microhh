@@ -269,6 +269,10 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_iter_seb      = inputin.get_item<bool>("land_surface", "switerseb", "", false);
 
+    // BvS: for now, read surface emission from radiation group. This needs
+    // to be coupled correctly, also for 2D varying emissivities.
+    emis_sfc = inputin.get_item<TF>("radiation", "emis_sfc", "");
+
     if (sw_water)
         tskin_water = inputin.get_item<TF>("land_surface", "tskin_water", "");
 
@@ -485,7 +489,8 @@ void Boundary_surface_lsm<TF>::exec(
                     prefh.data(),
                     f_sl.data(),
                     zL_sl.data(),
-                    db_ref, gd.z[gd.kstart],
+                    db_ref, emis_sfc,
+                    gd.z[gd.kstart],
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, sgd.kend,
@@ -521,7 +526,8 @@ void Boundary_surface_lsm<TF>::exec(
                         z0m.data(), z0h.data(),
                         zL_sl.data(),
                         f_sl.data(),
-                        db_ref, gd.z[gd.kstart],
+                        db_ref,
+                        gd.z[gd.kstart],
                         gd.istart, gd.iend,
                         gd.jstart, gd.jend,
                         gd.kstart,
@@ -540,7 +546,8 @@ void Boundary_surface_lsm<TF>::exec(
                         z0m.data(), z0h.data(),
                         zL_sl.data(),
                         f_sl.data(),
-                        db_ref, gd.z[gd.kstart],
+                        db_ref,
+                        gd.z[gd.kstart],
                         gd.istart, gd.iend,
                         gd.jstart, gd.jend,
                         gd.kstart,
@@ -573,7 +580,8 @@ void Boundary_surface_lsm<TF>::exec(
                     buoy->fld_bot.data(),
                     rhorefh.data(),
                     exnrefh.data(),
-                    db_ref, TF(subdt),
+                    db_ref, emis_sfc,
+                    TF(subdt),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, sgd.kend,

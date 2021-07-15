@@ -316,7 +316,9 @@ namespace Land_surface_kernels
             const TF* const restrict b_bot,
             const TF* const restrict rhorefh,
             const TF* const restrict exnerh,
-            const TF db_ref, const TF dt,
+            const TF db_ref,
+            const TF emis_sfc,
+            const TF dt,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
@@ -357,8 +359,8 @@ namespace Land_surface_kernels
                 const TF num =
                     Qnet + lw_up[ij] + fH*T[ij] +
                     fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
-                    lambda*T_soil[ijk_s] + TF(3)*sigma_b<TF>*fm::pow4(T_bot);
-                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*sigma_b<TF>*fm::pow3(T_bot);
+                    lambda*T_soil[ijk_s] + TF(3)*emis_sfc*sigma_b<TF>*fm::pow4(T_bot);
+                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*emis_sfc*sigma_b<TF>*fm::pow3(T_bot);
                 const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
 
                 // Update qsat with linearised relation, to make sure that the SEB closes
@@ -411,7 +413,9 @@ namespace Land_surface_kernels
             const TF* const restrict prefh,
             const float* const restrict f_sl,
             const float* const restrict zL_sl,
-            const TF db_ref, const TF zsl,
+            const TF db_ref,
+            const TF emis_sfc,
+            const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
@@ -459,7 +463,7 @@ namespace Land_surface_kernels
             const TF H  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
             const TF LE = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
             const TF G  = lambda * (T_bot - T_soil[ijk_s]);
-            const TF lw_up_n = sigma_b<TF> * fm::pow4(T_bot);
+            const TF lw_up_n = emis_sfc * sigma_b<TF> * fm::pow4(T_bot) + (TF(1) - emis_sfc) * lw_dn[ij];
 
             const TF Qn = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up_n;
             const TF seb = Qn - H - LE - G;
@@ -470,7 +474,7 @@ namespace Land_surface_kernels
         int max_iters = 0;
 
         const TF eps_thl = TF(1e-6);
-        const TF eps_seb = TF(1e-1);
+        const TF eps_seb = TF(1e-3);
 
         const TF max_step = TF(1);
         const TF min_step = TF(0.001);
@@ -509,7 +513,7 @@ namespace Land_surface_kernels
                     if (std::abs(seb_0) < eps_seb)
                         break;
 
-                    // Solve for perturbued thl_bot
+                    // Solve for perturbed thl_bot
                     const TF seb_1 = calc_seb_closure(
                             thl_bot[ij]+eps_thl, qt_bot_p, obuk_p, sw_constant_z0, ij, ijk, ijk_s);
 
@@ -593,7 +597,7 @@ namespace Land_surface_kernels
 
             if (did_not_converge > 0)
                 std::cout << "Tile \"" + name + "\", SEB solver did not converge for: " << did_not_converge << " grid points!" << std::endl;
-            else if (max_iters >= 10)
+            else if (max_iters >= 20)
                 std::cout << "Tile \"" + name + "\" required: " << max_iters << " SEB iterations..." << std::endl;
     }
 

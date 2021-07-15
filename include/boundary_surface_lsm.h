@@ -129,6 +129,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_iter_seb;
 
         TF tskin_water;
+        TF emis_sfc;
 
         std::vector<std::string> tile_names {"veg", "soil" ,"wet"};
         Tile_map<TF> tiles;
