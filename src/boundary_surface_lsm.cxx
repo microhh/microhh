@@ -608,6 +608,9 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d(fields.sp.at("thl")->fld_bot.data());
     boundary_cyclic.exec_2d(fields.sp.at("qt") ->fld_bot.data());
 
+    boundary_cyclic.exec_2d(ustar.data());
+    boundary_cyclic.exec_2d(obuk.data());
+
     // Calculate bulk Obukhov length.
     calc_bulk_obuk(
             obuk.data(),
@@ -645,6 +648,31 @@ void Boundary_surface_lsm<TF>::exec(
             fields.sp.at("qt")->fld_bot.data(),
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
+
+    // Calculate MO gradients, which are used
+    // by the diffusion scheme.
+    bsk::calc_duvdz(
+            dudz_mo.data(), dvdz_mo.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+
+    bsk::calc_dbdz(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 
     // Calculate changes in the liquid water reservoir
     lsmk::calc_liquid_water_reservoir(
