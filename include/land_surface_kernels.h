@@ -379,6 +379,15 @@ namespace Land_surface_kernels
             }
     }
 
+    template<typename TF>
+    TF smooth(const TF v1, const TF v2,
+              const TF x1, const TF x2,
+              const TF x)
+    {
+        const TF f = std::max(TF(0), std::min(TF(1), (x2-x)/(x2-x1)));
+        return f*v1 + (TF(1)-f)*v2;
+    }
+
     //template<typename TF, bool sw_constant_z0>
     template<typename TF>
     void calc_stability_and_fluxes(
@@ -440,7 +449,11 @@ namespace Land_surface_kernels
             const TF qsat_bot = tmf::qsat(p_bot, T_bot);
 
             // Disable canopy resistance in case of dew fall
-            const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
+            //const TF rs_lim = qsat_bot < qt[ijk] ? TF(0) : rs[ij];
+
+            // Smooth rs around qsat_bot == qt:
+            const TF rs_lim = smooth(
+                    TF(0), rs[ij], qt[ijk], qt[ijk]+TF(1e-4), qsat_bot);
 
             // Surface layer calculations
             const TF bbot = tmf::buoyancy_no_ql(thl_bot, qt_bot, thvref_bot);
@@ -457,7 +470,14 @@ namespace Land_surface_kernels
             const TF ra = TF(1) / (ustar * most::fh(zsl, z0h[ij], obuk));
 
             // Switch conductivity skin layer stable/unstable conditions
-            const TF lambda = db > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
+            //const TF lambda = db > TF(0) ? lambda_stable[ij] : lambda_unstable[ij];
+
+            // Smooth Lambda_skin around db=0:
+            const TF db_eps = TF(0.005);
+            const TF lambda = smooth(
+                lambda_stable[ij], lambda_unstable[ij], db_eps, -db_eps, db);
+
+            std::cout << lambda << std::endl;
 
             // Calculate fluxes
             const TF H  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
