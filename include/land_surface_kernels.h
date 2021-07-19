@@ -433,7 +433,8 @@ namespace Land_surface_kernels
             const bool sw_constant_z0,
             const std::string name,
             const int iter,
-            const int subs)
+            const int subs,
+            const int mpiid)
     {
         const TF thvref_bot = thvrefh[kstart];
         const TF exner_bot = exnerh[kstart];
@@ -477,8 +478,6 @@ namespace Land_surface_kernels
             const TF lambda = smooth(
                 lambda_stable[ij], lambda_unstable[ij], db_eps, -db_eps, db);
 
-            std::cout << lambda << std::endl;
-
             // Calculate fluxes
             const TF H  = rho_bot * cp<TF> / ra * (T_bot - T[ij]);
             const TF LE = rho_bot * Lv<TF> / (ra + rs_lim) * (qsat_bot - qt[ijk]);
@@ -494,7 +493,7 @@ namespace Land_surface_kernels
         int max_iters = 0;
 
         const TF eps_thl = TF(1e-6);
-        const TF eps_seb = TF(1e-3);
+        const TF eps_seb = TF(1e-1);
 
         const TF max_step = TF(1);
         const TF min_step = TF(0.001);
@@ -542,7 +541,7 @@ namespace Land_surface_kernels
                     const TF dtheta = std::max(-max_dtheta, std::min(-seb_0 / slope, max_dtheta));
 
                     // Increment thl_bot
-                    thl_bot[ij] += TF(0.5)*dtheta;
+                    thl_bot[ij] += dtheta;
                 }
 
                 // Calculate/set final values
@@ -577,24 +576,24 @@ namespace Land_surface_kernels
 
                     std::cout << i << " " << j << " " <<  iter << " " << subs << " " << name << std::endl;
                     std::cout << "Input:" << std::endl;
-                    std::cout << std::setprecision(20) << "thl_bot = " << thl_bot_in << std::endl;
-                    std::cout << std::setprecision(20) << "qt_bot = " << qt_bot_in << std::endl;
-                    std::cout << std::setprecision(20) << "T_a = " << T[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "qt = " << qt[ijk] << std::endl;
-                    std::cout << std::setprecision(20) << "du_tot = " << du_tot[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "T_soil = " << T_soil[ijk_s] << std::endl;
-                    std::cout << std::setprecision(20) << "sw_dn = " << sw_dn[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "sw_up = " << sw_up[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "lw_dn = " << lw_dn[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "lw_up = " << lw_up[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "exner_bot = " << exner_bot << std::endl;
-                    std::cout << std::setprecision(20) << "p_bot = " << p_bot << std::endl;
-                    std::cout << std::setprecision(20) << "rho_bot = " << rho_bot << std::endl;
-                    std::cout << std::setprecision(20) << "rs = " << rs[ij] << std::endl;
-                    std::cout << std::setprecision(20) << "b = " << b[ijk] << std::endl;
-                    std::cout << std::setprecision(20) << "db_ref = " << db_ref << std::endl;
-                    std::cout << std::setprecision(20) << "thvrefh = " << thvrefh[kstart] << std::endl;
-                    std::cout << std::setprecision(20) << "obuk = " << obuk_in << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thl_bot = " << thl_bot_in << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt_bot = " << qt_bot_in << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_a = " << T[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt = " << qt[ijk] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " du_tot = " << du_tot[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_soil = " << T_soil[ijk_s] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_dn = " << sw_dn[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_up = " << sw_up[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_dn = " << lw_dn[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_up = " << lw_up[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " exner_bot = " << exner_bot << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " p_bot = " << p_bot << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rho_bot = " << rho_bot << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rs = " << rs[ij] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " b = " << b[ijk] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " db_ref = " << db_ref << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thvrefh = " << thvrefh[kstart] << std::endl;
+                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " obuk = " << obuk_in << std::endl;
 
                     // NOTE BvS: I'm letting the non-converged iteration pass for now.
                     // In all situations that I have seen, the iteration does not converge

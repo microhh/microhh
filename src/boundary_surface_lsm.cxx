@@ -385,6 +385,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     const int iter = timeloop.get_iteration();
     const int subs = timeloop.get_substep();
+    const int mpiid = master.get_mpiid();
 
     //
     // LSM calculations
@@ -498,7 +499,7 @@ void Boundary_surface_lsm<TF>::exec(
                     use_cs_veg,
                     sw_constant_z0,
                     tile.first,
-                    iter, subs);
+                    iter, subs, mpiid);
         }
         else
         {
