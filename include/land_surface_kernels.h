@@ -407,6 +407,7 @@ namespace Land_surface_kernels
             const TF* const restrict lw_up,
             const TF* const restrict du_tot,
             const TF* const restrict T,
+            const TF* const restrict thl,
             const TF* const restrict qt,
             const TF* const restrict b,
             const TF* const restrict T_soil,
@@ -492,11 +493,11 @@ namespace Land_surface_kernels
 
         int max_iters = 0;
 
-        const TF eps_thl = TF(1e-6);
-        const TF eps_seb = TF(1e-1);
+        const TF eps_thl = TF(1e-9);
+        const TF eps_seb = TF(2e-1);
 
         const TF max_step = TF(1);
-        const TF min_step = TF(0.001);
+        const TF min_step = TF(1e-6);
         const int max_it = 1000;
 
         const TF max_slope = TF(100);
@@ -541,7 +542,26 @@ namespace Land_surface_kernels
                     const TF dtheta = std::max(-max_dtheta, std::min(-seb_0 / slope, max_dtheta));
 
                     // Increment thl_bot
-                    thl_bot[ij] += dtheta;
+                    const TF fac = TF(1); //it < 20 ? TF(1.0) : TF(0.5);
+
+                    // When stability changes, push the solver just over the edge of neutral,
+                    // as an intermediate step. This prevents the solver from jumping back and forth...
+                    const TF bbot = tmf::buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvref_bot);
+                    const TF db = b[ijk] - bbot + db_ref;
+
+                    const TF bbot_new = tmf::buoyancy_no_ql(thl_bot[ij]+fac*dtheta, qt_bot[ij], thvref_bot);
+                    const TF db_new = b[ijk] - bbot_new + db_ref;
+
+                    if (db * db_new < TF(0))
+                    {
+                        const TF db_goal = std::copysign(TF(1e-6), db_new);
+                        const TF bbot_goal = -(db_goal - b[ijk] - db_ref);
+                        const TF thv_bot_goal = (bbot_goal + Constants::grav<TF>) / (Constants::grav<TF> / thvref_bot);
+
+                        thl_bot[ij] = thv_bot_goal / (TF(1.)-(TF(1.)-(Constants::Rv<TF>/Constants::Rd<TF>))*qt_bot[ij]);
+                    }
+                    else
+                        thl_bot[ij] += fac*dtheta;
                 }
 
                 // Calculate/set final values
@@ -574,32 +594,27 @@ namespace Land_surface_kernels
                 {
                     did_not_converge += 1;
 
-                    std::cout << i << " " << j << " " <<  iter << " " << subs << " " << name << std::endl;
-                    std::cout << "Input:" << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thl_bot = " << thl_bot_in << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt_bot = " << qt_bot_in << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_a = " << T[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt = " << qt[ijk] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " du_tot = " << du_tot[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_soil = " << T_soil[ijk_s] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_dn = " << sw_dn[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_up = " << sw_up[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_dn = " << lw_dn[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_up = " << lw_up[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " exner_bot = " << exner_bot << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " p_bot = " << p_bot << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rho_bot = " << rho_bot << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rs = " << rs[ij] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " b = " << b[ijk] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " db_ref = " << db_ref << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thvrefh = " << thvrefh[kstart] << std::endl;
-                    std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " obuk = " << obuk_in << std::endl;
-
-                    // NOTE BvS: I'm letting the non-converged iteration pass for now.
-                    // In all situations that I have seen, the iteration does not converge
-                    // when `slope` (dSEB/dthl_bot) becomes very large. In those case,
-                    // the solver is more or less converged, and just jumping between
-                    // two almost similar `thl_bot` values.
+                    //std::cout << i << " " << j << " " <<  iter << " " << subs << " " << name << std::endl;
+                    //std::cout << "Input:" << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thl_bot = " << thl_bot_in << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt_bot = " << qt_bot_in << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_a = " << T[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thl = " << thl[ijk] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " qt = " << qt[ijk] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " du_tot = " << du_tot[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " T_soil = " << T_soil[ijk_s] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_dn = " << sw_dn[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " sw_up = " << sw_up[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_dn = " << lw_dn[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " lw_up = " << lw_up[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " exner_bot = " << exner_bot << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " p_bot = " << p_bot << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rho_bot = " << rho_bot << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " rs = " << rs[ij] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " b = " << b[ijk] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " db_ref = " << db_ref << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " thvrefh = " << thvrefh[kstart] << std::endl;
+                    //std::cout << mpiid << " " << i << " " << j << std::setprecision(20) << " obuk = " << obuk_in << std::endl;
 
                     std::string error = "SEB solver did not converge for tile: \"" + name + "\"";
                     #ifdef USEMPI
@@ -616,6 +631,7 @@ namespace Land_surface_kernels
 
             if (did_not_converge > 0)
                 std::cout << "Tile \"" + name + "\", SEB solver did not converge for: " << did_not_converge << " grid points!" << std::endl;
+
             else if (max_iters >= 20)
                 std::cout << "Tile \"" + name + "\" required: " << max_iters << " SEB iterations..." << std::endl;
     }

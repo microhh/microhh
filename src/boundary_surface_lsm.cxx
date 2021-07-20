@@ -476,6 +476,7 @@ void Boundary_surface_lsm<TF>::exec(
                     lw_dn.data(), lw_up.data(),
                     (*dutot).data(),
                     (*T_a).data(),
+                    fields.sp.at("thl")->fld.data(),
                     fields.sp.at("qt")->fld.data(),
                     buoy->fld.data(),
                     fields.sps.at("t")->fld.data(),
