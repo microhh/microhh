@@ -1603,6 +1603,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(qi);
 
+        auto qlqi = fields.get_tmp();
+        qlqi->name = "qlqi";
+        qlqi->longname = "Liquid water and ice";
+        qlqi->unit = "kg kg-1";
+        stats.add_profs(*qlqi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        fields.release_tmp(qlqi);
+
         auto qsat = fields.get_tmp();
         qsat->name = "qsat";
         qsat->longname = "Saturated water vapor";
@@ -1769,6 +1776,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats("qi", *qi, no_offset, no_threshold);
 
     fields.release_tmp(qi);
+
+    // Calculate the combined liquid water and ice stats
+    auto qlqi = fields.get_tmp();
+    qlqi->loc = gd.sloc;
+
+    get_thermo_field(*qlqi, "ql_qi", true, true);
+    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
+
+    fields.release_tmp(qlqi);
 
     // Calculate the saturated water vapor stats
     auto qsat = fields.get_tmp();
