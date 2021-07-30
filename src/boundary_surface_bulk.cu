@@ -183,7 +183,9 @@ void Boundary_surface_bulk<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_stability(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
@@ -256,16 +258,6 @@ void Boundary_surface_bulk<TF>::calc_mo_stability(Thermo<TF>& thermo)
 
     fields.release_tmp_g(b);
     fields.release_tmp_g(dutot);
-}
-
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
-{
-}
-
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
-{
 }
 #endif
 

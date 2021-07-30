@@ -45,7 +45,7 @@ namespace
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
     template<typename TF> __device__
-    TF find_Obuk_g(
+    TF find_obuk_g(
             const float* const __restrict__ zL, const float* const __restrict__ f,
             int &n, const TF Ri, const TF zsl)
     {
@@ -62,21 +62,21 @@ namespace
 
 
     template<typename TF> __device__
-    TF calc_Obuk_noslip_flux_g(
+    TF calc_obuk_noslip_flux_g(
             float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
-        return find_Obuk_g(zL, f, n, Ri, zsl);
+        return find_obuk_g(zL, f, n, Ri, zsl);
     }
 
     template<typename TF> __device__
-    TF calc_Obuk_noslip_dirichlet_g(
+    TF calc_obuk_noslip_dirichlet_g(
             float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return find_Obuk_g(zL, f, n, Ri, zsl);
+        return find_obuk_g(zL, f, n, Ri, zsl);
     }
 
     /* Calculate absolute wind speed */
@@ -131,14 +131,14 @@ namespace
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk [ij] = calc_Obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                obuk [ij] = calc_obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
-                obuk [ij] = calc_Obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                obuk [ij] = calc_obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }
@@ -354,7 +354,9 @@ void Boundary_surface<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
+void Boundary_surface<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
@@ -418,29 +420,9 @@ void Boundary_surface<TF>::calc_mo_stability(Thermo<TF>& thermo)
     }
 
     fields.release_tmp_g(dutot);
-}
 
-template<typename TF>
-void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
-{
-    auto& gd = grid.get_grid_data();
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-
-    // For 2D field excluding ghost cells
-    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    dim3 gridGPU (gridi,  gridj,  1);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    // For 2D field including ghost cells
-    gridi = gd.icells/blocki + (gd.icells%blocki > 0);
-    gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    dim3 gridGPU2 (gridi,  gridj,  1);
-    dim3 blockGPU2(blocki, blockj, 1);
-
-    // Calculate surface momentum fluxes, excluding ghost cells
+    // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
+    // Momentum:
     surfm_flux_g<<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
         fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
@@ -461,23 +443,8 @@ void Boundary_surface<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
         fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
         gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
-}
 
-template<typename TF>
-void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
-{
-    auto& gd = grid.get_grid_data();
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-
-    // For 2D field including ghost cells
-    int gridi = gd.icells/blocki + (gd.icells%blocki > 0);
-    int gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    dim3 gridGPU2 (gridi,  gridj,  1);
-    dim3 blockGPU2(blocki, blockj, 1);
-
-    // Calculate scalar fluxes, gradients and/or values, including ghost cells
+    // Scalars:
     for (auto it : fields.sp)
         surfs_g<<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g, it.second->grad_bot_g,
@@ -486,12 +453,6 @@ void Boundary_surface<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
             gd.icells,  gd.jcells, gd.kstart,
             gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
     cuda_check_error();
-}
-
-template<typename TF>
-void Boundary_surface<TF>::get_ra(Field3d<TF>& fld)
-{
-    throw std::runtime_error("boundary_surface::get_ra() is not implemented yet on the GPU");
 }
 
 template<typename TF>
