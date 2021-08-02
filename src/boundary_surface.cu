@@ -50,7 +50,9 @@ namespace
     TF find_obuk_g(
             const float* const __restrict__ zL,
             const float* const __restrict__ f,
-            int &n, const TF Ri, const TF zsl)
+            int &n,
+            const TF Ri,
+            const TF zsl)
     {
         // Determine search direction.
         if ((f[n]-Ri) > 0.f)
@@ -66,9 +68,12 @@ namespace
 
     template<typename TF> __device__
     TF calc_obuk_noslip_flux_g(
-            float* __restrict__ zL,
-            float* __restrict__ f,
-            int& n, TF du, TF bfluxbot, TF zsl)
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
+            int& n,
+            const TF du,
+            const TF bfluxbot,
+            const TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
@@ -77,9 +82,12 @@ namespace
 
     template<typename TF> __device__
     TF calc_obuk_noslip_dirichlet_g(
-            float* __restrict__ zL,
-            float* __restrict__ f,
-            int& n, TF du, TF db, TF zsl)
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
+            int& n,
+            const TF du,
+            const TF db,
+            const TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
@@ -88,14 +96,22 @@ namespace
 
     template<typename TF> __global__
     void stability_g(
-            TF* __restrict__ ustar, TF* __restrict__ obuk,
-            TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
-            TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
-            TF* __restrict__ z0m,
-            int* __restrict__ nobuk_g,
-            TF db_ref, TF zsl,
-            int icells, int jcells, int kstart, int jj, int kk,
-            Boundary_type mbcbot, Boundary_type thermobc)
+            TF* const __restrict__ ustar,
+            TF* const __restrict__ obuk,
+            int* const __restrict__ nobuk_g,
+            const TF* const __restrict__ b,
+            const TF* const __restrict__ bbot,
+            const TF* const __restrict__ bfluxbot,
+            const TF* const __restrict__ dutot,
+            const TF* const __restrict__ z0m,
+            const float* const __restrict__ zL_sl_g,
+            const float* const __restrict__ f_sl_g,
+            const TF db_ref,
+            const TF zsl,
+            const int icells, const int jcells,
+            const int kstart, const int jj, int kk,
+            const Boundary_type mbcbot,
+            const Boundary_type thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -128,10 +144,14 @@ namespace
 
     template<typename TF> __global__
     void stability_neutral_g(
-            TF* __restrict__ ustar, TF* __restrict__ obuk, TF* __restrict__ dutot,
-            TF* __restrict__ z0m, const TF zsl,
-            int icells, int jcells, int jj,
-            Boundary_type mbcbot, Boundary_type thermobc)
+            TF* const __restrict__ ustar,
+            TF* const __restrict__ obuk,
+            const TF* const __restrict__ dutot,
+            const TF* const __restrict__ z0m,
+            const TF zsl,
+            const int icells, const int jcells, const int jj,
+            const Boundary_type mbcbot,
+            const Boundary_type thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -162,21 +182,21 @@ namespace
 
     template<typename TF> __global__
     void surfm_flux_g(
-            TF* __restrict__ ufluxbot,
-            TF* __restrict__ vfluxbot,
-            TF* __restrict__ u,
-            TF* __restrict__ v,
-            TF* __restrict__ ubot,
-            TF* __restrict__ vbot,
-            TF* __restrict__ ustar,
-            TF* __restrict__ obuk,
-            TF* __restrict__ z0m,
-            TF zsl,
+            TF* const __restrict__ ufluxbot,
+            TF* const __restrict__ vfluxbot,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF* const __restrict__ z0m,
+            const TF zsl,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
             const int jj, const int kk,
-            Boundary_type bcbot)
+            const Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -219,10 +239,15 @@ namespace
 
     template<typename TF> __global__
     void surfm_grad_g(
-            TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
-            TF* __restrict__ u,        TF* __restrict__ v,
-            TF* __restrict__ ubot,     TF* __restrict__ vbot, TF zsl,
-            int icells, int jcells, int kstart, int jj, int kk)
+            TF* const __restrict__ ugradbot,
+            TF* const __restrict__ vgradbot,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
+            const TF zsl,
+            const int icells, const int jcells,
+            const int kstart, const int jj, const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -239,13 +264,17 @@ namespace
 
     template<typename TF> __global__
     void surfs_g(
-            TF* __restrict__ varfluxbot, TF* __restrict__ vargradbot,
-            TF* __restrict__ varbot,     TF* __restrict__ var,
-            TF* __restrict__ ustar,      TF* __restrict__ obuk,
-            TF* __restrict__ z0h,
-            TF zsl, int icells, int jcells, int kstart,
-            int jj, int kk,
-            Boundary_type bcbot)
+            TF* const __restrict__ varfluxbot,
+            TF* const __restrict__ vargradbot,
+            TF* const __restrict__ varbot,
+            const TF* const __restrict__ var,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF* const __restrict__ z0h,
+            const TF zsl,
+            const int icells, const int jcells,
+            const int kstart, const int jj, const int kk,
+            const Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -303,7 +332,6 @@ void Boundary_surface<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  nzL*sizeof(float), cudaMemcpyHostToDevice));
 }
 
-// TMP BVS
 template<typename TF>
 void Boundary_surface<TF>::forward_device()
 {
@@ -324,7 +352,6 @@ void Boundary_surface<TF>::forward_device()
     cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
-// TMP BVS
 template<typename TF>
 void Boundary_surface<TF>::backward_device()
 {
@@ -420,10 +447,10 @@ void Boundary_surface<TF>::exec(
 
         // Calculate ustar and Obukhov length, including ghost cells
         stability_g<<<gridGPU2, blockGPU2>>>(
-            ustar_g, obuk_g,
+            ustar_g, obuk_g, nobuk_g,
             buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
-            dutot->fld_g, zL_sl_g, f_sl_g,
-            z0m_g, nobuk_g,
+            dutot->fld_g, z0m_g,
+            zL_sl_g, f_sl_g,
             db_ref, gd.z[gd.kstart],
             gd.icells, gd.jcells,
             gd.kstart, gd.icells,

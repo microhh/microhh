@@ -32,9 +32,11 @@ namespace Boundary_surface_kernels_g
     /* Calculate absolute wind speed */
     template<typename TF> __global__
     void calc_dutot_g(
-            TF* __restrict__ dutot,
-            TF* __restrict__ u,    TF* __restrict__ v,
-            TF* __restrict__ ubot, TF* __restrict__ vbot,
+            TF* const __restrict__ dutot,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
