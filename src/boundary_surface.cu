@@ -94,13 +94,29 @@ namespace
         if (i < iend && j < jend)
         {
             const int ii  = 1;
+            const int ii2 = 2;
+            const int jj2 = 2*jj;
+
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
             const TF minval = 1.e-1;
 
-            const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                         + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-            dutot[ij] = fmax(pow(du2, TF(0.5)), minval);
+            const TF u_filtered = TF(1./9) *
+                ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
+                + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
+                + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
+
+            const TF v_filtered = TF(1./9) *
+                ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
+                + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
+                + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
+
+            const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
+                         + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
+
+            // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+            // otherwise evisc at k = kstart blows up
+            dutot[ij] = fmax(std::pow(du2, TF(0.5)), minval);
         }
     }
 
