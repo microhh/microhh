@@ -35,8 +35,10 @@ namespace Boundary_surface_kernels_g
             TF* __restrict__ dutot,
             TF* __restrict__ u,    TF* __restrict__ v,
             TF* __restrict__ ubot, TF* __restrict__ vbot,
-            int istart, int jstart, int kstart,
-            int iend,   int jend, int jj, int kk)
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -45,10 +47,11 @@ namespace Boundary_surface_kernels_g
         {
             const int ii  = 1;
             const int ii2 = 2;
-            const int jj2 = 2*jj;
+            const int jj  = icells;
+            const int jj2 = 2*icells;
 
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
             const TF minval = 1.e-1;
 
             const TF u_filtered = TF(1./9) *
@@ -124,9 +127,6 @@ namespace Boundary_surface_kernels_g
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const int ii = 1;
-        const int jj = icells;
 
         if (i < iend && j < jend)
         {

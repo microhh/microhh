@@ -280,10 +280,14 @@ void Boundary_surface_bulk<TF>::exec(
 
     bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.icells, gd.ijcells);
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on dutot

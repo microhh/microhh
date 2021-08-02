@@ -48,7 +48,8 @@ namespace
 
     template<typename TF> __device__
     TF find_obuk_g(
-            const float* const __restrict__ zL, const float* const __restrict__ f,
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
             int &n, const TF Ri, const TF zsl)
     {
         // Determine search direction.
@@ -65,7 +66,9 @@ namespace
 
     template<typename TF> __device__
     TF calc_obuk_noslip_flux_g(
-            float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF bfluxbot, TF zsl)
+            float* __restrict__ zL,
+            float* __restrict__ f,
+            int& n, TF du, TF bfluxbot, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
@@ -74,7 +77,9 @@ namespace
 
     template<typename TF> __device__
     TF calc_obuk_noslip_dirichlet_g(
-            float* __restrict__ zL, float* __restrict__ f, int& n, TF du, TF db, TF zsl)
+            float* __restrict__ zL,
+            float* __restrict__ f,
+            int& n, TF du, TF db, TF zsl)
     {
         // Calculate the appropriate Richardson number.
         const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
@@ -86,7 +91,7 @@ namespace
             TF* __restrict__ ustar, TF* __restrict__ obuk,
             TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
             TF* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g,
-            TF* __restrict__ z0m, TF* __restrict__ z0h,
+            TF* __restrict__ z0m,
             int* __restrict__ nobuk_g,
             TF db_ref, TF zsl,
             int icells, int jcells, int kstart, int jj, int kk,
@@ -124,8 +129,8 @@ namespace
     template<typename TF> __global__
     void stability_neutral_g(
             TF* __restrict__ ustar, TF* __restrict__ obuk, TF* __restrict__ dutot,
-            TF* __restrict__ z0m, TF* __restrict__ z0h, const TF zsl,
-            int icells, int jcells, int kstart, int jj, int kk,
+            TF* __restrict__ z0m, const TF zsl,
+            int icells, int jcells, int jj,
             Boundary_type mbcbot, Boundary_type thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -157,14 +162,20 @@ namespace
 
     template<typename TF> __global__
     void surfm_flux_g(
-            TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-            TF* __restrict__ u,        TF* __restrict__ v,
-            TF* __restrict__ ubot,     TF* __restrict__ vbot,
-            TF* __restrict__ ustar,    TF* __restrict__ obuk,
+            TF* __restrict__ ufluxbot,
+            TF* __restrict__ vfluxbot,
+            TF* __restrict__ u,
+            TF* __restrict__ v,
+            TF* __restrict__ ubot,
+            TF* __restrict__ vbot,
+            TF* __restrict__ ustar,
+            TF* __restrict__ obuk,
             TF* __restrict__ z0m,
             TF zsl,
-            int istart, int jstart, int kstart,
-            int iend,   int jend, int jj, int kk,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jj, const int kk,
             Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -377,10 +388,14 @@ void Boundary_surface<TF>::exec(
 
     bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.icells, gd.ijcells);
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on dutot
@@ -392,8 +407,9 @@ void Boundary_surface<TF>::exec(
         // Calculate ustar and Obukhov length, including ghost cells
         stability_neutral_g<<<gridGPU2, blockGPU2>>>(
             ustar_g, obuk_g,
-            dutot->fld_g, z0m_g, z0h_g, gd.z[gd.kstart],
-            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells, mbcbot, thermobc);
+            dutot->fld_g, z0m_g, gd.z[gd.kstart],
+            gd.icells, gd.jcells, gd.icells,
+            mbcbot, thermobc);
         cuda_check_error();
     }
     else
@@ -407,9 +423,11 @@ void Boundary_surface<TF>::exec(
             ustar_g, obuk_g,
             buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
             dutot->fld_g, zL_sl_g, f_sl_g,
-            z0m_g, z0h_g, nobuk_g,
+            z0m_g, nobuk_g,
             db_ref, gd.z[gd.kstart],
-            gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells,
+            gd.icells, gd.jcells,
+            gd.kstart, gd.icells,
+            gd.ijcells,
             mbcbot, thermobc);
         cuda_check_error();
 
@@ -421,12 +439,18 @@ void Boundary_surface<TF>::exec(
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     // Momentum:
     surfm_flux_g<<<gridGPU, blockGPU>>>(
-        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
+        fields.mp.at("u")->flux_bot_g,
+        fields.mp.at("v")->flux_bot_g,
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
         ustar_g, obuk_g, z0m_g, gd.z[gd.kstart],
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.icells, gd.ijcells, mbcbot);
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells,
+        mbcbot);
     cuda_check_error();
 
     // 2D cyclic boundaries on the surface fluxes
@@ -435,20 +459,27 @@ void Boundary_surface<TF>::exec(
 
     // Calculate surface gradients, including ghost cells
     surfm_grad_g<<<gridGPU2, blockGPU2>>>(
-        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
-        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
-        gd.z[gd.kstart], gd.icells, gd.jcells, gd.kstart, gd.icells, gd.ijcells);
+        fields.mp.at("u")->grad_bot_g,
+        fields.mp.at("v")->grad_bot_g,
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
+        gd.z[gd.kstart], gd.icells, gd.jcells,
+        gd.kstart, gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Scalars:
     for (auto it : fields.sp)
         surfs_g<<<gridGPU2, blockGPU2>>>(
-            it.second->flux_bot_g, it.second->grad_bot_g,
-            it.second->fld_bot_g,  it.second->fld_g,
+            it.second->flux_bot_g,
+            it.second->grad_bot_g,
+            it.second->fld_bot_g,
+            it.second->fld_g,
             ustar_g, obuk_g, z0h_g, gd.z[gd.kstart],
             gd.icells,  gd.jcells, gd.kstart,
-            gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
+            gd.icells, gd.ijcells,
+            sbc.at(it.first).bcbot);
     cuda_check_error();
 
     // Calc MO gradients, for subgrid scheme
