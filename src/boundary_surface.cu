@@ -34,6 +34,7 @@
 #include "timedep.h"
 #include "monin_obukhov.h"
 #include "boundary_surface.h"
+#include "boundary_surface_kernels_gpu.h"
 #include "fast_math.h"
 #include "column.h"
 
@@ -41,6 +42,7 @@ namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
+    namespace bsk = Boundary_surface_kernels_g;
 
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
@@ -77,112 +79,6 @@ namespace
         // Calculate the appropriate Richardson number.
         const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
         return find_obuk_g(zL, f, n, Ri, zsl);
-    }
-
-    /* Calculate absolute wind speed */
-    template<typename TF> __global__
-    void du_tot_g(
-            TF* __restrict__ dutot,
-            TF* __restrict__ u,    TF* __restrict__ v,
-            TF* __restrict__ ubot, TF* __restrict__ vbot,
-            int istart, int jstart, int kstart,
-            int iend,   int jend, int jj, int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        if (i < iend && j < jend)
-        {
-            const int ii  = 1;
-            const int ii2 = 2;
-            const int jj2 = 2*jj;
-
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            const TF minval = 1.e-1;
-
-            const TF u_filtered = TF(1./9) *
-                ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
-                + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
-                + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
-
-            const TF v_filtered = TF(1./9) *
-                ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
-                + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
-                + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
-
-            const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                         + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-
-            // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-            // otherwise evisc at k = kstart blows up
-            dutot[ij] = fmax(std::pow(du2, TF(0.5)), minval);
-        }
-    }
-
-    template<typename TF> __global__
-    void calc_duvdz_g(
-            TF* const __restrict__ dudz,
-            TF* const __restrict__ dvdz,
-            const TF* const __restrict__ u,
-            const TF* const __restrict__ v,
-            const TF* const __restrict__ ubot,
-            const TF* const __restrict__ vbot,
-            const TF* const __restrict__ ufluxbot,
-            const TF* const __restrict__ vfluxbot,
-            const TF* const __restrict__ ustar,
-            const TF* const __restrict__ obuk,
-            const TF* const __restrict__ z0m,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const int ii = 1;
-        const int jj = icells;
-
-        if (i < iend && j < jend)
-        {
-            const int ij  = i + j*icells;
-            const int ijk = i + j*icells + kstart*ijcells;
-
-            const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
-            const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
-
-            const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-            const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-
-            dudz[ij] = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-            dvdz[ij] = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-        }
-    }
-
-    template<typename TF> __global__
-    void calc_dbdz_g(
-            TF* const __restrict__ dbdz,
-            const TF* const __restrict__ bfluxbot,
-            const TF* const __restrict__ ustar,
-            const TF* const __restrict__ obuk,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int icells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const int ii = 1;
-        const int jj = icells;
-
-        if (i < iend && j < jend)
-        {
-            const int ij = i + j*icells;
-            dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
-        }
     }
 
     template<typename TF> __global__
@@ -479,7 +375,7 @@ void Boundary_surface<TF>::exec(
     // Calculate dutot in tmp2
     auto dutot = fields.get_tmp_g();
 
-    du_tot_g<<<gridGPU, blockGPU>>>(
+    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
@@ -556,7 +452,7 @@ void Boundary_surface<TF>::exec(
     cuda_check_error();
 
     // Calc MO gradients, for subgrid scheme
-    calc_duvdz_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -575,7 +471,7 @@ void Boundary_surface<TF>::exec(
     auto buoy = fields.get_tmp_g();
     thermo.get_buoyancy_fluxbot_g(*buoy);
 
-    calc_dbdz_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
             dbdz_mo_g, buoy->flux_bot_g,
             ustar_g, obuk_g,
             gd.z[gd.kstart],

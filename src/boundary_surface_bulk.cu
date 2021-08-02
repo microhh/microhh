@@ -19,47 +19,24 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
- #include <cmath>
- #include "fast_math.h"
- #include "constants.h"
- #include "tools.h"
- #include "master.h"
- #include "grid.h"
- #include "fields.h"
- #include "thermo.h"
- #include "boundary_surface_bulk.h"
+
+#include <cmath>
+#include "fast_math.h"
+#include "constants.h"
+#include "tools.h"
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "thermo.h"
+#include "boundary_surface_bulk.h"
+#include "boundary_surface_kernels_gpu.h"
 #include "monin_obukhov.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
-
-    /* Calculate absolute wind speed */
-    template<typename TF> __global__
-    void calculate_du_g(
-            TF* __restrict__ dutot,
-            TF* __restrict__ u,    TF* __restrict__ v,
-            TF* __restrict__ ubot, TF* __restrict__ vbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
-            const int jj, const int kk)
-
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        if (i < iend && j < jend)
-        {
-            const int ii  = 1;
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            const TF minval = 1.e-1;
-
-            const TF du2 = fm::pow2(TF(0.5)*(u[ijk] + u[ijk+ii]) - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                         + fm::pow2(TF(0.5)*(v[ijk] + v[ijk+jj]) - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-            dutot[ij] = fmax(sqrt(du2), minval);
-        }
-    }
+    namespace bsk = Boundary_surface_kernels_g;
 
     template<typename TF> __global__
     void momentum_fluxgrad_g(
@@ -301,12 +278,12 @@ void Boundary_surface_bulk<TF>::exec(
     // Calculate dutot in tmp2
     auto dutot = fields.get_tmp_g();
 
-    calculate_du_g<<<gridGPU, blockGPU>>>(
+    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
         dutot->fld_g,
-        fields.mp.at("u")->fld_g,     fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend, gd.jend, gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on dutot
@@ -350,7 +327,7 @@ void Boundary_surface_bulk<TF>::exec(
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
 
     // Calculate MO gradients for diffusion scheme
-    calc_duvdz_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -366,7 +343,7 @@ void Boundary_surface_bulk<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    calc_dbdz_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
             dbdz_mo_g, b->flux_bot_g,
             ustar_g, obuk_g,
             gd.z[gd.kstart],
