@@ -105,6 +105,71 @@ namespace
     }
 
     template<typename TF> __global__
+    void calc_duvdz_g(
+            TF* const __restrict__ dudz,
+            TF* const __restrict__ dvdz,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
+            const TF* const __restrict__ ufluxbot,
+            const TF* const __restrict__ vfluxbot,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF* const __restrict__ z0m,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const int ii = 1;
+        const int jj = icells;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
+            const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
+
+            const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+            const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+
+            dudz[ij] = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+            dvdz[ij] = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_dbdz_g(
+            TF* const __restrict__ dbdz,
+            const TF* const __restrict__ bfluxbot,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const int ii = 1;
+        const int jj = icells;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
+        }
+    }
+
+    template<typename TF> __global__
     void stability_g(
             TF* __restrict__ ustar, TF* __restrict__ obuk,
             TF* __restrict__ b, TF* __restrict__ bbot, TF* __restrict__ bfluxbot,
@@ -295,6 +360,11 @@ void Boundary_surface<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
     cuda_safe_call(cudaMalloc(&z0m_g,   dmemsize2d));
     cuda_safe_call(cudaMalloc(&z0h_g,   dmemsize2d));
+
+    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
+    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
+    cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+
     cuda_safe_call(cudaMalloc(&nobuk_g, imemsize2d));
 
     cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
@@ -323,6 +393,11 @@ void Boundary_surface<TF>::forward_device()
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(z0m_g,   dimemsize, z0m.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(z0h_g,   dimemsize, z0h.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
     cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
@@ -337,6 +412,11 @@ void Boundary_surface<TF>::backward_device()
 
     cuda_safe_call(cudaMemcpy2D(obuk.data(),  dimemsize, obuk_g,  dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy2D(ustar.data(), dimemsize, ustar_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+
+    cuda_safe_call(cudaMemcpy2D(dudz_mo.data(), dimemsize, dudz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy2D(dvdz_mo.data(), dimemsize, dvdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy2D(dbdz_mo.data(), dimemsize, dbdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+
     cuda_safe_call(cudaMemcpy2D(nobuk.data(), iimemsize, nobuk_g, iimemsize, iimemsize, gd.jcells, cudaMemcpyDeviceToHost));
 }
 
@@ -347,6 +427,11 @@ void Boundary_surface<TF>::clear_device()
     cuda_safe_call(cudaFree(ustar_g));
     cuda_safe_call(cudaFree(z0m_g));
     cuda_safe_call(cudaFree(z0h_g));
+
+    cuda_safe_call(cudaFree(dudz_mo_g));
+    cuda_safe_call(cudaFree(dvdz_mo_g));
+    cuda_safe_call(cudaFree(dbdz_mo_g));
+
     cuda_safe_call(cudaFree(nobuk_g));
     cuda_safe_call(cudaFree(zL_sl_g));
     cuda_safe_call(cudaFree(f_sl_g ));
@@ -453,6 +538,37 @@ void Boundary_surface<TF>::exec(
             gd.icells,  gd.jcells, gd.kstart,
             gd.icells, gd.ijcells, sbc.at(it.first).bcbot);
     cuda_check_error();
+
+    // Calc MO gradients, for subgrid scheme
+    calc_duvdz_g<<<gridGPU2, blockGPU2>>>(
+            dudz_mo_g, dvdz_mo_g,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("u")->fld_bot_g,
+            fields.mp.at("v")->fld_bot_g,
+            fields.mp.at("u")->flux_bot_g,
+            fields.mp.at("v")->flux_bot_g,
+            ustar_g, obuk_g, z0m_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    auto buoy = fields.get_tmp_g();
+    thermo.get_buoyancy_fluxbot_g(*buoy);
+
+    calc_dbdz_g<<<gridGPU2, blockGPU2>>>(
+            dbdz_mo_g, buoy->flux_bot_g,
+            ustar_g, obuk_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    fields.release_tmp_g(buoy);
 }
 
 template<typename TF>

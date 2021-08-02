@@ -60,9 +60,10 @@ class Boundary_surface : public Boundary<TF>
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
 
-        TF* get_z0m_g() { return z0m_g; };
-        TF* get_ustar_g() { return ustar_g; };
-        TF* get_obuk_g() { return obuk_g; };
+        TF* get_z0m_g()  { return z0m_g; };
+        TF* get_dudz_g() { return dudz_mo_g; };
+        TF* get_dvdz_g() { return dvdz_mo_g; };
+        TF* get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -110,6 +111,11 @@ class Boundary_surface : public Boundary<TF>
         TF* z0h_g;
         TF* obuk_g;
         TF* ustar_g;
+
+        TF* dudz_mo_g;
+        TF* dvdz_mo_g;
+        TF* dbdz_mo_g;
+
         int* nobuk_g;
 
         float* zL_sl_g;

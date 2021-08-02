@@ -46,14 +46,17 @@ namespace
     template<typename TF, Surface_model surface_model> __global__
     void calc_strain2_g(
             TF* __restrict__ strain2,
-            TF* __restrict__ u,  TF* __restrict__ v,  TF* __restrict__ w,
-            TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-            TF* __restrict__ ustar, TF* __restrict__ obuk, TF* __restrict__ z0m,
-            TF* __restrict__ ubot, TF* __restrict__ vbot,
-            TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
-            const TF zsl,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
+            TF* __restrict__ u,
+            TF* __restrict__ v,
+            TF* __restrict__ w,
+            TF* __restrict__ dudz,
+            TF* __restrict__ dvdz,
+            TF* __restrict__ dzi,
+            TF* __restrict__ dzhi,
+            const TF dxi, const TF dyi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -68,17 +71,6 @@ namespace
 
             if (k == kstart && surface_model == Surface_model::Enabled)
             {
-
-                // Calculate du/dz and dv/dz at grid center, from interpolated wind speed.
-                const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
-                const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
-
-                const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-                const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-
-                const TF dudz = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-                const TF dvdz = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-
                 strain2[ijk] = TF(2.)*(
                     // du/dx + du/dx
                     + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
@@ -96,14 +88,14 @@ namespace
                     + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
                     // du/dz + dw/dx
-                    + TF(0.5)*fm::pow2(dudz)
+                    + TF(0.5)*fm::pow2(dudz[ij])
                     + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
                     + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
                     + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
                     + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
                     // dv/dz + dw/dy
-                    + TF(0.5)*fm::pow2(dvdz)
+                    + TF(0.5)*fm::pow2(dvdz[ij])
                     + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
                     + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
                     + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
@@ -145,13 +137,16 @@ namespace
 
     template<typename TF, Surface_model surface_model> __global__
     void evisc_g(
-            TF* __restrict__ evisc, TF* __restrict__ N2,
-            TF* __restrict__ bfluxbot, TF* __restrict__ ustar,
-            TF* __restrict__ obuk, TF* __restrict__ mlen0,
-            TF* __restrict__ z0m, TF* __restrict__ z,
-            const TF tPri, const TF zsl,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
+            TF* __restrict__ evisc,
+            TF* __restrict__ N2,
+            TF* __restrict__ bgradbot,
+            TF* __restrict__ mlen0,
+            TF* __restrict__ z0m,
+            TF* __restrict__ z,
+            const TF tPri,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -168,7 +163,7 @@ namespace
             if (k == kstart && surface_model == Surface_model::Enabled)
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
+                TF RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
 
                 const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
@@ -574,57 +569,60 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     dim3 block2dGPU(blocki, blockj);
 
     // Use surface model.
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
-        TF* ustar_g = boundary.get_ustar_g();
-        TF* obuk_g  = boundary.get_obuk_g();
         TF* z0m_g   = boundary.get_z0m_g();
+
+        // Get MO gradients velocity:
+        TF* dudz_g  = boundary.get_dudz_g();
+        TF* dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
         calc_strain2_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
             fields.sd.at("evisc")->fld_g,
-            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-            ustar_g, obuk_g, z0m_g,
-            fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-            gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-            gd.z[gd.kstart],
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("w")->fld_g,
+            dudz_g, dvdz_g,
+            gd.dzi_g, gd.dzhi_g,
+            gd.dxi, gd.dyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        // start with retrieving the stability information
         if (thermo.get_switch() == "0")
         {
+            // Start with retrieving the stability information
             evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g, z0m_g,
-                gd.z_g, mlen_g,
+                fields.sd.at("evisc")->fld_g,
+                z0m_g, gd.z_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
         }
-        // assume buoyancy calculation is needed
         else
         {
-            // store the buoyancyflux in datafluxbot of tmp1
+            // Assume buoyancy calculation is needed
             auto tmp1 = fields.get_tmp_g();
-            thermo.get_buoyancy_fluxbot_g(*tmp1);
-
-            // As we only use the fluxbot field of tmp1 we store the N2 in the interior.
             thermo.get_thermo_field_g(*tmp1, "N2", false);
+
+            // Get MO gradient buoyancy:
+            TF* dbdz_g  = boundary.get_dbdz_g();
 
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
             evisc_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g, tmp1->fld_g,
-                tmp1->flux_bot_g, ustar_g, obuk_g,
+                fields.sd.at("evisc")->fld_g,
+                tmp1->fld_g, dbdz_g,
                 mlen_g, z0m_g, gd.z_g,
-                tPri, gd.z[gd.kstart],
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
+                tPri,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
@@ -639,14 +637,15 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         // Calculate total strain rate
         calc_strain2_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
             fields.sd.at("evisc")->fld_g,
-            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-            fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-            nullptr, nullptr, nullptr,
-            fields.mp.at("u")->fld_bot_g, fields.mp.at("v")->fld_bot_g,
-            gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-            gd.z[gd.kstart],
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("w")->fld_g,
+            nullptr, nullptr,
+            gd.dzi_g, gd.dzhi_g,
+            gd.dxi, gd.dyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
 
@@ -676,12 +675,13 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
             TF tPri = 1./tPr;
 
             evisc_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g, tmp1->fld_g,
-                nullptr, nullptr, nullptr,
+                fields.sd.at("evisc")->fld_g,
+                tmp1->fld_g, nullptr,
                 mlen_g, nullptr, gd.z_g,
-                tPri, gd.z[gd.kstart],
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
+                tPri,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
             cuda_check_error();

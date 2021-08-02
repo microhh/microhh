@@ -112,8 +112,9 @@ class Boundary
 
         #ifdef USECUDA
         virtual TF* get_z0m_g();
-        virtual TF* get_ustar_g();
-        virtual TF* get_obuk_g();
+        virtual TF* get_dudz_g();
+        virtual TF* get_dvdz_g();
+        virtual TF* get_dbdz_g();
         #endif
 
         std::string get_switch();

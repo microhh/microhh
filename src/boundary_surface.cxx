@@ -878,6 +878,19 @@ void Boundary_surface<TF>::exec(
           gd.icells, gd.jcells, gd.ijcells,
           boundary_cyclic);
 
+    // Scalars:
+    for (auto& it : fields.sp)
+        surfs(it.second->fld_bot.data(),
+              it.second->grad_bot.data(),
+              it.second->flux_bot.data(),
+              ustar.data(), obuk.data(),
+              it.second->fld.data(), z0h.data(),
+              gd.z[gd.kstart], sbc.at(it.first).bcbot,
+              gd.istart, gd.iend,
+              gd.jstart, gd.jend, gd.kstart,
+              gd.icells, gd.jcells, gd.ijcells,
+              boundary_cyclic);
+
     // Calculate MO gradients
     bsk::calc_duvdz(
             dudz_mo.data(), dvdz_mo.data(),
@@ -894,20 +907,6 @@ void Boundary_surface<TF>::exec(
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    // Scalars:
-    for (auto& it : fields.sp)
-        surfs(it.second->fld_bot.data(),
-              it.second->grad_bot.data(),
-              it.second->flux_bot.data(),
-              ustar.data(), obuk.data(),
-              it.second->fld.data(), z0h.data(),
-              gd.z[gd.kstart], sbc.at(it.first).bcbot,
-              gd.istart, gd.iend,
-              gd.jstart, gd.jend, gd.kstart,
-              gd.icells, gd.jcells, gd.ijcells,
-              boundary_cyclic);
-
-    // Calculate MO gradients
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
