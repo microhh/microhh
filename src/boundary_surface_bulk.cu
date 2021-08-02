@@ -40,12 +40,20 @@ namespace
 
     template<typename TF> __global__
     void momentum_fluxgrad_g(
-            TF* __restrict__ ufluxbot, TF* __restrict__ vfluxbot,
-            TF* __restrict__ ugradbot, TF* __restrict__ vgradbot,
-            TF* __restrict__ u,        TF* __restrict__ v,
-            TF* __restrict__ ubot,     TF* __restrict__ vbot,
-            TF* __restrict__ dutot,    TF Cm, TF zsl,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            TF* const __restrict__ ufluxbot,
+            TF* const __restrict__ vfluxbot,
+            TF* const __restrict__ ugradbot,
+            TF* const __restrict__ vgradbot,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
+            const TF* const __restrict__ dutot,
+            const TF Cm,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
             const int jj, const int kk)
 
     {
@@ -59,6 +67,7 @@ namespace
 
             ufluxbot[ij] = -Cm * dutot[ij] * (u[ijk]-ubot[ij]);
             vfluxbot[ij] = -Cm * dutot[ij] * (v[ijk]-vbot[ij]);
+
             ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
             vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
         }
@@ -66,12 +75,16 @@ namespace
 
     template<typename TF> __global__
     void scalar_fluxgrad_g(
-            TF* __restrict__ sfluxbot,
-            TF* __restrict__ sgradbot,
-            TF* __restrict__ s,
-            TF* __restrict__ sbot,
-            TF* __restrict__ dutot,    TF Cs, TF zsl,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
+            TF* const __restrict__ sfluxbot,
+            TF* const __restrict__ sgradbot,
+            const TF* const __restrict__ s,
+            const TF* const __restrict__ sbot,
+            const TF* const __restrict__ dutot,
+            const TF Cs,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
             const int jj, const int kk)
 
     {
@@ -90,12 +103,13 @@ namespace
 
     template<typename TF> __global__
     void surface_scaling_g(
-            TF* __restrict__ ustar,
-            TF* __restrict__ obuk,
-            TF* __restrict__ dutot,
-            TF* __restrict__ bfluxbot,
-            TF Cm,
-            const int istart, const int iend, const int jstart, const int jend,
+            TF* const __restrict__ ustar,
+            TF* const __restrict__ obuk,
+            const TF* const __restrict__ dutot,
+            const TF* const __restrict__ bfluxbot,
+            const TF Cm,
+            const int istart, const int iend,
+            const int jstart, const int jend,
             const int jj)
 
     {
@@ -105,75 +119,9 @@ namespace
         if (i < iend && j < jend)
         {
             const int ij = i + j*jj;
-            const TF sqrt_Cm = sqrt(Cm);
 
-            ustar[ij] = sqrt_Cm * dutot[ij];
+            ustar[ij] = sqrt(Cm) * dutot[ij];
             obuk[ij] = - fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
-        }
-    }
-
-template<typename TF> __global__
-    void calc_duvdz_g(
-            TF* const __restrict__ dudz,
-            TF* const __restrict__ dvdz,
-            const TF* const __restrict__ u,
-            const TF* const __restrict__ v,
-            const TF* const __restrict__ ubot,
-            const TF* const __restrict__ vbot,
-            const TF* const __restrict__ ufluxbot,
-            const TF* const __restrict__ vfluxbot,
-            const TF* const __restrict__ ustar,
-            const TF* const __restrict__ obuk,
-            const TF* const __restrict__ z0m,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const int ii = 1;
-        const int jj = icells;
-
-        if (i < iend && j < jend)
-        {
-            const int ij  = i + j*icells;
-            const int ijk = i + j*icells + kstart*ijcells;
-
-            const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
-            const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
-
-            const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-            const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-
-            dudz[ij] = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-            dvdz[ij] = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-        }
-    }
-
-    template<typename TF> __global__
-    void calc_dbdz_g(
-            TF* const __restrict__ dbdz,
-            const TF* const __restrict__ bfluxbot,
-            const TF* const __restrict__ ustar,
-            const TF* const __restrict__ obuk,
-            const TF zsl,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int icells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const int ii = 1;
-        const int jj = icells;
-
-        if (i < iend && j < jend)
-        {
-            const int ij = i + j*icells;
-            dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
         }
     }
 }
@@ -295,12 +243,19 @@ void Boundary_surface_bulk<TF>::exec(
 
     // Calculate surface momentum fluxes, excluding ghost cells
     momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
-        fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
-        fields.mp.at("u")->grad_bot_g, fields.mp.at("v")->grad_bot_g,
-        fields.mp.at("u")->fld_g,      fields.mp.at("v")->fld_g,
-        fields.mp.at("u")->fld_bot_g,  fields.mp.at("v")->fld_bot_g,
+        fields.mp.at("u")->flux_bot_g,
+        fields.mp.at("v")->flux_bot_g,
+        fields.mp.at("u")->grad_bot_g,
+        fields.mp.at("v")->grad_bot_g,
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
         dutot->fld_g, bulk_cm, zsl,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on the surface fluxes
@@ -313,11 +268,18 @@ void Boundary_surface_bulk<TF>::exec(
     for (auto it : fields.sp)
     {
         scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
-            it.second->flux_bot_g, it.second->grad_bot_g,
-            it.second->fld_g, it.second->fld_bot_g,
-            dutot->fld_g, bulk_cs.at(it.first), zsl,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+            it.second->flux_bot_g,
+            it.second->grad_bot_g,
+            it.second->fld_g,
+            it.second->fld_bot_g,
+            dutot->fld_g,
+            bulk_cs.at(it.first), zsl,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
         cuda_check_error();
+
         boundary_cyclic.exec_2d_g(it.second->flux_bot_g);
         boundary_cyclic.exec_2d_g(it.second->grad_bot_g);
     }
@@ -327,33 +289,39 @@ void Boundary_surface_bulk<TF>::exec(
     thermo.get_buoyancy_fluxbot_g(*b);
 
     surface_scaling_g<<<gridGPU2, blockGPU2>>>(
-        ustar_g, obuk_g, dutot->fld_g, b->flux_bot_g, bulk_cm,
-        gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+        ustar_g,
+        obuk_g,
+        dutot->fld_g,
+        b->flux_bot_g,
+        bulk_cm,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
 
     // Calculate MO gradients for diffusion scheme
     bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
-            dudz_mo_g, dvdz_mo_g,
-            fields.mp.at("u")->fld_g,
-            fields.mp.at("v")->fld_g,
-            fields.mp.at("u")->fld_bot_g,
-            fields.mp.at("v")->fld_bot_g,
-            fields.mp.at("u")->flux_bot_g,
-            fields.mp.at("v")->flux_bot_g,
-            ustar_g, obuk_g, z0m_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
+        dudz_mo_g, dvdz_mo_g,
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
+        fields.mp.at("u")->flux_bot_g,
+        fields.mp.at("v")->flux_bot_g,
+        ustar_g, obuk_g, z0m_g,
+        gd.z[gd.kstart],
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
-            dbdz_mo_g, b->flux_bot_g,
-            ustar_g, obuk_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+        dbdz_mo_g, b->flux_bot_g,
+        ustar_g, obuk_g,
+        gd.z[gd.kstart],
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
     cuda_check_error();
 
     fields.release_tmp_g(b);
