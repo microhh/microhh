@@ -653,7 +653,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate MO gradients, which are used
     // by the diffusion scheme.
-    bsk::calc_duvdz(
+    bsk::calc_duvdz_mo(
             dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -668,7 +668,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    bsk::calc_dbdz(
+    bsk::calc_dbdz_mo(
             dbdz_mo.data(), buoy->flux_bot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],

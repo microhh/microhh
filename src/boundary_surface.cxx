@@ -56,13 +56,9 @@ namespace
             TF* const restrict ustar,
             TF* const restrict obuk,
             const TF* const restrict bfluxbot,
-            const TF* const restrict u,
-            const TF* const restrict v,
             const TF* const restrict b,
-            const TF* const restrict ubot,
-            const TF* const restrict vbot,
             const TF* const restrict bbot,
-            TF* const restrict dutot,
+            const TF* const restrict dutot,
             const TF* const restrict z,
             const TF* const restrict z0m,
             const TF* const restrict z0h,
@@ -81,37 +77,6 @@ namespace
         const int ii2 = 2;
         const int jj = icells;
         const int jj2 = 2*icells;
-
-        // Calculate total wind.
-        const TF minval = 1.e-1;
-
-        // First, interpolate the wind to the scalar location.
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                const TF u_filtered = TF(1./9) *
-                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
-                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
-                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
-
-                const TF v_filtered = TF(1./9) *
-                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
-                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
-                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
-
-                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-
-                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-                // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
-            }
-
-        boundary_cyclic.exec_2d(dutot);
 
         // Calculate Obukhov length
         // Case 1: fixed buoyancy flux and fixed ustar
@@ -172,11 +137,7 @@ namespace
     void stability_neutral(
             TF* const restrict ustar,
             TF* const restrict obuk,
-            const TF* const restrict u,
-            const TF* const restrict v,
-            const TF* const restrict ubot,
-            const TF* const restrict vbot,
-            TF* const restrict dutot,
+            const TF* const restrict dutot,
             const TF* const restrict z,
             const TF* const restrict z0m,
             const int istart, const int iend,
@@ -187,40 +148,7 @@ namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int ii = 1;
-        const int ii2 = 2;
         const int jj = icells;
-        const int jj2 = 2*icells;
-
-        // calculate total wind
-        const TF minval = 1.e-1;
-
-        // first, interpolate the wind to the scalar location
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                const TF u_filtered = TF(1./9) *
-                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
-                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
-                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
-
-                const TF v_filtered = TF(1./9) *
-                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
-                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
-                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
-
-                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-
-                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-                // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
-            }
-
-        boundary_cyclic.exec_2d(dutot);
 
         // set the Obukhov length to a very large negative number
         // case 1: fixed buoyancy flux and fixed ustar
@@ -808,25 +736,39 @@ void Boundary_surface<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
+    // Calculate (limited and filtered) total wind speed difference surface-atmosphere:
+    auto dutot = fields.get_tmp();
+
+    bsk::calc_dutot(
+            dutot->fld.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells,
+            boundary_cyclic);
+
     // Start with retrieving the stability information.
     if (thermo.get_switch() == "0")
     {
-        auto dutot = fields.get_tmp();
         stability_neutral(
-                ustar.data(), obuk.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                dutot->fld.data(), gd.z.data(), z0m.data(),
+                ustar.data(),
+                obuk.data(),
+                dutot->fld.data(),
+                gd.z.data(), z0m.data(),
                 gd.istart, gd.iend,
-                gd.jstart, gd.jend, gd.kstart,
-                gd.icells, gd.jcells, gd.ijcells,
-                mbcbot, boundary_cyclic);
-        fields.release_tmp(dutot);
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.jcells,
+                gd.ijcells, mbcbot,
+                boundary_cyclic);
     }
     else
     {
         auto buoy = fields.get_tmp();
-        auto tmp = fields.get_tmp();
 
         thermo.get_buoyancy_surf(buoy->fld, buoy->fld_bot, false);
         thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
@@ -837,10 +779,10 @@ void Boundary_surface<TF>::exec(
             stability<TF, true>(
                     ustar.data(), obuk.data(),
                     buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                    buoy->fld.data(), fields.mp.at("u")->fld_bot.data(),
-                    fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
+                    buoy->fld.data(),
+                    buoy->fld_bot.data(),
+                    dutot->fld.data(),
+                    gd.z.data(),
                     z0m.data(), z0h.data(),
                     zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
                     gd.istart, gd.iend,
@@ -851,9 +793,9 @@ void Boundary_surface<TF>::exec(
             stability<TF, false>(
                     ustar.data(), obuk.data(),
                     buoy->flux_bot.data(),
-                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), buoy->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(), buoy->fld_bot.data(),
-                    tmp->fld.data(), gd.z.data(),
+                    buoy->fld.data(),
+                    buoy->fld_bot.data(),
+                    dutot->fld.data(), gd.z.data(),
                     z0m.data(), z0h.data(),
                     zL_sl.data(), f_sl.data(), nobuk.data(), db_ref,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
@@ -861,7 +803,7 @@ void Boundary_surface<TF>::exec(
                     mbcbot, thermobc, boundary_cyclic);
 
         fields.release_tmp(buoy);
-        fields.release_tmp(tmp);
+        fields.release_tmp(dutot);
     }
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
@@ -871,8 +813,10 @@ void Boundary_surface<TF>::exec(
           fields.mp.at("u")->grad_bot.data(),
           fields.mp.at("v")->grad_bot.data(),
           ustar.data(), obuk.data(),
-          fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_bot.data(),
-          fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_bot.data(),
+          fields.mp.at("u")->fld.data(),
+          fields.mp.at("u")->fld_bot.data(),
+          fields.mp.at("v")->fld.data(),
+          fields.mp.at("v")->fld_bot.data(),
           z0m.data(), gd.z[gd.kstart], mbcbot,
           gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart,
           gd.icells, gd.jcells, gd.ijcells,
@@ -892,7 +836,7 @@ void Boundary_surface<TF>::exec(
               boundary_cyclic);
 
     // Calculate MO gradients
-    bsk::calc_duvdz(
+    bsk::calc_duvdz_mo(
             dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -910,7 +854,7 @@ void Boundary_surface<TF>::exec(
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
-    bsk::calc_dbdz(
+    bsk::calc_dbdz_mo(
             dbdz_mo.data(), buoy->flux_bot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],

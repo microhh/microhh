@@ -40,32 +40,6 @@ namespace
     namespace bsk = Boundary_surface_kernels;
 
     template<typename TF>
-    void calculate_du(
-            TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        // calculate total wind
-        TF du2;
-        const TF minval = 1.e-1;
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                du2 = fm::pow2(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]));
-
-                dutot[ij] = std::max(std::sqrt(du2), minval);
-            }
-
-    }
-
-    template<typename TF>
     void momentum_fluxgrad(
             TF* restrict ufluxbot, TF* restrict vfluxbot,
             TF* restrict ugradbot, TF* restrict vgradbot,
@@ -268,14 +242,20 @@ void Boundary_surface_bulk<TF>::exec(
     auto& gd = grid.get_grid_data();
     const TF zsl = gd.z[gd.kstart];
 
+    // Calculate (limited and filtered) total wind speed difference surface-atmosphere:
     auto dutot = fields.get_tmp();
 
-    // Calculate total wind speed difference with surface
-    calculate_du(
-            dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-            fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-    boundary_cyclic.exec_2d(dutot->fld.data());
+    bsk::calc_dutot(
+            dutot->fld.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells,
+            boundary_cyclic);
 
     // Calculate surface momentum fluxes and gradients
     momentum_fluxgrad(
@@ -316,7 +296,7 @@ void Boundary_surface_bulk<TF>::exec(
     fields.release_tmp(dutot);
 
     // Calculate MO gradients
-    bsk::calc_duvdz(
+    bsk::calc_duvdz_mo(
             dudz_mo.data(), dvdz_mo.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -334,7 +314,7 @@ void Boundary_surface_bulk<TF>::exec(
     auto buoy = fields.get_tmp();
     thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
 
-    bsk::calc_dbdz(
+    bsk::calc_dbdz_mo(
             dbdz_mo.data(), buoy->flux_bot.data(),
             ustar.data(), obuk.data(),
             gd.z[gd.kstart],
