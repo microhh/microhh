@@ -56,8 +56,10 @@ namespace
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
+
                 du2 = fm::pow2(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]))
                     + fm::pow2(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]));
+
                 dutot[ij] = std::max(std::sqrt(du2), minval);
             }
 

@@ -59,6 +59,11 @@ class Boundary_surface_bulk : public Boundary<TF>
         void clear_device();
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
+
+        TF* get_z0m_g()  { return z0m_g; };
+        TF* get_dudz_g() { return dudz_mo_g; };
+        TF* get_dvdz_g() { return dvdz_mo_g; };
+        TF* get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -91,12 +96,22 @@ class Boundary_surface_bulk : public Boundary<TF>
         std::vector<TF> dvdz_mo;
         std::vector<TF> dbdz_mo;
 
+        #ifdef USECUDA
+        TF* z0m_g;
         TF* obuk_g;
+
         TF* ustar_g;
+
+        TF* dudz_mo_g;
+        TF* dvdz_mo_g;
+        TF* dbdz_mo_g;
+        #endif
 
         // Transfer coefficients
         TF bulk_cm;
         std::map<std::string, TF> bulk_cs;
+
+
 
 
     protected:

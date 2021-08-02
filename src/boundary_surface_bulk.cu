@@ -28,9 +28,11 @@
  #include "fields.h"
  #include "thermo.h"
  #include "boundary_surface_bulk.h"
+#include "monin_obukhov.h"
 
 namespace
 {
+    namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
     /* Calculate absolute wind speed */
@@ -133,6 +135,70 @@ namespace
         }
     }
 
+template<typename TF> __global__
+    void calc_duvdz_g(
+            TF* const __restrict__ dudz,
+            TF* const __restrict__ dvdz,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ ubot,
+            const TF* const __restrict__ vbot,
+            const TF* const __restrict__ ufluxbot,
+            const TF* const __restrict__ vfluxbot,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF* const __restrict__ z0m,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const int ii = 1;
+        const int jj = icells;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
+            const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
+
+            const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+            const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+
+            dudz[ij] = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+            dvdz[ij] = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_dbdz_g(
+            TF* const __restrict__ dbdz,
+            const TF* const __restrict__ bfluxbot,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ obuk,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const int ii = 1;
+        const int jj = icells;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
+        }
+    }
 }
 
 template<typename TF>
@@ -146,8 +212,20 @@ void Boundary_surface_bulk<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&obuk_g,  dmemsize2d));
     cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
 
+    cuda_safe_call(cudaMalloc(&z0m_g, dmemsize2d));
+
+    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
+    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
+    cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    cuda_safe_call(cudaMemcpy2D(z0m_g, dimemsize, z0m.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, dudz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, dvdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
@@ -160,6 +238,10 @@ void Boundary_surface_bulk<TF>::forward_device()
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, dudz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, dvdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
@@ -172,6 +254,10 @@ void Boundary_surface_bulk<TF>::backward_device()
 
     cuda_safe_call(cudaMemcpy2D(obuk.data(),  dimemsize, obuk_g,  dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy2D(ustar.data(), dimemsize, ustar_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+
+    cuda_safe_call(cudaMemcpy2D(dudz_mo.data(), dimemsize, dudz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy2D(dvdz_mo.data(), dimemsize, dvdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy2D(dbdz_mo.data(), dimemsize, dbdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
 }
 
 template<typename TF>
@@ -179,6 +265,12 @@ void Boundary_surface_bulk<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
+
+    cuda_safe_call(cudaFree(z0m_g));
+
+    cuda_safe_call(cudaFree(dudz_mo_g));
+    cuda_safe_call(cudaFree(dvdz_mo_g));
+    cuda_safe_call(cudaFree(dbdz_mo_g));
 }
 
 #ifdef USECUDA
@@ -220,7 +312,6 @@ void Boundary_surface_bulk<TF>::exec(
     // 2D cyclic boundaries on dutot
     boundary_cyclic.exec_2d_g(dutot->fld_g);
 
-
     // Calculate surface momentum fluxes, excluding ghost cells
     momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->flux_bot_g, fields.mp.at("v")->flux_bot_g,
@@ -250,11 +341,39 @@ void Boundary_surface_bulk<TF>::exec(
         boundary_cyclic.exec_2d_g(it.second->grad_bot_g);
     }
 
+    // Calculate ustar and Obukhov length
     auto b= fields.get_tmp_g();
     thermo.get_buoyancy_fluxbot_g(*b);
+
     surface_scaling_g<<<gridGPU2, blockGPU2>>>(
         ustar_g, obuk_g, dutot->fld_g, b->flux_bot_g, bulk_cm,
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+
+    // Calculate MO gradients for diffusion scheme
+    calc_duvdz_g<<<gridGPU2, blockGPU2>>>(
+            dudz_mo_g, dvdz_mo_g,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("u")->fld_bot_g,
+            fields.mp.at("v")->fld_bot_g,
+            fields.mp.at("u")->flux_bot_g,
+            fields.mp.at("v")->flux_bot_g,
+            ustar_g, obuk_g, z0m_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    calc_dbdz_g<<<gridGPU2, blockGPU2>>>(
+            dbdz_mo_g, b->flux_bot_g,
+            ustar_g, obuk_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
 
     fields.release_tmp_g(b);
     fields.release_tmp_g(dutot);
