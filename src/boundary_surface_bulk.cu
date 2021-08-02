@@ -55,7 +55,6 @@ namespace
             const int jstart, const int jend,
             const int kstart,
             const int jj, const int kk)
-
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -86,7 +85,6 @@ namespace
             const int jstart, const int jend,
             const int kstart,
             const int jj, const int kk)
-
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -111,7 +109,6 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jj)
-
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;

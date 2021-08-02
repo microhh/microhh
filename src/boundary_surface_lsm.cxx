@@ -66,54 +66,6 @@ namespace
 namespace
 {
     template<typename TF>
-    void calc_dutot(
-            TF* const restrict dutot,
-            const TF* const restrict u,
-            const TF* const restrict v,
-            const TF* const restrict ubot,
-            const TF* const restrict vbot,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart,
-            const int icells, const int ijcells)
-    {
-        const int ii = 1;
-        const int ii2 = 2;
-        const int jj = icells;
-        const int jj2 = 2*icells;
-        const int kk = ijcells;
-
-        // Calculate total wind.
-        const TF minval = 1.e-1;
-
-        // Interpolate the wind (3x3 mean) to the scalar location.
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-
-                const TF u_filtered = TF(1./9) *
-                    ( TF(0.5)*u[ijk-ii-jj] + u[ijk-jj] + u[ijk+ii-jj] + TF(0.5)*u[ijk+ii2-jj]
-                    + TF(0.5)*u[ijk-ii   ] + u[ijk   ] + u[ijk+ii   ] + TF(0.5)*u[ijk+ii2   ]
-                    + TF(0.5)*u[ijk-ii+jj] + u[ijk+jj] + u[ijk+ii+jj] + TF(0.5)*u[ijk+ii2+jj] );
-
-                const TF v_filtered = TF(1./9) *
-                    ( TF(0.5)*v[ijk-ii-jj] + v[ijk-ii] + v[ijk-ii+jj] + TF(0.5)*v[ijk-ii+jj2]
-                    + TF(0.5)*v[ijk   -jj] + v[ijk   ] + v[ijk   +jj] + TF(0.5)*v[ijk   +jj2]
-                    + TF(0.5)*v[ijk+ii-jj] + v[ijk+ii] + v[ijk+ii+jj] + TF(0.5)*v[ijk+ii+jj2] );
-
-                const TF du2 = fm::pow2(u_filtered - TF(0.5)*(ubot[ij] + ubot[ij+ii]))
-                             + fm::pow2(v_filtered - TF(0.5)*(vbot[ij] + vbot[ij+jj]));
-
-                // Prevent the absolute wind gradient from reaching values less than 0.01 m/s,
-                // otherwise evisc at k = kstart blows up
-                dutot[ij] = std::max(std::pow(du2, TF(0.5)), minval);
-            }
-    }
-
-    template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld,
             const TF* const restrict c_veg,
@@ -324,7 +276,7 @@ void Boundary_surface_lsm<TF>::exec(
     //
     auto dutot = fields.get_tmp_xy();
 
-    calc_dutot(
+    bsk::calc_dutot(
             (*dutot).data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -333,9 +285,9 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart,
-            gd.icells, gd.ijcells);
-
-    boundary_cyclic.exec_2d((*dutot).data());
+            gd.icells, gd.jcells,
+            gd.ijcells,
+            boundary_cyclic);
 
     //
     // Retrieve necessary data from other classes.
