@@ -6,8 +6,8 @@ import microhh_tools as mht
 #import taylorgreen.taylorgreenconv as tg
 #import conservation.run_conservation as conv
 
-#modes = ['cpu', 'cpumpi', 'gpu']
-modes = ['cpu', 'cpumpi']
+modes = ['cpu', 'cpumpi', 'gpu']
+#modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
 les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'lasso', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip missing
