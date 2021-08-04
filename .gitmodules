@@ -1,0 +1,3 @@
+[submodule "rte-rrtmgp-cpp"]
+	path = rte-rrtmgp-cpp
+	url = https://github.com/microhh/rte-rrtmgp-cpp
