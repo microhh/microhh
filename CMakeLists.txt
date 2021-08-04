@@ -28,16 +28,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 if(NOT USESP)
   set(USESP FALSE)
 endif()
+
 if(USESP)
   add_definitions("-DFLOAT_SINGLE")
-  # Single precision RRTMGP is disabled as it is unsupported.
-  # add_definitions("-DFLOAT_SINGLE_RRTMGP")
   message(STATUS "Precision: Single (32-bits floats)")
 else()
   message(STATUS "Precision: Double (64-bits floats)")
 endif()
-# Set the RRTMGP float type always to double as single is not supported.
-set(FLOAT_TYPE_RRTMGP "double")
 
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
 if(NOT USEMPI)
@@ -74,7 +71,11 @@ else()
 endif()
 
 # Start the project only after the system specific settings are loaded.
-project(microhhc C CXX Fortran)
+if(USECUDA)
+  project(microhhc C CXX CUDA Fortran)
+else()
+  project(microhhc C CXX Fortran)
+endif()
 
 # Display status messages for MPI set precompiler flags.
 if(USEMPI)
@@ -88,7 +89,6 @@ endif()
 # Load the CUDA module in case CUDA is enabled and display status message.
 if(USECUDA)
   message(STATUS "CUDA: Enabled.")
-  find_package(CUDA)
   add_definitions("-DUSECUDA")
 else()
   message(STATUS "CUDA: Disabled.")
@@ -116,13 +116,12 @@ if(NOT HASCACHE)
   set(CMAKE_Fortran_FLAGS_RELEASE ${USER_FC_FLAGS_RELEASE} CACHE STRING
     "Flags used by the Fortran-compiler during release builds." FORCE)
 
-
   if(USECUDA)
-    set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
+    set(CMAKE_CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC during all build types." FORCE)
-    set(CUDA_NVCC_FLAGS_DEBUG ${USER_CUDA_NVCC_FLAGS_DEBUG} CACHE STRING
+    set(CMAKE_CUDA_FLAGS_DEBUG ${USER_CUDA_NVCC_FLAGS_DEBUG} CACHE STRING
       "Flags used by NVCC during debug builds." FORCE)
-    set(CUDA_NVCC_FLAGS_RELEASE ${USER_CUDA_NVCC_FLAGS_RELEASE} CACHE STRING
+    set(CMAKE_CUDA_FLAGS_RELEASE ${USER_CUDA_NVCC_FLAGS_RELEASE} CACHE STRING
       "Flags used by NVCC during release builds." FORCE)
   endif()
 
@@ -144,13 +143,19 @@ if(USECUDA)
   # Add CUDA debug definition, to enforce CUDA API and kernel checks.
   if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
     add_definitions("-DCUDACHECKS")
-    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_DEBUG})
+    message(STATUS "NVCC flags: " ${CMAKE_CUDA_FLAGS} " " ${CMAKE_CUDA_FLAGS_DEBUG})
   else()
-    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS} " " ${CUDA_NVCC_FLAGS_RELEASE})
+    message(STATUS "NVCC flags: " ${CMAKE_CUDA_FLAGS} " " ${CMAKE_CUDA_FLAGS_RELEASE})
   endif()
 endif()
 
+add_subdirectory(rte-rrtmgp-cpp/src_kernels)
+if(USECUDA)
+  add_subdirectory(rte-rrtmgp-cpp/src_kernels_cuda)
+endif()
+add_subdirectory(rte-rrtmgp-cpp/src)
+if(USECUDA)
+  add_subdirectory(rte-rrtmgp-cpp/src_cuda)
+endif()
 add_subdirectory(src)
-add_subdirectory(src_rrtmgp)
-add_subdirectory(src_rrtmgp_fortran)
 add_subdirectory(main)
