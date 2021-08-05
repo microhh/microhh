@@ -1994,6 +1994,8 @@ bool Radiation_rrtmgp<TF>::is_day(const TF mu0)
     return false;
 }
 
-
-template class Radiation_rrtmgp<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
+#else
+template class Radiation_rrtmgp<double>;
+#endif

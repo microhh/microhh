@@ -812,5 +812,8 @@ void Model<TF>::print_status()
     }
 }
 
-template class Model<double>;
+#ifdef FLOAT_SINGLE
 template class Model<float>;
+#else
+template class Model<double>;
+#endif

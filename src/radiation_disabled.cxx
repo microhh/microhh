@@ -46,5 +46,8 @@ bool Radiation_disabled<TF>::check_field_exists(std::string name)
     return false;  // always returns error
 }
 
-template class Radiation_disabled<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_disabled<float>;
+#else
+template class Radiation_disabled<double>;
+#endif

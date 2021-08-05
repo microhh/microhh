@@ -72,5 +72,9 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
     }
 }
 
-template class Radiation<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation<float>;
+#else
+template class Radiation<double>;
+#endif
+

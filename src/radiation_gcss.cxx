@@ -577,5 +577,8 @@ void Radiation_gcss<TF>::exec_all_stats(
     }
 }
 
-template class Radiation_gcss<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;
+#else
+template class Radiation_gcss<double>;
+#endif
