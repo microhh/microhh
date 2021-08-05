@@ -80,38 +80,38 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
         void create_column_longwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
-                const Gas_concs<double>&);
+                const Gas_concs<TF>&);
         void create_column_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
-                const Gas_concs<double>&);
+                const Gas_concs<TF>&);
 
         void read_background_profiles(
-                Netcdf_handle&, const Gas_concs<double>&);
+                Netcdf_handle&, const Gas_concs<TF>&);
 
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&);
         void create_solver_longwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
-                const Gas_concs<double>&);
+                const Gas_concs<TF>&);
         void create_solver_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
-                const Gas_concs<double>&);
+                const Gas_concs<TF>&);
 
         void exec_longwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
-                Array<double,2>&, Array<double,2>&, Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&, const Array<double,1>&,
-                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
+                Array<TF,2>&, Array<TF,2>&, Array<TF,2>&,
+                const Array<TF,2>&, const Array<TF,2>&, const Array<TF,1>&,
+                const Array<TF,2>&, const Array<TF,2>&, const Array<TF,2>&,
                 const bool);
 
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
-                Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&,
-                const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
+                Array<TF,2>&, Array<TF,2>&, Array<TF,2>&, Array<TF,2>&,
+                const Array<TF,2>&, const Array<TF,2>&,
+                const Array<TF,2>&, const Array<TF,2>&, const Array<TF,2>&,
                 const bool);
 
-        bool is_day(double);  // Switch between day/night, based on sza
+        bool is_day(TF);  // Switch between day/night, based on sza
 
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
@@ -131,55 +131,55 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<std::string> crosslist;
 
         // RRTMGP related variables.
-        double tsi_scaling; // Total solar irradiance scaling factor.
-        double t_sfc;       // Surface absolute temperature in K.
-        double emis_sfc;    // Surface emissivity.
-        double sfc_alb_dir; // Surface albedo.
-        double sfc_alb_dif; // Surface albedo for diffuse light.
-        double mu0;         // Cosine of solar zenith angle.
-        double Nc0;         // Total droplet number concentration.
+        TF tsi_scaling; // Total solar irradiance scaling factor.
+        TF t_sfc;       // Surface absolute temperature in K.
+        TF emis_sfc;    // Surface emissivity.
+        TF sfc_alb_dir; // Surface albedo.
+        TF sfc_alb_dif; // Surface albedo for diffuse light.
+        TF mu0;         // Cosine of solar zenith angle.
+        TF Nc0;         // Total droplet number concentration.
 
         TF lat;    // Latitude (degrees)
         TF lon;    // Longitude (degrees)
 
         // The reference column for the full profile.
-        Array<double,2> lw_flux_dn_inc;
-        Array<double,2> sw_flux_dn_dir_inc;
-        Array<double,2> sw_flux_dn_dif_inc;
+        Array<TF,2> lw_flux_dn_inc;
+        Array<TF,2> sw_flux_dn_dir_inc;
+        Array<TF,2> sw_flux_dn_dif_inc;
 
         int n_col;
         int n_lay_col;
         int n_lev_col;
 
-        Array<double,2> p_lay_col;
-        Array<double,2> t_lay_col;
-        Array<double,2> p_lev_col;
-        Array<double,2> t_lev_col;
-        Array<double,2> col_dry;
+        Array<TF,2> p_lay_col;
+        Array<TF,2> t_lay_col;
+        Array<TF,2> p_lev_col;
+        Array<TF,2> t_lev_col;
+        Array<TF,2> col_dry;
 
         // Fluxes of reference column
-        Array<double,2> lw_flux_up_col;
-        Array<double,2> lw_flux_dn_col;
-        Array<double,2> lw_flux_net_col;
+        Array<TF,2> lw_flux_up_col;
+        Array<TF,2> lw_flux_dn_col;
+        Array<TF,2> lw_flux_net_col;
 
-        Array<double,2> sw_flux_up_col;
-        Array<double,2> sw_flux_dn_col;
-        Array<double,2> sw_flux_dn_dir_col;
-        Array<double,2> sw_flux_net_col;
+        Array<TF,2> sw_flux_up_col;
+        Array<TF,2> sw_flux_dn_col;
+        Array<TF,2> sw_flux_dn_dir_col;
+        Array<TF,2> sw_flux_net_col;
 
-        Gas_concs<double> gas_concs_col;
+        Gas_concs<TF> gas_concs_col;
 
-        std::unique_ptr<Source_func_lw<double>> sources_lw;
-        std::unique_ptr<Optical_props_arry<double>> optical_props_lw;
-        std::unique_ptr<Optical_props_arry<double>> optical_props_sw;
+        std::unique_ptr<Source_func_lw<TF>> sources_lw;
+        std::unique_ptr<Optical_props_arry<TF>> optical_props_lw;
+        std::unique_ptr<Optical_props_arry<TF>> optical_props_sw;
 
         // The full solver.
-        Gas_concs<double> gas_concs;
-        std::unique_ptr<Gas_optics_rrtmgp<double>> kdist_lw;
-        std::unique_ptr<Gas_optics_rrtmgp<double>> kdist_sw;
+        Gas_concs<TF> gas_concs;
+        std::unique_ptr<Gas_optics_rrtmgp<TF>> kdist_lw;
+        std::unique_ptr<Gas_optics_rrtmgp<TF>> kdist_sw;
 
-        std::unique_ptr<Cloud_optics<double>> cloud_lw;
-        std::unique_ptr<Cloud_optics<double>> cloud_sw;
+        std::unique_ptr<Cloud_optics<TF>> cloud_lw;
+        std::unique_ptr<Cloud_optics<TF>> cloud_sw;
 
         // Surface radiative fluxes
         std::vector<TF> lw_flux_dn_sfc;
