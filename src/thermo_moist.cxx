@@ -595,6 +595,24 @@ namespace
     }
 
     template<typename TF>
+    void calc_buoyancy_bot(
+            TF* const restrict b_bot,
+            const TF* const restrict thl_bot,
+            const TF* const restrict qt_bot,
+            const TF* const restrict thvrefh,
+            const int icells, const int jcells, const int kstart)
+    {
+        // assume no liquid water at the lowest model level
+        for (int j=0; j<jcells; j++)
+            #pragma ivdep
+            for (int i=0; i<icells; i++)
+            {
+                const int ij  = i + j*icells;
+                b_bot[ij] = buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
+            }
+    }
+
+    template<typename TF>
     void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
                                TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
                                const int icells, const int jcells, const int kstart,
@@ -840,7 +858,8 @@ template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Thermo<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(masterin, gridin),
-    field3d_operators(master, grid, fieldsin)
+    field3d_operators(master, grid, fieldsin),
+    field3d_io(master, grid)
 {
     auto& gd = grid.get_grid_data();
 
@@ -938,6 +957,32 @@ void Thermo_moist<TF>::save(const int iotime)
         fclose(pFile);
     }
 
+    auto tmp1 = fields.get_tmp();
+
+    // Save surface values thl + qt, which are needed for bitwise identical restarts
+    auto save_2d_field = [&](
+            TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    fields.release_tmp(tmp1);
+
     master.sum(&nerror, 1);
 
     if (nerror)
@@ -974,6 +1019,34 @@ void Thermo_moist<TF>::load(const int iotime)
             fclose(pFile);
         }
     }
+
+    auto tmp1 = fields.get_tmp();
+
+    // Lambda function to load 2D fields.
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
+    };
+
+    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
+    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+
+    fields.release_tmp(tmp1);
 
     // Communicate the file read error over all procs.
     master.sum(&nerror, 1);
@@ -1042,7 +1115,8 @@ void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     create_basestate(inputin, input_nc);
 
     // 7. Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -1310,18 +1384,20 @@ void Thermo_moist<TF>::get_radiation_fields(
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_land_surface_fields(Field3d<TF>& tmp)
+void Thermo_moist<TF>::get_land_surface_fields(
+        std::vector<TF>& T_bot, std::vector<TF>& T_a, std::vector<TF>& vpd,
+        std::vector<TF>& qsat, std::vector<TF>& dqsatdT)
 {
     /* Calculate the thermo fields required by the LSM in
        2D slices in the 3D tmp field */
     auto& gd = grid.get_grid_data();
 
     calc_land_surface_fields(
-            tmp.fld_bot.data(),   // T_bot
-            tmp.fld_top.data(),   // T first model level
-            tmp.flux_bot.data(),  // VPD first model level
-            tmp.flux_top.data(),  // qsat(T_bot)
-            tmp.grad_bot.data(),  // dqsatdT(T_bot)
+            T_bot.data(),
+            T_a.data(),
+            vpd.data(),
+            qsat.data(),
+            dqsatdT.data(),
             fields.sp.at("thl")->fld_bot.data(),
             fields.sp.at("thl")->fld.data(),
             fields.sp.at("qt")->fld.data(),
@@ -1336,39 +1412,66 @@ void Thermo_moist<TF>::get_land_surface_fields(Field3d<TF>& tmp)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_moist<TF>::get_buoyancy_surf(
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     Background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(),
-                      fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
-                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
-                      base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
+    calc_buoyancy_bot(
+            b.data(), bbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->fld_bot.data(),
+            base.thvref.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(
+    //        b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+    //        fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+    //        gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
-
 template<typename TF>
-void Thermo_moist<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_moist<TF>::get_buoyancy_surf(
+        std::vector<TF>& b_bot, std::vector<TF>& thl_bot, std::vector<TF>& qt_bot)
 {
     auto& gd = grid.get_grid_data();
+
+    calc_buoyancy_bot(
+            b_bot.data(), thl_bot.data(), qt_bot.data(),
+            bs.thvrefh.data(), gd.icells, gd.jcells, gd.kstart);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
+{
+    auto& gd = grid.get_grid_data();
+
     Background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            bfluxbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->flux_bot.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -1386,33 +1489,29 @@ void Thermo_moist<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_p_vector() const
+const std::vector<TF>& Thermo_moist<TF>::get_basestate_vector(std::string name) const
 {
-    return bs.pref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_ph_vector() const
-{
-    return bs.prefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_exner_vector() const
-{
-    return bs.exnref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_exnerh_vector() const
-{
-    return bs.exnrefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_rhorefh_vector() const
-{
-    return bs.rhorefh;
+    if (name == "p")
+        return bs.pref;
+    else if (name == "ph")
+        return bs.prefh;
+    else if (name == "exner")
+        return bs.exnref;
+    else if (name == "exnerh")
+        return bs.exnrefh;
+    else if (name == "rho")
+        return bs.rhoref;
+    else if (name == "rhoh")
+        return bs.rhorefh;
+    else if (name == "thv")
+        return bs.thvref;
+    else if (name == "thvh")
+        return bs.thvrefh;
+    else
+    {
+        std::string error = "Thermo_moist::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
 }
 
 template<typename TF>
@@ -1421,6 +1520,8 @@ TF Thermo_moist<TF>::get_db_ref() const
     auto& gd = grid.get_grid_data();
     return Constants::grav<TF>/bs.thvref[gd.kstart]*(bs.thvref[gd.kstart] - bs.thvrefh[gd.kstart]);
 }
+
+
 
 template<typename TF>
 void Thermo_moist<TF>::get_prog_vars(std::vector<std::string>& list)
@@ -1502,6 +1603,13 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(qi);
 
+        auto qlqi = fields.get_tmp();
+        qlqi->name = "qlqi";
+        qlqi->longname = "Liquid water and ice";
+        qlqi->unit = "kg kg-1";
+        stats.add_profs(*qlqi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        fields.release_tmp(qlqi);
+
         auto qsat = fields.get_tmp();
         qsat->name = "qsat";
         qsat->longname = "Saturated water vapor";
@@ -1535,10 +1643,6 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
         column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
         column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
-
-        // Time series
-        column.add_time_series("thl_bot", "Surface liquid water potential temperature", "K");
-        column.add_time_series("qt_bot", "Surface total specific humidity", "kg kg-1");
     }
 }
 
@@ -1673,6 +1777,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(qi);
 
+    // Calculate the combined liquid water and ice stats
+    auto qlqi = fields.get_tmp();
+    qlqi->loc = gd.sloc;
+
+    get_thermo_field(*qlqi, "ql_qi", true, true);
+    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
+
+    fields.release_tmp(qlqi);
+
     // Calculate the saturated water vapor stats
     auto qsat = fields.get_tmp();
     qsat->loc = gd.sloc;
@@ -1723,10 +1836,6 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     get_thermo_field(*output, "qi", false, true);
     column.calc_column("qi", output->fld.data(), no_offset);
 
-    // Time series
-    column.calc_time_series("thl_bot", fields.ap.at("thl")->fld_bot.data(), no_offset);
-    column.calc_time_series("qt_bot", fields.ap.at("qt")->fld_bot.data(), no_offset);
-
     fields.release_tmp(output);
 }
 #endif
@@ -1746,7 +1855,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
-        get_buoyancy_fluxbot(*output, true);
+        get_buoyancy_fluxbot(output->flux_bot, true);
     }
 
     for (auto& it : crosslist)

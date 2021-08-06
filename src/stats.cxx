@@ -526,8 +526,12 @@ Stats<TF>::Stats(
         sampletime = inputin.get_item<double>("stats", "sampletime", "");
         masklist   = inputin.get_list<std::string>("stats", "masklist", "", std::vector<std::string>());
         masklist.push_back("default"); // Add the default mask, which calculates the domain mean without sampling.
-        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
 
+        // Add user XY masks
+        std::vector<std::string> xymasklist = inputin.get_list<std::string>("stats", "xymasklist", "", std::vector<std::string>());
+        masklist.insert(masklist.end(), xymasklist.begin(), xymasklist.end());
+
+        swtendency = inputin.get_item<bool>("stats", "swtendency", "", false);
         std::vector<std::string> whitelistin = inputin.get_list<std::string>("stats", "whitelist", "", std::vector<std::string>());
 
         // Anything without an underscore is mean value, so should be on the whitelist
@@ -583,6 +587,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
     int iotime = timeloop.get_iotime();
 
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
     // Create a NetCDF file for each of the masks.
     for (auto& mask : masks)
@@ -600,6 +605,12 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         m.data_file->add_dimension("zh", gd.kmax+1);
         m.data_file->add_dimension("time");
 
+        if (sgd.is_enabled)
+        {
+            m.data_file->add_dimension("zs", sgd.kmax);
+            m.data_file->add_dimension("zsh", sgd.kmax+1);
+        }
+
         // Create variables belonging to dimensions.
         Netcdf_handle& iter_handle =
             m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
@@ -615,6 +626,7 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
             m.time_var->add_attribute("units", "seconds since start");
         m.time_var->add_attribute("long_name", "Time");
 
+        // Add vertical grid variables (atmosphere)
         Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
         z_var.add_attribute("units", "m");
         z_var.add_attribute("long_name", "Full level height");
@@ -628,6 +640,24 @@ void Stats<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name)
         std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
         z_var .insert( z_nogc, {0});
         zh_var.insert(zh_nogc, {0});
+
+        // Add vertical grid variables (soil)
+        if (sgd.is_enabled)
+        {
+            Netcdf_variable<TF> zs_var = m.data_file->template add_variable<TF>("zs", {"zs"});
+            zs_var.add_attribute("units", "m");
+            zs_var.add_attribute("long_name", "Full level height soil");
+
+            Netcdf_variable<TF> zsh_var = m.data_file->template add_variable<TF>("zsh", {"zsh"});
+            zsh_var.add_attribute("units", "m");
+            zsh_var.add_attribute("long_name", "Half level height soil");
+
+            // Save the grid variables.
+            std::vector<TF> zs_nogc (sgd.z. begin() + sgd.kstart, sgd.z. begin() + sgd.kend  );
+            std::vector<TF> zsh_nogc(sgd.zh.begin() + sgd.kstart, sgd.zh.begin() + sgd.kend+1);
+            zs_var .insert( zs_nogc, {0});
+            zsh_var.insert(zsh_nogc, {0});
+        }
 
         // Synchronize the NetCDF file.
         m.data_file->sync();

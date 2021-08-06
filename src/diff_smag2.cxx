@@ -50,11 +50,8 @@ namespace
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
-            const TF* const restrict z0m,
-            const TF* const restrict ubot,
-            const TF* const restrict vbot,
+            const TF* const restrict ugradbot,
+            const TF* const restrict vgradbot,
             const TF* const restrict z,
             const TF* const restrict dzi,
             const TF* const restrict dzhi,
@@ -79,16 +76,6 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
 
-                    // Calculate du/dz and dv/dz at grid center, from interpolated wind speed.
-                    const TF du_c = TF(0.5)*((u[ijk] - ubot[ij]) + (u[ijk+ii] - ubot[ij+ii]));
-                    const TF dv_c = TF(0.5)*((v[ijk] - vbot[ij]) + (v[ijk+jj] - vbot[ij+jj]));
-
-                    const TF ufluxbot = -du_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-                    const TF vfluxbot = -dv_c * ustar[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-
-                    const TF dudz = -ufluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-                    const TF dvdz = -vfluxbot / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phim(zsl/obuk[ij]);
-
                     strain2[ijk] = TF(2.)*(
                             // du/dx + du/dx
                             + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
@@ -106,7 +93,7 @@ namespace
                             + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
 
                             // du/dz
-                            + TF(0.5) * fm::pow2(dudz)
+                            + TF(0.5) * fm::pow2(ugradbot[ij])
 
                             // dw/dx
                             + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
@@ -115,7 +102,7 @@ namespace
                             + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
 
                             // dv/dz
-                            + TF(0.5) * fm::pow2(dvdz)
+                            + TF(0.5) * fm::pow2(vgradbot[ij])
 
                             // dw/dy
                             + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
@@ -271,11 +258,7 @@ namespace
             const TF* const restrict v,
             const TF* const restrict w,
             const TF* const restrict N2,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
-            const TF* const restrict bfluxbot,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
+            const TF* const restrict bgradbot,
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict dzi,
@@ -346,7 +329,7 @@ namespace
 
                     // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
                     // Add the buoyancy production to the TKE
-                    TF RitPrratio = -bfluxbot[ij]/(Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+                    TF RitPrratio = bgradbot[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
                     // Mason mixing length
@@ -951,7 +934,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         diff_u<TF, Surface_model::Enabled>(
                 fields.mt.at("u")->fld.data(),
@@ -1058,38 +1041,41 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
-    const std::vector<TF>& ustar = boundary.get_ustar();
-    const std::vector<TF>& obuk  = boundary.get_obuk();
-    const std::vector<TF>& z0m   = boundary.get_z0m();
+    const std::vector<TF>& z0m = boundary.get_z0m();
 
-    // Calculate strain rate using MO for velocity gradients lowest level.
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
+    {
+        // Calculate strain rate using MO for velocity gradients lowest level.
+        const std::vector<TF>& dudz = boundary.get_dudz();
+        const std::vector<TF>& dvdz = boundary.get_dvdz();
+
         calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                ustar.data(), obuk.data(), z0m.data(),
-                fields.mp.at("u")->fld_bot.data(),
-                fields.mp.at("v")->fld_bot.data(),
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                dudz.data(),
+                dvdz.data(),
+                gd.z.data(),
+                gd.dzi.data(),
+                gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-
-    // Calculate strain rate using resolved boundaries.
+    }
     else
+        // Calculate strain rate using resolved boundaries.
         calc_strain2<TF, Surface_model::Disabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                nullptr, nullptr, nullptr,
-                fields.mp.at("u")->fld_bot.data(),
-                fields.mp.at("v")->fld_bot.data(),
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                nullptr, nullptr,
+                gd.z.data(),
+                gd.dzi.data(),
+                gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -1101,7 +1087,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     if (thermo.get_switch() == "0")
     {
         // Calculate eddy viscosity using MO at lowest model level
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1142,24 +1128,19 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         auto buoy_tmp = fields.get_tmp();
         auto tmp = fields.get_tmp();
 
-        thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
+        const std::vector<TF>& dbdz = boundary.get_dbdz();
 
-        const std::vector<TF>& ustar = boundary.get_ustar();
-        const std::vector<TF>& obuk  = boundary.get_obuk();
-
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
                     fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    buoy_tmp->flux_bot.data(),
-                    ustar.data(), obuk.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    dbdz.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
@@ -1173,11 +1154,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    buoy_tmp->flux_bot.data(),
-                    nullptr, nullptr,
-                    gd.z.data(), gd.dz.data(), gd.dzi.data(), z0m.data(),
+                    nullptr,
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzi.data(), z0m.data(),
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
@@ -1222,7 +1201,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         // Calculate the boundary fluxes.
         calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);

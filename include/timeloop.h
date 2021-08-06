@@ -85,6 +85,7 @@ class Timeloop
         unsigned long get_isavetime() const { return isavetime; }
         int get_iotime() const { return iotime; }
         int get_iteration() const { return iteration; }
+        int get_substep() const { return substep; }
 
         // Functions for UTC time support.
         bool has_utc_time() const { return flag_utc_time; }

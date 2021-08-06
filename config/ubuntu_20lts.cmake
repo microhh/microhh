@@ -7,7 +7,12 @@ else()
   set(ENV{CXX} g++) # C++ compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "-std=c++14")
+if(USECUDA)
+  set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
+else()
+  set(USER_CXX_FLAGS "-std=c++14")
+endif()
+
 set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
@@ -35,3 +40,4 @@ if(USECUDA)
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
+add_definitions(-DUSE_CBOOL)

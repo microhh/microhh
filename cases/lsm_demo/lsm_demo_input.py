@@ -59,12 +59,17 @@ ft  = ~abl
 
 th = np.zeros(grid_les.ktot)
 qt = np.zeros(grid_les.ktot)
+u  = np.zeros(grid_les.ktot)
+ug = np.zeros(grid_les.ktot)
 
 th[abl] = th_b
 th[ft ] = th_b + dth + (grid_les.z[ft]-zi)*dthdz
 
 qt[abl] = qt_b
 qt[ft ] = qt_b + dqt + (grid_les.z[ft]-zi)*dqtdz
+
+u[:] = 5.
+ug[:] = 5.
 
 # Interpolate AFGL ozone onto LES grid:
 o3 = np.interp(grid_les.z, afgl.z, afgl.o3)
@@ -166,6 +171,8 @@ add_nc_var(nc, 'z', ('z'), grid_les.z)
 # Initial profiles:
 add_nc_var(nc_init, 'thl', ('z'), th)
 add_nc_var(nc_init, 'qt',  ('z'), qt)
+add_nc_var(nc_init, 'u',   ('z'), u)
+add_nc_var(nc_init, 'ug',  ('z'), ug)
 
 add_nc_var(nc_init, 'h2o', ('z'), qt/(ep-ep*qt))
 add_nc_var(nc_init, 'o3',  ('z'), o3*1e-6)
@@ -197,27 +204,36 @@ add_nc_var(nc_rad, 'o2',  (), 0.2095)
 # Soil profiles:
 add_nc_var(nc_soil, 'z', ('z'), z_soil)
 
-if nl['land_surface']['sw_homogeneous']:
+if nl['land_surface']['swhomogeneous']:
     add_nc_var(nc_soil, 't_soil', ('z'), t_soil)
     add_nc_var(nc_soil, 'theta_soil', ('z'), theta_soil)
     add_nc_var(nc_soil, 'root_frac', ('z'), root_frac)
-    add_nc_var(nc_soil, 'index_soil', ('z'), index_soil, np.int)
+    add_nc_var(nc_soil, 'index_soil', ('z'), index_soil, np.int32)
 
 nc.close()
 
 # -------------------------------------------
 # Create input for heterogeneous land surface
 # -------------------------------------------
-if not nl['land_surface']['sw_homogeneous']:
+if not nl['boundary']['swconstantz0']:
+
+    z0m = np.zeros((jtot, itot), dtype=TF)
+    z0h = np.zeros((jtot, itot), dtype=TF)
+
+    z0m[:,:] = 0.1
+    z0h[:,:] = 0.01
+
+    z0m.tofile('z0m.0000000')
+    z0h.tofile('z0h.0000000')
+
+if not nl['land_surface']['swhomogeneous']:
 
     # Help class to simplify writing the input files for heterogeneous land surfaces:
     lsm_input = LSM_input(
-            itot, jtot, nl['land_surface']['ktot'], TF=TF, debug=True)
+            itot, jtot, nl['land_surface']['ktot'], TF=TF, debug=True, exclude_fields=['z0m','z0h'])
 
     # Initialise all values:
     lsm_input.c_veg[:,:] = 0.95
-    lsm_input.z0m[:,:] = 0.075
-    lsm_input.z0h[:,:] = 0.003
     lsm_input.gD[:,:] = 0.
     lsm_input.lai[:,:] = 2.6
     lsm_input.rs_veg_min[:,:] = 100.

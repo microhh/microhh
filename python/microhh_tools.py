@@ -518,15 +518,22 @@ def compare_bitwise(f1, f2):
 
 def restart_post(origin, timestr):
     file_names = glob.glob('*.' + timestr)
+    not_identical = False
     for file_name in file_names:
         cmp_python, cmp_os = compare_bitwise('../' + origin + '/' + file_name, file_name)
 
         if not cmp_python and not cmp_os:
-            raise Warning('{} is not identical (python+OS)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (python+OS)'.format(file_name))
         elif not cmp_python:
-            raise Warning('{} is not identical (python)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (python)'.format(file_name))
         elif not cmp_os:
-            raise Warning('{} is not identical (OS)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (OS)'.format(file_name))
+
+    if not_identical:
+        raise Warning('One or more restart files are not identical.')
 
 
 def compare(origin, file, starttime=-1, vars={}):

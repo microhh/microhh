@@ -32,25 +32,20 @@ template<typename TF>
 class Boundary_surface_bulk : public Boundary<TF>
 {
     public:
-        Boundary_surface_bulk(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Boundary_surface_bulk(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface_bulk();
 
         void init(Input&, Thermo<TF>&);
-        void create(
-                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
-                Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
+        void create_cold_start(Netcdf_handle&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
 
-        void get_ra(Field3d<TF>&) {throw std::runtime_error("Function get_ra() not implemented in boundary_surface_bulk.");}
-        const std::vector<TF>& get_z0m() const { return z0m; };
-        const std::vector<TF>& get_z0h() const { return z0h; };
-        const std::vector<TF>& get_ustar() const { return ustar; };
-        const std::vector<TF>& get_obuk() const { return obuk; };
+        const std::vector<TF>& get_z0m()  const { return z0m; };
+        const std::vector<TF>& get_dudz() const { return dudz_mo; }
+        const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
+        const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
 
-        void calc_mo_stability(Thermo<TF>&);
-        void calc_mo_bcs_momentum(Thermo<TF>&);
-        void calc_mo_bcs_scalars(Thermo<TF>&);
-
+        void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long) {};
@@ -64,6 +59,11 @@ class Boundary_surface_bulk : public Boundary<TF>
         void clear_device();
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
+
+        TF* get_z0m_g()  { return z0m_g; };
+        TF* get_dudz_g() { return dudz_mo_g; };
+        TF* get_dvdz_g() { return dvdz_mo_g; };
+        TF* get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -73,6 +73,7 @@ class Boundary_surface_bulk : public Boundary<TF>
     private:
         using Boundary<TF>::master;
         using Boundary<TF>::grid;
+        using Boundary<TF>::soil_grid;
         using Boundary<TF>::fields;
         using Boundary<TF>::boundary_cyclic;
         using Boundary<TF>::swboundary;
@@ -91,12 +92,26 @@ class Boundary_surface_bulk : public Boundary<TF>
         std::vector<TF> ustar;
         std::vector<TF> obuk;
 
+        std::vector<TF> dudz_mo;
+        std::vector<TF> dvdz_mo;
+        std::vector<TF> dbdz_mo;
+
+        #ifdef USECUDA
+        TF* z0m_g;
         TF* obuk_g;
+
         TF* ustar_g;
+
+        TF* dudz_mo_g;
+        TF* dvdz_mo_g;
+        TF* dbdz_mo_g;
+        #endif
 
         // Transfer coefficients
         TF bulk_cm;
         std::map<std::string, TF> bulk_cs;
+
+
 
 
     protected:

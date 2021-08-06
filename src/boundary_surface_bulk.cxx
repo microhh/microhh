@@ -25,38 +25,19 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "boundary_surface_bulk.h"
+#include "boundary_surface_kernels.h"
+#include "monin_obukhov.h"
 #include "constants.h"
 
 namespace
 {
     namespace fm = Fast_math;
-
-    template<typename TF>
-    void calculate_du(
-            TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        // calculate total wind
-        TF du2;
-        const TF minval = 1.e-1;
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                du2 = fm::pow2(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]));
-                dutot[ij] = std::max(std::sqrt(du2), minval);
-            }
-
-    }
+    namespace most = Monin_obukhov;
+    namespace bsk = Boundary_surface_kernels;
 
     template<typename TF>
     void momentum_fluxgrad(
@@ -121,8 +102,10 @@ namespace
 }
 
 template<typename TF>
-Boundary_surface_bulk<TF>::Boundary_surface_bulk(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Boundary<TF>(masterin, gridin, fieldsin, inputin)
+Boundary_surface_bulk<TF>::Boundary_surface_bulk(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+    Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     swboundary = "surface_bulk";
 
@@ -156,6 +139,11 @@ void Boundary_surface_bulk<TF>::create(
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
     }
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
 }
 
 template<typename TF>
@@ -207,6 +195,10 @@ void Boundary_surface_bulk<TF>::init_surface(Input& input)
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
+    dudz_mo.resize(gd.ijcells);
+    dvdz_mo.resize(gd.ijcells);
+    dbdz_mo.resize(gd.ijcells);
+
     z0m.resize(gd.ijcells);
     z0h.resize(gd.ijcells);
 
@@ -243,26 +235,36 @@ void Boundary_surface_bulk<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_stability(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     const TF zsl = gd.z[gd.kstart];
 
+    // Calculate (limited and filtered) total wind speed difference surface-atmosphere:
     auto dutot = fields.get_tmp();
 
-    // Calculate total wind speed difference with surface
-    calculate_du(dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-    boundary_cyclic.exec_2d(dutot->fld.data());
+    bsk::calc_dutot(
+            dutot->fld.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells,
+            boundary_cyclic);
 
     // Calculate surface momentum fluxes and gradients
-    momentum_fluxgrad(fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
-                    fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
-                    fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
-                    dutot->fld.data(), bulk_cm, zsl,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    momentum_fluxgrad(
+            fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
+            fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
+            dutot->fld.data(), bulk_cm, zsl,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     boundary_cyclic.exec_2d(fields.mp.at("u")->flux_bot.data());
     boundary_cyclic.exec_2d(fields.mp.at("v")->flux_bot.data());
@@ -281,22 +283,46 @@ void Boundary_surface_bulk<TF>::calc_mo_stability(Thermo<TF>& thermo)
     }
 
     auto b= fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*b, false);
-    surface_scaling(ustar.data(), obuk.data(), dutot->fld.data(), b->flux_bot.data(), bulk_cm,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    thermo.get_buoyancy_fluxbot(b->flux_bot, false);
+    surface_scaling(
+            ustar.data(), obuk.data(),
+            dutot->fld.data(), b->flux_bot.data(),
+            bulk_cm,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 
     fields.release_tmp(b);
     fields.release_tmp(dutot);
-}
 
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
-{
-}
+    // Calculate MO gradients
+    bsk::calc_duvdz_mo(
+            dudz_mo.data(), dvdz_mo.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
 
-template<typename TF>
-void Boundary_surface_bulk<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
-{
+    auto buoy = fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+
+    bsk::calc_dbdz_mo(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    fields.release_tmp(buoy);
 }
 #endif
 

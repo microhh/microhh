@@ -512,7 +512,8 @@ void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>
     create_basestate(inputin, input_nc);
 
     // 6. Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -646,7 +647,8 @@ void Thermo_vapor<TF>::get_thermo_field(
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_vapor<TF>::get_buoyancy_surf(
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     background_state base;
@@ -655,29 +657,43 @@ void Thermo_vapor<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
     else
         base = bs;
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(),
-                      fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->fld_bot.data(),
-                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->fld_bot.data(),
-                      base.thvref.data(), base.thvrefh.data(), gd.icells, gd.jcells, gd.ijcells, gd.kstart);
+    calc_buoyancy_bot(
+            b.data(), bbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->fld_bot.data(),
+            base.thvref.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.ijcells, gd.kstart);
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
+    //                      fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
+    //                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_vapor<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("thl")->flux_bot.data(),
-                          fields.sp.at("qt")->fld.data(), fields.sp.at("qt")->flux_bot.data(), base.thvrefh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            bfluxbot.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("thl")->flux_bot.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("qt")->flux_bot.data(),
+            base.thvrefh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -695,21 +711,25 @@ void Thermo_vapor<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_p_vector() const
+const std::vector<TF>& Thermo_vapor<TF>::get_basestate_vector(std::string name) const
 {
-    return bs.pref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_ph_vector() const
-{
-    return bs.prefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_vapor<TF>::get_exner_vector() const
-{
-    return bs.exnref;
+    if (name == "p")
+        return bs.pref;
+    else if (name == "ph")
+        return bs.prefh;
+    else if (name == "exner")
+        return bs.exnref;
+    else if (name == "exnerh")
+        return bs.exnrefh;
+    else if (name == "thv")
+        return bs.thvref;
+    else if (name == "thvh")
+        return bs.thvrefh;
+    else
+    {
+        std::string error = "Thermo_vapor::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
 }
 
 template<typename TF>
@@ -848,8 +868,8 @@ void Thermo_vapor<TF>::exec_stats(Stats<TF>& stats)
     auto b = fields.get_tmp();
     b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
-    get_buoyancy_surf(*b, true);
-    get_buoyancy_fluxbot(*b, true);
+    get_buoyancy_surf(b->fld, b->fld_bot, true);
+    get_buoyancy_fluxbot(b->flux_bot, true);
 
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
@@ -897,7 +917,7 @@ void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*output, "b", false, true);
-        get_buoyancy_fluxbot(*output, true);
+        get_buoyancy_fluxbot(output->flux_bot, true);
     }
 
     for (auto& it : crosslist)

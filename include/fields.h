@@ -140,6 +140,9 @@ class Fields
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
 
+        std::shared_ptr<std::vector<TF>> get_tmp_xy();
+        void release_tmp_xy(std::shared_ptr<std::vector<TF>>&);
+
         #ifdef USECUDA
         std::shared_ptr<Field3d<TF>> get_tmp_g();
         void release_tmp_g(std::shared_ptr<Field3d<TF>>&);
@@ -181,9 +184,12 @@ class Fields
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
+        int n_tmp_fields_xy;   ///< Number of temporary fields.
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
+
+        std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
 
         std::mutex tmp_fld_mutex;
 
@@ -206,10 +212,12 @@ class Fields
                 std::vector<std::string>&,
                 std::vector<std::string>&);
 
-        // // masks
+        // Masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
-        // void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);
-        // void calc_mask_wmin (double*, double*, double*, int*, int*, int*, double*);
+
+        // User input surface (or XY) masks
+        std::vector<std::string> xymasklist;
+        std::map<std::string, std::vector<TF>> xymasks;
 
         // perturbations
         TF rndamp;
