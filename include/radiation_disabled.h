@@ -73,6 +73,11 @@ class Radiation_disabled : public Radiation<TF>
 
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
+        #ifdef USECUDA
+        void prepare_device() {};
+        void clear_device() {};
+        #endif
+
     private:
         using Radiation<TF>::swradiation;
 };

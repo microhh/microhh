@@ -20,19 +20,34 @@
 
 #include "radiation_rrtmgp.h"
 
+
 #ifdef USECUDA
-template<typename TF>
+template <typename TF>
 void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     throw std::runtime_error("Radiation_rrtmgp is not implemented yet on the GPU");
 }
 
-template<typename TF>
+
+template <typename TF>
 std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(std::string name)
 {
     throw std::runtime_error("Radiation_rrtmgp is not implemented yet on the GPU");
 }
+
+
+template <typename TF>
+void Radiation_rrtmgp<TF>::prepare_device()
+{
+}
+
+
+template <typename TF>
+void Radiation_rrtmgp<TF>::clear_device()
+{
+}
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;

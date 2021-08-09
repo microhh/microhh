@@ -99,6 +99,8 @@ class Radiation_gcss : public Radiation<TF>
         #ifdef USECUDA
         // GPU functions and variables
         void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        void prepare_device() {};
+        void clear_device() {};
         #endif
 
         const std::string tend_name = "rad";
