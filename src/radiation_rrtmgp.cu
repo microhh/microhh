@@ -34,5 +34,8 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(std::string name)
 }
 #endif
 
-template class Radiation_rrtmgp<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
+#else
+template class Radiation_rrtmgp<double>;
+#endif
