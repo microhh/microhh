@@ -261,6 +261,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	TF vdisopooh = (0.0);
 	TF vdhald    = (0.0);
 	TF emvkmacr = (0.0);
+	TF eno      = (0.0);
 
 	for( int i = 0; i < NVAR; i++ ) {
 	  RTOL[i] = RTOLS;
@@ -275,13 +276,11 @@ double CFACTOR;                          /* Conversion factor for concentration 
         int nkpp = 0;
 	int nderiv = 0;
 	TF eisop;
-	TF eno;
 	// update the time integration of the reaction fluxes:
 	trfa += rkdt;
-
         for (int k=kstart; k<kend; ++k)
             {	
-	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chmistry!
+	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chemistry!
 	    const TF CFACTOR = C_M*(TF)1e-9 ;               // from ppb (units mixing ratio) to molecules/cm3
             if (k==kstart) {
 	        vdo3   = TF(0.0056)/dz[k];   // 1/s
@@ -294,7 +293,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		// emission/deposition fluxes:
 		emvkmacr = TF(-0.004)*CFACTOR/dz[k]; // #/cm3 per s, seen orlando protocol
 		eisop    = emval[0]*CFACTOR/dz[k];
-		eno      = emval[1]*CFACTOR/dz[k];
+		eno      = TF(0.03)*CFACTOR/dz[k];
 	    }
             else {
 	        vdo3   = TF(0.0);
@@ -479,7 +478,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    // tscale[16] = std::min(tscale[16],ABS(no3[ijk])/ABS(tno3[ijk]));
 		    // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
 		    // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
-                } /* i */
+                }
 	}
     }
 }
@@ -611,7 +610,6 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     jch2om.resize(time_dim_length);
     jch3o2h.resize(time_dim_length);
     emi_isop.resize(time_dim_length);
-    emi_no.resize(time_dim_length);
 
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(jo31d, jname[0],  {0}, {time_dim_length});
@@ -622,8 +620,7 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     group_nc.get_variable(jch2or, jname[5],  {0}, {time_dim_length});
     group_nc.get_variable(jch2om, jname[6],  {0}, {time_dim_length});
     group_nc.get_variable(jch3o2h, jname[7],  {0}, {time_dim_length});
-    group_nc.get_variable(emi_isop, ename[0],  {0}, {time_dim_length});
-    group_nc.get_variable(emi_no,   ename[1],  {0}, {time_dim_length});
+    group_nc.get_variable(emi_isop, "emi_isop",  {0}, {time_dim_length});
 
     // Stats:
     const std::string group_name = "default";
@@ -731,7 +728,6 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     jval[6] = ifac.fac0 * jch2om[ifac.index0] + ifac.fac1 * jch2om[ifac.index1];
     jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
     emval[0] = ifac.fac0 * emi_isop[ifac.index0] + ifac.fac1 * emi_isop[ifac.index1];
-    emval[1] = ifac.fac0 * emi_no[ifac.index0] + ifac.fac1 * emi_no[ifac.index1];
 }
 
 

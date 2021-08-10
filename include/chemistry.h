@@ -72,9 +72,9 @@ class Chemistry
         int statistics_counter;
 	TF switch_dt;   // to switch between complicated and detailed solver
 	std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3a","jno3b","jch2or","jch2om","jch3o2h"};
-	std::vector<std::string> ename={"emi_isop"};
+	std::vector<std::string> ename={"emi_isop","emi_no"};
         TF jval[8];   // time-interpolated value to pass to the chemistry routine
-        TF emval[1];
+        TF emval[2];
 	std::vector<TF> time;
 	std::vector<TF> jo31d;
 	std::vector<TF> jh2o2;
@@ -85,6 +85,7 @@ class Chemistry
 	std::vector<TF> jch2om;
 	std::vector<TF> jch3o2h;
 	std::vector<TF> emi_isop;
+	std::vector<TF> emi_no;
 	std::vector<TF> rfa;
 	TF trfa;
 

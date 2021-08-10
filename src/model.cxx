@@ -349,6 +349,7 @@ void Model<TF>::exec()
                 boundary->update_time_dependent(*timeloop);
                 thermo  ->update_time_dependent(*timeloop);
                 force   ->update_time_dependent(*timeloop);
+		chemistry->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
