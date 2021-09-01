@@ -203,6 +203,52 @@ namespace
                 qt_gradbot[ij]  = (qt [ijk]-qt_bot [ij])/zsl;
             }
     }
+
+    template<typename TF>
+    void set_bcs_scalars(
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl, const Boundary_type bcbot,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int jj = icells;
+
+        if (bcbot == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+
+                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+                }
+        }
+        else if (bcbot == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+
+                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+                }
+        }
+    }
+
 }
 
 template<typename TF>
@@ -603,6 +649,21 @@ void Boundary_surface_lsm<TF>::exec(
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
 
+    // Set BCs other scalars
+    for (auto& it : fields.sp)
+        if (it.first != "thl" and it.first != "qt")
+            set_bcs_scalars(
+                it.second->fld_bot.data(),
+                it.second->grad_bot.data(),
+                it.second->flux_bot.data(),
+                ustar.data(), obuk.data(),
+                it.second->fld.data(), z0h.data(),
+                gd.z[gd.kstart], sbc.at(it.first).bcbot,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                boundary_cyclic);
+
     // Calculate MO gradients, which are used
     // by the diffusion scheme.
     bsk::calc_duvdz_mo(
@@ -924,9 +985,14 @@ void Boundary_surface_lsm<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     if (mbcbot != Boundary_type::Dirichlet_type)
         throw std::runtime_error("swboundary=surface_lsm requires mbcbot=noslip");
 
+    if (sbc.at("thl").bcbot != Boundary_type::Dirichlet_type ||
+        sbc.at("qt") .bcbot != Boundary_type::Dirichlet_type)
+        throw std::runtime_error("\"swboundary=surface_lsm\" requires \"sbcbot=dirichlet\" for \"thl\" and \"qt\"!");
+
+    // Don't allow Neumann BCs
     for (auto& it : sbc)
-        if (it.second.bcbot != Boundary_type::Dirichlet_type)
-            throw std::runtime_error("swboundary_surface_lsm requires sbcbot=dirichlet");
+        if (it.second.bcbot == Boundary_type::Neumann_type)
+            throw std::runtime_error("\"swboundary=surface_lsm\" does not support \"sbcbot=neumann\"");
 
     thermobc = Boundary_type::Dirichlet_type;
 }
