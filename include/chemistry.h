@@ -87,6 +87,7 @@ class Chemistry
 	std::vector<TF> emi_isop;
 	std::vector<TF> emi_no;
 	std::vector<TF> rfa;
+	std::vector<TF> rka;
 	TF trfa;
 
         const std::string tend_name = "chemistry";

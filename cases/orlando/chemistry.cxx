@@ -42,19 +42,19 @@
 
 namespace 
 {
-#include "../cases/orlando/include/orlando_ohss_Parameters.h"
-#include "../cases/orlando/include/orlando_ohss_Global.h"
-#include "../cases/orlando/include/orlando_ohss_Sparse.h"
-#include "../cases/orlando/include/orlando_ohss_Integrator.c"      /* needs to be modified */
-#include "../cases/orlando/include/orlando_ohss_Function.c"        /* needs to be modified */
-#include "../cases/orlando/include/orlando_ohss_LinearAlgebra.c"
-#include "../cases/orlando/include/orlando_ohss_JacobianSP.c"
-#include "../cases/orlando/include/orlando_ohss_Jacobian.c"
+#include "../cases/orlando_oh/include/orlando_Parameters.h"
+#include "../cases/orlando_oh/include/orlando_Global.h"
+#include "../cases/orlando_oh/include/orlando_Sparse.h"
+#include "../cases/orlando_oh/include/orlando_Integrator.c"      /* needs to be modified */
+#include "../cases/orlando_oh/include/orlando_Function.c"        /* needs to be modified */
+#include "../cases/orlando_oh/include/orlando_LinearAlgebra.c"
+#include "../cases/orlando_oh/include/orlando_JacobianSP.c"
+#include "../cases/orlando_oh/include/orlando_Jacobian.c"
 	
 
 double C[NSPEC];                         /* Concentration of all species */
 double * VAR = & C[0];
-double * FIX = & C[18];
+double * FIX = & C[19];
 double RCONST[NREACT];                   /* Rate constants (global) */
 double RF[NREACT];                       /* Modified: These contain the reaction fluxes also modify call in Integrator */
 double Vdot[NVAR];                       /* Time derivative of variable species concentrations */
@@ -229,11 +229,11 @@ double CFACTOR;                          /* Conversion factor for concentration 
             TF* restrict tisopbo2, const TF* const restrict isopbo2, 
             TF* restrict tno3, const TF* const restrict no3, 
             TF* restrict tho2, const TF* const restrict ho2, 
-            TF* restrict oh,
+            TF* restrict toh, const TF* const restrict oh, 
 	    const TF* const restrict jval, const TF* const restrict emval,
 	    TF* restrict rfa, TF& trfa,
 	    const TF* restrict qt,
-	    const TF* restrict Temp, const TF rkdt, const TF switch_dt,
+	    const TF* restrict Temp, const TF dt, const TF sdt, const TF switch_dt,
 	    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk, const TF* const restrict dz, TF* const restrict rhoref)
     {
@@ -261,7 +261,6 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	TF vdisopooh = (0.0);
 	TF vdhald    = (0.0);
 	TF emvkmacr = (0.0);
-	TF eno      = (0.0);
 
 	for( int i = 0; i < NVAR; i++ ) {
 	  RTOL[i] = RTOLS;
@@ -272,15 +271,17 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	TF STEPMAX = 90;
 
 	VAR = &C[0];
-	FIX = &C[18];
+	FIX = &C[19];
         int nkpp = 0;
 	int nderiv = 0;
 	TF eisop;
-	// update the time integration of the reaction fluxes:
-	trfa += rkdt;
+	TF eno;
+	// update the time integration of the reaction fluxes with the full timestep on first RK3 step
+        if (abs(sdt/dt - 1./3.) < 1e-5) trfa += dt;
+
         for (int k=kstart; k<kend; ++k)
             {	
-	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chemistry!
+	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chmistry!
 	    const TF CFACTOR = C_M*(TF)1e-9 ;               // from ppb (units mixing ratio) to molecules/cm3
             if (k==kstart) {
 	        vdo3   = TF(0.0056)/dz[k];   // 1/s
@@ -293,7 +294,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		// emission/deposition fluxes:
 		emvkmacr = TF(-0.004)*CFACTOR/dz[k]; // #/cm3 per s, seen orlando protocol
 		eisop    = emval[0]*CFACTOR/dz[k];
-		eno      = TF(0.03)*CFACTOR/dz[k];
+		eno      = emval[1]*CFACTOR/dz[k];
 	    }
             else {
 	        vdo3   = TF(0.0);
@@ -307,6 +308,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		eisop   = TF(0.0);
 		eno     = TF(0.0);
 	    }
+	    TF coh = 0.0;
+	    int noh = 0;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -316,26 +319,28 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    const TF SUN = 1.0; 
 		    const TF TEMP = Temp[ijk];
 		    //const TF TEMP = 298.0;
-		    // convert to molecules per cm3:
-                    VAR[ind_H2O2]    = std::max(h2o2[ijk]*CFACTOR,(TF)0.0);
-		    VAR[ind_CH4 ]    = std::max(ch4[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_N2O5]    = std::max(n2o5[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_HALD]    = std::max(hald[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_CO  ]    = std::max(co[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_HCHO]    = std::max(hcho[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_ISOPOOH] = std::max(isopooh[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_ISOP]    = std::max(isop[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_MVKMACR] = std::max(mvkmacr[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_XO2]     = std::max(xo2[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_ISOPAO2] = std::max(isopao2[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_NO2]     = std::max(no2[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_O3]      = std::max(o3[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_NO]      = std::max(no[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_CH3O2]   = std::max(ch3o2[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_ISOPBO2] = std::max(isopbo2[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_NO3]     = std::max(no3[ijk]*CFACTOR,(TF)0.0);
-                    VAR[ind_HO2]     = std::max(ho2[ijk]*CFACTOR,(TF)0.0);
-		    
+		    // convert to molecules per cm3 and add tendenccies of other processes.
+                    VAR[ind_H2O2]    = std::max((h2o2[ijk]+th2o2[ijk]*sdt)*CFACTOR,(TF)0.0);
+		    VAR[ind_CH4 ]    = std::max((ch4[ijk]+tch4[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_N2O5]    = std::max((n2o5[ijk]+tn2o5[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HALD]    = std::max((hald[ijk]+thald[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_CO  ]    = std::max((co[ijk]+tco[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HCHO]    = std::max((hcho[ijk]+thcho[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_ISOPOOH] = std::max((isopooh[ijk]+tisopooh[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_ISOP]    = std::max((isop[ijk]+tisop[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_MVKMACR] = std::max((mvkmacr[ijk]+tmvkmacr[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_XO2]     = std::max((xo2[ijk]+txo2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_ISOPAO2] = std::max((isopao2[ijk]+tisopao2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO2]     = std::max((no2[ijk]+tno2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_O3]      = std::max((o3[ijk]+to3[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO]      = std::max((no[ijk]+tno[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_CH3O2]   = std::max((ch3o2[ijk]+tch3o2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_ISOPBO2] = std::max((isopbo2[ijk]+tisopbo2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO3]     = std::max((no3[ijk]+tno3[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HO2]     = std::max((ho2[ijk]+tho2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_OH]      = std::max((oh[ijk]+toh[ijk]*sdt)*CFACTOR,(TF)0.0);
+		    coh += oh[ijk];
+		    noh += 1;
                     RCONST[0] = (usr_O3_hv_H2O(TEMP,C_M,C_H2O,SUN*jval[Pj_o31d]));
                     RCONST[1] = (SUN*jval[Pj_no2]);
                     RCONST[2] = (SUN*jval[Pj_ch2or]);
@@ -389,22 +394,22 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    RCONST[49] = (eisop);
 		    RCONST[50] = (emvkmacr);
 
-		    FIX[0] = ((TF)2.0*RCONST[0]*VAR[12] + RCONST[7]*VAR[12]*VAR[17] + RCONST[11]*VAR[13]*VAR[17] + RCONST[14]*VAR[16]*VAR[17] + (TF)2.0*RCONST[40]*VAR[0])/
-		    	        ( RCONST[4]*VAR[17] +  RCONST[5]*VAR[12] +     RCONST[9]*VAR[11] +  RCONST[20]*VAR[4] + RCONST[21]*VAR[1] + 
-		       	          RCONST[22]*VAR[5] +  RCONST[23]*VAR[7] + 0.4*RCONST[31]*VAR[6] +  RCONST[33]*VAR[3] + RCONST[37]*VAR[8]);
-		    FIX[1] = C_H2O;
-                    FIX[2] = C_M;
-		    FIX[3] = (TF)1.0;    // species added to emit   
-		    oh[ijk] = FIX[0]/CFACTOR;
+		    FIX[0] = C_H2O;
+                    FIX[1] = C_M;
+		    FIX[2] = (TF)1.0;    // species added to emit   
 
 		    Fun(VAR,FIX,RCONST,Vdot,RF);
 
 		    // get statitics for reacion fluxes:
-		    for (int l=0;l<NREACT;++l) rfa[(k-kstart)*NREACT+l] +=  RF[l]*rkdt;
+                    if (abs(sdt/dt - 1./3.) < 1e-5)
+		    {
+		    	for (int l=0;l<NREACT;++l) rfa[(k-kstart)*NREACT+l] +=  RF[l]*dt;    // take the first evaluation in the RK3 steps, but with full time step.
+		    }
 		    // now to check reaction constants:
 		    // for (int l=0;l<NREACT;++l) rfa[(k-kstart)*NREACT+l] +=  RCONST[l]*rkdt;
 
 		    //for (int l=0; l<NVAR; ++l) printf (" %i %13.3e %13.3e %13.3e \n", l,VAR[l],Vdot[l],VAR[l]/ABS(Vdot[l]));
+		    // calculate the minimum timescale for chemistry as c/tendency and store in mint
 		    TF mint = (TF)1e20;
 		    for (int l=0; l<NVAR; ++l)
 			    if (ABS(Vdot[l]) > (TF)1e-5 && VAR[l]> (TF)1e-5) mint = std::min(mint,VAR[l]/ABS(Vdot[l])); 
@@ -415,27 +420,27 @@ double CFACTOR;                          /* Conversion factor for concentration 
 			    nkpp += 1;
 
 			    WCOPY(NVAR,VAR,1,VAR0,1);
-			    INTEGRATE(  (TF)0.0 , rkdt );
+			    INTEGRATE(  (TF)0.0 , sdt );  //brings VAR0 --> VAR, with timestep sdt
 			    
-			    th2o2[ijk] +=    (VAR[ind_H2O2]-VAR0[ind_H2O2])/(rkdt*CFACTOR);
-			    tch4[ijk] +=     (VAR[ind_CH4]-VAR0[ind_CH4])/(rkdt*CFACTOR);
-			    tn2o5[ijk] +=    (VAR[ind_N2O5]-VAR0[ind_N2O5])/(rkdt*CFACTOR);
-			    thald[ijk] +=    (VAR[ind_HALD]-VAR0[ind_HALD])/(rkdt*CFACTOR);
-			    tco[ijk] +=      (VAR[ind_CO]-VAR0[ind_CO])/(rkdt*CFACTOR);
-			    thcho[ijk] +=    (VAR[ind_HCHO]-VAR0[ind_HCHO])/(rkdt*CFACTOR);
-			    tisopooh[ijk] += (VAR[ind_ISOPOOH]-VAR0[ind_ISOPOOH])/(rkdt*CFACTOR);
-			    tisop[ijk] +=    (VAR[ind_ISOP]-VAR0[ind_ISOP])/(rkdt*CFACTOR);
-			    tmvkmacr[ijk] += (VAR[ind_MVKMACR]-VAR0[ind_MVKMACR])/(rkdt*CFACTOR);
-			    txo2[ijk] +=     (VAR[ind_XO2]-VAR0[ind_XO2])/(rkdt*CFACTOR);
-			    tisopao2[ijk] += (VAR[ind_ISOPAO2]-VAR0[ind_ISOPAO2])/(rkdt*CFACTOR);
-			    tno2[ijk] +=     (VAR[ind_NO2]-VAR0[ind_NO2])/(rkdt*CFACTOR);
-			    to3[ijk] +=      (VAR[ind_O3]-VAR0[ind_O3])/(rkdt*CFACTOR);
-			    tno[ijk] +=      (VAR[ind_NO]-VAR0[ind_NO])/(rkdt*CFACTOR);
-			    tch3o2[ijk] +=   (VAR[ind_CH3O2]-VAR0[ind_CH3O2])/(rkdt*CFACTOR);
-			    tisopbo2[ijk] += (VAR[ind_ISOPBO2]-VAR0[ind_ISOPBO2])/(rkdt*CFACTOR);
-			    tno3[ijk] +=     (VAR[ind_NO3]-VAR0[ind_NO3])/(rkdt*CFACTOR);
-			    ///  !!tho2[ijk] +=     (VAR[ind_HO2]-VAR0[ind_HO2])/(rkdt*CFACTOR);
-			    tho2[ijk] +=     (VAR[ind_HO2]-VAR0[ind_HO2])/(rkdt*CFACTOR);
+			    th2o2[ijk] +=    (VAR[ind_H2O2]-VAR0[ind_H2O2])/(sdt*CFACTOR);
+			    tch4[ijk] +=     (VAR[ind_CH4]-VAR0[ind_CH4])/(sdt*CFACTOR);
+			    tn2o5[ijk] +=    (VAR[ind_N2O5]-VAR0[ind_N2O5])/(sdt*CFACTOR);
+			    thald[ijk] +=    (VAR[ind_HALD]-VAR0[ind_HALD])/(sdt*CFACTOR);
+			    tco[ijk] +=      (VAR[ind_CO]-VAR0[ind_CO])/(sdt*CFACTOR);
+			    thcho[ijk] +=    (VAR[ind_HCHO]-VAR0[ind_HCHO])/(sdt*CFACTOR);
+			    tisopooh[ijk] += (VAR[ind_ISOPOOH]-VAR0[ind_ISOPOOH])/(sdt*CFACTOR);
+			    tisop[ijk] +=    (VAR[ind_ISOP]-VAR0[ind_ISOP])/(sdt*CFACTOR);
+			    tmvkmacr[ijk] += (VAR[ind_MVKMACR]-VAR0[ind_MVKMACR])/(sdt*CFACTOR);
+			    txo2[ijk] +=     (VAR[ind_XO2]-VAR0[ind_XO2])/(sdt*CFACTOR);
+			    tisopao2[ijk] += (VAR[ind_ISOPAO2]-VAR0[ind_ISOPAO2])/(sdt*CFACTOR);
+			    tno2[ijk] +=     (VAR[ind_NO2]-VAR0[ind_NO2])/(sdt*CFACTOR);
+			    to3[ijk] +=      (VAR[ind_O3]-VAR0[ind_O3])/(sdt*CFACTOR);
+			    tno[ijk] +=      (VAR[ind_NO]-VAR0[ind_NO])/(sdt*CFACTOR);
+			    tch3o2[ijk] +=   (VAR[ind_CH3O2]-VAR0[ind_CH3O2])/(sdt*CFACTOR);
+			    tisopbo2[ijk] += (VAR[ind_ISOPBO2]-VAR0[ind_ISOPBO2])/(sdt*CFACTOR);
+			    tno3[ijk] +=     (VAR[ind_NO3]-VAR0[ind_NO3])/(sdt*CFACTOR);
+			    tho2[ijk] +=     (VAR[ind_HO2]-VAR0[ind_HO2])/(sdt*CFACTOR);
+			    toh[ijk] +=     (VAR[ind_OH]-VAR0[ind_OH])/(sdt*CFACTOR);
 		    }
 		    else
 		    {
@@ -458,6 +463,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 			    tisopbo2[ijk] += Vdot[ind_ISOPBO2]/CFACTOR;
 			    tno3[ijk] +=     Vdot[ind_NO3]/CFACTOR;
 			    tho2[ijk] +=     Vdot[ind_HO2]/CFACTOR;
+			    toh[ijk]  +=     Vdot[ind_OH]/CFACTOR;
 		    }
 		    // tscale[0] = std::min(tscale[0],ABS(h2o2[ijk])/ABS(th2o2[ijk]));
 		    // tscale[1] = std::min(tscale[1],ABS(ch4[ijk])/ABS(tch4[ijk]));
@@ -478,8 +484,10 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    // tscale[16] = std::min(tscale[16],ABS(no3[ijk])/ABS(tno3[ijk]));
 		    // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
 		    // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
-                }
+                } /* i */
+	// printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
 	}
+    printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
 }
 
@@ -490,7 +498,7 @@ Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
-    fields.init_diagnostic_field("oh","oh","ppb", group_name, gd.sloc);
+    /* fields.init_diagnostic_field("oh","oh","ppb", group_name, gd.sloc);  */
 }
 
 template <typename TF>
@@ -507,7 +515,7 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
 
-    stats.calc_stats("oh", *fields.sd.at("oh"), no_offset, no_threshold);
+    /* stats.calc_stats("oh", *fields.sd.at("oh"), no_offset, no_threshold);  */
 
     if (iteration != 0)   // this does not make sense for first step
     {
@@ -610,6 +618,7 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     jch2om.resize(time_dim_length);
     jch3o2h.resize(time_dim_length);
     emi_isop.resize(time_dim_length);
+    emi_no.resize(time_dim_length);
 
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(jo31d, jname[0],  {0}, {time_dim_length});
@@ -620,7 +629,8 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     group_nc.get_variable(jch2or, jname[5],  {0}, {time_dim_length});
     group_nc.get_variable(jch2om, jname[6],  {0}, {time_dim_length});
     group_nc.get_variable(jch3o2h, jname[7],  {0}, {time_dim_length});
-    group_nc.get_variable(emi_isop, "emi_isop",  {0}, {time_dim_length});
+    group_nc.get_variable(emi_isop, ename[0],  {0}, {time_dim_length});
+    group_nc.get_variable(emi_no,   ename[1],  {0}, {time_dim_length});
 
     // Stats:
     const std::string group_name = "default";
@@ -629,10 +639,10 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
 
     // Add the profiles to te statistics
-    if (stats.get_switch())
+    /* if (stats.get_switch())
     {
         stats.add_profs(*fields.sd.at("oh"), "z", stat_op_w, group_name);
-    }
+    } */
 
 //  store output of averaging
     auto& gd = grid.get_grid_data();
@@ -728,6 +738,7 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     jval[6] = ifac.fac0 * jch2om[ifac.index0] + ifac.fac1 * jch2om[ifac.index1];
     jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
     emval[0] = ifac.fac0 * emi_isop[ifac.index0] + ifac.fac1 * emi_isop[ifac.index1];
+    emval[1] = ifac.fac0 * emi_no[ifac.index0] + ifac.fac1 * emi_no[ifac.index1];
 }
 
 
@@ -743,7 +754,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
     thermo.get_thermo_field(*Temp, "T", true, false);
 
     // determine sub time step:
-    TF rkdt = 0.0;
+    /* TF rkdt = 0.0;
     if (abs(sdt/dt - 1./3.) < 1e-5)
 	    rkdt = dt*(TF)1./(TF)3.;
     else if (abs(sdt/dt - 15./16.) < 1e-5)
@@ -751,7 +762,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
     else if (abs(sdt/dt - 8./15.) < 1e-5)
 	    rkdt = dt*(TF)1./(TF)4.;
     else
-	    throw std::runtime_error("Invalid time step in RK3");
+	    throw std::runtime_error("Invalid time step in RK3"); */
  
     pss<TF>(
 	    fields.st.at("h2o2")   ->fld.data(), fields.sp.at("h2o2")->fld.data(), 
@@ -772,11 +783,11 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.st.at("isopbo2")->fld.data(), fields.sp.at("isopbo2")->fld.data(), 
 	    fields.st.at("no3")    ->fld.data(), fields.sp.at("no3")->fld.data(), 
 	    fields.st.at("ho2")    ->fld.data(), fields.sp.at("ho2")->fld.data(), 
-	    fields.sd.at("oh")->fld.data(), 
+	    fields.st.at("oh")     ->fld.data(), fields.sp.at("oh")->fld.data(), 
 	    jval,emval,
 	    rfa.data(), trfa,
 	    fields.st.at("qt") ->fld.data(),
-	    Temp ->fld.data(), rkdt, switch_dt,
+	    Temp ->fld.data(), dt, sdt, switch_dt,
 	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
 	    gd.icells, gd.ijcells, gd.dz.data(), fields.rhoref.data());
     fields.release_tmp(Temp);

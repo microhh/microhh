@@ -3,13 +3,13 @@ from pylab import *
 import numpy as np
 import sys
 
-slist = 'hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2,oh'
+slist = 'hno3,co,hcho,rooh,h2o2,rh,no2,no,o3,ro2,ho2,oh,n2o5,no3,c2o3,pan,co2'
 #slist = 'hcho,isopooh,isop,mvkmacr,no,o3,oh'
 specs = slist.split(',')
 profs = []
 error = []
 flux = []
-with Dataset("tm5_ifs.default.0011160.nc") as x:
+with Dataset("tm5_ifs.default.0021600.nc") as x:
     zax = x.variables['z'][:]
     zaxh = x.variables['zh'][:]
     z = x.groups['default']

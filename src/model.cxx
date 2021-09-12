@@ -135,9 +135,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        chemistry = std::make_shared<Chemistry  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>> (master, *grid, *fields, *input);
+        chemistry = std::make_shared<Chemistry  <TF>>(master, *grid, *fields, *input);
 	
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -411,9 +411,9 @@ void Model<TF>::exec()
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
-                // Apply the chemistry and add sources.
-                chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
+                // Add sources and apply chemistry
                 source->exec(*timeloop);
+                chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
