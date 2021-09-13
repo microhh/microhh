@@ -537,12 +537,36 @@ namespace
             const TF* const restrict qt, const TF* const restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int kstart, const int kend,
+            const int kstart_minus_one, const int kend_plus_one,
             const int jj, const int kk)
     {
-        // Calculate the thv field
+        // Note: this function is only called from statistics,
+        // using `kstart-1` and `kend+1` as bounds, since the ghost
+        // cells are needed to calculate the surface gradients.
+        // Make sure that we don't `sat_adjust()` the ghost cells...
+
+        // Calculate the thv field: ghost cells
         #pragma omp parallel for
-        for (int k=kstart; k<kend; k++)
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*jj + kstart_minus_one*kk;
+                thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
+            }
+
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*jj + (kend_plus_one-1)*kk;
+                thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
+            }
+
+        // Calculate the thv field: interior
+        #pragma omp parallel for
+        for (int k=kstart_minus_one+1; k<kend_plus_one-1; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
@@ -550,6 +574,7 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
+
                     Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
                     thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
                 }
