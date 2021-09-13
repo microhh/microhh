@@ -204,6 +204,9 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
+    if (!swsource)
+        return;
+
     for (int n=0; n<source_x0.size(); ++n)
     {
         // Shape of the source in each direction
@@ -258,6 +261,9 @@ template<typename TF>
 void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+
+    if (!swsource)
+        return;
 
     if (swtimedep_location)
     {
