@@ -1278,6 +1278,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         stats.add_time_series("H", "Surface sensible heat flux", "W m-2", group_name);
         stats.add_time_series("LE", "Surface latent heat flux", "W m-2", group_name);
         stats.add_time_series("G", "Surface soil heat flux", "W m-2", group_name);
+        stats.add_time_series("S", "Surface storage heat flux", "W m-2", group_name);
 
         // Soil
         stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
@@ -1297,6 +1298,7 @@ void Boundary_surface_lsm<TF>::create_stats(
                 stats.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("G_"+tile.first, "Surface soil heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
+                stats.add_time_series("S_"+tile.first, "Surface storage heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
             }
     }
 
@@ -1308,6 +1310,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("H", "Surface sensible heat flux", "W m-2");
         column.add_time_series("LE", "Surface latent heat flux", "W m-2");
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
+        column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
         column.add_time_series("wl", "Liquid water reservoir", "m");
     }
@@ -1581,6 +1584,9 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     get_tiled_mean(*fld_mean, "G", TF(1));
     stats.calc_stats_2d("G", *fld_mean, no_offset);
 
+    get_tiled_mean(*fld_mean, "S", TF(1));
+    stats.calc_stats_2d("S", *fld_mean, no_offset);
+
     // Soil
     stats.calc_stats_soil("t", fields.sps.at("t")->fld, no_offset);
     stats.calc_stats_soil("theta", fields.sps.at("theta")->fld, no_offset);
@@ -1599,6 +1605,7 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
             stats.calc_stats_2d("H_"+tile.first, tile.second.H, no_offset);
             stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, no_offset);
             stats.calc_stats_2d("G_"+tile.first, tile.second.G, no_offset);
+            stats.calc_stats_2d("S_"+tile.first, tile.second.S, no_offset);
         }
 
     fields.release_tmp_xy(fld_mean);
@@ -1624,6 +1631,9 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "G", TF(1));
     column.calc_time_series("G", (*fld_mean).data(), no_offset);
+
+    get_tiled_mean(*fld_mean, "S", TF(1));
+    column.calc_time_series("S", (*fld_mean).data(), no_offset);
 
     fields.release_tmp_xy(fld_mean);
 }
@@ -1712,6 +1722,12 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(
         fld_veg  = tiles.at("veg").G.data();
         fld_soil = tiles.at("soil").G.data();
         fld_wet  = tiles.at("wet").G.data();
+    }
+    else if (name == "S")
+    {
+        fld_veg  = tiles.at("veg").S.data();
+        fld_soil = tiles.at("soil").S.data();
+        fld_wet  = tiles.at("wet").S.data();
     }
     else if (name == "bfluxbot")
     {
