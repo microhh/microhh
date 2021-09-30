@@ -940,7 +940,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
     solve_longwave_column<double>(
             optical_props_lw,
             lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
-            lw_flux_dn_inc, thermo.get_ph_vector()[gd.kend],
+            lw_flux_dn_inc, thermo.get_basestate_vector("ph")[gd.kend],
             gas_concs_col,
             kdist_lw,
             sources_lw,
@@ -1008,7 +1008,7 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         solve_shortwave_column<double>(
                 optical_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
+                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
                 gas_concs_col,
                 *kdist_sw,
                 col_dry,
@@ -1207,7 +1207,7 @@ void Radiation_rrtmgp<TF>::exec(
                 calc_tendency(
                         fields.sd.at("thlt_rad")->fld.data(),
                         flux_up.ptr(), flux_dn.ptr(),
-                        fields.rhoref.data(), thermo.get_exner_vector().data(),
+                        fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
                         gd.dz.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.igc, gd.jgc, gd.kgc,
@@ -1258,7 +1258,7 @@ void Radiation_rrtmgp<TF>::exec(
                         solve_shortwave_column<double>(
                                 optical_props_sw,
                                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_ph_vector()[gd.kend],
+                                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
                                 gas_concs_col,
                                 *kdist_sw,
                                 col_dry,
@@ -1284,7 +1284,7 @@ void Radiation_rrtmgp<TF>::exec(
                     calc_tendency(
                             fields.sd.at("thlt_rad")->fld.data(),
                             flux_up.ptr(), flux_dn.ptr(),
-                            fields.rhoref.data(), thermo.get_exner_vector().data(),
+                            fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
                             gd.dz.data(),
                             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                             gd.igc, gd.jgc, gd.kgc,
@@ -1604,8 +1604,10 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::make_unique<Optical_props_1scl<double>>(n_col_block_left, n_lay, *cloud_lw);
 
     // Define the arrays that contain the subsets.
-    Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
-    Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
+    std::vector<TF> p  = thermo.get_basestate_vector("p");
+    std::vector<TF> ph = thermo.get_basestate_vector("ph");
+    Array<double,2> p_lay(std::vector<double>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
+    Array<double,2> p_lev(std::vector<double>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
     Array<double,2> emis_sfc(std::vector<double>(n_bnd, this->emis_sfc), {n_bnd, 1});
 
@@ -1803,8 +1805,10 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             std::make_unique<Optical_props_2str<double>>(n_col_block_left, n_lay, *cloud_sw);
 
     // Define the arrays that contain the subsets.
-    Array<double,2> p_lay(std::vector<double>(thermo.get_p_vector ().begin() + gd.kstart, thermo.get_p_vector ().begin() + gd.kend    ), {1, n_lay});
-    Array<double,2> p_lev(std::vector<double>(thermo.get_ph_vector().begin() + gd.kstart, thermo.get_ph_vector().begin() + gd.kend + 1), {1, n_lev});
+    std::vector<TF> p  = thermo.get_basestate_vector("p");
+    std::vector<TF> ph = thermo.get_basestate_vector("ph");
+    Array<double,2> p_lay(std::vector<double>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
+    Array<double,2> p_lev(std::vector<double>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
     // Create the boundary conditions
     Array<double,1> mu0(std::vector<double>(1, this->mu0), {1});

@@ -86,27 +86,23 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function get_thermo_field not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_land_surface_fields(Field3d<TF>&)
+        void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
+                std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
-        void get_buoyancy_surf(Field3d<TF>&, bool)
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool)
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
+            { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
+        void get_buoyancy_fluxbot(std::vector<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_fluxbot not implemented"); }
         int get_bl_depth()
             { throw std::runtime_error("Function get_bl_depth not implemented"); };
 
         void get_temperature_bot(Field3d<TF>&, bool)
             { throw std::runtime_error("Function get_temperature_bot not implemented"); }
-        const std::vector<TF>& get_p_vector() const
-            { throw std::runtime_error("Function get_p_vector not implemented"); }
-        const std::vector<TF>& get_ph_vector() const
-            { throw std::runtime_error("Function get_ph_vector not implemented"); }
-        const std::vector<TF>& get_exner_vector() const
-            { throw std::runtime_error("Function get_exner_vector not implemented"); }
-        const std::vector<TF>& get_exnerh_vector() const
-            { throw std::runtime_error("Function get_exnerh_vector not implemented"); }
-        const std::vector<TF>& get_rhorefh_vector() const
-            { throw std::runtime_error("Function get_rhorefh_vector not implemented"); }
+        const std::vector<TF>& get_basestate_vector(std::string) const
+            { throw std::runtime_error("Function get_basestate_vector not implemented"); }
         TF get_db_ref() const
             { throw std::runtime_error("Function get_db_ref not implemented"); }
 

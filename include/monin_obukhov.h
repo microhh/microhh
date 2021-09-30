@@ -24,6 +24,7 @@
 #define MONIN_OBUKHOV_H
 
 #include "fast_math.h"
+#include "constants.h"
 namespace fm = Fast_math;
 
 // In case the code is compiled with NVCC, add the macros for CUDA

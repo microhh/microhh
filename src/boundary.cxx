@@ -40,8 +40,7 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_bulk.h"
-// #include "boundary_surface_patch.h"
-// #include "boundary_patch.h"
+#include "boundary_surface_lsm.h"
 
 namespace
 {
@@ -146,13 +145,11 @@ namespace
 }
 
 template<typename TF>
-Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin),
-    grid(gridin),
-    fields(fieldsin),
-    boundary_cyclic(master, grid),
-    boundary_outflow(master, grid),
-    field3d_io(master, grid)
+Boundary<TF>::Boundary(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+        master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin),
+        boundary_cyclic(master, grid), boundary_outflow(master, grid), field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -292,6 +289,10 @@ void Boundary<TF>::create(
     process_time_dependent(input, input_nc, timeloop);
 }
 
+template<typename TF>
+void Boundary<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
+}
 
 template<typename TF>
 void Boundary<TF>::process_time_dependent(
@@ -315,12 +316,14 @@ void Boundary<TF>::process_time_dependent(
         // See if there is data available for the surface boundary conditions.
         for (auto& it : fields.sp)
         {
+            std::string timedep_dim = "time_surface";
             std::string name = it.first+"_sbot";
+
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep(input_nc);
+                tdep_bc.at(it.first)->create_timedep(input_nc, timedep_dim);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -806,17 +809,9 @@ namespace
 }
 
 template<typename TF>
-void Boundary<TF>::calc_mo_stability(Thermo<TF>& thermo)
-{
-}
-
-template<typename TF>
-void Boundary<TF>::calc_mo_bcs_momentum(Thermo<TF>& thermo)
-{
-}
-
-template<typename TF>
-void Boundary<TF>::calc_mo_bcs_scalars(Thermo<TF>& thermo)
+void Boundary<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
 }
 
@@ -1022,84 +1017,51 @@ void Boundary<TF>::update_slave_bcs()
 }
 
 template<typename TF>
-void Boundary<TF>::get_ra(Field3d<TF>& fld)
-{
-    throw std::runtime_error("Function get_ra() not implemented in base boundary.");
-}
-
-template<typename TF>
 const std::vector<TF>& Boundary<TF>::get_z0m() const
 {
     throw std::runtime_error("Function get_z0m() not implemented in base boundary.");
 }
 
 template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_z0h() const
+const std::vector<TF>& Boundary<TF>::get_dudz() const
 {
-    throw std::runtime_error("Function get_z0h() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dudz() not implemented in base boundary.");
 }
 
 template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_ustar() const
+const std::vector<TF>& Boundary<TF>::get_dvdz() const
 {
-    throw std::runtime_error("Function get_ustar() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dvdz() not implemented in base boundary.");
 }
 
 template<typename TF>
-const std::vector<TF>& Boundary<TF>::get_obuk() const
+const std::vector<TF>& Boundary<TF>::get_dbdz() const
 {
-    throw std::runtime_error("Function get_obuk() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dbdz() not implemented in base boundary.");
 }
 
 template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
-        Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
+        Master& master, Grid<TF>& grid, Soil_grid<TF>& soil_grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // else if (swboundary == "surface_patch")
-    //     return new Boundary_surface_patch(modelin, inputin);
-    // else if (swboundary == "patch")
-    //     return new Boundary_patch(modelin, inputin);
-    // else if (swboundary == "default")
     if (swboundary == "default")
-        return std::make_shared<Boundary<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface")
-        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface_bulk")
-        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, soil_grid, fields, input);
+    else if (swboundary == "surface_lsm")
+        return std::make_shared<Boundary_surface_lsm<TF>>(master, grid, soil_grid, fields, input);
     else
     {
         std::string msg = swboundary + " is an illegal value for swboundary";
         throw std::runtime_error(msg);
     }
 }
-/*
-template<typename TF>
-void Boundary<TF>::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        fieldh->fld_bot[i] = 1;
 
-    // Set atmospheric mask
-    for (int i=0; i<grid.ncells; ++i)
-    {
-        field ->data[i] = 1;
-        fieldh->data[i] = 1;
-    }
-}
-
-template<typename TF>
-void Boundary<TF>::get_surface_mask(Field3d* field)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        field->fld_bot[i] = 1;
-}
-
-*/
 template<typename TF>
 void Boundary<TF>::prepare_device()
 {

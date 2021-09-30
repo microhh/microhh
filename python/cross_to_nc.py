@@ -136,7 +136,7 @@ parser.add_argument(
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-d', '--directory', help='directory')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
-parser.add_argument('-x', '--index', nargs='*', help='indices')
+parser.add_argument('-x', '--index', nargs='*', help='indices', type=int)
 parser.add_argument('-t0', '--starttime', help='first time step to be parsed')
 parser.add_argument('-t1', '--endtime', help='last time step to be parsed')
 parser.add_argument(

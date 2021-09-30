@@ -74,18 +74,18 @@ class Thermo
         virtual bool check_field_exists(std::string name) = 0;
         virtual void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool) = 0;
-        virtual void get_buoyancy_surf(Field3d<TF>&, bool) = 0;
-        virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
+        virtual void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool) = 0;
+        virtual void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+        virtual void get_buoyancy_fluxbot(std::vector<TF>&, bool) = 0;
         virtual void get_temperature_bot(Field3d<TF>&, bool) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
+
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
-        virtual void get_land_surface_fields(Field3d<TF>&) = 0;
-        virtual const std::vector<TF>& get_p_vector() const = 0;
-        virtual const std::vector<TF>& get_ph_vector() const = 0;
-        virtual const std::vector<TF>& get_exner_vector() const = 0;
-        virtual const std::vector<TF>& get_exnerh_vector() const = 0;
-        virtual const std::vector<TF>& get_rhorefh_vector() const = 0;
+        virtual void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+
+        virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
         virtual TF get_db_ref() const = 0;
 
         virtual int get_bl_depth() = 0;

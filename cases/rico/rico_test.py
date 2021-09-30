@@ -19,7 +19,7 @@ opt_small = {
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {
-        'all_enabled': {},
+        'default': {},
         'fixed_basestate': {'thermo': {'swupdatebasestate': 0}}}
 
 

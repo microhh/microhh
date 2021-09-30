@@ -33,6 +33,7 @@
 class Master;
 class Netcdf_handle;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Diff;
 template<typename> class Thermo;
@@ -42,11 +43,16 @@ template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timeloop;
+template<typename> class Radiation;
+template<typename> class Microphys;
 
 class Input;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+
+// Size of lookup table in Boundary_surface
+const int nzL_lut = 10000;
 
 /**
  * Structure containing the boundary options and values per 3d field.
@@ -69,12 +75,14 @@ template<typename TF>
 class Boundary
 {
     public:
-        Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
+        Boundary(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
         virtual ~Boundary(); ///< Destructor of the boundary class.
 
-        static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
+        static std::shared_ptr<Boundary> factory(
+            Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        virtual void create_cold_start(Netcdf_handle&); ///< Create fields for cold start.
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
                 Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
@@ -83,15 +91,12 @@ class Boundary
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
-        virtual void calc_mo_stability(Thermo<TF>&); ///< Calculate the MO stability parameters
-        virtual void calc_mo_bcs_momentum(Thermo<TF>&); ///< Calculate the surface BCs for momentum
-        virtual void calc_mo_bcs_scalars(Thermo<TF>&); ///< Calculate the surface BCs for scalars
-
         virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
         void set_prognostic_cyclic_bcs();
 
+        virtual void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
@@ -99,20 +104,17 @@ class Boundary
         virtual void load(const int) {};
         virtual void save(const int) {};
 
-        // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
-        // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
-
         // Get functions for various 2D fields
-        virtual void get_ra(Field3d<TF>&);
         virtual const std::vector<TF>& get_z0m() const;
-        virtual const std::vector<TF>& get_z0h() const;
-        virtual const std::vector<TF>& get_ustar() const;
-        virtual const std::vector<TF>& get_obuk() const;
+        virtual const std::vector<TF>& get_dudz() const;
+        virtual const std::vector<TF>& get_dvdz() const;
+        virtual const std::vector<TF>& get_dbdz() const;
 
         #ifdef USECUDA
         virtual TF* get_z0m_g();
-        virtual TF* get_ustar_g();
-        virtual TF* get_obuk_g();
+        virtual TF* get_dudz_g();
+        virtual TF* get_dvdz_g();
+        virtual TF* get_dbdz_g();
         #endif
 
         std::string get_switch();
@@ -125,6 +127,7 @@ class Boundary
     protected:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;

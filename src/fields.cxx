@@ -551,6 +551,44 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 }
 
 template<typename TF>
+std::shared_ptr<std::vector<TF>> Fields<TF>::get_tmp_xy()
+{
+    auto& gd = grid.get_grid_data();
+    std::shared_ptr<std::vector<TF>> tmp;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (atmp_xy.empty())
+        {
+            static int ntmp_xy = 0;
+            ++ntmp_xy;
+            std::string fldname = "tmp_xy" + std::to_string(ntmp_xy);
+            std::string message = "Allocating temporary XY field: " + fldname;
+            master.print_message(message);
+
+            atmp_xy.push_back(std::make_shared<std::vector<TF>>(gd.ijcells));
+            tmp = atmp_xy.back();
+        }
+        else
+            tmp = atmp_xy.back();
+
+        atmp_xy.pop_back();
+    }
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_xy(std::shared_ptr<std::vector<TF>>& tmp)
+{
+    if (tmp == nullptr)
+        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+
+    atmp_xy.push_back(std::move(tmp));
+}
+
+template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     // We don't have to do anything for the default mask
@@ -573,7 +611,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                 maskh->fld.data(),
                 xymasks.at(mask_name).data(),
                 gd.istart, gd.iend,
-                gd.jstart, gd.kend,
+                gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -612,6 +650,9 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
 
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
+
+    for (auto& it : sp)
+        stats.calc_stats_2d(it.first + "_bot", it.second->fld_bot, no_offset);
 
     stats.calc_stats("p", *sd.at("p"), no_offset, no_threshold);
 
@@ -918,6 +959,9 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+        // For cold start, initialise surface values with first model level values
+        std::fill(f.second->fld_bot.begin(), f.second->fld_bot.end(), prof[0]);
     }
 }
 
@@ -993,6 +1037,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
             }
         }
     }
+
+    // Add time series of scalar surface values
+    for (auto& it : sp)
+        stats.add_time_series(it.first + "_bot", "Surface " + it.second->longname, it.second->unit, it.second->group);
 }
 
 template<typename TF>
@@ -1008,6 +1056,9 @@ void Fields<TF>::create_column(Column<TF>& column)
 
         for (auto& it : sp)
             column.add_prof(it.first, it.second->longname, it.second->unit, "z");
+
+        for (auto& it : sp)
+            column.add_time_series(it.first + "_bot", "Surface " + it.second->longname, it.second->unit);
 
         column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
@@ -1204,6 +1255,9 @@ void Fields<TF>::exec_column(Column<TF>& column)
 
     for (auto& it : sp)
         column.calc_column(it.first, it.second->fld.data(), no_offset);
+
+    for (auto& it : sp)
+        column.calc_time_series(it.first + "_bot", it.second->fld_bot.data(), no_offset);
 
     column.calc_column("p", sd.at("p")->fld.data(), no_offset);
 }

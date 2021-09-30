@@ -32,6 +32,7 @@
 #include "defines.h"
 #include "fast_math.h"
 #include "timedep.h"
+#include "constants.h"
 
 namespace
 {
@@ -159,9 +160,9 @@ template<typename TF>
 Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input) :
     master(master), grid(grid), fields(fields)
 {
-    swsource = input.get_item<std::string>("source", "swsource", "", "0");
+    swsource = input.get_item<bool>("source", "swsource", "", 0);
 
-    if (swsource == "1")
+    if (swsource)
     {
         sourcelist = input.get_list<std::string>("source", "sourcelist", "");
 
@@ -177,7 +178,11 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         line_z    = input.get_list<TF>("source", "line_z"   , "");
 
         // Timedep source location
-        swtimedep = input.get_item<bool>("source", "swtimedep", "", false);
+        swtimedep_location = input.get_item<bool>("source", "swtimedep_location", "", false);
+        swtimedep_strength = input.get_item<bool>("source", "swtimedep_strength", "", false);
+
+        // Switch between input as [kg tracer s-1] (true) or [kmol tracer s-1] (false)
+        swmmr = input.get_item<bool>("source", "swmmr", "", true);
     }
 }
 
@@ -190,7 +195,7 @@ Source<TF>::~Source()
 template<typename TF>
 void Source<TF>::init()
 {
-    if (swsource == "1")
+    if (swsource)
     {
         shape.resize(source_x0.size());
         norm.resize(source_x0.size());
@@ -202,6 +207,9 @@ template<typename TF>
 void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
+
+    if (!swsource)
+        return;
 
     for (int n=0; n<source_x0.size(); ++n)
     {
@@ -215,12 +223,14 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
                 gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                 shape[n].range_x, shape[n].range_y, shape[n].range_z,
-		fields.rhoref.data());
+                fields.rhoref.data(), swmmr);
     }
 
     // Create timedep
-    if (swtimedep)
+    if (swtimedep_location)
     {
+        std::string timedep_dim = "time_source";
+
         for (int n=0; n<source_x0.size(); ++n)
         {
             std::string name_x = "source_x0_" + std::to_string(n);
@@ -231,9 +241,21 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
             tdep_source_y0.emplace(name_y, new Timedep<TF>(master, grid, name_y, true));
             tdep_source_z0.emplace(name_z, new Timedep<TF>(master, grid, name_z, true));
 
-            tdep_source_x0.at(name_x)->create_timedep(input_nc);
-            tdep_source_y0.at(name_y)->create_timedep(input_nc);
-            tdep_source_z0.at(name_z)->create_timedep(input_nc);
+            tdep_source_x0.at(name_x)->create_timedep(input_nc, timedep_dim);
+            tdep_source_y0.at(name_y)->create_timedep(input_nc, timedep_dim);
+            tdep_source_z0.at(name_z)->create_timedep(input_nc, timedep_dim);
+        }
+    }
+
+    if (swtimedep_strength)
+    {
+        std::string timedep_dim = "time_source";
+
+        for (int n=0; n<source_x0.size(); ++n)
+        {
+            std::string name_strength = "source_strength_" + std::to_string(n);
+            tdep_source_strength.emplace(name_strength, new Timedep<TF>(master, grid, name_strength, true));
+            tdep_source_strength.at(name_strength)->create_timedep(input_nc, timedep_dim);
         }
     }
 }
@@ -245,7 +267,10 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
-    if (swtimedep)
+    if (!swsource)
+        return;
+
+    if (swtimedep_location)
     {
         // Update source locations, and calculate new norm's
         for (int n=0; n<sourcelist.size(); ++n)
@@ -268,7 +293,17 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
                     gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                     gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                     shape[n].range_x, shape[n].range_y, shape[n].range_z,
-		    fields.rhoref.data());
+                    fields.rhoref.data(), swmmr);
+        }
+    }
+
+    if (swtimedep_strength)
+    {
+        // Update source locations, and calculate new norm's
+        for (int n=0; n<sourcelist.size(); ++n)
+        {
+            std::string name_strength = "source_strength_" + std::to_string(n);
+            tdep_source_strength.at(name_strength)->update_time_dependent(strength[n], timeloop);
         }
     }
 
@@ -293,13 +328,14 @@ TF Source<TF>::calc_norm(
         const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
         std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z,
-	TF* const restrict rhoref)
+        const TF* const restrict rhoref, const bool swmmr)
 {
     namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
 
     TF sum = 0.;
     TF blob_norm = 0.;
+    TF scaling;
     const int jj = gd.icells;
     const int kk = gd.ijcells;
     const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
@@ -307,6 +343,18 @@ TF Source<TF>::calc_norm(
 
 
     for (int k=gd.kstart; k<gd.kend; ++k)
+    {
+        if (swmmr)
+            // Emissions come in [kg tracer s-1]. [kg tracer s-1 / (m3 * kg m-3)] results in
+            // emissions in units [kg tracer / kg air / s].
+            scaling = rhoref[k];
+        else
+            // Emissions come in [kmol tracers s-1] and are added to grid boxes in [ppb s-1] unit.
+            // rhoref [kg m-3] divided by xmair [kg kmol-1] transfers to units [kmol] air.
+            // Emission (E in [kmol tracer s-1]) are added as E/norm. Units is thus [kmol tracer / kmol air / s].
+            // The factor 1e-9 transfers to [ppb s-1].
+            scaling = TF(1e-9)*rhoref[k]/Constants::xmair<TF>;
+
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
@@ -374,11 +422,9 @@ TF Source<TF>::calc_norm(
                 }
                 else
                     blob_norm = TF(0);
-// emissions come in kmol tracers/s and are added to gridboxes in ppb/s unit. rhoref (kg/m3) divided by xmair (kg/kmol) transfers to units kmol air.
-// emission (E in kmol tracer/s) are added as E/norm. Units is thus kmol tracer/kmol air per s. The factor 1e-9 transfers to ppb/s
-                sum += blob_norm*gd.dx*gd.dy*gd.dz[k]*(TF)1e-9*rhoref[k]/xmair;   // unit m3*kg/m3*kmol/kg-->kmol   and then to ppb-1. 
-
+                sum += blob_norm*gd.dx*gd.dy*gd.dz[k]*scaling;
             }
+    }
 
     master.sum(&sum, 1);
 

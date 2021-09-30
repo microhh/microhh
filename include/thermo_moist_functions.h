@@ -30,7 +30,10 @@
 #  define CUDA_MACRO
 #endif
 
+
 #include <iostream>
+#include <iomanip>
+
 #include "constants.h"
 #include "fast_math.h"
 

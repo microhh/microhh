@@ -442,7 +442,8 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     boundary_cyclic.init();
 
     // Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Set up output classes
     create_stats(stats);
@@ -543,36 +544,47 @@ void Thermo_dry<TF>::get_thermo_field(
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            bfluxbot.data(),
+            fields.sp.at("th")->flux_bot.data(),
+            base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_surf(
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
+    calc_buoyancy_bot(
+            b.data(), bbot.data(),
+            fields.sp.at("th")->fld.data(),
+            fields.sp.at("th")->fld_bot.data(),
+            base.thref.data(), base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
-                      base.thref.data(), base.threfh.data(),
-                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
+    //                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
@@ -590,21 +602,25 @@ void Thermo_dry<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_p_vector() const
+const std::vector<TF>& Thermo_dry<TF>::get_basestate_vector(std::string name) const
 {
-    return bs.pref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_ph_vector() const
-{
-    return bs.prefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_exner_vector() const
-{
-    return bs.exnref;
+    if (name == "p")
+        return bs.pref;
+    else if (name == "ph")
+        return bs.prefh;
+    else if (name == "exner")
+        return bs.exnref;
+    else if (name == "exnerh")
+        return bs.exnrefh;
+    else if (name == "th")
+        return bs.thref;
+    else if (name == "thh")
+        return bs.threfh;
+    else
+    {
+        std::string error = "Thermo_dry::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
 }
 
 template<typename TF>
@@ -753,8 +769,8 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     auto b = fields.get_tmp();
     b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
-    get_buoyancy_surf(*b, true);
-    get_buoyancy_fluxbot(*b, true);
+    get_buoyancy_surf(b->fld, b->fld_bot, true);
+    get_buoyancy_fluxbot(b->flux_bot, true);
 
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
@@ -807,7 +823,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*b, "b", false, true);
-        get_buoyancy_fluxbot(*b, true);
+        get_buoyancy_fluxbot(b->flux_bot, true);
     }
 
     for (auto& it : crosslist)

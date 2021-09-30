@@ -470,15 +470,21 @@ TF* Boundary<TF>::get_z0m_g()
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_ustar_g()
+TF* Boundary<TF>::get_dudz_g()
 {
-    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dudz_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_obuk_g()
+TF* Boundary<TF>::get_dvdz_g()
 {
-    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+    throw std::runtime_error("Function get_dvdz_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_dbdz_g()
+{
+    throw std::runtime_error("Function get_dbdz_g() not implemented in base boundary.");
 }
 #endif
 

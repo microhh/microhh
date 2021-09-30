@@ -54,7 +54,6 @@
 #include "cross.h"
 #include "dump.h"
 #include "model.h"
-#include "land_surface.h"
 #include "source.h"
 
 #ifdef USECUDA
@@ -121,7 +120,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
         fft       = std::make_shared<FFT<TF>>      (master, *grid);
 
-        boundary  = Boundary<TF> ::factory(master, *grid, *fields, *input);
+        boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
@@ -130,15 +129,13 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        lsm       = std::make_shared<Land_surface<TF>>(master, *grid, *soil_grid, *fields, *input);
-
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>> (master, *grid, *fields, *input);
         chemistry = std::make_shared<Chemistry  <TF>>(master, *grid, *fields, *input);
-	
+
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
 
@@ -197,7 +194,6 @@ void Model<TF>::init()
     decay->init(*input);
     chemistry-> init(*input);
     budget->init();
-    lsm->init();
     source->init();
 
     stats->init(timeloop->get_ifactor());
@@ -252,10 +248,6 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
-    // Load the prognostic soil fields, and create/init soil
-    lsm->load(timeloop->get_iotime());
-    lsm->create_fields_grid_stats(*input, *input_nc, *stats, *cross, *column);
-
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
@@ -293,7 +285,6 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input_nc);
     fields->create(*input, *input_nc);
-    lsm->create_cold_start(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
@@ -308,8 +299,8 @@ void Model<TF>::save()
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
 
+    boundary->create_cold_start(*input_nc);
     boundary->save(timeloop->get_iotime());
-    lsm->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -353,12 +344,6 @@ void Model<TF>::exec()
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
-
-                // Calculate Monin-Obukhov parameters (L, u*).
-                boundary->calc_mo_stability(*thermo);
-                boundary->calc_mo_bcs_momentum(*thermo);
-                if (!lsm->get_switch())
-                    boundary->calc_mo_bcs_scalars(*thermo);
                 boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
@@ -385,14 +370,10 @@ void Model<TF>::exec()
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
 
-                // Calculate interactive land-surface, and
-                // soil temperature and moisture tendencies.
-                lsm->exec_surface(*radiation, *thermo, *microphys, *boundary, *timeloop);
-                lsm->exec_soil();
-
-                // Update surface properties.
-                if (lsm->get_switch())
-                    boundary->calc_mo_bcs_scalars(*thermo);
+                // Calculate Monin-Obukhov parameters (L, u*), and calculate
+                // surface fluxes, gradients, ...
+                boundary->exec(*thermo, *radiation, *microphys, *timeloop);
+                boundary->set_ghost_cells();
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();
@@ -475,7 +456,6 @@ void Model<TF>::exec()
                         thermo   ->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
                         boundary ->exec_column(*column);
-                        lsm      ->exec_column(*column);
                         microphys->exec_column(*column);
 
                         column   ->exec(iter, time, itime);
@@ -525,7 +505,6 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
-                            lsm     ->save(iotime);
                             boundary->save(iotime);
                         }
                     }
@@ -547,7 +526,6 @@ void Model<TF>::exec()
                     timeloop->load(iotime);
                     fields  ->load(iotime);
                     thermo  ->load(iotime);
-                    lsm     ->load(iotime);
                     boundary->load(iotime);
 
                     // Reset tendencies
@@ -624,7 +602,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
-        lsm      ->exec_stats(*stats);
         chemistry->exec_stats(iteration, time, *stats);
     }
 
@@ -635,7 +612,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
-        lsm      ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
     }
 

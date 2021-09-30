@@ -6,15 +6,15 @@ import microhh_tools as mht
 #import taylorgreen.taylorgreenconv as tg
 #import conservation.run_conservation as conv
 
-#modes = ['cpu', 'cpumpi', 'gpu']
-modes = ['cpu', 'cpumpi']
+modes = ['cpu', 'cpumpi', 'gpu']
+#modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
-les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'lasso', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip missing
+les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip+lasso missing
 dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
 
 les_options = {
-        'grid': {'itot': 16, 'jtot': 16},
+        'grid': {'itot': 16, 'jtot': 16, 'xsize': 1600, 'ysize': 1600},
         'time': {'endtime': 300}}
 
 dns_options = {

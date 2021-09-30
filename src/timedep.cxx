@@ -41,46 +41,17 @@ Timedep<TF>::~Timedep()
 {
 }
 
-namespace
-{
-    std::pair<std::string, int> check_for_unique_time_dim(const std::map<std::string, int>& dims)
-    {
-        // Check for the existence of a unique time dimension.
-        bool only_one_time_dim = false;
-        std::string time_dim;
-        int time_dim_length = 0;
-
-        for (auto i : dims)
-        {
-            if (i.first.substr(0, 4) == "time")
-            {
-                if (only_one_time_dim)
-                    throw std::runtime_error("More than one time dimensions in input");
-                else
-                {
-                    only_one_time_dim = true;
-                    time_dim = i.first;
-                    time_dim_length = i.second;
-                }
-            }
-        }
-
-        return std::make_pair(time_dim, time_dim_length);
-    }
-}
-
 template <typename TF>
-void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
+void Timedep<TF>::create_timedep_prof(
+        Netcdf_handle& input_nc, const TF offset, const std::string time_dim)
 {
     if (sw == Timedep_switch::Disabled)
         return;
 
     Netcdf_group& group_nc = input_nc.get_group("timedep");
-    std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
 
-    std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
-    std::string time_dim = unique_time.first;
-    int time_dim_length = unique_time.second;
+    std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
+    int time_dim_length = group_nc.get_dimension_size(time_dim);
 
     time.resize(time_dim_length);
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
@@ -100,7 +71,7 @@ void Timedep<TF>::create_timedep_prof(Netcdf_handle& input_nc, const TF offset)
 }
 
 template <typename TF>
-void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
+void Timedep<TF>::create_timedep(Netcdf_handle& input_nc, const std::string time_dim)
 {
     if (sw == Timedep_switch::Disabled)
         return;
@@ -108,10 +79,7 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc)
     Netcdf_group& group_nc = input_nc.get_group("timedep");
 
     std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
-
-    std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
-    std::string time_dim = unique_time.first;
-    int time_dim_length = unique_time.second;
+    int time_dim_length = group_nc.get_dimension_size(time_dim);
 
     time.resize(time_dim_length);
     data.resize(time_dim_length);

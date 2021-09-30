@@ -16,8 +16,8 @@ opt_small = {
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {
-        'all_enabled': no_opts,
-        'advec': {'advec': {'swadvec': 0}}}
+        'default': no_opts,
+        'no_advec': {'advec': {'swadvec': 0}}}
 
 
 if __name__ == '__main__':

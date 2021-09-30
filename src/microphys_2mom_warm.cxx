@@ -651,8 +651,8 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     thermo.get_thermo_field(*ql, "ql_qi", false, false);
 
     // Get pressure and exner function from thermodynamics
-    std::vector<TF> p     = thermo.get_p_vector();
-    std::vector<TF> exner = thermo.get_exner_vector();
+    std::vector<TF> p     = thermo.get_basestate_vector("p");
+    std::vector<TF> exner = thermo.get_basestate_vector("exner");
 
     // Microphysics is handled in XZ slices, to
     // (1) limit the required number of tmp fields
@@ -774,8 +774,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         thermo.get_thermo_field(*ql, "ql", false, false);
 
         // Get pressure and exner function from thermodynamics
-        std::vector<TF> p     = thermo.get_p_vector();
-        std::vector<TF> exner = thermo.get_exner_vector();
+        std::vector<TF> p     = thermo.get_basestate_vector("p");
+        std::vector<TF> exner = thermo.get_basestate_vector("exner");
 
         // Microphysics is (partially) handled in XZ slices, to
         // (1) limit the required number of tmp fields

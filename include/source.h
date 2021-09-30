@@ -54,7 +54,8 @@ class Source
 
         std::vector<Shape> shape;
 
-        std::string swsource;
+        bool swsource;
+        bool swmmr;
 
         TF x0;
         TF y0;
@@ -73,18 +74,20 @@ class Source
         std::vector<TF> line_z;
         std::vector<TF> norm;
 
-        // Timedep source location
-        bool swtimedep;
+        // Timedep source location and strength
+        bool swtimedep_location;
+        bool swtimedep_strength;
         std::map<std::string, Timedep<TF>*> tdep_source_x0;
         std::map<std::string, Timedep<TF>*> tdep_source_y0;
         std::map<std::string, Timedep<TF>*> tdep_source_z0;
+        std::map<std::string, Timedep<TF>*> tdep_source_strength;
 
         TF calc_norm(
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 std::vector<int>, std::vector<int>, std::vector<int>,
-		TF *const __restrict);
+                const TF* const, const bool);
 };
 #endif
 
