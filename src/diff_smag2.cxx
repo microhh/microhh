@@ -1041,10 +1041,10 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
-    const std::vector<TF>& z0m = boundary.get_z0m();
-
     if (boundary.get_switch() != "default")
     {
+        const std::vector<TF>& z0m = boundary.get_z0m();
+
         // Calculate strain rate using MO for velocity gradients lowest level.
         const std::vector<TF>& dudz = boundary.get_dudz();
         const std::vector<TF>& dvdz = boundary.get_dvdz();
@@ -1088,6 +1088,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     {
         // Calculate eddy viscosity using MO at lowest model level
         if (boundary.get_switch() != "default")
+        {
+            const std::vector<TF>& z0m = boundary.get_z0m();
+
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1102,9 +1105,11 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
+        }
 
         // Calculate eddy viscosity assuming resolved walls
         else
+        {
             calc_evisc_neutral<TF, Surface_model::Disabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1112,13 +1117,14 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     fields.mp.at("w")->fld.data(),
                     fields.mp.at("u")->flux_bot.data(),
                     fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), z0m.data(),
+                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), nullptr,
                     gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
+        }
     }
     // assume buoyancy calculation is needed
     else
@@ -1132,6 +1138,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         const std::vector<TF>& dbdz = boundary.get_dbdz();
 
         if (boundary.get_switch() != "default")
+        {
+            const std::vector<TF>& z0m = boundary.get_z0m();
+
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1147,7 +1156,9 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
+        }
         else
+        {
             calc_evisc<TF, Surface_model::Disabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.mp.at("u")->fld.data(),
@@ -1156,13 +1167,14 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     buoy_tmp->fld.data(),
                     nullptr,
                     gd.z.data(), gd.dz.data(),
-                    gd.dzi.data(), z0m.data(),
+                    gd.dzi.data(), nullptr,
                     gd.dx, gd.dy, this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
                     boundary_cyclic);
+        }
 
         fields.release_tmp(buoy_tmp);
         fields.release_tmp(tmp);
