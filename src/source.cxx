@@ -32,6 +32,7 @@
 #include "defines.h"
 #include "fast_math.h"
 #include "timedep.h"
+#include "constants.h"
 
 namespace
 {
@@ -179,6 +180,9 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         // Timedep source location
         swtimedep_location = input.get_item<bool>("source", "swtimedep_location", "", false);
         swtimedep_strength = input.get_item<bool>("source", "swtimedep_strength", "", false);
+
+        // Switch between input as [kg tracer s-1] (true) or [kmol tracer s-1] (false)
+        swmmr = input.get_item<bool>("source", "swmmr", "", true);
     }
 }
 
@@ -204,6 +208,9 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
 
+    if (!swsource)
+        return;
+
     for (int n=0; n<source_x0.size(); ++n)
     {
         // Shape of the source in each direction
@@ -215,7 +222,8 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
                 gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
                 gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z);
+                shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                fields.rhoref.data(), swmmr);
     }
 
     // Create timedep
@@ -259,6 +267,9 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
+    if (!swsource)
+        return;
+
     if (swtimedep_location)
     {
         // Update source locations, and calculate new norm's
@@ -281,7 +292,8 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
                     gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
                     gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
                     gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                    shape[n].range_x, shape[n].range_y, shape[n].range_z);
+                    shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                    fields.rhoref.data(), swmmr);
         }
     }
 
@@ -315,17 +327,31 @@ TF Source<TF>::calc_norm(
         const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
         const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
-        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z)
+        std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z,
+        const TF* const restrict rhoref, const bool swmmr)
 {
     namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
 
     TF sum = 0.;
     TF blob_norm = 0.;
+    TF scaling;
     const int jj = gd.icells;
     const int kk = gd.ijcells;
 
     for (int k=gd.kstart; k<gd.kend; ++k)
+    {
+        if (swmmr)
+            // Emissions come in [kg tracer s-1]. [kg tracer s-1 / (m3 * kg m-3)] results in
+            // emissions in units [kg tracer / kg air / s].
+            scaling = rhoref[k];
+        else
+            // Emissions come in [kmol tracers s-1] and are added to grid boxes in [ppb s-1] unit.
+            // rhoref [kg m-3] divided by xmair [kg kmol-1] transfers to units [kmol] air.
+            // Emission (E in [kmol tracer s-1]) are added as E/norm. Units is thus [kmol tracer / kmol air / s].
+            // The factor 1e-9 transfers to [ppb s-1].
+            scaling = TF(1e-9)*rhoref[k]/Constants::xmair<TF>;
+
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
@@ -394,8 +420,9 @@ TF Source<TF>::calc_norm(
                 else
                     blob_norm = TF(0);
 
-                sum += blob_norm*gd.dx*gd.dy*gd.dz[k];
+                sum += blob_norm*gd.dx*gd.dy*gd.dz[k]*scaling;
             }
+    }
 
     master.sum(&sum, 1);
 
