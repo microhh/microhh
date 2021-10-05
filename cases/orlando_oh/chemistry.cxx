@@ -326,25 +326,25 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    const TF TEMP = Temp[ijk];
 		    //const TF TEMP = 298.0;
 		    // convert to molecules per cm3 and add tendenccies of other processes.
-                    VAR[ind_H2O2]    = std::max((h2o2[ijk]+th2o2[ijk]*sdt)*CFACTOR,(TF)0.0);
-		    VAR[ind_CH4 ]    = std::max((ch4[ijk]+tch4[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_N2O5]    = std::max((n2o5[ijk]+tn2o5[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_HALD]    = std::max((hald[ijk]+thald[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_CO  ]    = std::max((co[ijk]+tco[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_HCHO]    = std::max((hcho[ijk]+thcho[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_H2O2]    = std::max((h2o2[ijk]   +th2o2[ijk]*sdt)*CFACTOR,(TF)0.0);
+		    VAR[ind_CH4 ]    = std::max((ch4[ijk]    +tch4[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_N2O5]    = std::max((n2o5[ijk]   +tn2o5[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HALD]    = std::max((hald[ijk]   +thald[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_CO  ]    = std::max((co[ijk]     +tco[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HCHO]    = std::max((hcho[ijk]   +thcho[ijk]*sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_ISOPOOH] = std::max((isopooh[ijk]+tisopooh[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_ISOP]    = std::max((isop[ijk]+tisop[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_ISOP]    = std::max((isop[ijk]   +tisop[ijk]*sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_MVKMACR] = std::max((mvkmacr[ijk]+tmvkmacr[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_XO2]     = std::max((xo2[ijk]+txo2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_XO2]     = std::max((xo2[ijk]    +txo2[ijk]*sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_ISOPAO2] = std::max((isopao2[ijk]+tisopao2[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO2]     = std::max((no2[ijk]+tno2[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_O3]      = std::max((o3[ijk]+to3[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO]      = std::max((no[ijk]+tno[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_CH3O2]   = std::max((ch3o2[ijk]+tch3o2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO2]     = std::max((no2[ijk]    +tno2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_O3]      = std::max((o3[ijk]     +to3[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO]      = std::max((no[ijk]     +tno[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_CH3O2]   = std::max((ch3o2[ijk]  +tch3o2[ijk]*sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_ISOPBO2] = std::max((isopbo2[ijk]+tisopbo2[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO3]     = std::max((no3[ijk]+tno3[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_HO2]     = std::max((ho2[ijk]+tho2[ijk]*sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_OH]      = std::max((oh[ijk]+toh[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_NO3]     = std::max((no3[ijk]    +tno3[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_HO2]     = std::max((ho2[ijk]    +tho2[ijk]*sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_OH]      = std::max((oh[ijk]     +toh[ijk]*sdt)*CFACTOR,(TF)0.0);
                     RCONST[0] = (usr_O3_hv_H2O(TEMP,C_M,C_H2O,SUN*jval[Pj_o31d]));
                     RCONST[1] = (SUN*jval[Pj_no2]);
                     RCONST[2] = (SUN*jval[Pj_ch2or]);
@@ -412,66 +412,32 @@ double CFACTOR;                          /* Conversion factor for concentration 
 				rka[(k-kstart)*NREACT+l] +=  RCONST[l]*dt; 
 			}
 		    }
-		    // determine integration method based on chemistry time tendencies:
-		    TF mint = (TF)1e20;
-		    for (int l=0; l<NVAR; ++l)
-			    if (ABS(Vdot[l]) > (TF)1e-5 && VAR[l]> (TF)1e-5) mint = std::min(mint,VAR[l]/ABS(Vdot[l])); 
 
-		    if (mint < switch_dt){ 
 
-			    nkpp += 1;
-
-			    WCOPY(NVAR,VAR,1,VAR0,1);
-			    INTEGRATE(  (TF)0.0 , sdt );  //brings VAR0 --> VAR, with timestep sdt
-			    
-			    th2o2[ijk] +=    (VAR[ind_H2O2]-VAR0[ind_H2O2])/(sdt*CFACTOR);
-			    tch4[ijk] +=     (VAR[ind_CH4]-VAR0[ind_CH4])/(sdt*CFACTOR);
-			    tn2o5[ijk] +=    (VAR[ind_N2O5]-VAR0[ind_N2O5])/(sdt*CFACTOR);
-			    thald[ijk] +=    (VAR[ind_HALD]-VAR0[ind_HALD])/(sdt*CFACTOR);
-			    tco[ijk] +=      (VAR[ind_CO]-VAR0[ind_CO])/(sdt*CFACTOR);
-			    thcho[ijk] +=    (VAR[ind_HCHO]-VAR0[ind_HCHO])/(sdt*CFACTOR);
-			    tisopooh[ijk] += (VAR[ind_ISOPOOH]-VAR0[ind_ISOPOOH])/(sdt*CFACTOR);
-			    tisop[ijk] +=    (VAR[ind_ISOP]-VAR0[ind_ISOP])/(sdt*CFACTOR);
-			    tmvkmacr[ijk] += (VAR[ind_MVKMACR]-VAR0[ind_MVKMACR])/(sdt*CFACTOR);
-			    txo2[ijk] +=     (VAR[ind_XO2]-VAR0[ind_XO2])/(sdt*CFACTOR);
-			    tisopao2[ijk] += (VAR[ind_ISOPAO2]-VAR0[ind_ISOPAO2])/(sdt*CFACTOR);
-			    tno2[ijk] +=     (VAR[ind_NO2]-VAR0[ind_NO2])/(sdt*CFACTOR);
-			    to3[ijk] +=      (VAR[ind_O3]-VAR0[ind_O3])/(sdt*CFACTOR);
-			    tno[ijk] +=      (VAR[ind_NO]-VAR0[ind_NO])/(sdt*CFACTOR);
-			    tch3o2[ijk] +=   (VAR[ind_CH3O2]-VAR0[ind_CH3O2])/(sdt*CFACTOR);
-			    tisopbo2[ijk] += (VAR[ind_ISOPBO2]-VAR0[ind_ISOPBO2])/(sdt*CFACTOR);
-			    tno3[ijk] +=     (VAR[ind_NO3]-VAR0[ind_NO3])/(sdt*CFACTOR);
-			    tho2[ijk] +=     (VAR[ind_HO2]-VAR0[ind_HO2])/(sdt*CFACTOR);
-			    toh[ijk] +=     (VAR[ind_OH]-VAR0[ind_OH])/(sdt*CFACTOR);
-		    }
-		    else
-		    {
-			    nderiv += 1;
-			    
-			    th2o2[ijk] +=    Vdot[ind_H2O2]/CFACTOR;
-			    tch4[ijk] +=     Vdot[ind_CH4]/CFACTOR;
-			    tn2o5[ijk] +=    Vdot[ind_N2O5]/CFACTOR;
-			    thald[ijk] +=    Vdot[ind_HALD]/CFACTOR;
-			    tco[ijk] +=      Vdot[ind_CO]/CFACTOR;
-			    thcho[ijk] +=    Vdot[ind_HCHO]/CFACTOR;
-			    tisopooh[ijk] += Vdot[ind_ISOPOOH]/CFACTOR;
-			    tisop[ijk] +=    Vdot[ind_ISOP]/CFACTOR;
-			    tmvkmacr[ijk] += Vdot[ind_MVKMACR]/CFACTOR;
-			    txo2[ijk] +=     Vdot[ind_XO2]/CFACTOR;
-			    tisopao2[ijk] += Vdot[ind_ISOPAO2]/CFACTOR;
-			    tno2[ijk] +=     Vdot[ind_NO2]/CFACTOR;
-			    to3[ijk] +=      Vdot[ind_O3]/CFACTOR;
-			    tno[ijk] +=      Vdot[ind_NO]/CFACTOR;
-			    tch3o2[ijk] +=   Vdot[ind_CH3O2]/CFACTOR;
-			    tisopbo2[ijk] += Vdot[ind_ISOPBO2]/CFACTOR;
-			    tno3[ijk] +=     Vdot[ind_NO3]/CFACTOR;
-			    tho2[ijk] +=     Vdot[ind_HO2]/CFACTOR;
-			    toh[ijk] +=     Vdot[ind_OH]/CFACTOR;
-		    }
+		    WCOPY(NVAR,VAR,1,VAR0,1);
+		    INTEGRATE(  (TF)0.0 , sdt );  //brings VAR0 --> VAR, with timestep sdt
+		    
+		    th2o2[ijk]    += (VAR[ind_H2O2]    -VAR0[ind_H2O2])   /(sdt*CFACTOR);
+		    tch4[ijk]     += (VAR[ind_CH4]     -VAR0[ind_CH4])    /(sdt*CFACTOR);
+		    tn2o5[ijk]    += (VAR[ind_N2O5]    -VAR0[ind_N2O5])   /(sdt*CFACTOR);
+		    thald[ijk]    += (VAR[ind_HALD]    -VAR0[ind_HALD])   /(sdt*CFACTOR);
+		    tco[ijk]      += (VAR[ind_CO]      -VAR0[ind_CO])     /(sdt*CFACTOR);
+		    thcho[ijk]    += (VAR[ind_HCHO]    -VAR0[ind_HCHO])   /(sdt*CFACTOR);
+		    tisopooh[ijk] += (VAR[ind_ISOPOOH] -VAR0[ind_ISOPOOH])/(sdt*CFACTOR);
+		    tisop[ijk]    += (VAR[ind_ISOP]    -VAR0[ind_ISOP])   /(sdt*CFACTOR);
+		    tmvkmacr[ijk] += (VAR[ind_MVKMACR] -VAR0[ind_MVKMACR])/(sdt*CFACTOR);
+		    txo2[ijk]     += (VAR[ind_XO2]     -VAR0[ind_XO2])    /(sdt*CFACTOR);
+		    tisopao2[ijk] += (VAR[ind_ISOPAO2] -VAR0[ind_ISOPAO2])/(sdt*CFACTOR);
+		    tno2[ijk]     += (VAR[ind_NO2]     -VAR0[ind_NO2])    /(sdt*CFACTOR);
+		    to3[ijk]      += (VAR[ind_O3]      -VAR0[ind_O3])     /(sdt*CFACTOR);
+		    tno[ijk]      += (VAR[ind_NO]      -VAR0[ind_NO])     /(sdt*CFACTOR);
+		    tch3o2[ijk]   += (VAR[ind_CH3O2]   -VAR0[ind_CH3O2])  /(sdt*CFACTOR);
+		    tisopbo2[ijk] += (VAR[ind_ISOPBO2] -VAR0[ind_ISOPBO2])/(sdt*CFACTOR);
+		    tno3[ijk]     += (VAR[ind_NO3]     -VAR0[ind_NO3])    /(sdt*CFACTOR);
+		    tho2[ijk]     += (VAR[ind_HO2]     -VAR0[ind_HO2])    /(sdt*CFACTOR);
+		    toh[ijk]      += (VAR[ind_OH]      -VAR0[ind_OH])     /(sdt*CFACTOR);
                 } /* i */
-	// printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
 	}
-    printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
 }
 
