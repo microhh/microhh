@@ -1093,7 +1093,6 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
-
     const std::vector<int> start = {0};
     const std::vector<int> count = {gd.ktot};
 
