@@ -62,7 +62,6 @@ namespace Boundary_surface_kernels
                 {
                     const int ij = i + j*jj;
                     agrad[ij] = aval;
-                    aflux[ij] = -aval*visc;
                 }
         }
         else if (sw == Boundary_type::Flux_type)
@@ -73,7 +72,6 @@ namespace Boundary_surface_kernels
                 {
                     const int ij = i + j*jj;
                     aflux[ij] = aval;
-                    agrad[ij] = -aval/visc;
                 }
         }
     }
