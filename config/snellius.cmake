@@ -14,7 +14,7 @@ if(USECUDA)
     set(USEICC FALSE)
 
     set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
-    set(USER_CXX_FLAGS_RELEASE "-Ofast -march=ivybridge") # -march optimized for the CPU present in Cartesius GPU nodes
+    set(USER_CXX_FLAGS_RELEASE "-Ofast -march=icelake-server -mtune=icelake-server")
     add_definitions(-DRESTRICTKEYWORD=__restrict__)
 else()
     set(USER_CXX_FLAGS "-std=c++14 -restrict")
