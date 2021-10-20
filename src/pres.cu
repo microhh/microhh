@@ -241,8 +241,16 @@ void Pres<TF>::make_cufft_plan()
     size_t free_mem, total_mem;
     cudaMemGetInfo(&free_mem, &total_mem);
 
+    // Note BvS: this margin is highly arbitrary, but for large cases,
+    // the 2D and 3D batched FFTs are equally fast, so it does not really matter...
+    size_t margin = 5 * (gd.kcells + 6) * gd.ijcells * sizeof(TF) + 1e9/4;
+
+    master.print_message("Total memory =" + std::to_string(total_mem));
+    master.print_message("Available memory pre-FFT=" + std::to_string(free_mem));
+    master.print_message("Memory margin=" + std::to_string(margin));
+
     int nerror = 0;
-    if (free_mem < total_work_size) // Put margin here?
+    if (free_mem - margin < total_work_size)
     {
         FFT_per_slice = true;
         nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot));
@@ -260,6 +268,9 @@ void Pres<TF>::make_cufft_plan()
         nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot));
         master.print_message("cuFFT strategy: batched over entire 3D field\n");
     }
+
+    cudaMemGetInfo(&free_mem, &total_mem);
+    master.print_message("Available memory post-FFT=" + std::to_string(free_mem));
 
     if (nerror > 0)
         throw std::runtime_error("FFT error");

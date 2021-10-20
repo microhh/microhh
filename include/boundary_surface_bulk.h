@@ -50,8 +50,8 @@ class Boundary_surface_bulk : public Boundary<TF>
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long) {};
 
-        void load(const int) {};
-        void save(const int) {};
+        void load(const int);
+        void save(const int);
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -77,6 +77,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         using Boundary<TF>::fields;
         using Boundary<TF>::boundary_cyclic;
         using Boundary<TF>::swboundary;
+        using Boundary<TF>::field3d_io;
 
         using Boundary<TF>::process_bcs;
 

@@ -605,6 +605,12 @@ void Boundary_surface<TF>::load(const int iotime)
     load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
     load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
+    // The `fld->gradbot`'s are only needed for flux BCs, required by
+    // `set_ghost_cells()` at the start of the time loop.
+    for (auto& it : fields.sp)
+        if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+            load_2d_field(it.second->grad_bot.data(), it.first + "_gradbot", iotime);
+
     // Obukhov length restart files are only needed for the iterative solver
     if (!sw_constant_z0)
     {
@@ -656,6 +662,12 @@ void Boundary_surface<TF>::save(const int iotime)
     save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
     save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // The `fld->gradbot`'s are only needed for flux BCs, required by
+    // `set_ghost_cells()` at the start of the time loop.
+    for (auto& it : fields.sp)
+        if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+            save_2d_field(it.second->grad_bot.data(), it.first + "_gradbot", iotime);
 
     // Obukhov length restart files are only needed for the iterative solver
     if (!sw_constant_z0)

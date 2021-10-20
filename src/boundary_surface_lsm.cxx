@@ -203,6 +203,52 @@ namespace
                 qt_gradbot[ij]  = (qt [ijk]-qt_bot [ij])/zsl;
             }
     }
+
+    template<typename TF>
+    void set_bcs_scalars(
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl, const Boundary_type bcbot,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int kk,
+            Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int jj = icells;
+
+        if (bcbot == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+
+                    varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+                }
+        }
+        else if (bcbot == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+
+                    varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
+                    vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+                }
+        }
+    }
+
 }
 
 template<typename TF>
@@ -603,6 +649,21 @@ void Boundary_surface_lsm<TF>::exec(
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
 
+    // Set BCs other scalars
+    for (auto& it : fields.sp)
+        if (it.first != "thl" and it.first != "qt")
+            set_bcs_scalars(
+                it.second->fld_bot.data(),
+                it.second->grad_bot.data(),
+                it.second->flux_bot.data(),
+                ustar.data(), obuk.data(),
+                it.second->fld.data(), z0h.data(),
+                gd.z[gd.kstart], sbc.at(it.first).bcbot,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend, gd.kstart,
+                gd.icells, gd.jcells, gd.ijcells,
+                boundary_cyclic);
+
     // Calculate MO gradients, which are used
     // by the diffusion scheme.
     bsk::calc_duvdz_mo(
@@ -924,9 +985,14 @@ void Boundary_surface_lsm<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     if (mbcbot != Boundary_type::Dirichlet_type)
         throw std::runtime_error("swboundary=surface_lsm requires mbcbot=noslip");
 
+    if (sbc.at("thl").bcbot != Boundary_type::Dirichlet_type ||
+        sbc.at("qt") .bcbot != Boundary_type::Dirichlet_type)
+        throw std::runtime_error("\"swboundary=surface_lsm\" requires \"sbcbot=dirichlet\" for \"thl\" and \"qt\"!");
+
+    // Don't allow Neumann BCs
     for (auto& it : sbc)
-        if (it.second.bcbot != Boundary_type::Dirichlet_type)
-            throw std::runtime_error("swboundary_surface_lsm requires sbcbot=dirichlet");
+        if (it.second.bcbot == Boundary_type::Neumann_type)
+            throw std::runtime_error("\"swboundary=surface_lsm\" does not support \"sbcbot=neumann\"");
 
     thermobc = Boundary_type::Dirichlet_type;
 }
@@ -1212,6 +1278,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         stats.add_time_series("H", "Surface sensible heat flux", "W m-2", group_name);
         stats.add_time_series("LE", "Surface latent heat flux", "W m-2", group_name);
         stats.add_time_series("G", "Surface soil heat flux", "W m-2", group_name);
+        stats.add_time_series("S", "Surface storage heat flux", "W m-2", group_name);
 
         // Soil
         stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
@@ -1231,6 +1298,7 @@ void Boundary_surface_lsm<TF>::create_stats(
                 stats.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("G_"+tile.first, "Surface soil heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
+                stats.add_time_series("S_"+tile.first, "Surface storage heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
             }
     }
 
@@ -1242,6 +1310,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("H", "Surface sensible heat flux", "W m-2");
         column.add_time_series("LE", "Surface latent heat flux", "W m-2");
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
+        column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
         column.add_time_series("wl", "Liquid water reservoir", "m");
     }
@@ -1515,6 +1584,9 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     get_tiled_mean(*fld_mean, "G", TF(1));
     stats.calc_stats_2d("G", *fld_mean, no_offset);
 
+    get_tiled_mean(*fld_mean, "S", TF(1));
+    stats.calc_stats_2d("S", *fld_mean, no_offset);
+
     // Soil
     stats.calc_stats_soil("t", fields.sps.at("t")->fld, no_offset);
     stats.calc_stats_soil("theta", fields.sps.at("theta")->fld, no_offset);
@@ -1533,6 +1605,7 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
             stats.calc_stats_2d("H_"+tile.first, tile.second.H, no_offset);
             stats.calc_stats_2d("LE_"+tile.first, tile.second.LE, no_offset);
             stats.calc_stats_2d("G_"+tile.first, tile.second.G, no_offset);
+            stats.calc_stats_2d("S_"+tile.first, tile.second.S, no_offset);
         }
 
     fields.release_tmp_xy(fld_mean);
@@ -1558,6 +1631,9 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "G", TF(1));
     column.calc_time_series("G", (*fld_mean).data(), no_offset);
+
+    get_tiled_mean(*fld_mean, "S", TF(1));
+    column.calc_time_series("S", (*fld_mean).data(), no_offset);
 
     fields.release_tmp_xy(fld_mean);
 }
@@ -1646,6 +1722,12 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(
         fld_veg  = tiles.at("veg").G.data();
         fld_soil = tiles.at("soil").G.data();
         fld_wet  = tiles.at("wet").G.data();
+    }
+    else if (name == "S")
+    {
+        fld_veg  = tiles.at("veg").S.data();
+        fld_soil = tiles.at("soil").S.data();
+        fld_wet  = tiles.at("wet").S.data();
     }
     else if (name == "bfluxbot")
     {
