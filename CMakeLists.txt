@@ -116,7 +116,6 @@ if(NOT HASCACHE)
   set(CMAKE_Fortran_FLAGS_RELEASE ${USER_FC_FLAGS_RELEASE} CACHE STRING
     "Flags used by the Fortran-compiler during release builds." FORCE)
 
-
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC during all build types." FORCE)
@@ -135,9 +134,11 @@ endif()
 
 # Print the C++ and CUDA compiler flags to the screen.
 if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
+  message(STATUS "C++ Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
+  message(STATUS "Fortran Compiler flags: " ${CMAKE_Fortran_FLAGS} " " ${CMAKE_Fortran_FLAGS_RELEASE})
 else()
-  message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
+  message(STATUS "C++ Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
+  message(STATUS "Fortran Compiler flags: " ${CMAKE_Fortran_FLAGS} " " ${CMAKE_Fortran_FLAGS_DEBUG})
 endif()
 
 if(USECUDA)
