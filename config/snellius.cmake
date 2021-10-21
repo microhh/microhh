@@ -42,10 +42,6 @@ else()
     else()
         set(USER_CXX_FLAGS "-std=c++14")
         set(USER_CXX_FLAGS_RELEASE "-Ofast -march=znver2 -mtune=znver2 -mfma -mavx2 -m3dnow -fomit-frame-pointer")
-
-        set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
-        set(USER_FC_FLAGS_RELEASE "-DNDEBUG -Ofast -march=znver2 -mtune=znver2 -mfma -mavx2 -m3dnow -fomit-frame-pointer")
-
         add_definitions(-DRESTRICTKEYWORD=__restrict__)
     endif()
 endif()

@@ -158,7 +158,7 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
         else if (mode == Netcdf_mode::Write)
             nc_check_code = nc_open(name.c_str(), NC_WRITE | NC_NETCDF4, &ncid);
         else if (mode == Netcdf_mode::Read)
-            nc_check_code = nc_open(name.c_str(), NC_NOWRITE, &ncid);
+            nc_check_code = nc_open(name.c_str(), NC_NOWRITE | NC_NETCDF4, &ncid);
     }
 
     try
