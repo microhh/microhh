@@ -337,6 +337,35 @@ namespace
                 }
         }
     }
+
+    template<typename TF>
+    void calc_z0_charnock(
+            TF* const restrict z0m,
+            TF* const restrict z0h,
+            const TF* const restrict ustar,
+            const TF alpha_m, const TF alpha_ch, const TF alpha_h,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const TF visc = TF(1.5e-5);
+        const TF gi = TF(1)/Constants::grav<TF>;
+        const TF min_ustar = TF(1e-8);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                // Limit u* to prevent div/0:
+                const TF ustar_lim = std::max(ustar[ij], min_ustar);
+
+                // Roughness lengths, like IFS:
+                z0m[ij] = alpha_m * visc/ustar_lim + alpha_ch * fm::pow2(ustar_lim) * gi;
+                z0h[ij] = alpha_h * visc/ustar_lim;
+            }
+    }
 }
 
 template<typename TF>
@@ -378,17 +407,36 @@ void Boundary_surface<TF>::create(
     {
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
+
+        if (sw_charnock)
+        {
+            stats.add_time_series("z0m", "Roughness length momentum", "m", group_name);
+            stats.add_time_series("z0h", "Roughness length heat", "m", group_name);
+        }
     }
 
     if (column.get_switch())
     {
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
+
+        if (sw_charnock)
+        {
+            column.add_time_series("z0m", "Roughness length momentum", "m");
+            column.add_time_series("z0h", "Roughness length heat", "m");
+        }
     }
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+        std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "ra"};
+
+        if (sw_charnock)
+        {
+            allowed_crossvars.push_back("z0m");
+            allowed_crossvars.push_back("z0h");
+        }
+
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -419,6 +467,19 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     // Switch between heterogeneous and homogeneous z0's
     sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
+
+    // Switch for z0 as function of u* (Charnock relation)
+    sw_charnock = inputin.get_item<bool>("boundary", "swcharnock", "", false);
+
+    if (sw_charnock && sw_constant_z0)
+        throw std::runtime_error("\"swcharnock=true\" requires \"swconstantz0=false\"");
+
+    if (sw_charnock)
+    {
+        alpha_m  = inputin.get_item<TF>("boundary", "alpha_m", "");
+        alpha_ch = inputin.get_item<TF>("boundary", "alpha_ch", "");
+        alpha_h  = inputin.get_item<TF>("boundary", "alpha_h", "");
+    }
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Boundary_type::Neumann_type)
@@ -505,7 +566,8 @@ void Boundary_surface<TF>::init_surface(Input& input)
 
     // Also initialise ustar at small number, to prevent div/0
     // in calculation surface gradients during cold start.
-    std::fill(ustar.begin(), ustar.end(), Constants::dsmall);
+    //std::fill(ustar.begin(), ustar.end(), Constants::dsmall);
+    std::fill(ustar.begin(), ustar.end(), 1e-2);
 
     if (sw_constant_z0)
         std::fill(nobuk.begin(), nobuk.end(), 0);
@@ -556,8 +618,11 @@ void Boundary_surface<TF>::load(const int iotime)
         load_2d_field(obuk.data(), "obuk", iotime);
 
         // Read spatial z0 fields
-        load_2d_field(z0m.data(), "z0m", 0);
-        load_2d_field(z0h.data(), "z0h", 0);
+        if (!sw_charnock)
+        {
+            load_2d_field(z0m.data(), "z0m", 0);
+            load_2d_field(z0h.data(), "z0h", 0);
+        }
     }
 
     // Check for any failures.
@@ -628,6 +693,10 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(ustar.data(), "ustar", iotime);
         else if (it == "obuk")
             cross.cross_plane(obuk.data(), "obuk", iotime);
+        else if (it == "z0m")
+            cross.cross_plane(z0m.data(), "z0m", iotime);
+        else if (it == "z0h")
+            cross.cross_plane(z0h.data(), "z0h", iotime);
         else if (it == "ra")
         {
             bsk::calc_ra(
@@ -647,6 +716,12 @@ void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
     const TF no_offset = 0.;
     stats.calc_stats_2d("obuk", obuk, no_offset);
     stats.calc_stats_2d("ustar", ustar, no_offset);
+
+    if (sw_charnock)
+    {
+        stats.calc_stats_2d("z0m", z0m, no_offset);
+        stats.calc_stats_2d("z0h", z0h, no_offset);
+    }
 }
 
 #ifndef USECUDA
@@ -656,6 +731,12 @@ void Boundary_surface<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
+
+    if (sw_charnock)
+    {
+        column.calc_time_series("z0m", z0m.data(), no_offset);
+        column.calc_time_series("z0h", z0h.data(), no_offset);
+    }
 }
 #endif
 
@@ -747,6 +828,22 @@ void Boundary_surface<TF>::exec(
         Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+
+    // Update roughness lengths when Charnock relation is used,
+    // using friction velocity from previous time step (?).
+    if (sw_charnock)
+    {
+        calc_z0_charnock(
+                z0m.data(), z0h.data(),
+                ustar.data(),
+                alpha_m, alpha_ch, alpha_h,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
+        boundary_cyclic.exec_2d(z0m.data());
+        boundary_cyclic.exec_2d(z0h.data());
+    }
 
     // Calculate (limited and filtered) total wind speed difference surface-atmosphere:
     auto dutot = fields.get_tmp();
