@@ -248,18 +248,73 @@ int Field3d_io<TF>::save_xz_slice(
 
     int count = gd.imax*kmax;
 
-    for (int k=kstart; k<kend; k++)
-        #pragma ivdep
-        for (int i=0; i<gd.imax; i++)
-        {
-            // take the modulus of jslice and gd.jmax to have the right offset within proc
-            const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + k*kk;
-            const int ijkb = i + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
-        }
-
     if (md.mpicoordy == jslice/gd.jmax)
     {
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=0; i<gd.imax; i++)
+            {
+                // take the modulus of jslice and gd.jmax to have the right offset within proc
+                const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + k*kk;
+                const int ijkb = i + (k-kstart)*kkb;
+                tmp[ijkb] = data[ijk];
+            }
+
+#ifdef DISABLE_2D_MPIIO
+//
+// NOTE: on GPFS (IBM Spectrum Scale) file systems, saving small bits of data from
+// each MPI task into a single binary using MPI-IO is **extremely** slow. With `DISABLE_2D_MPIIO`,
+// the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
+//
+        // MPI task which gathers/writes the slice:
+        const int mpi_rank_recv = md.mpicoordy * md.npx;
+
+        // Create send/receive MPI types.
+        MPI_Datatype send_type;
+        MPI_Type_vector(kmax, gd.imax, gd.imax, mpi_fp_type<TF>(), &send_type);
+        MPI_Type_commit(&send_type);
+
+        MPI_Datatype recv_type;
+        int totxzsize_recv [2] = {kmax, gd.itot};
+        int subxzsize_recv [2] = {kmax, gd.imax};
+        int subxzstart_recv[2] = {0, md.mpicoordx*gd.imax};
+        MPI_Type_create_subarray(2, totxzsize_recv, subxzsize_recv, subxzstart_recv, MPI_ORDER_C, mpi_fp_type<TF>(), &recv_type);
+        MPI_Type_commit(&recv_type);
+
+        MPI_Datatype recv_type_r;
+        MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
+        MPI_Type_commit(&recv_type_r);
+
+        // Create size/offset arrays for MPI_Gatherv().
+        std::vector<int> counts(md.npx);
+        std::fill(counts.begin(), counts.end(), 1);
+
+        std::vector<int> offset(md.npx);
+        for (int i=0; i<md.npx; ++i)
+            offset[i] = i*gd.imax;
+
+        // Gather the data!
+        std::vector<TF> recv;
+        if (md.mpicoordx == mpi_rank_recv)
+            recv.resize(gd.itot*gd.ktot);
+
+        MPI_Gatherv(tmp, 1, send_type, recv.data(), counts.data(), offset.data(), recv_type_r, mpi_rank_recv, md.commx);
+
+        // Only MPI rank 0 writes the data.
+        if (md.mpicoordx == mpi_rank_recv)
+        {
+            FILE *pFile;
+            pFile = fopen(filename, "wbx");
+            if (pFile == NULL)
+                return 1;
+
+            fwrite(recv.data(), sizeof(TF), gd.itot*kmax, pFile);
+            fclose(pFile);
+        }
+#else
+//
+// Use MPI-IO to write the data from different MPI tasks into a single file
+//
         // Create MPI datatype for XZ-slice
         MPI_Datatype subxzslice;
         int totxzsize [2] = {kmax, gd.itot};
@@ -293,11 +348,11 @@ int Field3d_io<TF>::save_xz_slice(
                 ++nerror;
 
         MPI_Type_free(&subxzslice);
+#endif
     }
 
     // Gather errors from other processes
     master.sum(&nerror,1);
-
     MPI_Barrier(md.commxy);
 
     return nerror;
@@ -402,10 +457,12 @@ int Field3d_io<TF>::save_xy_slice(
             tmp[ijkb] = data[ijk];
         }
 
+#ifdef DISABLE_2D_MPIIO
+//
 // NOTE: on GPFS (IBM Spectrum Scale) file systems, saving small bits of data from
 // each MPI task into a single binary using MPI-IO is **extremely** slow. With `DISABLE_2D_MPIIO`,
 // the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
-#ifdef DISABLE_2D_MPIIO
+//
     // Create send/receive MPI types.
     MPI_Datatype send_type;
     MPI_Type_vector(gd.jmax, gd.imax, gd.imax, mpi_fp_type<TF>(), &send_type);
@@ -450,6 +507,9 @@ int Field3d_io<TF>::save_xy_slice(
         fclose(pFile);
     }
 #else
+//
+// Use MPI-IO to write the data from different MPI tasks into a single file
+//
     // Define MPI datatype for XY-slice
     MPI_Datatype subxyslice;
     int totxysize [2] = {gd.jtot, gd.itot};
