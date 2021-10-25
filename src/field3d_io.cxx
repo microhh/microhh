@@ -376,19 +376,74 @@ int Field3d_io<TF>::save_yz_slice(
 
     int count = gd.jmax*kmax;
 
-    // Strip off the ghost cells
-    for (int k=kstart; k<kend; k++)
-        #pragma ivdep
-        for (int j=0; j<gd.jmax; j++)
-        {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
-            const int ijkb = j + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
-        }
-
     if (md.mpicoordx == islice/gd.imax)
     {
+        // Strip off the ghost cells
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int j=0; j<gd.jmax; j++)
+            {
+                // take the modulus of jslice and jmax to have the right offset within proc
+                const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
+                const int ijkb = j + (k-kstart)*kkb;
+                tmp[ijkb] = data[ijk];
+            }
+
+#ifdef DISABLE_2D_MPIIO
+//
+// NOTE: on GPFS (IBM Spectrum Scale) file systems, saving small bits of data from
+// each MPI task into a single binary using MPI-IO is **extremely** slow. With `DISABLE_2D_MPIIO`,
+// the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
+//
+        // MPI task which gathers/writes the slice:
+        const int mpi_rank_recv = md.mpicoordx * md.npy;
+
+        // Create send/receive MPI types.
+        MPI_Datatype send_type;
+        MPI_Type_vector(kmax, gd.jmax, gd.jmax, mpi_fp_type<TF>(), &send_type);
+        MPI_Type_commit(&send_type);
+
+        MPI_Datatype recv_type;
+        int totyzsize_recv [2] = {kmax, gd.jtot};
+        int subyzsize_recv [2] = {kmax, gd.jmax};
+        int subyzstart_recv[2] = {0, md.mpicoordy*gd.jmax};
+        MPI_Type_create_subarray(2, totyzsize_recv, subyzsize_recv, subyzstart_recv, MPI_ORDER_C, mpi_fp_type<TF>(), &recv_type);
+        MPI_Type_commit(&recv_type);
+
+        MPI_Datatype recv_type_r;
+        MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
+        MPI_Type_commit(&recv_type_r);
+
+        // Create size/offset arrays for MPI_Gatherv().
+        std::vector<int> counts(md.npy);
+        std::fill(counts.begin(), counts.end(), 1);
+
+        std::vector<int> offset(md.npy);
+        for (int i=0; i<md.npy; ++i)
+            offset[i] = i*gd.jmax;
+
+        // Gather the data!
+        std::vector<TF> recv;
+        if (md.mpicoordy == mpi_rank_recv)
+            recv.resize(gd.jtot*gd.ktot);
+
+        MPI_Gatherv(tmp, 1, send_type, recv.data(), counts.data(), offset.data(), recv_type_r, mpi_rank_recv, md.commy);
+
+        // Only MPI rank 0 writes the data.
+        if (md.mpicoordy == mpi_rank_recv)
+        {
+            FILE *pFile;
+            pFile = fopen(filename, "wbx");
+            if (pFile == NULL)
+                return 1;
+
+            fwrite(recv.data(), sizeof(TF), gd.jtot*kmax, pFile);
+            fclose(pFile);
+        }
+#else
+//
+// Use MPI-IO to write the data from different MPI tasks into a single file
+//
         // Create MPI datatype for YZ-slice
         MPI_Datatype subyzslice;
         int totyzsize [2] = {kmax, gd.jtot};
@@ -422,11 +477,11 @@ int Field3d_io<TF>::save_yz_slice(
                 ++nerror;
 
         MPI_Type_free(&subyzslice);
+#endif
     }
 
     // Gather errors from other processes
     master.sum(&nerror,1);
-
     MPI_Barrier(md.commxy);
 
     return nerror;
