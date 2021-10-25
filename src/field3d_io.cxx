@@ -382,9 +382,6 @@ int Field3d_io<TF>::save_xy_slice(
         TF* const restrict data, TF* const restrict tmp,
         const char* filename, const int kslice)
 {
-    // TEMPORARY HACK (of fix?) FOR SNELLIUS
-    bool disable_mpiio = true;
-
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
@@ -405,86 +402,86 @@ int Field3d_io<TF>::save_xy_slice(
             tmp[ijkb] = data[ijk];
         }
 
-    if (disable_mpiio)
-    {
-        // Create send/receive MPI types.
-        MPI_Datatype send_type;
-        MPI_Type_vector(gd.jmax, gd.imax, gd.imax, mpi_fp_type<TF>(), &send_type);
-        MPI_Type_commit(&send_type);
+// NOTE: on GPFS (IBM Spectrum Scale) file systems, saving small bits of data from
+// each MPI task into a single binary using MPI-IO is **extremely** slow. With `DISABLE_2D_MPIIO`,
+// the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
+#ifdef DISABLE_2D_MPIIO
+    // Create send/receive MPI types.
+    MPI_Datatype send_type;
+    MPI_Type_vector(gd.jmax, gd.imax, gd.imax, mpi_fp_type<TF>(), &send_type);
+    MPI_Type_commit(&send_type);
 
-        MPI_Datatype recv_type;
-        int totxysize_recv [2] = {gd.jtot, gd.itot};
-        int subxysize_recv [2] = {gd.jmax, gd.imax};
-        int subxystart_recv[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
-        MPI_Type_create_subarray(2, totxysize_recv, subxysize_recv, subxystart_recv, MPI_ORDER_C, mpi_fp_type<TF>(), &recv_type);
-        MPI_Type_commit(&recv_type);
+    MPI_Datatype recv_type;
+    int totxysize_recv [2] = {gd.jtot, gd.itot};
+    int subxysize_recv [2] = {gd.jmax, gd.imax};
+    int subxystart_recv[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
+    MPI_Type_create_subarray(2, totxysize_recv, subxysize_recv, subxystart_recv, MPI_ORDER_C, mpi_fp_type<TF>(), &recv_type);
+    MPI_Type_commit(&recv_type);
 
-        MPI_Datatype recv_type_r;
-        MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
-        MPI_Type_commit(&recv_type_r);
+    MPI_Datatype recv_type_r;
+    MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
+    MPI_Type_commit(&recv_type_r);
 
-        // Create size/offset arrays for MPI_Gatherv().
-        std::vector<int> counts(md.nprocs);
-        std::fill(counts.begin(), counts.end(), 1);
+    // Create size/offset arrays for MPI_Gatherv().
+    std::vector<int> counts(md.nprocs);
+    std::fill(counts.begin(), counts.end(), 1);
 
-        std::vector<int> offset(md.nprocs);
-        for (int i=0; i<md.npx; ++i)
-            for (int j=0; j<md.npy; ++j)
-            {
-                const int ii = i+j*md.npx;
-                offset[ii] = i*gd.imax + j*gd.jmax*gd.itot;
-            }
-
-        // Gather the data!
-        std::vector<TF> recv = std::vector<TF>(gd.itot*gd.jtot);
-
-        MPI_Gatherv(tmp, 1, send_type, recv.data(), counts.data(), offset.data(), recv_type_r, 0, md.commxy);
-
-        if (md.mpiid == 0)
+    std::vector<int> offset(md.nprocs);
+    for (int i=0; i<md.npx; ++i)
+        for (int j=0; j<md.npy; ++j)
         {
-            FILE *pFile;
-            pFile = fopen(filename, "wbx");
-            if (pFile == NULL)
-                return 1;
-
-            fwrite(recv.data(), sizeof(TF), gd.itot*gd.jtot, pFile);
-            fclose(pFile);
+            const int ii = i+j*md.npx;
+            offset[ii] = i*gd.imax + j*gd.jmax*gd.itot;
         }
-    }
-    else
+
+    // Gather the data!
+    std::vector<TF> recv = std::vector<TF>(gd.itot*gd.jtot);
+    MPI_Gatherv(tmp, 1, send_type, recv.data(), counts.data(), offset.data(), recv_type_r, 0, md.commxy);
+
+    // Only MPI rank 0 writes the data.
+    if (md.mpiid == 0)
     {
-        // Define MPI datatype for XY-slice
-        MPI_Datatype subxyslice;
-        int totxysize [2] = {gd.jtot, gd.itot};
-        int subxysize [2] = {gd.jmax, gd.imax};
-        int subxystart[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
-        MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
-        MPI_Type_commit(&subxyslice);
-
-        MPI_File fh;
-        if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        FILE *pFile;
+        pFile = fopen(filename, "wbx");
+        if (pFile == NULL)
             return 1;
 
-        // Select noncontiguous part of 3d array to store the selected data
-        MPI_Offset fileoff = 0; // the offset within the file (header size)
-        char name[] = "native";
-
-        if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
-            return 1;
-
-        // Only write at the procs that contain the slice
-        if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
-            return 1;
-
-        MPI_File_sync(fh);
-
-        if (MPI_File_close(&fh))
-            return 1;
-
-        MPI_Type_free(&subxyslice);
-
-        MPI_Barrier(md.commxy);
+        fwrite(recv.data(), sizeof(TF), gd.itot*gd.jtot, pFile);
+        fclose(pFile);
     }
+#else
+    // Define MPI datatype for XY-slice
+    MPI_Datatype subxyslice;
+    int totxysize [2] = {gd.jtot, gd.itot};
+    int subxysize [2] = {gd.jmax, gd.imax};
+    int subxystart[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
+    MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
+    MPI_Type_commit(&subxyslice);
+
+    MPI_File fh;
+    if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+        return 1;
+
+    // Select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+
+    if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
+        return 1;
+
+    // Only write at the procs that contain the slice
+    if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+        return 1;
+
+    MPI_File_sync(fh);
+
+    if (MPI_File_close(&fh))
+        return 1;
+
+    MPI_Type_free(&subxyslice);
+
+    MPI_Barrier(md.commxy);
+#endif
 
     return 0;
 }

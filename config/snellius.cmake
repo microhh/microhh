@@ -68,6 +68,9 @@ set(HDF5_LIB "hdf5")
 set(SZIP_LIB "sz")
 set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB} ${SZIP_LIB} ${IRC_LIB} m z curl)
 
+# Disable MPI-IO for cross-sections on GPFS file systems.
+add_definitions(-DDISABLE_2D_MPIIO=1)
+
 if(USECUDA)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     set(LIBS ${LIBS} -rdynamic $ENV{EBROOTCUDA}/lib64/libcufft.so)
