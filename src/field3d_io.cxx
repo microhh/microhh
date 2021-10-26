@@ -23,7 +23,6 @@
 #include <cstdio>
 #include <iostream>
 #include <cmath>
-#include <chrono>   // tmp
 #include "master.h"
 #include "grid.h"
 #include "field3d.h"
@@ -286,9 +285,6 @@ int Field3d_io<TF>::save_xz_slice(
         MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
         MPI_Type_commit(&recv_type_r);
 
-        // TMP: benchmarking
-        auto begin = std::chrono::high_resolution_clock::now();
-
         // Create size/offset arrays for MPI_Gatherv().
         std::vector<int> counts(md.npx);
         std::fill(counts.begin(), counts.end(), 1);
@@ -314,12 +310,6 @@ int Field3d_io<TF>::save_xz_slice(
 
             fwrite(recv.data(), sizeof(TF), gd.itot*kmax, pFile);
             fclose(pFile);
-
-            auto end = std::chrono::high_resolution_clock::now();
-            auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-            const int bytes = gd.itot*kmax*sizeof(TF);
-            const double Mbytes_s = double(bytes)/double(diff) * 1e9/1024/1024;
-            std::cout << "Write XZ without MPI-IO = " << Mbytes_s << " MB/s" << std::endl;
         }
 #else
 //
@@ -332,9 +322,6 @@ int Field3d_io<TF>::save_xz_slice(
         int subxzstart[2] = {0, md.mpicoordx*gd.imax};
         MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxzslice);
         MPI_Type_commit(&subxzslice);
-
-        // TMP: benchmarking
-        auto begin = std::chrono::high_resolution_clock::now();
 
         MPI_File fh;
         if (MPI_File_open(md.commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -361,15 +348,6 @@ int Field3d_io<TF>::save_xz_slice(
                 ++nerror;
 
         MPI_Type_free(&subxzslice);
-
-        if (md.mpiid == 0)
-        {
-            auto end = std::chrono::high_resolution_clock::now();
-            auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-            const int bytes = gd.itot*kmax*sizeof(TF);
-            const double Mbytes_s = double(bytes)/double(diff) * 1e9/1024/1024;
-            std::cout << "Write XZ with MPI-IO = " << Mbytes_s << " MB/s" << std::endl;
-        }
 #endif
     }
 
@@ -568,9 +546,6 @@ int Field3d_io<TF>::save_xy_slice(
             offset[ii] = i*gd.imax + j*gd.jmax*gd.itot;
         }
 
-    // TMP: benchmarking
-    auto begin = std::chrono::high_resolution_clock::now();
-
     // Gather the data!
     std::vector<TF> recv = std::vector<TF>(gd.itot*gd.jtot);
     MPI_Gatherv(tmp, 1, send_type, recv.data(), counts.data(), offset.data(), recv_type_r, 0, md.commxy);
@@ -585,14 +560,7 @@ int Field3d_io<TF>::save_xy_slice(
 
         fwrite(recv.data(), sizeof(TF), gd.itot*gd.jtot, pFile);
         fclose(pFile);
-
-        auto end = std::chrono::high_resolution_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-        const int bytes = gd.itot*gd.jtot*sizeof(TF);
-        const double Mbytes_s = double(bytes)/double(diff) * 1e9/1024/1024;
-        std::cout << "Write XY without MPI-IO = " << Mbytes_s << " MB/s" << std::endl;
     }
-
 #else
 //
 // Use MPI-IO to write the data from different MPI tasks into a single file
@@ -604,9 +572,6 @@ int Field3d_io<TF>::save_xy_slice(
     int subxystart[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
     MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, mpi_fp_type<TF>(), &subxyslice);
     MPI_Type_commit(&subxyslice);
-
-    // TMP: benchmarking
-    auto begin = std::chrono::high_resolution_clock::now();
 
     MPI_File fh;
     if (MPI_File_open(md.commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -631,16 +596,6 @@ int Field3d_io<TF>::save_xy_slice(
     MPI_Type_free(&subxyslice);
 
     MPI_Barrier(md.commxy);
-
-    if (md.mpiid == 0)
-    {
-        auto end = std::chrono::high_resolution_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-        const int bytes = gd.itot*gd.jtot*sizeof(TF);
-        const double Mbytes_s = double(bytes)/double(diff) * 1e9/1024/1024;
-        std::cout << "Write XY with MPI-IO = " << Mbytes_s << " MB/s" << std::endl;
-    }
-
 #endif
 
     return 0;
