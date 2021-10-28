@@ -124,7 +124,7 @@ dy = 120
 ddx = 40
 
 # Strength of plumes, from the CoCO2 simulation protocol:
-strength_co2 = np.round(1217.7 / 9. / Mco2, decimals=2)   # kmol(CO2) s-1
+strength_co2 = np.round(732.5 / 9. / Mco2, decimals=2)   # kmol(CO2) s-1
 
 # Emission of heat and moisture. Numbers are from:
 # Effective pollutant emission heights for atmospheric transport modelling based on real-world information
@@ -147,7 +147,7 @@ source_y0 = []
 source_z0 = []
 
 for j in range(-1,2):
-    nvfor i in range(-1,2):
+    for i in range(-1,2):
         source_x0.append( x0 + i*dx + j*ddx )
         source_y0.append( y0 + j*dy )
         source_z0.append( z0 )
