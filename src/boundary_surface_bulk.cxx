@@ -214,6 +214,84 @@ void Boundary_surface_bulk<TF>::init_surface(Input& input)
 }
 
 template<typename TF>
+void Boundary_surface_bulk<TF>::load(const int iotime)
+{
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
+    };
+
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error loading field(s)");
+
+    fields.release_tmp(tmp1);
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::save(const int iotime)
+{
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto save_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error saving field(s)");
+
+    fields.release_tmp(tmp1);
+}
+
+template<typename TF>
 void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
 {
     const TF no_offset = 0.;

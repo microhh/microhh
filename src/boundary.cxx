@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -44,7 +46,7 @@
 
 namespace
 {
-    template<typename TF>
+    template<typename TF, bool set_flux_grad>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
                 const Boundary_type sw, const TF aval, const TF visc, const TF offset,
                 const int icells, const int jcells)
@@ -69,7 +71,8 @@ namespace
                 {
                     const int ij = i + j*jj;
                     agrad[ij] = aval;
-                    aflux[ij] = -aval*visc;
+                    if (set_flux_grad)
+                        aflux[ij] = -aval*visc;
                 }
         }
         else if (sw == Boundary_type::Flux_type)
@@ -80,18 +83,20 @@ namespace
                 {
                     const int ij = i + j*jj;
                     aflux[ij] = aval;
-                    agrad[ij] = -aval/visc;
+                    if (set_flux_grad)
+                        agrad[ij] = -aval/visc;
                 }
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool set_flux_grad>
     void set_bc_2d(
             TF* const restrict a,
             TF* const restrict agrad,
             TF* const restrict aflux,
             const TF* const restrict aval,
-            const Boundary_type sw, const TF visc, const TF offset,
+            const Boundary_type sw, const TF visc,
+            const TF offset,
             const int icells, const int jcells)
     {
         const int jj = icells;
@@ -114,7 +119,8 @@ namespace
                 {
                     const int ij = i + j*jj;
                     agrad[ij] = aval[ij];
-                    aflux[ij] = -aval[ij]*visc;
+                    if (set_flux_grad)
+                        aflux[ij] = -aval[ij]*visc;
                 }
         }
         else if (sw == Boundary_type::Flux_type)
@@ -125,7 +131,8 @@ namespace
                 {
                     const int ij = i + j*jj;
                     aflux[ij] = aval[ij];
-                    agrad[ij] = -aval[ij]/visc;
+                    if (set_flux_grad)
+                        agrad[ij] = -aval[ij]/visc;
                 }
         }
     }
@@ -427,6 +434,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     const Grid_data<TF>& gd = grid.get_grid_data();
 
     const TF no_offset = 0.;
+    const bool set_flux_grad = (swboundary == "default");
 
     if (swtimedep_sbot_2d)
     {
@@ -485,14 +493,24 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                     sbot_2d_next.at(fld).data(),
                     fac0, fac1, gd.ijcells, fld);
 
-            set_bc_2d(
-                    fields.sp.at(fld)->fld_bot.data(),
-                    fields.sp.at(fld)->grad_bot.data(),
-                    fields.sp.at(fld)->flux_bot.data(),
-                    tmp->fld_bot.data(),
-                    sbc.at(fld).bcbot,
-                    fields.sp.at(fld)->visc,
-                    no_offset, gd.icells, gd.jcells);
+            if (set_flux_grad)
+                set_bc_2d<TF, true>(
+                        fields.sp.at(fld)->fld_bot.data(),
+                        fields.sp.at(fld)->grad_bot.data(),
+                        fields.sp.at(fld)->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(fld).bcbot,
+                        fields.sp.at(fld)->visc,
+                        no_offset, gd.icells, gd.jcells);
+            else
+                set_bc_2d<TF, false>(
+                        fields.sp.at(fld)->fld_bot.data(),
+                        fields.sp.at(fld)->grad_bot.data(),
+                        fields.sp.at(fld)->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(fld).bcbot,
+                        fields.sp.at(fld)->visc,
+                        no_offset, gd.icells, gd.jcells);
         }
 
         fields.release_tmp(tmp);
@@ -503,14 +521,24 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         {
             it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
 
-            set_bc<TF>(
-                fields.sp.at(it.first)->fld_bot.data(),
-                fields.sp.at(it.first)->grad_bot.data(),
-                fields.sp.at(it.first)->flux_bot.data(),
-                sbc.at(it.first).bcbot,
-                sbc.at(it.first).bot,
-                fields.sp.at(it.first)->visc,
-                no_offset, gd.icells, gd.jcells);
+            if (set_flux_grad)
+                set_bc<TF, true>(
+                    fields.sp.at(it.first)->fld_bot.data(),
+                    fields.sp.at(it.first)->grad_bot.data(),
+                    fields.sp.at(it.first)->flux_bot.data(),
+                    sbc.at(it.first).bcbot,
+                    sbc.at(it.first).bot,
+                    fields.sp.at(it.first)->visc,
+                    no_offset, gd.icells, gd.jcells);
+            else
+                set_bc<TF, false>(
+                    fields.sp.at(it.first)->fld_bot.data(),
+                    fields.sp.at(it.first)->grad_bot.data(),
+                    fields.sp.at(it.first)->flux_bot.data(),
+                    sbc.at(it.first).bcbot,
+                    sbc.at(it.first).bot,
+                    fields.sp.at(it.first)->visc,
+                    no_offset, gd.icells, gd.jcells);
         }
     }
 }
@@ -522,17 +550,22 @@ void Boundary<TF>::set_values()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
+    // For non-DNS boundaries, don't set the flux or gradient using
+    // `flux = -grad*visc` or `grad = -flux/visc`. Only the flux option
+    // is used by LES, and in that case, the gradient is set as the resolved gradient.
+    const bool set_flux_grad = (swboundary == "default");
+
+    set_bc<TF, true>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
            mbcbot, ubot, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
+    set_bc<TF, true>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
            mbcbot, vbot, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    set_bc<TF>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
+    set_bc<TF, true>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
            mbctop, utop, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
+    set_bc<TF, true>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
@@ -572,12 +605,24 @@ void Boundary<TF>::set_values()
         }
         else
         {
-            set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-                   sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
-                   gd.icells, gd.jcells);
-            set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
-                   sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
-                   gd.icells, gd.jcells);
+            if (set_flux_grad)
+            {
+                set_bc<TF, true>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                       sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+                set_bc<TF, true>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                       sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+            }
+            else
+            {
+                set_bc<TF, false>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                       sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+                set_bc<TF, false>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                       sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+            }
         }
     }
 }
