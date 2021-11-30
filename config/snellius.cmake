@@ -1,3 +1,25 @@
+# Snellius @ SURFSara.
+#
+# NOTE: for Intel, you need to compile NetCDF yourself with EasyBuild.
+# See notes at: https://github.com/microhh/microhh/issues/73
+#
+# GCC:
+# module purge
+# module load 2021
+# module load CMake/3.20.1-GCCcore-10.3.0
+# module load foss/2021a
+# module load netCDF/4.8.0-gompi-2021a
+# module load CUDA/11.3.1
+#
+# Intel:
+# module purge
+# module load 2021
+# module load CMake/3.20.1-GCCcore-10.3.0
+# module load intel/2021a
+# module load netCDF/4.8.0-iimpi-2021a
+# module load FFTW/3.3.9-intel-2021a
+#
+
 # Switch between Intel and GCC:
 set(USEINTEL FALSE)
 
@@ -52,14 +74,7 @@ endif()
 
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
-if(USEINTEL)
-    set(NETCDF_INCLUDE_DIR "/home/bstratum/software/netcdf-c-4.8.1-intel-2021a/include")
-    set(NETCDF_LIB_C "/home/bstratum/software/netcdf-c-4.8.1-intel-2021a/lib/libnetcdf.so")
-    set(INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
-else()
-    set(NETCDF_LIB_C "netcdf")
-endif()
-
+set(NETCDF_LIB_C "netcdf")
 set(FFTW_LIB "fftw3")
 set(FFTWF_LIB "fftw3f")
 set(IRC_LIB "irc")
