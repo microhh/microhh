@@ -271,9 +271,6 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     // to be coupled correctly, also for 2D varying emissivities.
     emis_sfc = inputin.get_item<TF>("radiation", "emis_sfc", "");
 
-    if (sw_water)
-        tskin_water = inputin.get_item<TF>("land_surface", "tskin_water", "");
-
     // Create prognostic 2D and 3D fields;
     fields.init_prognostic_soil_field("t", "Soil temperature", "K");
     fields.init_prognostic_soil_field("theta", "Soil volumetric water content", "m3 m-3");
@@ -290,6 +287,8 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     // Checks:
     if (sw_homogeneous && sw_water)
         throw std::runtime_error("Homogeneous land-surface with water is not supported!\n");
+    if (sw_iter_seb && sw_water)
+        throw std::runtime_error("Iterative SL solver (sw_iter_seb=1) with swwater=1 is not supported!\n");
 
     //#ifdef USECUDA
     //ustar_g = 0;
@@ -377,7 +376,6 @@ void Boundary_surface_lsm<TF>::exec(
     auto f2b = fields.get_tmp_xy();
     auto f3  = fields.get_tmp_xy();
     auto theta_mean_n = fields.get_tmp_xy();
-    auto ra = fields.get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -518,7 +516,7 @@ void Boundary_surface_lsm<TF>::exec(
                         tile.second.ustar.data(),
                         tile.second.obuk.data(),
                         tile.second.bfluxbot.data(),
-                        (*ra).data(),
+                        tile.second.ra.data(),
                         tile.second.nobuk.data(),
                         (*dutot).data(),
                         buoy->fld.data(),
@@ -538,7 +536,7 @@ void Boundary_surface_lsm<TF>::exec(
                         tile.second.ustar.data(),
                         tile.second.obuk.data(),
                         tile.second.bfluxbot.data(),
-                        (*ra).data(),
+                        tile.second.ra.data(),
                         tile.second.nobuk.data(),
                         (*dutot).data(),
                         buoy->fld.data(),
@@ -567,7 +565,7 @@ void Boundary_surface_lsm<TF>::exec(
                     fields.sps.at("t")->fld.data(),
                     (*qsat_bot).data(),
                     (*dqsatdT_bot).data(),
-                    (*ra).data(),
+                    tile.second.ra.data(),
                     tile.second.rs.data(),
                     lambda_stable.data(),
                     lambda_unstable.data(),
@@ -588,6 +586,44 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.ijcells,
                     use_cs_veg, tile.first);
             }
+    }
+
+    // Override grid point with water
+    if (sw_water)
+    {
+        // Set BCs for water grid points
+        lsmk::set_water_tiles(
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                tiles.at("veg").H.data(),
+                tiles.at("soil").H.data(),
+                tiles.at("wet").H.data(),
+                tiles.at("veg").LE.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("wet").LE.data(),
+                tiles.at("veg").G.data(),
+                tiles.at("soil").G.data(),
+                tiles.at("wet").G.data(),
+                tiles.at("veg").rs.data(),
+                tiles.at("soil").rs.data(),
+                tiles.at("wet").rs.data(),
+                tiles.at("wet").thl_bot.data(),
+                tiles.at("wet").qt_bot.data(),
+                water_mask.data(),
+                t_bot_water.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                fields.sp.at("qt")->fld_bot.data(),
+                tiles.at("wet").ra.data(),
+                rhorefh.data(),
+                prefh.data(),
+                exnrefh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
     }
 
     // Calculate tile averaged surface fluxes and values.
@@ -707,50 +743,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
-
-    if (sw_water)
-    {
-        //// Set BCs for water grid points
-        //lsm::set_water_bcs(
-        //        fields.sp.at("thl")->fld_bot.data(),
-        //        fields.sp.at("qt")->fld_bot.data(),
-        //        water_mask.data(),
-        //        exnerh.data(), prefh.data(),
-        //        tskin_water,
-        //        agd.istart, agd.iend,
-        //        agd.jstart, agd.jend,
-        //        agd.kstart, agd.icells);
-
-        //// Modify tile properties over water grid points
-        //// NOTE: this is an ugly hack :'-(
-        //lsm::set_water_tiles(
-        //        tiles.at("veg").fraction.data(),
-        //        tiles.at("soil").fraction.data(),
-        //        tiles.at("wet").fraction.data(),
-        //        tiles.at("veg").H.data(),
-        //        tiles.at("soil").H.data(),
-        //        tiles.at("wet").H.data(),
-        //        tiles.at("veg").LE.data(),
-        //        tiles.at("soil").LE.data(),
-        //        tiles.at("wet").LE.data(),
-        //        tiles.at("veg").G.data(),
-        //        tiles.at("soil").G.data(),
-        //        tiles.at("wet").G.data(),
-        //        tiles.at("veg").rs.data(),
-        //        tiles.at("soil").rs.data(),
-        //        tiles.at("wet").rs.data(),
-        //        water_mask.data(),
-        //        fields.sp.at("thl")->fld.data(),
-        //        fields.sp.at("qt")->fld.data(),
-        //        fields.sp.at("thl")->fld_bot.data(),
-        //        fields.sp.at("qt")->fld_bot.data(),
-        //        tmp1->flux_bot.data(),
-        //        rhorefh.data(),
-        //        agd.istart, agd.iend,
-        //        agd.jstart, agd.jend,
-        //        agd.kstart,
-        //        agd.icells, agd.ijcells);
-    }
 
     //
     // Calculate soil tendencies
@@ -953,7 +945,6 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_xy(f2b);
     fields.release_tmp_xy(f3);
     fields.release_tmp_xy(theta_mean_n);
-    fields.release_tmp_xy(ra);
 }
 #endif
 
@@ -1025,6 +1016,9 @@ void Boundary_surface_lsm<TF>::init_surface_layer(Input& input)
     }
     // else: z0m and z0h are read from 2D input files in `load()`.
 
+    if (sw_water)
+        t_bot_water.resize(gd.ijcells);
+
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
 
@@ -1042,6 +1036,7 @@ void Boundary_surface_lsm<TF>::init_land_surface()
     // Allocate the surface tiles
     for (auto& tile : tiles)
         lsmk::init_tile(tile.second, gd.ijcells);
+
     tiles.at("veg" ).long_name = "vegetation";
     tiles.at("soil").long_name = "bare soil";
     tiles.at("wet" ).long_name = "wet skin";
@@ -1225,6 +1220,7 @@ void Boundary_surface_lsm<TF>::create(
         init_homogeneous(lambda_stable, "lambda_stable");
         init_homogeneous(lambda_unstable, "lambda_unstable");
         init_homogeneous(cs_veg, "cs_veg");
+        init_homogeneous(t_bot_water, "t_bot_water");
     }
     // else: these fields are read from 2D input files in `boundary->load()`.
 
@@ -1325,10 +1321,12 @@ void Boundary_surface_lsm<TF>::create_stats(
 template<typename TF>
 void Boundary_surface_lsm<TF>::load(const int iotime)
 {
+    auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
+    auto tmp3 = fields.get_tmp();
 
     int nerror = 0;
     const TF no_offset = TF(0);
@@ -1399,12 +1397,6 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
     // Load the surface temperature, humidity and liquid water content.
     load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
 
-    //load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
-    //load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
-
-    //load_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot", iotime);
-    //load_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot", iotime);
-
     for (auto& tile : tiles)
     {
         load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
@@ -1412,34 +1404,35 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
     }
 
     // In case of heterogeneous land-surface, read spatial properties.
-    //if (!sw_homogeneous)
-    //{
-    //    // 3D (soil) fields
-    //    // BvS: yikes.. Read soil index as float, round/cast to int... TO-DO: fix this!
-    //    load_3d_field(tmp3->fld.data(), "index_soil", 0);
-    //    for (int i=0; i<sgd.ncells; ++i)
-    //        soil_index[i] = std::round(tmp3->fld[i]);
+    if (!sw_homogeneous)
+    {
+        // 3D (soil) fields
+        // BvS: yikes.. Read soil index as float, round/cast to int... TO-DO: fix this!
+        load_3d_field(tmp3->fld.data(), "index_soil", 0);
+        for (int i=0; i<sgd.ncells; ++i)
+            soil_index[i] = std::round(tmp3->fld[i]);
 
-    //    if (sw_water)
-    //    {
-    //        // More yikes.. Read water mask as float, cast to bool
-    //        load_2d_field(tmp3->fld.data(), "water_mask", 0);
-    //        for (int i=0; i<agd.ijcells; ++i)
-    //            water_mask[i] = tmp3->fld[i] > TF(0.5) ? 1 : 0;
-    //    }
+        if (sw_water)
+        {
+            // More yikes.. Read water mask as float, cast to bool
+            load_2d_field(tmp3->fld.data(), "water_mask", 0);
+            for (int i=0; i<agd.ijcells; ++i)
+                water_mask[i] = tmp3->fld[i] > TF(0.5) ? 1 : 0;
+        }
 
-    //    load_3d_field(root_fraction.data(), "root_frac", 0);
+        load_3d_field(root_fraction.data(), "root_frac", 0);
 
-    //    // 2D (surface) fields
-    //    load_2d_field(gD_coeff.data(), "gD", 0);
-    //    load_2d_field(c_veg.data(), "c_veg", 0);
-    //    load_2d_field(lai.data(), "lai", 0);
-    //    load_2d_field(rs_veg_min.data(), "rs_veg_min", 0);
-    //    load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
-    //    load_2d_field(lambda_stable.data(), "lambda_stable", 0);
-    //    load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
-    //    load_2d_field(cs_veg.data(), "cs_veg", 0);
-    //}
+        // 2D (surface) fields
+        load_2d_field(gD_coeff.data(), "gD", 0);
+        load_2d_field(c_veg.data(), "c_veg", 0);
+        load_2d_field(lai.data(), "lai", 0);
+        load_2d_field(rs_veg_min.data(), "rs_veg_min", 0);
+        load_2d_field(rs_soil_min.data(), "rs_soil_min", 0);
+        load_2d_field(lambda_stable.data(), "lambda_stable", 0);
+        load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
+        load_2d_field(cs_veg.data(), "cs_veg", 0);
+        load_2d_field(t_bot_water.data(), "t_bot_water", 0);
+    }
 
     // Check for any failures.
     master.sum(&nerror, 1);
@@ -1448,6 +1441,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
+    fields.release_tmp(tmp3);
 }
 
 template<typename TF>
@@ -1518,12 +1512,6 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
 
     // Surface fields.
     save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
-
-    //save_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
-    //save_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
-
-    //save_2d_field(fields.sp.at("thl")->flux_bot.data(), "thl_fluxbot");
-    //save_2d_field(fields.sp.at("qt")->flux_bot.data(), "qt_fluxbot");
 
     for (auto& tile : tiles)
     {

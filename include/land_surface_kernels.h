@@ -51,6 +51,7 @@ namespace Land_surface_kernels
         tile.ustar.resize(ijcells);
         tile.bfluxbot.resize(ijcells);
         tile.nobuk.resize(ijcells);
+        tile.ra.resize(ijcells);
 
         tile.rs.resize(ijcells);
         tile.H.resize(ijcells);
@@ -733,13 +734,18 @@ namespace Land_surface_kernels
             TF* const restrict rs_veg,
             TF* const restrict rs_soil,
             TF* const restrict rs_wet,
+            TF* const restrict thl_bot_wet,
+            TF* const restrict qt_bot_wet,
             const int* const restrict water_mask,
+            const TF* const restrict t_bot_water,
             const TF* const restrict thl,
             const TF* const restrict qt,
             const TF* const restrict thl_bot,
             const TF* const restrict qt_bot,
             const TF* const restrict ra,
             const TF* const restrict rhoh,
+            const TF* const restrict prefh,
+            const TF* const restrict exnerh,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
@@ -757,17 +763,20 @@ namespace Land_surface_kernels
 
                 if (water_mask[ij])
                 {
+                    thl_bot_wet[ij] = t_bot_water[ij] / exnerh[kstart];
+                    qt_bot_wet[ij]  = Thermo_moist_functions::qsat(prefh[kstart], t_bot_water[ij]);
+
                     c_veg[ij]  = TF(0);
                     c_soil[ij] = TF(0);
                     c_wet[ij]  = TF(1);
 
                     H_veg[ij]  = TF(0);
                     H_soil[ij] = TF(0);
-                    H_wet[ij]  = rhocp / ra[ij] * (thl_bot[ij] - thl[ijk]);
+                    H_wet[ij]  = rhocp / ra[ij] * (thl_bot_wet[ij] - thl[ijk]);
 
                     LE_veg[ij]  = TF(0);
                     LE_soil[ij] = TF(0);
-                    LE_wet[ij]  = rholv / ra[ij] * (qt_bot[ij] - qt[ijk]);
+                    LE_wet[ij]  = rholv / ra[ij] * (qt_bot_wet[ij] - qt[ijk]);
 
                     G_veg[ij]  = TF(0);
                     G_soil[ij] = TF(0);
