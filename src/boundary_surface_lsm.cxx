@@ -1220,7 +1220,6 @@ void Boundary_surface_lsm<TF>::create(
         init_homogeneous(lambda_stable, "lambda_stable");
         init_homogeneous(lambda_unstable, "lambda_unstable");
         init_homogeneous(cs_veg, "cs_veg");
-        init_homogeneous(t_bot_water, "t_bot_water");
     }
     // else: these fields are read from 2D input files in `boundary->load()`.
 
@@ -1431,7 +1430,9 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
         load_2d_field(lambda_stable.data(), "lambda_stable", 0);
         load_2d_field(lambda_unstable.data(), "lambda_unstable", 0);
         load_2d_field(cs_veg.data(), "cs_veg", 0);
-        load_2d_field(t_bot_water.data(), "t_bot_water", 0);
+
+        if (sw_water)
+            load_2d_field(t_bot_water.data(), "t_bot_water", 0);
     }
 
     // Check for any failures.
