@@ -222,7 +222,7 @@ namespace Land_surface_kernels
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                rs[ij] = rs_min[ij] / lai[ij] * f1[ij] * f2[ij] * f3[ij];
+                rs[ij] = rs_min[ij] / (lai[ij]+Constants::dsmall) * f1[ij] * f2[ij] * f3[ij];
             }
     }
 
