@@ -26,8 +26,11 @@ import argparse
 import collections
 import glob
 import numpy as np
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
+import platform
 
+if platform.system() == 'Darwin':
+    set_start_method('fork')
 
 def convert_to_nc(variables):
     # Loop over the different variables and crosssections
