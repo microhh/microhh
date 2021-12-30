@@ -31,7 +31,6 @@ co2 = np.zeros(z.size)
 hno3 = np.zeros(z.size)
 co = np.zeros(z.size)
 hcho = np.zeros(z.size)
-noy = np.zeros(z.size)
 rooh =np.zeros(z.size)
 h2o2 = np.zeros(z.size)
 rh = np.zeros(z.size)
@@ -52,9 +51,6 @@ u0 = 5.             # Zonal wind speed
 v0 = 0.             # Meridional wind speed
 co20 = 400.0         # CO2 concentration (ppm)
 
-# normalize profiles to SI
-qt  /= 1000.
-qtls/= 1000.
 
 td = 19.5 - 6.0
 time_surface = np.arange(13*4+1)*0.25
@@ -70,15 +66,15 @@ for k in range(kmax):
     if(z[k] <= zi - 0.5*dthz):
         th[k] = th0
         thl[k] = th0
-        qt[k] = 6.0
+        qt[k] = 3.0
     elif(z[k] <= zi + 0.5*dthz):
         th[k] = th0 + dth/dthz * (z[k]-(zi-0.5*dthz))
         thl[k] = th0 + dth/dthz * (z[k]-(zi-0.5*dthz))
-        qt[k] = 6.0 - 2.0*(z[k]-352.5)/(442.5-352.5)
+        qt[k] = 2.0 
     else:
         th[k] = th0 + dth + dthetadz*(z[k]-(zi+0.5*dthz))
         thl[k] = th0 + dth + dthetadz*(z[k]-(zi+0.5*dthz))
-        qt[k] = max(0.0,3.0 - (z[k]- 443.5 )*0.004)
+        qt[k] = 1.0
     # potential temperature: for now assume no liquid water:
 
     if (z[k] <= 1000):
@@ -108,6 +104,9 @@ for k in range(kmax):
 
 u[:] = u0
 v[:] = v0
+# normalize profiles to SI
+qt  /= 1000.
+qtls/= 1000.
 co2[:] = co20 * 1e3    # now in ppb
 # Calculate the surface fluxes in the correct units.
 Rd  = 287.
@@ -121,13 +120,12 @@ sbotqt  *= 1e-3    # kg/kg
 
 
 
-# model time dependent parameters:
-with open('input_chem_jvals') as f:
-    line = f.readline()
-    line = f.readline()
-    line = f.readline()
-    line = f.readline()
-    header = line.split(' ')
+# model time dependent parameters: now from TUV calculation for Jaenswalde time&dates.
+with open('usrout.txt') as f:
+    # output is in order: O3, H2O2, NO2, NO3, N2O5, CH2OR, CH2OM, ROOH
+    line = 'xxx'
+    while not line.startswith('time'):
+        line = f.readline()
     lines = f.readlines()
 vals = []
 for line in lines:
@@ -142,8 +140,8 @@ time_chem = (vals[:,0]-tstart)*3600.0   # start at zero
 jo31d = vals[:,2]
 jh2o2= vals[:,3]
 jno2= vals[:,4]
-jno3a= vals[:,5]
-jno3b= vals[:,6]
+jno3= vals[:,5]
+jn2o5= vals[:,6]
 jch2or= vals[:,7]
 jch2om= vals[:,8]
 jch3o2h= vals[:,9]
@@ -153,6 +151,11 @@ td = 19. - 8.0
 emi_isop = 1.1*np.sin(np.pi*(time_chem/3600.-3.0)/td)
 idx = np.where(emi_isop < 0.0)
 emi_isop[idx] = 0.0
+# no emissions:
+td = 19. - 8.0
+emi_no = 0.03*np.sin(np.pi*(time_chem/3600.-3.0)/td)
+idx = np.where(emi_no < 0.0)
+emi_no[idx] = 0.0
 
 
 
@@ -172,7 +175,6 @@ nc_co2 = nc_group_init.createVariable("co2", float_type, ("z"))
 nc_hno3 = nc_group_init.createVariable("hno3", float_type, ("z"))
 nc_co = nc_group_init.createVariable("co", float_type, ("z"))
 nc_hcho = nc_group_init.createVariable("hcho", float_type, ("z"))
-nc_noy = nc_group_init.createVariable("noy", float_type, ("z"))
 nc_rooh = nc_group_init.createVariable("rooh", float_type, ("z"))
 nc_h2o2 = nc_group_init.createVariable("h2o2", float_type, ("z"))
 nc_rh = nc_group_init.createVariable("rh", float_type, ("z"))
@@ -220,22 +222,24 @@ nc_time_chem = nc_group_timedepchem.createVariable("time_chem", float_type, ("ti
 nc_jo31d = nc_group_timedepchem.createVariable("jo31d", float_type, ("time_chem"))
 nc_jh2o2 = nc_group_timedepchem.createVariable("jh2o2", float_type, ("time_chem"))
 nc_jno2 = nc_group_timedepchem.createVariable("jno2", float_type, ("time_chem"))
-nc_jno3a = nc_group_timedepchem.createVariable("jno3a", float_type, ("time_chem"))
-nc_jno3b = nc_group_timedepchem.createVariable("jno3b", float_type, ("time_chem"))
+nc_jno3 = nc_group_timedepchem.createVariable("jno3", float_type, ("time_chem"))
+nc_jn2o5 = nc_group_timedepchem.createVariable("jn2o5", float_type, ("time_chem"))
 nc_jch2or = nc_group_timedepchem.createVariable("jch2or", float_type, ("time_chem"))
 nc_jch2om = nc_group_timedepchem.createVariable("jch2om", float_type, ("time_chem"))
 nc_jch3o2h = nc_group_timedepchem.createVariable("jch3o2h", float_type, ("time_chem"))
-nc_emi = nc_group_timedepchem.createVariable("emi_isop", float_type, ("time_chem"))
+nc_emi_isop = nc_group_timedepchem.createVariable("emi_isop", float_type, ("time_chem"))
+nc_emi_no = nc_group_timedepchem.createVariable("emi_no", float_type, ("time_chem"))
 nc_time_chem[:] = time_chem[:]
 nc_jo31d[:] = jo31d [:]
 nc_jh2o2[:] = jh2o2 [:]
 nc_jno2[:] = jno2 [:]
-nc_jno3a[:] = jno3a [:]
-nc_jno3b[:] = jno3b [:]
+nc_jno3[:] = jno3 [:]
+nc_jn2o5[:] = jn2o5 [:]
 nc_jch2or[:] = jch2or [:]
 nc_jch2om[:] = jch2om [:]
 nc_jch3o2h[:] = jch3o2h [:]
-nc_emi[:] = emi_isop[:]
+nc_emi_isop[:] = emi_isop[:]
+nc_emi_no[:] = emi_no[:]
 
 nc_file.close()
 

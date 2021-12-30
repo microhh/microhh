@@ -224,6 +224,7 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
                 gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                 shape[n].range_x, shape[n].range_y, shape[n].range_z,
                 fields.rhoref.data(), swmmr);
+        // printf("SourceCreate %i %13.4e %13.4e %13.4e %13.4e %13.4e %13.4e %13.4e  \n",n,norm[n],source_x0[n],sigma_x[n],source_y0[n],sigma_y[n],source_z0[n],sigma_z[n]);
     }
 
     // Create timedep
@@ -294,6 +295,7 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
                     gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
                     shape[n].range_x, shape[n].range_y, shape[n].range_z,
                     fields.rhoref.data(), swmmr);
+	    // printf("SourceCreate %i %13.4e %13.4e %13.4e %13.4e %13.4e %13.4e %13.4e  \n",n,norm[n],source_x0[n],sigma_x[n],source_y0[n],sigma_y[n],source_z0[n],sigma_z[n]);
         }
     }
 
