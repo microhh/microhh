@@ -1174,6 +1174,8 @@ void Boundary_surface_lsm<TF>::create(
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    Boundary<TF>::process_time_dependent(input, input_nc, timeloop);
+
     // Setup statiscics, cross-sections and column statistics
     create_stats(stats, column, cross);
 
