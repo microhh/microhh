@@ -337,6 +337,7 @@ void Model<TF>::exec()
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
+                boundary->set_prognostic_outflow_bcs();
                 boundary->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
@@ -370,6 +371,10 @@ void Model<TF>::exec()
 
                 // Set the immersed boundary conditions for scalars.
                 ib->exec_scalars();
+
+                // Update the outflow boundary conditions in case IB is used.
+                if (ib->get_switch() != IB_type::Disabled)
+                    boundary->set_prognostic_outflow_bcs();
 
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
