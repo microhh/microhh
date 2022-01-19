@@ -142,7 +142,8 @@ void Timeloop<TF>::set_time_step_limit()
     }
 
     idtlim = std::min(idtlim, isavetime - itime % isavetime);
-    idtlim = std::min(idtlim, iendtime - itime);
+    if (itime < iendtime)
+        idtlim = std::min(idtlim, iendtime - itime);
 }
 
 template<typename TF>
