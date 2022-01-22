@@ -43,6 +43,7 @@ class Column
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swcolumn; }
+        void get_column_locations(std::vector<int>&, std::vector<int>&);
         void exec(int, double, unsigned long);
         bool do_column(unsigned long);
 
@@ -52,6 +53,7 @@ class Column
 
         void calc_column(std::string, const TF* const, const TF);
         void calc_time_series(std::string, const TF* const, const TF);
+        void set_individual_column(std::string, const TF*, const TF, const int, const int);
 
     private:
         // Struct for profiles.

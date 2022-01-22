@@ -66,7 +66,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
 	private:
@@ -109,7 +109,7 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Array<double,2>&, Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
-                const bool);
+                const bool, const int);
 
         bool is_day(double);  // Switch between day/night, based on sza
 
