@@ -1150,6 +1150,55 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
 
 #ifndef USECUDA
 template<typename TF>
+void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
+{
+    // Update the solar zenith angle.
+    const int day_of_year = int(timeloop.calc_day_of_year());
+    const int year = timeloop.get_year();
+    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+    this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+
+    // Calculate correction factor for impact Sun's distance on the solar "constant"
+    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+}
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int n_bnd = kdist_sw->get_nband();
+
+    // Set the solar zenith angle and albedo.
+    Array<double,2> sfc_alb_dir({n_bnd, n_col});
+    Array<double,2> sfc_alb_dif({n_bnd, n_col});
+
+    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+    {
+        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
+        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+    }
+
+    Array<double,1> mu0({n_col});
+    mu0({1}) = this->mu0;
+
+    solve_shortwave_column<double>(
+            optical_props_sw,
+            sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
+            gas_concs_col,
+            *kdist_sw,
+            col_dry,
+            p_lay_col, p_lev_col,
+            t_lay_col, t_lev_col,
+            mu0,
+            sfc_alb_dir, sfc_alb_dif,
+            tsi_scaling,
+            n_lay_col);
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
@@ -1228,47 +1277,12 @@ void Radiation_rrtmgp<TF>::exec(
             {
                 if (!sw_fixed_sza)
                 {
-                    // Update the solar zenith angle, and calculate new shortwave reference column
-                    const int day_of_year = int(timeloop.calc_day_of_year());
-                    const int year = timeloop.get_year();
-                    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-                    this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+                    // Update the solar zenith angle and sun-earth distance.
+                    set_sun_location(timeloop);
 
-                    // Calculate correction factor for impact Sun's distance on the solar "constant"
-                    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
-                    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
-
+                    // Calculate new background column.
                     if (is_day(this->mu0))
-                    {
-                        const int n_bnd = kdist_sw->get_nband();
-
-                        // Set the solar zenith angle and albedo.
-                        Array<double,2> sfc_alb_dir({n_bnd, n_col});
-                        Array<double,2> sfc_alb_dif({n_bnd, n_col});
-
-                        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-                        {
-                            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-                            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
-                        }
-
-                        Array<double,1> mu0({n_col});
-                        mu0({1}) = this->mu0;
-
-                        solve_shortwave_column<double>(
-                                optical_props_sw,
-                                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
-                                gas_concs_col,
-                                *kdist_sw,
-                                col_dry,
-                                p_lay_col, p_lev_col,
-                                t_lay_col, t_lev_col,
-                                mu0,
-                                sfc_alb_dir, sfc_alb_dif,
-                                tsi_scaling,
-                                n_lay_col);
-                    }
+                        set_background_column_shortwave(thermo);
                 }
 
                 if (is_day(this->mu0))
@@ -1504,6 +1518,16 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         {
             Array<double,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
 
+            if (!sw_fixed_sza)
+            {
+                // Update the solar zenith angle and sun-earth distance.
+                set_sun_location(timeloop);
+
+                // Calculate new background column.
+                if (is_day(this->mu0))
+                    set_background_column_shortwave(thermo);
+            }
+
             if (!is_day(mu0))
             {
                 flux_up.fill(0.);
@@ -1642,10 +1666,45 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     try
     {
+        // Calculate long wave radiation.
+        if (sw_longwave)
+        {
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds, n_cols);
+
+            save_column(flux_up, "lw_flux_up");
+            save_column(flux_dn, "lw_flux_dn");
+
+            if (sw_clear_sky_stats)
+            {
+                exec_longwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_net,
+                        t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds, n_cols);
+
+                save_column(flux_up, "lw_flux_up_clear");
+                save_column(flux_dn, "lw_flux_dn_clear");
+            }
+        }
+
         // Calculate short wave radiation.
         if (sw_shortwave)
         {
-            if (!is_day(mu0))
+            if (!sw_fixed_sza)
+            {
+                // Update the solar zenith angle and sun-earth distance.
+                set_sun_location(timeloop);
+
+                // Calculate new background column.
+                if (is_day(this->mu0))
+                    set_background_column_shortwave(thermo);
+            }
+
+            if (!is_day(this->mu0))
             {
                 flux_up.fill(0.);
                 flux_dn.fill(0.);
@@ -1690,29 +1749,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
         }
 
-        if (sw_longwave)
-        {
-            exec_longwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds, n_cols);
 
-            save_column(flux_up, "lw_flux_up");
-            save_column(flux_dn, "lw_flux_dn");
-
-            if (sw_clear_sky_stats)
-            {
-                exec_longwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_net,
-                        t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        !compute_clouds, n_cols);
-
-                save_column(flux_up, "lw_flux_up_clear");
-                save_column(flux_dn, "lw_flux_dn_clear");
-            }
-        }
     }
     catch (std::exception& e)
     {

@@ -111,7 +111,9 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
                 const bool, const int);
 
-        bool is_day(double);  // Switch between day/night, based on sza
+        bool is_day(double);
+        void set_sun_location(Timeloop<TF>&);
+        void set_background_column_shortwave(Thermo<TF>&);
 
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&);
         // void exec_cross(Cross<TF>&, const int, Thermo<TF>&, Timeloop<TF>&);
