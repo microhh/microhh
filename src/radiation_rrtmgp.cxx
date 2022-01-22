@@ -1202,7 +1202,7 @@ void Radiation_rrtmgp<TF>::exec(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds);
+                        compute_clouds, gd.imax*gd.jmax);
 
                 calc_tendency(
                         fields.sd.at("thlt_rad")->fld.data(),
@@ -1482,7 +1482,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                     thermo, timeloop, stats,
                     flux_up, flux_dn, flux_net,
                     t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds);
+                    compute_clouds, gd.imax*gd.jmax);
 
             save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
             save_stats_and_cross(flux_dn, "lw_flux_dn", gd.wloc);
@@ -1493,7 +1493,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        !compute_clouds);
+                        !compute_clouds, gd.imax*gd.jmax);
 
                 save_stats_and_cross(flux_up, "lw_flux_up_clear", gd.wloc);
                 save_stats_and_cross(flux_dn, "lw_flux_dn_clear", gd.wloc);
@@ -1558,33 +1558,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     fields.release_tmp(tmp);
 }
 
-namespace
-{
-    template<typename TF>
-    void set_columns(
-        TF* const restrict fld_out,
-        const double* const restrict fld_in,
-        const int* const restrict col_i,
-        const int* const restrict col_j,
-        const int n_col, const int kstart,
-        const int kend, const int kgc,
-        const int icells, const int ijcells)
-    {
-        for (int n=0; n<n_col; ++n)
-        {
-            const int i = col_i[n];
-            const int j = col_j[n];
-
-            for (int k=kstart; k<kend; ++k)
-            {
-                const int ijk_in = n + (k-kgc)*n_col;
-                const int ijk_out = i + j*icells + k*ijcells;
-                fld_out[ijk_out] = fld_in[ijk_in];
-            }
-        }
-    }
-}
-
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
@@ -1645,6 +1618,8 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     // Set tmp location flag to flux levels.
     tmp->loc = gd.wloc;
 
+    bool compute_clouds = true;
+
     // Lambda function to set the column data and save column statistics.
     auto save_column = [&](
             const Array<double,2>& array, const std::string& name)
@@ -1663,15 +1638,6 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             const TF no_offset = 0;
             column.set_individual_column(name, tmp->fld_mean.data(), no_offset, col_i[n], col_j[n]);
         }
-
-        //set_columns(
-        //    tmp->fld.data(), array.ptr(),
-        //    col_i.data(), col_j.data(),
-        //    n_col, gd.kstart, kend, gd.kgc,
-        //    gd.icells, gd.ijcells);
-
-        //const TF no_offset = 0;
-        //column.calc_column(name, tmp->fld.data(), no_offset);
     };
 
     try
@@ -1679,8 +1645,6 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         // Calculate short wave radiation.
         if (sw_shortwave)
         {
-            bool compute_clouds = true;
-
             if (!is_day(mu0))
             {
                 flux_up.fill(0.);
@@ -1725,6 +1689,30 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
                 }
             }
         }
+
+        if (sw_longwave)
+        {
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds, n_cols);
+
+            save_column(flux_up, "lw_flux_up");
+            save_column(flux_dn, "lw_flux_dn");
+
+            if (sw_clear_sky_stats)
+            {
+                exec_longwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_net,
+                        t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds, n_cols);
+
+                save_column(flux_up, "lw_flux_up_clear");
+                save_column(flux_dn, "lw_flux_dn_clear");
+            }
+        }
     }
     catch (std::exception& e)
     {
@@ -1745,7 +1733,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Array<double,2>& flux_up, Array<double,2>& flux_dn, Array<double,2>& flux_net,
         const Array<double,2>& t_lay, const Array<double,2>& t_lev, const Array<double,1>& t_sfc,
         const Array<double,2>& h2o, const Array<double,2>& clwp, const Array<double,2>& ciwp,
-        const bool compute_clouds)
+        const bool compute_clouds, const int n_col)
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;
@@ -1754,7 +1742,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
-    const int n_col = gd.imax*gd.jmax;
 
     const int n_blocks = n_col / n_col_block;
     const int n_col_block_left = n_col % n_col_block;

@@ -102,7 +102,7 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Array<double,2>&, Array<double,2>&, Array<double,2>&,
                 const Array<double,2>&, const Array<double,2>&, const Array<double,1>&,
                 const Array<double,2>&, const Array<double,2>&, const Array<double,2>&,
-                const bool);
+                const bool, const int);
 
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
