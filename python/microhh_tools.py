@@ -318,7 +318,12 @@ class Create_ncfile():
         else:
             precision = 'f8'
 
-        half_level_vars = ['w', 'sw_flux_dn', 'sw_flux_up', 'lw_flux_dn', 'lw_flux_up']
+        half_level_vars = [
+            'w',
+            'sw_flux_dn', 'sw_flux_dn_dir', 'sw_flux_up',
+            'sw_flux_dn_clear', 'sw_flux_dn_dir_clear', 'sw_flux_up_clear',
+            'lw_flux_dn', 'lw_flux_up'
+            'lw_flux_dn_clear', 'lw_flux_up_clear']
 
         if(varname == 'u'):
             try:
