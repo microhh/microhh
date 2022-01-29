@@ -42,14 +42,14 @@
 
 namespace 
 {
-#include "../cases/jaenswalde/include/tm5_ifs_Parameters.h"
-#include "../cases/jaenswalde/include/tm5_ifs_Global.h"
-#include "../cases/jaenswalde/include/tm5_ifs_Sparse.h"
-#include "../cases/jaenswalde/include/tm5_ifs_Integrator.c"      /* needs to be modified */
-#include "../cases/jaenswalde/include/tm5_ifs_Function.c"        /* needs to be modified */
-#include "../cases/jaenswalde/include/tm5_ifs_LinearAlgebra.c"
-#include "../cases/jaenswalde/include/tm5_ifs_JacobianSP.c"
-#include "../cases/jaenswalde/include/tm5_ifs_Jacobian.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_Parameters.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_Global.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_Sparse.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_Integrator.c"      /* needs to be modified */
+#include "../cases/jaenschwalde/include/tm5_ifs_Function.c"        /* needs to be modified */
+#include "../cases/jaenschwalde/include/tm5_ifs_LinearAlgebra.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_JacobianSP.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_Jacobian.c"
 	
 
 double C[NSPEC];                         /* Concentration of all species */
@@ -228,7 +228,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
             TF* restrict tco, const TF* const restrict co, 
             TF* restrict thcho, const TF* const restrict hcho, 
             TF* restrict trooh, const TF* const restrict rooh, 
-            TF* restrict trh, const TF* const restrict rh, 
+            TF* restrict tc3h8, const TF* const restrict c3h8, 
             TF* restrict tro2, const TF* const restrict ro2, 
             TF* restrict tho2, const TF* const restrict ho2, 
             TF* restrict to3, const TF* const restrict o3, 
@@ -287,8 +287,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
         for (int k=kstart; k<kend; ++k)
             {	
 	    C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chmistry!
-	    const TF CFACTOR = C_M*(TF)1e-9 ;               // from ppb (units mixing ratio) to molecules/cm3
-	    const TF C_H2 = (TF)500.0*CFACTOR ;              // 500 ppb --> #/cm3
+	    const TF CFACTOR = C_M ;               // from ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers
+	    const TF C_H2 = (TF)500.0e-9*CFACTOR ;              // 500 ppb --> #/cm3
             if (k==kstart) {
 	        vdo3   = TF(0.005)/dz[k];   // 1/s
 	        vdh2o2 = TF(0.018)/dz[k];   // 1/s
@@ -330,7 +330,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
                     VAR[ind_CO  ]    = std::max((co[ijk]    +tco[ijk]   *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_HCHO]    = std::max((hcho[ijk]  +thcho[ijk] *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_ROOH]    = std::max((rooh[ijk]  +trooh[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_RH]      = std::max((rh[ijk]    +trh[ijk]   *sdt)*CFACTOR,(TF)0.0);
+                    VAR[ind_RH]      = std::max((c3h8[ijk]  +tc3h8[ijk] *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_RO2]     = std::max((ro2[ijk]   +tro2[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_HO2]     = std::max((ho2[ijk]   +tho2[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_O3]      = std::max((o3[ijk]    +to3[ijk]   *sdt)*CFACTOR,(TF)0.0);
@@ -389,9 +389,13 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    RCONST[40] = (vdrooh);
 		    RCONST[41] = (vdh2o2);
 		    RCONST[42] = (vdhcho);
-		    FIX[0] = 1800.0*CFACTOR;   // methane concentation
+		    FIX[0] = 1800.0e-9*CFACTOR;   // methane concentation
                     FIX[1] = C_M;        // air density
 		    FIX[2] = (TF)1.0;    // species added to emit   
+
+                    // for (int ispec =0 ; ispec <14; ++ispec)
+		    //    printf("%4i %13.3e ",ispec ,VAR[ispec]); 
+		    //printf("\n");
 
 		    Fun(VAR,FIX,RCONST,Vdot,RF);
 
@@ -411,7 +415,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    tco[ijk] +=      (VAR[ind_CO]-VAR0[ind_CO])/(sdt*CFACTOR);
 		    thcho[ijk] +=    (VAR[ind_HCHO]-VAR0[ind_HCHO])/(sdt*CFACTOR);
 		    trooh[ijk] +=    (VAR[ind_ROOH]-VAR0[ind_ROOH])/(sdt*CFACTOR);
-		    trh[ijk] +=      (VAR[ind_RH]-VAR0[ind_RH])/(sdt*CFACTOR);
+		    tc3h8[ijk] +=    (VAR[ind_RH]-VAR0[ind_RH])/(sdt*CFACTOR);
 		    tro2[ijk] +=     (VAR[ind_RO2]-VAR0[ind_RO2])/(sdt*CFACTOR);
 		    tho2[ijk] +=     (VAR[ind_HO2]-VAR0[ind_HO2])/(sdt*CFACTOR);
 		    to3[ijk] +=      (VAR[ind_O3]-VAR0[ind_O3])/(sdt*CFACTOR);
@@ -714,7 +718,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.st.at("co")     ->fld.data(), fields.sp.at("co")->fld.data(), 
 	    fields.st.at("hcho")   ->fld.data(), fields.sp.at("hcho")->fld.data(), 
 	    fields.st.at("rooh")   ->fld.data(), fields.sp.at("rooh")->fld.data(), 
-	    fields.st.at("rh")     ->fld.data(), fields.sp.at("rh")->fld.data(), 
+	    fields.st.at("c3h8")   ->fld.data(), fields.sp.at("c3h8")->fld.data(), 
 	    fields.st.at("ro2")    ->fld.data(), fields.sp.at("ro2")->fld.data(), 
 	    fields.st.at("ho2")    ->fld.data(), fields.sp.at("ho2")->fld.data(), 
 	    fields.st.at("o3")     ->fld.data(), fields.sp.at("o3")->fld.data(), 
