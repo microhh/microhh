@@ -1241,6 +1241,9 @@ void Boundary_surface_lsm<TF>::create(
     nc_lookup_table->get_variable<TF>(vg_l, "l",     {0}, {size});
     nc_lookup_table->get_variable<TF>(vg_n, "n",     {0}, {size});
 
+    for (int i=0; i<size; ++i)
+        theta_res[i] = std::max(theta_res[i], TF(Constants::dsmall));
+
     // Calculate derived properties of the lookup table
     sk::calc_soil_properties(
             kappa_theta_min.data(), kappa_theta_max.data(),

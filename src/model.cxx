@@ -300,7 +300,6 @@ void Model<TF>::save()
 template<typename TF>
 void Model<TF>::exec()
 {
-
     if (sim_mode == Sim_mode::Init)
         return;
 
