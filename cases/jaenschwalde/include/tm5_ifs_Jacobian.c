@@ -13,7 +13,7 @@
 /*        R. Sander, Max-Planck Institute for Chemistry, Mainz, Germany */
 /*                                                                  */
 /* File                 : tm5_ifs_Jacobian.c                        */
-/* Time                 : Fri Nov 19 10:37:06 2021                  */
+/* Time                 : Tue Feb  1 10:46:30 2022                  */
 /* Working directory    : /home/WUR/krol005/kpp/examples            */
 /* Equation file        : tm5_ifs.kpp                               */
 /* Output root filename : tm5_ifs                                   */
@@ -282,7 +282,7 @@ double B[65];                            /* Temporary array */
 /* JVS(51) = Jac_FULL(8,13)                                         */
   JVS[51] = B[1]-B[5]+B[8]+B[9]+B[29]+B[31];
 /* JVS(52) = Jac_FULL(9,1)                                          */
-  JVS[52] = B[48];
+  JVS[52] = B[48]+B[55];
 /* JVS(53) = Jac_FULL(9,6)                                          */
   JVS[53] = -B[52];
 /* JVS(54) = Jac_FULL(9,8)                                          */
@@ -312,7 +312,7 @@ double B[65];                            /* Temporary array */
 /* JVS(66) = Jac_FULL(10,13)                                        */
   JVS[66] = -B[1];
 /* JVS(67) = Jac_FULL(11,1)                                         */
-  JVS[67] = B[48]+2*B[55];
+  JVS[67] = B[48]+B[55];
 /* JVS(68) = Jac_FULL(11,6)                                         */
   JVS[68] = B[52];
 /* JVS(69) = Jac_FULL(11,7)                                         */
