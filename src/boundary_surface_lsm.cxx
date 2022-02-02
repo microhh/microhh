@@ -1139,7 +1139,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
 
     std::fill(
             fields.sp.at("thl")->fld_bot.begin(),
-            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
+            fields.sp.at("thl")->fld_bot.end(), thl_1[0]+0.1);
     std::fill(
             fields.sp.at("qt")->fld_bot.begin(),
             fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
@@ -1149,7 +1149,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
     {
         std::fill(
                 tile.second.thl_bot.begin(),
-                tile.second.thl_bot.end(), thl_1[0]);
+                tile.second.thl_bot.end(), thl_1[0]+0.1);
 
         std::fill(
                 tile.second.qt_bot.begin(),
