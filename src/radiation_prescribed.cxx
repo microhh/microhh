@@ -128,7 +128,7 @@ void Radiation_prescribed<TF>::exec_all_stats(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop,
         const unsigned long itime, const int iotime)
 {
-    if (stats.do_statistics(itime))
+    if (stats.do_statistics(itime) && swtimedep_prescribed)
     {
         stats.set_time_series("sw_flux_dn_sfc", sw_flux_dn);
         stats.set_time_series("sw_flux_up_sfc", sw_flux_up);
