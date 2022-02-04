@@ -104,15 +104,18 @@ unsigned long Radiation_prescribed<TF>::get_time_limit(unsigned long itime)
 template <typename TF>
 void Radiation_prescribed<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    tdep_sw_flux_dn->update_time_dependent(sw_flux_dn, timeloop);
-    tdep_sw_flux_up->update_time_dependent(sw_flux_up, timeloop);
-    tdep_lw_flux_dn->update_time_dependent(lw_flux_dn, timeloop);
-    tdep_lw_flux_up->update_time_dependent(lw_flux_up, timeloop);
+    if (swtimedep_prescribed)
+    {
+        tdep_sw_flux_dn->update_time_dependent(sw_flux_dn, timeloop);
+        tdep_sw_flux_up->update_time_dependent(sw_flux_up, timeloop);
+        tdep_lw_flux_dn->update_time_dependent(lw_flux_dn, timeloop);
+        tdep_lw_flux_up->update_time_dependent(lw_flux_up, timeloop);
 
-    std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
-    std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
-    std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
-    std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
+        std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
+        std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
+        std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
+        std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
+    }
 }
 
 template<typename TF>
