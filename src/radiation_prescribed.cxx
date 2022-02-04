@@ -24,6 +24,7 @@
 #include "grid.h"
 #include "constants.h"
 #include "input.h"
+#include "timedep.h"
 
 template<typename TF>
 Radiation_prescribed<TF>::Radiation_prescribed(
@@ -32,10 +33,22 @@ Radiation_prescribed<TF>::Radiation_prescribed(
 {
     swradiation = "prescribed";
 
-    sw_flux_dn = inputin.get_item<TF>("radiation", "sw_flux_dn", "");
-    sw_flux_up = inputin.get_item<TF>("radiation", "sw_flux_up", "");
-    lw_flux_dn = inputin.get_item<TF>("radiation", "lw_flux_dn", "");
-    lw_flux_up = inputin.get_item<TF>("radiation", "lw_flux_up", "");
+    // Option for time varying prescribed fluxes through the `case_input.nc` file.
+    swtimedep_prescribed = inputin.get_item<bool>("radiation", "swtimedep_prescribed", "", false);
+
+    tdep_sw_flux_dn = std::make_unique<Timedep<TF>>(master, grid, "sw_flux_dn", swtimedep_prescribed);
+    tdep_sw_flux_up = std::make_unique<Timedep<TF>>(master, grid, "sw_flux_up", swtimedep_prescribed);
+    tdep_lw_flux_dn = std::make_unique<Timedep<TF>>(master, grid, "lw_flux_dn", swtimedep_prescribed);
+    tdep_lw_flux_up = std::make_unique<Timedep<TF>>(master, grid, "lw_flux_up", swtimedep_prescribed);
+
+    if (!swtimedep_prescribed)
+    {
+        // Get the surface fluxes, which are constant in time.
+        sw_flux_dn = inputin.get_item<TF>("radiation", "sw_flux_dn", "");
+        sw_flux_up = inputin.get_item<TF>("radiation", "sw_flux_up", "");
+        lw_flux_dn = inputin.get_item<TF>("radiation", "lw_flux_dn", "");
+        lw_flux_up = inputin.get_item<TF>("radiation", "lw_flux_up", "");
+    }
 }
 
 template<typename TF>
@@ -51,24 +64,49 @@ void Radiation_prescribed<TF>::init(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
+void Radiation_prescribed<TF>::create(
+        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    if (swtimedep_prescribed)
+    {
+        std::string timedep_dim = "time_surface";
+
+        tdep_sw_flux_dn->create_timedep(input_nc, timedep_dim);
+        tdep_sw_flux_up->create_timedep(input_nc, timedep_dim);
+        tdep_lw_flux_dn->create_timedep(input_nc, timedep_dim);
+        tdep_lw_flux_up->create_timedep(input_nc, timedep_dim);
+    }
+    else
+    {
+        // Set surface radiation fields for land-surface model.
+        std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
+        std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
+        std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
+        std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
+    }
+}
+
+template<typename TF>
 unsigned long Radiation_prescribed<TF>::get_time_limit(unsigned long itime)
 {
     return Constants::ulhuge;
 }
 
-template<typename TF>
-void Radiation_prescribed<TF>::create(
-        Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+template <typename TF>
+void Radiation_prescribed<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    // Set surface radiation fields for land-surface model.
+    tdep_sw_flux_dn->update_time_dependent(sw_flux_dn, timeloop);
+    tdep_sw_flux_up->update_time_dependent(sw_flux_up, timeloop);
+    tdep_lw_flux_dn->update_time_dependent(lw_flux_dn, timeloop);
+    tdep_lw_flux_up->update_time_dependent(lw_flux_up, timeloop);
+
     std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
     std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
     std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
     std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
@@ -92,7 +130,6 @@ std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(std::string nam
         throw std::runtime_error(error);
     }
 }
-#endif
 
 template class Radiation_prescribed<double>;
 template class Radiation_prescribed<float>;

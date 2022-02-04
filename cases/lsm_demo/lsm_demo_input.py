@@ -145,6 +145,13 @@ theta_soil[:] = theta_wp + 0.75 * (theta_fc - theta_wp)
 t_soil[:] = 291
 root_frac = np.array([0.04, 0.23, 0.38, 0.35])
 
+# Time varying prescribed radiation
+time_tdep_sfc = np.array([0, 21600])
+sw_flux_dn = np.array([0, 900])
+sw_flux_up = 0.1*sw_flux_dn
+lw_flux_dn = np.array([300, 350])
+lw_flux_up = np.array([350, 400])
+
 # -------------------------
 # Write LES input to NetCDF
 # -------------------------
@@ -158,12 +165,14 @@ nc = nc4.Dataset('lsm_demo_input.nc', mode='w', datamodel='NETCDF4', clobber=Tru
 nc_init = nc.createGroup('init')
 nc_rad  = nc.createGroup('radiation')
 nc_soil = nc.createGroup('soil')
+nc_tdep = nc.createGroup('timedep')
 
 # Create dimensions:
 nc.createDimension('z', grid_les.ktot)
 nc_rad.createDimension('lay', grid_rad.ktot)
 nc_rad.createDimension('lev', grid_rad.ktot+1)
 nc_soil.createDimension('z', ktot_soil)
+nc_tdep.createDimension('time_surface', time_tdep_sfc.size)
 
 # Write vertical grid:
 add_nc_var(nc, 'z', ('z'), grid_les.z)
@@ -183,7 +192,6 @@ add_nc_var(nc_init, 'n2',  (), 0.7808)
 add_nc_var(nc_init, 'o2',  (), 0.2095)
 
 # Radiation profiles:
-nc_rad = nc.createGroup('radiation')
 add_nc_var(nc_rad, 'z_lay', ('lay'), grid_rad.z)
 add_nc_var(nc_rad, 'z_lev', ('lev'), grid_rad.zh)
 
@@ -209,6 +217,13 @@ if nl['land_surface']['swhomogeneous']:
     add_nc_var(nc_soil, 'theta_soil', ('z'), theta_soil)
     add_nc_var(nc_soil, 'root_frac', ('z'), root_frac)
     add_nc_var(nc_soil, 'index_soil', ('z'), index_soil, np.int32)
+
+# Time varying surface radiation
+add_nc_var(nc_tdep, 'time_surface', ('time_surface'), time_tdep_sfc)
+add_nc_var(nc_tdep, 'sw_flux_dn', ('time_surface'), sw_flux_dn)
+add_nc_var(nc_tdep, 'sw_flux_up', ('time_surface'), sw_flux_up)
+add_nc_var(nc_tdep, 'lw_flux_dn', ('time_surface'), lw_flux_dn)
+add_nc_var(nc_tdep, 'lw_flux_up', ('time_surface'), lw_flux_up)
 
 nc.close()
 

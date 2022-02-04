@@ -330,9 +330,10 @@ void Model<TF>::exec()
             while (true)
             {
                 // Update the time dependent parameters.
-                boundary->update_time_dependent(*timeloop);
-                thermo  ->update_time_dependent(*timeloop);
-                force   ->update_time_dependent(*timeloop);
+                boundary ->update_time_dependent(*timeloop);
+                thermo   ->update_time_dependent(*timeloop);
+                force    ->update_time_dependent(*timeloop);
+                radiation->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();

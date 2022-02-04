@@ -22,6 +22,7 @@
 #define RADIATION_PRESCRIBED_H
 
 #include "radiation.h"
+#include "timedep.h"
 
 class Master;
 class Input;
@@ -34,6 +35,7 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
+template<typename> class Timedep;
 
 template<typename TF>
 class Radiation_prescribed : public Radiation<TF>
@@ -50,6 +52,7 @@ class Radiation_prescribed : public Radiation<TF>
 
         unsigned long get_time_limit(unsigned long);
         std::vector<TF>& get_surface_radiation(std::string);
+        void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
@@ -69,6 +72,8 @@ class Radiation_prescribed : public Radiation<TF>
 		using Radiation<TF>::fields;
 		using Radiation<TF>::field3d_operators;
 
+        bool swtimedep_prescribed;
+
         // Input values
         TF lw_flux_dn;
         TF lw_flux_up;
@@ -81,5 +86,11 @@ class Radiation_prescribed : public Radiation<TF>
 
         std::vector<TF> sw_flux_dn_sfc;
         std::vector<TF> sw_flux_up_sfc;
+
+        // Option for time varying surface fluxes
+        std::unique_ptr<Timedep<TF>> tdep_sw_flux_dn;
+        std::unique_ptr<Timedep<TF>> tdep_sw_flux_up;
+        std::unique_ptr<Timedep<TF>> tdep_lw_flux_dn;
+        std::unique_ptr<Timedep<TF>> tdep_lw_flux_up;
 };
 #endif

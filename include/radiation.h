@@ -56,6 +56,7 @@ class Radiation
         virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;
+        virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         virtual bool check_field_exists(std::string name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&) = 0;
