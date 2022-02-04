@@ -62,7 +62,7 @@ class Radiation_prescribed : public Radiation<TF>
         // Empty functions which do nothing:
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
-                Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int) {};
+                Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
 	private:

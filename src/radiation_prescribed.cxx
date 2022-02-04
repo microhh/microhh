@@ -25,6 +25,7 @@
 #include "constants.h"
 #include "input.h"
 #include "timedep.h"
+#include "stats.h"
 
 template<typename TF>
 Radiation_prescribed<TF>::Radiation_prescribed(
@@ -76,6 +77,13 @@ void Radiation_prescribed<TF>::create(
         tdep_sw_flux_up->create_timedep(input_nc, timedep_dim);
         tdep_lw_flux_dn->create_timedep(input_nc, timedep_dim);
         tdep_lw_flux_up->create_timedep(input_nc, timedep_dim);
+
+        // Add statistics
+        const std::string group_name = "radiation";
+        stats.add_time_series("sw_flux_dn_sfc", "Surface shortwave downwelling flux", "W m-2", group_name);
+        stats.add_time_series("sw_flux_up_sfc", "Surface shortwave upwelling flux", "W m-2", group_name);
+        stats.add_time_series("lw_flux_dn_sfc", "Surface longwave downwelling flux", "W m-2", group_name);
+        stats.add_time_series("lw_flux_up_sfc", "Surface longwave upwelling flux", "W m-2", group_name);
     }
     else
     {
@@ -111,6 +119,22 @@ template<typename TF>
 void Radiation_prescribed<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
+}
+
+template<typename TF>
+void Radiation_prescribed<TF>::exec_all_stats(
+        Stats<TF>& stats, Cross<TF>& cross,
+        Dump<TF>& dump, Column<TF>& column,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop,
+        const unsigned long itime, const int iotime)
+{
+    if (stats.do_statistics(itime))
+    {
+        stats.set_time_series("sw_flux_dn_sfc", sw_flux_dn);
+        stats.set_time_series("sw_flux_up_sfc", sw_flux_up);
+        stats.set_time_series("lw_flux_dn_sfc", lw_flux_dn);
+        stats.set_time_series("lw_flux_up_sfc", lw_flux_up);
+    }
 }
 
 template<typename TF>
