@@ -111,7 +111,9 @@ parser.add_argument(
     '--nocompression',
     help='do not compress the netcdf file',
     action='store_true')
+
 parser.add_argument('-n', '--nprocs', help='Number of processes', type=int)
+
 args = parser.parse_args()
 
 if args.directory is not None:
@@ -130,6 +132,9 @@ except KeyError:
     iotimeprec = 0.
 
 variables = args.vars if args.vars is not None else nl['dump']['dumplist']
+if isinstance(variables, str):
+    variables = [variables]
+
 precision = args.precision
 perslice = args.perslice
 compression = not(args.nocompression)
