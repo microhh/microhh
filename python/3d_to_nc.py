@@ -28,13 +28,12 @@ import time as tm
 import numpy as np
 from multiprocessing import Pool
 
-
 def convert_to_nc(variables):
     for variable in variables:
         filename = "{0}.nc".format(variable)
         dim = {
             'time': range(niter),
-            'z': range(ktot),
+            'z': range(kmax),
             'y': range(jtot),
             'x': range(itot)}
         if variable == 'u':
@@ -61,10 +60,10 @@ def convert_to_nc(variables):
                 print("Processing %8s, time=%7i" % (variable, otime))
                 ncfile.dimvar['time'][t] = otime * 10**iotimeprec
                 if (perslice):
-                    for k in range(ktot):
-                        ncfile.var[t, k, :, :] = fin.read(itot * jtot)
+                    for k in range(kmax):
+                        ncfile.var[t,k,:,:] = fin.read(itot * jtot)
                 else:
-                    ncfile.var[t, :, :, :] = fin.read(itot * jtot * ktot)
+                    ncfile.var[t,:,:,:] = fin.read(itot * jtot * kmax)
 
                 fin.close()
             ncfile.close()
@@ -111,6 +110,11 @@ parser.add_argument(
     '--nocompression',
     help='do not compress the netcdf file',
     action='store_true')
+parser.add_argument(
+    '-kmax',
+    '--kmax',
+    help='reduce vertical extent 3D files',
+    type=int)
 
 parser.add_argument('-n', '--nprocs', help='Number of processes', type=int)
 
@@ -123,6 +127,9 @@ nl = mht.Read_namelist(args.filename)
 itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
+kmax = args.kmax if args.kmax is not None else ktot
+kmax = min(kmax, ktot)
+
 starttime = args.starttime if args.starttime is not None else nl['time']['starttime']
 endtime = args.endtime if args.endtime is not None else nl['time']['endtime']
 sampletime = args.sampletime if args.sampletime is not None else nl['dump']['sampletime']
@@ -140,9 +147,7 @@ perslice = args.perslice
 compression = not(args.nocompression)
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 
-# End option parsing
-
-# calculate the number of iterations
+# Calculate the number of iterations
 for time in np.arange(starttime, endtime, sampletime):
     otime = int(round(time / 10**iotimeprec))
     if not glob.glob('*.{0:07d}'.format(otime)):
@@ -152,7 +157,9 @@ for time in np.arange(starttime, endtime, sampletime):
 niter = int((endtime - starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
-
+if kmax < ktot:
+    grid.dim['z'] = grid.dim['z'][:kmax]
+    grid.dim['zh'] = grid.dim['zh'][:kmax+1]
 
 chunks = [variables[i::nprocs] for i in range(nprocs)]
 
