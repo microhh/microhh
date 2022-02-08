@@ -155,6 +155,8 @@ class Boundary
         // Scalar in/outflow
         std::vector<std::string> scalar_outflow;
         std::map<std::string, std::vector<TF>> inflow_profiles;
+        bool swtimedep_outflow;
+        std::map<std::string, Timedep<TF>*> tdep_outflow;
 
         // Time varying spatial sbot input:
         bool swtimedep_sbot_2d;

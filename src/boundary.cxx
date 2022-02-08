@@ -412,14 +412,29 @@ void Boundary<TF>::process_inflow(
         Input& input, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
-    Netcdf_group& init_group = input_nc.get_group("init");
 
+    swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
+
+    Netcdf_group& init_group = input_nc.get_group("init");
     for (auto& scalar : scalar_outflow)
     {
         std::vector<TF> prof = std::vector<TF>(gd.kcells);
-        init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+        if (!swtimedep_outflow)
+            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
         std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
         inflow_profiles.emplace(scalar, prof);
+    }
+
+    if (swtimedep_outflow)
+    {
+        Netcdf_group& tdep_group = input_nc.get_group("timedep");
+        const TF offset = 0;
+
+        for (auto& scalar : scalar_outflow)
+        {
+            tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
+            tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+        }
     }
 }
 
@@ -564,6 +579,12 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                     fields.sp.at(it.first)->visc,
                     no_offset, gd.icells, gd.jcells);
         }
+    }
+
+    if (swtimedep_outflow)
+    {
+        for (auto& it : tdep_outflow)
+            it.second->update_time_dependent_prof(inflow_profiles.at(it.first), timeloop);
     }
 }
 #endif
