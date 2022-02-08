@@ -38,6 +38,8 @@
 #include "chemistry.h"
 #include "constants.h" 
 #include "timeloop.h"
+#include "deposition.h"
+#include "boundary.h"
 
 
 namespace 
@@ -236,7 +238,15 @@ double CFACTOR;                          /* Conversion factor for concentration 
             TF* restrict tno3, const TF* const restrict no3, 
             TF* restrict tno2, const TF* const restrict no2, 
             TF* restrict toh, const TF* const restrict oh, 
-	    const TF* const restrict jval, const TF* const restrict emval,
+	    const TF* const restrict jval, 
+	    const TF* const restrict emval,
+	    const TF* const restrict vdo3,
+	    const TF* const restrict vdno,
+	    const TF* const restrict vdno2,
+	    const TF* const restrict vdhno3,
+	    const TF* const restrict vdh2o2,
+	    const TF* const restrict vdrooh,
+	    const TF* const restrict vdhcho,
 	    TF* restrict rfa, TF& trfa,
 	    const TF* restrict qt,
 	    const TF* restrict Temp, const TF dt, const TF sdt, const TF switch_dt,
@@ -259,13 +269,6 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	TF C_M = 2.55e19;  // because of scop KPP generated routines
 	// TF tscale[NVAR] ;
 	TF VAR0[NVAR] ;
-	TF vdo3   = TF(0.0);
-	TF vdh2o2 = TF(0.0);
-	TF vdno   = TF(0.0);
-	TF vdno2  = TF(0.0);
-	TF vdhno3 = TF(0.0);
-	TF vdrooh = TF(0.0);
-        TF vdhcho = TF(0.0);
         TF erh    = TF(0.0);
         TF eno    = TF(0.0);
 
@@ -290,13 +293,6 @@ double CFACTOR;                          /* Conversion factor for concentration 
 	    const TF CFACTOR = C_M ;               // from ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers
 	    const TF C_H2 = (TF)500.0e-9*CFACTOR ;              // 500 ppb --> #/cm3
             if (k==kstart) {
-	        vdo3   = TF(0.005)/dz[k];   // 1/s
-	        vdh2o2 = TF(0.018)/dz[k];   // 1/s
-	        vdno   = TF(0.002)/dz[k];   // 1/s
-	        vdno2  = TF(0.005)/dz[k];   // 1/s
-	        vdhno3 = TF(0.040)/dz[k];   // 1/s
-	        vdrooh = TF(0.008)/dz[k];   // 1/s
-		vdhcho = TF(0.0033)/dz[k]; 
 		// emission/deposition fluxes:
 		//erh      = (TF)0.1*CFACTOR/dz[k];
 		//eno      = (TF)0.1*CFACTOR/dz[k];
@@ -304,13 +300,6 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		eno      = (TF)0.0*CFACTOR/dz[k];
 	    }
             else {
-	        vdo3   = TF(0.0);
-	        vdh2o2 = TF(0.0);
-	        vdno   = TF(0.0);
-	        vdno2  = TF(0.0);
-	        vdhno3 = TF(0.0);
-	        vdrooh = TF(0.0);
-		vdhcho = TF(0.0);
 		erh      = TF(0.0);
 		eno      = TF(0.0);
 	    }
@@ -320,7 +309,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + j*jj + k*kk;
+		    const int ijk = i + j*jj + k*kk;
+                    const int ij = i + j*jj;
 		    const TF C_H2O = std::max(qt[ijk]*xmair*C_M/xmh2o,(TF)1.0);                   // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
 		    const TF TEMP = Temp[ijk];
 		    // convert to molecules per cm3 and add tendenccies of other processes.
@@ -382,13 +372,24 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    RCONST[33] = (jval[Pj_n2o5]);
 		    RCONST[34] = (erh);
 		    RCONST[35] = (eno);
-		    RCONST[36] = (vdo3);
-		    RCONST[37] = (vdno);
-		    RCONST[38] = (vdno2);
-		    RCONST[39] = (vdhno3);
-		    RCONST[40] = (vdrooh);
-		    RCONST[41] = (vdh2o2);
-		    RCONST[42] = (vdhcho);
+                    if (k==kstart) {
+			    RCONST[36] = vdo3[ij]/dz[k];
+			    RCONST[37] = vdno[ij]/dz[k];
+			    RCONST[38] = vdno2[ij]/dz[k];
+			    RCONST[39] = vdhno3[ij]/dz[k];
+			    RCONST[40] = vdrooh[ij]/dz[k];
+			    RCONST[41] = vdh2o2[ij]/dz[k];
+			    RCONST[42] = vdhcho[ij]/dz[k];
+		    }
+		    else {
+			    RCONST[36] = TF(0.0);
+			    RCONST[37] = TF(0.0);
+			    RCONST[38] = TF(0.0);
+			    RCONST[39] = TF(0.0);
+			    RCONST[40] = TF(0.0);
+			    RCONST[41] = TF(0.0);
+			    RCONST[42] = TF(0.0);
+		    }
 		    FIX[0] = 1800.0e-9*CFACTOR;   // methane concentation
                     FIX[1] = C_M;        // air density
 		    FIX[2] = (TF)1.0;    // species added to emit   
@@ -456,6 +457,7 @@ Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
+    deposition = std::make_shared<Deposition <TF>>(masterin, gridin, fieldsin, inputin);
     /* fields.init_diagnostic_field("oh","oh","ppb", group_name, gd.sloc);  */
 }
 
@@ -518,6 +520,7 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 template <typename TF>
 void Chemistry<TF>::init(Input& inputin)
 {
+    auto& gd = grid.get_grid_data();
     for (auto& it : fields.st)
     {
         const std::string type = inputin.get_item<std::string>("chemistry", "swchemistry", it.first, "0");
@@ -534,11 +537,38 @@ void Chemistry<TF>::init(Input& inputin)
         {
             cmap[it.first].type = Chemistry_type::disabled;
         }
+        else if (type == "simple")
+        {
+            cmap[it.first].type = Chemistry_type::simple;
+        }
         else
             throw std::runtime_error("Invalid option for \"Chemistry type\"");
     }
     switch_dt = inputin.get_item<TF>("chemistry", "switch_dt","", (TF)1e5);
     statistics_counter = 0;
+    // initialize 2D deposition arrays:
+    vdo3.resize(gd.ijcells);
+    vdno.resize(gd.ijcells);
+    vdno2.resize(gd.ijcells);
+    vdhno3.resize(gd.ijcells);
+    vdh2o2.resize(gd.ijcells);
+    vdrooh.resize(gd.ijcells);
+    vdhcho.resize(gd.ijcells);
+    printf("Deposition arrays created \n");
+    // initialize deposition routine:
+    deposition-> init(inputin);
+    // fill deposition with standard values:
+    std::fill(vdo3.begin(),vdo3.end(),deposition-> get_vd("o3"));
+    std::fill(vdno.begin(),vdno.end(),deposition-> get_vd("no"));
+    std::fill(vdno2.begin(),vdno2.end(),deposition-> get_vd("no2"));
+    std::fill(vdhno3.begin(),vdhno3.end(),deposition-> get_vd("hno3"));
+    std::fill(vdh2o2.begin(),vdh2o2.end(),deposition-> get_vd("h2o2"));
+    std::fill(vdrooh.begin(),vdrooh.end(),deposition-> get_vd("rooh"));
+    std::fill(vdhcho.begin(),vdhcho.end(),deposition-> get_vd("hcho"));
+    printf("Deposition arrays initialized, e.g. with vdo3 = %13.5e m/s \n",deposition-> get_vd("o3"));
+
+
+
 
 }
 
@@ -546,6 +576,8 @@ template <typename TF>
 void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
+
+    // nothing yet deposition->create(timeloop, sim_name, input_nc, stats);
     //
 
     Netcdf_group& group_nc = input_nc.get_group("timedep_chem");
@@ -682,7 +714,7 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
 
 
 template <typename TF>
-void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)
 {
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
 
@@ -697,6 +729,14 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
     emval[0] = ifac.fac0 * emi_isop[ifac.index0] + ifac.fac1 * emi_isop[ifac.index1];
     emval[1] = ifac.fac0 * emi_no[ifac.index0] + ifac.fac1 * emi_no[ifac.index1];
+    deposition->update_time_dependent(timeloop,boundary,
+		    vdo3.data(),
+		    vdno.data(),
+		    vdno2.data(),
+		    vdhno3.data(),
+		    vdh2o2.data(),
+		    vdrooh.data(),
+		    vdhcho.data());
 }
 
 
@@ -726,7 +766,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.st.at("no3")    ->fld.data(), fields.sp.at("no3")->fld.data(), 
 	    fields.st.at("no2")    ->fld.data(), fields.sp.at("no2")->fld.data(), 
 	    fields.st.at("oh")     ->fld.data(), fields.sp.at("oh")->fld.data(), 
-	    jval,emval,
+	    jval,emval,vdo3.data(),vdno.data(),vdno2.data(),vdhno3.data(),vdh2o2.data(),vdrooh.data(),vdhcho.data(),
 	    rfa.data(), trfa,
 	    fields.sp.at("qt") ->fld.data(),
 	    Temp ->fld.data(), dt, sdt, switch_dt,

@@ -27,6 +27,7 @@
 #include <string>
 #include <map>
 #include "timeloop.h"
+#include "boundary.h"
 
 
 class Master;
@@ -34,6 +35,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+template<typename> class Deposition;
 
 /**
  * Class that creates a chemistry term for scalars.
@@ -50,7 +52,7 @@ class Chemistry
 
         void init(Input&);                 ///< Initialize the arrays that contain the profiles.
         void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
-        void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
+        void update_time_dependent(Timeloop<TF>&,Boundary<TF>&); ///< Update the time dependent parameters.
         void exec(Thermo<TF>&,double,double);     ///< Add the tendencies belonging to the chemistry processes.
 	void exec_stats(const int, const double, Stats<TF>&);   /// calculate statistics
 
@@ -58,6 +60,7 @@ class Chemistry
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        std::shared_ptr<Deposition<TF>> deposition;
 
 	// internal variable
 	struct Chemistry_var
@@ -89,6 +92,14 @@ class Chemistry
 	std::vector<TF> rfa;
 	std::vector<TF> rka;
 	TF trfa;
+	// vectors to contain calculated deposition velocities (m/s)
+        std::vector<TF> vdo3;
+        std::vector<TF> vdno;
+        std::vector<TF> vdno2;
+        std::vector<TF> vdhno3;
+        std::vector<TF> vdh2o2;
+        std::vector<TF> vdrooh;
+        std::vector<TF> vdhcho;
 
         const std::string tend_name = "chemistry";
         const std::string tend_longname = "Chemistry";
