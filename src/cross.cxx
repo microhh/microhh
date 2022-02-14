@@ -291,15 +291,11 @@ Cross<TF>::~Cross()
 template<typename TF>
 int Cross<TF>::check_save(int error, char* filename)
 {
-    master.print_message("Saving \"%s\" ... ", filename);
     if (error == 0)
-    {
-        master.print_message("OK\n");
         return 0;
-    }
     else
     {
-        master.print_message("FAILED\n");
+        master.print_message("Saving \"%s\" ... FAILED\n", filename);
         return 1;
     }
 }
