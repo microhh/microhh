@@ -1308,12 +1308,33 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
 
+        column.add_time_series("wl", "Liquid water reservoir", "m");
+
         column.add_time_series("H", "Surface sensible heat flux", "W m-2");
         column.add_time_series("LE", "Surface latent heat flux", "W m-2");
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
-        column.add_time_series("wl", "Liquid water reservoir", "m");
+        if (sw_tile_stats)
+            for (auto& tile : tiles)
+            {
+                column.add_time_series("c_"+tile.first, "Subgrid fraction "+tile.second.long_name, "-");
+
+                column.add_time_series("ustar_"+tile.first, "Surface friction velocity "+tile.second.long_name, "m s-1");
+                column.add_time_series("obuk_"+tile.first, "Obukhov length "+tile.second.long_name, "m");
+
+                column.add_time_series("rs_"+tile.first, "Canopy resistance "+tile.second.long_name, "s m-1");
+                column.add_time_series("ra_"+tile.first, "Aerodynamic resistance "+tile.second.long_name, "s m-1");
+
+                column.add_time_series("thl_bot_"+tile.first, "Surface potential temperature "+tile.second.long_name, "K");
+                column.add_time_series("qt_bot_"+tile.first, "Obukhov specific humidity "+tile.second.long_name, "kg kg-1");
+
+                column.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("G_"+tile.first, "Surface soil heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("S_"+tile.first, "Surface storage heat flux "+tile.second.long_name, "W m-2");
+            }
+
     }
 
     if (cross.get_switch())
@@ -1630,6 +1651,26 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "S", TF(1));
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
+
+    if (sw_tile_stats)
+        for (auto& tile : tiles)
+        {
+            column.calc_time_series("c_"+tile.first, tile.second.fraction.data(), no_offset);
+
+            column.calc_time_series("ustar_"+tile.first, tile.second.ustar.data(), no_offset);
+            column.calc_time_series("obuk_"+tile.first, tile.second.obuk.data(), no_offset);
+
+            column.calc_time_series("rs_"+tile.first, tile.second.rs.data(), no_offset);
+            column.calc_time_series("ra_"+tile.first, tile.second.ra.data(), no_offset);
+
+            column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot.data(), no_offset);
+            column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot.data(), no_offset);
+
+            column.calc_time_series("H_"+tile.first, tile.second.H.data(), no_offset);
+            column.calc_time_series("LE_"+tile.first, tile.second.LE.data(), no_offset);
+            column.calc_time_series("G_"+tile.first, tile.second.G.data(), no_offset);
+            column.calc_time_series("S_"+tile.first, tile.second.S.data(), no_offset);
+        }
 
     fields.release_tmp_xy(fld_mean);
 }
