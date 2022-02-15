@@ -66,6 +66,34 @@ struct Field3dBc
     Boundary_type bctop; ///< Switch for the top boundary.
 };
 
+template<typename TF>
+struct Surface_tile
+{
+    std::string long_name;    // Descriptive name of tile
+
+    // Shared
+    std::vector<TF> fraction; // Grid point fraction tile (-)
+    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
+    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
+
+    // Surface layer
+    std::vector<TF> obuk;     // Obukhov length (m)
+    std::vector<TF> ustar;    // Friction velocity (m s-1)
+    std::vector<TF> bfluxbot; // Friction velocity (m s-1)
+    std::vector<int> nobuk;   // Index in LUT
+    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
+
+    // Land surface
+    std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
+    std::vector<TF> H;        // Sensible heat flux (W m-2)
+    std::vector<TF> LE;       // Latent heat flux (W m-2)
+    std::vector<TF> G;        // Soil heat flux (W m-2)
+    std::vector<TF> S;        // Storage flux (W m-2)
+};
+
+template<typename TF>
+using Tile_map = std::map<std::string, Surface_tile<TF>>;
+
 /**
  * Base class for the boundary scheme.
  * This class handles the case when the boundary is turned off. Derived classes are
@@ -110,6 +138,7 @@ class Boundary
         virtual const std::vector<TF>& get_dudz() const;
         virtual const std::vector<TF>& get_dvdz() const;
         virtual const std::vector<TF>& get_dbdz() const;
+	virtual const Tile_map<TF>& get_tiles() const;
 
         #ifdef USECUDA
         virtual TF* get_z0m_g();

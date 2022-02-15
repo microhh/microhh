@@ -26,37 +26,35 @@
 #include "boundary.h"
 #include "stats.h"
 
-template<typename> class Diff;
-
 enum class Soil_interpolation_type {Mean, Max, Harmonic_mean};
 
-template<typename TF>
-struct Surface_tile
-{
-    std::string long_name;    // Descriptive name of tile
+//template<typename TF>
+//struct Surface_tile
+//{
+//    std::string long_name;    // Descriptive name of tile
+//
+//    // Shared
+//    std::vector<TF> fraction; // Grid point fraction tile (-)
+//    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
+//    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
+//
+//    // Surface layer
+//    std::vector<TF> obuk;     // Obukhov length (m)
+//    std::vector<TF> ustar;    // Friction velocity (m s-1)
+//    std::vector<TF> bfluxbot; // Friction velocity (m s-1)
+//    std::vector<int> nobuk;   // Index in LUT
+//    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
+//
+//    // Land surface
+//    std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
+//    std::vector<TF> H;        // Sensible heat flux (W m-2)
+//    std::vector<TF> LE;       // Latent heat flux (W m-2)
+//    std::vector<TF> G;        // Soil heat flux (W m-2)
+//    std::vector<TF> S;        // Storage flux (W m-2)
+//};
 
-    // Shared
-    std::vector<TF> fraction; // Grid point fraction tile (-)
-    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
-    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
-
-    // Surface layer
-    std::vector<TF> obuk;     // Obukhov length (m)
-    std::vector<TF> ustar;    // Friction velocity (m s-1)
-    std::vector<TF> bfluxbot; // Friction velocity (m s-1)
-    std::vector<int> nobuk;   // Index in LUT
-    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
-
-    // Land surface
-    std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
-    std::vector<TF> H;        // Sensible heat flux (W m-2)
-    std::vector<TF> LE;       // Latent heat flux (W m-2)
-    std::vector<TF> G;        // Soil heat flux (W m-2)
-    std::vector<TF> S;        // Storage flux (W m-2)
-};
-
-template<typename TF>
-using Tile_map = std::map<std::string, Surface_tile<TF>>;
+//template<typename TF>
+//using Tile_map = std::map<std::string, Surface_tile<TF>>;
 
 template<typename TF>
 class Boundary_surface_lsm : public Boundary<TF>
@@ -74,6 +72,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
+	const Tile_map<TF>& get_tiles() const { return tiles; }
 
         void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
