@@ -44,6 +44,23 @@ template<typename> class Stats;
 enum class Deposition_type {disabled, enabled, simple};
 
 template<typename TF>
+struct Deposition_tile
+{
+    std::string long_name;    // Descriptive name of tile
+    // Land surface
+    std::vector<TF> vdo3;     // deposition velocity of ozone (m s-1)
+    std::vector<TF> vdno;     // deposition velocity of no (m s-1)
+    std::vector<TF> vdno2;    // deposition velocity of no2 (m s-1)
+    std::vector<TF> vdhno3;   // deposition velocity of hno3 (m s-1)
+    std::vector<TF> vdh2o2;   // deposition velocity of h2o2 (m s-1)
+    std::vector<TF> vdrooh;   // deposition velocity of rooh (m s-1)
+    std::vector<TF> vdhcho;   // deposition velocity of hcho (m s-1)
+};
+
+template<typename TF>
+using Deposition_tile_map = std::map<std::string, Deposition_tile<TF>>;
+
+template<typename TF>
 class Deposition
 {
     public:
@@ -76,8 +93,8 @@ class Deposition
 
 	TF vd_o3,vd_no,vd_no2,vd_hno3,vd_h2o2,vd_rooh,vd_hcho;
 
-        std::vector<std::string> tile_names {"veg", "soil" ,"wet"};
-        Tile_map<TF> tiles;
+        std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
+        Deposition_tile_map<TF> deposition_tiles;
 
 
         const std::string tend_name = "deposition";

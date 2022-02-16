@@ -47,29 +47,32 @@ namespace
 
 
     template<typename TF>
-    void calc_deposition(
-	    const TF* vdo3,
-	    const TF* vdno,
-	    const TF* vdno2,
-	    const TF* vdhno3,
-	    const TF* vdh2o2,
-	    const TF* vdrooh,
-	    const TF* vdhcho,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk, const TF* const restrict dz, TF* const restrict rhoref)
+    void calc_deposition_per_tile(
+	    TF* restrict vdo3,
+	    TF* restrict vdno,
+	    TF* restrict vdno2,
+	    TF* restrict vdhno3,
+	    TF* restrict vdh2o2,
+	    TF* restrict vdrooh,
+	    TF* restrict vdhcho,
+	    const TF* const restrict fraction,
+            const int istart, const int iend, const int jstart, const int jend, const int jj)
     {
     TF o3 = 0.0;
     TF hcho = 0.0;
+    TF frac = 0.0;
     int ndep = 0;
     for (int j=jstart; j<jend; ++j)
 	for (int i=istart; i<iend; ++i)
 	{
                 const int ij = i + j*jj;
-		o3   = o3   + vdo3[ij];
-		hcho = hcho + vdhcho[ij];
+//		o3   = o3   + vdo3[ij];
+//		hcho = hcho + vdhcho[ij];
+//		
+		frac = frac + fraction[ij];
 		ndep = ndep + 1;
 	}
-    printf("mean o3 and hcho deposition %13.5e %13.5e m/s \n",o3/ndep,hcho/ndep);
+    printf("mean fraction %13.5e  \n",frac/ndep);
     }
 }
 
@@ -80,6 +83,26 @@ Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
+
+    // Create surface tiles for deposition:
+    for (auto& name : deposition_tile_names)
+        deposition_tiles.emplace(name, Deposition_tile<TF>{});
+
+    for (auto& tile : deposition_tiles){
+        tile.second.vdo3.resize(gd.ijcells);
+        tile.second.vdno.resize(gd.ijcells);
+        tile.second.vdno2.resize(gd.ijcells);
+        tile.second.vdno2.resize(gd.ijcells);
+        tile.second.vdhno3.resize(gd.ijcells);
+        tile.second.vdh2o2.resize(gd.ijcells);
+        tile.second.vdrooh.resize(gd.ijcells);
+        tile.second.vdhcho.resize(gd.ijcells);
+    }
+
+    deposition_tiles.at("veg" ).long_name = "vegetation";
+    deposition_tiles.at("soil").long_name = "bare soil";
+    deposition_tiles.at("wet" ).long_name = "wet skin";
+
 }
 
 template <typename TF>
@@ -144,18 +167,21 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
 {
     for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::disabled) return;
     for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::simple) return;
-    printf("Here is the entrypoint full deposition\n");
     auto& gd = grid.get_grid_data();
-    const std::vector<TF>& z0m = boundary.get_z0m();
-    printf("got z0m from boundary %13.3e  \n",z0m[20]);
     auto& tiles = boundary.get_tiles();
-    for (auto& tile : tiles)
+    for (auto& tile : tiles){
 	    printf("Tiles from boundary_surface_lsm: %s  \n",tile.first.c_str());
-
-    calc_deposition<TF>(vdo3,vdno,vdno2,vdhno3,vdh2o2,vdrooh,vdhcho,
-	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-	    gd.icells, gd.ijcells, gd.dz.data(), fields.rhoref.data());
-
+	    calc_deposition_per_tile<TF>(
+		    deposition_tiles.at(tile.first).vdo3.data(),
+		    deposition_tiles.at(tile.first).vdno.data(),
+		    deposition_tiles.at(tile.first).vdno2.data(),
+		    deposition_tiles.at(tile.first).vdhno3.data(),
+		    deposition_tiles.at(tile.first).vdh2o2.data(),
+		    deposition_tiles.at(tile.first).vdrooh.data(),
+		    deposition_tiles.at(tile.first).vdhcho.data(),
+		    tile.second.fraction.data(),
+	            gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    }
 }
 
 template<typename TF>
