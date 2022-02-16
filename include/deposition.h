@@ -70,9 +70,10 @@ class Deposition
         void init(Input&);                 ///< Initialize the arrays that contain the profiles.
         void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
         void update_time_dependent(Timeloop<TF>&, Boundary<TF>&,
-			const TF*, const TF*, const TF*, const TF*, const TF*, const TF*, const TF*); ///< Update the time dependent deposition parameters.
+			 TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
+        void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
 
     private:
         Master& master;
