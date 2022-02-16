@@ -91,13 +91,11 @@ namespace
 	for (int i=istart; i<iend; ++i)
 	{
                 const int ij = i + j*jj;
-		o3   = o3   + vdo3[ij];
-//		hcho = hcho + vdhcho[ij];
-//		
-//		
-		//if (fraction[ij] < (TF) 1e-12) continue;
-		frac = frac + fraction[ij];
 		ndep = ndep + 1;
+		if (fraction[ij] < (TF) 1e-12) continue;
+		frac = frac + fraction[ij];
+		o3   = o3   + vdo3[ij]*fraction[ij];
+		hcho = hcho + vdhcho[ij]*fraction[ij];
 		
 		//vdo3[ij] = 0.0;
 		//vdno[ij] = 0.0;
@@ -108,7 +106,7 @@ namespace
 		//vdhcho[ij] = 0.0;
 
 	}
-    printf("mean fraction %13.5e vdo3 %13.5e \n",frac/ndep,o3/ndep);
+    if (frac > (TF) 1e-12) printf("mean fraction %13.5e vdo3 %13.5e vdhcho %13.5e \n",frac/ndep,o3/frac,hcho/frac);
     }
 }
 
