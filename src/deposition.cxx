@@ -80,12 +80,6 @@ Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
-    // Create surface tiles:
-    for (auto& name : tile_names)
-        tiles.emplace(name, Surface_tile<TF>{});
-    tiles.at("veg" ).long_name = "vegetation";
-    tiles.at("soil").long_name = "bare soil";
-    tiles.at("wet" ).long_name = "wet skin";
 }
 
 template <typename TF>
@@ -155,6 +149,8 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     const std::vector<TF>& z0m = boundary.get_z0m();
     printf("got z0m from boundary %13.3e  \n",z0m[20]);
     auto& tiles = boundary.get_tiles();
+    for (auto& tile : tiles)
+	    printf("Tiles from boundary_surface_lsm: %s  \n",tile.first.c_str());
 
     calc_deposition<TF>(vdo3,vdno,vdno2,vdhno3,vdh2o2,vdrooh,vdhcho,
 	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,

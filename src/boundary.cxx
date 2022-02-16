@@ -1093,6 +1093,12 @@ const std::vector<TF>& Boundary<TF>::get_dbdz() const
 }
 
 template<typename TF>
+const Tile_map<TF>& Boundary<TF>::get_tiles() const
+{
+    throw std::runtime_error("Function get_tiles() not implemented in base boundary.");
+}
+
+template<typename TF>
 std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         Master& master, Grid<TF>& grid, Soil_grid<TF>& soil_grid, Fields<TF>& fields, Input& input)
 {
