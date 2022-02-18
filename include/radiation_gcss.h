@@ -62,14 +62,14 @@ class Radiation_gcss : public Radiation<TF>
 
         std::vector<TF>& get_surface_radiation(std::string)
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
-        virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
-            { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
+            { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
 
     private:
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
