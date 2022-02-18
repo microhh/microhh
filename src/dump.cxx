@@ -127,7 +127,6 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     }
     else
     {
-        master.print_message("Saving \"%s\" ... ", filename);
 
         auto tmp1 = fields.get_tmp();
         auto tmp2 = fields.get_tmp();
@@ -138,12 +137,8 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
                     filename, no_offset,
                     gd.kstart, gd.kend))
         {
-            master.print_message("FAILED\n");
+            master.print_message("Saving \"%s\" ... FAILED\n", filename);
             throw std::runtime_error("Writing error in dump");
-        }
-        else
-        {
-            master.print_message("OK\n");
         }
 
         fields.release_tmp(tmp1);

@@ -264,8 +264,10 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
     sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
-    sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_iter_seb      = inputin.get_item<bool>("land_surface", "switerseb", "", false);
+
+    sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
+    sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
 
     // BvS: for now, read surface emission from radiation group. This needs
     // to be coupled correctly, also for 2D varying emissivities.
@@ -1139,7 +1141,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
 
     std::fill(
             fields.sp.at("thl")->fld_bot.begin(),
-            fields.sp.at("thl")->fld_bot.end(), thl_1[0]);
+            fields.sp.at("thl")->fld_bot.end(), thl_1[0]+0.1);
     std::fill(
             fields.sp.at("qt")->fld_bot.begin(),
             fields.sp.at("qt")->fld_bot.end(), qt_1[0]);
@@ -1149,7 +1151,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
     {
         std::fill(
                 tile.second.thl_bot.begin(),
-                tile.second.thl_bot.end(), thl_1[0]);
+                tile.second.thl_bot.end(), thl_1[0]+0.1);
 
         std::fill(
                 tile.second.qt_bot.begin(),
@@ -1271,8 +1273,6 @@ void Boundary_surface_lsm<TF>::create_stats(
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
 
         // Land surface
-        stats.add_time_series("rs_veg", "Canopy resistance", "s m-1", group_name);
-        stats.add_time_series("rs_soil", "Soil resistance", "s m-1", group_name);
         stats.add_time_series("wl", "Liquid water reservoir", "m", group_name);
 
         stats.add_time_series("H", "Surface sensible heat flux", "W m-2", group_name);
@@ -1292,8 +1292,11 @@ void Boundary_surface_lsm<TF>::create_stats(
                 stats.add_time_series("ustar_"+tile.first, "Surface friction velocity "+tile.second.long_name, "m s-1", group_name_tiles);
                 stats.add_time_series("obuk_"+tile.first, "Obukhov length "+tile.second.long_name, "m", group_name_tiles);
 
+                stats.add_time_series("rs_"+tile.first, "Canopy resistance "+tile.second.long_name, "s m-1", group_name_tiles);
+                stats.add_time_series("ra_"+tile.first, "Aerodynamic resistance "+tile.second.long_name, "s m-1", group_name_tiles);
+
                 stats.add_time_series("thl_bot_"+tile.first, "Surface potential temperature "+tile.second.long_name, "K", group_name_tiles);
-                stats.add_time_series("qt_bot_"+tile.first, "Obukhov specific humidity "+tile.second.long_name, "kg kg-1", group_name_tiles);
+                stats.add_time_series("qt_bot_"+tile.first, "Surface specific humidity "+tile.second.long_name, "kg kg-1", group_name_tiles);
 
                 stats.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
@@ -1307,12 +1310,32 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
 
+        column.add_time_series("wl", "Liquid water reservoir", "m");
+
         column.add_time_series("H", "Surface sensible heat flux", "W m-2");
         column.add_time_series("LE", "Surface latent heat flux", "W m-2");
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
-        column.add_time_series("wl", "Liquid water reservoir", "m");
+        if (sw_tile_stats_col)
+            for (auto& tile : tiles)
+            {
+                column.add_time_series("c_"+tile.first, "Subgrid fraction "+tile.second.long_name, "-");
+
+                column.add_time_series("ustar_"+tile.first, "Surface friction velocity "+tile.second.long_name, "m s-1");
+                column.add_time_series("obuk_"+tile.first, "Obukhov length "+tile.second.long_name, "m");
+
+                column.add_time_series("rs_"+tile.first, "Canopy resistance "+tile.second.long_name, "s m-1");
+                column.add_time_series("ra_"+tile.first, "Aerodynamic resistance "+tile.second.long_name, "s m-1");
+
+                column.add_time_series("thl_bot_"+tile.first, "Surface potential temperature "+tile.second.long_name, "K");
+                column.add_time_series("qt_bot_"+tile.first, "Surface specific humidity "+tile.second.long_name, "kg kg-1");
+
+                column.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("G_"+tile.first, "Surface soil heat flux "+tile.second.long_name, "W m-2");
+                column.add_time_series("S_"+tile.first, "Surface storage heat flux "+tile.second.long_name, "W m-2");
+            }
     }
 
     if (cross.get_switch())
@@ -1566,8 +1589,6 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 
     // Land-surface
     stats.calc_stats_2d("wl", fields.ap2d.at("wl"), no_offset);
-    stats.calc_stats_2d("rs_veg", tiles.at("veg").rs, no_offset);
-    stats.calc_stats_2d("rs_soil", tiles.at("soil").rs, no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     stats.calc_stats_2d("H", *fld_mean, no_offset);
@@ -1592,6 +1613,9 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 
             stats.calc_stats_2d("ustar_"+tile.first, tile.second.ustar, no_offset);
             stats.calc_stats_2d("obuk_"+tile.first, tile.second.obuk, no_offset);
+
+            stats.calc_stats_2d("rs_"+tile.first, tile.second.rs, no_offset);
+            stats.calc_stats_2d("ra_"+tile.first, tile.second.ra, no_offset);
 
             stats.calc_stats_2d("thl_bot_"+tile.first, tile.second.thl_bot, no_offset);
             stats.calc_stats_2d("qt_bot_"+tile.first, tile.second.qt_bot, no_offset);
@@ -1628,6 +1652,26 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "S", TF(1));
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
+
+    if (sw_tile_stats_col)
+        for (auto& tile : tiles)
+        {
+            column.calc_time_series("c_"+tile.first, tile.second.fraction.data(), no_offset);
+
+            column.calc_time_series("ustar_"+tile.first, tile.second.ustar.data(), no_offset);
+            column.calc_time_series("obuk_"+tile.first, tile.second.obuk.data(), no_offset);
+
+            column.calc_time_series("rs_"+tile.first, tile.second.rs.data(), no_offset);
+            column.calc_time_series("ra_"+tile.first, tile.second.ra.data(), no_offset);
+
+            column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot.data(), no_offset);
+            column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot.data(), no_offset);
+
+            column.calc_time_series("H_"+tile.first, tile.second.H.data(), no_offset);
+            column.calc_time_series("LE_"+tile.first, tile.second.LE.data(), no_offset);
+            column.calc_time_series("G_"+tile.first, tile.second.G.data(), no_offset);
+            column.calc_time_series("S_"+tile.first, tile.second.S.data(), no_offset);
+        }
 
     fields.release_tmp_xy(fld_mean);
 }

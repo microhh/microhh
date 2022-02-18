@@ -112,7 +112,7 @@ namespace Thermo_moist_functions
         const TF x = std::max(TF(-100.), T-T0<TF>);
         #endif
 
-        return TF(611.15)*std::exp(22.452*x / (272.55+x));
+        return TF(611.15)*std::exp(TF(22.452)*x / (TF(272.55)+x));
     }
 
     template<typename TF>

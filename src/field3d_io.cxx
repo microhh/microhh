@@ -267,7 +267,9 @@ int Field3d_io<TF>::save_xz_slice(
 // the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
 //
         // MPI task which gathers/writes the slice:
-        const int mpi_rank_recv = md.mpicoordy * md.npx;
+        // const int mpi_rank_recv = md.mpicoordy * md.npx; // CvH: This is incorrect, because the subcommunicator starts at 0
+        // in each separately.
+        const int mpi_rank_recv = 0;
 
         // Create send/receive MPI types.
         MPI_Datatype send_type;
@@ -396,7 +398,8 @@ int Field3d_io<TF>::save_yz_slice(
 // the 2D slices are first gathered on MPI rank 0, and then written without MPI-IO.
 //
         // MPI task which gathers/writes the slice:
-        const int mpi_rank_recv = md.mpicoordx * md.npy;
+        // const int mpi_rank_recv = md.mpicoordx * md.npy;
+        const int mpi_rank_recv = 0;
 
         // Create send/receive MPI types.
         MPI_Datatype send_type;
