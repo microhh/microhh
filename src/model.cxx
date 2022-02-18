@@ -426,7 +426,11 @@ void Model<TF>::exec()
                         master.print_message("Saving field dumps for time %f\n", time);
 
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
+                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime)))
+                    {
+                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats);
+                    }
+                    else if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
                     {
                         radiation->exec_all_stats(
                                 *stats, *cross, *dump, *column,

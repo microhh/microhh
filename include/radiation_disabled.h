@@ -70,7 +70,8 @@ class Radiation_disabled : public Radiation<TF>
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) {};
-
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
     private:
