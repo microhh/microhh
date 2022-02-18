@@ -1296,7 +1296,7 @@ void Boundary_surface_lsm<TF>::create_stats(
                 stats.add_time_series("ra_"+tile.first, "Aerodynamic resistance "+tile.second.long_name, "s m-1", group_name_tiles);
 
                 stats.add_time_series("thl_bot_"+tile.first, "Surface potential temperature "+tile.second.long_name, "K", group_name_tiles);
-                stats.add_time_series("qt_bot_"+tile.first, "Obukhov specific humidity "+tile.second.long_name, "kg kg-1", group_name_tiles);
+                stats.add_time_series("qt_bot_"+tile.first, "Surface specific humidity "+tile.second.long_name, "kg kg-1", group_name_tiles);
 
                 stats.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
                 stats.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2", group_name_tiles);
@@ -1329,7 +1329,7 @@ void Boundary_surface_lsm<TF>::create_stats(
                 column.add_time_series("ra_"+tile.first, "Aerodynamic resistance "+tile.second.long_name, "s m-1");
 
                 column.add_time_series("thl_bot_"+tile.first, "Surface potential temperature "+tile.second.long_name, "K");
-                column.add_time_series("qt_bot_"+tile.first, "Obukhov specific humidity "+tile.second.long_name, "kg kg-1");
+                column.add_time_series("qt_bot_"+tile.first, "Surface specific humidity "+tile.second.long_name, "kg kg-1");
 
                 column.add_time_series("H_"+tile.first, "Surface sensible heat flux "+tile.second.long_name, "W m-2");
                 column.add_time_series("LE_"+tile.first, "Surface latent heat flux "+tile.second.long_name, "W m-2");
