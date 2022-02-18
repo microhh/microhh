@@ -264,8 +264,10 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
     sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
-    sw_tile_stats    = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_iter_seb      = inputin.get_item<bool>("land_surface", "switerseb", "", false);
+
+    sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
+    sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
 
     // BvS: for now, read surface emission from radiation group. This needs
     // to be coupled correctly, also for 2D varying emissivities.
@@ -1315,7 +1317,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
-        if (sw_tile_stats)
+        if (sw_tile_stats_col)
             for (auto& tile : tiles)
             {
                 column.add_time_series("c_"+tile.first, "Subgrid fraction "+tile.second.long_name, "-");
@@ -1334,7 +1336,6 @@ void Boundary_surface_lsm<TF>::create_stats(
                 column.add_time_series("G_"+tile.first, "Surface soil heat flux "+tile.second.long_name, "W m-2");
                 column.add_time_series("S_"+tile.first, "Surface storage heat flux "+tile.second.long_name, "W m-2");
             }
-
     }
 
     if (cross.get_switch())
@@ -1652,7 +1653,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
     get_tiled_mean(*fld_mean, "S", TF(1));
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
 
-    if (sw_tile_stats)
+    if (sw_tile_stats_col)
         for (auto& tile : tiles)
         {
             column.calc_time_series("c_"+tile.first, tile.second.fraction.data(), no_offset);

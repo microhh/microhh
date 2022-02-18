@@ -127,6 +127,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_free_drainage;
         bool sw_water;
         bool sw_tile_stats;
+        bool sw_tile_stats_col;
         bool sw_iter_seb;
 
         TF emis_sfc;
