@@ -25,11 +25,11 @@
 namespace
 {
     template<typename TF> __global__
-    void set_surface_fluxes(
-            TF* const __restrict__ sw_flux_dn_sfc,
-            TF* const __restrict__ sw_flux_up_sfc,
-            TF* const __restrict__ lw_flux_dn_sfc,
-            TF* const __restrict__ lw_flux_up_sfc,
+    void set_surface_fluxes_g(
+            TF* const __restrict__ sw_flux_dn,
+            TF* const __restrict__ sw_flux_up,
+            TF* const __restrict__ lw_flux_dn,
+            TF* const __restrict__ lw_flux_up,
             const TF sw_flux_dn_in,
             const TF sw_flux_up_in,
             const TF lw_flux_dn_in,
@@ -43,10 +43,10 @@ namespace
         {
             const int ij  = i + j*icells;
 
-            sw_flux_dn_sfc[ij] = sw_flux_dn_in;
-            sw_flux_up_sfc[ij] = sw_flux_up_in;
-            lw_flux_dn_sfc[ij] = lw_flux_dn_in;
-            lw_flux_up_sfc[ij] = lw_flux_up_in;
+            sw_flux_dn[ij] = sw_flux_dn_in;
+            sw_flux_up[ij] = sw_flux_up_in;
+            lw_flux_dn[ij] = lw_flux_dn_in;
+            lw_flux_up[ij] = lw_flux_up_in;
         }
     }
 }
@@ -67,15 +67,15 @@ void Radiation_prescribed<TF>::exec(
         dim3 gridGPU (gridi,  gridj,  1);
         dim3 blockGPU(blocki, blockj, 1);
 
-        set_surface_fluxes<<<gridGPU, blockGPU>>>(
-            sw_flux_dn_sfc_g,
-            sw_flux_up_sfc_g,
-            lw_flux_dn_sfc_g,
-            lw_flux_up_sfc_g,
-            sw_flux_dn,
-            sw_flux_up,
-            lw_flux_dn,
-            lw_flux_up,
+        set_surface_fluxes_g<<<gridGPU, blockGPU>>>(
+            sw_flux_dn_g,
+            sw_flux_up_g,
+            lw_flux_dn_g,
+            lw_flux_up_g,
+            sw_flux_dn_value,
+            sw_flux_up_value,
+            lw_flux_dn_value,
+            lw_flux_up_value,
             gd.icells, gd.jcells);
         cuda_check_error();
     }

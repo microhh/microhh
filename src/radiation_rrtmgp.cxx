@@ -1148,7 +1148,6 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
     }
 }
 
-#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
 {
@@ -1198,6 +1197,7 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
             n_lay_col);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)

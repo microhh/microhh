@@ -45,10 +45,10 @@ Radiation_prescribed<TF>::Radiation_prescribed(
     if (!swtimedep_prescribed)
     {
         // Get the surface fluxes, which are constant in time.
-        sw_flux_dn = inputin.get_item<TF>("radiation", "sw_flux_dn", "");
-        sw_flux_up = inputin.get_item<TF>("radiation", "sw_flux_up", "");
-        lw_flux_dn = inputin.get_item<TF>("radiation", "lw_flux_dn", "");
-        lw_flux_up = inputin.get_item<TF>("radiation", "lw_flux_up", "");
+        sw_flux_dn_value = inputin.get_item<TF>("radiation", "sw_flux_dn", "");
+        sw_flux_up_value = inputin.get_item<TF>("radiation", "sw_flux_up", "");
+        lw_flux_dn_value = inputin.get_item<TF>("radiation", "lw_flux_dn", "");
+        lw_flux_up_value = inputin.get_item<TF>("radiation", "lw_flux_up", "");
     }
 }
 
@@ -58,10 +58,10 @@ void Radiation_prescribed<TF>::init(Timeloop<TF>& timeloop)
     auto& gd = grid.get_grid_data();
 
     // Resize surface radiation fields.
-    sw_flux_dn_sfc.resize(gd.ijcells);
-    sw_flux_up_sfc.resize(gd.ijcells);
-    lw_flux_dn_sfc.resize(gd.ijcells);
-    lw_flux_up_sfc.resize(gd.ijcells);
+    sw_flux_dn.resize(gd.ijcells);
+    sw_flux_up.resize(gd.ijcells);
+    lw_flux_dn.resize(gd.ijcells);
+    lw_flux_up.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -80,18 +80,18 @@ void Radiation_prescribed<TF>::create(
 
         // Add statistics
         const std::string group_name = "radiation";
-        stats.add_time_series("sw_flux_dn_sfc", "Surface shortwave downwelling flux", "W m-2", group_name);
-        stats.add_time_series("sw_flux_up_sfc", "Surface shortwave upwelling flux", "W m-2", group_name);
-        stats.add_time_series("lw_flux_dn_sfc", "Surface longwave downwelling flux", "W m-2", group_name);
-        stats.add_time_series("lw_flux_up_sfc", "Surface longwave upwelling flux", "W m-2", group_name);
+        stats.add_time_series("sw_flux_dn", "Surface shortwave downwelling flux", "W m-2", group_name);
+        stats.add_time_series("sw_flux_up", "Surface shortwave upwelling flux", "W m-2", group_name);
+        stats.add_time_series("lw_flux_dn", "Surface longwave downwelling flux", "W m-2", group_name);
+        stats.add_time_series("lw_flux_up", "Surface longwave upwelling flux", "W m-2", group_name);
     }
     else
     {
         // Set surface radiation fields for land-surface model.
-        std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
-        std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
-        std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
-        std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
+        std::fill(sw_flux_dn.begin(), sw_flux_dn.end(), sw_flux_dn_value);
+        std::fill(sw_flux_up.begin(), sw_flux_up.end(), sw_flux_up_value);
+        std::fill(lw_flux_dn.begin(), lw_flux_dn.end(), lw_flux_dn_value);
+        std::fill(lw_flux_up.begin(), lw_flux_up.end(), lw_flux_up_value);
     }
 }
 
@@ -106,23 +106,25 @@ void Radiation_prescribed<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     if (swtimedep_prescribed)
     {
-        tdep_sw_flux_dn->update_time_dependent(sw_flux_dn, timeloop);
-        tdep_sw_flux_up->update_time_dependent(sw_flux_up, timeloop);
-        tdep_lw_flux_dn->update_time_dependent(lw_flux_dn, timeloop);
-        tdep_lw_flux_up->update_time_dependent(lw_flux_up, timeloop);
+        tdep_sw_flux_dn->update_time_dependent(sw_flux_dn_value, timeloop);
+        tdep_sw_flux_up->update_time_dependent(sw_flux_up_value, timeloop);
+        tdep_lw_flux_dn->update_time_dependent(lw_flux_dn_value, timeloop);
+        tdep_lw_flux_up->update_time_dependent(lw_flux_up_value, timeloop);
 
-        std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), sw_flux_dn);
-        std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), sw_flux_up);
-        std::fill(lw_flux_dn_sfc.begin(), lw_flux_dn_sfc.end(), lw_flux_dn);
-        std::fill(lw_flux_up_sfc.begin(), lw_flux_up_sfc.end(), lw_flux_up);
+        std::fill(sw_flux_dn.begin(), sw_flux_dn.end(), sw_flux_dn_value);
+        std::fill(sw_flux_up.begin(), sw_flux_up.end(), sw_flux_up_value);
+        std::fill(lw_flux_dn.begin(), lw_flux_dn.end(), lw_flux_dn_value);
+        std::fill(lw_flux_up.begin(), lw_flux_up.end(), lw_flux_up_value);
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
 }
+#endif
 
 template<typename TF>
 void Radiation_prescribed<TF>::exec_all_stats(
@@ -133,10 +135,10 @@ void Radiation_prescribed<TF>::exec_all_stats(
 {
     if (stats.do_statistics(itime) && swtimedep_prescribed)
     {
-        stats.set_time_series("sw_flux_dn_sfc", sw_flux_dn);
-        stats.set_time_series("sw_flux_up_sfc", sw_flux_up);
-        stats.set_time_series("lw_flux_dn_sfc", lw_flux_dn);
-        stats.set_time_series("lw_flux_up_sfc", lw_flux_up);
+        stats.set_time_series("sw_flux_dn", sw_flux_dn_value);
+        stats.set_time_series("sw_flux_up", sw_flux_up_value);
+        stats.set_time_series("lw_flux_dn", lw_flux_dn_value);
+        stats.set_time_series("lw_flux_up", lw_flux_up_value);
     }
 }
 
@@ -144,13 +146,13 @@ template<typename TF>
 std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(std::string name)
 {
     if (name == "sw_down")
-        return sw_flux_dn_sfc;
+        return sw_flux_dn;
     else if (name == "sw_up")
-        return sw_flux_up_sfc;
+        return sw_flux_up;
     else if (name == "lw_down")
-        return lw_flux_dn_sfc;
+        return lw_flux_dn;
     else if (name == "lw_up")
-        return lw_flux_up_sfc;
+        return lw_flux_up;
     else
     {
         std::string error = "Variable \"" + name + "\" is not a valid surface radiation field";

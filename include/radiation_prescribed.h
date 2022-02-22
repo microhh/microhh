@@ -21,6 +21,8 @@
 #ifndef RADIATION_PRESCRIBED_H
 #define RADIATION_PRESCRIBED_H
 
+#include <stdexcept>
+
 #include "radiation.h"
 #include "timedep.h"
 
@@ -55,17 +57,16 @@ class Radiation_prescribed : public Radiation<TF>
         void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
-        { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
+        { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_prescribed"); }
 		bool check_field_exists(std::string name)
-        { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
+        { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_prescribed"); }
 
         // Empty functions which do nothing:
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
-            { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
 
 	private:
 		using Radiation<TF>::swradiation;
@@ -77,22 +78,28 @@ class Radiation_prescribed : public Radiation<TF>
         bool swtimedep_prescribed;
 
         // Input values
-        TF lw_flux_dn;
-        TF lw_flux_up;
-        TF sw_flux_dn;
-        TF sw_flux_up;
+        TF lw_flux_dn_value;
+        TF lw_flux_up_value;
+        TF sw_flux_dn_value;
+        TF sw_flux_up_value;
 
         // Surface radiative fluxes
-        std::vector<TF> lw_flux_dn_sfc;
-        std::vector<TF> lw_flux_up_sfc;
-
-        std::vector<TF> sw_flux_dn_sfc;
-        std::vector<TF> sw_flux_up_sfc;
+        std::vector<TF> lw_flux_dn;
+        std::vector<TF> lw_flux_up;
+        std::vector<TF> sw_flux_dn;
+        std::vector<TF> sw_flux_up;
 
         // Option for time varying surface fluxes
         std::unique_ptr<Timedep<TF>> tdep_sw_flux_dn;
         std::unique_ptr<Timedep<TF>> tdep_sw_flux_up;
         std::unique_ptr<Timedep<TF>> tdep_lw_flux_dn;
         std::unique_ptr<Timedep<TF>> tdep_lw_flux_up;
+
+        #ifdef USECUDA
+        TF* lw_flux_dn_g;
+        TF* lw_flux_up_g;
+        TF* sw_flux_dn_g;
+        TF* sw_flux_up_g;
+        #endif
 };
 #endif
