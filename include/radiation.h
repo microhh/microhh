@@ -73,6 +73,13 @@ class Radiation
         virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
 
+        #ifdef USECUDA
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
+        virtual void forward_device() = 0;
+        virtual void backward_device() = 0;
+        #endif
+
     protected:
         Master& master;
         Grid<TF>& grid;

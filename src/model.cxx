@@ -559,36 +559,33 @@ void Model<TF>::prepare_gpu()
 {
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
-    grid    ->prepare_device();
-    fields  ->prepare_device();
-    buffer  ->prepare_device();
-    thermo  ->prepare_device();
-    boundary->prepare_device();
-    diff    ->prepare_device(*boundary);
-    force   ->prepare_device();
-    ib      ->prepare_device();
-    // decay   ->prepare_device();
+    grid     ->prepare_device();
+    fields   ->prepare_device();
+    buffer   ->prepare_device();
+    thermo   ->prepare_device();
+    boundary ->prepare_device();
+    diff     ->prepare_device(*boundary);
+    force    ->prepare_device();
+    ib       ->prepare_device();
     microphys->prepare_device();
+    radiation->prepare_device();
     // // Prepare pressure last, for memory check
-    pres    ->prepare_device();
+    pres     ->prepare_device();
 }
 
 template<typename TF>
 void Model<TF>::clear_gpu()
 {
     master.print_message("Clearing the GPU\n");
-    grid    ->clear_device();
-    fields  ->clear_device();
-    // buffer  ->clear_device();
-    thermo  ->clear_device();
-    // boundary->clear_device();
-    // diff    ->clear_device();
-    force   ->clear_device();
-    ib      ->clear_device();
-    // decay   ->clear_device();
+    grid     ->clear_device();
+    fields   ->clear_device();
+    thermo   ->clear_device();
+    force    ->clear_device();
+    ib       ->clear_device();
     microphys->clear_device();
-    // // Clear pressure last, for memory check
-    pres    ->clear_device();
+    radiation->clear_device();
+    // Clear pressure last, for memory check
+    pres     ->clear_device();
 }
 #endif
 

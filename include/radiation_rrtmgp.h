@@ -70,6 +70,13 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
+        #ifdef USECUDA
+        void prepare_device() {}
+        void clear_device() {}
+        void forward_device() {}
+        void backward_device() {}
+        #endif
+
 	private:
 		using Radiation<TF>::swradiation;
 		using Radiation<TF>::master;

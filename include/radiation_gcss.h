@@ -70,6 +70,12 @@ class Radiation_gcss : public Radiation<TF>
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
         void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
             { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
+        #ifdef USECUDA
+        void prepare_device() {}
+        void clear_device() {}
+        void forward_device() {}
+        void backward_device() {}
+        #endif
 
     private:
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.

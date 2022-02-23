@@ -18,6 +18,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+
 #include "radiation_prescribed.h"
 #include "grid.h"
 #include "tools.h"
@@ -79,6 +81,55 @@ void Radiation_prescribed<TF>::exec(
             gd.icells, gd.jcells);
         cuda_check_error();
     }
+}
+
+template<typename TF>
+void Radiation_prescribed<TF>::prepare_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize = gd.ijcells*sizeof(TF);
+
+    // Allocate surface radiation fields.
+    cuda_safe_call(cudaMalloc(&lw_flux_dn_g, memsize));
+    cuda_safe_call(cudaMalloc(&lw_flux_up_g, memsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_dn_g, memsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_up_g, memsize));
+
+    // Send data to GPU, in case timedep is disabled.
+    forward_device();
+}
+
+template<typename TF>
+void Radiation_prescribed<TF>::clear_device()
+{
+    cuda_safe_call(cudaFree(lw_flux_dn_g));
+    cuda_safe_call(cudaFree(lw_flux_up_g));
+    cuda_safe_call(cudaFree(sw_flux_dn_g));
+    cuda_safe_call(cudaFree(sw_flux_up_g));
+}
+
+template<typename TF>
+void Radiation_prescribed<TF>::forward_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize = gd.ijcells*sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(lw_flux_dn_g, lw_flux_dn.data(), memsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(lw_flux_up_g, lw_flux_up.data(), memsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(sw_flux_dn_g, sw_flux_dn.data(), memsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(sw_flux_up_g, sw_flux_up.data(), memsize, cudaMemcpyHostToDevice));
+}
+
+template<typename TF>
+void Radiation_prescribed<TF>::backward_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize = gd.ijcells*sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(lw_flux_dn.data(), lw_flux_dn_g, memsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(lw_flux_up.data(), lw_flux_up_g, memsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(sw_flux_dn.data(), sw_flux_dn_g, memsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(sw_flux_up.data(), sw_flux_up_g, memsize, cudaMemcpyDeviceToHost));
 }
 #endif
 
