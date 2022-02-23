@@ -146,11 +146,12 @@ t_soil[:] = 291
 root_frac = np.array([0.04, 0.23, 0.38, 0.35])
 
 # Time varying prescribed radiation
-time_tdep_sfc = np.array([0, 21600])
-sw_flux_dn = np.array([0, 900])
-sw_flux_up = 0.1*sw_flux_dn
-lw_flux_dn = np.array([300, 350])
-lw_flux_up = np.array([350, 400])
+time_tdep_sfc = np.arange(0, 21600.01, 300)
+sw_flux_dn = (-np.cos(2*np.pi*time_tdep_sfc/21600)/2+0.4)*800
+sw_flux_dn[sw_flux_dn < 0] = 0
+sw_flux_up = 0.2*sw_flux_dn
+lw_flux_dn = np.ones_like(time_tdep_sfc)*350
+lw_flux_up = np.ones_like(time_tdep_sfc)*400
 
 # -------------------------
 # Write LES input to NetCDF
