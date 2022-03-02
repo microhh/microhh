@@ -687,7 +687,7 @@ void Fields<TF>::init_momentum_field(
 {
     if (mp.find(fldname) != mp.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_momentum_field ";
         throw std::runtime_error(msg);
     }
 
@@ -715,7 +715,7 @@ void Fields<TF>::init_prognostic_field(
 {
     if (sp.find(fldname)!=sp.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_field";
         throw std::runtime_error(msg);
     }
 
@@ -741,7 +741,7 @@ void Fields<TF>::init_prognostic_soil_field(
 {
     if (sps.find(fldname)!=sps.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_soil_field";
         throw std::runtime_error(msg);
     }
 
@@ -760,7 +760,7 @@ void Fields<TF>::init_prognostic_2d_field(const std::string& fldname)
 {
     if (ap2d.find(fldname)!=ap2d.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_2d_field";
         throw std::runtime_error(msg);
     }
 
@@ -777,7 +777,7 @@ void Fields<TF>::init_diagnostic_field(
 {
     if (sd.find(fldname)!=sd.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_diagnostic_field";
         throw std::runtime_error(msg);
     }
 

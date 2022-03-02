@@ -36,6 +36,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+//template<typename> class Boundary_surface_lsm;
 
 /**
  * Class that creates a deposition liniked to the chemistry
@@ -79,7 +80,8 @@ class Deposition
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-
+		// std::shared_ptr<Boundary_surface_lsm<TF>> boundary_surface_lsm;
+		
 	// internal variable
 	struct Deposition_var
 	{
@@ -91,6 +93,20 @@ class Deposition
         Deposition_map cmap;
 
 	TF deposition_var;   // here put the local vars
+	TF henry_so2;
+	TF rsoil_so2;
+	TF rwat_so2;
+	//TF lai; 
+	std::vector<TF> rmes;
+	std::vector<TF> rsoil;
+	std::vector<TF> rcut;
+	std::vector<TF> rwat;
+	std::vector<TF> diff;
+	std::vector<TF> diff_scl;
+	std::vector<TF> henry;
+	std::vector<TF> f0;
+	
+	std::vector<TF> lai;
 
 	TF vd_o3,vd_no,vd_no2,vd_hno3,vd_h2o2,vd_rooh,vd_hcho;
 

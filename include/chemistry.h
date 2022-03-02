@@ -33,6 +33,7 @@
 class Master;
 class Input;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Stats;
 template<typename> class Deposition;
