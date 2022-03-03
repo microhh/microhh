@@ -303,8 +303,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		erh      = TF(0.0);
 		eno      = TF(0.0);
 	    }
-	    TF coh = 0.0;
-	    int noh = 0;
+	    //TF coh = 0.0;
+	    //int noh = 0;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -328,8 +328,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
                     VAR[ind_NO3]     = std::max((no3[ijk]   +tno3[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_NO2]     = std::max((no2[ijk]   +tno2[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_OH]      = std::max((oh[ijk]    +toh[ijk]   *sdt)*CFACTOR,(TF)0.0);
-		    coh += oh[ijk];
-		    noh += 1;
+		    //coh += oh[ijk];
+		    //noh += 1;
 
 		    RCONST[0] = (ARR3((TF)1.7E-12,(TF)-940.,TEMP));
 		    RCONST[1] = (ARR3((TF)1.E-14,(TF)-490.,TEMP));
@@ -444,7 +444,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
 		    // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
                 } /* i */
-	printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
+	//printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
 	}
     //printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
