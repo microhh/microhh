@@ -303,8 +303,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		erh      = TF(0.0);
 		eno      = TF(0.0);
 	    }
-	    //TF coh = 0.0;
-	    //int noh = 0;
+	    TF coh = 0.0;
+	    int noh = 0;
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -328,8 +328,8 @@ double CFACTOR;                          /* Conversion factor for concentration 
                     VAR[ind_NO3]     = std::max((no3[ijk]   +tno3[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_NO2]     = std::max((no2[ijk]   +tno2[ijk]  *sdt)*CFACTOR,(TF)0.0);
                     VAR[ind_OH]      = std::max((oh[ijk]    +toh[ijk]   *sdt)*CFACTOR,(TF)0.0);
-		    //coh += oh[ijk];
-		    //noh += 1;
+		    coh += oh[ijk];
+		    noh += 1;
 
 		    RCONST[0] = (ARR3((TF)1.7E-12,(TF)-940.,TEMP));
 		    RCONST[1] = (ARR3((TF)1.E-14,(TF)-490.,TEMP));
@@ -444,7 +444,7 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		    // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
 		    // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
                 } /* i */
-	//printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
+	printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt); 
 	}
     //printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
@@ -458,7 +458,6 @@ Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
     deposition = std::make_shared<Deposition <TF>>(masterin, gridin, fieldsin, inputin);
-    /* fields.init_diagnostic_field("oh","oh","ppb", group_name, gd.sloc);  */
 }
 
 template <typename TF>
@@ -766,7 +765,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.st.at("no3")    ->fld.data(), fields.sp.at("no3")->fld.data(), 
 	    fields.st.at("no2")    ->fld.data(), fields.sp.at("no2")->fld.data(), 
 	    fields.st.at("oh")     ->fld.data(), fields.sp.at("oh")->fld.data(), 
-	    jval,emval,vdo3.data(),vdno.data(),vdno2.data(),vdhno3.data(),vdh2o2.data(),vdrooh.data(),vdhcho.data(),
+	    jval,emval, vdo3.data(),vdno.data(),vdno2.data(),vdhno3.data(),vdh2o2.data(),vdrooh.data(),vdhcho.data(),
 	    rfa.data(), trfa,
 	    fields.sp.at("qt") ->fld.data(),
 	    Temp ->fld.data(), dt, sdt, switch_dt,
