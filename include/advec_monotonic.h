@@ -13,7 +13,8 @@ namespace Advec_monotonic
 
         if (u >= TF(0.))
         {
-            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
+            const TF two_r = TF(2.) * (sp1-sm1) / denom;
             const TF phi = std::max(
                     TF(0.),
                     std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
@@ -21,7 +22,8 @@ namespace Advec_monotonic
         }
         else
         {
-            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
+            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
+            const TF two_r = TF(2.) * (sm1-sp1) / denom;
             const TF phi = std::max(
                     TF(0.),
                     std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
@@ -41,7 +43,8 @@ namespace Advec_monotonic
         }
         else
         {
-            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
+            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
+            const TF two_r = TF(2.) * (sm1-sp1) / denom;
             const TF phi = std::max(
                     TF(0.),
                     std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
@@ -57,7 +60,8 @@ namespace Advec_monotonic
 
         if (u >= TF(0.))
         {
-            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
+            const TF two_r = TF(2.) * (sp1-sm1) / denom;
             const TF phi = std::max(
                     TF(0.),
                     std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
