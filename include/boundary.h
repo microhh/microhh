@@ -138,6 +138,7 @@ class Boundary
         virtual const std::vector<TF>& get_dudz() const;
         virtual const std::vector<TF>& get_dvdz() const;
         virtual const std::vector<TF>& get_dbdz() const;
+	virtual const std::vector<TF>& get_lai() const;
 	virtual const Tile_map<TF>& get_tiles() const;
 
         #ifdef USECUDA

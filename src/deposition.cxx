@@ -45,7 +45,7 @@
 namespace 
 {
 	
-	template<typename TF>
+    template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld,
             const TF* const restrict c_veg,
@@ -74,7 +74,7 @@ namespace
 	
     template<typename TF>
     void calc_deposition_per_tile(
-		const std::basic_string<char> lu_type, 
+	    const std::basic_string<char> lu_type, 
 	    TF* restrict vdo3,
 	    TF* restrict vdno,
 	    TF* restrict vdno2,
@@ -82,84 +82,118 @@ namespace
 	    TF* restrict vdh2o2,
 	    TF* restrict vdrooh,
 	    TF* restrict vdhcho,
-		const TF* restrict lai,
-		const TF* restrict rs,
-		const TF* restrict ra, 
-		const TF* restrict ustar, 
-		const TF restrict henry_so2, 
-		const TF restrict rsoil_so2, 
-		const TF restrict rwat_so2, 
-		std::vector<TF> rmes, 
-		std::vector<TF> rsoil,
-		std::vector<TF> rcut,
-		std::vector<TF> rwat,
-		std::vector<TF> diff_scl,
-		std::vector<TF> henry,
-		std::vector<TF> f0,
+       	    const TF* const restrict lai,
+	    const TF* const restrict rs,
+	    const TF* const restrict ra, 
+	    const TF* const restrict ustar, 
 	    const TF* const restrict fraction,
-            const int istart, const int iend, const int jstart, const int jend, const int jj)
+	    const TF* const restrict rmes,  
+	    const TF* const restrict rsoil, 
+  	    const TF* const restrict rcut,
+	    const TF* const restrict rwat,
+	    const TF* const restrict diff_scl,
+	    const int istart, const int iend, const int jstart, const int jend, const int jj)
     {
     
-	int ntrac_vd = 7;
-	const TF ckarman = 0.4;
-	//const TF lai = (TF)2.0; // constant for now...
-	const TF hc = (TF)10.0; // constant for now...
-	TF ra_inc = 0.0;
-	
-	for (int j=jstart; j<jend; ++j)
-		for (int i=istart; i<iend; ++i)
-		{
+		const int ntrac_vd = 7;
+		const TF ckarman = (TF)0.4;
+		const TF hc = (TF)10.0; // constant for now...
+		std::vector<TF> rb(ntrac_vd, (TF)0.0);
+		std::vector<TF> rc(ntrac_vd, (TF)0.0);
+		
+		if (lu_type == "veg") {
+			printf("In calc_deposition_per_tile for lu_type == veg \n");
 			
-        	const int ij = i + j*jj;
+			// Note: I think memory-wise it's more efficient to first loop over ij and then over species,
+			// because otherwise rb and rc vectors must be allocated for the entire grid instead of for
+			// the number of tracers. Also, it avoids the use of if statements (e.g. "if (t==0) vdo3[ij] = ...")
 			
-			// Do not calculate Vd if tile fraction is smile
-			if (fraction[ij] < (TF) 1e-12) continue;
+			std::vector<TF> rmes_local = {rmes[0], rmes[1], rmes[2], rmes[3], rmes[4], rmes[5], rmes[6]};
 			
-			// Loop over species
-			std::vector<TF> rb(ntrac_vd, (TF)0.0);
-			std::vector<TF> rc(ntrac_vd, (TF)0.0);
-			
-			for (int tn=0; tn<ntrac_vd; ++tn) {
-				
-				if (lu_type == "veg") {
+			for (int j=jstart; j<jend; ++j)
+				for (int i=istart; i<iend; ++i) {
 					
-					rb[tn] = (TF)2.0 / (ckarman * ustar[ij]) * pow(diff_scl[tn], (TF)2.0/(TF)3.0);
+					const int ij = i + j*jj;
 					
-					//Scale rmes(NO) and rmes(NO2) with rs according to Ganzeveld et al. (1995)
-					rmes[1] *= rs[ij];
-					rmes[2] *= rs[ij];
+					//Do not proceed in loop if tile fraction is small
+					if (fraction[ij] < (TF)1e-12) continue;
 					
-					ra_inc = (TF)14.0 * lai[ij] * hc / ustar[ij];
+					//rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995)
+					rmes_local[1] = rmes[1] * rs[ij];
+					rmes_local[2] = rmes[2] * rs[ij];
+					const TF ra_inc = (TF)14. * hc * lai[ij] / ustar[ij];
 					
-					rc[tn] = TF(1.0) / ((TF)1.0 / (diff_scl[tn] + rs[ij] + rmes[tn]) + (TF)1.0 / rcut[tn] + (TF)1.0 / (ra_inc + rsoil[tn]));
+					for (int t=0; t<ntrac_vd; ++t) {
+						rb[t] = TF(2.0) / (ckarman * ustar[ij]) * diff_scl[t];
+						rc[t] = TF(1.0) / ((TF)1.0 / (diff_scl[t] + rs[ij] + rmes_local[t]) + (TF)1.0 / rcut[t] + (TF)1.0 / (ra_inc + rsoil[t]));
+					}
+					
+					vdo3[ij]   = (TF)1.0 / (ra[ij] + rb[0] + rc[0]);
+					vdno[ij]   = (TF)1.0 / (ra[ij] + rb[1] + rc[1]);
+					vdno2[ij]  = (TF)1.0 / (ra[ij] + rb[2] + rc[2]);
+					vdhno3[ij] = (TF)1.0 / (ra[ij] + rb[3] + rc[3]);
+					vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rc[4]);
+					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rc[5]);
+					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rc[6]);
+					
+					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rc[0],vdo3[ij],vdhcho[ij]);
 				}
-				
-				else if (lu_type == "soil") {
-					
-					rb[tn] = (TF)1.0 / (ckarman * ustar[ij]) * pow(diff_scl[tn], (TF)2.0/(TF(3.0)));
-					rc[tn] = rsoil[tn];
-					
-				}
-				
-				else if (lu_type == "wet") {
-					
-					rb[tn] = (TF)1.0 / (ckarman * ustar[ij]) * pow(diff_scl[tn], (TF)2.0/(TF(3.0)));
-					rc[tn] = rwat[tn];
-					
-				}	
-			}
-		vdo3[ij]   = TF(1.0) / (ra[ij] + rb[0] + rc[0]);
-		vdno[ij]   = TF(1.0) / (ra[ij] + rb[1] + rc[1]);
-		vdno2[ij]  = TF(1.0) / (ra[ij] + rb[2] + rc[2]);
-		vdhno3[ij] = TF(1.0) / (ra[ij] + rb[3] + rc[3]);
-		vdh2o2[ij] = TF(1.0) / (ra[ij] + rb[4] + rc[4]);
-		vdrooh[ij] = TF(1.0) / (ra[ij] + rb[5] + rc[5]);
-		vdhcho[ij] = TF(1.0) / (ra[ij] + rb[6] + rc[6]);
-		printf("ij: %i, lu_type: %s, vdo3: %13.5e, vdhcho: %13.5e \n", ij, lu_type.c_str(), vdo3[ij], vdhcho[ij]);
+			
 		}
+		
+		else if (lu_type == "soil") {
 			
+			for (int j=jstart; j<jend; ++j)
+				for (int i=istart; i<iend; ++i) {
+					
+					const int ij = i + j*jj;
+					
+					//Do not proceed in loop if tile fraction is small
+					if (fraction[ij] < (TF)1e-12) continue;
+					
+					for (int t=0; t<ntrac_vd; ++t) {
+						rb[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
+					}
+					
+					vdo3[ij]   = (TF)1.0 / (ra[ij] + rb[0] + rsoil[0]);
+					vdno[ij]   = (TF)1.0 / (ra[ij] + rb[1] + rsoil[1]);
+					vdno2[ij]  = (TF)1.0 / (ra[ij] + rb[2] + rsoil[2]);
+					vdhno3[ij] = (TF)1.0 / (ra[ij] + rb[3] + rsoil[3]);
+					vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rsoil[4]);
+					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rsoil[5]);
+					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rsoil[6]);
+					
+					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rsoil[0],vdo3[ij],vdhcho[ij]);
+				}
+		}
+		
+		else if (lu_type == "wet") {
+			
+			for (int j=jstart; j<jend; ++j)
+				for (int i=istart; i<iend; ++i) {
+					
+					const int ij = i + j*jj;
+					
+					//Do not proceed in loop if tile fraction is small
+					if (fraction[ij] < (TF)1e-12) continue;
+					
+					for (int t=0; t<ntrac_vd; ++t) {
+						rb[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
+					}
+					
+					vdo3[ij]   = (TF)1.0 / (ra[ij] + rb[0] + rwat[0]);
+					vdno[ij]   = (TF)1.0 / (ra[ij] + rb[1] + rwat[1]);
+					vdno2[ij]  = (TF)1.0 / (ra[ij] + rb[2] + rwat[2]);
+					vdhno3[ij] = (TF)1.0 / (ra[ij] + rb[3] + rwat[3]);
+					vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rwat[4]);
+					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rwat[5]);
+					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rwat[6]);
+					
+					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rwat[0],vdo3[ij],vdhcho[ij]);
+				}
+			
+		}
 	}
-	
 }
 
 template<typename TF>
@@ -169,6 +203,7 @@ Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
+	//boundary_surface_lsm = std::make_shared<Boundary_surface_lsm <TF>>(masterin, gridin, soilgridin, fieldsin, inputin);
 
 }
 
@@ -183,7 +218,6 @@ void Deposition<TF>::init(Input& inputin)
     for (auto& it : fields.st)
     {
         const std::string type = inputin.get_item<std::string>("deposition", "swdeposition", it.first, "0");
-	printf(" Deposition: it.first %s type %s \n",it.first.c_str(),type.c_str());
         if (type == "0")
         {
             // Cycle to avoid reading unneeded namelist options.
@@ -234,26 +268,32 @@ void Deposition<TF>::init(Input& inputin)
     vd_rooh = inputin.get_item<TF>("deposition", "vdrooh", "", (TF)0.008);
     vd_hcho = inputin.get_item<TF>("deposition", "vdhcho", "", (TF)0.0033);
 	
-	henry_so2 = inputin.get_item<TF>("deposition", "henry_so2", "", (TF)1e5);
-	rsoil_so2 = inputin.get_item<TF>("deposition", "rsoil_so2", "", (TF)250.0);
-	rwat_so2 = inputin.get_item<TF>("deposition", "rwat_so2", "", (TF)1.0);
+    henry_so2 = inputin.get_item<TF>("deposition", "henry_so2", "", (TF)1e5);
+    rsoil_so2 = inputin.get_item<TF>("deposition", "rsoil_so2", "", (TF)250.0);
+    rwat_so2 = inputin.get_item<TF>("deposition", "rwat_so2", "", (TF)1.0);
 	
-	//note: rmes for NO and NO2 (indices 1 and 2) will still be scaled with rs
-	rmes     = {(TF)1.0, (TF)5.0, (TF)0.5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-	rsoil    = {(TF)400.0, (TF)1e5, (TF)600.0, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-	rcut     = {(TF)1e5, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-	rwat     = {(TF)2000.0, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-	diff     = {(TF)0.13, (TF)0.16, (TF)0.13, (TF)0.11, (TF)0.15, (TF)0.13, (TF)0.16};
-	diff_scl = {(TF)1.6, (TF)1.3, (TF)1.6, (TF)1.9, (TF)1.4, (TF)1.6, (TF)1.3};
-	henry    = {(TF)0.01, (TF)2e-3, (TF)0.01, (TF)1e14, (TF)1e5, (TF)240., (TF)6e3};
-	f0       = {(TF)1.0, (TF)0.0, (TF)0.1, (TF)0.0, (TF)1.0, (TF)0.1, (TF)0.0};
-	printf("rmes %13e \n",rmes[0]);
+    //note: rmes for NO and NO2 (indices 1 and 2) will still be scaled with rs
+    rmes     = {(TF)1.0, (TF)5.0, (TF)0.5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
+    rsoil    = {(TF)400.0, (TF)1e5, (TF)600.0, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
+    rcut     = {(TF)1e5, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
+    rwat     = {(TF)2000.0, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
+    diff     = {(TF)0.13, (TF)0.16, (TF)0.13, (TF)0.11, (TF)0.15, (TF)0.13, (TF)0.16};
+    diff_scl = {(TF)1.6, (TF)1.3, (TF)1.6, (TF)1.9, (TF)1.4, (TF)1.6, (TF)1.3};
+    henry    = {(TF)0.01, (TF)2e-3, (TF)0.01, (TF)1e14, (TF)1e5, (TF)240., (TF)6e3};
+    f0       = {(TF)1.0, (TF)0.0, (TF)0.1, (TF)0.0, (TF)1.0, (TF)0.1, (TF)0.0};
 	
-	//Initialize land surface here and retrieve lai
-	//std::fill(lai.begin(),lai.end(),boundary_surface_lsm-> get_lai("lai"));
-	//printf("Retrieved lai at ij=20: %13.5e",lai[20]);
+    //define uninitialized resistance values by scaling with O3 and SO2 resistances (Wesely 1989)
+    for (int i=3; i<7; i++) {
+		rmes[i]  = (TF)1.0 / (henry[i] / (TF)3000.0 + (TF)100.0 * f0[i]);
+		rsoil[i] = (TF)1.0 / (henry[i] / (henry_so2 + rsoil_so2) + f0[i] / rsoil[0]);
+		rcut[i]  = (TF)1.0 / (henry[i] / henry_so2  + f0[i]) * rcut[0];
+		rwat[i]  = (TF)1.0 / (henry[i] / (henry_so2 + rwat_so2)  + f0[i] / rwat[0]);
+    }
 	
-	// fill also tile info
+    //Change diff_scl to diff_scl^(2/3) for use in rb calculation
+    for (int i=0; i<7; i++) diff_scl[i] = pow(diff_scl[i], (TF)2.0/(TF)3.0);
+	
+	
     for (auto& tile : deposition_tiles){
         std::fill(tile.second.vdo3.begin(),tile.second.vdo3.end(), vd_o3);
         std::fill(tile.second.vdno.begin(),tile.second.vdno.end(), vd_no);
@@ -286,15 +326,15 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::disabled) return;
     for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::simple) return;
     auto& gd = grid.get_grid_data();
-
+	
     // get information from lsm:
     auto& tiles = boundary.get_tiles();
+    auto& lai = boundary.get_lai();
 	
-	// calculate deposition per tile:
+    // calculate deposition per tile:
     for (auto& tile : tiles){
-	    printf("Tiles from boundary_surface_lsm: %s  \n",tile.first.c_str());
 	    calc_deposition_per_tile(
-			tile.first, 
+    		    tile.first, 
 		    deposition_tiles.at(tile.first).vdo3.data(),
 		    deposition_tiles.at(tile.first).vdno.data(),
 		    deposition_tiles.at(tile.first).vdno2.data(),
@@ -302,13 +342,12 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
 		    deposition_tiles.at(tile.first).vdh2o2.data(),
 		    deposition_tiles.at(tile.first).vdrooh.data(),
 		    deposition_tiles.at(tile.first).vdhcho.data(),
-			lai.data(), 
-			tiles.at(tile.first).rs.data(), 
-			tiles.at(tile.first).ra.data(), 
-			tiles.at(tile.first).ustar.data(), 
-			henry_so2, rsoil_so2, rwat_so2, rmes, rsoil, 
-			rcut, rwat, diff_scl, henry, f0, 
-		    tile.second.fraction.data(),
+		    lai.data(), 
+		    tile.second.rs.data(),    
+		    tile.second.ra.data(), 
+		    tile.second.ustar.data(), 
+                    tile.second.fraction.data(),
+   		    rmes.data(), rsoil.data(), rcut.data(), rwat.data(), diff_scl.data(),   // pass as constant....
 	            gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
     }
     // calculate tile-mean deposition for chemistry

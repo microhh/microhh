@@ -72,7 +72,8 @@ class Boundary_surface_lsm : public Boundary<TF>
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
-	const Tile_map<TF>& get_tiles() const { return tiles; }
+	const std::vector<TF>& get_lai()  const { return lai; }                   //< get the standard lai value
+	const Tile_map<TF>& get_tiles()   const { return tiles; }
 
         void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
