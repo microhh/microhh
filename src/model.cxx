@@ -261,7 +261,7 @@ void Model<TF>::load()
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
-    chemistry->create(*timeloop, sim_name, *input_nc, *stats);
+    chemistry->create(*timeloop, sim_name, *input_nc, *stats, *cross);
     limiter->create(*stats);
 
     // Cross and dump both need to be called at/near the
@@ -617,6 +617,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
+        chemistry->exec_cross(*cross, iotime);
     }
 
     // Save the 3d dumps to disk.

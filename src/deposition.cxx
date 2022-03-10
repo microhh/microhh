@@ -39,6 +39,7 @@
 #include "deposition.h"
 #include "boundary_surface_lsm.h"
 #include "boundary.h"
+#include "cross.h"
 
 
 
@@ -102,7 +103,6 @@ namespace
 		std::vector<TF> rc(ntrac_vd, (TF)0.0);
 		
 		if (lu_type == "veg") {
-			printf("In calc_deposition_per_tile for lu_type == veg \n");
 			
 			// Note: I think memory-wise it's more efficient to first loop over ij and then over species,
 			// because otherwise rb and rc vectors must be allocated for the entire grid instead of for
@@ -135,8 +135,6 @@ namespace
 					vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rc[4]);
 					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rc[5]);
 					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rc[6]);
-					
-					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rc[0],vdo3[ij],vdhcho[ij]);
 				}
 			
 		}
@@ -162,13 +160,13 @@ namespace
 					vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rsoil[4]);
 					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rsoil[5]);
 					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rsoil[6]);
+
 					
-					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rsoil[0],vdo3[ij],vdhcho[ij]);
 				}
 		}
 		
 		else if (lu_type == "wet") {
-			
+			 
 			for (int j=jstart; j<jend; ++j)
 				for (int i=istart; i<iend; ++i) {
 					
@@ -189,7 +187,6 @@ namespace
 					vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rwat[5]);
 					vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rwat[6]);
 					
-					//printf("ij: %i, lu_type: %s, rc_o3: %13.5e, vdo3: %13.5e, vdhcho: %13.5e \n",ij,lu_type.c_str(),rwat[0],vdo3[ij],vdhcho[ij]);
 				}
 			
 		}
@@ -203,7 +200,8 @@ Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
-	//boundary_surface_lsm = std::make_shared<Boundary_surface_lsm <TF>>(masterin, gridin, soilgridin, fieldsin, inputin);
+    // write states of deposition tiles?
+    sw_tile_stats    = inputin.get_item<bool>("deposition", "swtilestats", "", false);
 
 }
 
@@ -306,8 +304,22 @@ void Deposition<TF>::init(Input& inputin)
 }
 
 template <typename TF>
-void Deposition<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Deposition<TF>::create(Stats<TF>& stats, Cross<TF>& cross)
 {
+    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::disabled) return;
+    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::simple) return;
+
+    // add cross-sections 
+    if (cross.get_switch())
+    {
+	    if (sw_tile_stats) 
+	    {
+		std::vector<std::string> allowed_crossvars = {"vdo3_soil", "vdno_soil", "vdno2_soil", "vdhno3_soil", "vdh2o2_soil", "vdrooh_soil", "vdhcho_soil",
+		                                              "vdo3_wet", "vdno_wet", "vdno2_wet", "vdhno3_wet", "vdh2o2_wet", "vdrooh_wet", "vdhcho_wet",
+		                                              "vdo3_veg", "vdno_veg", "vdno2_veg", "vdhno3_veg", "vdh2o2_veg", "vdrooh_veg", "vdhcho_veg"};
+		cross_list = cross.get_enabled_variables(allowed_crossvars);
+	    }
+    }
 
 }
 
@@ -359,6 +371,61 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     get_tiled_mean(vdrooh,"rooh",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
     get_tiled_mean(vdhcho,"hcho",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
 }
+
+template<typename TF>
+void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+{
+    if (sw_tile_stats)
+    {
+	    auto& gd = grid.get_grid_data();
+	    for (auto& it : cross_list)
+	    {
+		if (it == "vdo3_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdo3.data(), it, iotime);
+		else if (it == "vdno_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdno.data(), it, iotime);
+		else if (it == "vdno2_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdno2.data(), it, iotime);
+		else if (it == "vdhno3_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdhno3.data(), it, iotime);
+		else if (it == "vdh2o2_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdh2o2.data(), it, iotime);
+		else if (it == "vdrooh_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdrooh.data(), it, iotime);
+		else if (it == "vdhcho_veg")
+		    cross.cross_plane(deposition_tiles.at("veg").vdhcho.data(), it, iotime);
+		else if (it == "vdo3_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdo3.data(), it, iotime);
+		else if (it == "vdno_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdno.data(), it, iotime);
+		else if (it == "vdno2_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdno2.data(), it, iotime);
+		else if (it == "vdhno3_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdhno3.data(), it, iotime);
+		else if (it == "vdh2o2_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdh2o2.data(), it, iotime);
+		else if (it == "vdrooh_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdrooh.data(), it, iotime);
+		else if (it == "vdhcho_soil")
+		    cross.cross_plane(deposition_tiles.at("soil").vdhcho.data(), it, iotime);
+		else if (it == "vdo3_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdo3.data(), it, iotime);
+		else if (it == "vdno_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdno.data(), it, iotime);
+		else if (it == "vdno2_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdno2.data(), it, iotime);
+		else if (it == "vdhno3_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdhno3.data(), it, iotime);
+		else if (it == "vdh2o2_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdh2o2.data(), it, iotime);
+		else if (it == "vdrooh_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdrooh.data(), it, iotime);
+		else if (it == "vdhcho_wet")
+		    cross.cross_plane(deposition_tiles.at("wet").vdhcho.data(), it, iotime);
+	    }
+    }
+}
+
 
 // routine to return standard deposition value:
 template<typename TF>

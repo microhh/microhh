@@ -40,6 +40,7 @@
 #include "timeloop.h"
 #include "deposition.h"
 #include "boundary.h"
+#include "cross.h"
 
 
 namespace 
@@ -474,10 +475,16 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
 
-    /* stats.calc_stats("oh", *fields.sd.at("oh"), no_offset, no_threshold);  */
-
-    if (iteration != 0)   // this does not make sense for first step
+    if (iteration != 0)   // this does not make sense for first step = t=0.
     {
+	    // add deposition velocities to statistics:
+	    stats.calc_stats_2d("vdo3"   , vdo3,   no_offset);
+	    stats.calc_stats_2d("vdno"   , vdno,   no_offset);
+	    stats.calc_stats_2d("vdno2"  , vdno2,  no_offset);
+	    stats.calc_stats_2d("vdhno3" , vdhno3, no_offset);
+	    stats.calc_stats_2d("vdh2o2" , vdh2o2, no_offset);
+	    stats.calc_stats_2d("vdrooh" , vdrooh, no_offset);
+	    stats.calc_stats_2d("vdhcho" , vdhcho, no_offset);
 
 	    // sum of all PEs: 
 	    // printf("trfa: %13.4e iteration: %i time: %13.4e \n", trfa,iteration,time);
@@ -572,12 +579,9 @@ void Chemistry<TF>::init(Input& inputin)
 }
 
 template <typename TF>
-void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats,Cross<TF>& cross)
 {
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
-
-    // nothing yet deposition->create(timeloop, sim_name, input_nc, stats);
-    //
 
     Netcdf_group& group_nc = input_nc.get_group("timedep_chem");
     int time_dim_length;
@@ -652,6 +656,7 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     m.data_file->add_dimension("z",  gd.kmax);
     m.data_file->add_dimension("zh", gd.kmax+1);
     m.data_file->add_dimension("rfaz", NREACT*gd.ktot);
+    m.data_file->add_dimension("ijcells",gd.ijcells);
     m.data_file->add_dimension("time");
 
     // Create variables belonging to dimensions.
@@ -696,7 +701,6 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     m.profs.at(name).ncvar.add_attribute("units", unit);
     m.profs.at(name).ncvar.add_attribute("long_name", longname);
 
-
     // Save the grid variables.
     std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
     std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
@@ -709,8 +713,56 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     m.nmask. resize(gd.kcells);
     m.nmaskh.resize(gd.kcells);
 
+    // add the deposition-velocity timeseries in deposition group statistics
+    //
+    const std::string group_named = "deposition";
+    if (stats.get_switch())
+    {
+        // used in chemistry:
+        stats.add_time_series("vdo3"  , "O3 deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdno"  , "NO deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdno2" , "NO2 deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdhno3", "HNO3 deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdh2o2", "H2O2 deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdrooh", "ROOH deposition velocity", "m s-1", group_named);
+        stats.add_time_series("vdhcho", "HCHO deposition velocity", "m s-1", group_named);
+	// check if tile info has to be added:
+	deposition->create(stats,cross);
+    }
+    // add cross-sections 
+    if (cross.get_switch())
+    {
+        std::vector<std::string> allowed_crossvars = {"vdo3", "vdno", "vdno2", "vdhno3", "vdh2o2", "vdrooh", "vdhcho"};
+        cross_list = cross.get_enabled_variables(allowed_crossvars);
+    }
 }
 
+template<typename TF>
+void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& it : cross_list)
+    {
+        if (it == "vdo3")
+            cross.cross_plane(vdo3.data(), "vdo3", iotime);
+        else if (it == "vdno")
+            cross.cross_plane(vdno.data(), "vdno", iotime);
+        else if (it == "vdno2")
+            cross.cross_plane(vdno2.data(), "vdno2", iotime);
+        else if (it == "vdhno3")
+            cross.cross_plane(vdhno3.data(), "vdhno3", iotime);
+        else if (it == "vdh2o2")
+            cross.cross_plane(vdh2o2.data(), "vdh2o2", iotime);
+        else if (it == "vdrooh")
+            cross.cross_plane(vdrooh.data(), "vdrooh", iotime);
+        else if (it == "vdhcho")
+            cross.cross_plane(vdhcho.data(), "vdhcho", iotime);
+    }
+    // see if to write per tile:
+    deposition->exec_cross(cross,iotime);
+
+}
 
 template <typename TF>
 void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)

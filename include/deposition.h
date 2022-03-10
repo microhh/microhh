@@ -69,12 +69,16 @@ class Deposition
         ~Deposition();                                       ///< Destructor  of the chemistry class.
 
         void init(Input&);                 ///< Initialize the arrays that contain the profiles.
-        void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void create(Stats<TF>&, Cross<TF>&); 
         void update_time_dependent(Timeloop<TF>&, Boundary<TF>&,
 			 TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
         void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
+        void exec_cross(Cross<TF>&, unsigned long);
+
+    protected:
+        std::vector<std::string> cross_list;         // List of active cross variables
 
     private:
         Master& master;
@@ -112,6 +116,7 @@ class Deposition
         std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
         Deposition_tile_map<TF> deposition_tiles;
 
+        bool sw_tile_stats;
 
         const std::string tend_name = "deposition";
         const std::string tend_longname = "Deposition";
