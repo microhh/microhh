@@ -1099,6 +1099,18 @@ const std::vector<TF>& Boundary<TF>::get_lai() const
 }
 
 template<typename TF>
+const std::vector<int>& Boundary<TF>::get_water_mask() const
+{
+    throw std::runtime_error("Function get_water_mask() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_c_veg() const
+{
+    throw std::runtime_error("Function get_c_veg() not implemented in base boundary.");
+}
+
+template<typename TF>
 const Tile_map<TF>& Boundary<TF>::get_tiles() const
 {
     throw std::runtime_error("Function get_tiles() not implemented in base boundary.");

@@ -75,6 +75,7 @@ class Deposition
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
         void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
+	void update_vd_water(TF*, std::string, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
 
     protected:
@@ -100,10 +101,12 @@ class Deposition
 	TF henry_so2;
 	TF rsoil_so2;
 	TF rwat_so2;
+	TF rws_so2;
 	//TF lai; 
 	std::vector<TF> rmes;
 	std::vector<TF> rsoil;
 	std::vector<TF> rcut;
+	std::vector<TF> rws;
 	std::vector<TF> rwat;
 	std::vector<TF> diff;
 	std::vector<TF> diff_scl;

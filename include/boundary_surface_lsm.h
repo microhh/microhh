@@ -72,7 +72,9 @@ class Boundary_surface_lsm : public Boundary<TF>
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
-	const std::vector<TF>& get_lai()  const { return lai; }                   //< get the standard lai value
+	const std::vector<TF>& get_lai()  const { return lai; }                   	//< get the standard lai value
+	const std::vector<int>& get_water_mask() const { return water_mask; }	  	//get the water mask
+	const std::vector<TF>& get_c_veg() const { return c_veg; }					//get the vegetation fraction per tile
 	const Tile_map<TF>& get_tiles()   const { return tiles; }
 
         void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
