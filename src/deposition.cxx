@@ -426,15 +426,14 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     get_tiled_mean(vdhcho,"hcho",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
 	
 	
-    // MAQ_AV_20220310+ Update tile-mean deposition velocity for water here
-    // !!! Caution: for now this works with the ra and u* from the soil tile, instead of ra/u* over water !!!
-    update_vd_water(vdo3,"o3",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdno,"no",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdno2,"no2",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdhno3,"hno3",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdh2o2,"h2o2",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdrooh,"rooh",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdhcho,"hcho",tiles.at("soil").ra.data(),tiles.at("soil").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    // MAQ_AV_20220310    cmk: we use the wet-tile info for u* and ra, since these are calculated in lsm with f_wet = 100% 
+    update_vd_water(vdo3,"o3",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdno,"no",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdno2,"no2",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdhno3,"hno3",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdh2o2,"h2o2",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdrooh,"rooh",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+    update_vd_water(vdhcho,"hcho",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
 	
 }
 
