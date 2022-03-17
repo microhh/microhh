@@ -6,6 +6,8 @@ MicroHH is a computational fluid dynamics code made for Direct Numerical Simulat
 
 MicroHH is hosted on GitHub (http://github.com/microhh). Here, the latest version of the source code can be found, as well as all releases. Bug notifications and fixes are always welcome.
 
+A tutorial and documentation is available at: https://microhh.readthedocs.io/en/latest/.
+
 MicroHH is described in detail in [Van Heerwaarden et al. (2017)](http://www.geosci-model-dev-discuss.net/gmd-2017-41/#discussion). In case you decide to use MicroHH for your own research, the developers would appreciate to be notified and kindly request to cite their reference paper. The version described in the reference paper has been assigned a DOI via [Zenodo](https://zenodo.org).
 
 [![DOI](https://zenodo.org/badge/14754940.svg)](https://zenodo.org/badge/latestdoi/14754940)
