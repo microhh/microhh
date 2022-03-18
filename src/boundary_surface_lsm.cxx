@@ -1318,7 +1318,8 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl","fraction_wet","fraction_soil","fraction_veg", "rs_veg","rs_soil",
+                                                            "ustar_wet","ustar_soil","ustar_veg","ra_veg","ra_soil","ra_wet"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1539,7 +1540,6 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
-    auto tmp1 = fields.get_tmp();
 
     for (auto& it : cross_list)
     {
@@ -1549,9 +1549,30 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "wl")
             cross.cross_plane(fields.ap2d.at("wl").data(), "wl", iotime);
+        else if (it == "fraction_wet")
+            cross.cross_plane(tiles.at("wet").fraction.data(), it , iotime);
+        else if (it == "fraction_soil")
+            cross.cross_plane(tiles.at("soil").fraction.data(), it , iotime);
+        else if (it == "fraction_veg")
+            cross.cross_plane(tiles.at("veg").fraction.data(), it, iotime);
+        else if (it == "rs_veg")
+            cross.cross_plane(tiles.at("veg").rs.data(), it, iotime);
+        else if (it == "rs_soil")
+            cross.cross_plane(tiles.at("soil").rs.data(), it, iotime);
+        else if (it == "ustar_soil")
+            cross.cross_plane(tiles.at("soil").ustar.data(), it, iotime);
+        else if (it == "ustar_wet")
+            cross.cross_plane(tiles.at("wet").ustar.data(), it, iotime);
+        else if (it == "ustar_veg")
+            cross.cross_plane(tiles.at("veg").ustar.data(), it, iotime);
+        else if (it == "ra_soil")
+            cross.cross_plane(tiles.at("soil").ra.data(), it, iotime);
+        else if (it == "ra_wet")
+            cross.cross_plane(tiles.at("wet").ra.data(), it, iotime);
+        else if (it == "ra_veg")
+            cross.cross_plane(tiles.at("veg").ra.data(), it, iotime);
     }
 
-    fields.release_tmp(tmp1);
 }
 
 template<typename TF>

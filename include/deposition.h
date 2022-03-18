@@ -84,8 +84,8 @@ class Deposition
     private:
         Master& master;
         Grid<TF>& grid;
-		Fields<TF>& fields;
-		std::shared_ptr<Boundary_surface_lsm<TF>> boundary_surface_lsm;
+	Fields<TF>& fields;
+	std::shared_ptr<Boundary_surface_lsm<TF>> boundary_surface_lsm;
 		
 	// internal variable
 	struct Deposition_var
@@ -119,7 +119,6 @@ class Deposition
         std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
         Deposition_tile_map<TF> deposition_tiles;
 
-        bool sw_tile_stats;
 
         const std::string tend_name = "deposition";
         const std::string tend_longname = "Deposition";
