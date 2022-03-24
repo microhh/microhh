@@ -62,7 +62,6 @@ namespace Boundary_surface_kernels
                 {
                     const int ij = i + j*jj;
                     agrad[ij] = aval;
-                    aflux[ij] = -aval*visc;
                 }
         }
         else if (sw == Boundary_type::Flux_type)
@@ -73,7 +72,6 @@ namespace Boundary_surface_kernels
                 {
                     const int ij = i + j*jj;
                     aflux[ij] = aval;
-                    agrad[ij] = -aval/visc;
                 }
         }
     }
@@ -376,10 +374,9 @@ namespace Boundary_surface_kernels
         TF Lstart, Lend;
         TF fx, fxdif;
 
-
         int m = 0;
         int nlim = 10;
-        const TF Lmax = 1.e20;
+        const TF Lmax = 1.e16;
 
         const TF L_min_stable = zsl / zL_max<TF>;
 
@@ -417,7 +414,7 @@ namespace Boundary_surface_kernels
 
             int n = 0;
 
-            // exit on convergence or on iteration count
+            // Exit on convergence or on iteration count
             while (std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
             {
                 L0     = L;
@@ -427,6 +424,10 @@ namespace Boundary_surface_kernels
                 fxdif  = ( (zsl/Lend   - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lend)   / fm::pow2(du * most::fm(zsl, z0m, Lend  )))
                          - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
+
+                if (std::abs(fxdif) < TF(1e-20))
+                    break;
+
                 L      = L - fx/fxdif;
 
                 if (L >= TF(0) && L < L_min_stable)

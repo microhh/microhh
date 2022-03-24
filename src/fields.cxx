@@ -611,7 +611,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
                 maskh->fld.data(),
                 xymasks.at(mask_name).data(),
                 gd.istart, gd.iend,
-                gd.jstart, gd.kend,
+                gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 

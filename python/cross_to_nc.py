@@ -1,21 +1,21 @@
-# 
+#
 #  MicroHH
 #  Copyright (c) 2011-2020 Chiel van Heerwaarden
 #  Copyright (c) 2011-2020 Thijs Heus
 #  Copyright (c) 2014-2020 Bart van Stratum
-# 
+#
 #  This file is part of MicroHH
-# 
+#
 #  MicroHH is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  MicroHH is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -26,8 +26,11 @@ import argparse
 import collections
 import glob
 import numpy as np
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
+import platform
 
+if platform.system() == 'Darwin':
+    set_start_method('fork')
 
 def convert_to_nc(variables):
     # Loop over the different variables and crosssections
@@ -136,7 +139,7 @@ parser.add_argument(
 parser.add_argument('-f', '--filename', help='ini file name')
 parser.add_argument('-d', '--directory', help='directory')
 parser.add_argument('-v', '--vars', nargs='*', help='variable names')
-parser.add_argument('-x', '--index', nargs='*', help='indices')
+parser.add_argument('-x', '--index', nargs='*', help='indices', type=int)
 parser.add_argument('-t0', '--starttime', help='first time step to be parsed')
 parser.add_argument('-t1', '--endtime', help='last time step to be parsed')
 parser.add_argument(

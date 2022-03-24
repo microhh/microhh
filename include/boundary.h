@@ -95,6 +95,7 @@ class Boundary
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
         void set_prognostic_cyclic_bcs();
+        void set_prognostic_outflow_bcs();
 
         virtual void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface

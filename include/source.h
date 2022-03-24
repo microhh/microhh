@@ -55,6 +55,7 @@ class Source
         std::vector<Shape> shape;
 
         bool swsource;
+        std::vector<bool> sw_vmr;
 
         TF x0;
         TF y0;
@@ -85,7 +86,8 @@ class Source
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
-                std::vector<int>, std::vector<int>, std::vector<int>);
+                std::vector<int>, std::vector<int>, std::vector<int>,
+                const TF* const, const bool);
 };
 #endif
 
