@@ -85,22 +85,22 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
         void create_column_longwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
-                const Gas_concs<TF>&);
+                const Gas_concs&);
         void create_column_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
-                const Gas_concs<TF>&);
+                const Gas_concs&);
 
         void read_background_profiles(
-                Netcdf_handle&, const Gas_concs<TF>&);
+                Netcdf_handle&, const Gas_concs&);
 
         void create_solver(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&);
         void create_solver_longwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
-                const Gas_concs<TF>&);
+                const Gas_concs&);
         void create_solver_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
-                const Gas_concs<TF>&);
+                const Gas_concs&);
 
         void exec_longwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
@@ -172,19 +172,19 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<TF,2> sw_flux_dn_dir_col;
         Array<TF,2> sw_flux_net_col;
 
-        Gas_concs<TF> gas_concs_col;
+        Gas_concs gas_concs_col;
 
-        std::unique_ptr<Source_func_lw<TF>> sources_lw;
-        std::unique_ptr<Optical_props_arry<TF>> optical_props_lw;
-        std::unique_ptr<Optical_props_arry<TF>> optical_props_sw;
+        std::unique_ptr<Source_func_lw> sources_lw;
+        std::unique_ptr<Optical_props_arry> optical_props_lw;
+        std::unique_ptr<Optical_props_arry> optical_props_sw;
 
         // The full solver.
-        Gas_concs<TF> gas_concs;
-        std::unique_ptr<Gas_optics_rrtmgp<TF>> kdist_lw;
-        std::unique_ptr<Gas_optics_rrtmgp<TF>> kdist_sw;
+        Gas_concs gas_concs;
+        std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
+        std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
-        std::unique_ptr<Cloud_optics<TF>> cloud_lw;
-        std::unique_ptr<Cloud_optics<TF>> cloud_sw;
+        std::unique_ptr<Cloud_optics> cloud_lw;
+        std::unique_ptr<Cloud_optics> cloud_sw;
 
         // Surface radiative fluxes
         std::vector<TF> lw_flux_dn_sfc;

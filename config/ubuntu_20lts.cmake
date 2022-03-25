@@ -8,9 +8,9 @@ else()
 endif()
 
 if(USECUDA)
-  set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
+  set(USER_CXX_FLAGS "-std=c++17 -fopenmp")
 else()
-  set(USER_CXX_FLAGS "-std=c++14")
+  set(USER_CXX_FLAGS "-std=c++17")
 endif()
 
 set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
@@ -31,7 +31,7 @@ set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 if(USECUDA)
-  set(USER_CUDA_NVCC_FLAGS "-std=c++14 -arch=sm_70")
+  set(USER_CUDA_NVCC_FLAGS "-std=c++17 -arch=sm_70")
   set(USER_CUDA_NVCC_FLAGS_RELEASE "-Xptxas -O3")
   set(USER_CUDA_FLAGS_DEBUG "-Xptxas -O3 -DCUDACHECKS")
   set(LIBS ${LIBS} cufft)
