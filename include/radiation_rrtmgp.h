@@ -28,6 +28,7 @@
 #include "Gas_optics_rrtmgp.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Types.h"
 
 
 class Master;
