@@ -7,11 +7,11 @@ npy=1
 wallclocklimit=1e9
 
 [grid]
-itot=8
-jtot=8
+itot=64
+jtot=64
 ktot=None
-xsize=800
-ysize=800
+xsize=3200
+ysize=3200
 zsize=None
 utrans=0.0
 vtrans=0.0
