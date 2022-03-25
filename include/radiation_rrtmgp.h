@@ -48,7 +48,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 		Radiation_rrtmgp(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_rrtmgp() {}
 
-		bool check_field_exists(std::string name)
+		bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
 
         void init(Timeloop<TF>&);
@@ -59,9 +59,9 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         unsigned long get_time_limit(unsigned long);
 
-        void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
+        void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
-        std::vector<TF>& get_surface_radiation(std::string);
+        std::vector<TF>& get_surface_radiation(const std::string&);
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,

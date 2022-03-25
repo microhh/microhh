@@ -46,7 +46,7 @@ class Radiation_disabled : public Radiation<TF>
         Radiation_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_disabled();
 
-        bool check_field_exists(std::string name);
+        bool check_field_exists(const std::string& name);
         void init(Timeloop<TF>&) {};
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
@@ -56,10 +56,10 @@ class Radiation_disabled : public Radiation<TF>
         unsigned long get_time_limit(unsigned long);
 
         // Empty functions that should throw
-        void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
+        void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
             { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_disabled"); }
 
-        std::vector<TF>& get_surface_radiation(std::string)
+        std::vector<TF>& get_surface_radiation(const std::string&)
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
         // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
