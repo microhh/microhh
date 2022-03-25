@@ -56,10 +56,10 @@ class Radiation_gcss : public Radiation<TF>
 
         unsigned long get_time_limit(unsigned long);
 
-        bool check_field_exists(std::string name);
-        void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        bool check_field_exists(const std::string& name);
+        void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&);
 
-        std::vector<TF>& get_surface_radiation(std::string)
+        std::vector<TF>& get_surface_radiation(const std::string&)
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
         void exec_all_stats(

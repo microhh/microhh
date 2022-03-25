@@ -242,12 +242,13 @@ if not nl['land_surface']['swhomogeneous']:
     lsm_input.lambda_unstable[:,:] = 5.
     lsm_input.cs_veg[:,:] = 0.
     lsm_input.water_mask[:,:] = 0
+    lsm_input.t_bot_water[:,:] = 290.
     lsm_input.t_soil[:,:,:] = t_soil[:,np.newaxis,np.newaxis]
     lsm_input.index_soil[:,:,:] = index_soil[:,np.newaxis,np.newaxis]
     lsm_input.root_frac[:,:,:] = root_frac[:,np.newaxis,np.newaxis]
 
     # Create irrigation circles as example..
-    n = 4
+    n = 2
     D = xsize / n
 
     # LES spatial grid:
@@ -265,7 +266,7 @@ if not nl['land_surface']['swhomogeneous']:
             x0 = (i+0.5)*D
             y0 = (j+0.5)*D
             d = np.sqrt((x2-x0)**2 + (y2-y0)**2)
-            m = d < (D/2)-25.
+            m = d < (D/2)-50.
             lsm_input.theta_soil[:,m] = theta_moist
 
     # Check if all values are initialised:

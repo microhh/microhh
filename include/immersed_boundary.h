@@ -142,6 +142,9 @@ class Immersed_boundary
         void prepare_device();
         void clear_device();
 
+        IB_type get_switch() const { return sw_ib; }
+
+
     private:
         Master& master;
         Grid<TF>& grid;

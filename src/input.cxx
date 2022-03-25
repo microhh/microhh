@@ -447,8 +447,10 @@ template std::vector<int> Input::get_list<int>(const std::string&, const std::st
 template std::vector<double> Input::get_list<double>(const std::string&, const std::string&, const std::string&);
 template std::vector<float> Input::get_list<float>(const std::string&, const std::string&, const std::string&);
 template std::vector<std::string> Input::get_list<std::string>(const std::string&, const std::string&, const std::string&);
+template std::vector<bool> Input::get_list<bool>(const std::string&, const std::string&, const std::string&);
 
 template std::vector<int> Input::get_list<int>(const std::string&, const std::string&, const std::string&, const std::vector<int>);
 template std::vector<double> Input::get_list<double>(const std::string&, const std::string&, const std::string&, const std::vector<double>);
 template std::vector<float> Input::get_list<float>(const std::string&, const std::string&, const std::string&, const std::vector<float>);
 template std::vector<std::string> Input::get_list<std::string>(const std::string&, const std::string&, const std::string&, const std::vector<std::string>);
+template std::vector<bool> Input::get_list<bool>(const std::string&, const std::string&, const std::string&, const std::vector<bool>);

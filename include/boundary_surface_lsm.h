@@ -45,6 +45,7 @@ struct Surface_tile
     std::vector<TF> ustar;    // Friction velocity (m s-1)
     std::vector<TF> bfluxbot; // Friction velocity (m s-1)
     std::vector<int> nobuk;   // Index in LUT
+    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
 
     // Land surface
     std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
@@ -128,7 +129,6 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_tile_stats;
         bool sw_iter_seb;
 
-        TF tskin_water;
         TF emis_sfc;
 
         std::vector<std::string> tile_names {"veg", "soil" ,"wet"};
@@ -147,6 +147,9 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> dudz_mo;
         std::vector<TF> dvdz_mo;
         std::vector<TF> dbdz_mo;
+
+        // 2D field with water temperatures
+        std::vector<TF> t_bot_water;
 
         // Lookup tables van Genuchten parameterisation
         std::shared_ptr<Netcdf_file> nc_lookup_table;

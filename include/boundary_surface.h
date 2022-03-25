@@ -125,6 +125,11 @@ class Boundary_surface : public Boundary<TF>
         Boundary_type thermobc;
         bool sw_constant_z0;
 
+        bool sw_charnock;
+        TF alpha_m;
+        TF alpha_ch;
+        TF alpha_h;
+
     protected:
         // Cross sections
         std::vector<std::string> cross_list;         // List of active cross variables

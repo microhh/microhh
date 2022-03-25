@@ -455,12 +455,19 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
 
     for (auto& it : fields.sp)
         boundary_cyclic.exec_g(it.second->fld_g);
+}
+#endif
 
+#ifdef USECUDA
+template<typename TF>
+void Boundary<TF>::set_prognostic_outflow_bcs()
+{
     // Overwrite here the ghost cells for the scalars with outflow BCs
     for (auto& s : scalar_outflow)
         boundary_outflow.exec(fields.sp.at(s)->fld_g);
 }
 #endif
+
 
 #ifdef USECUDA
 template<typename TF>

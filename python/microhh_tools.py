@@ -1,21 +1,21 @@
-# 
+#
 #  MicroHH
 #  Copyright (c) 2011-2020 Chiel van Heerwaarden
 #  Copyright (c) 2011-2020 Thijs Heus
 #  Copyright (c) 2014-2020 Bart van Stratum
-# 
+#
 #  This file is part of MicroHH
-# 
+#
 #  MicroHH is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  MicroHH is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -69,15 +69,18 @@ def _find_namelist_file():
         raise RuntimeError(
             'Can\'t find any .ini files in the current directory!')
     if len(namelist_file) > 1:
-        raise RuntimeError(
-            'There are multiple .ini files: {}'.format(namelist_file))
+        print('There are multiple .ini files:')
+        for i,f in enumerate(namelist_file):
+            print('{}: {}'.format(i, f))
+        print('Which one do you want to use: ', end='')
+        i = int(input())
+        return namelist_file[i]
     else:
         return namelist_file[0]
 
 # -------------------------
 # Classes and functions to read and write MicroHH things
 # -------------------------
-
 
 class Read_namelist:
     """ Reads a MicroHH .ini file to memory
