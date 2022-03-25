@@ -50,6 +50,7 @@
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
+// To avoid confusion, we limit the use of TF in the code to the class headers and use Float.
 
 namespace
 {
@@ -391,11 +392,10 @@ namespace
     }
 
 
-    template<typename TF>
     void calc_tendency(
-            TF* restrict thlt_rad,
-            const TF* restrict flux_up, const TF* restrict flux_dn,
-            const TF* restrict rho, const TF* exner, const TF* dz,
+            Float* restrict thlt_rad,
+            const Float* restrict flux_up, const Float* restrict flux_dn,
+            const Float* restrict rho, const Float* exner, const Float* dz,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int igc, const int jgc, const int kgc,
             const int jj, const int kk,
@@ -404,7 +404,7 @@ namespace
         for (int k=kstart; k<kend; ++k)
         {
             // Conversion from energy to temperature.
-            const TF fac = TF(1.) / (rho[k]*Constants::cp<TF>*exner[k]*dz[k]);
+            const Float fac = Float(1.) / (rho[k]*Constants::cp<Float>*exner[k]*dz[k]);
 
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
@@ -420,9 +420,8 @@ namespace
     }
 
 
-    template<typename TF>
     void add_tendency(
-            TF* restrict thlt, const TF* restrict thlt_rad,
+            Float* restrict thlt, const Float* restrict thlt_rad,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
@@ -436,10 +435,9 @@ namespace
     }
 
 
-    template<typename TF>
     void store_surface_fluxes(
-            TF* restrict flux_up_sfc, TF* restrict flux_dn_sfc,
-            const TF* restrict flux_up, const TF* restrict flux_dn,
+            Float* restrict flux_up_sfc, Float* restrict flux_dn_sfc,
+            const Float* restrict flux_up, const Float* restrict flux_dn,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int igc, const int jgc,
@@ -458,18 +456,17 @@ namespace
     }
 
 
-    template<typename TF>
     void solve_longwave_column(
             std::unique_ptr<Optical_props_arry>& optical_props,
-            Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_net,
-            Array<TF,2>& flux_dn_inc, const TF p_top,
+            Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_net,
+            Array<Float,2>& flux_dn_inc, const Float p_top,
             const Gas_concs& gas_concs,
             const std::unique_ptr<Gas_optics_rrtmgp>& kdist_lw,
             const std::unique_ptr<Source_func_lw>& sources,
-            const Array<TF,2>& col_dry,
-            const Array<TF,2>& p_lay, const Array<TF,2>& p_lev,
-            const Array<TF,2>& t_lay, const Array<TF,2>& t_lev,
-            const Array<TF,1>& t_sfc, const Array<TF,2>& emis_sfc,
+            const Array<Float,2>& col_dry,
+            const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
+            const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+            const Array<Float,1>& t_sfc, const Array<Float,2>& emis_sfc,
             const int n_lay)
     {
         const int n_col = 1;
@@ -497,15 +494,15 @@ namespace
                 std::make_unique<Fluxes_broadband>(n_col, n_lev);
 
         const int n_gpt = kdist_lw->get_ngpt();
-        Array<TF,3> gpt_flux_up({n_col, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn({n_col, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_up({n_col, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn({n_col, n_lev, n_gpt});
 
         Rte_lw::rte_lw(
                 optical_props,
                 top_at_1,
                 *sources,
                 emis_sfc,
-                Array<TF,2>(),
+                Array<Float,2>(),
                 gpt_flux_up,
                 gpt_flux_dn,
                 n_ang);
@@ -522,8 +519,8 @@ namespace
 
         // Calculate the interpolation factors.
         const int idx_bot = idx_top - 1;
-        const TF fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
-        const TF fac_top = 1. - fac_bot;
+        const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+        const Float fac_top = 1. - fac_bot;
 
         // Interpolate the top boundary conditions.
         for (int igpt=1; igpt<=n_gpt; ++igpt)
@@ -540,20 +537,19 @@ namespace
     }
 
 
-    template<typename TF>
     void solve_shortwave_column(
             std::unique_ptr<Optical_props_arry>& optical_props,
-            Array<TF,2>& flux_up, Array<TF,2>& flux_dn,
-            Array<TF,2>& flux_dn_dir, Array<TF,2>& flux_net,
-            Array<TF,2>& flux_dn_dir_inc, Array<TF,2>& flux_dn_dif_inc, const TF p_top,
+            Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
+            Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+            Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
             const Gas_concs& gas_concs,
             const Gas_optics_rrtmgp& kdist_sw,
-            const Array<TF,2>& col_dry,
-            const Array<TF,2>& p_lay, const Array<TF,2>& p_lev,
-            const Array<TF,2>& t_lay, const Array<TF,2>& t_lev,
-            const Array<TF,1>& mu0,
-            const Array<TF,2>& sfc_alb_dir, const Array<TF,2>& sfc_alb_dif,
-            const TF tsi_scaling,
+            const Array<Float,2>& col_dry,
+            const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
+            const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+            const Array<Float,1>& mu0,
+            const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
+            const Float tsi_scaling,
             const int n_lay)
     {
         const int n_col = 1;
@@ -564,7 +560,7 @@ namespace
 
         // Create the field for the top of atmosphere source.
         const int n_gpt = kdist_sw.get_ngpt();
-        Array<TF,2> toa_src({n_col, n_gpt});
+        Array<Float,2> toa_src({n_col, n_gpt});
 
         kdist_sw.gas_optics(
                 p_lay,
@@ -582,9 +578,9 @@ namespace
         std::unique_ptr<Fluxes_broadband> fluxes =
                 std::make_unique<Fluxes_broadband>(n_col, n_lev);
 
-        Array<TF,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
 
         Rte_sw::rte_sw(
                 optical_props,
@@ -593,7 +589,7 @@ namespace
                 toa_src,
                 sfc_alb_dir,
                 sfc_alb_dif,
-                Array<TF,2>(),
+                Array<Float,2>(),
                 gpt_flux_up,
                 gpt_flux_dn,
                 gpt_flux_dn_dir);
@@ -612,14 +608,14 @@ namespace
 
         // Calculate the interpolation factors.
         const int idx_bot = idx_top - 1;
-        const TF fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
-        const TF fac_top = 1. - fac_bot;
+        const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+        const Float fac_top = 1. - fac_bot;
 
         // Interpolate the top boundary conditions.
         for (int igpt=1; igpt<=n_gpt; ++igpt)
         {
-            const TF flux_dn_tot = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
-            const TF flux_dn_dir = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
+            const Float flux_dn_tot = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
+            const Float flux_dn_dir = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
             // Divide out the cosine of the solar zenith angle.
             flux_dn_dir_inc({1, igpt}) = flux_dn_dir / mu0({1});
             flux_dn_dif_inc({1, igpt}) = flux_dn_tot - flux_dn_dir;
@@ -637,23 +633,21 @@ namespace
     }
 
 
-    template<typename TF>
-    TF deg_to_rad(const TF deg)
+    Float deg_to_rad(const Float deg)
     {
-        return TF(2.*M_PI/360. * deg);
+        return Float(2.*M_PI/360. * deg);
     }
 
 
-    template<typename TF>
-    TF calc_cos_zenith_angle(
-            const TF lat, const TF lon, const int day_of_year,
-            const TF seconds_since_midnight, const int year)
+    Float calc_cos_zenith_angle(
+            const Float lat, const Float lon, const int day_of_year,
+            const Float seconds_since_midnight, const int year)
     {
         /* Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
                      Radiative Processes in Meteorology and Climatology.
                      Elsevier, New York, 318 pp. */
 
-        const TF pi = TF(M_PI);
+        const Float pi = Float(M_PI);
 
         // Account for leap year
         int days_per_year;
@@ -666,49 +660,48 @@ namespace
         const int doy = day_of_year-1;
 
         // Lat/lon in radians
-        const TF radlat = lat * pi/TF(180);
-        const TF radlon = lon * pi/TF(180);
+        const Float radlat = lat * pi/Float(180);
+        const Float radlon = lon * pi/Float(180);
 
         // DOY in range (0,2*pi)
-        const TF doy_pi = TF(2)*pi*doy/days_per_year;
+        const Float doy_pi = Float(2)*pi*doy/days_per_year;
 
         // Solar declination angle
-        const TF declination_angle = \
-                TF(0.006918) - TF(0.399912) * std::cos(doy_pi) + TF(0.070257) * std::sin(doy_pi)
-              - TF(0.006758) * std::cos(TF(2)*doy_pi) + TF(0.000907) * std::sin(TF(2)*doy_pi)
-              - TF(0.002697) * std::cos(TF(3)*doy_pi) + TF(0.00148)  * std::sin(TF(3)*doy_pi);
+        const Float declination_angle = \
+                Float(0.006918) - Float(0.399912) * std::cos(doy_pi) + Float(0.070257) * std::sin(doy_pi)
+              - Float(0.006758) * std::cos(Float(2)*doy_pi) + Float(0.000907) * std::sin(Float(2)*doy_pi)
+              - Float(0.002697) * std::cos(Float(3)*doy_pi) + Float(0.00148)  * std::sin(Float(3)*doy_pi);
 
         // Hour angle in radians, using true solar time
-        const TF a1 = (TF(1.00554) * doy - TF( 6.28306)) * pi/TF(180);
-        const TF a2 = (TF(1.93946) * doy + TF(23.35089)) * pi/TF(180);
-        const TF a3 = (TF(7.67825) * std::sin(a1) + TF(10.09176) * std::sin(a2)) / TF(60);
+        const Float a1 = (Float(1.00554) * doy - Float( 6.28306)) * pi/Float(180);
+        const Float a2 = (Float(1.93946) * doy + Float(23.35089)) * pi/Float(180);
+        const Float a3 = (Float(7.67825) * std::sin(a1) + Float(10.09176) * std::sin(a2)) / Float(60);
 
-        const TF hour_solar_time = (seconds_since_midnight/TF(3600)) - a3 + radlon * (TF(180.)/pi/TF(15.0));
-        const TF hour_angle = (hour_solar_time-TF(12))*TF(15.0)*(pi/TF(180));
+        const Float hour_solar_time = (seconds_since_midnight/Float(3600)) - a3 + radlon * (Float(180.)/pi/Float(15.0));
+        const Float hour_angle = (hour_solar_time-Float(12))*Float(15.0)*(pi/Float(180));
 
         // Cosine of solar zenith angle
-        const TF cos_zenith = std::sin(radlat) * std::sin(declination_angle) +
+        const Float cos_zenith = std::sin(radlat) * std::sin(declination_angle) +
                               std::cos(radlat) * std::cos(declination_angle) * std::cos(hour_angle);
 
         return cos_zenith;
     }
 
 
-    template<typename TF>
-    TF calc_sun_distance_factor(const TF frac_doy)
+    Float calc_sun_distance_factor(const Float frac_doy)
     {
         // Based on: An Introduction to Atmospheric Radiation, Liou, Eq. 2.2.9.
-        constexpr TF an [] = {1.000110, 0.034221, 0.000719};
-        constexpr TF bn [] = {0,        0.001280, 0.000077};
+        constexpr Float an [] = {1.000110, 0.034221, 0.000719};
+        constexpr Float bn [] = {0,        0.001280, 0.000077};
 
-        const TF pi = TF(M_PI);
+        const Float pi = Float(M_PI);
 
         // NOTE: DOY in time calculations are zero based
-        const TF t = TF(2)*pi*(frac_doy-TF(1))/TF(365);
+        const Float t = Float(2)*pi*(frac_doy-Float(1))/Float(365);
 
-        TF factor = TF(0);
+        Float factor = Float(0);
         for (int n=0; n<3; ++n)
-            factor += an[n]*std::cos(TF(n)*t) + bn[n]*std::sin(TF(n)*t);
+            factor += an[n]*std::cos(Float(n)*t) + bn[n]*std::sin(Float(n)*t);
 
         return factor;
     }
@@ -730,21 +723,21 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
-    t_sfc       = inputin.get_item<TF>("radiation", "t_sfc"      , "");
-    emis_sfc    = inputin.get_item<TF>("radiation", "emis_sfc"   , "");
-    sfc_alb_dir = inputin.get_item<TF>("radiation", "sfc_alb_dir", "");
-    sfc_alb_dif = inputin.get_item<TF>("radiation", "sfc_alb_dif", "");
-    tsi_scaling = inputin.get_item<TF>("radiation", "tsi_scaling", "", -999.);
+    t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
+    emis_sfc    = inputin.get_item<Float>("radiation", "emis_sfc"   , "");
+    sfc_alb_dir = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+    sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+    tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     if (sw_fixed_sza)
     {
-        const TF sza = inputin.get_item<TF>("radiation", "sza", "");
+        const Float sza = inputin.get_item<Float>("radiation", "sza", "");
         mu0 = std::cos(sza);
     }
     else
     {
-        lat = inputin.get_item<TF>("radiation", "lat", "");
-        lon = inputin.get_item<TF>("radiation", "lon", "");
+        lat = inputin.get_item<Float>("radiation", "lat", "");
+        lon = inputin.get_item<Float>("radiation", "lon", "");
     }
 
     auto& gd = grid.get_grid_data();
@@ -870,7 +863,7 @@ void Radiation_rrtmgp<TF>::create_column(
     {
         const int n_col = 1;
         const int n_lev = rad_nc.get_dimension_size("lev");
-        Array<TF,2> p_lev(rad_nc.get_variable<TF>("p_lev", {n_lev, n_col}), {n_col, n_lev});
+        Array<Float,2> p_lev(rad_nc.get_variable<Float>("p_lev", {n_lev, n_col}), {n_col, n_lev});
 
         stats.add_dimension("p_rad", n_lev);
 
@@ -911,13 +904,13 @@ void Radiation_rrtmgp<TF>::read_background_profiles(
     t_lev_col.set_dims({n_col, n_lev_col});
     col_dry.  set_dims({n_col, n_lay_col});
 
-    p_lay_col = rad_nc.get_variable<TF>("p_lay", {n_lay_col, n_col});
-    t_lay_col = rad_nc.get_variable<TF>("t_lay", {n_lay_col, n_col});
-    p_lev_col = rad_nc.get_variable<TF>("p_lev", {n_lev_col, n_col});
-    t_lev_col = rad_nc.get_variable<TF>("t_lev", {n_lev_col, n_col});
+    p_lay_col = rad_nc.get_variable<Float>("p_lay", {n_lay_col, n_col});
+    t_lay_col = rad_nc.get_variable<Float>("t_lay", {n_lay_col, n_col});
+    p_lev_col = rad_nc.get_variable<Float>("p_lev", {n_lev_col, n_col});
+    t_lev_col = rad_nc.get_variable<Float>("t_lev", {n_lev_col, n_col});
 
     if (rad_nc.variable_exists("col_dry"))
-        col_dry = rad_nc.get_variable<TF>("col_dry", {n_lay_col, n_col});
+        col_dry = rad_nc.get_variable<Float>("col_dry", {n_lay_col, n_col});
     else
         Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
 }
@@ -932,11 +925,11 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
 
     // Read the boundary conditions.
     // Set the surface temperature and emissivity.
-    Array<TF,1> t_sfc({1});
+    Array<Float,1> t_sfc({1});
     t_sfc({1}) = t_lev_col({1,1});
 
     const int n_bnd = kdist_lw->get_nband();
-    Array<TF,2> emis_sfc({n_bnd, 1});
+    Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         emis_sfc({ibnd, 1}) = this->emis_sfc;
 
@@ -951,7 +944,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
     const int n_gpt = kdist_lw->get_ngpt();
     lw_flux_dn_inc.set_dims({n_col, n_gpt});
 
-    solve_longwave_column<TF>(
+    solve_longwave_column(
             optical_props_lw,
             lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
             lw_flux_dn_inc, thermo.get_basestate_vector("ph")[gd.kend],
@@ -1008,8 +1001,8 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
     if (sw_fixed_sza)
     {
         // Set the solar zenith angle and albedo.
-        Array<TF,2> sfc_alb_dir({n_bnd, n_col});
-        Array<TF,2> sfc_alb_dif({n_bnd, n_col});
+        Array<Float,2> sfc_alb_dir({n_bnd, n_col});
+        Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         {
@@ -1017,10 +1010,10 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
             sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
         }
 
-        Array<TF,1> mu0({n_col});
-        mu0({1}) = std::max(this->mu0, Constants::mu0_min<TF>);
+        Array<Float,1> mu0({n_col});
+        mu0({1}) = std::max(this->mu0, Constants::mu0_min<Float>);
 
-        solve_shortwave_column<TF>(
+        solve_shortwave_column(
                 optical_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
                 sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
@@ -1178,7 +1171,7 @@ void Radiation_rrtmgp<TF>::exec(
     if (do_radiation)
     {
         // Set the tendency to zero.
-        std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), TF(0.));
+        std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), Float(0.));
 
         auto t_lay = fields.get_tmp();
         auto t_lev = fields.get_tmp();
@@ -1192,16 +1185,16 @@ void Radiation_rrtmgp<TF>::exec(
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
         const int ijmax = gd.imax*gd.jmax;
 
-        Array<TF,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array<TF,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
-        Array<TF,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
-        Array<TF,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array<TF,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array<TF,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
+        Array<Float,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
+        Array<Float,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
+        Array<Float,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
+        Array<Float,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
+        Array<Float,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
+        Array<Float,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
 
-        Array<TF,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
-        Array<TF,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
-        Array<TF,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
+        Array<Float,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+        Array<Float,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+        Array<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
         const bool compute_clouds = true;
 
@@ -1242,11 +1235,11 @@ void Radiation_rrtmgp<TF>::exec(
                     // Update the solar zenith angle, and calculate new shortwave reference column
                     const int day_of_year = int(timeloop.calc_day_of_year());
                     const int year = timeloop.get_year();
-                    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+                    const Float seconds_after_midnight = Float(timeloop.calc_hour_of_day()*3600);
                     this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
 
                     // Calculate correction factor for impact Sun's distance on the solar "constant"
-                    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+                    const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
                     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
 
                     if (is_day(this->mu0))
@@ -1254,8 +1247,8 @@ void Radiation_rrtmgp<TF>::exec(
                         const int n_bnd = kdist_sw->get_nband();
 
                         // Set the solar zenith angle and albedo.
-                        Array<TF,2> sfc_alb_dir({n_bnd, n_col});
-                        Array<TF,2> sfc_alb_dif({n_bnd, n_col});
+                        Array<Float,2> sfc_alb_dir({n_bnd, n_col});
+                        Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
                         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
                         {
@@ -1263,10 +1256,10 @@ void Radiation_rrtmgp<TF>::exec(
                             sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
                         }
 
-                        Array<TF,1> mu0({n_col});
+                        Array<Float,1> mu0({n_col});
                         mu0({1}) = this->mu0;
 
-                        solve_shortwave_column<TF>(
+                        solve_shortwave_column(
                                 optical_props_sw,
                                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
                                 sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
@@ -1284,7 +1277,7 @@ void Radiation_rrtmgp<TF>::exec(
 
                 if (is_day(this->mu0))
                 {
-                    Array<TF,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+                    Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
 
                     exec_shortwave(
                             thermo, timeloop, stats,
@@ -1314,8 +1307,8 @@ void Radiation_rrtmgp<TF>::exec(
                 else
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
-                    std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), TF(0));
-                    std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), TF(0));
+                    std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), Float(0));
+                    std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
                 }
             }
         } // End try block.
@@ -1369,9 +1362,8 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 
 namespace
 {
-    template<typename TF>
     void add_ghost_cells(
-            TF* restrict out, const TF* restrict in,
+            Float* restrict out, const Float* restrict in,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_field,
@@ -1409,8 +1401,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     if ( !(do_stats || do_cross || do_column) )
         return;
 
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
+    const Float no_offset = 0.;
+    const Float no_threshold = 0.;
 
     // CvH: lots of code repetition with exec()
     auto& gd = grid.get_grid_data();
@@ -1427,12 +1419,12 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
     const int ijmax = gd.imax*gd.jmax;
 
-    Array<TF,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<TF,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
-    Array<TF,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
-    Array<TF,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<TF,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<TF,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
+    Array<Float,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
+    Array<Float,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
+    Array<Float,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
+    Array<Float,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
+    Array<Float,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
+    Array<Float,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
 
     fields.release_tmp(t_lay);
     fields.release_tmp(t_lev);
@@ -1440,9 +1432,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     fields.release_tmp(clwp);
     fields.release_tmp(ciwp);
 
-    Array<TF,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<TF,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<TF,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
+    Array<Float,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<Float,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
+    Array<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
     auto tmp = fields.get_tmp();
     tmp->loc = gd.wloc;
@@ -1451,7 +1443,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     // Use a lambda function to avoid code repetition.
     auto save_stats_and_cross = [&](
-            const Array<TF,2>& array, const std::string& name, const std::array<int,3>& loc)
+            const Array<Float,2>& array, const std::string& name, const std::array<int,3>& loc)
     {
         if (do_stats || do_cross || do_column)
         {
@@ -1508,7 +1500,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
         if (sw_shortwave)
         {
-            Array<TF,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+            Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
 
             if (!is_day(mu0))
             {
@@ -1568,9 +1560,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_net,
-        const Array<TF,2>& t_lay, const Array<TF,2>& t_lev, const Array<TF,1>& t_sfc,
-        const Array<TF,2>& h2o, const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_net,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev, const Array<Float,1>& t_sfc,
+        const Array<Float,2>& h2o, const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
         const bool compute_clouds)
 {
     // How many profiles are solved simultaneously?
@@ -1611,15 +1603,15 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::make_unique<Optical_props_1scl>(n_col_block_left, n_lay, *cloud_lw);
 
     // Define the arrays that contain the subsets.
-    const std::vector<TF>& p  = thermo.get_basestate_vector("p");
-    const std::vector<TF>& ph = thermo.get_basestate_vector("ph");
-    Array<TF,2> p_lay(std::vector<TF>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
-    Array<TF,2> p_lev(std::vector<TF>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
+    const std::vector<Float>& p  = thermo.get_basestate_vector("p");
+    const std::vector<Float>& ph = thermo.get_basestate_vector("ph");
+    Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
+    Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
-    Array<TF,2> emis_sfc(std::vector<TF>(n_bnd, this->emis_sfc), {n_bnd, 1});
+    Array<Float,2> emis_sfc(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
 
     gas_concs.set_vmr("h2o", h2o);
-    Array<TF,2> col_dry({n_col, n_lay});
+    Array<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
     // Lambda function for solving optical properties subset.
@@ -1628,8 +1620,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::unique_ptr<Optical_props_arry>& optical_props_subset_in,
             std::unique_ptr<Optical_props_1scl>& cloud_optical_props_in,
             Source_func_lw& sources_subset_in,
-            const Array<TF,2>& emis_sfc_subset_in,
-            const Array<TF,2>& lw_flux_dn_inc_subset_in,
+            const Array<Float,2>& emis_sfc_subset_in,
+            const Array<Float,2>& lw_flux_dn_inc_subset_in,
             std::unique_ptr<Fluxes_broadband>& fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
@@ -1649,44 +1641,44 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         // 2. Solve the cloud optical properties.
         if (compute_clouds)
         {
-            Array<TF,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-            Array<TF,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
             // Compute the effective droplet radius.
-            Array<TF,2> rel({n_col_in, n_lay});
-            Array<TF,2> rei({n_col_in, n_lay});
+            Array<Float,2> rel({n_col_in, n_lay});
+            Array<Float,2> rei({n_col_in, n_lay});
 
-            const TF sig_g = 1.34;
-            const TF fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
+            const Float sig_g = 1.34;
+            const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
             // CvH: Numbers according to RCEMIP.
-            const TF Nc0 = 100.e6;
-            const TF Ni0 = 1.e5;
+            const Float Nc0 = 100.e6;
+            const Float Ni0 = 1.e5;
 
-            const TF four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<TF>;
-            const TF four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<TF>;
+            const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
+            const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                // const TF layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<TF>;
-                const TF layer_thickness = gd.dz[ilay + gd.kstart - 1];
+                // const Float layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<Float>;
+                const Float layer_thickness = gd.dz[ilay + gd.kstart - 1];
 
                 for (int icol=1; icol<=n_col_in; ++icol)
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    TF rel_value = clwp_subset({icol, ilay}) > TF(0.) ? 
-                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : TF(0.);
+                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ? 
+                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : Float(0.);
 
                     // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
-                    rel({icol, ilay}) = std::max(TF(2.5), std::min(rel_value, TF(21.5)));
+                    rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    TF rei_value = ciwp_subset({icol, ilay}) > TF(0.) ? 
-                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : TF(0.);
+                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ? 
+                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(TF(10.), std::min(rei_value, TF(180.)));
+                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
                 }
             }
 
@@ -1708,8 +1700,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     dynamic_cast<Optical_props_1scl&>(*cloud_optical_props_in));
         }
 
-        Array<TF,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
 
         Rte_lw::rte_lw(
                 optical_props_subset_in,
@@ -1737,8 +1729,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = (b-1) * n_col_block + 1;
         const int col_e =  b    * n_col_block;
 
-        Array<TF,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> lw_flux_dn_inc_subset = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> lw_flux_dn_inc_subset = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
         std::unique_ptr<Fluxes_broadband> fluxes_subset =
                 std::make_unique<Fluxes_broadband>(n_col_block, n_lev);
 
@@ -1757,8 +1749,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = n_col - n_col_block_left + 1;
         const int col_e = n_col;
 
-        Array<TF,2> emis_sfc_left = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> lw_flux_dn_inc_left = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> emis_sfc_left = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> lw_flux_dn_inc_left = lw_flux_dn_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
         std::unique_ptr<Fluxes_broadband> fluxes_left =
                 std::make_unique<Fluxes_broadband>(n_col_block_left, n_lev);
 
@@ -1777,9 +1769,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Array<TF,2>& flux_up, Array<TF,2>& flux_dn, Array<TF,2>& flux_dn_dir, Array<TF,2>& flux_net,
-        const Array<TF,2>& t_lay, const Array<TF,2>& t_lev,
-        const Array<TF,2>& h2o, const Array<TF,2>& clwp, const Array<TF,2>& ciwp,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Array<Float,2>& h2o, const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
         const bool compute_clouds)
 {
     // How many profiles are solved simultaneously?
@@ -1813,21 +1805,21 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *cloud_sw);
 
     // Define the arrays that contain the subsets.
-    std::vector<TF> p  = thermo.get_basestate_vector("p");
-    std::vector<TF> ph = thermo.get_basestate_vector("ph");
-    Array<TF,2> p_lay(std::vector<TF>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
-    Array<TF,2> p_lev(std::vector<TF>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
+    std::vector<Float> p  = thermo.get_basestate_vector("p");
+    std::vector<Float> ph = thermo.get_basestate_vector("ph");
+    Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
+    Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
     // Create the boundary conditions
-    Array<TF,1> mu0(std::vector<TF>(1, this->mu0), {1});
-    Array<TF,2> sfc_alb_dir(std::vector<TF>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
-    Array<TF,2> sfc_alb_dif(std::vector<TF>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
+    Array<Float,1> mu0(std::vector<Float>(1, this->mu0), {1});
+    Array<Float,2> sfc_alb_dir(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
+    Array<Float,2> sfc_alb_dif(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
 
     // Create the field for the top of atmosphere source.
-    Array<TF,2> toa_src({n_col, n_gpt});
+    Array<Float,2> toa_src({n_col, n_gpt});
 
     gas_concs.set_vmr("h2o", h2o);
-    Array<TF,2> col_dry({n_col, n_lay});
+    Array<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
     // Lambda function for solving optical properties subset.
@@ -1835,17 +1827,17 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const int col_s_in, const int col_e_in,
             std::unique_ptr<Optical_props_arry>& optical_props_subset_in,
             std::unique_ptr<Optical_props_2str>& cloud_optical_props_in,
-            const Array<TF,1>& mu0_subset_in,
-            const Array<TF,2>& toa_src_subset_in,
-            const Array<TF,2>& sfc_alb_dir_subset_in,
-            const Array<TF,2>& sfc_alb_dif_subset_in,
-            const Array<TF,2>& sw_flux_dn_dif_inc_subset_in,
+            const Array<Float,1>& mu0_subset_in,
+            const Array<Float,2>& toa_src_subset_in,
+            const Array<Float,2>& sfc_alb_dir_subset_in,
+            const Array<Float,2>& sfc_alb_dif_subset_in,
+            const Array<Float,2>& sw_flux_dn_dif_inc_subset_in,
             std::unique_ptr<Fluxes_broadband>& fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
 
         Gas_concs gas_concs_subset(gas_concs, col_s_in, n_col_in);
-        Array<TF,2> toa_src_dummy({n_col_in, n_gpt});
+        Array<Float,2> toa_src_dummy({n_col_in, n_gpt});
 
         // 1. Solve the gas optical properties.
         kdist_sw->gas_optics(
@@ -1860,44 +1852,44 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         // 2. Solve the cloud optical properties.
         if (compute_clouds)
         {
-            Array<TF,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
-            Array<TF,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
 
             // Compute the effective droplet radius.
-            Array<TF,2> rel({n_col_in, n_lay});
-            Array<TF,2> rei({n_col_in, n_lay});
+            Array<Float,2> rel({n_col_in, n_lay});
+            Array<Float,2> rei({n_col_in, n_lay});
 
-            const TF sig_g = 1.34;
-            const TF fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
+            const Float sig_g = 1.34;
+            const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
             // CvH: Numbers according to RCEMIP.
-            const TF Nc0 = 100.e6;
-            const TF Ni0 = 1.e5;
+            const Float Nc0 = 100.e6;
+            const Float Ni0 = 1.e5;
 
-            const TF four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<TF>;
-            const TF four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<TF>;
+            const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
+            const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
-                // const TF layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<TF>;
-                const TF layer_thickness = gd.dz[ilay + gd.kstart - 1];
+                // const Float layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<Float>;
+                const Float layer_thickness = gd.dz[ilay + gd.kstart - 1];
 
                 for (int icol=1; icol<=n_col_in; ++icol)
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    TF rel_value = clwp_subset({icol, ilay}) > TF(0.) ? 
-                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : TF(0.);
+                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ? 
+                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : Float(0.);
 
                     // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
-                    rel({icol, ilay}) = std::max(TF(2.5), std::min(rel_value, TF(21.5)));
+                    rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    TF rei_value = ciwp_subset({icol, ilay}) > TF(0.) ? 
-                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : TF(0.);
+                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ? 
+                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(TF(10.), std::min(rei_value, TF(180.)));
+                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
                 }
             }
 
@@ -1922,9 +1914,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         }
 
         // 3. Solve the fluxes.
-        Array<TF,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn    ({n_col_in, n_lev, n_gpt});
-        Array<TF,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn    ({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});
 
         Rte_sw::rte_sw(
                 optical_props_subset_in,
@@ -1959,11 +1951,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const int col_s = (b-1) * n_col_block + 1;
         const int col_e =  b    * n_col_block;
 
-        Array<TF,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
-        Array<TF,2> toa_src_subset = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array<TF,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
+        Array<Float,2> toa_src_subset = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband> fluxes_subset =
                 std::make_unique<Fluxes_broadband>(n_col_block, n_lev);
@@ -1985,11 +1977,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const int col_s = n_col - n_col_block_left + 1;
         const int col_e = n_col;
 
-        Array<TF,1> mu0_left = mu0.subset({{ {col_s, col_e} }});
-        Array<TF,2> toa_src_left = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array<TF,2> sfc_alb_dir_left = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> sfc_alb_dif_left = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array<TF,2> sw_flux_dn_dif_inc_left = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,1> mu0_left = mu0.subset({{ {col_s, col_e} }});
+        Array<Float,2> toa_src_left = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> sfc_alb_dir_left = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sfc_alb_dif_left = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sw_flux_dn_dif_inc_left = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband> fluxes_left =
                 std::make_unique<Fluxes_broadband>(n_col_block_left, n_lev);
@@ -2009,16 +2001,16 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
 
 template<typename TF>
-bool Radiation_rrtmgp<TF>::is_day(const TF mu0)
+bool Radiation_rrtmgp<TF>::is_day(const Float mu0)
 {
-    if (mu0 > Constants::mu0_min<TF>)
+    if (mu0 > Constants::mu0_min<Float>)
         return true;
 
     return false;
 }
 
 
-#ifdef FLOAT_SINGLE
+#ifdef RTE_RRTMGP_SINGLE_PRECISION
 template class Radiation_rrtmgp<float>;
 #else
 template class Radiation_rrtmgp<double>;
