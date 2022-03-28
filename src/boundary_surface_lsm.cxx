@@ -1018,9 +1018,6 @@ void Boundary_surface_lsm<TF>::init_surface_layer(Input& input)
     }
     // else: z0m and z0h are read from 2D input files in `load()`.
 
-    if (sw_water)
-        t_bot_water.resize(gd.ijcells);
-
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
 
@@ -1053,7 +1050,10 @@ void Boundary_surface_lsm<TF>::init_land_surface()
     cs_veg.resize(gd.ijcells);
 
     if (sw_water)
+    {
         water_mask.resize(gd.ijcells);
+        t_bot_water.resize(gd.ijcells);
+    }
 
     interception.resize(gd.ijcells);
     throughfall.resize(gd.ijcells);

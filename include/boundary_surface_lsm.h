@@ -53,6 +53,27 @@ struct Surface_tile
     std::vector<TF> LE;       // Latent heat flux (W m-2)
     std::vector<TF> G;        // Soil heat flux (W m-2)
     std::vector<TF> S;        // Storage flux (W m-2)
+
+    #ifdef USECUDA
+    // Shared
+    TF* fraction_g; // Grid point fraction tile (-)
+    TF* thl_bot_g;  // Skin (liquid water) potential temperature (K)
+    TF* qt_bot_g;   // Skin specific humidity (kg kg-1)
+
+    // Surface layer
+    TF* obuk_g;     // Obukhov length (m)
+    TF* ustar_g;    // Friction velocity (m s-1)
+    TF* bfluxbot_g; // Friction velocity (m s-1)
+    int* nobuk_g;   // Index in LUT
+    TF* ra_g;       // Aerodynamic resistance (s m-1)
+
+    // Land surface
+    TF* rs_g;       // Surface resistance (canopy or soil, s m-1)
+    TF* H_g;        // Sensible heat flux (W m-2)
+    TF* LE_g;       // Latent heat flux (W m-2)
+    TF* G_g;        // Soil heat flux (W m-2)
+    TF* S_g;        // Storage flux (W m-2)
+    #endif
 };
 
 template<typename TF>
@@ -149,9 +170,6 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> dvdz_mo;
         std::vector<TF> dbdz_mo;
 
-        // 2D field with water temperatures
-        std::vector<TF> t_bot_water;
-
         // Lookup tables van Genuchten parameterisation
         std::shared_ptr<Netcdf_file> nc_lookup_table;
 
@@ -168,6 +186,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> lambda_unstable; // Skin conductivity unstable conditions (W m-2 K-1)
         std::vector<TF> cs_veg;          // Heat capacity skin layer (J K-1 m-2)
         std::vector<int> water_mask;     // Mask for open water (-)
+        std::vector<TF> t_bot_water;
 
         std::vector<TF> interception;   // Interception rain/dew by surface (m s-1)
         std::vector<TF> throughfall;    // Throughfall rain/dew onto soil (m s-1)
@@ -206,6 +225,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> rho_C;            // Volumetric soil heat capacity (J m-3 K-1)
 
         #ifdef USECUDA
+        // Surface layer:
         float* zL_sl_g;
         float* f_sl_g;
         int* nobuk_g;
@@ -219,6 +239,54 @@ class Boundary_surface_lsm : public Boundary<TF>
         TF* dudz_mo_g;
         TF* dvdz_mo_g;
         TF* dbdz_mo_g;
+
+        // Land-surface:
+        TF* gD_coeff_g;        // Coefficient in response surface to VPD (Pa)
+        TF* c_veg_g;           // Vegetation fraction (-)
+        TF* lai_g;             // Leaf area index (-)
+        TF* rs_veg_min_g;      // Minimum vegetation resistance (s m-1)
+        TF* rs_soil_min_g;     // Minimum soil resistance (s m-1)
+        TF* lambda_stable_g;   // Skin conductivity stable conditions (W m-2 K-1)
+        TF* lambda_unstable_g; // Skin conductivity unstable conditions (W m-2 K-1)
+        TF* cs_veg_g;          // Heat capacity skin layer (J K-1 m-2)
+        int* water_mask_g;     // Mask for open water (-)
+        TF* t_bot_water_g;
+
+        TF* interception_g;   // Interception rain/dew by surface (m s-1)
+        TF* throughfall_g;    // Throughfall rain/dew onto soil (m s-1)
+        TF* infiltration_g;   // Infiltration moisture into soil (m s-1)
+        TF* runoff_g;         // Surface runoff from soil (m s-1)
+
+        // Soil properties
+        int* soil_index_g;    // Index in lookup tables
+        TF* diffusivity_g;    // Full level (m2 s-1)
+        TF* diffusivity_h_g;  // Half level (m2 s-1)
+        TF* conductivity_g;   // Full level (unit m s-1)
+        TF* conductivity_h_g; // Half level (unit m s-1)
+        TF* source_g;         // Source term (unit s-1)
+        TF* root_fraction_g;  // Root fraction per soil layer (-)
+
+        // Lookup table data obtained from input NetCDF file:
+        TF* theta_res_g;  // Residual soil moisture content (m3 m-3)
+        TF* theta_wp_g;   // Soil moisture content at wilting point (m3 m-3)
+        TF* theta_fc_g;   // Soil moisture content at field capacity (m3 m-3)
+        TF* theta_sat_g;  // Soil moisture content at saturation (m3 m-3)
+
+        TF* gamma_theta_sat_g;  // Conducticity soil moisture at saturation (m3 m-3)
+
+        TF* vg_a_g;  // van Genuchten parameter alpha (m-1)
+        TF* vg_l_g;  // van Genuchten parameter l (-)
+        TF* vg_n_g;  // van Genuchten parameter n (-)
+
+        // Derived lookup table entries
+        TF* vg_m_g;  // van Genuchten parameter m (-)
+
+        TF* kappa_theta_max_g;  // Maximum diffusivity (m2 s-1)
+        TF* kappa_theta_min_g;  // Minimum diffusivity (m2 s-1)
+        TF* gamma_theta_max_g;  // Maximum conductivity (m s-1):
+        TF* gamma_theta_min_g;  // Minimum conductivity (m s-1)
+        TF* gamma_T_dry_g;      // Heat conductivity dry soil (m s-1)
+        TF* rho_C_g;            // Volumetric soil heat capacity (J m-3 K-1)
         #endif
 
         Boundary_type thermobc;
