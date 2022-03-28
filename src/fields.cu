@@ -487,8 +487,8 @@ void Fields<TF>::forward_soil_field3d_device(Soil_field3d<TF>* fld)
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-    const int nmemsize = sgd.ncells * sizeof(TF);
-    const int ijmemsize = sgd.ncells * sizeof(TF);
+    const int nmemsize  = sgd.ncells * sizeof(TF);
+    const int ijmemsize = agd.ijcells * sizeof(TF);
 
     cuda_safe_call(cudaMemcpy(fld->fld_g,      fld->fld.data(),      nmemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(fld->fld_bot_g,  fld->fld_bot.data(),  ijmemsize, cudaMemcpyHostToDevice));
@@ -526,7 +526,7 @@ void Fields<TF>::backward_soil_field3d_device(Soil_field3d<TF>* fld)
     auto& sgd = soil_grid.get_grid_data();
 
     const int nmemsize = sgd.ncells * sizeof(TF);
-    const int ijmemsize = sgd.ncells * sizeof(TF);
+    const int ijmemsize = agd.ijcells * sizeof(TF);
 
     cuda_safe_call(cudaMemcpy(fld->fld.data(),      fld->fld_g,      nmemsize, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(fld->fld_bot.data(),  fld->fld_bot_g,  ijmemsize, cudaMemcpyDeviceToHost));
