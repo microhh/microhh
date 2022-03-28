@@ -420,11 +420,11 @@ void Fields<TF>::forward_device()
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
-        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
+        forward_field_device_2d(it.second->fld_g, it.second->fld.data());
 
     // Tendencies 2D fields
     for (auto& it : at2d)
-        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
+        forward_field_device_2d(it.second->fld_g, it.second->fld.data());
 
     // Prognostic fields soil
     for (auto& it : sps)
@@ -432,10 +432,10 @@ void Fields<TF>::forward_device()
 
     // Tendencies soil
     for (auto& it : sts)
-        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), sgd.ncells);
+        forward_field_device(it.second->fld_g, it.second->fld.data(), sgd.ncells);
 
-    forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
-    forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
+    forward_field_device(rhoref_g,  rhoref.data() , gd.kcells);
+    forward_field_device(rhorefh_g, rhorefh.data(), gd.kcells);
 }
 
 /**
@@ -452,7 +452,7 @@ void Fields<TF>::backward_device()
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
-        backward_field_device_1d(it.second->fld.data(), it.second->fld_g, gd.ijcells);
+        backward_field_device_2d(it.second->fld.data(), it.second->fld_g);
 
     // Prognostic fields soil.
     for (auto& it : sps)
@@ -474,7 +474,7 @@ void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
     forward_field_device_2d(fld->grad_top_g, fld->grad_top.data());
     forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data());
     forward_field_device_2d(fld->flux_top_g, fld->flux_top.data());
-    forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
+    forward_field_device(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
 /**
@@ -512,7 +512,7 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
     backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g);
     backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g);
     backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g);
-    backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
+    backward_field_device(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
 }
 
 /**
@@ -568,7 +568,7 @@ void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field)
  * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
+void Fields<TF>::forward_field_device(TF* field_g, TF* field, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field_g, field, ncells*sizeof(TF), cudaMemcpyHostToDevice));
 }
@@ -606,7 +606,7 @@ void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g)
  * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
+void Fields<TF>::backward_field_device(TF* field, TF* field_g, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }
