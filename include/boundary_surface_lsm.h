@@ -85,10 +85,10 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         #ifdef USECUDA
         // GPU functions and variables
-        //void prepare_device();
-        //void clear_device();
-        //void forward_device();  // TMP BVS
-        //void backward_device(); // TMP BVS
+        void prepare_device();
+        void clear_device();
+        void forward_device();
+        void backward_device();
 
         //TF* get_z0m_g() { return z0m_g; };
         //TF* get_ustar_g() { return ustar_g; };
@@ -205,18 +205,21 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> gamma_T_dry;      // Heat conductivity dry soil (m s-1)
         std::vector<TF> rho_C;            // Volumetric soil heat capacity (J m-3 K-1)
 
+        #ifdef USECUDA
+        float* zL_sl_g;
+        float* f_sl_g;
+        int* nobuk_g;
 
+        TF* z0m_g;
+        TF* z0h_g;
 
-        //#ifdef USECUDA
-        //TF* z0m_g;
-        //TF* z0h_g;
-        //TF* obuk_g;
-        //TF* ustar_g;
-        //int* nobuk_g;
+        TF* ustar_g;
+        TF* obuk_g;
 
-        //float* zL_sl_g;
-        //float* f_sl_g;
-        //#endif
+        TF* dudz_mo_g;
+        TF* dvdz_mo_g;
+        TF* dbdz_mo_g;
+        #endif
 
         Boundary_type thermobc;
 
