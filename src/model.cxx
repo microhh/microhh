@@ -560,6 +560,7 @@ void Model<TF>::prepare_gpu()
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
     grid     ->prepare_device();
+    soil_grid->prepare_device();
     fields   ->prepare_device();
     buffer   ->prepare_device();
     thermo   ->prepare_device();
@@ -578,6 +579,7 @@ void Model<TF>::clear_gpu()
 {
     master.print_message("Clearing the GPU\n");
     grid     ->clear_device();
+    soil_grid->clear_device();
     fields   ->clear_device();
     thermo   ->clear_device();
     force    ->clear_device();
