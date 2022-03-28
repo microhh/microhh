@@ -20,10 +20,10 @@ def add_nc_var(name, dims, nc, data):
 
 if __name__ == '__main__':
     """
-    Case switches. LSM without radiation is not supported (duhh).
+    Case switches.
     """
-    use_interactive_lsm = True    # True = HTESSEL, False = prescribed surface fluxes from ERA5
-    use_radiation = True          # True = RRTMGP, False = no radiation...
+    use_htessel = True    # False = prescribed surface H+LE fluxes from ERA5.
+    use_rrtmgp = True     # False = prescribed radiation from ERA5.
 
     """
     Create vertical grid for LES
@@ -40,6 +40,14 @@ if __name__ == '__main__':
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
     ls2d_z = ls2d.interp(z=z)
 
+    if not use_rrtmgp:
+        # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
+        # TODO: add to LS2D download...
+        ds_rad = xr.open_dataset('era_rad_20160815_0000_2300.nc')
+        ds_rad = ds_rad/3600.
+        ds_rad['time'] = ds_rad['time'] - np.timedelta64(30, 'm')
+        ds_rad = ds_rad.interp(time=ls2d_z.time)
+
     """
     Update .ini file
     """
@@ -49,7 +57,7 @@ if __name__ == '__main__':
     ini['grid']['zsize'] = zsize
     ini['buffer']['zstart'] = zsize*3/4.
 
-    if use_interactive_lsm:
+    if use_htessel:
         ini['boundary']['swboundary'] = 'surface_lsm'
         ini['boundary']['sbcbot'] = 'dirichlet'
     else:
@@ -58,10 +66,12 @@ if __name__ == '__main__':
         ini['boundary']['swtimedep'] = True
         ini['boundary']['timedeplist'] = ['thl_sbot', 'qt_sbot']
 
-    if use_radiation:
+    if use_rrtmgp:
         ini['radiation']['swradiation'] = 'rrtmgp'
     else:
-        ini['radiation']['swradiation'] = '0'
+        ini['radiation']['swradiation'] = 'prescribed'
+        ini['radiation']['swtimedep_prescribed'] = True
+
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -96,9 +106,15 @@ if __name__ == '__main__':
     add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, ls2d_z.ug)
     add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, ls2d_z.vg)
 
-    if not use_interactive_lsm:
+    if not use_htessel:
         add_nc_var('thl_sbot', ('time_surface'), nc_tdep, ls2d_z.wth)
         add_nc_var('qt_sbot', ('time_surface'), nc_tdep, ls2d_z.wq)
+
+    if not use_rrtmgp:
+        add_nc_var('sw_flux_dn', ('time_surface'), nc_tdep, ds_rad.ssrd)
+        add_nc_var('sw_flux_up', ('time_surface'), nc_tdep, ds_rad.ssrd-ds_rad.ssr)
+        add_nc_var('lw_flux_dn', ('time_surface'), nc_tdep, ds_rad.strd)
+        add_nc_var('lw_flux_up', ('time_surface'), nc_tdep, ds_rad.strd-ds_rad.str)
 
     add_nc_var('u_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtu_advec)
     add_nc_var('v_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtv_advec)
@@ -114,7 +130,7 @@ if __name__ == '__main__':
     """
     Radiation variables
     """
-    if use_radiation:
+    if use_rrtmgp:
         nc_rad = nc.createGroup('radiation')
         nc_rad.createDimension('lay', ls2d_z.dims['lay'])
         nc_rad.createDimension('lev', ls2d_z.dims['lev'])
@@ -146,7 +162,7 @@ if __name__ == '__main__':
     """
     Land-surface and soil
     """
-    if use_interactive_lsm:
+    if use_htessel:
         nc_soil = nc.createGroup('soil')
         nc_soil.createDimension('z', ls2d_z.dims['zs'])
         add_nc_var('z', ('z'), nc_soil, ls2d.zs[::-1])
