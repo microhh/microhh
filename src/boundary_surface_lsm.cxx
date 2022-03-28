@@ -393,7 +393,7 @@ void Boundary_surface_lsm<TF>::exec(
             tiles.at("veg").fraction.data(),
             tiles.at("soil").fraction.data(),
             tiles.at("wet").fraction.data(),
-            fields.ap2d.at("wl").data(),
+            fields.ap2d.at("wl")->fld.data(),
             c_veg.data(),
             lai.data(),
             gd.istart, gd.iend,
@@ -729,10 +729,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate changes in the liquid water reservoir
     lsmk::calc_liquid_water_reservoir(
-            fields.at2d.at("wl").data(),
+            fields.at2d.at("wl")->fld.data(),
             interception.data(),
             throughfall.data(),
-            fields.ap2d.at("wl").data(),
+            fields.ap2d.at("wl")->fld.data(),
             tiles.at("veg").LE.data(),
             tiles.at("soil").LE.data(),
             tiles.at("wet").LE.data(),
@@ -1130,7 +1130,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
 
     // Initialise the prognostic surface variables, and/or
     // variables which are needed for consistent restarts.
-    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+    std::fill(fields.ap2d.at("wl")->fld.begin(), fields.ap2d.at("wl")->fld.end(), TF(0));
 
     // Set initial surface potential temperature and humidity to the atmospheric values (...)
     std::vector<TF> thl_1(1);
@@ -1422,7 +1422,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
     load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil", iotime);
 
     // Load the surface temperature, humidity and liquid water content.
-    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
+    load_2d_field(fields.ap2d.at("wl")->fld.data(), "wl_skin", iotime);
 
     for (auto& tile : tiles)
     {
@@ -1540,7 +1540,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
     }
 
     // Surface fields.
-    save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
+    save_2d_field(fields.ap2d.at("wl")->fld.data(), "wl_skin");
 
     for (auto& tile : tiles)
     {
@@ -1570,7 +1570,7 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
         else if (it == "obuk")
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl").data(), "wl", iotime);
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), "wl", iotime);
     }
 
     fields.release_tmp(tmp1);
@@ -1588,7 +1588,7 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("ustar", ustar, no_offset);
 
     // Land-surface
-    stats.calc_stats_2d("wl", fields.ap2d.at("wl"), no_offset);
+    stats.calc_stats_2d("wl", fields.ap2d.at("wl")->fld, no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     stats.calc_stats_2d("H", *fld_mean, no_offset);
@@ -1639,7 +1639,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
-    column.calc_time_series("wl", fields.ap2d.at("wl").data(), no_offset);
+    column.calc_time_series("wl", fields.ap2d.at("wl")->fld.data(), no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     column.calc_time_series("H", (*fld_mean).data(), no_offset);

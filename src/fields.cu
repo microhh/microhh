@@ -321,16 +321,25 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
+    const int ijmemsize  = gd.ijcells*sizeof(TF);
     const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
 
-    // Prognostic fields
+    // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->init_device();
 
-    // Tendencies
+    // Tendencies atmosphere
     for (auto& it : at)
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
+
+    // Prognostic 2D fields
+    for (auto& it : ap2d)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, ijmemsize));
+
+    // Tendencies 2D fields
+    for (auto& it : at2d)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, ijmemsize));
 
     // Reference profiles
     cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
@@ -352,6 +361,12 @@ void Fields<TF>::clear_device()
     for (auto& it : at)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
+    for (auto& it : ap2d)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
+    for (auto& it : at2d)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
     cuda_safe_call(cudaFree(rhoref_g));
     cuda_safe_call(cudaFree(rhorefh_g));
 
@@ -367,11 +382,18 @@ template<typename TF>
 void Fields<TF>::forward_device()
 {
     auto& gd = grid.get_grid_data();
+
     for (auto& it : a)
         forward_field3d_device(it.second.get());
 
     for (auto& it : at)
         forward_field_device_3d(it.second->fld_g, it.second->fld.data());
+
+    for (auto& it : ap2d)
+        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
+
+    for (auto& it : at2d)
+        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
 
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
@@ -383,8 +405,13 @@ void Fields<TF>::forward_device()
 template<typename TF>
 void Fields<TF>::backward_device()
 {
+    auto& gd = grid.get_grid_data();
+
     for (auto& it : a)
         backward_field3d_device(it.second.get());
+
+    for (auto& it : ap2d)
+        backward_field_device_1d(it.second->fld.data(), it.second->fld_g, gd.ijcells);
 }
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */

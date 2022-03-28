@@ -52,11 +52,20 @@ template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
+struct Field2d
+{
+    std::vector<TF> fld;
+    #ifdef USECUDA
+    TF* fld_g;
+    #endif
+};
+
+template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 template<typename TF>
 using Soil_field_map = std::map<std::string, std::shared_ptr<Soil_field3d<TF>>>;
 template<typename TF>
-using Field_2d_map = std::map<std::string, std::vector<TF>>;
+using Field_2d_map = std::map<std::string, std::shared_ptr<Field2d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
 

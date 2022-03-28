@@ -374,7 +374,7 @@ void Timeloop<TF>::exec()
 
         // 2D fields
         for (auto& f : fields.at2d)
-            rk3<TF>(fields.ap2d.at(f.first).data(), f.second.data(), substep, dt,
+            rk3<TF>(fields.ap2d.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
                     gd.icells, gd.ijcells, gd.ijcells);
 
@@ -397,7 +397,7 @@ void Timeloop<TF>::exec()
 
         // 2D fields
         for (auto& f : fields.at2d)
-            rk4<TF>(fields.ap2d.at(f.first).data(), f.second.data(), substep, dt,
+            rk4<TF>(fields.ap2d.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
                     gd.icells, gd.ijcells, gd.ijcells);
 
