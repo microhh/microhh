@@ -28,11 +28,13 @@
 #include <iostream>
 #include "fields.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "master.h"
 #include "column.h"
 #include "constants.h"
 #include "tools.h"
 #include "fast_math.h"
+#include "soil_field3d.h"
 
 namespace
 {
@@ -321,9 +323,13 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
     const int ijmemsize  = gd.ijcells*sizeof(TF);
     const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
+    const int nmemsize_soil = sgd.ncells*sizeof(TF);
+
 
     // Prognostic fields atmosphere
     for (auto& it : a)
@@ -341,6 +347,14 @@ void Fields<TF>::prepare_device()
     for (auto& it : at2d)
         cuda_safe_call(cudaMalloc(&it.second->fld_g, ijmemsize));
 
+    // Prognostic fields soil
+    for (auto& it : sps)
+        it.second->init_device();
+
+    // Tendencies soil
+    for (auto& it : sts)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
+
     // Reference profiles
     cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
     cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
@@ -355,16 +369,28 @@ void Fields<TF>::prepare_device()
 template<typename TF>
 void Fields<TF>::clear_device()
 {
+    // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->clear_device();
 
+    // Tendencies atmosphere
     for (auto& it : at)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
+    // Prognostic 2D fields
     for (auto& it : ap2d)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
+    // Tendencies 2D fields
     for (auto& it : at2d)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
+    // Prognostic fields soil
+    for (auto& it : sps)
+        it.second->clear_device();
+
+    // Tendencies soil
+    for (auto& it : sts)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
     cuda_safe_call(cudaFree(rhoref_g));
@@ -382,18 +408,31 @@ template<typename TF>
 void Fields<TF>::forward_device()
 {
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
 
+    // Prognostic fields atmosphere
     for (auto& it : a)
         forward_field3d_device(it.second.get());
 
+    // Tendencies atmosphere
     for (auto& it : at)
         forward_field_device_3d(it.second->fld_g, it.second->fld.data());
 
+    // Prognostic 2D fields
     for (auto& it : ap2d)
         forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
 
+    // Tendencies 2D fields
     for (auto& it : at2d)
         forward_field_device_1d(it.second->fld_g, it.second->fld.data(), gd.ijcells);
+
+    // Prognostic fields soil
+    for (auto& it : sps)
+        forward_soil_field3d_device(it.second.get());
+
+    // Tendencies soil
+    for (auto& it : sts)
+        forward_field_device_1d(it.second->fld_g, it.second->fld.data(), sgd.ncells);
 
     forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
     forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
@@ -407,14 +446,19 @@ void Fields<TF>::backward_device()
 {
     auto& gd = grid.get_grid_data();
 
+    // Prognostic fields atmosphere
     for (auto& it : a)
         backward_field3d_device(it.second.get());
 
+    // Prognostic 2D fields
     for (auto& it : ap2d)
         backward_field_device_1d(it.second->fld.data(), it.second->fld_g, gd.ijcells);
+
+    // Prognostic fields soil.
+    for (auto& it : sps)
+        backward_soil_field3d_device(it.second.get());
 }
 
-/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
 /**
  * This function copies a field3d instance from host to device
  * @param fld Pointer to field3d instance
@@ -433,7 +477,26 @@ void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
     forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
-/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
+/**
+ * This function copies a Soil_field3d instance from host to device
+ * @param fld Pointer to Soil_field3d instance
+ */
+template<typename TF>
+void Fields<TF>::forward_soil_field3d_device(Soil_field3d<TF>* fld)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int nmemsize = sgd.ncells * sizeof(TF);
+    const int ijmemsize = sgd.ncells * sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(fld->fld_g,      fld->fld.data(),      nmemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->fld_bot_g,  fld->fld_bot.data(),  ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->fld_top_g,  fld->fld_top.data(),  ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->flux_bot_g, fld->flux_bot.data(), ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->flux_top_g, fld->flux_top.data(), ijmemsize, cudaMemcpyHostToDevice));
+}
+
 /**
  * This function copies a field3d instance from device to host
  * @param fld Pointer to field3d instance
@@ -450,6 +513,26 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
     backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g);
     backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g);
     backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
+}
+
+/**
+ * This function copies a Soil_field3d instance from device to host
+ * @param fld Pointer to Soil_field3d instance
+ */
+template<typename TF>
+void Fields<TF>::backward_soil_field3d_device(Soil_field3d<TF>* fld)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int nmemsize = sgd.ncells * sizeof(TF);
+    const int ijmemsize = sgd.ncells * sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(fld->fld.data(),      fld->fld_g,      nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->fld_bot.data(),  fld->fld_bot_g,  ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->fld_top.data(),  fld->fld_top_g,  ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->flux_bot.data(), fld->flux_bot_g, ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->flux_top.data(), fld->flux_top_g, ijmemsize, cudaMemcpyDeviceToHost));
 }
 
 /**

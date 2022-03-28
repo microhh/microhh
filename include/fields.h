@@ -253,5 +253,8 @@ class Fields
          */
         void forward_field3d_device(Field3d<TF> *);  ///< Copy of a complete Field3d instance from host to device
         void backward_field3d_device(Field3d<TF> *); ///< Copy of a complete Field3d instance from device to host
+
+        void forward_soil_field3d_device(Soil_field3d<TF> *);  ///< Copy of a complete Soil_field3d instance from host to device
+        void backward_soil_field3d_device(Soil_field3d<TF> *); ///< Copy of a complete Soil_field3d instance from device to host
 };
 #endif
