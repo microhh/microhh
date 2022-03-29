@@ -269,95 +269,96 @@ namespace Land_surface_kernels_g
         }
     }
 
-//    template<typename TF>
-//    void calc_fluxes(
-//            TF* const __restrict__ H,
-//            TF* const __restrict__ LE,
-//            TF* const __restrict__ G,
-//            TF* const __restrict__ S,
-//            TF* const __restrict__ thl_bot,
-//            TF* const __restrict__ qt_bot,
-//            const TF* const __restrict__ T,
-//            const TF* const __restrict__ qt,
-//            const TF* const __restrict__ T_soil,
-//            const TF* const __restrict__ qsat_bot,
-//            const TF* const __restrict__ dqsatdT_bot,
-//            const TF* const __restrict__ ra,
-//            const TF* const __restrict__ rs,
-//            const TF* const __restrict__ lambda_stable,
-//            const TF* const __restrict__ lambda_unstable,
-//            const TF* const __restrict__ cs_veg,
-//            const TF* const __restrict__ sw_dn,
-//            const TF* const __restrict__ sw_up,
-//            const TF* const __restrict__ lw_dn,
-//            const TF* const __restrict__ lw_up,
-//            const TF* const __restrict__ b,
-//            const TF* const __restrict__ b_bot,
-//            const TF* const __restrict__ rhorefh,
-//            const TF* const __restrict__ exnerh,
-//            const TF db_ref,
-//            const TF emis_sfc,
-//            const TF dt,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int kstart, const int kend_soil,
-//            const int icells, const int ijcells,
-//            bool use_cs_veg, std::string name)
-//    {
-//        const TF exner_bot = exnerh[kstart];
-//        const TF rho_bot = rhorefh[kstart];
-//
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij    = i + j*icells;
-//                const int ijk   = ij + kstart*ijcells;
-//                const int ijk_s = ij + (kend_soil-1)*ijcells;
-//
-//                const TF T_bot = thl_bot[ij] * exner_bot;
-//
-//                // Disable canopy resistance in case of dew fall
-//                const TF rs_lim = qsat_bot[ij] < qt[ijk] ? TF(0) : rs[ij];
-//
-//                // Switch between skin heat capacity or not
-//                const TF cs_veg_lim = use_cs_veg ? cs_veg[ij] : TF(0);
-//
-//                // Switch conductivity skin layer stable/unstable conditions
-//                const TF db = b[ijk] - b_bot[ij] + db_ref;
-//                const TF lambda = db > 0 ? lambda_stable[ij] : lambda_unstable[ij];
-//
-//                // Recuring factors
-//                const TF fH  = rho_bot * cp<TF> / ra[ij];
-//                const TF fLE = rho_bot * Lv<TF> / (ra[ij] + rs_lim);
-//
-//                // Net radiation; negative sign = net input of energy at surface
-//                const TF Qnet = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij];
-//
-//                // Solve for the new surface temperature
-//                const TF num =
-//                    Qnet + lw_up[ij] + fH*T[ij] +
-//                    fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
-//                    lambda*T_soil[ijk_s] + TF(3)*emis_sfc*sigma_b<TF>*fm::pow4(T_bot) - (TF(1)-emis_sfc) * lw_dn[ij];
-//                const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*emis_sfc*sigma_b<TF>*fm::pow3(T_bot);
-//                const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
-//
-//                // Update qsat with linearised relation, to make sure that the SEB closes
-//                const TF dT_bot = T_bot_new - T_bot;
-//                const TF qsat_new  = qsat_bot[ij] + dqsatdT_bot[ij] * dT_bot;
-//
-//                // Calculate surface fluxes
-//                H [ij] = fH  * (T_bot_new - T[ij]);
-//                LE[ij] = fLE * (qsat_new - qt[ijk]);
-//                G [ij] = lambda * (T_bot_new - T_soil[ijk_s]);
-//                S [ij] = cs_veg_lim * (T_bot_new - T_bot)/dt;
-//
-//                // Update skin values
-//                thl_bot[ij] = T_bot_new / exner_bot;
-//                qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Lv<TF>);
-//            }
-//    }
-//
+    template<typename TF> __global__
+    void calc_fluxes_g(
+            TF* const __restrict__ H,
+            TF* const __restrict__ LE,
+            TF* const __restrict__ G,
+            TF* const __restrict__ S,
+            TF* const __restrict__ thl_bot,
+            TF* const __restrict__ qt_bot,
+            const TF* const __restrict__ T,
+            const TF* const __restrict__ qt,
+            const TF* const __restrict__ T_soil,
+            const TF* const __restrict__ qsat_bot,
+            const TF* const __restrict__ dqsatdT_bot,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ rs,
+            const TF* const __restrict__ lambda_stable,
+            const TF* const __restrict__ lambda_unstable,
+            const TF* const __restrict__ cs_veg,
+            const TF* const __restrict__ sw_dn,
+            const TF* const __restrict__ sw_up,
+            const TF* const __restrict__ lw_dn,
+            const TF* const __restrict__ lw_up,
+            const TF* const __restrict__ b,
+            const TF* const __restrict__ b_bot,
+            const TF* const __restrict__ rhorefh,
+            const TF* const __restrict__ exnerh,
+            const TF db_ref,
+            const TF emis_sfc,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend_soil,
+            const int icells, const int ijcells,
+            bool use_cs_veg, std::string name)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const TF exner_bot = exnerh[kstart];
+        const TF rho_bot = rhorefh[kstart];
+
+        if (i < iend && j < jend)
+        {
+            const int ij    = i + j*icells;
+            const int ijk   = ij + kstart*ijcells;
+            const int ijk_s = ij + (kend_soil-1)*ijcells;
+
+            const TF T_bot = thl_bot[ij] * exner_bot;
+
+            // Disable canopy resistance in case of dew fall
+            const TF rs_lim = qsat_bot[ij] < qt[ijk] ? TF(0) : rs[ij];
+
+            // Switch between skin heat capacity or not
+            const TF cs_veg_lim = use_cs_veg ? cs_veg[ij] : TF(0);
+
+            // Switch conductivity skin layer stable/unstable conditions
+            const TF db = b[ijk] - b_bot[ij] + db_ref;
+            const TF lambda = db > 0 ? lambda_stable[ij] : lambda_unstable[ij];
+
+            // Recuring factors
+            const TF fH  = rho_bot * Constants::cp<TF> / ra[ij];
+            const TF fLE = rho_bot * Constants::Lv<TF> / (ra[ij] + rs_lim);
+
+            // Net radiation; negative sign = net input of energy at surface
+            const TF Qnet = sw_dn[ij] - sw_up[ij] + lw_dn[ij] - lw_up[ij];
+
+            // Solve for the new surface temperature
+            const TF num =
+                Qnet + lw_up[ij] + fH*T[ij] +
+                fLE*(qt[ijk] + dqsatdT_bot[ij]*T_bot - qsat_bot[ij]) +
+                lambda*T_soil[ijk_s] + TF(3)*emis_sfc*Constants::sigma_b<TF>*fm::pow4(T_bot) - (TF(1)-emis_sfc) * lw_dn[ij];
+            const TF denom = fH + fLE*dqsatdT_bot[ij] + lambda + TF(4)*emis_sfc*Constants::sigma_b<TF>*fm::pow3(T_bot);
+            const TF T_bot_new = (num + cs_veg_lim/dt*T_bot) / (denom + cs_veg_lim/dt);
+
+            // Update qsat with linearised relation, to make sure that the SEB closes
+            const TF dT_bot = T_bot_new - T_bot;
+            const TF qsat_new  = qsat_bot[ij] + dqsatdT_bot[ij] * dT_bot;
+
+            // Calculate surface fluxes
+            H [ij] = fH  * (T_bot_new - T[ij]);
+            LE[ij] = fLE * (qsat_new - qt[ijk]);
+            G [ij] = lambda * (T_bot_new - T_soil[ijk_s]);
+            S [ij] = cs_veg_lim * (T_bot_new - T_bot)/dt;
+
+            // Update skin values
+            thl_bot[ij] = T_bot_new / exner_bot;
+            qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Constants::Lv<TF>);
+        }
+    }
+
 //    template<typename TF>
 //    void calc_bcs(
 //            TF* const __restrict__ thl_bot,

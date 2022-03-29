@@ -259,13 +259,43 @@ void Boundary_surface_lsm<TF>::exec(
         //            gd.icells, gd.jcells,
         //            gd.ijcells);
 
+        // Calculate surface fluxes
+        lsmk::calc_fluxes_g<<<gridGPU, blockGPU>>>(
+                tile.second.H_g,
+                tile.second.LE_g,
+                tile.second.G_g,
+                tile.second.S_g,
+                tile.second.thl_bot_g,
+                tile.second.qt_bot_g,
+                T_a,
+                fields.sp.at("qt")->fld_g,
+                fields.sps.at("t")->fld_g,
+                qsat_bot, dqsatdT_bot,
+                tile.second.ra_g,
+                tile.second.rs_g,
+                lambda_stable_g,
+                lambda_unstable_g,
+                cs_veg_g,
+                sw_dn,
+                sw_up,
+                lw_dn,
+                lw_up,
+                buoy->fld_g,
+                buoy->fld_bot_g,
+                rhorefh,
+                exnrefh,
+                db_ref, emis_sfc,
+                TF(subdt),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, sgd.kend,
+                gd.icells, gd.ijcells,
+                use_cs_veg, tile.first);
+
         //std::cout << "from GPU:" << std::endl;
-        //print_ij(tile.second.ustar_g);
+        //print_ij(tile.second.H_g);
         //throw 1;
     }
-
-
-
 
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);
