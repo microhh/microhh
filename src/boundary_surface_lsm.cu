@@ -22,16 +22,22 @@
 
 #include <iostream>
 
-#include "boundary_surface_lsm.h"
 #include "boundary.h"
+#include "boundary_surface_lsm.h"
 #include "land_surface_kernels_gpu.h"
+#include "boundary_surface_kernels_gpu.h"
 #include "tools.h"
 #include "grid.h"
+#include "fields.h"
 #include "soil_grid.h"
+#include "radiation.h"
+#include "thermo.h"
+#include "microphys.h"
 
 namespace
 {
     namespace lsmk = Land_surface_kernels_g;
+    namespace bsk = Boundary_surface_kernels_g;
 }
 
 
@@ -41,6 +47,98 @@ void Boundary_surface_lsm<TF>::exec(
         Thermo<TF>& thermo, Radiation<TF>& radiation,
         Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int blocki = agd.ithread_block;
+    const int blockj = agd.jthread_block;
+
+    // For 2D field excluding ghost cells
+    int gridi = agd.imax/blocki + (agd.imax%blocki > 0);
+    int gridj = agd.jmax/blockj + (agd.jmax%blockj > 0);
+    dim3 gridGPU (gridi,  gridj,  1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    // For 2D field including ghost cells
+    gridi = agd.icells/blocki + (agd.icells%blocki > 0);
+    gridj = agd.jcells/blockj + (agd.jcells%blockj > 0);
+    dim3 gridGPU2 (gridi,  gridj,  1);
+    dim3 blockGPU2(blocki, blockj, 1);
+
+    // Calculate filtered wind speed difference surface-atmosphere.
+    auto tmp1 = fields.get_tmp_g();
+    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
+    TF* du_tot = tmp1->fld_bot_g;
+
+    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
+        du_tot,
+        fields.mp.at("u")->fld_g,
+        fields.mp.at("v")->fld_g,
+        fields.mp.at("u")->fld_bot_g,
+        fields.mp.at("v")->fld_bot_g,
+        agd.istart, agd.iend,
+        agd.jstart, agd.jend,
+        agd.kstart,
+        agd.icells, agd.ijcells);
+    cuda_check_error();
+
+    // 2D cyclic boundaries on dutot
+    boundary_cyclic.exec_2d_g(du_tot);
+
+    //
+    // Retrieve necessary data from other classes.
+    //
+    // Get references to surface radiation fluxes
+    TF* sw_dn = radiation.get_surface_radiation_g("sw_down");
+    TF* sw_up = radiation.get_surface_radiation_g("sw_up");
+    TF* lw_dn = radiation.get_surface_radiation_g("lw_down");
+    TF* lw_up = radiation.get_surface_radiation_g("lw_up");
+
+    // Get (near-) surface thermo.
+    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
+    TF* T_bot = tmp1->flux_bot_g;
+    TF* T_a = tmp1->grad_bot_g;
+    TF* vpd = tmp1->fld_top_g;
+    TF* qsat_bot = tmp1->flux_top_g;
+    TF* dqsatdT_bot = tmp1->grad_top_g;
+
+    thermo.get_land_surface_fields_g(
+        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot);
+
+    // Get (near-) surface buoyancy.
+    auto buoy = fields.get_tmp_g();
+    thermo.get_buoyancy_surf_g(*buoy);
+    const TF db_ref = thermo.get_db_ref();
+
+    // Get basestate vectors.
+    TF* rhorefh = thermo.get_basestate_fld_g("rhoh");
+    TF* thvrefh = thermo.get_basestate_fld_g("thvh");
+    TF* exnrefh = thermo.get_basestate_fld_g("exnerh");
+    TF* prefh   = thermo.get_basestate_fld_g("prefh");
+
+    // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
+    auto tmp2 = fields.get_tmp_g();
+    TF* rain_rate = tmp2->fld_bot_g;
+    microphys.get_surface_rain_rate_g(rain_rate);
+
+    // XY tmp fields for intermediate calculations
+    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
+    TF* f1  = tmp2->flux_bot_g;
+    TF* f2  = tmp2->grad_bot_g;
+    TF* f2b = tmp2->fld_top_g;
+    TF* f3  = tmp2->flux_top_g;
+    TF* theta_mean_n = tmp2->grad_top_g;
+
+    const double subdt = timeloop.get_sub_time_step();
+
+    const int iter = timeloop.get_iteration();
+    const int subs = timeloop.get_substep();
+    const int mpiid = master.get_mpiid();
+
+    // yada yada, insert LSM code....
+
+    fields.release_tmp_g(tmp1);
+    fields.release_tmp_g(tmp2);
 }
 
 template<typename TF>
@@ -68,6 +166,7 @@ void Boundary_surface_lsm<TF>::print_ij(
         gd.jstart, gd.jend,
         gd.icells);
     cuda_check_error();
+    cudaDeviceSynchronize();
 }
 
 template<typename TF>
