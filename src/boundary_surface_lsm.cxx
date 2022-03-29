@@ -446,15 +446,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             gd.icells);
 
-    //std::cout << "from CPU:" << std::endl;
-    //for (int i=gd.istart; i<gd.iend; ++i)
-    //    for (int j=gd.jstart; j<gd.jend; ++j)
-    //    {
-    //        const int ij = i + j*gd.icells;
-    //        std::cout << tiles.at("soil").rs[ij] << std::endl;
-    //    }
-    //throw 1;
-
     // Loop over tiles, and calculate tile properties and fluxes
     for (auto& tile : tiles)
     {
@@ -511,6 +502,15 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart,
                     gd.icells, gd.jcells,
                     gd.ijcells);
+
+        //std::cout << "from CPU:" << std::endl;
+        //for (int i=gd.istart; i<gd.iend; ++i)
+        //    for (int j=gd.jstart; j<gd.jend; ++j)
+        //    {
+        //        const int ij = i + j*gd.icells;
+        //        std::cout << tile.second.ustar[ij] << std::endl;
+        //    }
+        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes(

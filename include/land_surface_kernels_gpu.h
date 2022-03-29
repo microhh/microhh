@@ -25,9 +25,14 @@
 
 #include "tools.h"
 #include "constants.h"
+#include "boundary_surface_kernels_gpu.h"
+#include "monin_obukhov.h"
 
 namespace Land_surface_kernels_g
 {
+    namespace bsk = Boundary_surface_kernels_g;
+    namespace most = Monin_obukhov;
+
     template<typename TF> __global__
     void calc_tile_fractions_g(
             TF* const __restrict__ tile_frac_veg,
@@ -215,53 +220,55 @@ namespace Land_surface_kernels_g
         }
     }
 
-//    template<typename TF, bool sw_constant_z0>
-//    void calc_stability(
-//            TF* const __restrict__ ustar,
-//            TF* const __restrict__ obuk,
-//            TF* const __restrict__ bfluxbot,
-//            TF* const __restrict__ ra,
-//            int* const __restrict__ nobuk,
-//            const TF* const __restrict__ dutot,
-//            const TF* const __restrict__ b,
-//            const TF* const __restrict__ bbot,
-//            const TF* const __restrict__ z0m,
-//            const TF* const __restrict__ z0h,
-//            const float* const __restrict__ zL_sl,
-//            const float* const __restrict__ f_sl,
-//            const TF db_ref,
-//            const TF zsl,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int kstart,
-//            const int icells, const int jcells,
-//            const int ijcells)
-//    {
-//        const int ii = 1;
-//        const int jj = icells;
-//        const int kk = ijcells;
-//
-//        for (int j=0; j<jcells; ++j)
-//            #pragma ivdep
-//            for (int i=0; i<icells; ++i)
-//            {
-//                const int ij  = i + j*jj;
-//                const int ijk = i + j*jj + kstart*kk;
-//                const TF db = b[ijk] - bbot[ij] + db_ref;
-//
-//                if (sw_constant_z0)
-//                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup(
-//                            zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
-//                else
-//                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
-//                            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
-//
-//                ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-//                bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
-//                ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
-//            }
-//    }
-//
+    template<typename TF, bool sw_constant_z0> __global__
+    void calc_stability_g(
+            TF* const __restrict__ ustar,
+            TF* const __restrict__ obuk,
+            TF* const __restrict__ bfluxbot,
+            TF* const __restrict__ ra,
+            int* const __restrict__ nobuk,
+            const TF* const __restrict__ dutot,
+            const TF* const __restrict__ b,
+            const TF* const __restrict__ bbot,
+            const TF* const __restrict__ z0m,
+            const TF* const __restrict__ z0h,
+            const float* const __restrict__ zL_sl,
+            const float* const __restrict__ f_sl,
+            const TF db_ref,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int jcells,
+            const int ijcells)
+    {
+        //const int ii = 1;
+        //const int jj = icells;
+        //const int kk = ijcells;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            const TF db = b[ijk] - bbot[ij] + db_ref;
+
+            if (sw_constant_z0)
+                obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(
+                        zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
+            //else
+            //    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
+            //            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
+            ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
+            bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+            ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
+        }
+    }
+
 //    template<typename TF>
 //    void calc_fluxes(
 //            TF* const __restrict__ H,

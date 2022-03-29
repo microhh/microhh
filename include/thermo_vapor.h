@@ -97,6 +97,8 @@ class Thermo_vapor : public Thermo<TF>
         TF* get_basestate_fld_g(std::string);
         void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
             { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_vapor"); };
+        void get_buoyancy_surf_g(TF*, TF*, TF*)
+            { throw std::runtime_error("Function \"get_buoyancy_surf_g\" not implemented in thermo_disabled"); };
         #endif
 
         // Functions which are not implemented and throw error

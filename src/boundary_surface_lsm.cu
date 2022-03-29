@@ -202,9 +202,70 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    //std::cout << "from GPU:" << std::endl;
-    //print_ij(tiles.at("soil").rs_g);
-    //throw 1;
+    // Loop over tiles, and calculate tile properties and fluxes
+    for (auto& tile : tiles)
+    {
+        bool use_cs_veg = (tile.first == "veg");
+
+        //
+        // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
+        // from previous time step (= old method, similar to DALES).
+        // 2) Calculate new thl_bot such that SEB closes.
+        //
+        thermo.get_buoyancy_surf_g(
+                buoy->fld_bot_g,
+                tile.second.thl_bot_g,
+                tile.second.qt_bot_g);
+
+        // Calculate Obuk, ustar, and ra.
+        if (sw_constant_z0)
+            lsmk::calc_stability_g<TF, true><<<gridGPU2, blockGPU2>>>(
+                    tile.second.ustar_g,
+                    tile.second.obuk_g,
+                    tile.second.bfluxbot_g,
+                    tile.second.ra_g,
+                    tile.second.nobuk_g,
+                    du_tot,
+                    buoy->fld_g,
+                    buoy->fld_bot_g,
+                    z0m_g, z0h_g,
+                    zL_sl_g,
+                    f_sl_g,
+                    db_ref,
+                    gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart,
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
+        //else
+        //    lsmk::calc_stability<TF, false>(
+        //            tile.second.ustar.data(),
+        //            tile.second.obuk.data(),
+        //            tile.second.bfluxbot.data(),
+        //            tile.second.ra.data(),
+        //            tile.second.nobuk.data(),
+        //            (*dutot).data(),
+        //            buoy->fld.data(),
+        //            buoy->fld_bot.data(),
+        //            z0m.data(), z0h.data(),
+        //            zL_sl.data(),
+        //            f_sl.data(),
+        //            db_ref,
+        //            gd.z[gd.kstart],
+        //            gd.istart, gd.iend,
+        //            gd.jstart, gd.jend,
+        //            gd.kstart,
+        //            gd.icells, gd.jcells,
+        //            gd.ijcells);
+
+        //std::cout << "from GPU:" << std::endl;
+        //print_ij(tile.second.ustar_g);
+        //throw 1;
+    }
+
+
+
 
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);

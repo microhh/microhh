@@ -257,6 +257,23 @@ namespace
     }
 
     template<typename TF> __global__
+    void calc_buoyancy_bot_g(TF* __restrict__ bbot,
+                             TF* __restrict__ thbot,
+                             TF* __restrict__ qtbot,
+                             TF* __restrict__ thvrefh,
+                             int icells, int jcells, int kstart)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            bbot[ij] = buoyancy_no_ql(thbot[ij], qtbot[ij], thvrefh[kstart]);
+        }
+    }
+
+    template<typename TF> __global__
     void calc_buoyancy_flux_bot_g(TF* __restrict__ bfluxbot,
                                   TF* __restrict__ th, TF* __restrict__ thfluxbot,
                                   TF* __restrict__ qt, TF* __restrict__ qtfluxbot,
@@ -863,6 +880,29 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
         fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
         bs.thvrefh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
+    cuda_check_error();
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_buoyancy_surf_g(
+    TF* const restrict b_bot,
+    TF* const restrict thl_bot,
+    TF* const restrict qt_bot)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
+
+    calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
+        b_bot, thl_bot, qt_bot,
+        bs.thvrefh_g,
+        gd.icells, gd.jcells, gd.kstart);
     cuda_check_error();
 }
 

@@ -24,6 +24,7 @@
 #define BOUNDARY_SURFACE_KERNELS_GPU_H
 
 #include "monin_obukhov.h"
+#include "boundary.h"
 
 namespace Boundary_surface_kernels_g
 {
@@ -135,6 +136,39 @@ namespace Boundary_surface_kernels_g
             const int ij = i + j*icells;
             dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
         }
+    }
+
+    template<typename TF> __device__
+    TF find_obuk_g(
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
+            int &n,
+            const TF Ri,
+            const TF zsl)
+    {
+        // Determine search direction.
+        if ((f[n]-Ri) > 0.f)
+            while ( (f[n-1]-Ri) > 0.f && n > 0) { --n; }
+        else
+            while ( (f[n]-Ri) < 0.f && n < (nzL_lut-1) ) { ++n; }
+
+        const TF zL0 = (n == 0 || n == nzL_lut-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+        return zsl/zL0;
+    }
+
+    template<typename TF> __device__
+    TF calc_obuk_noslip_dirichlet_lookup_g(
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
+            int& n,
+            const TF du,
+            const TF db,
+            const TF zsl)
+    {
+        // Calculate the appropriate Richardson number.
+        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        return find_obuk_g(zL, f, n, Ri, zsl);
     }
 }
 #endif
