@@ -106,6 +106,8 @@ class Thermo_buoy : public Thermo<TF>
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string)
             { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
+            { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_disabled"); };
         #endif
 
     private:
