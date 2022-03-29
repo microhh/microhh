@@ -413,6 +413,7 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
+
     // Calculate vegetation/soil resistance functions `f`
     lsmk::calc_resistance_functions(
             (*f1).data(), (*f2).data(),
@@ -432,7 +433,7 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kend,
             gd.icells, gd.ijcells);
 
-    // Calculate canopy resistance per tile
+    // Calculate canopy resistance for veg and soil tiles.
     lsmk::calc_canopy_resistance(
             tiles.at("veg").rs.data(),
             rs_veg_min.data(), lai.data(),
@@ -447,6 +448,15 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+
+    //std::cout << "from CPU:" << std::endl;
+    //for (int i=gd.istart; i<gd.iend; ++i)
+    //    for (int j=gd.jstart; j<gd.jend; ++j)
+    //    {
+    //        const int ij = i + j*gd.icells;
+    //        std::cout << tiles.at("soil").rs[ij] << std::endl;
+    //    }
+    //throw 1;
 
     // Loop over tiles, and calculate tile properties and fluxes
     for (auto& tile : tiles)

@@ -26,10 +26,12 @@
 #include "boundary_surface_lsm.h"
 #include "land_surface_kernels_gpu.h"
 #include "boundary_surface_kernels_gpu.h"
+#include "soil_kernels_gpu.h"
 #include "tools.h"
 #include "grid.h"
-#include "fields.h"
 #include "soil_grid.h"
+#include "fields.h"
+#include "soil_field3d.h"
 #include "radiation.h"
 #include "thermo.h"
 #include "microphys.h"
@@ -38,6 +40,7 @@ namespace
 {
     namespace lsmk = Land_surface_kernels_g;
     namespace bsk = Boundary_surface_kernels_g;
+    namespace sk = Soil_kernels_g;
 }
 
 
@@ -47,21 +50,21 @@ void Boundary_surface_lsm<TF>::exec(
         Thermo<TF>& thermo, Radiation<TF>& radiation,
         Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
-    auto& agd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-    const int blocki = agd.ithread_block;
-    const int blockj = agd.jthread_block;
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
 
     // For 2D field excluding ghost cells
-    int gridi = agd.imax/blocki + (agd.imax%blocki > 0);
-    int gridj = agd.jmax/blockj + (agd.jmax%blockj > 0);
+    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
     dim3 gridGPU (gridi,  gridj,  1);
     dim3 blockGPU(blocki, blockj, 1);
 
     // For 2D field including ghost cells
-    gridi = agd.icells/blocki + (agd.icells%blocki > 0);
-    gridj = agd.jcells/blockj + (agd.jcells%blockj > 0);
+    gridi = gd.icells/blocki + (gd.icells%blocki > 0);
+    gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
     dim3 gridGPU2 (gridi,  gridj,  1);
     dim3 blockGPU2(blocki, blockj, 1);
 
@@ -76,10 +79,10 @@ void Boundary_surface_lsm<TF>::exec(
         fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g,
         fields.mp.at("v")->fld_bot_g,
-        agd.istart, agd.iend,
-        agd.jstart, agd.jend,
-        agd.kstart,
-        agd.icells, agd.ijcells);
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
+        gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 2D cyclic boundaries on dutot
@@ -135,8 +138,75 @@ void Boundary_surface_lsm<TF>::exec(
     const int subs = timeloop.get_substep();
     const int mpiid = master.get_mpiid();
 
-    // yada yada, insert LSM code....
+    //
+    // LSM calculations
+    //
+    lsmk::calc_tile_fractions_g<<<gridGPU, blockGPU>>>(
+            tiles.at("veg").fraction_g,
+            tiles.at("soil").fraction_g,
+            tiles.at("wet").fraction_g,
+            fields.ap2d.at("wl")->fld_g,
+            c_veg_g, lai_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
 
+    // Calculate root fraction weighted mean soil water content
+    sk::calc_root_weighted_mean_theta_g<<<gridGPU, blockGPU>>>(
+            theta_mean_n,
+            fields.sps.at("theta")->fld_g,
+            soil_index_g,
+            root_fraction_g,
+            theta_wp_g,
+            theta_fc_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate vegetation/soil resistance functions `f`.
+    lsmk::calc_resistance_functions_g<<<gridGPU, blockGPU>>>(
+            f1, f2, f2b, f3,
+            sw_dn,
+            fields.sps.at("theta")->fld_g,
+            theta_mean_n, vpd,
+            gD_coeff_g,
+            c_veg_g,
+            theta_wp_g,
+            theta_fc_g,
+            theta_res_g,
+            soil_index_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate canopy resistance for veg and soil tiles.
+    lsmk::calc_canopy_resistance<<<gridGPU, blockGPU>>>(
+            tiles.at("veg").rs_g,
+            rs_veg_min_g, lai_g,
+            f1, f2, f3,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    lsmk::calc_soil_resistance<<<gridGPU, blockGPU>>>(
+            tiles.at("soil").rs_g,
+            rs_soil_min_g, f2b,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    //std::cout << "from GPU:" << std::endl;
+    //print_ij(tiles.at("soil").rs_g);
+    //throw 1;
+
+    fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
 }
@@ -313,13 +383,13 @@ void Boundary_surface_lsm<TF>::forward_device()
     const int tf_memsize_ijk  = sgd.ncells*sizeof(TF);
     const int int_memsize_ijk = sgd.ncells*sizeof(int);
 
-    cuda_safe_call(cudaMemcpy(soil_index_g, soil_index.data(), int_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(diffusivity_g, diffusivity.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(diffusivity_h_g, diffusivity_h.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(conductivity_g, conductivity.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(conductivity_h_g, conductivity_h.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(source_g, source.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(root_fraction_g, root_fraction.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(soil_index_g, soil_index.data(), int_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(diffusivity_g, diffusivity.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(diffusivity_h_g, diffusivity_h.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(conductivity_g, conductivity.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(conductivity_h_g, conductivity_h.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(source_g, source.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(root_fraction_g, root_fraction.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
 
     // 4. Copy lookup table with van Genuchten parameters:
     const int memsize_vg_lut = theta_res.size() * sizeof(TF);
