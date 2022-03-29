@@ -71,9 +71,12 @@ class Microphys_nsw6 : public Microphys<TF>
 
         unsigned long get_time_limit(unsigned long, double);
 
+        #ifdef USECUDA
+        void get_surface_rain_rate_g(TF*);
         void prepare_device();
         void clear_device();
         void backward_device();
+        #endif
 
     private:
         using Microphys<TF>::swmicrophys;
