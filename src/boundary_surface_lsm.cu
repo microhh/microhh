@@ -185,7 +185,7 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate canopy resistance for veg and soil tiles.
-    lsmk::calc_canopy_resistance<<<gridGPU, blockGPU>>>(
+    lsmk::calc_canopy_resistance_g<<<gridGPU, blockGPU>>>(
             tiles.at("veg").rs_g,
             rs_veg_min_g, lai_g,
             f1, f2, f3,
@@ -194,7 +194,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    lsmk::calc_soil_resistance<<<gridGPU, blockGPU>>>(
+    lsmk::calc_soil_resistance_g<<<gridGPU, blockGPU>>>(
             tiles.at("soil").rs_g,
             rs_soil_min_g, f2b,
             gd.istart, gd.iend,
