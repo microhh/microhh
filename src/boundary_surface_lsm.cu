@@ -49,6 +49,28 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 }
 
 template<typename TF>
+void Boundary_surface_lsm<TF>::print_ij(
+    const TF* const __restrict__ fld_g)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+
+    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 gridGPU (gridi,  gridj,  1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    lsmk::print_ij<<<gridGPU, blockGPU>>>(
+        fld_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
+    cuda_check_error();
+}
+
+template<typename TF>
 void Boundary_surface_lsm<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
@@ -87,8 +109,12 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&lambda_stable_g, tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&lambda_unstable_g, tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&cs_veg_g, tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&water_mask_g, int_memsize_ij));
-    cuda_safe_call(cudaMalloc(&t_bot_water_g, tf_memsize_ij));
+
+    if (sw_water)
+    {
+        cuda_safe_call(cudaMalloc(&water_mask_g, int_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t_bot_water_g, tf_memsize_ij));
+    }
 
     cuda_safe_call(cudaMalloc(&interception_g, tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&throughfall_g, tf_memsize_ij));
@@ -172,8 +198,12 @@ void Boundary_surface_lsm<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(lambda_stable_g, lambda_stable.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(lambda_unstable_g, lambda_unstable.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(cs_veg_g, cs_veg.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(water_mask_g, water_mask.data(), int_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(t_bot_water_g, t_bot_water.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
+
+    if (sw_water)
+    {
+        cuda_safe_call(cudaMemcpy(water_mask_g, water_mask.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t_bot_water_g, t_bot_water.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
+    }
 
     cuda_safe_call(cudaMemcpy(interception_g, interception.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(throughfall_g, throughfall.data(), tf_memsize_ij, cudaMemcpyHostToDevice));

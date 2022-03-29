@@ -111,9 +111,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         void forward_device();
         void backward_device();
 
-        //TF* get_z0m_g() { return z0m_g; };
-        //TF* get_ustar_g() { return ustar_g; };
-        //TF* get_obuk_g() { return obuk_g; };
+        TF* get_z0m_g()  { return z0m_g; };
+        TF* get_dudz_g() { return dudz_mo_g; };
+        TF* get_dvdz_g() { return dvdz_mo_g; };
+        TF* get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -225,6 +226,8 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> rho_C;            // Volumetric soil heat capacity (J m-3 K-1)
 
         #ifdef USECUDA
+        void print_ij(const TF*);
+
         // Surface layer:
         float* zL_sl_g;
         float* f_sl_g;

@@ -27,6 +27,23 @@
 
 namespace Land_surface_kernels_g
 {
+    template<typename TF> __global__
+    void print_ij(
+            TF* const __restrict__ fld,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            printf("%d %d %f\n", i, j, fld[ij]);
+        }
+    }
+
     template<typename TF>
     void init_tile(Surface_tile<TF>& tile, const int ijcells)
     {
@@ -74,5 +91,8 @@ namespace Land_surface_kernels_g
         cuda_safe_call(cudaMemcpy(tile.G_g, tile.G.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.S_g, tile.S.data(), memsize_tf, cudaMemcpyHostToDevice));
     }
+
+
+
 }
 #endif
