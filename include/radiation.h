@@ -74,6 +74,7 @@ class Radiation
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
 
         #ifdef USECUDA
+        virtual TF* get_surface_radiation_g(std::string) = 0;
         virtual void prepare_device() = 0;
         virtual void clear_device() = 0;
         virtual void forward_device() = 0;

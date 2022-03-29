@@ -105,7 +105,8 @@ class Radiation_gcss : public Radiation<TF>
         const TF mu_min = 0.035;
 
         #ifdef USECUDA
-        // GPU functions and variables
+        TF* get_surface_radiation_g(std::string)
+            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
         void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
         #endif
 

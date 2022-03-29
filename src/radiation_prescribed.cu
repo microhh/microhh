@@ -42,6 +42,24 @@ void Radiation_prescribed<TF>::exec(
 }
 
 template<typename TF>
+TF* Radiation_prescribed<TF>::get_surface_radiation_g(std::string name)
+{
+    if (name == "sw_down")
+        return sw_flux_dn_g;
+    else if (name == "sw_up")
+        return sw_flux_up_g;
+    else if (name == "lw_down")
+        return lw_flux_dn_g;
+    else if (name == "lw_up")
+        return lw_flux_up_g;
+    else
+    {
+        std::string error = "Variable \"" + name + "\" is not a valid surface radiation field";
+        throw std::runtime_error(error);
+    }
+}
+
+template<typename TF>
 void Radiation_prescribed<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
