@@ -108,7 +108,7 @@ namespace
             {
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
-                obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], bsk::zL_min<TF>), bsk::zL_max<TF>);
+                obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], Constants::zL_min<TF>), Constants::zL_max<TF>);
             }
     }
 
@@ -521,8 +521,6 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells,
                     gd.ijcells);
 
-        //dump_field(tile.second.bfluxbot.data(), "dump_cpu", gd.ijcells);
-
         // Calculate surface fluxes
         lsmk::calc_fluxes(
                 tile.second.H.data(),
@@ -556,6 +554,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
                 use_cs_veg, tile.first);
+
     }
 
     // Override grid point with water
@@ -669,6 +668,8 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.jstart, gd.jend, gd.kstart,
                 gd.icells, gd.jcells, gd.ijcells,
                 boundary_cyclic);
+
+    //dump_field(fields.sp.at("qr")->flux_bot.data(), "dump_cpu", gd.ijcells);
 
     // Calculate MO gradients, which are used
     // by the diffusion scheme.

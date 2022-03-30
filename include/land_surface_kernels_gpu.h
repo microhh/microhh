@@ -242,10 +242,6 @@ namespace Land_surface_kernels_g
             const int icells, const int jcells,
             const int ijcells)
     {
-        //const int ii = 1;
-        //const int jj = icells;
-        //const int kk = ijcells;
-
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
@@ -302,7 +298,7 @@ namespace Land_surface_kernels_g
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
             const int icells, const int ijcells,
-            bool use_cs_veg, std::string name)
+            bool use_cs_veg)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -358,6 +354,162 @@ namespace Land_surface_kernels_g
             qt_bot[ij]  = qt[ijk] + LE[ij] * ra[ij] / (rho_bot * Constants::Lv<TF>);
         }
     }
+
+    template<typename TF> __global__
+    void calc_bulk_obuk_g(
+            TF* const __restrict__ obuk,
+            const TF* const __restrict__ bfluxbot,
+            const TF* const __restrict__ ustar,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
+            obuk[ij] = zsl/fmin(fmax(zsl/obuk[ij], Constants::zL_min<TF>), Constants::zL_max<TF>);
+        }
+    }
+
+    template<typename TF> __global__
+    void set_bcs_momentum_g(
+            TF* const restrict ufluxbot,
+            TF* const restrict vfluxbot,
+            TF* const restrict ugradbot,
+            TF* const restrict vgradbot,
+            const TF* const restrict ustar,
+            const TF* const restrict u,
+            const TF* const restrict ubot,
+            const TF* const restrict v,
+            const TF* const restrict vbot,
+            const TF* const restrict z0m,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int jcells,
+            const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const int ii = 1;
+        const int jj = icells;
+
+        const TF minval = 1.e-2;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*ijcells;
+
+            const TF vonu2 = fmax(minval, TF(0.25)*(
+                        fm::pow2(v[ijk-ii]-vbot[ij-ii]) + fm::pow2(v[ijk-ii+jj]-vbot[ij-ii+jj])
+                      + fm::pow2(v[ijk   ]-vbot[ij   ]) + fm::pow2(v[ijk   +jj]-vbot[ij   +jj])) );
+            const TF uonv2 = fmax(minval, TF(0.25)*(
+                        fm::pow2(u[ijk-jj]-ubot[ij-jj]) + fm::pow2(u[ijk+ii-jj]-ubot[ij+ii-jj])
+                      + fm::pow2(u[ijk   ]-ubot[ij   ]) + fm::pow2(u[ijk+ii   ]-ubot[ij+ii   ])) );
+
+            const TF u2 = fmax(minval, fm::pow2(u[ijk]-ubot[ij]) );
+            const TF v2 = fmax(minval, fm::pow2(v[ijk]-vbot[ij]) );
+
+            const TF ustaronu4 = TF(0.5)*(fm::pow4(ustar[ij-ii]) + fm::pow4(ustar[ij]));
+            const TF ustaronv4 = TF(0.5)*(fm::pow4(ustar[ij-jj]) + fm::pow4(ustar[ij]));
+
+            ufluxbot[ij] = -copysign(TF(1), u[ijk]-ubot[ij]) * pow(ustaronu4 / (TF(1) + vonu2 / u2), TF(0.5));
+            vfluxbot[ij] = -copysign(TF(1), v[ijk]-vbot[ij]) * pow(ustaronv4 / (TF(1) + uonv2 / v2), TF(0.5));
+
+            ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
+            vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_bcs_thl_qt_g(
+            TF* const restrict thl_gradbot,
+            TF* const restrict qt_gradbot,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict thl_bot,
+            const TF* const restrict qt_bot,
+            const TF zsl, const int kstart,
+            const int icells, const int jcells,
+            const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            // Use the linearly interpolated grad, rather than the MO grad,
+            // to prevent giving unresolvable gradients to advection schemes
+            thl_gradbot[ij] = (thl[ijk]-thl_bot[ij])/zsl;
+            qt_gradbot[ij]  = (qt [ijk]-qt_bot [ij])/zsl;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_bcs_scalars_dirichlet_g(
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij]);
+            vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+        }
+    }
+
+template<typename TF> __global__
+    void set_bcs_scalars_flux_g(
+            TF* const restrict varbot,
+            TF* const restrict vargradbot,
+            TF* const restrict varfluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict var,
+            const TF* const restrict z0h,
+            const TF zsl,
+            const int istart, const int iend,
+            const int jstart, const int jend, const int kstart,
+            const int icells, const int jcells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + kstart*ijcells;
+
+            varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h[ij], obuk[ij])) + var[ijk];
+            vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+        }
+    }
+
 
 //    template<typename TF>
 //    void calc_bcs(

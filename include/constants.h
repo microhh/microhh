@@ -52,6 +52,10 @@ namespace Constants
     template<typename TF> constexpr TF gamma_T_water  = 0.57;    // Heat conductivity water [J s-1 m-1 K-1]
     template<typename TF> constexpr TF wlmax = 0.0002;           // Max water depth on vegetation/soil
 
+    // Limits on Obukhov length:
+    template<typename TF> constexpr TF zL_max = 10.;
+    template<typename TF> constexpr TF zL_min = -1.e4;
+
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)
     template<typename TF> constexpr TF c0 = 0.6105851e+03;

@@ -263,8 +263,6 @@ void Boundary_surface_lsm<TF>::exec(
         else
             throw std::runtime_error("Heterogeneous z0s are not yet supported!");
 
-        //dump_field(tile.second.bfluxbot_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
-
         // Calculate surface fluxes
         lsmk::calc_fluxes_g<<<gridGPU, blockGPU>>>(
                 tile.second.H_g,
@@ -296,19 +294,144 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.jstart, gd.jend,
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
-                use_cs_veg, tile.first);
+                use_cs_veg);
     }
 
-//    // Calculate tile averaged surface fluxes and values.
-//    const TF rhocpi = TF(1) / (rhorefh[gd.kstart] * Constants::cp<TF>);
-//    const TF rholvi = TF(1) / (rhorefh[gd.kstart] * Constants::Lv<TF>);
-//    const TF no_scaling = TF(1);
-//
-//    // Surface fluxes.
-//    get_tiled_mean_g(fields.sp.at("thl")->flux_bot_g, "H", rhocpi);
-//    get_tiled_mean_g(fields.sp.at("qt")->flux_bot_g, "LE", rholvi);
-//    get_tiled_mean_g(ustar_g, "ustar", no_scaling);
-//    get_tiled_mean_g(buoy->flux_bot_g, "bfluxbot", no_scaling);
+    // Override grid point with water
+    if (sw_water)
+    {
+        throw std::runtime_error("LSM with open water is not yet supported!");
+
+    //    // Set BCs for water grid points
+    //    lsmk::set_water_tiles(
+    //            tiles.at("veg").fraction.data(),
+    //            tiles.at("soil").fraction.data(),
+    //            tiles.at("wet").fraction.data(),
+    //            tiles.at("veg").H.data(),
+    //            tiles.at("soil").H.data(),
+    //            tiles.at("wet").H.data(),
+    //            tiles.at("veg").LE.data(),
+    //            tiles.at("soil").LE.data(),
+    //            tiles.at("wet").LE.data(),
+    //            tiles.at("veg").G.data(),
+    //            tiles.at("soil").G.data(),
+    //            tiles.at("wet").G.data(),
+    //            tiles.at("veg").rs.data(),
+    //            tiles.at("soil").rs.data(),
+    //            tiles.at("wet").rs.data(),
+    //            tiles.at("wet").thl_bot.data(),
+    //            tiles.at("wet").qt_bot.data(),
+    //            water_mask.data(),
+    //            t_bot_water.data(),
+    //            fields.sp.at("thl")->fld.data(),
+    //            fields.sp.at("qt")->fld.data(),
+    //            fields.sp.at("thl")->fld_bot.data(),
+    //            fields.sp.at("qt")->fld_bot.data(),
+    //            tiles.at("wet").ra.data(),
+    //            rhorefh.data(),
+    //            prefh.data(),
+    //            exnrefh.data(),
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart,
+    //            gd.icells, gd.ijcells);
+    }
+
+    // Calculate tile averaged surface fluxes and values.
+    const TF rhoref_bot = thermo.get_basestate_vector("rhoh")[gd.kstart];
+    const TF rhocpi = TF(1) / (rhoref_bot * Constants::cp<TF>);
+    const TF rholvi = TF(1) / (rhoref_bot * Constants::Lv<TF>);
+    const TF no_scaling = TF(1);
+
+    // Surface fluxes.
+    get_tiled_mean_g(fields.sp.at("thl")->flux_bot_g, "H", rhocpi);
+    get_tiled_mean_g(fields.sp.at("qt")->flux_bot_g, "LE", rholvi);
+    get_tiled_mean_g(ustar_g, "ustar", no_scaling);
+    get_tiled_mean_g(buoy->flux_bot_g, "bfluxbot", no_scaling);
+
+    // Surface values.
+    get_tiled_mean_g(fields.sp.at("thl")->fld_bot_g, "thl_bot", TF(1));
+    get_tiled_mean_g(fields.sp.at("qt")->fld_bot_g, "qt_bot", TF(1));
+
+    // Set ghost cells `thl_bot`, `qt_bot`, needed for surface scheme
+    boundary_cyclic.exec_2d_g(fields.sp.at("thl")->fld_bot_g);
+    boundary_cyclic.exec_2d_g(fields.sp.at("qt")->fld_bot_g);
+
+    boundary_cyclic.exec_2d_g(ustar_g);
+    boundary_cyclic.exec_2d_g(obuk_g);
+
+    // Calculate bulk Obukhov length.
+    lsmk::calc_bulk_obuk_g<<<gridGPU, blockGPU>>>(
+            obuk_g,
+            buoy->flux_bot_g,
+            ustar_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    // Redistribute ustar over `uw` and `vw`.
+    lsmk::set_bcs_momentum_g<<<gridGPU, blockGPU>>>(
+            fields.mp.at("u")->flux_bot_g,
+            fields.mp.at("v")->flux_bot_g,
+            fields.mp.at("u")->grad_bot_g,
+            fields.mp.at("v")->grad_bot_g,
+            ustar_g,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("u")->fld_bot_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("v")->fld_bot_g,
+            z0m_g, gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend, gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells);
+
+    boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("u")->grad_bot_g);
+    boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
+
+    // Set BCs (gradients) thl + qt
+    lsmk::set_bcs_thl_qt_g<<<gridGPU2, blockGPU2>>>(
+            fields.sp.at("thl")->grad_bot_g,
+            fields.sp.at("qt")->grad_bot_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            fields.sp.at("thl")->fld_bot_g,
+            fields.sp.at("qt")->fld_bot_g,
+            gd.z[gd.kstart], gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells);
+
+    // Set BCs other scalars
+    for (auto& it : fields.sp)
+        if (it.first != "thl" and it.first != "qt")
+        {
+            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
+                lsmk::set_bcs_scalars_dirichlet_g<<<gridGPU2, blockGPU2>>>(
+                    it.second->fld_bot_g,
+                    it.second->grad_bot_g,
+                    it.second->flux_bot_g,
+                    ustar_g, obuk_g,
+                    it.second->fld_g, z0h_g,
+                    gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells);
+
+            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
+                lsmk::set_bcs_scalars_flux_g<<<gridGPU2, blockGPU2>>>(
+                    it.second->fld_bot_g,
+                    it.second->grad_bot_g,
+                    it.second->flux_bot_g,
+                    ustar_g, obuk_g,
+                    it.second->fld_g, z0h_g,
+                    gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend, gd.kstart,
+                    gd.icells, gd.jcells, gd.ijcells);
+        }
+
+    //dump_field(fields.sp.at("qr")->flux_bot_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
 
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);
