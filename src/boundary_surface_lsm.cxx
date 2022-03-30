@@ -669,8 +669,6 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.icells, gd.jcells, gd.ijcells,
                 boundary_cyclic);
 
-    //dump_field(fields.sp.at("qr")->flux_bot.data(), "dump_cpu", gd.ijcells);
-
     // Calculate MO gradients, which are used
     // by the diffusion scheme.
     bsk::calc_duvdz_mo(
@@ -714,6 +712,8 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+
+    //dump_field(fields.at2d.at("wl")->fld.data(), "dump_cpu", gd.ijcells);
 
     //
     // Calculate soil tendencies

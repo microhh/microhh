@@ -89,9 +89,6 @@ void Boundary_surface_lsm<TF>::exec(
     dim3 gridGPU2 (gridi,  gridj,  1);
     dim3 blockGPU2(blocki, blockj, 1);
 
-    // TMP, for debugging...
-    auto tmp_cpu = fields.get_tmp();
-
     // Calculate filtered wind speed difference surface-atmosphere.
     auto tmp1 = fields.get_tmp_g();
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
@@ -241,6 +238,7 @@ void Boundary_surface_lsm<TF>::exec(
 
         // Calculate Obuk, ustar, and ra.
         if (sw_constant_z0)
+        {
             lsmk::calc_stability_g<TF, true><<<gridGPU2, blockGPU2>>>(
                     tile.second.ustar_g,
                     tile.second.obuk_g,
@@ -260,6 +258,8 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart,
                     gd.icells, gd.jcells,
                     gd.ijcells);
+            cuda_check_error();
+        }
         else
             throw std::runtime_error("Heterogeneous z0s are not yet supported!");
 
@@ -295,6 +295,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
                 use_cs_veg);
+        cuda_check_error();
     }
 
     // Override grid point with water
@@ -369,6 +370,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+    cuda_check_error();
 
     // Redistribute ustar over `uw` and `vw`.
     lsmk::set_bcs_momentum_g<<<gridGPU, blockGPU>>>(
@@ -385,6 +387,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend, gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
+    cuda_check_error();
 
     boundary_cyclic.exec_2d_g(fields.mp.at("u")->flux_bot_g);
     boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
@@ -401,6 +404,7 @@ void Boundary_surface_lsm<TF>::exec(
             fields.sp.at("qt")->fld_bot_g,
             gd.z[gd.kstart], gd.kstart,
             gd.icells, gd.jcells, gd.ijcells);
+    cuda_check_error();
 
     // Set BCs other scalars
     for (auto& it : fields.sp)
@@ -429,9 +433,58 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend, gd.kstart,
                     gd.icells, gd.jcells, gd.ijcells);
+            cuda_check_error();
         }
 
-    //dump_field(fields.sp.at("qr")->flux_bot_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
+    // Calc MO gradients, for subgrid scheme
+    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
+            dudz_mo_g, dvdz_mo_g,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("u")->fld_bot_g,
+            fields.mp.at("v")->fld_bot_g,
+            fields.mp.at("u")->flux_bot_g,
+            fields.mp.at("v")->flux_bot_g,
+            ustar_g, obuk_g, z0m_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
+            dbdz_mo_g, buoy->flux_bot_g,
+            ustar_g, obuk_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    // Calculate changes in the liquid water reservoir
+    lsmk::calc_liquid_water_reservoir_g<<<gridGPU, blockGPU>>>(
+            fields.at2d.at("wl")->fld_g,
+            interception_g,
+            throughfall_g,
+            fields.ap2d.at("wl")->fld_g,
+            tiles.at("veg").LE_g,
+            tiles.at("soil").LE_g,
+            tiles.at("wet").LE_g,
+            tiles.at("veg").fraction_g,
+            tiles.at("soil").fraction_g,
+            tiles.at("wet").fraction_g,
+            rain_rate,
+            c_veg_g,
+            lai_g, subdt,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    //auto tmp_cpu = fields.get_tmp();
+    //dump_field(fields.at2d.at("wl")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
+    //fields.release_tmp(tmp_cpu);
 
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);

@@ -59,73 +59,74 @@ namespace Land_surface_kernels_g
         }
     }
 
-//    template<typename TF>
-//    void calc_liquid_water_reservoir(
-//            TF* const __restrict__ wl_tend,
-//            TF* const __restrict__ interception,
-//            TF* const __restrict__ throughfall,
-//            const TF* const __restrict__ wl,
-//            const TF* const __restrict__ LE_veg,
-//            const TF* const __restrict__ LE_soil,
-//            const TF* const __restrict__ LE_wet,
-//            const TF* const __restrict__ tile_frac_veg,
-//            const TF* const __restrict__ tile_frac_soil,
-//            const TF* const __restrict__ tile_frac_wet,
-//            const TF* const __restrict__ rain_rate,
-//            const TF* const __restrict__ c_veg,
-//            const TF* const __restrict__ lai,
-//            const double subdt,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int icells)
-//    {
-//        const TF intercept_eff = TF(0.5);
-//        const TF to_ms  = TF(1) / (Constants::rho_w<TF> * Constants::Lv<TF>);
-//        const TF subdti = TF(1) / subdt;
-//
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij  = i + j*icells;
-//
-//                // Convert rain rate from kg m-2 s-1 to m s-1
-//                const TF rr_ms = rain_rate[ij]/Constants::rho_w<TF>;
-//
-//                // Max `wl` accounting for vegetation fraction and LAI
-//                const TF wlm = Constants::wlmax<TF> * (TF(1) - c_veg[ij] + c_veg[ij] * lai[ij]);
-//
-//                // Max and min possible tendencies
-//                const TF wl_tend_max = (wlm - wl[ij]) * subdti - wl_tend[ij];
-//                const TF wl_tend_min = (    - wl[ij]) * subdti - wl_tend[ij];
-//
-//                // Tendency due to evaporation from liquid water reservoir/tile.
-//                const TF wl_tend_liq = -std::max(TF(0), tile_frac_wet[ij] * LE_wet[ij] * to_ms);
-//
-//                // Tendency due to dewfall into vegetation/soil/liquid water tiles
-//                const TF wl_tend_dew = -( std::min(TF(0), tile_frac_wet[ij]  * LE_wet[ij]  * to_ms)
-//                                        + std::min(TF(0), tile_frac_veg[ij]  * LE_veg[ij]  * to_ms)
-//                                        + std::min(TF(0), tile_frac_soil[ij] * LE_soil[ij] * to_ms) );
-//
-//                // Tendency due to interception of precipitation by vegetation
-//                // Rain rate is positive downwards, so minus is excluded.
-//                const TF wl_tend_precip = intercept_eff * c_veg[ij] * rr_ms;
-//
-//                // Total and limited tendencies
-//                const TF wl_tend_sum = wl_tend_liq + wl_tend_dew + wl_tend_precip;
-//                const TF wl_tend_lim = std::min(wl_tend_max, std::max(wl_tend_min,  wl_tend_sum));
-//
-//                // Diagnose throughfall and interception
-//                throughfall[ij] =
-//                    -(TF(1)-c_veg[ij]) * rr_ms
-//                    -(TF(1)-intercept_eff) * c_veg[ij] * rr_ms +
-//                    std::min(TF(0), wl_tend_lim - wl_tend_sum);
-//
-//                interception[ij] = std::max(TF(0), wl_tend_lim);
-//
-//                wl_tend[ij] += wl_tend_lim;
-//            }
-//    }
+    template<typename TF> __global__
+    void calc_liquid_water_reservoir_g(
+            TF* const __restrict__ wl_tend,
+            TF* const __restrict__ interception,
+            TF* const __restrict__ throughfall,
+            const TF* const __restrict__ wl,
+            const TF* const __restrict__ LE_veg,
+            const TF* const __restrict__ LE_soil,
+            const TF* const __restrict__ LE_wet,
+            const TF* const __restrict__ tile_frac_veg,
+            const TF* const __restrict__ tile_frac_soil,
+            const TF* const __restrict__ tile_frac_wet,
+            const TF* const __restrict__ rain_rate,
+            const TF* const __restrict__ c_veg,
+            const TF* const __restrict__ lai,
+            const double subdt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const TF intercept_eff = TF(0.5);
+        const TF to_ms  = TF(1) / (Constants::rho_w<TF> * Constants::Lv<TF>);
+        const TF subdti = TF(1) / subdt;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+
+            // Convert rain rate from kg m-2 s-1 to m s-1
+            const TF rr_ms = rain_rate[ij]/Constants::rho_w<TF>;
+
+            // Max `wl` accounting for vegetation fraction and LAI
+            const TF wlm = Constants::wlmax<TF> * (TF(1) - c_veg[ij] + c_veg[ij] * lai[ij]);
+
+            // Max and min possible tendencies
+            const TF wl_tend_max = (wlm - wl[ij]) * subdti - wl_tend[ij];
+            const TF wl_tend_min = (    - wl[ij]) * subdti - wl_tend[ij];
+
+            // Tendency due to evaporation from liquid water reservoir/tile.
+            const TF wl_tend_liq = -fmax(TF(0), tile_frac_wet[ij] * LE_wet[ij] * to_ms);
+
+            // Tendency due to dewfall into vegetation/soil/liquid water tiles
+            const TF wl_tend_dew = -( fmin(TF(0), tile_frac_wet[ij]  * LE_wet[ij]  * to_ms)
+                                    + fmin(TF(0), tile_frac_veg[ij]  * LE_veg[ij]  * to_ms)
+                                    + fmin(TF(0), tile_frac_soil[ij] * LE_soil[ij] * to_ms) );
+
+            // Tendency due to interception of precipitation by vegetation
+            // Rain rate is positive downwards, so minus is excluded.
+            const TF wl_tend_precip = intercept_eff * c_veg[ij] * rr_ms;
+
+            // Total and limited tendencies
+            const TF wl_tend_sum = wl_tend_liq + wl_tend_dew + wl_tend_precip;
+            const TF wl_tend_lim = fmin(wl_tend_max, fmax(wl_tend_min,  wl_tend_sum));
+
+            // Diagnose throughfall and interception
+            throughfall[ij] =
+                -(TF(1)-c_veg[ij]) * rr_ms
+                -(TF(1)-intercept_eff) * c_veg[ij] * rr_ms +
+                fmin(TF(0), wl_tend_lim - wl_tend_sum);
+
+            interception[ij] = fmax(TF(0), wl_tend_lim);
+
+            wl_tend[ij] += wl_tend_lim;
+        }
+    }
 
     template<typename TF> __global__
     void calc_resistance_functions_g(
