@@ -800,6 +800,9 @@ void Boundary_surface_lsm<TF>::backward_device()
     cuda_safe_call(cudaMemcpy(nobuk.data(), nobuk_g, int_memsize_ij, cudaMemcpyDeviceToHost));
 
     // TODO: which fields are needed from the land-surface?
+    // Nearly all tile fields are used in the statistics:
+    for (auto& tile : tiles)
+        lsmk::backward_device_tile(tile.second, gd.ijcells);
 }
 
 template<typename TF>

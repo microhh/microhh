@@ -774,5 +774,29 @@ template<typename TF> __global__
         cuda_safe_call(cudaMemcpy(tile.G_g, tile.G.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.S_g, tile.S.data(), memsize_tf, cudaMemcpyHostToDevice));
     }
+
+    template<typename TF>
+    void backward_device_tile(Surface_tile<TF>& tile, const int ijcells)
+    {
+        const int memsize_tf  = ijcells * sizeof(TF);
+        const int memsize_int = ijcells * sizeof(int);
+
+        cuda_safe_call(cudaMemcpy(tile.fraction.data(), tile.fraction_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.thl_bot.data(), tile.thl_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.qt_bot.data(), tile.qt_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
+
+        cuda_safe_call(cudaMemcpy(tile.obuk.data(), tile.obuk_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.ustar.data(), tile.ustar_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.bfluxbot.data(), tile.bfluxbot_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.ra.data(), tile.ra_g, memsize_tf, cudaMemcpyDeviceToHost));
+
+        cuda_safe_call(cudaMemcpy(tile.nobuk.data(), tile.nobuk_g, memsize_int, cudaMemcpyDeviceToHost));
+
+        cuda_safe_call(cudaMemcpy(tile.rs.data(), tile.rs_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.H.data(), tile.H_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.LE.data(), tile.LE_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.G.data(), tile.G_g, memsize_tf, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(tile.S.data(), tile.S_g, memsize_tf, cudaMemcpyDeviceToHost));
+    }
 }
 #endif
