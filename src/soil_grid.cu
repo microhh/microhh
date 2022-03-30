@@ -55,7 +55,7 @@ void Soil_grid<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(gd.z_g));
     cuda_safe_call(cudaFree(gd.dz_g));
-    cuda_safe_call(cudaFree(gd.dzh_g));
+    cuda_safe_call(cudaFree(gd.dzi_g));
 
     cuda_safe_call(cudaFree(gd.zh_g));
     cuda_safe_call(cudaFree(gd.dzh_g));
