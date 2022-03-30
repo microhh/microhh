@@ -43,6 +43,27 @@ namespace
     namespace sk = Soil_kernels_g;
 }
 
+namespace
+{
+    template<typename TF>
+    void dump_field(
+        TF* const restrict fld,
+        TF* const restrict tmp,
+        std::string name,
+        const int size)
+    {
+        std::cout << "Saving: " << name << std::endl;
+        cuda_safe_call(cudaMemcpy(tmp, fld, size*sizeof(TF), cudaMemcpyDeviceToHost));
+        FILE *pFile;
+        pFile = fopen(name.c_str(), "wb");
+        if (pFile == NULL)
+            std::cout << "Error opening file" << std::endl;
+        fwrite(tmp, sizeof(TF), size, pFile);
+        fclose(pFile);
+        throw 1;
+    }
+}
+
 
 #ifdef USECUDA
 template<typename TF>
@@ -68,6 +89,9 @@ void Boundary_surface_lsm<TF>::exec(
     dim3 gridGPU2 (gridi,  gridj,  1);
     dim3 blockGPU2(blocki, blockj, 1);
 
+    // TMP, for debugging...
+    auto tmp_cpu = fields.get_tmp();
+
     // Calculate filtered wind speed difference surface-atmosphere.
     auto tmp1 = fields.get_tmp_g();
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
@@ -83,10 +107,8 @@ void Boundary_surface_lsm<TF>::exec(
         gd.jstart, gd.jend,
         gd.kstart,
         gd.icells, gd.ijcells);
-    cuda_check_error();
-
-    // 2D cyclic boundaries on dutot
     boundary_cyclic.exec_2d_g(du_tot);
+    cuda_check_error();
 
     //
     // Retrieve necessary data from other classes.
@@ -238,26 +260,10 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart,
                     gd.icells, gd.jcells,
                     gd.ijcells);
-        //else
-        //    lsmk::calc_stability<TF, false>(
-        //            tile.second.ustar.data(),
-        //            tile.second.obuk.data(),
-        //            tile.second.bfluxbot.data(),
-        //            tile.second.ra.data(),
-        //            tile.second.nobuk.data(),
-        //            (*dutot).data(),
-        //            buoy->fld.data(),
-        //            buoy->fld_bot.data(),
-        //            z0m.data(), z0h.data(),
-        //            zL_sl.data(),
-        //            f_sl.data(),
-        //            db_ref,
-        //            gd.z[gd.kstart],
-        //            gd.istart, gd.iend,
-        //            gd.jstart, gd.jend,
-        //            gd.kstart,
-        //            gd.icells, gd.jcells,
-        //            gd.ijcells);
+        else
+            throw std::runtime_error("Heterogeneous z0s are not yet supported!");
+
+        //dump_field(tile.second.bfluxbot_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
 
         // Calculate surface fluxes
         lsmk::calc_fluxes_g<<<gridGPU, blockGPU>>>(
@@ -291,11 +297,18 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
                 use_cs_veg, tile.first);
-
-        //std::cout << "from GPU:" << std::endl;
-        //print_ij(tile.second.H_g);
-        //throw 1;
     }
+
+//    // Calculate tile averaged surface fluxes and values.
+//    const TF rhocpi = TF(1) / (rhorefh[gd.kstart] * Constants::cp<TF>);
+//    const TF rholvi = TF(1) / (rhorefh[gd.kstart] * Constants::Lv<TF>);
+//    const TF no_scaling = TF(1);
+//
+//    // Surface fluxes.
+//    get_tiled_mean_g(fields.sp.at("thl")->flux_bot_g, "H", rhocpi);
+//    get_tiled_mean_g(fields.sp.at("qt")->flux_bot_g, "LE", rholvi);
+//    get_tiled_mean_g(ustar_g, "ustar", no_scaling);
+//    get_tiled_mean_g(buoy->flux_bot_g, "bfluxbot", no_scaling);
 
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp1);
@@ -306,6 +319,92 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 {
 }
+
+template<typename TF>
+void Boundary_surface_lsm<TF>::get_tiled_mean_g(
+    TF* const __restrict__ fld_out, std::string name, const TF fac)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+
+    // For 2D field excluding ghost cells
+    int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 gridGPU (gridi,  gridj,  1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    TF* fld_veg;
+    TF* fld_soil;
+    TF* fld_wet;
+
+    // Yikes..
+    if (name == "H")
+    {
+        fld_veg  = tiles.at("veg").H_g;
+        fld_soil = tiles.at("soil").H_g;
+        fld_wet  = tiles.at("wet").H_g;
+    }
+    else if (name == "LE")
+    {
+        fld_veg  = tiles.at("veg").LE_g;
+        fld_soil = tiles.at("soil").LE_g;
+        fld_wet  = tiles.at("wet").LE_g;
+    }
+    else if (name == "G")
+    {
+        fld_veg  = tiles.at("veg").G_g;
+        fld_soil = tiles.at("soil").G_g;
+        fld_wet  = tiles.at("wet").G_g;
+    }
+    else if (name == "S")
+    {
+        fld_veg  = tiles.at("veg").S_g;
+        fld_soil = tiles.at("soil").S_g;
+        fld_wet  = tiles.at("wet").S_g;
+    }
+    else if (name == "bfluxbot")
+    {
+        fld_veg  = tiles.at("veg").bfluxbot_g;
+        fld_soil = tiles.at("soil").bfluxbot_g;
+        fld_wet  = tiles.at("wet").bfluxbot_g;
+    }
+    else if (name == "ustar")
+    {
+        fld_veg  = tiles.at("veg").ustar_g;
+        fld_soil = tiles.at("soil").ustar_g;
+        fld_wet  = tiles.at("wet").ustar_g;
+    }
+    else if (name == "thl_bot")
+    {
+        fld_veg  = tiles.at("veg").thl_bot_g;
+        fld_soil = tiles.at("soil").thl_bot_g;
+        fld_wet  = tiles.at("wet").thl_bot_g;
+    }
+    else if (name == "qt_bot")
+    {
+        fld_veg  = tiles.at("veg").qt_bot_g;
+        fld_soil = tiles.at("soil").qt_bot_g;
+        fld_wet  = tiles.at("wet").qt_bot_g;
+    }
+    else
+        throw std::runtime_error("Cannot calculate tiled mean for variable \"" + name + "\"\\n");
+
+    lsmk::calc_tiled_mean_g<<<gridGPU, blockGPU>>>(
+            fld_out,
+            tiles.at("veg").fraction_g,
+            tiles.at("soil").fraction_g,
+            tiles.at("wet").fraction_g,
+            fld_veg,
+            fld_soil,
+            fld_wet,
+            fac,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+}
+
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::print_ij(

@@ -139,11 +139,11 @@ namespace Boundary_surface_kernels_g
     }
 
     template<typename TF> __device__
-    TF find_obuk_g(
+    TF find_zL_g(
             const float* const __restrict__ zL,
             const float* const __restrict__ f,
             int &n,
-            const TF Ri,
+            const float Ri,
             const TF zsl)
     {
         // Determine search direction.
@@ -153,22 +153,22 @@ namespace Boundary_surface_kernels_g
             while ( (f[n]-Ri) < 0.f && n < (nzL_lut-1) ) { ++n; }
 
         const TF zL0 = (n == 0 || n == nzL_lut-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-
-        return zsl/zL0;
+        return zL0;
     }
 
     template<typename TF> __device__
     TF calc_obuk_noslip_dirichlet_lookup_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
+            const float* const __restrict__ zL_lut,
+            const float* const __restrict__ f_lut,
             int& n,
             const TF du,
             const TF db,
             const TF zsl)
     {
         // Calculate the appropriate Richardson number.
-        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return find_obuk_g(zL, f, n, Ri, zsl);
+        const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        const TF zL = find_zL_g(zL_lut, f_lut, n, Ri, zsl);
+        return zsl/zL;
     }
 }
 #endif

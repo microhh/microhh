@@ -24,6 +24,8 @@
 #define BOUNDARY_SURFACE_KERNELS_H
 
 #include <iostream>
+#include <iomanip>
+
 #include "constants.h"
 #include "monin_obukhov.h"
 
@@ -274,13 +276,15 @@ namespace Boundary_surface_kernels
 
     template<typename TF>
     TF calc_obuk_noslip_dirichlet_lookup(
-            const float* restrict zL, const float* restrict f,
+            const float* restrict zL_lut,
+            const float* restrict f_lut,
             int& n,
             const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return zsl/find_zL<TF>(zL, f, n, Ri);
+        const TF zL = find_zL<TF>(zL_lut, f_lut, n, Ri);
+        return zsl/zL;
     }
 
     template<typename TF>

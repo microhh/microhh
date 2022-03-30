@@ -226,6 +226,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         #ifdef USECUDA
         void print_ij(const TF*);
+        void get_tiled_mean_g(TF*, std::string, TF);
 
         // Surface layer:
         float* zL_sl_g;

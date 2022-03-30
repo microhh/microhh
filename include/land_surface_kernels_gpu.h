@@ -510,33 +510,35 @@ namespace Land_surface_kernels_g
 //                }
 //            }
 //    }
-//
-//    template<typename TF>
-//    void calc_tiled_mean(
-//            TF* const __restrict__ fld_mean,
-//            const TF* const __restrict__ fld_veg,
-//            const TF* const __restrict__ fld_soil,
-//            const TF* const __restrict__ fld_wet,
-//            const TF* const __restrict__ tile_frac_veg,
-//            const TF* const __restrict__ tile_frac_soil,
-//            const TF* const __restrict__ tile_frac_wet,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int icells)
-//    {
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij  = i + j*icells;
-//
-//                fld_mean[ij] =
-//                    tile_frac_veg [ij] * fld_veg [ij] +
-//                    tile_frac_soil[ij] * fld_soil[ij] +
-//                    tile_frac_wet [ij] * fld_wet [ij];
-//            }
-//    }
-//
+
+    template<typename TF> __global__
+    void calc_tiled_mean_g(
+            TF* const __restrict__ fld_mean,
+            const TF* const __restrict__ fld_veg,
+            const TF* const __restrict__ fld_soil,
+            const TF* const __restrict__ fld_wet,
+            const TF* const __restrict__ tile_frac_veg,
+            const TF* const __restrict__ tile_frac_soil,
+            const TF* const __restrict__ tile_frac_wet,
+            const TF fac,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+
+            fld_mean[ij] = (
+                tile_frac_veg [ij] * fld_veg [ij] +
+                tile_frac_soil[ij] * fld_soil[ij] +
+                tile_frac_wet [ij] * fld_wet [ij] ) * fac;
+        }
+    }
+
 //    template<typename TF>
 //    void scale_tile_with_fraction(
 //            TF* const __restrict__ fld_scaled,

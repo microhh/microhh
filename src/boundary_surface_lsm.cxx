@@ -306,6 +306,25 @@ Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
     //#endif
 }
 
+namespace
+{
+    template<typename TF>
+    void dump_field(
+        TF* const restrict fld,
+        std::string name,
+        const int size)
+    {
+        std::cout << "Saving: " << name << std::endl;
+        FILE *pFile;
+        pFile = fopen(name.c_str(), "wb");
+        if (pFile == NULL)
+            std::cout << "Error opening file" << std::endl;
+        fwrite(fld, sizeof(TF), size, pFile);
+        fclose(pFile);
+        throw 1;
+    }
+}
+
 #ifndef USECUDA
 template<typename TF>
 void Boundary_surface_lsm<TF>::exec(
@@ -410,7 +429,6 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-
     // Calculate vegetation/soil resistance functions `f`
     lsmk::calc_resistance_functions(
             (*f1).data(), (*f2).data(),
@@ -503,6 +521,8 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells,
                     gd.ijcells);
 
+        //dump_field(tile.second.bfluxbot.data(), "dump_cpu", gd.ijcells);
+
         // Calculate surface fluxes
         lsmk::calc_fluxes(
                 tile.second.H.data(),
@@ -536,15 +556,6 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
                 use_cs_veg, tile.first);
-
-        //std::cout << "from CPU:" << std::endl;
-        //for (int i=gd.istart; i<gd.iend; ++i)
-        //    for (int j=gd.jstart; j<gd.jend; ++j)
-        //    {
-        //        const int ij = i + j*gd.icells;
-        //        std::cout << tile.second.H[ij] << std::endl;
-        //    }
-        //throw 1;
     }
 
     // Override grid point with water
@@ -1687,7 +1698,6 @@ void Boundary_surface_lsm<TF>::update_slave_bcs()
     // This function does nothing when the surface model is enabled, because
     // the fields are computed by the surface model in update_bcs.
 }
-
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::get_tiled_mean(
