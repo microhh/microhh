@@ -98,7 +98,9 @@ namespace
 				const TF ckarman = 0.4;
 				const TF rb = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl;
 				
+				//printf("before vd water update: %13.5e \n",fld[ij]); 
 				fld[ij] = (TF)1.0 / (ra[ij] + rb + rwat);
+				//printf("after vd water update %13.5e (rwat: %13.5e) \n",fld[ij], rwat); 
 			}
 				
 		}
@@ -118,6 +120,7 @@ namespace
        	    const TF* const restrict lai,
 	    const TF* const restrict c_veg, 
 	    const TF* const restrict rs,
+		const TF* const restrict rs_veg, 
 	    const TF* const restrict ra, 
 	    const TF* const restrict ustar, 
 	    const TF* const restrict fraction,
@@ -224,7 +227,7 @@ namespace
 					for (int t=0; t<ntrac_vd; ++t) {
 						rb_veg[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
 						rb_soil[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
-						rc[t] = TF(1.0) / ((TF)1.0 / (diff_scl[t] + rs[ij] + rmes_local[t]) + (TF)1.0 / rws[t] + (TF)1.0 / (ra_inc + rsoil[t]));
+						rc[t] = TF(1.0) / ((TF)1.0 / (diff_scl[t] + rs_veg[ij] + rmes_local[t]) + (TF)1.0 / rws[t] + (TF)1.0 / (ra_inc + rsoil[t]));
 					}
 					
 					// Calculate vd for wet skin tile as the weighted average of vd to wet soil and to wet vegetation
@@ -404,7 +407,8 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
 		    deposition_tiles.at(tile.first).vdhcho.data(),
 		    lai.data(), 
 	    	    c_veg.data(), 
-		    tile.second.rs.data(),    
+		    tile.second.rs.data(),
+			tiles.at("veg").rs.data(),  
 		    tile.second.ra.data(), 
 		    tile.second.ustar.data(), 
                     tile.second.fraction.data(),
