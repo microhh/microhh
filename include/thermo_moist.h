@@ -97,10 +97,14 @@ class Thermo_moist : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
+
         void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
+
+        void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         #endif
 
         // Empty functions that are allowed to pass.

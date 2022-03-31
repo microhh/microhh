@@ -19,6 +19,13 @@
  */
 
 #include "radiation_rrtmgp.h"
+#include "grid.h"
+#include "fields.h"
+#include "timeloop.h"
+#include "thermo.h"
+#include "stats.h"
+
+#include "Array.h"
 
 
 namespace
@@ -46,18 +53,18 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         auto ciwp  = fields.get_tmp_g();
 
         // Set the input to the radiation on a 3D grid without ghost cells.
-        thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
+        thermo.get_radiation_fields_g(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
 
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
         const int ijmax = gd.imax*gd.jmax;
 
-        // CvH these are senseless copies, can we avoid them?
-        Array_gpu<Float,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array_gpu<Float,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
-        Array_gpu<Float,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
-        Array_gpu<Float,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array_gpu<Float,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
-        Array_gpu<Float,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
+        // Create views on existing variables.
+        Array_gpu<Float,2> t_lay_a(t_lay->fld_g, {gd.imax*gd.jmax, gd.ktot});
+        Array_gpu<Float,2> t_lev_a(t_lev->fld_g, {gd.imax*gd.jmax, gd.ktot+1});
+        Array_gpu<Float,1> t_sfc_a(t_lev->fld_bot_g, {gd.imax*gd.jmax});
+        Array_gpu<Float,2> h2o_a(h2o->fld_g, {gd.imax*gd.jmax, gd.ktot});
+        Array_gpu<Float,2> clwp_a(clwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
+        Array_gpu<Float,2> ciwp_a(ciwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
 
         // Flux fields.
         Array_gpu<Float,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
@@ -192,19 +199,19 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         }
         */
 
-        fields.release_tmp(t_lay);
-        fields.release_tmp(t_lev);
-        fields.release_tmp(h2o);
-        fields.release_tmp(clwp);
-        fields.release_tmp(ciwp);
+        fields.release_tmp_g(t_lay);
+        fields.release_tmp_g(t_lev);
+        fields.release_tmp_g(h2o);
+        fields.release_tmp_g(clwp);
+        fields.release_tmp_g(ciwp);
     }
 
     // Always add the tendency.
-    add_tendency(
-            fields.st.at("thl")->fld_g,
-            fields.sd.at("thlt_rad")->fld_g,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    // add_tendency(
+    //         fields.st.at("thl")->fld_g,
+    //         fields.sd.at("thlt_rad")->fld_g,
+    //         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+    //         gd.icells, gd.ijcells);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }

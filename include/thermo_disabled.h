@@ -79,6 +79,8 @@ class Thermo_disabled : public Thermo<TF>
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
         TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
+        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         #endif
 
         // Empty functions that shall throw.

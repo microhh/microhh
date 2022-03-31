@@ -103,6 +103,9 @@ class Thermo
         virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
         virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
         virtual TF* get_basestate_fld_g(std::string) = 0;
+
+        virtual void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         #endif
 
     protected:
