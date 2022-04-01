@@ -203,7 +203,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         #ifdef __CUDACC__
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
-        std::unique_ptr<Gas_optics_rrtmgp_gpu> kdist_lw_gpu;
+        std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
         #endif
 };

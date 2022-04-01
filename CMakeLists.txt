@@ -118,7 +118,7 @@ if(NOT HASCACHE)
     "Flags used by the Fortran-compiler during release builds." FORCE)
 
   if(USECUDA)
-    set(CMAKE_CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
+    set(CMAKE_CUDA_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC during all build types." FORCE)
     set(CMAKE_CUDA_FLAGS_DEBUG ${USER_CUDA_NVCC_FLAGS_DEBUG} CACHE STRING
       "Flags used by NVCC during debug builds." FORCE)
@@ -143,7 +143,7 @@ endif()
 if(USECUDA)
   # Add CUDA debug definition, to enforce CUDA API and kernel checks.
   if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-    add_definitions("-DCUDACHECKS")
+   # add_definitions("-DCUDACHECKS")
     message(STATUS "NVCC flags: " ${CMAKE_CUDA_FLAGS} " " ${CMAKE_CUDA_FLAGS_DEBUG})
   else()
     message(STATUS "NVCC flags: " ${CMAKE_CUDA_FLAGS} " " ${CMAKE_CUDA_FLAGS_RELEASE})
