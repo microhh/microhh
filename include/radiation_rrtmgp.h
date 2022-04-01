@@ -200,5 +200,10 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         std::vector<Float> sw_flux_dn_sfc;
         std::vector<Float> sw_flux_up_sfc;
+
+        #ifdef __CUDACC__
+        std::unique_ptr<Gas_optics_rrtmgp_gpu> kdist_lw_gpu;
+        std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
+        #endif
 };
 #endif
