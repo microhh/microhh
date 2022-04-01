@@ -18,19 +18,332 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <numeric>
+#include <boost/algorithm/string.hpp>
+
 #include "radiation_rrtmgp.h"
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
 #include "thermo.h"
 #include "stats.h"
+#include "netcdf_interface.h"
 
 #include "Array.h"
 
 
 namespace
 {
+    std::vector<std::string> get_variable_string(
+            const std::string& var_name,
+            std::vector<int> i_count,
+            Netcdf_handle& input_nc,
+            const int string_len,
+            bool trim=true)
+    {
+        // Multiply all elements in i_count.
+        int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
+
+        // Add the string length as the rightmost dimension.
+        i_count.push_back(string_len);
+
+        // Multiply all elements in i_count.
+        // int total_count_char = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
+
+        // Read the entire char array;
+        std::vector<char> var_char;
+        var_char = input_nc.get_variable<char>(var_name, i_count);
+
+        std::vector<std::string> var;
+
+        for (int n=0; n<total_count; ++n)
+        {
+            std::string s(var_char.begin()+n*string_len, var_char.begin()+(n+1)*string_len);
+            if (trim)
+                boost::trim(s);
+            var.push_back(s);
+        }
+
+        return var;
+    }
+
+
+    Gas_optics_rrtmgp_gpu load_and_init_gas_optics(
+            Master& master,
+            const Gas_concs_gpu& gas_concs,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read k-distribution information.
+        const int n_temps = coef_nc.get_dimension_size("temperature");
+        const int n_press = coef_nc.get_dimension_size("pressure");
+        const int n_absorbers = coef_nc.get_dimension_size("absorber");
+        const int n_char = coef_nc.get_dimension_size("string_len");
+        const int n_minorabsorbers = coef_nc.get_dimension_size("minor_absorber");
+        const int n_extabsorbers = coef_nc.get_dimension_size("absorber_ext");
+        const int n_mixingfracs = coef_nc.get_dimension_size("mixing_fraction");
+        const int n_layers = coef_nc.get_dimension_size("atmos_layer");
+        const int n_bnds = coef_nc.get_dimension_size("bnd");
+        const int n_gpts = coef_nc.get_dimension_size("gpt");
+        const int n_pairs = coef_nc.get_dimension_size("pair");
+        const int n_minor_absorber_intervals_lower = coef_nc.get_dimension_size("minor_absorber_intervals_lower");
+        const int n_minor_absorber_intervals_upper = coef_nc.get_dimension_size("minor_absorber_intervals_upper");
+        const int n_contributors_lower = coef_nc.get_dimension_size("contributors_lower");
+        const int n_contributors_upper = coef_nc.get_dimension_size("contributors_upper");
+
+        // Read gas names.
+        Array<std::string,1> gas_names(
+                get_variable_string("gas_names", {n_absorbers}, coef_nc, n_char, true), {n_absorbers});
+
+        Array<int,3> key_species(
+                coef_nc.get_variable<int>("key_species", {n_bnds, n_layers, 2}),
+                {2, n_layers, n_bnds});
+        Array<Float,2> band_lims(coef_nc.get_variable<Float>("bnd_limits_wavenumber", {n_bnds, 2}), {2, n_bnds});
+        Array<int,2> band2gpt(coef_nc.get_variable<int>("bnd_limits_gpt", {n_bnds, 2}), {2, n_bnds});
+        Array<Float,1> press_ref(coef_nc.get_variable<Float>("press_ref", {n_press}), {n_press});
+        Array<Float,1> temp_ref(coef_nc.get_variable<Float>("temp_ref", {n_temps}), {n_temps});
+
+        Float temp_ref_p = coef_nc.get_variable<Float>("absorption_coefficient_ref_P");
+        Float temp_ref_t = coef_nc.get_variable<Float>("absorption_coefficient_ref_T");
+        Float press_ref_trop = coef_nc.get_variable<Float>("press_ref_trop");
+
+        Array<Float,3> kminor_lower(
+                coef_nc.get_variable<Float>("kminor_lower", {n_temps, n_mixingfracs, n_contributors_lower}),
+                {n_contributors_lower, n_mixingfracs, n_temps});
+        Array<Float,3> kminor_upper(
+                coef_nc.get_variable<Float>("kminor_upper", {n_temps, n_mixingfracs, n_contributors_upper}),
+                {n_contributors_upper, n_mixingfracs, n_temps});
+
+        Array<std::string,1> gas_minor(get_variable_string("gas_minor", {n_minorabsorbers}, coef_nc, n_char),
+                                       {n_minorabsorbers});
+
+        Array<std::string,1> identifier_minor(
+                get_variable_string("identifier_minor", {n_minorabsorbers}, coef_nc, n_char), {n_minorabsorbers});
+
+        Array<std::string,1> minor_gases_lower(
+                get_variable_string("minor_gases_lower", {n_minor_absorber_intervals_lower}, coef_nc, n_char),
+                {n_minor_absorber_intervals_lower});
+        Array<std::string,1> minor_gases_upper(
+                get_variable_string("minor_gases_upper", {n_minor_absorber_intervals_upper}, coef_nc, n_char),
+                {n_minor_absorber_intervals_upper});
+
+        Array<int,2> minor_limits_gpt_lower(
+                coef_nc.get_variable<int>("minor_limits_gpt_lower", {n_minor_absorber_intervals_lower, n_pairs}),
+                {n_pairs, n_minor_absorber_intervals_lower});
+        Array<int,2> minor_limits_gpt_upper(
+                coef_nc.get_variable<int>("minor_limits_gpt_upper", {n_minor_absorber_intervals_upper, n_pairs}),
+                {n_pairs, n_minor_absorber_intervals_upper});
+
+        Array<Bool,1> minor_scales_with_density_lower(
+                coef_nc.get_variable<Bool>("minor_scales_with_density_lower", {n_minor_absorber_intervals_lower}),
+                {n_minor_absorber_intervals_lower});
+        Array<Bool,1> minor_scales_with_density_upper(
+                coef_nc.get_variable<Bool>("minor_scales_with_density_upper", {n_minor_absorber_intervals_upper}),
+                {n_minor_absorber_intervals_upper});
+
+        Array<Bool,1> scale_by_complement_lower(
+                coef_nc.get_variable<Bool>("scale_by_complement_lower", {n_minor_absorber_intervals_lower}),
+                {n_minor_absorber_intervals_lower});
+        Array<Bool,1> scale_by_complement_upper(
+                coef_nc.get_variable<Bool>("scale_by_complement_upper", {n_minor_absorber_intervals_upper}),
+                {n_minor_absorber_intervals_upper});
+
+        Array<std::string,1> scaling_gas_lower(
+                get_variable_string("scaling_gas_lower", {n_minor_absorber_intervals_lower}, coef_nc, n_char),
+                {n_minor_absorber_intervals_lower});
+        Array<std::string,1> scaling_gas_upper(
+                get_variable_string("scaling_gas_upper", {n_minor_absorber_intervals_upper}, coef_nc, n_char),
+                {n_minor_absorber_intervals_upper});
+
+        Array<int,1> kminor_start_lower(
+                coef_nc.get_variable<int>("kminor_start_lower", {n_minor_absorber_intervals_lower}),
+                {n_minor_absorber_intervals_lower});
+        Array<int,1> kminor_start_upper(
+                coef_nc.get_variable<int>("kminor_start_upper", {n_minor_absorber_intervals_upper}),
+                {n_minor_absorber_intervals_upper});
+
+        Array<Float,3> vmr_ref(
+                coef_nc.get_variable<Float>("vmr_ref", {n_temps, n_extabsorbers, n_layers}),
+                {n_layers, n_extabsorbers, n_temps});
+
+        Array<Float,4> kmajor(
+                coef_nc.get_variable<Float>("kmajor", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
+                {n_gpts, n_mixingfracs, n_press+1, n_temps});
+
+        // Keep the size at zero, if it does not exist.
+        Array<Float,3> rayl_lower;
+        Array<Float,3> rayl_upper;
+
+        if (coef_nc.variable_exists("rayl_lower"))
+        {
+            rayl_lower.set_dims({n_gpts, n_mixingfracs, n_temps});
+            rayl_upper.set_dims({n_gpts, n_mixingfracs, n_temps});
+            rayl_lower = coef_nc.get_variable<Float>("rayl_lower", {n_temps, n_mixingfracs, n_gpts});
+            rayl_upper = coef_nc.get_variable<Float>("rayl_upper", {n_temps, n_mixingfracs, n_gpts});
+        }
+
+        // Is it really LW if so read these variables as well.
+        if (coef_nc.variable_exists("totplnk"))
+        {
+            int n_internal_sourcetemps = coef_nc.get_dimension_size("temperature_Planck");
+
+            Array<Float,2> totplnk(
+                    coef_nc.get_variable<Float>( "totplnk", {n_bnds, n_internal_sourcetemps}),
+                    {n_internal_sourcetemps, n_bnds});
+            Array<Float,4> planck_frac(
+                    coef_nc.get_variable<Float>("plank_fraction", {n_temps, n_press+1, n_mixingfracs, n_gpts}),
+                    {n_gpts, n_mixingfracs, n_press+1, n_temps});
+
+            // Construct the k-distribution.
+            return Gas_optics_rrtmgp_gpu(
+                    gas_concs,
+                    gas_names,
+                    key_species,
+                    band2gpt,
+                    band_lims,
+                    press_ref,
+                    press_ref_trop,
+                    temp_ref,
+                    temp_ref_p,
+                    temp_ref_t,
+                    vmr_ref,
+                    kmajor,
+                    kminor_lower,
+                    kminor_upper,
+                    gas_minor,
+                    identifier_minor,
+                    minor_gases_lower,
+                    minor_gases_upper,
+                    minor_limits_gpt_lower,
+                    minor_limits_gpt_upper,
+                    minor_scales_with_density_lower,
+                    minor_scales_with_density_upper,
+                    scaling_gas_lower,
+                    scaling_gas_upper,
+                    scale_by_complement_lower,
+                    scale_by_complement_upper,
+                    kminor_start_lower,
+                    kminor_start_upper,
+                    totplnk,
+                    planck_frac,
+                    rayl_lower,
+                    rayl_upper);
+        }
+        else
+        {
+            Array<Float,1> solar_src_quiet(
+                    coef_nc.get_variable<Float>("solar_source_quiet", {n_gpts}), {n_gpts});
+            Array<Float,1> solar_src_facular(
+                    coef_nc.get_variable<Float>("solar_source_facular", {n_gpts}), {n_gpts});
+            Array<Float,1> solar_src_sunspot(
+                    coef_nc.get_variable<Float>("solar_source_sunspot", {n_gpts}), {n_gpts});
+
+            Float tsi = coef_nc.get_variable<Float>("tsi_default");
+            Float mg_index = coef_nc.get_variable<Float>("mg_default");
+            Float sb_index = coef_nc.get_variable<Float>("sb_default");
+
+            return Gas_optics_rrtmgp_gpu(
+                    gas_concs,
+                    gas_names,
+                    key_species,
+                    band2gpt,
+                    band_lims,
+                    press_ref,
+                    press_ref_trop,
+                    temp_ref,
+                    temp_ref_p,
+                    temp_ref_t,
+                    vmr_ref,
+                    kmajor,
+                    kminor_lower,
+                    kminor_upper,
+                    gas_minor,
+                    identifier_minor,
+                    minor_gases_lower,
+                    minor_gases_upper,
+                    minor_limits_gpt_lower,
+                    minor_limits_gpt_upper,
+                    minor_scales_with_density_lower,
+                    minor_scales_with_density_upper,
+                    scaling_gas_lower,
+                    scaling_gas_upper,
+                    scale_by_complement_lower,
+                    scale_by_complement_upper,
+                    kminor_start_lower,
+                    kminor_start_upper,
+                    solar_src_quiet,
+                    solar_src_facular,
+                    solar_src_sunspot,
+                    tsi,
+                    mg_index,
+                    sb_index,
+                    rayl_lower,
+                    rayl_upper);
+        }
+        // End reading of k-distribution.
+    }
+
+
+    Cloud_optics_gpu load_and_init_cloud_optics(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band     = coef_nc.get_dimension_size("nband");
+        int n_rghice   = coef_nc.get_dimension_size("nrghice");
+        int n_size_liq = coef_nc.get_dimension_size("nsize_liq");
+        int n_size_ice = coef_nc.get_dimension_size("nsize_ice");
+
+        Array<Float,2> band_lims_wvn(coef_nc.get_variable<Float>("bnd_limits_wavenumber", {n_band, 2}), {2, n_band});
+
+        // Read look-up table constants.
+        Float radliq_lwr = coef_nc.get_variable<Float>("radliq_lwr");
+        Float radliq_upr = coef_nc.get_variable<Float>("radliq_upr");
+        Float radliq_fac = coef_nc.get_variable<Float>("radliq_fac");
+
+        Float radice_lwr = coef_nc.get_variable<Float>("radice_lwr");
+        Float radice_upr = coef_nc.get_variable<Float>("radice_upr");
+        Float radice_fac = coef_nc.get_variable<Float>("radice_fac");
+
+        Array<Float,2> lut_extliq(
+                coef_nc.get_variable<Float>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+        Array<Float,2> lut_ssaliq(
+                coef_nc.get_variable<Float>("lut_ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+        Array<Float,2> lut_asyliq(
+                coef_nc.get_variable<Float>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+
+        Array<Float,3> lut_extice(
+                coef_nc.get_variable<Float>("lut_extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+        Array<Float,3> lut_ssaice(
+                coef_nc.get_variable<Float>("lut_ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+        Array<Float,3> lut_asyice(
+                coef_nc.get_variable<Float>("lut_asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+
+        return Cloud_optics_gpu(
+                band_lims_wvn,
+                radliq_lwr, radliq_upr, radliq_fac,
+                radice_lwr, radice_upr, radice_fac,
+                lut_extliq, lut_ssaliq, lut_asyliq,
+                lut_extice, lut_ssaice, lut_asyice);
+    }
 }
+
+#ifdef USECUDA
+template<typename TF>
+void Radiation_rrtmgp<TF>::prepare_device()
+{
+    this->kdist_lw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
+            load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
+
+    this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
+            load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
+}
+#endif
 
 
 #ifdef USECUDA
@@ -406,12 +719,6 @@ template <typename TF>
 std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& name)
 {
     throw std::runtime_error("Radiation_rrtmgp is not implemented yet on the GPU");
-}
-
-
-template <typename TF>
-void Radiation_rrtmgp<TF>::prepare_device()
-{
 }
 
 
