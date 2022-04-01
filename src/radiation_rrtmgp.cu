@@ -30,6 +30,48 @@
 
 namespace
 {
+    #ifdef USECUDA
+
+    __global__
+    void calc_tendency(
+            Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up, 
+            const Float* __restrict flux_dn, const Float* __restrict__ rho, 
+            const Float* __restrict__ exner, const Float* __restrict__ dz
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kcells,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const Float fac = Float(1.) / (rho[k] * Constants::cp<Float> * exner[k] * dz[k]);
+
+            const int ijk = i + j*jj + k*kk;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+
+            thlt_rad[ijk] = fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
+                                   flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] ); 
+
+        }
+
+
+    }
+            
+
+//               template<typename TF> __global__
+//    void calc_buoyancy_g(TF* __restrict__ b,  TF* __restrict__ th,
+//                         TF* __restrict__ qt, TF* __restrict__ thvref,
+//                         TF* __restrict__ p,  TF* __restrict__ exn,
+//                         int istart, int jstart, int kstart,
+//                         int iend,   int jend,   int kcells,
+//                         int jj, int kk)
+//
+
 }
 
 
