@@ -34,6 +34,19 @@ namespace
 
 
 #ifdef USECUDA
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_longwave(
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
+        const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
+        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const bool compute_clouds)
+{
+}
+#endif
+
+
+#ifdef USECUDA
 template <typename TF>
 void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
@@ -77,13 +90,13 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         {
             if (sw_longwave)
             {
-                /*
                 exec_longwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds);
 
+                /*
                 calc_tendency(
                         fields.sd.at("thlt_rad")->fld.data(),
                         flux_up.ptr(), flux_dn.ptr(),

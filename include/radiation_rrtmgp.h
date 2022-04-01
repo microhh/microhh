@@ -119,6 +119,15 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool);
 
+        #ifdef USECUDA
+        void exec_longwave(
+                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const bool);
+        #endif
+
         bool is_day(const Float); // Switch between day/night, based on sza
 
         const std::string tend_name = "rad";
