@@ -38,8 +38,8 @@ namespace
     #ifdef USECUDA
     __global__
     void calc_tendency(
-            Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up, 
-            const Float* __restrict flux_dn, const Float* __restrict__ rho, 
+            Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up,
+            const Float* __restrict flux_dn, const Float* __restrict__ rho,
             const Float* __restrict__ exner, const Float* __restrict__ dz,
             const int istart, const int jstart, const int kstart,
             const int iend,   const int jend,   const int kend,
@@ -59,11 +59,11 @@ namespace
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
             thlt_rad[ijk] = fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
-                                   flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] ); 
+                                   flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] );
         }
     }
-    
-            
+
+
     __global__
     void add_tendency(
             Float* __restrict__ thlt,  const Float* __restrict__ thlt_rad,
@@ -592,7 +592,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
     dim3 gridGPU_3d (gridi, gridj, gd.kmax+1);
     dim3 blockGPU_3d(blocki, blockj, 1);
-    
+
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
@@ -626,7 +626,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         Array_gpu<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
         const bool compute_clouds = true;
- 
+
         try
         {
             if (sw_longwave)
