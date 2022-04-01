@@ -115,11 +115,11 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
         const bool compute_clouds = true;
 
-        /*
         try
         {
             if (sw_longwave)
             {
+                /*
                 exec_longwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
@@ -144,8 +144,10 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
+                        */
             }
 
+            /*
             if (sw_shortwave)
             {
                 if (!sw_fixed_sza)
@@ -229,6 +231,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
                 }
             }
+            */
         } // End try block.
         catch (std::exception& e)
         {
@@ -239,7 +242,6 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
             throw;
             #endif
         }
-        */
 
         fields.release_tmp_g(t_lay);
         fields.release_tmp_g(t_lev);
