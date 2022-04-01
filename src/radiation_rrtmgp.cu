@@ -24,6 +24,7 @@
 #include "timeloop.h"
 #include "thermo.h"
 #include "stats.h"
+#include "constants.h"
 
 #include "Array.h"
 
@@ -36,9 +37,9 @@ namespace
     void calc_tendency(
             Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up, 
             const Float* __restrict flux_dn, const Float* __restrict__ rho, 
-            const Float* __restrict__ exner, const Float* __restrict__ dz
+            const Float* __restrict__ exner, const Float* __restrict__ dz,
             const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kcells,
+            const int iend,   const int jend,   const int kend,
             const int igc, const int jgc, const int kgc,
             const int jj, const int kk,
             const int jj_nogc, const int kk_nogc)
@@ -56,22 +57,27 @@ namespace
 
             thlt_rad[ijk] = fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
                                    flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] ); 
-
         }
-
-
     }
             
+    __global__
+    void add_tendency(
+            Float* __restrict__ thlt,  const Float* __restrict__ thlt_rad,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int jj, const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
 
-//               template<typename TF> __global__
-//    void calc_buoyancy_g(TF* __restrict__ b,  TF* __restrict__ th,
-//                         TF* __restrict__ qt, TF* __restrict__ thvref,
-//                         TF* __restrict__ p,  TF* __restrict__ exn,
-//                         int istart, int jstart, int kstart,
-//                         int iend,   int jend,   int kcells,
-//                         int jj, int kk)
-//
-
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            thlt[ijk] = thlt_rad[ijk];
+        }
+    }
+    #endif
 }
 
 
@@ -81,6 +87,14 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 {
     auto& gd = grid.get_grid_data();
 
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU_3d (gridi, gridj, gd.kmax+1);
+    dim3 blockGPU_3d(blocki, blockj, 1);
+    
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
@@ -114,7 +128,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         Array_gpu<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
         const bool compute_clouds = true;
-
+ 
         try
         {
             if (sw_longwave)
@@ -125,8 +139,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds);
-
-                calc_tendency(
+                */
+                calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld.data(),
                         flux_up.ptr(), flux_dn.ptr(),
                         fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
@@ -135,7 +149,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
                         gd.imax, gd.imax*gd.jmax);
-
+                /*
                 store_surface_fluxes(
                         lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
                         flux_up.ptr(), flux_dn.ptr(),
@@ -251,11 +265,11 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     }
 
     // Always add the tendency.
-    // add_tendency(
-    //         fields.st.at("thl")->fld_g,
-    //         fields.sd.at("thlt_rad")->fld_g,
-    //         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-    //         gd.icells, gd.ijcells);
+    add_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+            fields.st.at("thl")->fld_g,
+            fields.sd.at("thlt_rad")->fld_g,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
