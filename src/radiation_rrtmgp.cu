@@ -383,12 +383,15 @@ namespace
     }
 }
 
+
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::prepare_device()
 {
+    this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
+
     this->kdist_lw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
-            load_and_init_gas_optics(master, gas_concs, "coefficients_lw.nc"));
+            load_and_init_gas_optics(master, *gas_concs_gpu, "coefficients_lw.nc"));
 
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
