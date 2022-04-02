@@ -31,11 +31,11 @@
 #include "constants.h"
 
 #include "Array.h"
+#include "Fluxes.h"
 
 
 namespace
 {
-    #ifdef USECUDA
     __global__
     void calc_tendency(
             Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up,
@@ -81,7 +81,6 @@ namespace
             thlt[ijk] = thlt_rad[ijk];
         }
     }
-    #endif
 
 
     std::vector<std::string> get_variable_string(
@@ -439,7 +438,17 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     std::unique_ptr<Optical_props_1scl_gpu> cloud_optical_props_left =
             std::make_unique<Optical_props_1scl_gpu>(n_col_block_left, n_lay, *cloud_lw_gpu);
 
-    /*
+    // Make views to the base state pointer.
+    auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
+    auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
+
+    // Array<Float,2> emis_sfc(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
+
+    // gas_concs.set_vmr("h2o", h2o);
+    // Array<Float,2> col_dry({n_col, n_lay});
+    // Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+
+
     // Lambda function for solving optical properties subset.
     auto call_kernels = [&](
             const int col_s_in, const int col_e_in,
@@ -455,13 +464,14 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
         auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
 
+        /*
         Array_gpu<Float,2> col_dry_subset({n_col_in, n_lay});
         if (col_dry.size() == 0)
             Gas_optics_rrtmgp_gpu::get_col_dry(col_dry_subset, gas_concs_subset.get_vmr("h2o"), p_lev_subset);
         else
             col_dry_subset = col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
 
-        kdist_gpu->gas_optics(
+        kdist_lw_gpu->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev_subset,
                 t_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
@@ -472,37 +482,20 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 col_dry_subset,
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
-        if (switch_cloud_optics)
+        if (compute_clouds)
         {
-            cloud_optics_gpu->cloud_optics(
-                    lwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
-                    iwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+            cloud_lw_gpu->cloud_optics(
+                    clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                    ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                     rel.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                     rei.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                     *cloud_optical_props_subset_in);
-
-            // cloud->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(
                     dynamic_cast<Optical_props_1scl_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_1scl_gpu&>(*cloud_optical_props_subset_in));
         }
-
-        // Store the optical properties, if desired.
-        if (switch_output_optical)
-        {
-            subset_kernel_launcher_cuda::get_from_subset(
-                    n_col, n_lay, n_gpt, n_col_in, col_s_in, tau.ptr(), lay_source.ptr(), lev_source_inc.ptr(), lev_source_dec.ptr(),
-                    optical_props_subset_in->get_tau().ptr(), sources_subset_in.get_lay_source().ptr(),
-                    sources_subset_in.get_lev_source_inc().ptr(), sources_subset_in.get_lev_source_dec().ptr());
-
-            subset_kernel_launcher_cuda::get_from_subset(
-                    n_col, n_gpt, n_col_in, col_s_in, sfc_source.ptr(), sources_subset_in.get_sfc_source().ptr());
-        }
-
-        if (!switch_fluxes)
-            return;
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
         Array_gpu<Float,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
@@ -524,17 +517,10 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         subset_kernel_launcher_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, lw_flux_up.ptr(), lw_flux_dn.ptr(), lw_flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_net().ptr());
-
-        if (switch_output_bnd_fluxes)
-        {
-            bnd_fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props_subset_in, top_at_1);
-
-            subset_kernel_launcher_cuda::get_from_subset(
-                    n_col, n_lev, n_bnd, n_col_in, col_s_in, lw_bnd_flux_up.ptr(), lw_bnd_flux_dn.ptr(), lw_bnd_flux_net.ptr(),
-                    bnd_fluxes.get_bnd_flux_up().ptr(), bnd_fluxes.get_bnd_flux_dn().ptr(), bnd_fluxes.get_bnd_flux_net().ptr());
-        }
+                */
     };
 
+    /*
     for (int b=1; b<=n_blocks; ++b)
     {
         const int col_s = (b-1) * n_col_block + 1;
