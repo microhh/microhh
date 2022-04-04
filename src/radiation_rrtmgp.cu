@@ -105,6 +105,33 @@ namespace
         }
     }
 
+    __global__
+    void effective_radius_and_ciwp_to_gm2(
+            Float* __restrict__ rel, Float* __restrict__ rei,
+            Float* __restrict__ clwp, Float* __restrict__ ciwp,
+            const Float* __restrict__ dz,
+            const int ncol, const int nlay, const int kstart,
+            const Float four_third_pi_N0_rho_w,
+            const Float four_third_pi_N0_rho_i,
+            const Float sig_g_fac)
+    {
+        const int icol = blockIdx.x*blockDim.x + threadIdx.x;
+        const int ilay = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if ( (icol < ncol) && (ilay < nlay) )
+        {
+            const int idx = icol + ilay*ncol;
+            const int idx_z = ilay + kstart; 
+            const Float rel_local = clwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(clwp[idx] / dz[idx_z] / four_third_pi_N0_rho_w, Float(1.)/Float(3.)) : Float(0.);
+            const Float rei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
+
+            rel[idx] = max(Float(2.5), min(rel_local, Float(21.5)));
+            rei[idx] = max(Float(10.), min(rei_local, Float(180.)));
+            
+            clwp[idx] *= Float(1.e3);
+            ciwp[idx] *= Float(1.e3);
+        }
+    }
 
 
     std::vector<std::string> get_variable_string(
@@ -476,6 +503,23 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array_gpu<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
+    // Constants for computation of liquid and ice droplet effective radius
+    const Float sig_g = 1.34;
+    const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
+    
+    const Float Nc0 = 100.e6; 
+    const Float Ni0 = 1.e5;
+
+    const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
+    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>; 
+    
+    const int block_col = 16;
+    const int block_lay = 16;
+    const int grid_col  = n_col_block/block_col + (n_col_block%block_col > 0);
+    const int grid_lay  = n_lay/block_lay + (n_lay%block_lay > 0);
+
+    dim3 gridGPU_re (grid_col, grid_lay, 1);
+    dim3 blockGPU_re (block_col, block_lay, 1);
 
     // Lambda function for solving optical properties subset.
     auto call_kernels = [&](
@@ -503,14 +547,28 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
-        /*
+        
         if (compute_clouds)
         {
+            auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            Array_gpu<Float,2> rel({n_col_in, n_lay});
+            Array_gpu<Float,2> rei({n_col_in, n_lay});
+    
+            effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
+                    rel.ptr(), rei.ptr(), 
+                    clwp_subset.ptr(), ciwp_subset.ptr(),
+                    gd.dz.data(),
+                    n_col_in, n_lay, gd.kstart,
+                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_w, fac);
+    
+            
+            
             cloud_lw_gpu->cloud_optics(
-                    clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
-                    ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
-                    rel.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
-                    rei.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                    clwp_subset,
+                    ciwp_subset,
+                    rel,
+                    rei,
                     *cloud_optical_props_subset_in);
 
             // Add the cloud optical props to the gas optical properties.
