@@ -51,7 +51,7 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
 
-        if (i < iend && j < jend && k < kend)
+        if ( (i < iend) && (j < jend) && (k < kend) )
         {
             const Float fac = Float(1.) / (rho[k] * Constants::cp<Float> * exner[k] * dz[k]);
 
@@ -75,12 +75,35 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
         const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
 
-        if (i < iend && j < jend && k < kend)
+        if ( (i < iend) && (j < jend) && (k < kend) )
         {
             const int ijk = i + j*jj + k*kk;
             thlt[ijk] = thlt_rad[ijk];
         }
     }
+
+    __global__
+    void store_surface_fluxes(
+            Float* __restrict__ flux_up_sfc, Float* __restrict__ flux_dn_sfc,
+            const Float* __restrict__ flux_up, const Float* __restrict__ flux_dn,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int igc, const int jgc,
+            const int jj, const int kk,
+            const int jj_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if ( (i < iend) && (j < jend) )
+        {
+            const int ij = i + j*jj;
+            const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            flux_up_sfc[ij] = flux_up[ij_nogc];
+            flux_dn_sfc[ij] = flux_dn[ij_nogc];
+        }
+    }
+
 
 
     std::vector<std::string> get_variable_string(
@@ -581,6 +604,9 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
     dim3 gridGPU_3d (gridi, gridj, gd.kmax+1);
     dim3 blockGPU_3d(blocki, blockj, 1);
+    dim3 gridGPU_2d (gridi, gridj, 1);
+    dim3 blockGPU_2d(blocki, blockj, 1);
+
 
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
@@ -625,7 +651,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds); */
+                        compute_clouds); */ 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld.data(),
                         flux_up.ptr(), flux_dn.ptr(),
@@ -635,8 +661,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
                         gd.imax, gd.imax*gd.jmax);
-                /*
-                store_surface_fluxes(
+                
+                store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                         lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
                         flux_up.ptr(), flux_dn.ptr(),
                         gd.istart, gd.iend,
@@ -644,7 +670,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
-                        */
+                    
             }
 
             /*
