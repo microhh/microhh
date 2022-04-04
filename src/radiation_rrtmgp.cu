@@ -465,11 +465,13 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
     auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
 
-    // Array<Float,2> emis_sfc(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
+    // CvH: this can be improved by creating a fill function for the GPU.
+    Array<Float,2> emis_sfc_cpu(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
+    Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
 
-    // gas_concs.set_vmr("h2o", h2o);
-    // Array<Float,2> col_dry({n_col, n_lay});
-    // Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+    // gas_concs_gpu.set_vmr("h2o", h2o);
+    Array_gpu<Float,2> col_dry({n_col, n_lay});
+    Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
 
     // Lambda function for solving optical properties subset.
@@ -483,7 +485,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             Fluxes_broadband_gpu& bnd_fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
-        Gas_concs_gpu gas_concs_subset(gas_concs, col_s_in, n_col_in);
+        Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s_in, n_col_in);
 
         auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
 
@@ -651,7 +653,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds); */ 
+                        compute_clouds); */
+
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld.data(),
                         flux_up.ptr(), flux_dn.ptr(),
@@ -661,7 +664,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
                         gd.imax, gd.imax*gd.jmax);
-                
+
                 store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                         lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
                         flux_up.ptr(), flux_dn.ptr(),
@@ -670,7 +673,6 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
-                    
             }
 
             /*
