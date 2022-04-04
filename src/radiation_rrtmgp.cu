@@ -32,6 +32,7 @@
 
 #include "Array.h"
 #include "Fluxes.h"
+#include "subset_kernel_launcher_cuda.h"
 
 
 namespace
@@ -439,7 +440,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     const int n_lev = gd.ktot+1;
 
     const int n_blocks = n_col / n_col_block;
-    const int n_col_block_left = n_col % n_col_block;
+    const int n_col_block_residual = n_col % n_col_block;
 
     const int n_gpt = this->kdist_lw_gpu->get_ngpt();
     const int n_bnd = this->kdist_lw_gpu->get_nband();
@@ -454,12 +455,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     std::unique_ptr<Optical_props_1scl_gpu> cloud_optical_props_subset =
             std::make_unique<Optical_props_1scl_gpu>(n_col_block, n_lay, *cloud_lw_gpu);
 
-    std::unique_ptr<Optical_props_arry_gpu> optical_props_left =
-            std::make_unique<Optical_props_1scl_gpu>(n_col_block_left, n_lay, *kdist_lw_gpu);
-    std::unique_ptr<Source_func_lw_gpu> sources_left =
-            std::make_unique<Source_func_lw_gpu>(n_col_block_left, n_lay, *kdist_lw_gpu);
-    std::unique_ptr<Optical_props_1scl_gpu> cloud_optical_props_left =
-            std::make_unique<Optical_props_1scl_gpu>(n_col_block_left, n_lay, *cloud_lw_gpu);
+    std::unique_ptr<Optical_props_arry_gpu> optical_props_residual =
+            std::make_unique<Optical_props_1scl_gpu>(n_col_block_residual, n_lay, *kdist_lw_gpu);
+    std::unique_ptr<Source_func_lw_gpu> sources_residual =
+            std::make_unique<Source_func_lw_gpu>(n_col_block_residual, n_lay, *kdist_lw_gpu);
+    std::unique_ptr<Optical_props_1scl_gpu> cloud_optical_props_residual =
+            std::make_unique<Optical_props_1scl_gpu>(n_col_block_residual, n_lay, *cloud_lw_gpu);
 
     // Make views to the base state pointer.
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
@@ -517,13 +518,14 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     dynamic_cast<Optical_props_1scl_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_1scl_gpu&>(*cloud_optical_props_subset_in));
         }
+        */
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
         Array_gpu<Float,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
 
         constexpr int n_ang = 1;
 
-        rte_lw.rte_lw(
+        rte_lw_gpu.rte_lw(
                 optical_props_subset_in,
                 top_at_1,
                 sources_subset_in,
@@ -536,12 +538,10 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
         // Copy the data to the output.
         subset_kernel_launcher_cuda::get_from_subset(
-                n_col, n_lev, n_col_in, col_s_in, lw_flux_up.ptr(), lw_flux_dn.ptr(), lw_flux_net.ptr(),
+                n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_net().ptr());
-                */
     };
 
-    /*
     for (int b=1; b<=n_blocks; ++b)
     {
         const int col_s = (b-1) * n_col_block + 1;
@@ -584,7 +584,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 *fluxes_residual,
                 *bnd_fluxes_residual);
     }
-    */
 }
 #endif
 

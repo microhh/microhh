@@ -28,6 +28,7 @@
 #include "Gas_optics_rrtmgp.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Rte_lw.h"
 #include "Types.h"
 
 
@@ -205,6 +206,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
+
+        Rte_lw_gpu rte_lw_gpu;
         #endif
 };
 #endif
