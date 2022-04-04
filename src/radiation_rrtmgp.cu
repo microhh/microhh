@@ -470,6 +470,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
 
     // gas_concs_gpu.set_vmr("h2o", h2o);
+
+    // CvH: This can be done better: we now allocate a complete array.
     Array_gpu<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
@@ -489,13 +491,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
         auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
 
-        /*
-        Array_gpu<Float,2> col_dry_subset({n_col_in, n_lay});
-        if (col_dry.size() == 0)
-            Gas_optics_rrtmgp_gpu::get_col_dry(col_dry_subset, gas_concs_subset.get_vmr("h2o"), p_lev_subset);
-        else
-            col_dry_subset = col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
-
         kdist_lw_gpu->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev_subset,
@@ -504,9 +499,10 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 gas_concs_subset,
                 optical_props_subset_in,
                 sources_subset_in,
-                col_dry_subset,
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
+        /*
         if (compute_clouds)
         {
             cloud_lw_gpu->cloud_optics(
