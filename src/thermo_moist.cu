@@ -416,6 +416,8 @@ namespace
             vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
 
             T[ijk_nogc] = ssa.t;
+
+            printf("CvH: %d, %d, %d: %E\n", i, j, k, T[ijk_nogc]);
         }
 
         if (i < iend && j < jend && k < kend+1)
@@ -915,7 +917,7 @@ void Thermo_moist<TF>::get_radiation_fields_g(
     const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
     const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
 
-    dim3 gridGPU(gridi, gridj, 1);
+    dim3 gridGPU(gridi, gridj, gd.ktot+1);
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_radiation_fields_g<<<gridGPU, blockGPU>>>(
