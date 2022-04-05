@@ -442,15 +442,19 @@ void Model<TF>::exec()
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
+                        cpu_up_to_date = false;
                         if (!cpu_up_to_date)
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
                             fields   ->backward_device();
-                            boundary ->backward_device();
-                            thermo   ->backward_device();
-                            microphys->backward_device();
                         }
+
+                        // Always copy these classes for an update of diagnostic quantities:
+                        #pragma omp taskwait
+                        boundary ->backward_device();
+                        thermo   ->backward_device();
+                        microphys->backward_device();
                         #endif
 
                         #pragma omp task default(shared)
@@ -546,7 +550,7 @@ void Model<TF>::exec()
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
-    // boundary->backward_device();
+    boundary->backward_device();
     thermo  ->backward_device();
 
     clear_gpu();
@@ -570,7 +574,7 @@ void Model<TF>::prepare_gpu()
     ib       ->prepare_device();
     microphys->prepare_device();
     radiation->prepare_device();
-    // // Prepare pressure last, for memory check
+    // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
 
