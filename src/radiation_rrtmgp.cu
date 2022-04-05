@@ -438,8 +438,10 @@ namespace
 template<typename TF>
 void Radiation_rrtmgp<TF>::prepare_device()
 {
+    this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
+
     this->kdist_lw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
-            load_and_init_gas_optics(master, gas_concs_gpu, "coefficients_lw.nc"));
+            load_and_init_gas_optics(master, *gas_concs_gpu, "coefficients_lw.nc"));
 
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
@@ -495,11 +497,11 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<Float,2> emis_sfc_cpu(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
     Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
 
-    gas_concs_gpu.set_vmr("h2o", h2o);
+    gas_concs_gpu->set_vmr("h2o", h2o);
 
     // CvH: This can be done better: we now allocate a complete array.
     Array_gpu<Float,2> col_dry({n_col, n_lay});
-    Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+    Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
     // Constants for computation of liquid and ice droplet effective radius
     const Float sig_g = 1.34;
@@ -530,7 +532,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             Fluxes_broadband_gpu& bnd_fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
-        Gas_concs_gpu gas_concs_subset(gas_concs_gpu, col_s_in, n_col_in);
+        Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s_in, n_col_in);
 
         auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
 
