@@ -445,6 +445,16 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
+
+    auto& gd = grid.get_grid_data();
+    const int nsfcsize = gd.ijcells*sizeof(Float);
+    cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
+    cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
+
+ 
+
 }
 #endif
 
@@ -706,9 +716,9 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         compute_clouds); */
 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
-                        fields.sd.at("thlt_rad")->fld.data(),
+                        fields.sd.at("thlt_rad")->fld_g,
                         flux_up.ptr(), flux_dn.ptr(),
-                        fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
+                        fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
                         gd.dz.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                         gd.igc, gd.jgc, gd.kgc,
@@ -716,7 +726,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.imax, gd.imax*gd.jmax);
 
                 store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
-                        lw_flux_up_sfc.data(), lw_flux_dn_sfc.data(),
+                        lw_flux_up_sfc_g, lw_flux_dn_sfc_g,
                         flux_up.ptr(), flux_dn.ptr(),
                         gd.istart, gd.iend,
                         gd.jstart, gd.jend,
@@ -849,6 +859,10 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 template <typename TF>
 void Radiation_rrtmgp<TF>::clear_device()
 {
+    cuda_safe_call(cudaFree(lw_flux_dn_sfc_g));
+    cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
+    cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
+    cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
 }
 #endif
 
