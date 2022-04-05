@@ -195,13 +195,20 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Cloud_optics> cloud_lw;
         std::unique_ptr<Cloud_optics> cloud_sw;
 
-        // Surface radiative fluxes
+        // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
         std::vector<Float> lw_flux_up_sfc;
 
         std::vector<Float> sw_flux_dn_sfc;
         std::vector<Float> sw_flux_up_sfc;
 
+        // Surface radiative fluxes GPU
+        Float* lw_flux_dn_sfc_g;
+        Float* lw_flux_up_sfc_g;
+
+        Float* sw_flux_dn_sfc_g;
+        Float* sw_flux_up_sfc_g;
+        
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
