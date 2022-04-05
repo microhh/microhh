@@ -448,13 +448,11 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     auto& gd = grid.get_grid_data();
     const int nsfcsize = gd.ijcells*sizeof(Float);
+
     cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
-
- 
-
 }
 #endif
 
@@ -669,7 +667,6 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     dim3 gridGPU_2d (gridi, gridj, 1);
     dim3 blockGPU_2d(blocki, blockj, 1);
 
-
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
     if (do_radiation)
@@ -708,12 +705,11 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         {
             if (sw_longwave)
             {
-                /*
                 exec_longwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds); */
+                        compute_clouds);
 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld_g,
