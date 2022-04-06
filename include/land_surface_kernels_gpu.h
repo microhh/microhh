@@ -256,9 +256,9 @@ namespace Land_surface_kernels_g
             if (sw_constant_z0)
                 obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(
                         zL_sl, f_sl, nobuk[ij], dutot[ij], db, zsl);
-            //else
-            //    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative(
-            //            obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+            else
+                obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative_g(
+                        obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
 
             ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);

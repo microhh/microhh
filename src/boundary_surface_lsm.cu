@@ -63,7 +63,6 @@ namespace
     }
 }
 
-
 #ifdef USECUDA
 template<typename TF>
 void Boundary_surface_lsm<TF>::exec(
@@ -237,7 +236,6 @@ void Boundary_surface_lsm<TF>::exec(
 
         // Calculate Obuk, ustar, and ra.
         if (sw_constant_z0)
-        {
             lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     tile.second.ustar_g,
                     tile.second.obuk_g,
@@ -257,10 +255,33 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart,
                     gd.icells, gd.jcells,
                     gd.ijcells);
-            cuda_check_error();
-        }
         else
-            throw std::runtime_error("Heterogeneous z0s are not yet supported!");
+            lsmk::calc_stability_g<TF, false><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                    tile.second.ustar_g,
+                    tile.second.obuk_g,
+                    tile.second.bfluxbot_g,
+                    tile.second.ra_g,
+                    tile.second.nobuk_g,
+                    du_tot,
+                    buoy->fld_g,
+                    buoy->fld_bot_g,
+                    z0m_g, z0h_g,
+                    zL_sl_g,
+                    f_sl_g,
+                    db_ref,
+                    gd.z[gd.kstart],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart,
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
+        cuda_check_error();
+
+        //auto tmp_cpu = fields.get_tmp();
+        //dump_field(tile.second.ustar_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
+        //fields.release_tmp(tmp_cpu);
+        //cudaDeviceSynchronize();
+        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes_g<<<grid_gpu_2d, block_gpu_2d>>>(
@@ -295,7 +316,6 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.icells, gd.ijcells,
                 use_cs_veg);
         cuda_check_error();
-
     }
 
     // Override grid point with water
@@ -681,12 +701,6 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    //auto tmp_cpu = fields.get_tmp();
-    //dump_field(fields.sts.at("theta")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", sgd.ncells);
-    //fields.release_tmp(tmp_cpu);
-    //cudaDeviceSynchronize();
-    //throw 1;
-
     fields.release_tmp_g(tmp1);
 }
 
@@ -825,9 +839,12 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&dvdz_mo_g, tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&dbdz_mo_g, tf_memsize_ij));
 
-    cuda_safe_call(cudaMalloc(&nobuk_g, int_memsize_ij));
-    cuda_safe_call(cudaMalloc(&zL_sl_g, float_memsize_mo_lut));
-    cuda_safe_call(cudaMalloc(&f_sl_g,  float_memsize_mo_lut));
+    if (sw_constant_z0)
+    {
+        cuda_safe_call(cudaMalloc(&nobuk_g, int_memsize_ij));
+        cuda_safe_call(cudaMalloc(&zL_sl_g, float_memsize_mo_lut));
+        cuda_safe_call(cudaMalloc(&f_sl_g,  float_memsize_mo_lut));
+    }
 
     // Land-surface:
     // 1. Init tiles:
@@ -915,9 +932,12 @@ void Boundary_surface_lsm<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(dvdz_mo_g, dvdz_mo.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(dbdz_mo_g, dbdz_mo.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
 
-    cuda_safe_call(cudaMemcpy(nobuk_g, nobuk.data(), int_memsize_ij, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), float_memsize_lut, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  float_memsize_lut, cudaMemcpyHostToDevice));
+    if (sw_constant_z0)
+    {
+        cuda_safe_call(cudaMemcpy(nobuk_g, nobuk.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), float_memsize_lut, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  float_memsize_lut, cudaMemcpyHostToDevice));
+    }
 
     // Land-surface:
     // 1. Copy tiles:
@@ -996,14 +1016,10 @@ void Boundary_surface_lsm<TF>::backward_device()
     cuda_safe_call(cudaMemcpy(dvdz_mo.data(), dvdz_mo_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(dbdz_mo.data(), dbdz_mo_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
 
-    cuda_safe_call(cudaMemcpy(nobuk.data(), nobuk_g, int_memsize_ij, cudaMemcpyDeviceToHost));
-
     // TODO: which fields are needed from the land-surface?
     // Nearly all tile fields are used in the statistics:
     for (auto& tile : tiles)
         lsmk::backward_device_tile(tile.second, gd.ijcells);
-
-
 }
 
 template<typename TF>
@@ -1023,10 +1039,12 @@ void Boundary_surface_lsm<TF>::clear_device()
     cuda_safe_call(cudaFree(dvdz_mo_g));
     cuda_safe_call(cudaFree(dbdz_mo_g));
 
-    cuda_safe_call(cudaFree(nobuk_g));
-    cuda_safe_call(cudaFree(zL_sl_g));
-    cuda_safe_call(cudaFree(f_sl_g));
-
+    if (sw_constant_z0)
+    {
+        cuda_safe_call(cudaFree(nobuk_g));
+        cuda_safe_call(cudaFree(zL_sl_g));
+        cuda_safe_call(cudaFree(f_sl_g));
+    }
     // Land-surface stuff:
 }
 #endif

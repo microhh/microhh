@@ -520,6 +520,9 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells,
                     gd.ijcells);
 
+        //dump_field(tile.second.ustar.data(), "dump_cpu", gd.ijcells);
+        //throw 1;
+
         // Calculate surface fluxes
         lsmk::calc_fluxes(
                 tile.second.H.data(),
@@ -894,9 +897,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
-
-    //dump_field(fields.sts.at("theta")->fld.data(), "dump_cpu", sgd.ncells);
-    //throw 1;
 
     fields.release_tmp(tmp1);
 
