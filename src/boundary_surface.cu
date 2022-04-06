@@ -308,28 +308,22 @@ void Boundary_surface<TF>::prepare_device()
     const int dimemsize  = gd.icells*sizeof(TF);
     const int iimemsize  = gd.icells*sizeof(int);
 
-    cuda_safe_call(cudaMalloc(&obuk_g,  dmemsize2d));
-    cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0m_g,   dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0h_g,   dmemsize2d));
-
+    // 2D fields:
+    cuda_safe_call(cudaMalloc(&obuk_g,    dmemsize2d));
+    cuda_safe_call(cudaMalloc(&ustar_g,   dmemsize2d));
+    cuda_safe_call(cudaMalloc(&z0m_g,     dmemsize2d));
+    cuda_safe_call(cudaMalloc(&z0h_g,     dmemsize2d));
     cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
     cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
     cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
 
+    // Lookuk table:
     cuda_safe_call(cudaMalloc(&nobuk_g, imemsize2d));
-
     cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
     cuda_safe_call(cudaMalloc(&f_sl_g,  nzL*sizeof(float)));
 
-    cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(z0m_g,   dimemsize, z0m.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(z0h_g,   dimemsize, z0h.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
-
-    cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), nzL*sizeof(float), cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  nzL*sizeof(float), cudaMemcpyHostToDevice));
+    // Copy data to GPU:
+    forward_device();
 }
 
 template<typename TF>
@@ -337,19 +331,23 @@ void Boundary_surface<TF>::forward_device()
 {
     auto& gd = grid.get_grid_data();
 
-    const int dimemsize   = gd.icells  * sizeof(TF);
-    const int iimemsize   = gd.icells  * sizeof(int);
+    const int dmemsize2d = gd.ijcells * sizeof(TF);
+    const int imemsize2d = gd.ijcells * sizeof(int);
+    const int flutmemsize = nzL * sizeof(float);
 
-    cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(z0m_g,   dimemsize, z0m.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(z0h_g,   dimemsize, z0h.data(),   dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    // 2D fields:
+    cuda_safe_call(cudaMemcpy(obuk_g,    obuk.data(),    dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(ustar_g,   ustar.data(),   dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(z0m_g,     z0m.data(),     dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(z0h_g,     z0h.data(),     dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(dudz_mo_g, dudz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(dvdz_mo_g, dvdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(dbdz_mo_g, dbdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
 
-    cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, z0h.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-
-    cuda_safe_call(cudaMemcpy2D(nobuk_g, iimemsize, nobuk.data(), iimemsize, iimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    // Lookup table:
+    cuda_safe_call(cudaMemcpy(nobuk_g, nobuk.data(), imemsize2d,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), flutmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  flutmemsize, cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
@@ -357,17 +355,14 @@ void Boundary_surface<TF>::backward_device()
 {
     auto& gd = grid.get_grid_data();
 
-    const int dimemsize = gd.icells * sizeof(TF);
-    const int iimemsize = gd.icells * sizeof(int);
+    const int dmemsize2d = gd.ijcells * sizeof(TF);
 
-    cuda_safe_call(cudaMemcpy2D(obuk.data(),  dimemsize, obuk_g,  dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy2D(ustar.data(), dimemsize, ustar_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-
-    cuda_safe_call(cudaMemcpy2D(dudz_mo.data(), dimemsize, dudz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy2D(dvdz_mo.data(), dimemsize, dvdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy2D(dbdz_mo.data(), dimemsize, dbdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-
-    cuda_safe_call(cudaMemcpy2D(nobuk.data(), iimemsize, nobuk_g, iimemsize, iimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+    // 2D fields:
+    cuda_safe_call(cudaMemcpy(obuk.data(),    obuk_g,    dmemsize2d, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(ustar.data(),   ustar_g,   dmemsize2d, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(dudz_mo.data(), dudz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(dvdz_mo.data(), dvdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(dbdz_mo.data(), dbdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
 }
 
 template<typename TF>
