@@ -418,7 +418,7 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k < kend+1)
+        if (i < iend && j < jend && k == kend+1)
         {
             const TF exnh = exner(ph[k]);
             const int ij  = i + j*jj;
