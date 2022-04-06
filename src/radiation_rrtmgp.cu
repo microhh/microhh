@@ -842,7 +842,9 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
             fields.sd.at("thlt_rad")->fld_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+    cuda_check_error();
 
+    cudaDeviceSynchronize();
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 
