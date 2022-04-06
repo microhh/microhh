@@ -22,8 +22,10 @@ if __name__ == '__main__':
     """
     Case switches.
     """
-    use_htessel = True    # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = True     # False = prescribed radiation from ERA5.
+    use_htessel = True      # False = prescribed surface H+LE fluxes from ERA5.
+    use_rrtmgp = False      # False = prescribed radiation from ERA5.
+    use_constant_z0 = False  # False = checkerboard pattern.
+    TF = np.float64         # Switch between double (float64) and single (float32) precision.
 
     """
     Create vertical grid for LES
@@ -66,12 +68,13 @@ if __name__ == '__main__':
         ini['boundary']['swtimedep'] = True
         ini['boundary']['timedeplist'] = ['thl_sbot', 'qt_sbot']
 
+    ini['boundary']['swconstantz0'] = use_constant_z0
+
     if use_rrtmgp:
         ini['radiation']['swradiation'] = 'rrtmgp'
     else:
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
-
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -174,3 +177,40 @@ if __name__ == '__main__':
         add_nc_var('root_frac', ('z'), nc_soil, ls2d_z.root_frac_low_veg[::-1])
 
     nc.close()
+
+    """
+    Create 2D binary input files (if needed)
+    """
+    if not use_constant_z0:
+        """
+        Create checkerboard pattern for z0m and z0h
+        """
+        itot = ini['grid']['itot']
+        jtot = ini['grid']['jtot']
+
+        z0m = ini['boundary']['z0m']
+        z0h = ini['boundary']['z0h']
+
+        z0m_2d = np.zeros((jtot, itot), dtype=TF)
+        z0h_2d = np.zeros((jtot, itot), dtype=TF)
+
+        blocksize_i = 8
+        blocksize_j = 8
+
+        for j in range(jtot):
+            for i in range(itot):
+                patch_i = i // blocksize_i % 2 == 0
+                patch_j = j // blocksize_j % 2 == 0
+
+                if (patch_i and patch_j) or (not patch_i and not patch_j):
+                    z0m_2d[j,i] = z0m
+                    z0h_2d[j,i] = z0h
+                else:
+                    z0m_2d[j,i] = 2*z0m
+                    z0h_2d[j,i] = 2*z0h
+
+        pl.figure()
+        pl.imshow(z0m_2d)
+
+        z0m_2d.tofile('z0m.0000000')
+        z0h_2d.tofile('z0h.0000000')
