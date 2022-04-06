@@ -79,7 +79,7 @@ namespace
         if ( (i < iend) && (j < jend) && (k < kend) )
         {
             const int ijk = i + j*jj + k*kk;
-            thlt[ijk] = thlt_rad[ijk];
+            thlt[ijk] += thlt_rad[ijk];
         }
     }
 
@@ -716,8 +716,9 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         fields.sd.at("thlt_rad")->fld_g,
                         flux_up.ptr(), flux_dn.ptr(),
                         fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                        gd.dz.data(),
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        gd.dz_g,
+                        gd.istart, gd.jstart, gd.kstart, 
+                        gd.iend, gd.jend, gd.kend,
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
                         gd.imax, gd.imax*gd.jmax);
