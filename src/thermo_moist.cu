@@ -383,7 +383,6 @@ namespace
     void calc_radiation_fields_g(
             TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
             TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
-            TF* restrict thlh, TF* restrict qth,
             const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
             const TF* restrict p, const TF* restrict ph,
             const int istart, const int iend,
@@ -418,17 +417,17 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k == kend+1)
+        if (i < iend && j < jend && k < kend+1)
         {
             const TF exnh = exner(ph[k]);
-            const int ij  = i + j*jj;
+            const int ij = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-            qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
+            const TF thlh = interp2(thl[ijk-kk], thl[ijk]);
+            const TF qth  = interp2(qt [ijk-kk], qt [ijk]);
 
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-            T_h[ijk_nogc] = sat_adjust_g(thlh[ij], qth[ij], ph[k], exnh).t;
+            T_h[ijk_nogc] = sat_adjust_g(thlh, qth, ph[k], exnh).t;
         }
 
         if (i < iend && j < jend && k == kstart)
@@ -912,8 +911,8 @@ void Thermo_moist<TF>::get_radiation_fields_g(
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
     dim3 gridGPU(gridi, gridj, gd.ktot+1);
     dim3 blockGPU(blocki, blockj, 1);
@@ -921,7 +920,6 @@ void Thermo_moist<TF>::get_radiation_fields_g(
     calc_radiation_fields_g<<<gridGPU, blockGPU>>>(
             T.fld_g, T_h.fld_g, qv.fld_g,
             clwp.fld_g, ciwp.fld_g, T_h.fld_bot_g,
-            T.fld_bot_g, T.fld_top_g,  // These 2d fields are used as tmp arrays.
             fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             fields.sp.at("thl")->fld_bot_g,
             bs.pref_g, bs.prefh_g,
