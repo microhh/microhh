@@ -561,8 +561,128 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
+    //
+    // Soil moisture
+    //
+    // Calculate the hydraulic diffusivity and conductivity at full levels
+    sk::calc_hydraulic_properties_g<<<grid_gpu_3d, block_gpu_3d>>>(
+            diffusivity_g,
+            conductivity_g,
+            soil_index_g,
+            fields.sps.at("theta")->fld_g,
+            theta_sat_g,
+            theta_res_g,
+            vg_a_g,
+            vg_l_g,
+            vg_m_g,
+            gamma_theta_sat_g,
+            gamma_theta_min_g,
+            gamma_theta_max_g,
+            kappa_theta_min_g,
+            kappa_theta_max_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Interpolation diffusivity and conductivity to half levels,
+    // using the IFS method, which uses the max value from the
+    // two surrounding grid points.
+    sk::interp_2_vertical_g<TF, Soil_interpolation_type::Max><<<grid_gpu_3d, block_gpu_3d>>>(
+            diffusivity_h_g,
+            diffusivity_g,
+            sgd.dz_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    sk::interp_2_vertical_g<TF, Soil_interpolation_type::Max><<<grid_gpu_3d, block_gpu_3d>>>(
+            conductivity_h_g,
+            conductivity_g,
+            sgd.dz_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate infiltration/runoff
+    sk::calc_infiltration_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            infiltration_g,
+            runoff_g,
+            throughfall_g,
+            fields.sps.at("theta")->fld_g,
+            theta_sat_g,
+            kappa_theta_max_g,
+            gamma_theta_max_g,
+            sgd.dz_g,
+            soil_index_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Set the boundary conditions.
+    // Top = evaporation from bare soil tile.
+    // Bottom = optionally free drainage (or else closed)
+    sk::set_bcs_moisture_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            fields.sps.at("theta")->flux_top_g,
+            fields.sps.at("theta")->flux_bot_g,
+            conductivity_h_g,
+            tiles.at("soil").LE_g,
+            tiles.at("soil").fraction_g,
+            infiltration_g,
+            sw_free_drainage,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate root water extraction
+    lsmk::scale_tile_with_fraction_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            tmp1->fld_bot_g,
+            tiles.at("veg").LE_g,
+            tiles.at("veg").fraction_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    sk::calc_root_water_extraction_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            source_g,
+            tmp1->fld_top_g,
+            fields.sps.at("theta")->fld_g,
+            root_fraction_g,
+            tmp1->fld_bot_g,
+            sgd.dzi_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate diffusive tendency
+    sk::diff_explicit_g<TF, sw_source_term_theta, sw_conductivity_term_theta><<<grid_gpu_3d, block_gpu_3d>>>(
+            fields.sts.at("theta")->fld_g,
+            fields.sps.at("theta")->fld_g,
+            diffusivity_h_g,
+            conductivity_h_g,
+            source_g,
+            fields.sps.at("theta")->flux_top_g,
+            fields.sps.at("theta")->flux_bot_g,
+            sgd.dzi_g, sgd.dzhi_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+
     //auto tmp_cpu = fields.get_tmp();
-    //dump_field(fields.sts.at("t")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", sgd.ncells);
+    //dump_field(fields.sts.at("theta")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", sgd.ncells);
     //fields.release_tmp(tmp_cpu);
     //cudaDeviceSynchronize();
     //throw 1;

@@ -692,23 +692,24 @@ template<typename TF> __global__
         }
     }
 
-//    template<typename TF>
-//    void scale_tile_with_fraction(
-//            TF* const __restrict__ fld_scaled,
-//            const TF* const __restrict__ fld,
-//            const TF* const __restrict__ tile_frac,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int icells)
-//    {
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij  = i + j*icells;
-//                fld_scaled[ij] = fld[ij] * tile_frac[ij];
-//            }
-//    }
+    template<typename TF> __global__
+    void scale_tile_with_fraction_g(
+            TF* const __restrict__ fld_scaled,
+            const TF* const __restrict__ fld,
+            const TF* const __restrict__ tile_frac,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            fld_scaled[ij] = fld[ij] * tile_frac[ij];
+        }
+    }
 
     template<typename TF> __global__
     void print_ij(

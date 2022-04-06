@@ -782,9 +782,6 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    //dump_field(fields.sts.at("t")->fld.data(), "dump_cpu", sgd.ncells);
-    //throw 1;
-
     //
     // Soil moisture
     //
@@ -897,6 +894,9 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
+
+    //dump_field(fields.sts.at("theta")->fld.data(), "dump_cpu", sgd.ncells);
+    //throw 1;
 
     fields.release_tmp(tmp1);
 
