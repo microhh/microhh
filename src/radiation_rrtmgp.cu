@@ -43,14 +43,14 @@ namespace
             const Float* __restrict flux_dn, const Float* __restrict__ rho,
             const Float* __restrict__ exner, const Float* __restrict__ dz,
             const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
+            const int iend, const int jend, const int kend,
             const int igc, const int jgc, const int kgc,
             const int jj, const int kk,
             const int jj_nogc, const int kk_nogc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
+        const int k = blockIdx.z + kstart;
 
         if ( (i < iend) && (j < jend) && (k < kend) )
         {
@@ -74,7 +74,7 @@ namespace
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z*blockDim.z + threadIdx.z + kstart;
+        const int k = blockIdx.z + kstart;
 
         if ( (i < iend) && (j < jend) && (k < kend) )
         {
@@ -121,13 +121,13 @@ namespace
         if ( (icol < ncol) && (ilay < nlay) )
         {
             const int idx = icol + ilay*ncol;
-            const int idx_z = ilay + kstart; 
+            const int idx_z = ilay + kstart;
             const Float rel_local = clwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(clwp[idx] / dz[idx_z] / four_third_pi_N0_rho_w, Float(1.)/Float(3.)) : Float(0.);
             const Float rei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
 
             rel[idx] = max(Float(2.5), min(rel_local, Float(21.5)));
             rei[idx] = max(Float(10.), min(rei_local, Float(180.)));
-            
+
             clwp[idx] *= Float(1.e3);
             ciwp[idx] *= Float(1.e3);
         }
@@ -514,13 +514,13 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     // Constants for computation of liquid and ice droplet effective radius
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
-    
-    const Float Nc0 = 100.e6; 
+
+    const Float Nc0 = 100.e6;
     const Float Ni0 = 1.e5;
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>; 
-    
+    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+
     const int block_col = 16;
     const int block_lay = 16;
     const int grid_col  = n_col_block/block_col + (n_col_block%block_col > 0);
@@ -555,21 +555,21 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
-        
+
         if (compute_clouds)
         {
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             Array_gpu<Float,2> rel({n_col_in, n_lay});
             Array_gpu<Float,2> rei({n_col_in, n_lay});
-    
+
             effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                    rel.ptr(), rei.ptr(), 
+                    rel.ptr(), rei.ptr(),
                     clwp_subset.ptr(), ciwp_subset.ptr(),
                     gd.dz.data(),
                     n_col_in, n_lay, gd.kstart,
                     four_third_pi_N0_rho_w, four_third_pi_N0_rho_w, fac);
-            
+
             cloud_lw_gpu->cloud_optics(
                     clwp_subset,
                     ciwp_subset,
@@ -717,7 +717,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         flux_up.ptr(), flux_dn.ptr(),
                         fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
                         gd.dz_g,
-                        gd.istart, gd.jstart, gd.kstart, 
+                        gd.istart, gd.jstart, gd.kstart,
                         gd.iend, gd.jend, gd.kend,
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
@@ -842,7 +842,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     add_tendency<<<gridGPU_3d, blockGPU_3d>>>(
             fields.st.at("thl")->fld_g,
             fields.sd.at("thlt_rad")->fld_g,
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
