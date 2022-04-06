@@ -931,6 +931,7 @@ void Thermo_moist<TF>::get_radiation_fields_g(
             gd.igc, gd.jgc, gd.kgc,
             gd.icells, gd.ijcells,
             gd.imax, gd.imax*gd.jmax);
+    cuda_check_error();
 }
 #endif
 
