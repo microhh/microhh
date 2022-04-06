@@ -720,6 +720,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc, gd.kgc,
                         gd.icells, gd.ijcells,
                         gd.imax, gd.imax*gd.jmax);
+                cuda_check_error();
 
                 store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                         lw_flux_up_sfc_g, lw_flux_dn_sfc_g,
@@ -729,6 +730,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
+                cuda_check_error();
             }
 
             /*
