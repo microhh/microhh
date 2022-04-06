@@ -60,7 +60,6 @@ namespace
             std::cout << "Error opening file" << std::endl;
         fwrite(tmp, sizeof(TF), size, pFile);
         fclose(pFile);
-        throw 1;
     }
 }
 
@@ -80,21 +79,21 @@ void Boundary_surface_lsm<TF>::exec(
     // For 2D field excluding ghost cells
     int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
     int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    dim3 gridGPU (gridi,  gridj,  1);
-    dim3 blockGPU(blocki, blockj, 1);
+    dim3 grid_gpu_2d (gridi,  gridj,  1);
+    dim3 block_gpu_2d(blocki, blockj, 1);
 
     // For 2D field including ghost cells
     gridi = gd.icells/blocki + (gd.icells%blocki > 0);
     gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    dim3 gridGPU2 (gridi,  gridj,  1);
-    dim3 blockGPU2(blocki, blockj, 1);
+    dim3 grid_gpu_2d_gc (gridi,  gridj,  1);
+    dim3 block_gpu_2d_gc(blocki, blockj, 1);
 
     // Calculate filtered wind speed difference surface-atmosphere.
     auto tmp1 = fields.get_tmp_g();
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
     TF* du_tot = tmp1->fld_bot_g;
 
-    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
+    bsk::calc_dutot_g<<<grid_gpu_2d, block_gpu_2d>>>(
         du_tot,
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
@@ -160,7 +159,7 @@ void Boundary_surface_lsm<TF>::exec(
     //
     // LSM calculations
     //
-    lsmk::calc_tile_fractions_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_tile_fractions_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("veg").fraction_g,
             tiles.at("soil").fraction_g,
             tiles.at("wet").fraction_g,
@@ -172,7 +171,7 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate root fraction weighted mean soil water content
-    sk::calc_root_weighted_mean_theta_g<<<gridGPU, blockGPU>>>(
+    sk::calc_root_weighted_mean_theta_g<<<grid_gpu_2d, block_gpu_2d>>>(
             theta_mean_n,
             fields.sps.at("theta")->fld_g,
             soil_index_g,
@@ -186,7 +185,7 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate vegetation/soil resistance functions `f`.
-    lsmk::calc_resistance_functions_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
             f1, f2, f2b, f3,
             sw_dn,
             fields.sps.at("theta")->fld_g,
@@ -204,7 +203,7 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate canopy resistance for veg and soil tiles.
-    lsmk::calc_canopy_resistance_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("veg").rs_g,
             rs_veg_min_g, lai_g,
             f1, f2, f3,
@@ -213,7 +212,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    lsmk::calc_soil_resistance_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_soil_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("soil").rs_g,
             rs_soil_min_g, f2b,
             gd.istart, gd.iend,
@@ -239,7 +238,7 @@ void Boundary_surface_lsm<TF>::exec(
         // Calculate Obuk, ustar, and ra.
         if (sw_constant_z0)
         {
-            lsmk::calc_stability_g<TF, true><<<gridGPU2, blockGPU2>>>(
+            lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     tile.second.ustar_g,
                     tile.second.obuk_g,
                     tile.second.bfluxbot_g,
@@ -264,7 +263,7 @@ void Boundary_surface_lsm<TF>::exec(
             throw std::runtime_error("Heterogeneous z0s are not yet supported!");
 
         // Calculate surface fluxes
-        lsmk::calc_fluxes_g<<<gridGPU, blockGPU>>>(
+        lsmk::calc_fluxes_g<<<grid_gpu_2d, block_gpu_2d>>>(
                 tile.second.H_g,
                 tile.second.LE_g,
                 tile.second.G_g,
@@ -296,6 +295,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.icells, gd.ijcells,
                 use_cs_veg);
         cuda_check_error();
+
     }
 
     // Override grid point with water
@@ -358,11 +358,8 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d_g(fields.sp.at("thl")->fld_bot_g);
     boundary_cyclic.exec_2d_g(fields.sp.at("qt")->fld_bot_g);
 
-    boundary_cyclic.exec_2d_g(ustar_g);
-    boundary_cyclic.exec_2d_g(obuk_g);
-
     // Calculate bulk Obukhov length.
-    lsmk::calc_bulk_obuk_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_bulk_obuk_g<<<grid_gpu_2d, block_gpu_2d>>>(
             obuk_g,
             buoy->flux_bot_g,
             ustar_g,
@@ -372,8 +369,11 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
+    boundary_cyclic.exec_2d_g(ustar_g);
+    boundary_cyclic.exec_2d_g(obuk_g);
+
     // Redistribute ustar over `uw` and `vw`.
-    lsmk::set_bcs_momentum_g<<<gridGPU, blockGPU>>>(
+    lsmk::set_bcs_momentum_g<<<grid_gpu_2d, block_gpu_2d>>>(
             fields.mp.at("u")->flux_bot_g,
             fields.mp.at("v")->flux_bot_g,
             fields.mp.at("u")->grad_bot_g,
@@ -395,7 +395,7 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
 
     // Set BCs (gradients) thl + qt
-    lsmk::set_bcs_thl_qt_g<<<gridGPU2, blockGPU2>>>(
+    lsmk::set_bcs_thl_qt_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             fields.sp.at("thl")->grad_bot_g,
             fields.sp.at("qt")->grad_bot_g,
             fields.sp.at("thl")->fld_g,
@@ -411,7 +411,7 @@ void Boundary_surface_lsm<TF>::exec(
         if (it.first != "thl" and it.first != "qt")
         {
             if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
-                lsmk::set_bcs_scalars_dirichlet_g<<<gridGPU2, blockGPU2>>>(
+                lsmk::set_bcs_scalars_dirichlet_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     it.second->fld_bot_g,
                     it.second->grad_bot_g,
                     it.second->flux_bot_g,
@@ -423,7 +423,7 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells, gd.ijcells);
 
             else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
-                lsmk::set_bcs_scalars_flux_g<<<gridGPU2, blockGPU2>>>(
+                lsmk::set_bcs_scalars_flux_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     it.second->fld_bot_g,
                     it.second->grad_bot_g,
                     it.second->flux_bot_g,
@@ -437,7 +437,7 @@ void Boundary_surface_lsm<TF>::exec(
         }
 
     // Calc MO gradients, for subgrid scheme
-    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_duvdz_mo_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -453,7 +453,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_dbdz_mo_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             dbdz_mo_g, buoy->flux_bot_g,
             ustar_g, obuk_g,
             gd.z[gd.kstart],
@@ -463,7 +463,7 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate changes in the liquid water reservoir
-    lsmk::calc_liquid_water_reservoir_g<<<gridGPU, blockGPU>>>(
+    lsmk::calc_liquid_water_reservoir_g<<<grid_gpu_2d, block_gpu_2d>>>(
             fields.at2d.at("wl")->fld_g,
             interception_g,
             throughfall_g,
@@ -482,13 +482,92 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    //auto tmp_cpu = fields.get_tmp();
-    //dump_field(fields.at2d.at("wl")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
-    //fields.release_tmp(tmp_cpu);
-
     fields.release_tmp_g(buoy);
-    fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
+
+    //
+    // Calculate soil tendencies
+    //
+    // Only soil moisture has a source and conductivity term
+    const bool sw_source_term_t = false;
+    const bool sw_conductivity_term_t = false;
+    const bool sw_source_term_theta = true;
+    const bool sw_conductivity_term_theta = true;
+
+    // Soil GPU grid without ghost cells.
+    gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 grid_gpu_3d (gridi,  gridj,  sgd.kmax);
+    dim3 block_gpu_3d(blocki, blockj, 1);
+
+    //
+    // Soil temperature
+    //
+    // Calculate the thermal diffusivity at full levels
+    sk::calc_thermal_properties_g<<<grid_gpu_3d, block_gpu_3d>>>(
+            diffusivity_g,
+            conductivity_g,
+            soil_index_g,
+            fields.sps.at("theta")->fld_g,
+            theta_sat_g,
+            gamma_T_dry_g,
+            rho_C_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Linear interpolation diffusivity to half levels
+    sk::interp_2_vertical_g<TF, Soil_interpolation_type::Harmonic_mean><<<grid_gpu_3d, block_gpu_3d>>>(
+            diffusivity_h_g,
+            diffusivity_g,
+            sgd.dz_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Set flux boundary conditions at top and bottom of soil column
+    // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
+    get_tiled_mean_g(tmp1->fld_bot_g, "G", TF(1));
+
+    sk::set_bcs_temperature_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            fields.sps.at("t")->flux_top_g,
+            fields.sps.at("t")->flux_bot_g,
+            tmp1->fld_bot_g,
+            rho_C_g,
+            soil_index_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Calculate diffusive tendency
+    sk::diff_explicit_g<TF, sw_source_term_t, sw_conductivity_term_t><<<grid_gpu_3d, block_gpu_3d>>>(
+            fields.sts.at("t")->fld_g,
+            fields.sps.at("t")->fld_g,
+            diffusivity_h_g,
+            conductivity_h_g,
+            source_g,
+            fields.sps.at("t")->flux_top_g,
+            fields.sps.at("t")->flux_bot_g,
+            sgd.dzi_g, sgd.dzhi_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kstart, sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    //auto tmp_cpu = fields.get_tmp();
+    //dump_field(fields.sts.at("t")->fld_g, tmp_cpu->fld_bot.data(), "dump_gpu", sgd.ncells);
+    //fields.release_tmp(tmp_cpu);
+    //cudaDeviceSynchronize();
+    //throw 1;
+
+    fields.release_tmp_g(tmp1);
 }
 
 template<typename TF>
@@ -498,7 +577,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::get_tiled_mean_g(
-    TF* const __restrict__ fld_out, std::string name, const TF fac)
+    TF* const __restrict__ fld_out, std::string name, const TF scale_factor)
 {
     auto& gd = grid.get_grid_data();
 
@@ -575,7 +654,7 @@ void Boundary_surface_lsm<TF>::get_tiled_mean_g(
             fld_veg,
             fld_soil,
             fld_wet,
-            fac,
+            scale_factor,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
@@ -658,13 +737,14 @@ void Boundary_surface_lsm<TF>::prepare_device()
 
     // 3. Init 3D soil properties:
     const int tf_memsize_ijk  = sgd.ncells*sizeof(TF);
+    const int tf_memsizeh_ijk = sgd.ncellsh*sizeof(TF);
     const int int_memsize_ijk = sgd.ncells*sizeof(int);
 
     cuda_safe_call(cudaMalloc(&soil_index_g, int_memsize_ijk));
     cuda_safe_call(cudaMalloc(&diffusivity_g, tf_memsize_ijk));
-    cuda_safe_call(cudaMalloc(&diffusivity_h_g, tf_memsize_ijk));
+    cuda_safe_call(cudaMalloc(&diffusivity_h_g, tf_memsizeh_ijk));
     cuda_safe_call(cudaMalloc(&conductivity_g, tf_memsize_ijk));
-    cuda_safe_call(cudaMalloc(&conductivity_h_g, tf_memsize_ijk));
+    cuda_safe_call(cudaMalloc(&conductivity_h_g, tf_memsizeh_ijk));
     cuda_safe_call(cudaMalloc(&source_g, tf_memsize_ijk));
     cuda_safe_call(cudaMalloc(&root_fraction_g, tf_memsize_ijk));
 
@@ -789,7 +869,6 @@ void Boundary_surface_lsm<TF>::backward_device()
     const int int_memsize_ij = gd.ijcells*sizeof(int);
 
     // NOTE: only copy back the required/useful data...
-
     cuda_safe_call(cudaMemcpy(obuk.data(),  obuk_g,  tf_memsize_ij, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(ustar.data(), ustar_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
 

@@ -321,7 +321,6 @@ namespace
             std::cout << "Error opening file" << std::endl;
         fwrite(fld, sizeof(TF), size, pFile);
         fclose(pFile);
-        throw 1;
     }
 }
 
@@ -613,9 +612,6 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d(fields.sp.at("thl")->fld_bot.data());
     boundary_cyclic.exec_2d(fields.sp.at("qt") ->fld_bot.data());
 
-    boundary_cyclic.exec_2d(ustar.data());
-    boundary_cyclic.exec_2d(obuk.data());
-
     // Calculate bulk Obukhov length.
     calc_bulk_obuk(
             obuk.data(),
@@ -625,6 +621,11 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+
+    boundary_cyclic.exec_2d(ustar.data());
+    boundary_cyclic.exec_2d(obuk.data());
+
+
 
     // Redistribute ustar over `uw` and `vw`.
     set_bcs_momentum(
@@ -713,8 +714,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             gd.icells);
 
-    //dump_field(fields.at2d.at("wl")->fld.data(), "dump_cpu", gd.ijcells);
-
     //
     // Calculate soil tendencies
     //
@@ -782,6 +781,9 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
+
+    //dump_field(fields.sts.at("t")->fld.data(), "dump_cpu", sgd.ncells);
+    //throw 1;
 
     //
     // Soil moisture

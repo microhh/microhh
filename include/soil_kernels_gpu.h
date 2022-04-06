@@ -208,43 +208,44 @@ namespace Soil_kernels_g
         }
     }
 
-    //template<typename TF>
-    //void calc_thermal_properties(
-    //        TF* const __restrict__ kappa,
-    //        TF* const __restrict__ gamma,
-    //        const int* const __restrict__ soil_index,
-    //        const TF* const __restrict__ theta,
-    //        const TF* const __restrict__ theta_sat,
-    //        const TF* const __restrict__ gamma_dry,
-    //        const TF* const __restrict__ rho_C,
-    //        const int istart, const int iend,
-    //        const int jstart, const int jend,
-    //        const int kstart, const int kend,
-    //        const int icells, const int ijcells)
-    //{
-    //    for (int k=kstart; k<kend; ++k)
-    //        for (int j=jstart; j<jend; ++j)
-    //            #pragma ivdep
-    //            for (int i=istart; i<iend; ++i)
-    //            {
-    //                const int ijk = i + j*icells + k*ijcells;
-    //                const int si = soil_index[ijk];
+    template<typename TF> __global__
+    void calc_thermal_properties_g(
+            TF* const __restrict__ kappa,
+            TF* const __restrict__ gamma,
+            const int* const __restrict__ soil_index,
+            const TF* const __restrict__ theta,
+            const TF* const __restrict__ theta_sat,
+            const TF* const __restrict__ gamma_dry,
+            const TF* const __restrict__ rho_C,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
-    //                // Heat conductivity at saturation (from IFS code..)
-    //                const TF gamma_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
-    //                                        * pow(Constants::gamma_T_water<TF>, theta[ijk])
-    //                                        * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            const int si = soil_index[ijk];
 
-    //                // Kersten number for fine soils [IFS eq 8.64] (-)
-    //                const TF kersten = log10(std::max(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
+            // Heat conductivity at saturation (from IFS code..)
+            const TF gamma_T_sat = pow(Constants::gamma_T_matrix<TF>, (TF(1) - theta_sat[si]))
+                                    * pow(Constants::gamma_T_water<TF>, theta[ijk])
+                                    * pow(TF(2.2), (theta_sat[si] - theta[ijk]));
 
-    //                // Heat conductivity soil [IFS eq 8.62] (W m-1 K-1)
-    //                gamma[ijk] = kersten * (gamma_T_sat - gamma_dry[si]) + gamma_dry[si];
+            // Kersten number for fine soils [IFS eq 8.64] (-)
+            const TF kersten = log10(fmax(TF(0.1), theta[ijk] / theta_sat[si])) + TF(1);
 
-    //                // Heat diffusivity (m2 s-1)
-    //                kappa[ijk] = gamma[ijk] / rho_C[si];
-    //            }
-    //}
+            // Heat conductivity soil [IFS eq 8.62] (W m-1 K-1)
+            gamma[ijk] = kersten * (gamma_T_sat - gamma_dry[si]) + gamma_dry[si];
+
+            // Heat diffusivity (m2 s-1)
+            kappa[ijk] = gamma[ijk] / rho_C[si];
+        }
+    }
 
     //template<typename TF>
     //void calc_hydraulic_properties(
@@ -375,59 +376,61 @@ namespace Soil_kernels_g
     //        }
     //}
 
-    //template<typename TF, Soil_interpolation_type interpolation_type>
-    //void interp_2_vertical(
-    //        TF* const __restrict__ fldh,
-    //        const TF* const __restrict__ fld,
-    //        const TF* const __restrict__ dz,
-    //        const int istart, const int iend,
-    //        const int jstart, const int jend,
-    //        const int kstart, const int kend,
-    //        const int icells, const int ijcells)
-    //{
-    //    const int kk = ijcells;
+    template<typename TF, Soil_interpolation_type interpolation_type> __global__
+    void interp_2_vertical_g(
+            TF* const __restrict__ fldh,
+            const TF* const __restrict__ fld,
+            const TF* const __restrict__ dz,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart+1;
 
-    //    for (int k=kstart+1; k<kend; ++k)
-    //        for (int j=jstart; j<jend; ++j)
-    //            #pragma ivdep
-    //            for (int i=istart; i<iend; ++i)
-    //            {
-    //                const int ijk = i + j*icells + k*ijcells;
+        const int kk = ijcells;
 
-    //                if (interpolation_type == Soil_interpolation_type::Mean)
-    //                    fldh[ijk] = TF(0.5) * (fld[ijk] + fld[ijk-kk]);
-    //                else if(interpolation_type == Soil_interpolation_type::Max)
-    //                    fldh[ijk] = std::max(fld[ijk], fld[ijk-kk]);
-    //                else if(interpolation_type == Soil_interpolation_type::Harmonic_mean)
-    //                    fldh[ijk] = (dz[k-1]+dz[k])*(fld[ijk-kk]*fld[ijk]) /
-    //                            (fld[ijk-kk]*dz[k] + fld[ijk]*dz[k-1]);
-    //            }
-    //}
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
 
-    //template<typename TF>
-    //void set_bcs_temperature(
-    //        TF* const __restrict__ flux_top,
-    //        TF* const __restrict__ flux_bot,
-    //        const TF* const __restrict__ G,
-    //        const TF* const __restrict__ rho_C,
-    //        const int* const __restrict__ soil_index,
-    //        const int istart, const int iend,
-    //        const int jstart, const int jend,
-    //        const int kend,
-    //        const int icells, const int ijcells)
-    //{
-    //    for (int j=jstart; j<jend; ++j)
-    //        #pragma ivdep
-    //        for (int i=istart; i<iend; ++i)
-    //        {
-    //            const int ij  = i + j*icells;
-    //            const int ijk = ij + (kend-1)*ijcells;  // Top soil layer
-    //            const int si  = soil_index[ijk];
+            if (interpolation_type == Soil_interpolation_type::Mean)
+                fldh[ijk] = TF(0.5) * (fld[ijk] + fld[ijk-kk]);
+            else if(interpolation_type == Soil_interpolation_type::Max)
+                fldh[ijk] = fmax(fld[ijk], fld[ijk-kk]);
+            else if(interpolation_type == Soil_interpolation_type::Harmonic_mean)
+                fldh[ijk] = (dz[k-1]+dz[k])*(fld[ijk-kk]*fld[ijk]) /
+                        (fld[ijk-kk]*dz[k] + fld[ijk]*dz[k-1]);
+        }
+    }
 
-    //            flux_top[ij] = -G[ij] / rho_C[si];
-    //            flux_bot[ij] = TF(0);
-    //        }
-    //}
+    template<typename TF> __global__
+    void set_bcs_temperature_g(
+            TF* const __restrict__ flux_top,
+            TF* const __restrict__ flux_bot,
+            const TF* const __restrict__ G,
+            const TF* const __restrict__ rho_C,
+            const int* const __restrict__ soil_index,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = ij + (kend-1)*ijcells;  // Top soil layer
+            const int si  = soil_index[ijk];
+
+            flux_top[ij] = -G[ij] / rho_C[si];
+            flux_bot[ij] = TF(0);
+        }
+    }
 
     //template<typename TF>
     //void set_bcs_moisture(
@@ -485,75 +488,65 @@ namespace Soil_kernels_g
     //    }
     //}
 
-    //template<typename TF, bool sw_source_term, bool sw_conductivity_term>
-    //void diff_explicit(
-    //        TF* const __restrict__ tend,
-    //        const TF* const __restrict__ fld,
-    //        const TF* const __restrict__ kappa_h,
-    //        const TF* const __restrict__ gamma_h,
-    //        const TF* const __restrict__ source,
-    //        const TF* const __restrict__ flux_top,
-    //        const TF* const __restrict__ flux_bot,
-    //        const TF* const __restrict__ dzi,
-    //        const TF* const __restrict__ dzhi,
-    //        const int istart, const int iend,
-    //        const int jstart, const int jend,
-    //        const int kstart, const int kend,
-    //        const int icells, const int ijcells)
-    //{
-    //    const int kk = ijcells;
-    //    int k;
+    template<typename TF, bool sw_source_term, bool sw_conductivity_term> __global__
+    void diff_explicit_g(
+            TF* const __restrict__ tend,
+            const TF* const __restrict__ fld,
+            const TF* const __restrict__ kappa_h,
+            const TF* const __restrict__ gamma_h,
+            const TF* const __restrict__ source,
+            const TF* const __restrict__ flux_top,
+            const TF* const __restrict__ flux_bot,
+            const TF* const __restrict__ dzi,
+            const TF* const __restrict__ dzhi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
 
-    //    // Bottom soil level
-    //    k = kstart;
-    //    for (int j=jstart; j<jend; ++j)
-    //        #pragma ivdep
-    //        for (int i=istart; i<iend; ++i)
-    //        {
-    //            const int ij  = i + j*icells;
-    //            const int ijk = ij + k*ijcells;
+        const int kk = ijcells;
 
-    //            tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk]) * dzhi[k+1]) + flux_bot[ij])*dzi[k];
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = ij + k*ijcells;
 
-    //            if (sw_conductivity_term)
-    //                tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
-    //            if (sw_source_term)
-    //                tend[ijk] += source[ijk];
-    //        }
+            if (k == kstart)
+            {
+                // Bottom soil level..
+                tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk]) * dzhi[k+1]) + flux_bot[ij])*dzi[k];
 
-    //    // Top soil level
-    //    k = kend-1;
-    //    for (int j=jstart; j<jend; ++j)
-    //        #pragma ivdep
-    //        for (int i=istart; i<iend; ++i)
-    //        {
-    //            const int ij  = i + j*icells;
-    //            const int ijk = ij + k*ijcells;
+                if (sw_conductivity_term)
+                    tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
+                if (sw_source_term)
+                    tend[ijk] += source[ijk];
+            }
+            else if (k == kend-1)
+            {
+                // Top soil levels..
+                tend[ijk] += (-flux_top[ij] - (kappa_h[ijk] * (fld[ijk] - fld[ijk-kk]) * dzhi[k]))*dzi[k];
 
-    //            tend[ijk] += (-flux_top[ij] - (kappa_h[ijk] * (fld[ijk] - fld[ijk-kk]) * dzhi[k]))*dzi[k];
+                if (sw_conductivity_term)
+                    tend[ijk] -= gamma_h[ijk] * dzi[k];
+                if (sw_source_term)
+                    tend[ijk] += source[ijk];
+            }
+            else
+            {
+                // Interior..
+                tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk   ]) * dzhi[k+1])
+                           - (kappa_h[ijk   ] * (fld[ijk   ] - fld[ijk-kk]) * dzhi[k  ])) * dzi[k];
 
-    //            if (sw_conductivity_term)
-    //                tend[ijk] -= gamma_h[ijk] * dzi[k];
-    //            if (sw_source_term)
-    //                tend[ijk] += source[ijk];
-    //        }
-
-    //    // Interior
-    //    for (int k=kstart+1; k<kend-1; ++k)
-    //        for (int j=jstart; j<jend; ++j)
-    //            #pragma ivdep
-    //            for (int i=istart; i<iend; ++i)
-    //            {
-    //                const int ijk = i + j*icells + k*ijcells;
-
-    //                tend[ijk] += ((kappa_h[ijk+kk] * (fld[ijk+kk] - fld[ijk   ]) * dzhi[k+1])
-    //                           - (kappa_h[ijk   ] * (fld[ijk   ] - fld[ijk-kk]) * dzhi[k  ])) * dzi[k];
-
-    //                if (sw_conductivity_term)
-    //                    tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
-    //                if (sw_source_term)
-    //                    tend[ijk] += source[ijk];
-    //            }
-    //}
+                if (sw_conductivity_term)
+                    tend[ijk] += (gamma_h[ijk+kk] - gamma_h[ijk]) * dzi[k];
+                if (sw_source_term)
+                    tend[ijk] += source[ijk];
+            }
+        }
+    }
 }
 #endif
