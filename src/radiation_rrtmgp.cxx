@@ -1180,8 +1180,8 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
     const int n_bnd = kdist_sw->get_nband();
 
     // Set the solar zenith angle and albedo.
-    Array<double,2> sfc_alb_dir({n_bnd, n_col});
-    Array<double,2> sfc_alb_dif({n_bnd, n_col});
+    Array<Float,2> sfc_alb_dir({n_bnd, n_col});
+    Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
     {
@@ -1189,10 +1189,10 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
         sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
     }
 
-    Array<double,1> mu0({n_col});
+    Array<Float,1> mu0({n_col});
     mu0({1}) = this->mu0;
 
-    solve_shortwave_column<double>(
+    solve_shortwave_column(
             optical_props_sw,
             sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
             sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
@@ -1608,34 +1608,34 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     // Pack radiation input in `Array` objects.
     typename std::vector<TF>::iterator it = tmp->fld.begin();
 
-    Array<double,2> t_lay_a(
-            std::vector<double>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
+    Array<Float,2> t_lay_a(
+            std::vector<Float>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
     it += n_cols * gd.ktot;
 
-    Array<double,2> t_lev_a(
-            std::vector<double>(it, it + n_cols * (gd.ktot+1)), {n_cols, (gd.ktot+1)});
+    Array<Float,2> t_lev_a(
+            std::vector<Float>(it, it + n_cols * (gd.ktot+1)), {n_cols, (gd.ktot+1)});
     it += n_cols * (gd.ktot+1);
 
-    Array<double,1> t_sfc_a(
-            std::vector<double>(it, it + n_cols), {n_cols});
+    Array<Float,1> t_sfc_a(
+            std::vector<Float>(it, it + n_cols), {n_cols});
     it += n_cols;
 
-    Array<double,2> h2o_a(
-            std::vector<double>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
+    Array<Float,2> h2o_a(
+            std::vector<Float>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
     it += n_cols * gd.ktot;
 
-    Array<double,2> clwp_a(
-            std::vector<double>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
+    Array<Float,2> clwp_a(
+            std::vector<Float>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
     it += n_cols * gd.ktot;
 
-    Array<double,2> ciwp_a(
-            std::vector<double>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
+    Array<Float,2> ciwp_a(
+            std::vector<Float>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
 
     // Output arrays.
-    Array<double,2> flux_up    ({n_cols, gd.ktot+1});
-    Array<double,2> flux_dn    ({n_cols, gd.ktot+1});
-    Array<double,2> flux_dn_dir({n_cols, gd.ktot+1});
-    Array<double,2> flux_net   ({n_cols, gd.ktot+1});
+    Array<Float,2> flux_up    ({n_cols, gd.ktot+1});
+    Array<Float,2> flux_dn    ({n_cols, gd.ktot+1});
+    Array<Float,2> flux_dn_dir({n_cols, gd.ktot+1});
+    Array<Float,2> flux_net   ({n_cols, gd.ktot+1});
 
     // Set tmp location flag to flux levels.
     tmp->loc = gd.wloc;
@@ -1644,7 +1644,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     // Lambda function to set the column data and save column statistics.
     auto save_column = [&](
-            const Array<double,2>& array, const std::string& name)
+            const Array<Float,2>& array, const std::string& name)
     {
         const int kend = gd.kstart + array.dim(2);
 

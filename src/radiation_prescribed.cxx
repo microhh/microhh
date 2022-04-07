@@ -143,7 +143,7 @@ void Radiation_prescribed<TF>::exec_all_stats(
 }
 
 template<typename TF>
-std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(std::string name)
+std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(const std::string& name)
 {
     if (name == "sw_down")
         return sw_flux_dn;
@@ -160,5 +160,8 @@ std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(std::string nam
     }
 }
 
-template class Radiation_prescribed<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_prescribed<float>;
+#else
+template class Radiation_prescribed<double>;
+#endif

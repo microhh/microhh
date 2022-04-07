@@ -53,12 +53,12 @@ class Radiation_prescribed : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         unsigned long get_time_limit(unsigned long);
-        std::vector<TF>& get_surface_radiation(std::string);
+        std::vector<TF>& get_surface_radiation(const std::string&);
         void update_time_dependent(Timeloop<TF>&);
 
-        void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&)
+        void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_prescribed"); }
-		bool check_field_exists(std::string name)
+		bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_prescribed"); }
 
         // Empty functions which do nothing:
@@ -69,7 +69,7 @@ class Radiation_prescribed : public Radiation<TF>
         void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
 
         #ifdef USECUDA
-        TF* get_surface_radiation_g(std::string);
+        TF* get_surface_radiation_g(const std::string&);
         void prepare_device();
         void clear_device();
         void forward_device();
