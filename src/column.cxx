@@ -270,6 +270,20 @@ void Column<TF>::add_time_series(std::string name, std::string longname, std::st
     }
 }
 
+template<typename TF>
+void Column<TF>::get_column_locations(std::vector<int>& i, std::vector<int>& j)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+        {
+            i.push_back(col.coord[0] % gd.imax + gd.istart);
+            j.push_back(col.coord[1] % gd.jmax + gd.jstart);
+        }
+}
+
 #ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(
@@ -284,7 +298,7 @@ void Column<TF>::calc_column(
     for (auto& col : columns)
     {
         // Check if coordinate is in range.
-        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy) )
         {
             const int i_col = col.coord[0] % gd.imax + gd.istart;
             const int j_col = col.coord[1] % gd.jmax + gd.jstart;
@@ -296,6 +310,31 @@ void Column<TF>::calc_column(
             }
         }
     }
+}
+
+template<typename TF>
+void Column<TF>::set_individual_column(
+        std::string profname, const TF* const restrict prof,
+        const TF offset, const int i_col, const int j_col)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+    {
+        // Check if coordinate is in range.
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy) )
+        {
+            if (i_col == col.coord[0] % gd.imax + gd.istart &&
+                j_col == col.coord[1] % gd.jmax + gd.jstart)
+            {
+                for (int k=0; k<gd.kcells; k++)
+                    col.profs.at(profname).data[k] = (prof[k] + offset);
+                return;
+            }
+        }
+    }
+    throw std::runtime_error("Cant set individual column for i,j=" + std::to_string(i_col) + "," + std::to_string(j_col));
 }
 
 template<typename TF>

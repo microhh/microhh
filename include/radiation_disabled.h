@@ -54,11 +54,11 @@ class Radiation_disabled : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) {};
 
         unsigned long get_time_limit(unsigned long);
+        void update_time_dependent(Timeloop<TF>&) {};
 
         // Empty functions that should throw
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
             { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_disabled"); }
-
         std::vector<TF>& get_surface_radiation(const std::string&)
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
@@ -70,12 +70,17 @@ class Radiation_disabled : public Radiation<TF>
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) {};
-
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
-        void prepare_device() {};
-        void clear_device() {};
+        TF* get_surface_radiation_g(std::string)
+            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
+        void prepare_device() {}
+        void clear_device() {}
+        void forward_device() {}
+        void backward_device() {}
         #endif
 
     private:

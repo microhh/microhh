@@ -67,9 +67,10 @@ class LSM_input:
             sys.exit('Can not check LSM input without debug mode...')
         else:
             for fld in self.fields_2d + self.fields_3d:
-                data = getattr(self, fld)
-                if np.any(data > 1e11):
-                    print('LSM field \"{}\" is not initialised!'.format(fld))
+                if fld not in self.exclude_fields:
+                    data = getattr(self, fld)
+                    if np.any(data > 1e11):
+                        print('WARNING: field \"{}\" is not initialised!'.format(fld))
 
 
     def save_binaries(self, path='.', allow_overwrite=False):
@@ -154,7 +155,6 @@ if __name__ == '__main__':
     # Required fields are:
     # 2D: c_veg, z0m, z0h, gD, lai, rs_veg_min, rs_soil_min, lambda_skin, index_veg, water_mask
     # 3D: t_soil, theta_soil, index_soil, root_frac
-
     dxy = 25
     lsm_input.x = np.arange(0.5*dxy, dxy*itot, dxy)
     lsm_input.y = np.arange(0.5*dxy, dxy*jtot, dxy)
@@ -172,4 +172,4 @@ if __name__ == '__main__':
 
     # Save in binary and NetCDF format
     lsm_input.save_binaries(path='', allow_overwrite=True)
-    lsm_input.save_netcdf('example_input_uhh.nc', allow_overwrite=True)
+    lsm_input.save_netcdf('lsm_input.nc', allow_overwrite=True)

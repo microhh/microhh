@@ -98,6 +98,7 @@ struct Grid_data
     std::vector<TF> yh; // Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; // Grid coordinate of cell faces in x-direction.
 
+    // GPU fields and settings
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 

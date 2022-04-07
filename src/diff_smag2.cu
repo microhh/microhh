@@ -522,17 +522,16 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
 
     std::vector<TF> mlen(gd.kcells);
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
-    {
-        const TF n_mason = TF(2);
-        for (int k=0; k<gd.kcells; ++k)
-            mlen[k] = std::pow(cs * std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.)), n_mason);
-    }
-
     if (boundary.get_switch() == "default")
     {
         for (int k=0; k<gd.kcells; ++k)
             mlen[k] = cs * pow(gd.dx*gd.dy*gd.dz[k], 1./3.);
+    }
+    else
+    {
+        const TF n_mason = TF(2);
+        for (int k=0; k<gd.kcells; ++k)
+            mlen[k] = std::pow(cs * std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.)), n_mason);
     }
 
     const int nmemsize = gd.kcells*sizeof(TF);
@@ -717,37 +716,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     const TF dyidyi = 1./(gd.dy * gd.dy);
     const TF tPri = 1./tPr;
 
-    // Use surface model.
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
-    {
-        diff_uvw_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-                fields.sd.at("evisc")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
-                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
-                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
-                fields.rhoref_g, fields.rhorefh_g,
-                fields.visc,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-        cuda_check_error();
-
-        for (auto it : fields.st)
-            diff_c_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                    it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
-                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
-                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
-                    fields.rhoref_g, fields.rhorefh_g,
-                    tPri, it.second->visc,
-                    gd.istart, gd.jstart, gd.kstart,
-                    gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, gd.ijcells);
-        cuda_check_error();
-    }
     // Do not use surface model.
-    else
+    if (boundary.get_switch() == "default")
     {
         diff_uvw_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
@@ -765,6 +735,35 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
             diff_c_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
+                    it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
+                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
+                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
+                    fields.rhoref_g, fields.rhorefh_g,
+                    tPri, it.second->visc,
+                    gd.istart, gd.jstart, gd.kstart,
+                    gd.iend,   gd.jend,   gd.kend,
+                    gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    // Use surface model.
+    else
+    {
+        diff_uvw_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
+                fields.sd.at("evisc")->fld_g,
+                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
+                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
+                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+                fields.rhoref_g, fields.rhorefh_g,
+                fields.visc,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        for (auto it : fields.st)
+            diff_c_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
                     it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                     gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,

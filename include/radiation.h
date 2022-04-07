@@ -56,6 +56,7 @@ class Radiation
         virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;
+        virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         virtual bool check_field_exists(const std::string& name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&) = 0;
@@ -69,12 +70,15 @@ class Radiation
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) = 0;
-
+        virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
 
         #ifdef USECUDA
+        virtual TF* get_surface_radiation_g(std::string) = 0;
         virtual void prepare_device() = 0;
         virtual void clear_device() = 0;
+        virtual void forward_device() = 0;
+        virtual void backward_device() = 0;
         #endif
 
     protected:

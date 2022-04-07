@@ -48,6 +48,17 @@ class Soil_field3d
         std::vector<TF> flux_bot;
         std::vector<TF> flux_top;
 
+        #ifdef USECUDA
+        void init_device();
+        void clear_device();
+
+        TF* fld_g;
+        TF* fld_bot_g;
+        TF* fld_top_g;
+        TF* flux_bot_g;
+        TF* flux_top_g;
+        #endif
+
         std::string name;
         std::string longname;
         std::string unit;

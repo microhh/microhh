@@ -78,9 +78,14 @@ class Thermo_disabled : public Thermo<TF>
         void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool) {};
         void get_buoyancy_surf_g(Field3d<TF>&) {};
         void get_buoyancy_fluxbot_g(Field3d<TF>&) {};
-        TF* get_basestate_fld_g(std::string) { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
-        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
-            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
+        TF* get_basestate_fld_g(std::string)
+            { throw std::runtime_error("Function \"get_basestate_fld_g\" not implemented in thermo_disabled"); };
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
+            { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_disabled"); };
+        void set_sun_location(Timeloop<TF>&);
+        void set_background_column_shortwave(Thermo<TF>&);
+        void get_buoyancy_surf_g(TF*, TF*, TF*)
+            { throw std::runtime_error("Function \"get_buoyancy_surf_g\" not implemented in thermo_disabled"); };
         #endif
 
         // Empty functions that shall throw.
@@ -88,6 +93,8 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function get_thermo_field not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
+            { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)

@@ -24,6 +24,8 @@
 #define BOUNDARY_SURFACE_KERNELS_H
 
 #include <iostream>
+#include <iomanip>
+
 #include "constants.h"
 #include "monin_obukhov.h"
 
@@ -31,10 +33,6 @@ namespace Boundary_surface_kernels
 {
     namespace fm = Fast_math;
     namespace most = Monin_obukhov;
-
-    // Limits on Obukhov length:
-    template<typename TF> constexpr TF zL_max = 10.;
-    template<typename TF> constexpr TF zL_min = -1.e4;
 
     template<typename TF>
     void set_bc(
@@ -94,13 +92,13 @@ namespace Boundary_surface_kernels
         // Alter next three values in case the range need to be changed.
         const TF zLrange_min = -5.;
 
-        TF dzL = (zL_max<TF> - zLrange_min) / (9.*nzL_lut/10.-1.);
-        zL_tmp[0] = -zL_max<TF>;
+        TF dzL = (Constants::zL_max<TF> - zLrange_min) / (9.*nzL_lut/10.-1.);
+        zL_tmp[0] = -Constants::zL_max<TF>;
         for (int n=1; n<9*nzL_lut/10; ++n)
             zL_tmp[n] = zL_tmp[n-1] + dzL;
 
         // Stretch the remainder of the z/L values far down for free convection.
-        const TF zLend = -(zL_min<TF> - zLrange_min);
+        const TF zLend = -(Constants::zL_min<TF> - zLrange_min);
 
         // Find stretching that ends up at the correct value using geometric progression.
         TF r  = 1.01;
@@ -274,13 +272,15 @@ namespace Boundary_surface_kernels
 
     template<typename TF>
     TF calc_obuk_noslip_dirichlet_lookup(
-            const float* restrict zL, const float* restrict f,
+            const float* restrict zL_lut,
+            const float* restrict f_lut,
             int& n,
             const TF du, const TF db, const TF zsl)
     {
         // Calculate the appropriate Richardson number and reduce precision.
         const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return zsl/find_zL<TF>(zL, f, n, Ri);
+        const TF zL = find_zL<TF>(zL_lut, f_lut, n, Ri);
+        return zsl/zL;
     }
 
     template<typename TF>
@@ -297,7 +297,7 @@ namespace Boundary_surface_kernels
         const TF Lmax = 1.e20;
 
         // Limiter max z/L stable conditions:
-        const TF L_min_stable = zsl/zL_max<TF>;
+        const TF L_min_stable = zsl/Constants::zL_max<TF>;
 
         // Avoid bfluxbot to be zero
         if (bfluxbot >= 0.)
@@ -363,7 +363,7 @@ namespace Boundary_surface_kernels
         if (m > 1)
             std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
 
-        return zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
+        return zsl/std::min(std::max(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
     }
 
     template<typename TF>
@@ -378,7 +378,7 @@ namespace Boundary_surface_kernels
         int nlim = 10;
         const TF Lmax = 1.e16;
 
-        const TF L_min_stable = zsl / zL_max<TF>;
+        const TF L_min_stable = zsl / Constants::zL_max<TF>;
 
         // The solver does not have a solution for large Ri numbers,
         // i.e. the `fx` equation below has no zero crossing.
@@ -459,7 +459,7 @@ namespace Boundary_surface_kernels
         }
 
         // Limit tails:
-        TF L_lim = zsl/std::min(std::max(zsl/L, zL_min<TF>), zL_max<TF>);
+        TF L_lim = zsl/std::min(std::max(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
         // Limit large values of L (~in line with LUT)
         //L_lim = std::min(std::max(L_lim, TF(-1e6)), TF(1e6));
 

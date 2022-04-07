@@ -82,6 +82,7 @@ class Thermo
 
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
         virtual void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
 
@@ -101,7 +102,9 @@ class Thermo
         virtual void backward_device() = 0;
         virtual void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool) = 0;
         virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
+        virtual void get_buoyancy_surf_g(TF*, TF*, TF*)  = 0;
         virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
+        virtual void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*) = 0;
         virtual TF* get_basestate_fld_g(std::string) = 0;
 
         virtual void get_radiation_fields_g(

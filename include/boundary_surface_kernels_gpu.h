@@ -24,6 +24,7 @@
 #define BOUNDARY_SURFACE_KERNELS_GPU_H
 
 #include "monin_obukhov.h"
+#include "boundary.h"
 
 namespace Boundary_surface_kernels_g
 {
@@ -135,6 +136,136 @@ namespace Boundary_surface_kernels_g
             const int ij = i + j*icells;
             dbdz[ij] = -bfluxbot[ij] / (Constants::kappa<TF> * zsl * ustar[ij]) * most::phih(zsl/obuk[ij]);
         }
+    }
+
+    template<typename TF> __device__
+    TF find_zL_g(
+            const float* const __restrict__ zL,
+            const float* const __restrict__ f,
+            int &n,
+            const float Ri,
+            const TF zsl)
+    {
+        // Determine search direction.
+        if ((f[n]-Ri) > 0.f)
+            while ( (f[n-1]-Ri) > 0.f && n > 0) { --n; }
+        else
+            while ( (f[n]-Ri) < 0.f && n < (nzL_lut-1) ) { ++n; }
+
+        const TF zL0 = (n == 0 || n == nzL_lut-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+        return zL0;
+    }
+
+    template<typename TF> __device__
+    TF calc_obuk_noslip_dirichlet_lookup_g(
+            const float* const __restrict__ zL_lut,
+            const float* const __restrict__ f_lut,
+            int& n,
+            const TF du,
+            const TF db,
+            const TF zsl)
+    {
+        // Calculate the appropriate Richardson number.
+        const float Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        const TF zL = find_zL_g(zL_lut, f_lut, n, Ri, zsl);
+        return zsl/zL;
+    }
+
+    template<typename TF> __device__
+    TF calc_obuk_noslip_dirichlet_iterative_g(
+            TF L, const TF du, TF db, const TF zsl, const TF z0m, const TF z0h)
+    {
+        TF L0;
+        TF Lstart, Lend;
+        TF fx, fxdif;
+
+        int m = 0;
+        int nlim = 10;
+        const TF Lmax = 1.e16;
+
+        const TF L_min_stable = zsl / Constants::zL_max<TF>;
+
+        // The solver does not have a solution for large Ri numbers,
+        // i.e. the `fx` equation below has no zero crossing.
+        // The limit of 0.13 typically results in a minimum (positive) L of ~1
+        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
+        if (Ri > TF(0.13))
+            return L_min_stable;
+
+        // Avoid db to be zero
+        if (db >= 0.)
+            db = fmax(TF(Constants::dsmall), db);
+        else
+            db = fmin(-TF(Constants::dsmall), db);
+
+        // Allow for one restart
+        while (m <= 1)
+        {
+            // If L and db are of different sign, or the last calculation did not converge,
+            // the stability has changed and the procedure needs to be reset
+            if (L*db <= 0.)
+            {
+                nlim = 200;
+                if(db >= 0.)
+                    L = L_min_stable;
+                else
+                    L = -Constants::dsmall;
+            }
+
+            if (db >= 0.)
+                L0 = Constants::dhuge;
+            else
+                L0 = -Constants::dhuge;
+
+            int n = 0;
+
+            // Exit on convergence or on iteration count
+            while (abs((L - L0)/L0) > 0.001 && n < nlim && abs(L) < Lmax)
+            {
+                L0     = L;
+                fx     = zsl/L - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, L) / fm::pow2(du * most::fm(zsl, z0m, L));
+                Lstart = L - 0.001*L;
+                Lend   = L + 0.001*L;
+                fxdif  = ( (zsl/Lend   - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lend)   / fm::pow2(du * most::fm(zsl, z0m, Lend  )))
+                         - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
+                       / (Lend - Lstart);
+
+                if (abs(fxdif) < TF(1e-20))
+                    break;
+
+                L      = L - fx/fxdif;
+
+                if (L >= TF(0) && L < L_min_stable)
+                    L = L_min_stable;
+
+                ++n;
+            }
+
+            if (n < nlim && abs(L) < Lmax)
+                // Convergence has been reached
+                break;
+            else
+            {
+                // Convergence has not been reached, procedure restarted once
+                if (db >= TF(0))
+                    L = L_min_stable;
+                else
+                    L = -Constants::dsmall;
+
+                ++m;
+                nlim = 200;
+            }
+        }
+
+        if (m > 1)
+            printf("ERROR: no convergence obukhov iteration!\n");
+
+        // Limit tails:
+        TF L_lim = zsl/fmin(fmax(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
+        // Limit large values of L (~in line with LUT)
+        //L_lim = std::min(std::max(L_lim, TF(-1e6)), TF(1e6));
+
+        return L_lim;
     }
 }
 #endif

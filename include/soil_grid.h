@@ -57,8 +57,19 @@ struct Soil_grid_data
     std::vector<TF> dzi;   // Reciprocal of dz.
     std::vector<TF> dzhi;  // Reciprocal of dzh.
 
-    std::vector<TF> z;  // Grid coordinate of cell center in z-direction.
-    std::vector<TF> zh; // Grid coordinate of cell faces in x-direction.
+    std::vector<TF> z;     // Grid coordinate of cell center in z-direction.
+    std::vector<TF> zh;    // Grid coordinate of cell faces in x-direction.
+
+    #ifdef USECUDA
+    // GPU fields and settings.
+    TF* z_g;
+    TF* dz_g;
+    TF* dzi_g;
+
+    TF* zh_g;
+    TF* dzh_g;
+    TF* dzhi_g;
+    #endif
 };
 
 /**
@@ -76,6 +87,12 @@ class Soil_grid
         void create(Netcdf_handle&);  // Creation of the grid data.
 
         const Soil_grid_data<TF>& get_grid_data(); // Function to get grid data struct
+
+        #ifdef USECUDA
+        // GPU functions
+        void prepare_device(); // Load the arrays onto the GPU
+        void clear_device();   // Deallocate the arrays onto the GPU
+        #endif
 
     private:
         Master& master;    // Reference to master class.

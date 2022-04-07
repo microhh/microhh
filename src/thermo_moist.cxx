@@ -831,6 +831,83 @@ namespace
             }
     }
 
+    template<typename TF>
+    void calc_radiation_columns(
+            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o,
+            TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
+            const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
+            const TF* const restrict p, const TF* const restrict ph,
+            const int* const col_i, const int* const col_j,
+            const int n_cols,
+            const int kgc, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+        const int ktot = kend-kstart;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF ex = exner(p[k]);
+            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+
+            #pragma ivdep
+            for (int n=0; n<n_cols; ++n)
+            {
+                const int i = col_i[n];
+                const int j = col_j[n];
+
+                const int ijk = i + j*icells + k*ijcells;
+                const int ijk_out = n + (k-kgc)*n_cols;
+
+                const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+
+                clwp[ijk_out] = ssa.ql * dpg;
+                ciwp[ijk_out] = ssa.qi * dpg;
+
+                const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                vmr_h2o[ijk_out] = qv / (ep<TF> - ep<TF>*qv);
+                T[ijk_out] = ssa.t;
+            }
+        }
+
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            const TF exnh = exner(ph[k]);
+
+            #pragma ivdep
+            for (int n=0; n<n_cols; ++n)
+            {
+                const int i = col_i[n];
+                const int j = col_j[n];
+
+                const int ijk = i + j*icells + k*ijcells;
+                const int ijk_out = n + (k-kgc)*n_cols;
+
+                const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
+                const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
+
+                T_h[ijk_out] = sat_adjust(thlh, qth, ph[k], exnh).t;
+            }
+        }
+
+        // Calculate surface temperature (assuming no liquid water)
+        const TF exn_bot = exner(ph[kstart]);
+
+        #pragma ivdep
+        for (int n=0; n<n_cols; ++n)
+        {
+            const int i = col_i[n];
+            const int j = col_j[n];
+
+            const int ij = i + j*icells;
+            const int ij_out = n;
+
+            T_sfc[ij_out] = thl_bot[ij] * exn_bot;
+        }
+    }
 
     template<typename TF>
     void calc_land_surface_fields(
@@ -1164,9 +1241,13 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     {
         calc_base_state(
                 bs.pref.data(), bs.prefh.data(),
-                bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(), bs.thvrefh.data(),
-                bs.exnref.data(), bs.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(), fields.sp.at("qt")->fld_mean.data(),
-                bs.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+                bs.rhoref.data(), bs.rhorefh.data(),
+                bs.thvref.data(), bs.thvrefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                fields.sp.at("thl")->fld_mean.data(),
+                fields.sp.at("qt")->fld_mean.data(),
+                bs.pbot, gd.kstart, gd.kend,
+                gd.z.data(), gd.dz.data(), gd.dzh.data());
     }
 
     // extend later for gravity vector not normal to surface
@@ -1405,6 +1486,36 @@ void Thermo_moist<TF>::get_radiation_fields(
             gd.igc, gd.jgc, gd.kgc,
             gd.icells, gd.ijcells,
             gd.imax, gd.imax*gd.jmax);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_radiation_columns(
+    Field3d<TF>& tmp, std::vector<int>& col_i, std::vector<int>& col_j) const
+{
+    auto& gd = grid.get_grid_data();
+
+    // Get slices from tmp field.
+    const int n_cols = col_i.size();
+    int offset = 0;
+    TF* t_lay_a = &tmp.fld.data()[offset]; offset += n_cols * gd.ktot;
+    TF* t_lev_a = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot+1);
+    TF* t_sfc_a = &tmp.fld.data()[offset]; offset += n_cols;
+    TF* h2o_a   = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
+    TF* clwp_a  = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
+    TF* ciwp_a  = &tmp.fld.data()[offset];
+
+    calc_radiation_columns(
+            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            bs.pref.data(),
+            bs.prefh.data(),
+            col_i.data(),
+            col_j.data(),
+            n_cols,
+            gd.kgc, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 }
 
 template<typename TF>

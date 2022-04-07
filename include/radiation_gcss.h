@@ -55,19 +55,27 @@ class Radiation_gcss : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         unsigned long get_time_limit(unsigned long);
+        void update_time_dependent(Timeloop<TF>&) {};
 
         bool check_field_exists(const std::string& name);
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&);
 
         std::vector<TF>& get_surface_radiation(const std::string&)
-            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
+            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
-
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
+            { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
+        #ifdef USECUDA
+        void prepare_device() {}
+        void clear_device() {}
+        void forward_device() {}
+        void backward_device() {}
+        #endif
 
     private:
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
@@ -97,7 +105,8 @@ class Radiation_gcss : public Radiation<TF>
         const TF mu_min = 0.035;
 
         #ifdef USECUDA
-        // GPU functions and variables
+        TF* get_surface_radiation_g(std::string)
+            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
         void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
         void prepare_device() {};
         void clear_device() {};

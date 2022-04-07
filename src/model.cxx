@@ -330,9 +330,10 @@ void Model<TF>::exec()
             while (true)
             {
                 // Update the time dependent parameters.
-                boundary->update_time_dependent(*timeloop);
-                thermo  ->update_time_dependent(*timeloop);
-                force   ->update_time_dependent(*timeloop);
+                boundary ->update_time_dependent(*timeloop);
+                thermo   ->update_time_dependent(*timeloop);
+                force    ->update_time_dependent(*timeloop);
+                radiation->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -419,8 +420,18 @@ void Model<TF>::exec()
                     const int iotime = timeloop->get_iotime();
                     const double dt = timeloop->get_dt();
 
+                    // Write cross and dump messages here, as they don't have an `exec()` function...
+                    if (cross->do_cross(itime))
+                        master.print_message("Saving cross-sections for time %f\n", time);
+                    if (dump->do_dump(itime))
+                        master.print_message("Saving field dumps for time %f\n", time);
+
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
+                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime)))
+                    {
+                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats);
+                    }
+                    else if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
                     {
                         radiation->exec_all_stats(
                                 *stats, *cross, *dump, *column,
@@ -431,15 +442,19 @@ void Model<TF>::exec()
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
+                        cpu_up_to_date = false;
                         if (!cpu_up_to_date)
                         {
                             #pragma omp taskwait
                             cpu_up_to_date = true;
                             fields   ->backward_device();
-                            boundary ->backward_device();
-                            thermo   ->backward_device();
-                            microphys->backward_device();
                         }
+
+                        // Always copy these classes for an update of diagnostic quantities:
+                        #pragma omp taskwait
+                        boundary ->backward_device();
+                        thermo   ->backward_device();
+                        microphys->backward_device();
                         #endif
 
                         #pragma omp task default(shared)
@@ -535,7 +550,7 @@ void Model<TF>::exec()
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
-    // boundary->backward_device();
+    boundary->backward_device();
     thermo  ->backward_device();
 
     clear_gpu();
@@ -548,38 +563,35 @@ void Model<TF>::prepare_gpu()
 {
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
-    grid    ->prepare_device();
-    fields  ->prepare_device();
-    buffer  ->prepare_device();
-    thermo  ->prepare_device();
-    boundary->prepare_device();
-    diff    ->prepare_device(*boundary);
-    force   ->prepare_device();
-    ib      ->prepare_device();
-    // decay   ->prepare_device();
+    grid     ->prepare_device();
+    soil_grid->prepare_device();
+    fields   ->prepare_device();
+    buffer   ->prepare_device();
+    thermo   ->prepare_device();
+    boundary ->prepare_device();
+    diff     ->prepare_device(*boundary);
+    force    ->prepare_device();
+    ib       ->prepare_device();
     microphys->prepare_device();
     radiation->prepare_device();
-    // // Prepare pressure last, for memory check
-    pres->prepare_device();
+    // Prepare pressure last, for memory check
+    pres     ->prepare_device();
 }
 
 template<typename TF>
 void Model<TF>::clear_gpu()
 {
     master.print_message("Clearing the GPU\n");
-    grid    ->clear_device();
-    fields  ->clear_device();
-    // buffer  ->clear_device();
-    thermo  ->clear_device();
-    // boundary->clear_device();
-    // diff    ->clear_device();
-    force   ->clear_device();
-    ib      ->clear_device();
-    // decay   ->clear_device();
+    grid     ->clear_device();
+    soil_grid->clear_device();
+    fields   ->clear_device();
+    thermo   ->clear_device();
+    force    ->clear_device();
+    ib       ->clear_device();
     microphys->clear_device();
     radiation->clear_device();
-    // // Clear pressure last, for memory check
-    pres    ->clear_device();
+    // Clear pressure last, for memory check
+    pres     ->clear_device();
 }
 #endif
 
