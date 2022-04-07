@@ -568,7 +568,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     clwp_subset.ptr(), ciwp_subset.ptr(),
                     gd.dz_g,
                     n_col_in, n_lay, gd.kstart,
-                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_w, fac);
+                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_i, fac);
 
             cloud_lw_gpu->cloud_optics(
                     clwp_subset,
