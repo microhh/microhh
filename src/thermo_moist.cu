@@ -398,6 +398,51 @@ namespace
 
 
     template<typename TF> __global__
+    void calc_land_surface_fields(
+        TF* const __restrict__ T_bot,
+        TF* const __restrict__ T_a,
+        TF* const __restrict__ vpd,
+        TF* const __restrict__ qsat_bot,
+        TF* const __restrict__ dqsatdT_bot,
+        const TF* const __restrict__ thl_bot,
+        const TF* const __restrict__ thl,
+        const TF* const __restrict__ qt,
+        const TF* const __restrict__ exner,
+        const TF* const __restrict__ exnerh,
+        const TF* const __restrict__ p,
+        const TF* const __restrict__ ph,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart,
+        const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = kstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            const int ijk = ij + k*ijcells;
+
+            // Saturation adjustment for first model level
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(thl[ijk], qt[ijk], p[k], exner[k]);
+            T_bot[ij] = exnerh[k] * thl_bot[ij];
+            T_a[ij] = ssa.t;
+
+            // Vapor pressure deficit first model level
+            const TF es = esat(ssa.t);
+            const TF e = qt[ijk]/ssa.qs * es;
+            vpd[ij] = es-e;
+
+            // qsat(T_bot) + dqsatdT(T_bot)
+            qsat_bot[ij] = qsat(ph[k], T_bot[ij]);
+            dqsatdT_bot[ij] = dqsatdT(ph[k], T_bot[ij]);
+        }
+    }
+
+
+    template<typename TF> __global__
     void calc_radiation_fields_g(
             TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
             TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
