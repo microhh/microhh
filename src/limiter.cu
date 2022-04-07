@@ -35,7 +35,7 @@ namespace
     void tendency_limiter(
             TF* const __restrict__ at,
             const TF* const __restrict__ a,
-            const TF dt, const TF dti,
+            const TF dt, const TF dti, const TF eps,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -50,7 +50,7 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             const TF a_new = a[ijk] + dt*at[ijk];
-            at[ijk] += (a_new < TF(0.)) ? -a_new * dti : TF(0.);
+            at[ijk] += (a_new < TF(0.)) ? (-a_new + eps) * dti : TF(0.);
         }
     }
 }
@@ -73,11 +73,13 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 
     const TF dti = 1./dt;
 
+    constexpr TF eps = std::numeric_limits<TF>::epsilon();
+
     for (auto& name : limit_list)
     {
         tendency_limiter<TF><<<gridGPU, blockGPU>>>(
             fields.at.at(name)->fld_g, fields.ap.at(name)->fld_g,
-            dt, dti,
+            dt, dti, eps,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
