@@ -70,11 +70,15 @@ class Radiation_gcss : public Radiation<TF>
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
         void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
             { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
+
         #ifdef USECUDA
         void prepare_device() {}
         void clear_device() {}
         void forward_device() {}
         void backward_device() {}
+        TF* get_surface_radiation_g(const std::string&)
+            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
+        void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
         #endif
 
     private:
@@ -103,14 +107,6 @@ class Radiation_gcss : public Radiation<TF>
         TF div;
 
         const TF mu_min = 0.035;
-
-        #ifdef USECUDA
-        TF* get_surface_radiation_g(std::string)
-            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
-        void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
-        void prepare_device() {};
-        void clear_device() {};
-        #endif
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";

@@ -84,7 +84,7 @@ void Radiation_prescribed<TF>::exec(
 }
 
 template<typename TF>
-TF* Radiation_prescribed<TF>::get_surface_radiation_g(std::string name)
+TF* Radiation_prescribed<TF>::get_surface_radiation_g(const std::string& name)
 {
     if (name == "sw_down")
         return sw_flux_dn_g;
