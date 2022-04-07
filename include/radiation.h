@@ -44,7 +44,7 @@ class Radiation
 {
     public:
         Radiation(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Radiation();
+        virtual ~Radiation(); 
         static std::shared_ptr<Radiation> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         std::string get_switch();
 

@@ -151,5 +151,8 @@ void Radiation_prescribed<TF>::backward_device()
 }
 #endif
 
-template class Radiation_prescribed<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_prescribed<float>;
+#else
+template class Radiation_prescribed<double>;
+#endif

@@ -53,6 +53,11 @@ Radiation_prescribed<TF>::Radiation_prescribed(
 }
 
 template<typename TF>
+Radiation_prescribed<TF>::~Radiation_prescribed()
+{
+}
+
+template<typename TF>
 void Radiation_prescribed<TF>::init(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();

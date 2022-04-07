@@ -79,8 +79,8 @@ class Radiation_rrtmgp : public Radiation<TF>
             { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
         void prepare_device();
         void clear_device();
-        void forward_device();
-        void backward_device();
+        void forward_device() {};
+        void backward_device() {};
         #endif
 
 	private:
