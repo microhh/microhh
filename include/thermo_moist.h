@@ -100,6 +100,7 @@ class Thermo_moist : public Thermo<TF>
 
         void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
+        void get_buoyancy_surf_g(TF*, TF*, TF*);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
         void set_sun_location(Timeloop<TF>&);
@@ -107,6 +108,7 @@ class Thermo_moist : public Thermo<TF>
 
         void get_radiation_fields_g(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*);
         #endif
 
         // Empty functions that are allowed to pass.
