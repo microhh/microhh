@@ -44,7 +44,7 @@ class Radiation_prescribed : public Radiation<TF>
 {
 	public:
 		Radiation_prescribed(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Radiation_prescribed() {}
+        ~Radiation_prescribed();
 
         void init(Timeloop<TF>&);
         void create(

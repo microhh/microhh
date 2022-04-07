@@ -59,7 +59,7 @@ namespace
             const int ijk = i + j*jj + k*kk;
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-            thlt_rad[ijk] = fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
+            thlt_rad[ijk] -= fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
                                    flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] );
         }
     }
@@ -552,7 +552,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 gas_concs_subset,
                 optical_props_subset_in,
                 sources_subset_in,
-                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
 
@@ -566,9 +566,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
                     rel.ptr(), rei.ptr(),
                     clwp_subset.ptr(), ciwp_subset.ptr(),
-                    gd.dz.data(),
+                    gd.dz_g,
                     n_col_in, n_lay, gd.kstart,
-                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_w, fac);
+                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_i, fac);
 
             cloud_lw_gpu->cloud_optics(
                     clwp_subset,

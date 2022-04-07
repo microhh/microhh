@@ -75,7 +75,7 @@ class Radiation_disabled : public Radiation<TF>
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
-        TF* get_surface_radiation_g(std::string)
+        TF* get_surface_radiation_g(const std::string&)
             { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
         void prepare_device() {}
         void clear_device() {}
