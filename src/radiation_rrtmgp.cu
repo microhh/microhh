@@ -552,7 +552,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 gas_concs_subset,
                 optical_props_subset_in,
                 sources_subset_in,
-                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 t_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}) );
 
 
