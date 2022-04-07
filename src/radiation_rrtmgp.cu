@@ -566,7 +566,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
                     rel.ptr(), rei.ptr(),
                     clwp_subset.ptr(), ciwp_subset.ptr(),
-                    gd.dz.data(),
+                    gd.dz_g,
                     n_col_in, n_lay, gd.kstart,
                     four_third_pi_N0_rho_w, four_third_pi_N0_rho_w, fac);
 
