@@ -396,6 +396,7 @@ namespace
         }
     }
 
+
     template<typename TF> __global__
     void calc_radiation_fields_g(
             TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
@@ -433,6 +434,11 @@ namespace
 
             T[ijk_nogc] = ssa.t;
         }
+
+        if (i < iend && j < jend && k < kend+1)
+        {
+            const TF exnh = exner(ph[k]);
+            const int ijk = i + j*jj + k*kk;
 
             const TF thlh = interp2(thl[ijk-kk], thl[ijk]);
             const TF qth  = interp2(qt [ijk-kk], qt [ijk]);
@@ -922,38 +928,6 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(
         b_bot, thl_bot, qt_bot,
         bs.thvrefh_g,
         gd.icells, gd.jcells, gd.kstart);
-    cuda_check_error();
-}
-
-template<typename TF>
-void Thermo_moist<TF>::get_land_surface_fields_g(
-    TF* const __restrict__ T_bot, 
-    TF* const __restrict__ T_a, 
-    TF* const __restrict__ vpd, 
-    TF* const __restrict__ qsat_bot, 
-    TF* const __restrict__ dqsatdT_bot) 
-{
-    auto& gd = grid.get_grid_data();
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    calc_land_surface_fields<<<gridGPU, blockGPU>>>(
-        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot,
-        fields.sp.at("thl")->fld_bot_g,
-        fields.sp.at("thl")->fld_g,
-        fields.sp.at("qt")->fld_g,
-        bs.exnref_g, bs.exnrefh_g,
-        bs.pref_g, bs.prefh_g,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart,
-        gd.icells, gd.ijcells);
     cuda_check_error();
 }
 
