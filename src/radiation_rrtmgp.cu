@@ -431,6 +431,31 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
+
+
+    void configure_memory_pool(int nlays, int ncols, int nchunks, int ngpts, int nbnds)
+    {
+        #ifdef RTE_RRTMGP_GPU_MEMPOOL_OWN
+        /* Heuristic way to set up memory pool queues */
+        std::map<std::size_t, std::size_t> pool_queues = {
+            {64, 20},
+            {128, 20},
+            {256, 10},
+            {512, 10},
+            {1024, 5},
+            {2048, 5},
+            {nchunks * ngpts * sizeof(Float), 16},
+            {nchunks * nbnds * sizeof(Float), 16},
+            {(nlays + 1) * ncols * sizeof(Float), 14},
+            {(nlays + 1) * nchunks * sizeof(Float), 10},
+            {(nlays + 1) * nchunks * nbnds * sizeof(Float), 4},
+            {(nlays + 1) * nchunks * ngpts * sizeof(int)/2, 6},
+            {(nlays + 1) * nchunks * ngpts * sizeof(Float), 18}
+        };
+
+        Memory_pool_gpu::init_instance(pool_queues);
+        #endif
+    }
 }
 
 
@@ -438,6 +463,30 @@ namespace
 template<typename TF>
 void Radiation_rrtmgp<TF>::prepare_device()
 {
+    auto& gd = grid.get_grid_data();
+
+    // Set the memory pool.
+    int ngpts = 0;
+    int nbnds = 0;
+
+    if (sw_longwave)
+    {
+        Netcdf_file coef_nc_lw(master, "coefficients_lw.nc", Netcdf_mode::Read);
+        nbnds = std::max(coef_nc_lw.get_dimension_size("bnd"), nbnds);
+        ngpts = std::max(coef_nc_lw.get_dimension_size("gpt"), ngpts);
+    }
+
+    if (sw_shortwave)
+    {
+        Netcdf_file coef_nc_sw(master, "coefficients_sw.nc", Netcdf_mode::Read);
+        nbnds = std::max(coef_nc_sw.get_dimension_size("bnd"), nbnds);
+        ngpts = std::max(coef_nc_sw.get_dimension_size("gpt"), ngpts);
+    }
+
+    configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpts, nbnds);
+
+
+    // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
 
     this->kdist_lw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
@@ -446,7 +495,6 @@ void Radiation_rrtmgp<TF>::prepare_device()
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
 
-    auto& gd = grid.get_grid_data();
     const int nsfcsize = gd.ijcells*sizeof(Float);
 
     cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
