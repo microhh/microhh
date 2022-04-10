@@ -29,6 +29,9 @@
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
+#include "stats.h"
+#include "cross.h"
+#include "column.h"
 
 #include "Array.h"
 #include "Fluxes.h"
@@ -945,8 +948,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     // Use a lambda function to avoid code repetition.
     auto save_stats_and_cross = [&](
-            const Array<Float,2>& array, const std::string& name, const std::array<int,3>& loc)
+            const Field3d<Float>& array, const std::string& name, const std::array<int,3>& loc)
     {
+        /*
         if (do_stats || do_cross || do_column)
         {
             // Make sure that the top boundary is taken into account in case of fluxes.
@@ -972,17 +976,18 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
         if (do_column)
             column.calc_column(name, tmp->fld.data(), no_offset);
+            */
     };
 
     if (sw_longwave)
     {
-        save_stats_and_cross(lw_flux_up, "lw_flux_up", gd.wloc);
-        save_stats_and_cross(lw_flux_dn, "lw_flux_dn", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("lw_flux_up"), "lw_flux_up", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("lw_flux_dn"), "lw_flux_dn", gd.wloc);
 
         if (sw_clear_sky_stats)
         {
-            save_stats_and_cross(flux_up, "lw_flux_up_clear", gd.wloc);
-            save_stats_and_cross(flux_dn, "lw_flux_dn_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
     }
 
