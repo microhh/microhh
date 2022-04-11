@@ -1058,6 +1058,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
             if (sw_shortwave)
             {
+                Array_gpu<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
                 // Single column solve of background profile for TOA conditions
                 if (!sw_fixed_sza)
                 {
@@ -1075,7 +1077,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     {
                         const int n_bnd = kdist_sw->get_nband();
                         const int n_gpt = kdist_sw->get_ngpt();
-                        printf("this n_col should be 1: %d %d \n", this->n_col,n_col);
+
                         // Set the solar zenith angle and albedo.
                         Array<Float,2> sfc_alb_dir({n_bnd, n_col});
                         Array<Float,2> sfc_alb_dif({n_bnd, n_col});
@@ -1113,8 +1115,6 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                 if (is_day(this->mu0))
                 {
-                    Array_gpu<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
@@ -1130,6 +1130,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.igc, gd.jgc, gd.kgc,
                             gd.icells, gd.ijcells,
                             gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
 
                     store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                             sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
@@ -1139,12 +1140,31 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.igc, gd.jgc,
                             gd.icells, gd.ijcells,
                             gd.imax);
+                    cuda_check_error();
                 }
                 else
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
-                    std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), Float(0));
-                    std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
+                    cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
+                    cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
+                }
+
+                if (do_radiation_stats)
+                {
+                    // Make sure that the top boundary is taken into account in case of fluxes.
+                    auto do_gcs = [&](Field3d<Float>& out, const Array_gpu<Float,2>& in)
+                    {
+                        add_ghost_cells_g<<<gridGPU_3d, blockGPU_3d>>>(
+                                out.fld_g, in.ptr(),
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend+1,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
+
+                    do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
+                    do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
+                    do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
                 }
             }
         } // End try block.
@@ -1248,62 +1268,19 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
     }
 
-    /*
     if (sw_shortwave)
     {
-        Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
-        if (!sw_fixed_sza)
-        {
-            // Update the solar zenith angle and sun-earth distance.
-            set_sun_location(timeloop);
-
-            // Calculate new background column.
-            if (is_day(this->mu0))
-                set_background_column_shortwave(thermo);
-        }
-
-        if (!is_day(mu0))
-        {
-            flux_up.fill(0.);
-            flux_dn.fill(0.);
-            flux_dn_dir.fill(0.);
-            flux_net.fill(0.);
-        }
-
-        if (is_day(mu0))
-        {
-            exec_shortwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds, gd.imax*gd.jmax);
-        }
-
-        save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
-        save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
-        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
-
+        save_stats_and_cross(*fields.sd.at("sw_flux_up"), "sw_flux_up", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
+        
         if (sw_clear_sky_stats)
         {
-            if (is_day(mu0))
-            {
-                exec_shortwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_dn_dir, flux_net,
-                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                        !compute_clouds, gd.imax*gd.jmax);
-            }
-
-            save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
-            save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
-            save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"), "sw_flux_up_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn_clear"), "sw_flux_dn_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
         }
-
-        stats.set_time_series("sza", std::acos(mu0));
-        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
     }
-    */
 }
 #endif
 
