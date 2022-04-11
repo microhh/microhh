@@ -524,6 +524,10 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
         this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
                 load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
+
+        const int nsfcsize = gd.ijcells*sizeof(Float);
+        cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
+        cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
     }
 
     if (sw_shortwave)
@@ -535,8 +539,6 @@ void Radiation_rrtmgp<TF>::prepare_device()
                 load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
         const int nsfcsize = gd.ijcells*sizeof(Float);
-        cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
    
