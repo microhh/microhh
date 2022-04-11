@@ -106,6 +106,15 @@ class Chemistry
         std::vector<TF> vdh2o2;
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
+	// vectors to contain the surface concentration fields (mol mol-1)
+	bool switch_surface_fields;
+        std::vector<TF> surfo3;
+        std::vector<TF> surfno;
+        std::vector<TF> surfno2;
+        std::vector<TF> surfhno3;
+        std::vector<TF> surfh2o2;
+        std::vector<TF> surfrooh;
+        std::vector<TF> surfhcho;
 
         const std::string tend_name = "chemistry";
         const std::string tend_longname = "Chemistry";
