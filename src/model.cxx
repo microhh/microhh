@@ -427,35 +427,26 @@ void Model<TF>::exec()
                         master.print_message("Saving field dumps for time %f\n", time);
 
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
-                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime)))
+                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
                     {
                         radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats);
-                    }
-                    else if (stats->do_statistics(itime) || cross->do_cross(itime) || column->do_column(itime))
-                    {
-                        radiation->exec_all_stats(
-                                *stats, *cross, *dump, *column,
-                                *thermo, *timeloop,
-                                itime, iotime);
                     }
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
                     {
                         #ifdef USECUDA
-                        cpu_up_to_date = false;
-                        if (!cpu_up_to_date)
-                        {
-                            #pragma omp taskwait
-                            cpu_up_to_date = true;
-                            fields   ->backward_device();
-                        }
-
-                        // Always copy these classes for an update of diagnostic quantities:
                         #pragma omp taskwait
+                        cpu_up_to_date = true;
+                        fields   ->backward_device();
                         boundary ->backward_device();
                         thermo   ->backward_device();
                         microphys->backward_device();
                         #endif
+
+                        radiation->exec_all_stats(
+                                *stats, *cross, *dump, *column,
+                                *thermo, *timeloop,
+                                itime, iotime);
 
                         #pragma omp task default(shared)
                         calculate_statistics(iter, time, itime, iotime, dt);
