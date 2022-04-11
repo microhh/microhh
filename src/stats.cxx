@@ -236,7 +236,7 @@ namespace
             nmask_full[k] = 0;
             nmask_half[k] = 0;
 
-            #pragma omp parallel for reduction (+:nmask_full[k], nmask_half[k]) collapse(2)
+            // #pragma omp parallel for reduction (+:nmask_full[k], nmask_half[k]) collapse(2)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
@@ -248,7 +248,8 @@ namespace
 
         nmask_bottom     = 0;
         // nmask_half[kend] = 0;
-        #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
+        // #pragma omp parallel for reduction (+:nmask_bottom) collapse(2)
+        // #pragma omp parallel for reduction (+:nmask_bottom, nmask_half[kend]) collapse(2)
         for (int j=jstart; j<jend; ++j)
             for (int i=istart; i<iend; ++i)
             {

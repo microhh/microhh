@@ -742,6 +742,22 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     auto& gd = grid.get_grid_data();
     fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", "radiation", gd.sloc);
+
+    #ifdef USECUDA
+    // In case of GPU, we copy out the radiative fluxes on stats steps, to avoid having to
+    // recompute the radiation, because it takes too long.
+    // fields.init_diagnostic_field("sw_flux_up", "", "W m-2", "radiation", gd.wloc);
+    // fields.init_diagnostic_field("sw_flux_dn", "", "W m-2", "radiation", gd.wloc);
+
+    fields.init_diagnostic_field("lw_flux_up", "Longwave upwelling flux", "W m-2", "radiation", gd.wloc);
+    fields.init_diagnostic_field("lw_flux_dn", "Longwave downwelling flux", "W m-2", "radiation", gd.wloc);
+
+    if (sw_clear_sky_stats)
+    {
+        fields.init_diagnostic_field("lw_flux_up_clear", "Clear-sky longwave upwelling flux", "W m-2", "radiation", gd.wloc);
+        fields.init_diagnostic_field("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "radiation", gd.wloc);
+    }
+    #endif
 }
 
 
@@ -1399,6 +1415,7 @@ namespace
 }
 
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_all_stats(
         Stats<TF>& stats, Cross<TF>& cross,
@@ -1578,6 +1595,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 
     fields.release_tmp(tmp);
 }
+#endif
 
 
 template<typename TF>

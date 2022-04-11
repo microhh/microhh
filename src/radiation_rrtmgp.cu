@@ -29,6 +29,9 @@
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
+#include "stats.h"
+#include "cross.h"
+#include "column.h"
 
 #include "Array.h"
 #include "Fluxes.h"
@@ -431,6 +434,31 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
+
+
+    void configure_memory_pool(int nlays, int ncols, int nchunks, int ngpts, int nbnds)
+    {
+        #ifdef RTE_RRTMGP_GPU_MEMPOOL_OWN
+        /* Heuristic way to set up memory pool queues */
+        std::map<std::size_t, std::size_t> pool_queues = {
+            {64, 20},
+            {128, 20},
+            {256, 10},
+            {512, 10},
+            {1024, 5},
+            {2048, 5},
+            {nchunks * ngpts * sizeof(Float), 16},
+            {nchunks * nbnds * sizeof(Float), 16},
+            {(nlays + 1) * ncols * sizeof(Float), 14},
+            {(nlays + 1) * nchunks * sizeof(Float), 10},
+            {(nlays + 1) * nchunks * nbnds * sizeof(Float), 4},
+            {(nlays + 1) * nchunks * ngpts * sizeof(int)/2, 6},
+            {(nlays + 1) * nchunks * ngpts * sizeof(Float), 18}
+        };
+
+        Memory_pool_gpu::init_instance(pool_queues);
+        #endif
+    }
 }
 
 
@@ -438,6 +466,30 @@ namespace
 template<typename TF>
 void Radiation_rrtmgp<TF>::prepare_device()
 {
+    auto& gd = grid.get_grid_data();
+
+    // Set the memory pool.
+    int ngpts = 0;
+    int nbnds = 0;
+
+    if (sw_longwave)
+    {
+        Netcdf_file coef_nc_lw(master, "coefficients_lw.nc", Netcdf_mode::Read);
+        nbnds = std::max(coef_nc_lw.get_dimension_size("bnd"), nbnds);
+        ngpts = std::max(coef_nc_lw.get_dimension_size("gpt"), ngpts);
+    }
+
+    if (sw_shortwave)
+    {
+        Netcdf_file coef_nc_sw(master, "coefficients_sw.nc", Netcdf_mode::Read);
+        nbnds = std::max(coef_nc_sw.get_dimension_size("bnd"), nbnds);
+        ngpts = std::max(coef_nc_sw.get_dimension_size("gpt"), ngpts);
+    }
+
+    configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpts, nbnds);
+
+
+    // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
 
     this->kdist_lw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
@@ -446,7 +498,6 @@ void Radiation_rrtmgp<TF>::prepare_device()
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
 
-    auto& gd = grid.get_grid_data();
     const int nsfcsize = gd.ijcells*sizeof(Float);
 
     cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
@@ -867,8 +918,139 @@ void Radiation_rrtmgp<TF>::clear_device()
     cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
 }
-#endif
 
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_all_stats(
+        Stats<TF>& stats, Cross<TF>& cross,
+        Dump<TF>& dump, Column<TF>& column,
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop,
+        const unsigned long itime, const int iotime)
+{
+    const bool do_stats  = stats.do_statistics(itime);
+    const bool do_cross  = cross.do_cross(itime) && crosslist.size() > 0;
+    const bool do_column = column.do_column(itime);
+
+    // Return in case of no stats or cross section.
+    if ( !(do_stats || do_cross || do_column) )
+        return;
+
+    const Float no_offset = 0.;
+    const Float no_threshold = 0.;
+
+    // CvH: lots of code repetition with exec()
+    auto& gd = grid.get_grid_data();
+
+    auto tmp = fields.get_tmp();
+    tmp->loc = gd.wloc;
+
+    const bool compute_clouds = true;
+
+    // Use a lambda function to avoid code repetition.
+    auto save_stats_and_cross = [&](
+            const Field3d<Float>& array, const std::string& name, const std::array<int,3>& loc)
+    {
+        /*
+        if (do_stats || do_cross || do_column)
+        {
+            // Make sure that the top boundary is taken into account in case of fluxes.
+            const int kend = gd.kstart + array.dim(2);
+            add_ghost_cells(
+                    tmp->fld.data(), array.ptr(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, kend,
+                    gd.igc, gd.jgc, gd.kgc,
+                    gd.icells, gd.ijcells,
+                    gd.imax, gd.imax*gd.jmax);
+        }
+
+        if (do_stats)
+            stats.calc_stats(name, *tmp, no_offset, no_threshold);
+
+        if (do_cross)
+        {
+            if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
+                cross.cross_simple(tmp->fld.data(), name, iotime, loc);
+        }
+
+        if (do_column)
+            column.calc_column(name, tmp->fld.data(), no_offset);
+            */
+    };
+
+    if (sw_longwave)
+    {
+        save_stats_and_cross(*fields.sd.at("lw_flux_up"), "lw_flux_up", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("lw_flux_dn"), "lw_flux_dn", gd.wloc);
+
+        if (sw_clear_sky_stats)
+        {
+            save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
+        }
+    }
+
+    /*
+    if (sw_shortwave)
+    {
+        Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
+        if (!sw_fixed_sza)
+        {
+            // Update the solar zenith angle and sun-earth distance.
+            set_sun_location(timeloop);
+
+            // Calculate new background column.
+            if (is_day(this->mu0))
+                set_background_column_shortwave(thermo);
+        }
+
+        if (!is_day(mu0))
+        {
+            flux_up.fill(0.);
+            flux_dn.fill(0.);
+            flux_dn_dir.fill(0.);
+            flux_net.fill(0.);
+        }
+
+        if (is_day(mu0))
+        {
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds, gd.imax*gd.jmax);
+        }
+
+        save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
+        save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
+        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
+
+        if (sw_clear_sky_stats)
+        {
+            if (is_day(mu0))
+            {
+                exec_shortwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds, gd.imax*gd.jmax);
+            }
+
+            save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
+            save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
+            save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
+        }
+
+        stats.set_time_series("sza", std::acos(mu0));
+        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+    }
+    */
+
+    fields.release_tmp(tmp);
+}
+#endif
 
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
