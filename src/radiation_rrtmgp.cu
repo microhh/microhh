@@ -139,6 +139,29 @@ namespace
     }
 
 
+    __global__
+    void add_ghost_cells_g(
+            Float* __restrict__ out, const Float* __restrict__ in,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kendh,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kendh)
+        {
+            const int ijk_nogc  = (i-istart) + (j-jstart)*jj_nogc + (k-kstart)*kk_nogc;
+            const int ijk = i + j*jj + k*kk;
+
+            out[ijk] = in[ijk_nogc];
+        }
+    }
+
+
+
     std::vector<std::string> get_variable_string(
             const std::string& var_name,
             std::vector<int> i_count,
@@ -950,6 +973,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     dim3 blockGPU_2d(blocki, blockj, 1);
 
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
+    const bool do_radiation_stats = timeloop.is_stats_step();
 
     if (do_radiation)
     {
@@ -1015,6 +1039,23 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.icells, gd.ijcells,
                         gd.imax);
                 cuda_check_error();
+
+                if (do_radiation_stats)
+                {
+                    // Make sure that the top boundary is taken into account in case of fluxes.
+                    auto do_gcs = [&](Field3d<Float>& out, const Array_gpu<Float,2>& in)
+                    {
+                        add_ghost_cells_g<<<gridGPU_3d, blockGPU_3d>>>(
+                                out.fld_g, in.ptr(),
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend+1,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
+
+                    do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
+                    do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
+                }
             }
 
             if (sw_shortwave)
@@ -1178,42 +1219,23 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     // CvH: lots of code repetition with exec()
     auto& gd = grid.get_grid_data();
 
-    auto tmp = fields.get_tmp();
-    tmp->loc = gd.wloc;
-
     const bool compute_clouds = true;
 
     // Use a lambda function to avoid code repetition.
     auto save_stats_and_cross = [&](
-            const Field3d<Float>& array, const std::string& name, const std::array<int,3>& loc)
+            Field3d<TF>& array, const std::string& name, const std::array<int,3>& loc)
     {
-        /*
-        if (do_stats || do_cross || do_column)
-        {
-            // Make sure that the top boundary is taken into account in case of fluxes.
-            const int kend = gd.kstart + array.dim(2);
-            add_ghost_cells(
-                    tmp->fld.data(), array.ptr(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, kend,
-                    gd.igc, gd.jgc, gd.kgc,
-                    gd.icells, gd.ijcells,
-                    gd.imax, gd.imax*gd.jmax);
-        }
-
         if (do_stats)
-            stats.calc_stats(name, *tmp, no_offset, no_threshold);
+            stats.calc_stats(name, array, no_offset, no_threshold);
 
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(tmp->fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), name, iotime, loc);
         }
 
         if (do_column)
-            column.calc_column(name, tmp->fld.data(), no_offset);
-            */
+            column.calc_column(name, array.fld.data(), no_offset);
     };
 
     if (sw_longwave)
@@ -1284,8 +1306,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
     }
     */
-
-    fields.release_tmp(tmp);
 }
 #endif
 
