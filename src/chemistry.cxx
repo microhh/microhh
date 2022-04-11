@@ -807,19 +807,19 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(vdhcho.data(), "vdhcho", iotime);
 	else if (switch_surface_fields) {
 		if (it == "surfo3")
-		    cross.cross_plane(vdo3.data(), "surfo3", iotime);
+		    cross.cross_plane(surfo3.data(), "surfo3", iotime);
 		else if (it == "surfno")
-		    cross.cross_plane(vdno.data(), "surfno", iotime);
+		    cross.cross_plane(surfno.data(), "surfno", iotime);
 		else if (it == "surfno2")
-		    cross.cross_plane(vdno2.data(), "surfno2", iotime);
+		    cross.cross_plane(surfno2.data(), "surfno2", iotime);
 		else if (it == "surfhno3")
-		    cross.cross_plane(vdhno3.data(), "surfhno3", iotime);
+		    cross.cross_plane(surfhno3.data(), "surfhno3", iotime);
 		else if (it == "surfh2o2")
-		    cross.cross_plane(vdh2o2.data(), "surfh2o2", iotime);
+		    cross.cross_plane(surfh2o2.data(), "surfh2o2", iotime);
 		else if (it == "surfrooh")
-		    cross.cross_plane(vdrooh.data(), "surfrooh", iotime);
+		    cross.cross_plane(surfrooh.data(), "surfrooh", iotime);
 		else if (it == "surfhcho")
-		    cross.cross_plane(vdhcho.data(), "surfhcho", iotime);
+		    cross.cross_plane(surfhcho.data(), "surfhcho", iotime);
 	}
     }
     // see if to write per tile:
@@ -895,7 +895,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    fields.sp.at("h2o2")->fld.data(), 
 	    fields.sp.at("rooh")->fld.data(), 
 	    fields.sp.at("hcho")->fld.data(), 
-	    vdo3.data(),vdno.data(),vdno2.data(),vdhno3.data(),vdh2o2.data(),vdrooh.data(),vdhcho.data(),
+	    surfo3.data(),surfno.data(),surfno2.data(),surfhno3.data(),surfh2o2.data(),surfrooh.data(),surfhcho.data(),
 	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
 	    gd.icells, gd.ijcells);
 
