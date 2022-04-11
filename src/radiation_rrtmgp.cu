@@ -535,10 +535,9 @@ void Radiation_rrtmgp<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
     
-    printf("N_COL SHOULD BE 1 HERE %d %d \n",n_col, this->n_col);
     const int ncolgptsize = n_col*ngpts*sizeof(Float);
     cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
-    cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_dn_dif_inc_g, ncolgptsize));
 
     cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g,  sw_flux_dn_dif_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
@@ -834,7 +833,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array_gpu<Float,2> toa_src_dummy({n_col_in, n_gpt});
 
         auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
-
         kdist_sw_gpu->gas_optics(
                 p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
                 p_lev_subset,
@@ -902,10 +900,10 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const int col_e =  b    * n_col_block;
 
         Array_gpu<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
-        Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block, n_lev);
@@ -931,10 +929,10 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const int col_e = n_col;
 
         Array_gpu<Float,1> mu0_residual = mu0.subset({{ {col_s, col_e} }});
-        Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
         Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block_residual, n_lev);
@@ -946,7 +944,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 optical_props_residual,
                 cloud_optical_props_residual,
                 mu0_residual,
-                sw_flux_dn_dir_inc,
+                sw_flux_dn_dir_inc_residual,
                 sfc_alb_dir_residual,
                 sfc_alb_dif_residual,
                 sw_flux_dn_dif_inc_residual,
@@ -1134,7 +1132,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.imax, gd.imax*gd.jmax);
 
                     store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
-                            sw_flux_up_sfc.data(), sw_flux_dn_sfc.data(),
+                            sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
                             flux_up.ptr(), flux_dn.ptr(),
                             gd.istart, gd.iend,
                             gd.jstart, gd.jend,
