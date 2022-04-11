@@ -22,6 +22,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "radiation_rrtmgp.h"
+#include "radiation_rrtmgp_functions.h"
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
@@ -38,6 +39,7 @@
 #include "subset_kernel_launcher_cuda.h"
 
 
+using namespace Radiation_rrtmgp_functions;
 namespace
 {
     __global__
@@ -521,12 +523,25 @@ void Radiation_rrtmgp<TF>::prepare_device()
     this->cloud_lw_gpu = std::make_unique<Cloud_optics_gpu>(
             load_and_init_cloud_optics(master, "cloud_coefficients_lw.nc"));
 
-    const int nsfcsize = gd.ijcells*sizeof(Float);
+    this->kdist_sw_gpu = std::make_unique<Gas_optics_rrtmgp_gpu>(
+            load_and_init_gas_optics(master, *gas_concs_gpu, "coefficients_sw.nc"));
 
+    this->cloud_sw_gpu = std::make_unique<Cloud_optics_gpu>(
+            load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
+
+    const int nsfcsize = gd.ijcells*sizeof(Float);
     cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
     cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
+    
+    const int ncolgptsize = n_col*ngpts*sizeof(Float);
+    cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
+    cuda_safe_call(cudaMalloc(&sw_flux_dn_dif_inc_g, ncolgptsize));
+
+    cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g,  sw_flux_dn_dif_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
+
 }
 #endif
 
@@ -724,6 +739,220 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_shortwave(
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
+        const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
+        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const bool compute_clouds)
+{
+    constexpr int n_col_block = 1024;
+
+    auto& gd = grid.get_grid_data();
+
+    const int n_col = gd.imax*gd.jmax;
+    const int n_lay = gd.ktot;
+    const int n_lev = gd.ktot+1;
+
+    const int n_blocks = n_col / n_col_block;
+    const int n_col_block_residual = n_col % n_col_block;
+
+    const int n_gpt = this->kdist_sw_gpu->get_ngpt();
+    const int n_bnd = this->kdist_sw_gpu->get_nband();
+
+    const Bool top_at_1 = 0;
+
+    // Define the pointers for the subsetting.
+    std::unique_ptr<Optical_props_arry_gpu> optical_props_subset =
+            std::make_unique<Optical_props_2str_gpu>(n_col_block, n_lay, *kdist_sw_gpu);
+    std::unique_ptr<Optical_props_2str_gpu> cloud_optical_props_subset =
+            std::make_unique<Optical_props_2str_gpu>(n_col_block, n_lay, *cloud_sw_gpu);
+
+    std::unique_ptr<Optical_props_arry_gpu> optical_props_residual =
+            std::make_unique<Optical_props_2str_gpu>(n_col_block_residual, n_lay, *kdist_sw_gpu);
+    std::unique_ptr<Optical_props_2str_gpu> cloud_optical_props_residual =
+            std::make_unique<Optical_props_2str_gpu>(n_col_block_residual, n_lay, *cloud_sw_gpu);
+
+    // Make views to the base state pointer.
+    auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
+    auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
+
+    // Make views to the TOD flux poinsters
+    auto sw_flux_dn_dir_inc = Array_gpu<Float,2>(sw_flux_dn_dir_inc_g, {1, n_gpt});
+    auto sw_flux_dn_dif_inc = Array_gpu<Float,2>(sw_flux_dn_dif_inc_g, {1, n_gpt});
+    
+    // Create the boundary conditions
+    Array<Float,1> mu0_cpu(std::vector<Float>(1, this->mu0), {1});
+    Array_gpu<Float,1> mu0(mu0_cpu);
+    Array<Float,2> sfc_alb_dir_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
+    Array_gpu<Float,2> sfc_alb_dir(sfc_alb_dir_cpu);
+    Array<Float,2> sfc_alb_dif_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
+    Array_gpu<Float,2> sfc_alb_dif(sfc_alb_dif_cpu);
+
+    gas_concs_gpu->set_vmr("h2o", h2o);
+
+    // CvH: This can be done better: we now allocate a complete array.
+    Array_gpu<Float,2> col_dry({n_col, n_lay});
+    Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+
+    // Constants for computation of liquid and ice droplet effective radius
+    const Float sig_g = 1.34;
+    const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
+
+    const Float Nc0 = 100.e6;
+    const Float Ni0 = 1.e5;
+
+    const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
+    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+
+    const int block_col = 16;
+    const int block_lay = 16;
+    const int grid_col  = n_col_block/block_col + (n_col_block%block_col > 0);
+    const int grid_lay  = n_lay/block_lay + (n_lay%block_lay > 0);
+
+    dim3 gridGPU_re (grid_col, grid_lay, 1);
+    dim3 blockGPU_re (block_col, block_lay, 1);
+
+    // Lambda function for solving optical properties subset.
+    auto call_kernels = [&](
+            const int col_s_in, const int col_e_in,
+            std::unique_ptr<Optical_props_arry_gpu>& optical_props_subset_in,
+            std::unique_ptr<Optical_props_2str_gpu>& cloud_optical_props_subset_in,
+            const Array_gpu<Float,1>& mu0_subset_in,
+            const Array_gpu<Float,2>& sw_flux_dn_dir_inc_subset_in,
+            const Array_gpu<Float,2>& sfc_alb_dir_subset_in,
+            const Array_gpu<Float,2>& sfc_alb_dif_subset_in,
+            const Array_gpu<Float,2>& sw_flux_dn_dif_inc_subset_in,
+            Fluxes_broadband_gpu& fluxes,
+            Fluxes_broadband_gpu& bnd_fluxes)
+    {
+        const int n_col_in = col_e_in - col_s_in + 1;
+        Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s_in, n_col_in);
+        Array_gpu<Float,2> toa_src_dummy({n_col_in, n_gpt});
+
+        auto p_lev_subset = p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }});
+        kdist_sw_gpu->gas_optics(
+                p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                p_lev_subset,
+                t_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                gas_concs_subset,
+                optical_props_subset_in,
+                toa_src_dummy,
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
+
+
+        if (compute_clouds)
+        {
+            auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            Array_gpu<Float,2> rel({n_col_in, n_lay});
+            Array_gpu<Float,2> rei({n_col_in, n_lay});
+
+            effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
+                    rel.ptr(), rei.ptr(),
+                    clwp_subset.ptr(), ciwp_subset.ptr(),
+                    gd.dz_g,
+                    n_col_in, n_lay, gd.kstart,
+                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_i, fac);
+
+            cloud_sw_gpu->cloud_optics(
+                    clwp_subset,
+                    ciwp_subset,
+                    rel,
+                    rei,
+                    *cloud_optical_props_subset_in);
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str_gpu&>(*cloud_optical_props_subset_in));
+        }
+
+        Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
+        Array_gpu<Float,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
+        Array_gpu<Float,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});
+
+        rte_sw_gpu.rte_sw(
+                optical_props_subset_in,
+                top_at_1,
+                mu0_subset_in,
+                sw_flux_dn_dir_inc_subset_in,
+                sfc_alb_dir_subset_in,
+                sfc_alb_dif_subset_in,
+                sw_flux_dn_dif_inc_subset_in,
+                gpt_flux_up,
+                gpt_flux_dn,
+                gpt_flux_dn_dir);
+
+        fluxes.reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir, optical_props_subset_in, top_at_1);
+
+        // Copy the data to the output.
+        subset_kernel_launcher_cuda::get_from_subset(
+                n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
+                fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
+    };
+
+    for (int b=1; b<=n_blocks; ++b)
+    {
+        const int col_s = (b-1) * n_col_block + 1;
+        const int col_e =  b    * n_col_block;
+
+        Array_gpu<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+
+        std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
+                std::make_unique<Fluxes_broadband_gpu>(n_col_block, n_lev);
+        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_subset =
+                std::make_unique<Fluxes_byband_gpu>(n_col_block, n_lev, n_bnd);
+        call_kernels(
+                col_s, col_e,
+                optical_props_subset,
+                cloud_optical_props_subset,
+                mu0_subset,
+                sw_flux_dn_dir_inc_subset,
+                sfc_alb_dir_subset,
+                sfc_alb_dif_subset,
+                sw_flux_dn_dif_inc_subset,
+                *fluxes_subset,
+                *bnd_fluxes_subset);
+
+    }
+
+    if (n_col_block_residual > 0)
+    {
+        const int col_s = n_col - n_col_block_residual + 1;
+        const int col_e = n_col;
+
+        Array_gpu<Float,1> mu0_residual = mu0.subset({{ {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+
+        std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
+                std::make_unique<Fluxes_broadband_gpu>(n_col_block_residual, n_lev);
+        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_residual =
+                std::make_unique<Fluxes_byband_gpu>(n_col_block_residual, n_lev, n_bnd);
+
+        call_kernels(
+                col_s, col_e,
+                optical_props_residual,
+                cloud_optical_props_residual,
+                mu0_residual,
+                sw_flux_dn_dir_inc_residual,
+                sfc_alb_dir_residual,
+                sfc_alb_dif_residual,
+                sw_flux_dn_dif_inc_residual,
+                *fluxes_residual,
+                *bnd_fluxes_residual);
+    }
+}
+#endif
 
 #ifdef USECUDA
 template <typename TF>
@@ -827,9 +1056,11 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 }
             }
 
-            /*
             if (sw_shortwave)
             {
+                Array_gpu<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
+
+                // Single column solve of background profile for TOA conditions
                 if (!sw_fixed_sza)
                 {
                     // Update the solar zenith angle, and calculate new shortwave reference column
@@ -845,6 +1076,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     if (is_day(this->mu0))
                     {
                         const int n_bnd = kdist_sw->get_nband();
+                        const int n_gpt = kdist_sw->get_ngpt();
 
                         // Set the solar zenith angle and albedo.
                         Array<Float,2> sfc_alb_dir({n_bnd, n_col});
@@ -859,6 +1091,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         Array<Float,1> mu0({n_col});
                         mu0({1}) = this->mu0;
 
+                        // sw column solve on cpu for TOD fluxes
                         solve_shortwave_column(
                                 optical_props_sw,
                                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
@@ -872,20 +1105,23 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                                 sfc_alb_dir, sfc_alb_dif,
                                 tsi_scaling,
                                 n_lay_col);
+                        
+                        //TOD fluxes to CPU
+                        const int ncolgptsize = n_col*n_gpt*sizeof(Float);
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g,  sw_flux_dn_dif_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
                     }
                 }
 
                 if (is_day(this->mu0))
                 {
-                    Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
                             compute_clouds);
 
-                    calc_tendency(
+                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld.data(),
                             flux_up.ptr(), flux_dn.ptr(),
                             fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
@@ -894,24 +1130,43 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.igc, gd.jgc, gd.kgc,
                             gd.icells, gd.ijcells,
                             gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
 
-                    store_surface_fluxes(
-                            sw_flux_up_sfc.data(), sw_flux_dn_sfc.data(),
+                    store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
+                            sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
                             flux_up.ptr(), flux_dn.ptr(),
                             gd.istart, gd.iend,
                             gd.jstart, gd.jend,
                             gd.igc, gd.jgc,
                             gd.icells, gd.ijcells,
                             gd.imax);
+                    cuda_check_error();
                 }
                 else
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
-                    std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), Float(0));
-                    std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
+                    cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
+                    cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
+                }
+
+                if (do_radiation_stats)
+                {
+                    // Make sure that the top boundary is taken into account in case of fluxes.
+                    auto do_gcs = [&](Field3d<Float>& out, const Array_gpu<Float,2>& in)
+                    {
+                        add_ghost_cells_g<<<gridGPU_3d, blockGPU_3d>>>(
+                                out.fld_g, in.ptr(),
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend+1,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
+
+                    do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
+                    do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
+                    do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
                 }
             }
-            */
         } // End try block.
         catch (std::exception& e)
         {
@@ -1013,62 +1268,19 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
     }
 
-    /*
     if (sw_shortwave)
     {
-        Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
-        if (!sw_fixed_sza)
-        {
-            // Update the solar zenith angle and sun-earth distance.
-            set_sun_location(timeloop);
-
-            // Calculate new background column.
-            if (is_day(this->mu0))
-                set_background_column_shortwave(thermo);
-        }
-
-        if (!is_day(mu0))
-        {
-            flux_up.fill(0.);
-            flux_dn.fill(0.);
-            flux_dn_dir.fill(0.);
-            flux_net.fill(0.);
-        }
-
-        if (is_day(mu0))
-        {
-            exec_shortwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds, gd.imax*gd.jmax);
-        }
-
-        save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
-        save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
-        save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
-
+        save_stats_and_cross(*fields.sd.at("sw_flux_up"), "sw_flux_up", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
+        save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
+        
         if (sw_clear_sky_stats)
         {
-            if (is_day(mu0))
-            {
-                exec_shortwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_dn_dir, flux_net,
-                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                        !compute_clouds, gd.imax*gd.jmax);
-            }
-
-            save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
-            save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
-            save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"), "sw_flux_up_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn_clear"), "sw_flux_dn_clear", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
         }
-
-        stats.set_time_series("sza", std::acos(mu0));
-        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
     }
-    */
 }
 #endif
 
