@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "radiation_rrtmgp.h"
+#include "radiation_rrtmgp_functions.h"
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -51,7 +52,7 @@
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
 // To avoid confusion, we limit the use of TF in the code to the class headers and use Float.
-
+using namespace Radiation_rrtmgp_functions;
 namespace
 {
     std::vector<std::string> get_variable_string(
@@ -456,255 +457,12 @@ namespace
     }
 
 
-    void solve_longwave_column(
-            std::unique_ptr<Optical_props_arry>& optical_props,
-            Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_net,
-            Array<Float,2>& flux_dn_inc, const Float p_top,
-            const Gas_concs& gas_concs,
-            const std::unique_ptr<Gas_optics_rrtmgp>& kdist_lw,
-            const std::unique_ptr<Source_func_lw>& sources,
-            const Array<Float,2>& col_dry,
-            const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
-            const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
-            const Array<Float,1>& t_sfc, const Array<Float,2>& emis_sfc,
-            const int n_lay)
-    {
-        const int n_col = 1;
-        const int n_lev = n_lay + 1;
-
-        // Set the number of angles to 1.
-        const int n_ang = 1;
-
-        // Check the dimension ordering.
-        const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
-
-        // Solve a single block, this does not require subsetting.
-        kdist_lw->gas_optics(
-                p_lay,
-                p_lev,
-                t_lay,
-                t_sfc,
-                gas_concs,
-                optical_props,
-                *sources,
-                col_dry,
-                t_lev);
-
-        std::unique_ptr<Fluxes_broadband> fluxes =
-                std::make_unique<Fluxes_broadband>(n_col, n_lev);
-
-        const int n_gpt = kdist_lw->get_ngpt();
-        Array<Float,3> gpt_flux_up({n_col, n_lev, n_gpt});
-        Array<Float,3> gpt_flux_dn({n_col, n_lev, n_gpt});
-
-        Rte_lw::rte_lw(
-                optical_props,
-                top_at_1,
-                *sources,
-                emis_sfc,
-                Array<Float,2>(),
-                gpt_flux_up,
-                gpt_flux_dn,
-                n_ang);
-
-        fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
-
-        // Find the index where p_lev exceeds p_top.
-        int idx_top=1;
-        for (; idx_top<=n_lev; ++idx_top)
-        {
-            if (p_lev({1, idx_top}) < p_top)
-                break;
-        }
-
-        // Calculate the interpolation factors.
-        const int idx_bot = idx_top - 1;
-        const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
-        const Float fac_top = 1. - fac_bot;
-
-        // Interpolate the top boundary conditions.
-        for (int igpt=1; igpt<=n_gpt; ++igpt)
-            flux_dn_inc({1, igpt}) = fac_bot * gpt_flux_dn({1, idx_bot, igpt}) + fac_top * gpt_flux_dn({1, idx_top, igpt});
-
-        // Copy the data to the output.
-        for (int ilev=1; ilev<=n_lev; ++ilev)
-            for (int icol=1; icol<=n_col; ++icol)
-            {
-                flux_up ({icol, ilev}) = fluxes->get_flux_up ()({icol, ilev});
-                flux_dn ({icol, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
-                flux_net({icol, ilev}) = fluxes->get_flux_net()({icol, ilev});
-            }
-    }
-
-
-    void solve_shortwave_column(
-            std::unique_ptr<Optical_props_arry>& optical_props,
-            Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
-            Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
-            Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
-            const Gas_concs& gas_concs,
-            const Gas_optics_rrtmgp& kdist_sw,
-            const Array<Float,2>& col_dry,
-            const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
-            const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
-            const Array<Float,1>& mu0,
-            const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
-            const Float tsi_scaling,
-            const int n_lay)
-    {
-        const int n_col = 1;
-        const int n_lev = n_lay + 1;
-
-        // Check the dimension ordering.
-        const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
-
-        // Create the field for the top of atmosphere source.
-        const int n_gpt = kdist_sw.get_ngpt();
-        Array<Float,2> toa_src({n_col, n_gpt});
-
-        kdist_sw.gas_optics(
-                p_lay,
-                p_lev,
-                t_lay,
-                gas_concs,
-                optical_props,
-                toa_src,
-                col_dry);
-
-        if (tsi_scaling >= 0)
-            for (int igpt=1; igpt<=n_gpt; ++igpt)
-                toa_src({1, igpt}) *= tsi_scaling;
-
-        std::unique_ptr<Fluxes_broadband> fluxes =
-                std::make_unique<Fluxes_broadband>(n_col, n_lev);
-
-        Array<Float,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
-        Array<Float,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
-        Array<Float,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
-
-        Rte_sw::rte_sw(
-                optical_props,
-                top_at_1,
-                mu0,
-                toa_src,
-                sfc_alb_dir,
-                sfc_alb_dif,
-                Array<Float,2>(),
-                gpt_flux_up,
-                gpt_flux_dn,
-                gpt_flux_dn_dir);
-
-        fluxes->reduce(
-                gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
-                optical_props, top_at_1);
-
-        // Find the index where p_lev exceeds p_top.
-        int idx_top=1;
-        for (; idx_top<=n_lev; ++idx_top)
-        {
-            if (p_lev({1, idx_top}) < p_top)
-                break;
-        }
-
-        // Calculate the interpolation factors.
-        const int idx_bot = idx_top - 1;
-        const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
-        const Float fac_top = 1. - fac_bot;
-
-        // Interpolate the top boundary conditions.
-        for (int igpt=1; igpt<=n_gpt; ++igpt)
-        {
-            const Float flux_dn_tot = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
-            const Float flux_dn_dir = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
-            // Divide out the cosine of the solar zenith angle.
-            flux_dn_dir_inc({1, igpt}) = flux_dn_dir / mu0({1});
-            flux_dn_dif_inc({1, igpt}) = flux_dn_tot - flux_dn_dir;
-        }
-
-        // Copy the data to the output.
-        for (int ilev=1; ilev<=n_lev; ++ilev)
-            for (int icol=1; icol<=n_col; ++icol)
-            {
-                flux_up    ({icol, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
-                flux_dn    ({icol, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
-                flux_dn_dir({icol, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
-                flux_net   ({icol, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
-            }
-    }
-
-
     Float deg_to_rad(const Float deg)
     {
         return Float(2.*M_PI/360. * deg);
     }
 
 
-    Float calc_cos_zenith_angle(
-            const Float lat, const Float lon, const int day_of_year,
-            const Float seconds_since_midnight, const int year)
-    {
-        /* Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
-                     Radiative Processes in Meteorology and Climatology.
-                     Elsevier, New York, 318 pp. */
-
-        const Float pi = Float(M_PI);
-
-        // Account for leap year
-        int days_per_year;
-        if ((year%4 == 0) && ((year%100 != 0) || (year%400 == 0)))
-            days_per_year = 366;
-        else
-            days_per_year = 365;
-
-        // DOY in time calculations are zero based:
-        const int doy = day_of_year-1;
-
-        // Lat/lon in radians
-        const Float radlat = lat * pi/Float(180);
-        const Float radlon = lon * pi/Float(180);
-
-        // DOY in range (0,2*pi)
-        const Float doy_pi = Float(2)*pi*doy/days_per_year;
-
-        // Solar declination angle
-        const Float declination_angle = \
-                Float(0.006918) - Float(0.399912) * std::cos(doy_pi) + Float(0.070257) * std::sin(doy_pi)
-              - Float(0.006758) * std::cos(Float(2)*doy_pi) + Float(0.000907) * std::sin(Float(2)*doy_pi)
-              - Float(0.002697) * std::cos(Float(3)*doy_pi) + Float(0.00148)  * std::sin(Float(3)*doy_pi);
-
-        // Hour angle in radians, using true solar time
-        const Float a1 = (Float(1.00554) * doy - Float( 6.28306)) * pi/Float(180);
-        const Float a2 = (Float(1.93946) * doy + Float(23.35089)) * pi/Float(180);
-        const Float a3 = (Float(7.67825) * std::sin(a1) + Float(10.09176) * std::sin(a2)) / Float(60);
-
-        const Float hour_solar_time = (seconds_since_midnight/Float(3600)) - a3 + radlon * (Float(180.)/pi/Float(15.0));
-        const Float hour_angle = (hour_solar_time-Float(12))*Float(15.0)*(pi/Float(180));
-
-        // Cosine of solar zenith angle
-        const Float cos_zenith = std::sin(radlat) * std::sin(declination_angle) +
-                              std::cos(radlat) * std::cos(declination_angle) * std::cos(hour_angle);
-
-        return cos_zenith;
-    }
-
-
-    Float calc_sun_distance_factor(const Float frac_doy)
-    {
-        // Based on: An Introduction to Atmospheric Radiation, Liou, Eq. 2.2.9.
-        constexpr Float an [] = {1.000110, 0.034221, 0.000719};
-        constexpr Float bn [] = {0,        0.001280, 0.000077};
-
-        const Float pi = Float(M_PI);
-
-        // NOTE: DOY in time calculations are zero based
-        const Float t = Float(2)*pi*(frac_doy-Float(1))/Float(365);
-
-        Float factor = Float(0);
-        for (int n=0; n<3; ++n)
-            factor += an[n]*std::cos(Float(n)*t) + bn[n]*std::sin(Float(n)*t);
-
-        return factor;
-    }
 }
 
 
@@ -863,6 +621,185 @@ void Radiation_rrtmgp<TF>::create(
 
     crosslist = cross.get_enabled_variables(allowed_crossvars_radiation);
 }
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::solve_longwave_column(
+        std::unique_ptr<Optical_props_arry>& optical_props,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_net,
+        Array<Float,2>& flux_dn_inc, const Float p_top,
+        const Gas_concs& gas_concs,
+        const std::unique_ptr<Gas_optics_rrtmgp>& kdist_lw,
+        const std::unique_ptr<Source_func_lw>& sources,
+        const Array<Float,2>& col_dry,
+        const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Array<Float,1>& t_sfc, const Array<Float,2>& emis_sfc,
+        const int n_lay)
+{
+    const int n_col = 1;
+    const int n_lev = n_lay + 1;
+
+    // Set the number of angles to 1.
+    const int n_ang = 1;
+
+    // Check the dimension ordering.
+    const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
+
+    // Solve a single block, this does not require subsetting.
+    kdist_lw->gas_optics(
+            p_lay,
+            p_lev,
+            t_lay,
+            t_sfc,
+            gas_concs,
+            optical_props,
+            *sources,
+            col_dry,
+            t_lev);
+
+    std::unique_ptr<Fluxes_broadband> fluxes =
+            std::make_unique<Fluxes_broadband>(n_col, n_lev);
+
+    const int n_gpt = kdist_lw->get_ngpt();
+    Array<Float,3> gpt_flux_up({n_col, n_lev, n_gpt});
+    Array<Float,3> gpt_flux_dn({n_col, n_lev, n_gpt});
+
+    Rte_lw::rte_lw(
+            optical_props,
+            top_at_1,
+            *sources,
+            emis_sfc,
+            Array<Float,2>(),
+            gpt_flux_up,
+            gpt_flux_dn,
+            n_ang);
+
+    fluxes->reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
+
+    // Find the index where p_lev exceeds p_top.
+    int idx_top=1;
+    for (; idx_top<=n_lev; ++idx_top)
+    {
+        if (p_lev({1, idx_top}) < p_top)
+            break;
+    }
+
+    // Calculate the interpolation factors.
+    const int idx_bot = idx_top - 1;
+    const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+    const Float fac_top = 1. - fac_bot;
+
+    // Interpolate the top boundary conditions.
+    for (int igpt=1; igpt<=n_gpt; ++igpt)
+        flux_dn_inc({1, igpt}) = fac_bot * gpt_flux_dn({1, idx_bot, igpt}) + fac_top * gpt_flux_dn({1, idx_top, igpt});
+
+    // Copy the data to the output.
+    for (int ilev=1; ilev<=n_lev; ++ilev)
+        for (int icol=1; icol<=n_col; ++icol)
+        {
+            flux_up ({icol, ilev}) = fluxes->get_flux_up ()({icol, ilev});
+            flux_dn ({icol, ilev}) = fluxes->get_flux_dn ()({icol, ilev});
+            flux_net({icol, ilev}) = fluxes->get_flux_net()({icol, ilev});
+        }
+}
+
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::solve_shortwave_column(
+        std::unique_ptr<Optical_props_arry>& optical_props,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
+        Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+        Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
+        const Gas_concs& gas_concs,
+        const Gas_optics_rrtmgp& kdist_sw,
+        const Array<Float,2>& col_dry,
+        const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Array<Float,1>& mu0,
+        const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
+        const Float tsi_scaling,
+        const int n_lay)
+{
+    const int n_col = 1;
+    const int n_lev = n_lay + 1;
+
+    // Check the dimension ordering.
+    const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
+
+    // Create the field for the top of atmosphere source.
+    const int n_gpt = kdist_sw.get_ngpt();
+    Array<Float,2> toa_src({n_col, n_gpt});
+
+    kdist_sw.gas_optics(
+            p_lay,
+            p_lev,
+            t_lay,
+            gas_concs,
+            optical_props,
+            toa_src,
+            col_dry);
+
+    if (tsi_scaling >= 0)
+        for (int igpt=1; igpt<=n_gpt; ++igpt)
+            toa_src({1, igpt}) *= tsi_scaling;
+
+    std::unique_ptr<Fluxes_broadband> fluxes =
+            std::make_unique<Fluxes_broadband>(n_col, n_lev);
+
+    Array<Float,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
+    Array<Float,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
+    Array<Float,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
+
+    Rte_sw::rte_sw(
+            optical_props,
+            top_at_1,
+            mu0,
+            toa_src,
+            sfc_alb_dir,
+            sfc_alb_dif,
+            Array<Float,2>(),
+            gpt_flux_up,
+            gpt_flux_dn,
+            gpt_flux_dn_dir);
+
+    fluxes->reduce(
+            gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
+            optical_props, top_at_1);
+
+    // Find the index where p_lev exceeds p_top.
+    int idx_top=1;
+    for (; idx_top<=n_lev; ++idx_top)
+    {
+        if (p_lev({1, idx_top}) < p_top)
+            break;
+    }
+
+    // Calculate the interpolation factors.
+    const int idx_bot = idx_top - 1;
+    const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+    const Float fac_top = 1. - fac_bot;
+
+    // Interpolate the top boundary conditions.
+    for (int igpt=1; igpt<=n_gpt; ++igpt)
+    {
+        const Float flux_dn_tot = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
+        const Float flux_dn_dir = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
+        // Divide out the cosine of the solar zenith angle.
+        flux_dn_dir_inc({1, igpt}) = flux_dn_dir / mu0({1});
+        flux_dn_dif_inc({1, igpt}) = flux_dn_tot - flux_dn_dir;
+    }
+
+    // Copy the data to the output.
+    for (int ilev=1; ilev<=n_lev; ++ilev)
+        for (int icol=1; icol<=n_col; ++icol)
+        {
+            flux_up    ({icol, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
+            flux_dn    ({icol, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
+            flux_dn_dir({icol, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
+            flux_net   ({icol, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
+        }
+}
+
 
 
 template<typename TF>
