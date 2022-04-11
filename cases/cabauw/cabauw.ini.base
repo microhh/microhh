@@ -1,67 +1,87 @@
+# Base `.ini` file for Cabauw.
+# `cabauw_input.py` sets all `None` values, and writes the final `cabauw.ini` input file.
+
 [master]
 npx=1
 npy=1
+wallclocklimit=1e9
 
 [grid]
-itot=8
-jtot=8
-ktot=256
-xsize=800
-ysize=800
-zsize=16723.66672849791
+itot=64
+jtot=64
+ktot=None
+xsize=3200
+ysize=3200
+zsize=None
 utrans=0.0
 vtrans=0.0
 swspatialorder=2
 
 [advec]
-swadvec=2i4
-cflmax=1.2
+swadvec=2i5
+cflmax=1.4
+fluxlimit_list=qt,qr,nr
 
 [diff]
 swdiff=smag2
-dnmax=0.3
+dnmax=0.4
 
 [thermo]
 swthermo=moist
 swbasestate=anelastic
-pbot=97000
+pbot=1e5
 swupdatebasestate=1
 swtimedep_pbot=1
 
 [micro]
 swmicro=2mom_warm
-cflmax=2.0
+cflmax=1.2
 Nc0=200000000
 
 [radiation]
-swradiation=rrtmgp
+swradiation=None
+emis_sfc=0.97
 swlongwave=1
 swshortwave=1
 dt_rad=60
 t_sfc=290
-emis_sfc=0.97
 tsi_scaling=1
-sfc_alb_dir=0.19
-sfc_alb_dif=0.19
+sfc_alb_dir=0.22
+sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
 lat=51.971
 lon=4.927
 
+[boundary]
+swboundary=None
+mbcbot=noslip
+mbctop=freeslip
+sbcbot=None
+sbctop=neumann
+sbot=0
+stop=0
+stop[thl]=0
+stop[qt]=0
+z0m=0.075
+z0h=0.003
+
 [land_surface]
-sw_land_surface=0
+swhomogeneous=1
+swfreedrainage=1
+swtilestats=0
+switerseb=0
+swwater=0
 ktot=4
-zsize=-2.89
-sw_homogeneous=1
-sw_free_drainage=1
-ar=10.739
-br=2.608
+
 gD=0.0
 c_veg=0.95
 lai=2.6
 rs_veg_min=100
 rs_soil_min=50
-lambda=5
+lambda_stable=10.0
+lambda_unstable=10.0
+cs_veg=0
 
 [force]
 swlspres=geo
@@ -78,23 +98,6 @@ timedeplist_nudge=thl,qt,u,v
 swwls=1
 swtimedep_wls=1
 
-[boundary]
-mbcbot=noslip
-mbctop=freeslip
-sbcbot=flux
-sbctop=neumann
-sbot=0
-stop=0
-sbot[thl]=-1
-stop[thl]=0
-sbot[qt]=-1
-stop[qt]=0
-swboundary=surface
-z0m=0.075
-z0h=0.003
-swtimedep=1
-timedeplist=thl_sbot, qt_sbot
-
 [fields]
 visc=0
 svisc=0
@@ -107,7 +110,7 @@ rndexp=2.0
 [buffer]
 swbuffer=1
 swupdate=1
-zstart=13000.0
+zstart=None
 sigma=0.00223
 beta=2.0
 
@@ -115,29 +118,29 @@ beta=2.0
 endtime=43200
 dt=6.0
 dtmax=60.0
-savetime=10800
+savetime=3600
 outputiter=20
 adaptivestep=true
 starttime=0
-rkorder=3
-datetime_utc=2018-08-11 06:00:00
+rkorder=4
+datetime_utc=2016-08-15 06:00:00
 
 [stats]
 swstats=1
-swtendency=1
+swtendency=0
 sampletime=60
 
 [cross]
-swcross=0
-sampletime=300
-xy=0,16723.66672849791
-crosslist=qtpath,qlpath,qrpath,qipath,rr_bot,thlbot,thlfluxbot,qtfluxbot,sw_flux_dn,sw_flux_up,lw_flux_dn,lw_flux_up
+swcross=1
+sampletime=60
+xy=0
+crosslist=qlqipath,sw_flux_dn,sw_flux_dn_dir,thlbot,qtbot,thlfluxbot,qtfluxbot,ustar
 
 [column]
 swcolumn=1
-sampletime=60
-coordinates[x]=1300,1800,2300,1300,1800,2300,1300,1800,2300
-coordinates[y]=1300,1300,1300,1800,1800,1800,2300,2300,2300
+sampletime=10
+coordinates[x]=1600
+coordinates[y]=1600
 
 [limiter]
 limitlist=qt,qr,nr

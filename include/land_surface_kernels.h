@@ -286,7 +286,7 @@ namespace Land_surface_kernels
                             obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
 
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
-                bfluxbot[ij] = - ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
+                bfluxbot[ij] = -ustar[ij] * db * most::fh(zsl, z0h[ij], obuk[ij]);
                 ra[ij]  = TF(1) / (ustar[ij] * most::fh(zsl, z0h[ij], obuk[ij]));
             }
     }
