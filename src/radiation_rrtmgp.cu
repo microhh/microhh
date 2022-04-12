@@ -64,8 +64,8 @@ namespace
             const int ijk = i + j*jj + k*kk;
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-            thlt_rad[ijk] -= fac * (flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc] -
-                                   flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] );
+            thlt_rad[ijk] -= fac * ( flux_up[ijk_nogc + kk_nogc] - flux_up[ijk_nogc]
+                                   - flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] );
         }
     }
 
@@ -1129,11 +1129,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             compute_clouds);
 
                     calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
-                            fields.sd.at("thlt_rad")->fld.data(),
+                            fields.sd.at("thlt_rad")->fld_g,
                             flux_up.ptr(), flux_dn.ptr(),
-                            fields.rhoref.data(), thermo.get_basestate_vector("exner").data(),
-                            gd.dz.data(),
-                            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
+                            gd.istart, gd.jstart, gd.kstart,
+                            gd.iend, gd.jend, gd.kend,
                             gd.igc, gd.jgc, gd.kgc,
                             gd.icells, gd.ijcells,
                             gd.imax, gd.imax*gd.jmax);
