@@ -38,8 +38,8 @@
 #include "Fluxes.h"
 #include "subset_kernel_launcher_cuda.h"
 
-
 using namespace Radiation_rrtmgp_functions;
+
 namespace
 {
     __global__
@@ -68,7 +68,6 @@ namespace
                                    - flux_dn[ijk_nogc + kk_nogc] + flux_dn[ijk_nogc] );
         }
     }
-
 
     __global__
     void add_tendency(
@@ -138,7 +137,6 @@ namespace
         }
     }
 
-
     __global__
     void add_ghost_cells_g(
             Float* __restrict__ out, const Float* __restrict__ in,
@@ -159,8 +157,6 @@ namespace
             out[ijk] = in[ijk_nogc];
         }
     }
-
-
 
     std::vector<std::string> get_variable_string(
             const std::string& var_name,
@@ -194,7 +190,6 @@ namespace
 
         return var;
     }
-
 
     Gas_optics_rrtmgp_gpu load_and_init_gas_optics(
             Master& master,
@@ -413,7 +408,6 @@ namespace
         // End reading of k-distribution.
     }
 
-
     Cloud_optics_gpu load_and_init_cloud_optics(
             Master& master,
             const std::string& coef_file)
@@ -459,7 +453,6 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
-
 
     void configure_memory_pool(int nlays, int ncols, int nchunks, int ngpts, int nbnds)
     {
@@ -541,7 +534,7 @@ void Radiation_rrtmgp<TF>::prepare_device()
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
-   
+
         const int ncolgptsize = n_col*kdist_sw_gpu->get_ngpt()*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
         cuda_safe_call(cudaMalloc(&sw_flux_dn_dif_inc_g, ncolgptsize));
@@ -789,7 +782,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     // Make views to the TOD flux pointers
     auto sw_flux_dn_dir_inc_local = Array_gpu<Float,2>(sw_flux_dn_dir_inc_g, {1, n_gpt});
     auto sw_flux_dn_dif_inc_local = Array_gpu<Float,2>(sw_flux_dn_dif_inc_g, {1, n_gpt});
-    
+
     // Create the boundary conditions
     Array<Float,1> mu0_cpu(std::vector<Float>(1, this->mu0), {1});
     Array_gpu<Float,1> mu0(mu0_cpu);
@@ -1112,7 +1105,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                                 sfc_alb_dir, sfc_alb_dif,
                                 tsi_scaling,
                                 n_lay_col);
-                        
+
                         //TOD fluxes to CPU
                         const int ncolgptsize = n_col*n_gpt*sizeof(Float);
                         cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
@@ -1215,6 +1208,25 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 
 
 template <typename TF>
+TF* Radiation_rrtmgp<TF>::get_surface_radiation_g(const std::string& name)
+{
+    if (name == "sw_down")
+        return sw_flux_dn_sfc_g;
+    else if (name == "sw_up")
+        return sw_flux_up_sfc_g;
+    else if (name == "lw_down")
+        return lw_flux_dn_sfc_g;
+    else if (name == "lw_up")
+        return lw_flux_up_sfc_g;
+    else
+    {
+        std::string error = "Variable \"" + name + "\" is not a valid surface radiation field";
+        throw std::runtime_error(error);
+    }
+}
+
+
+template <typename TF>
 void Radiation_rrtmgp<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(lw_flux_dn_sfc_g));
@@ -1281,7 +1293,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         save_stats_and_cross(*fields.sd.at("sw_flux_up"), "sw_flux_up", gd.wloc);
         save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
         save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
-        
+
         if (sw_clear_sky_stats)
         {
             save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"), "sw_flux_up_clear", gd.wloc);
