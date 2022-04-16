@@ -47,7 +47,7 @@ template<typename> class Thermo;
 
 enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind, Pressure_gradient};
 enum class Large_scale_tendency_type {Disabled, Enabled};
-enum class Large_scale_subsidence_type {Disabled, Enabled};
+enum class Large_scale_subsidence_type {Disabled, Mean_field, Local_field};
 enum class Nudging_type {Disabled, Enabled};
 
 template<typename TF>
@@ -93,6 +93,7 @@ class Force
         Large_scale_tendency_type swls;
         Large_scale_subsidence_type swwls;
         Nudging_type swnudge;
+        bool swwls_mom;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF dpdx;  ///< Large-scale pressure gradient

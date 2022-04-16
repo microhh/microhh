@@ -198,26 +198,32 @@ Boundary_outflow<TF>::Boundary_outflow(Master& masterin, Grid<TF>& gridin, Input
     master(masterin),
     grid(gridin)
 {
-    // Process the in/outflow locations:
-    auto process_lbc = [&](std::string edge_name, Edge_location edge)
+    std::vector<std::string> outflow_list = inputin.get_list<std::string>(
+            "boundary", "scalar_outflow", "", std::vector<std::string>());
+
+    if (outflow_list.size() > 0)
     {
-        std::string direction = inputin.get_item<std::string>("boundary", "flow_direction", edge_name);
-
-        if (direction == "inflow")
-            flow_direction[edge] = Flow_direction::Inflow;
-        else if (direction == "outflow")
-            flow_direction[edge] = Flow_direction::Outflow;
-        else
+        // Process the in/outflow locations:
+        auto process_lbc = [&](std::string edge_name, Edge_location edge)
         {
-            std::string error = "Inflow direction \"" + direction + "\" is invalid\n";
-            throw std::runtime_error(error);
-        }
-    };
+            std::string direction = inputin.get_item<std::string>("boundary", "flow_direction", edge_name);
 
-    process_lbc("north", Edge_location::North);
-    process_lbc("east",  Edge_location::East);
-    process_lbc("south", Edge_location::South);
-    process_lbc("west",  Edge_location::West);
+            if (direction == "inflow")
+                flow_direction[edge] = Flow_direction::Inflow;
+            else if (direction == "outflow")
+                flow_direction[edge] = Flow_direction::Outflow;
+            else
+            {
+                std::string error = "Inflow direction \"" + direction + "\" is invalid\n";
+                throw std::runtime_error(error);
+            }
+        };
+
+        process_lbc("north", Edge_location::North);
+        process_lbc("east",  Edge_location::East);
+        process_lbc("south", Edge_location::South);
+        process_lbc("west",  Edge_location::West);
+    }
 }
 
 template<typename TF>
