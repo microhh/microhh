@@ -254,6 +254,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         
         Float* sw_flux_dn_dir_inc_g;
         Float* sw_flux_dn_dif_inc_g;
+        Float* lw_flux_dn_inc_g;
         
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;

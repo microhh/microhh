@@ -521,6 +521,11 @@ void Radiation_rrtmgp<TF>::prepare_device()
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
+
+        const int ncolgptsize = n_col*kdist_lw_gpu->get_ngpt()*sizeof(Float);
+        cuda_safe_call(cudaMalloc(&lw_flux_dn_inc_g, ncolgptsize));
+
+        cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
     }
 
     if (sw_shortwave)
@@ -586,6 +591,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     std::unique_ptr<Optical_props_1scl_gpu> cloud_optical_props_residual =
             std::make_unique<Optical_props_1scl_gpu>(n_col_block_residual, n_lay, *cloud_lw_gpu);
 
+    // Make view to the TOD flux pointers
+    auto lw_flux_dn_inc_local = Array_gpu<Float,2>(lw_flux_dn_inc_g, {1, n_gpt});
+
     // Make views to the base state pointer.
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
     auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
@@ -625,6 +633,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             std::unique_ptr<Optical_props_1scl_gpu>& cloud_optical_props_subset_in,
             Source_func_lw_gpu& sources_subset_in,
             const Array_gpu<Float,2>& emis_sfc_subset_in,
+            const Array_gpu<Float,2>& lw_flux_dn_inc_subset_in,
             Fluxes_broadband_gpu& fluxes,
             Fluxes_broadband_gpu& bnd_fluxes)
     {
@@ -682,8 +691,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 top_at_1,
                 sources_subset_in,
                 emis_sfc_subset_in,
-                Array_gpu<Float,2>(), // Add an empty array, no inc_flux.
-                gpt_flux_up, gpt_flux_dn,
+                lw_flux_dn_inc_subset_in,
+                gpt_flux_up,
+                gpt_flux_dn,
                 n_ang);
 
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props_subset_in, top_at_1);
@@ -700,6 +710,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_e =  b    * n_col_block;
 
         Array_gpu<Float,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> lw_flux_dn_inc_subset = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block, n_lev);
@@ -712,6 +723,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 cloud_optical_props_subset,
                 *sources_subset,
                 emis_sfc_subset,
+                lw_flux_dn_inc_subset,
                 *fluxes_subset,
                 *bnd_fluxes_subset);
     }
@@ -722,6 +734,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_e = n_col;
 
         Array_gpu<Float,2> emis_sfc_residual = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> lw_flux_dn_inc_residual = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
+
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block_residual, n_lev);
         std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_residual =
@@ -733,6 +747,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 cloud_optical_props_residual,
                 *sources_residual,
                 emis_sfc_residual,
+                lw_flux_dn_inc_residual,
                 *fluxes_residual,
                 *bnd_fluxes_residual);
     }
