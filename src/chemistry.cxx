@@ -450,41 +450,6 @@ double CFACTOR;                          /* Conversion factor for concentration 
     //printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
 
-    template<typename TF>
-    void get_surface_fields(
-            const TF* const restrict o3, 
-            const TF* const restrict no, 
-            const TF* const restrict no2, 
-            const TF* const restrict hno3, 
-            const TF* const restrict h2o2, 
-            const TF* const restrict rooh, 
-            const TF* const restrict hcho, 
-	    TF* restrict surfo3,
-	    TF* restrict surfno,
-	    TF* restrict surfno2,
-	    TF* restrict surfhno3,
-	    TF* restrict surfh2o2,
-	    TF* restrict surfrooh,
-	    TF* restrict surfhcho,
-	    const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-	    for (int j=jstart; j<jend; ++j)
-			#pragma ivdep
-		for (int i=istart; i<iend; ++i)
-		{
-		    const int ijk = i + j*jj + kstart*kk;
-		    const int ij = i + j*jj;
-		    surfo3[ij] = o3[ijk];
-		    surfno[ij] = no[ijk];
-		    surfno2[ij] = no2[ijk];
-		    surfhno3[ij] = hno3[ijk];
-		    surfh2o2[ij] = h2o2[ijk];
-		    surfrooh[ij] = rooh[ijk];
-		    surfhcho[ij] = hcho[ijk];
-		}
-    }
-
 }
 
 template<typename TF>
@@ -587,7 +552,6 @@ void Chemistry<TF>::init(Input& inputin)
             throw std::runtime_error("Invalid option for \"Chemistry type\"");
     }
     switch_dt = inputin.get_item<TF>("chemistry", "switch_dt","", (TF)1e5);
-    switch_surface_fields = inputin.get_item<bool>("chemistry", "swsurfacefields","", false);
     statistics_counter = 0;
     // initialize 2D deposition arrays:
     vdo3.resize(gd.ijcells);
@@ -609,18 +573,6 @@ void Chemistry<TF>::init(Input& inputin)
     std::fill(vdrooh.begin(),vdrooh.end(),deposition-> get_vd("rooh"));
     std::fill(vdhcho.begin(),vdhcho.end(),deposition-> get_vd("hcho"));
     printf("Deposition arrays initialized, e.g. with vdo3 = %13.5e m/s \n",deposition-> get_vd("o3"));
-    if (switch_surface_fields) {
-	    // initialize 2D surface fields:
-	    surfo3.resize(gd.ijcells);
-	    surfno.resize(gd.ijcells);
-	    surfno2.resize(gd.ijcells);
-	    surfhno3.resize(gd.ijcells);
-	    surfh2o2.resize(gd.ijcells);
-	    surfrooh.resize(gd.ijcells);
-	    surfhcho.resize(gd.ijcells);
-	    printf("surface concentration arrays created \n");
-    }
-
 
 }
 
@@ -778,8 +730,7 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     // add cross-sections 
     if (cross.get_switch())
     {
-        std::vector<std::string> allowed_crossvars = {"vdo3", "vdno", "vdno2", "vdhno3", "vdh2o2", "vdrooh", "vdhcho",
-                                                      "surfo3", "surfno", "surfno2", "surfhno3", "surfh2o2", "surfrooh", "surfhcho" };
+        std::vector<std::string> allowed_crossvars = {"vdo3", "vdno", "vdno2", "vdhno3", "vdh2o2", "vdrooh", "vdhcho"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -805,26 +756,9 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(vdrooh.data(), "vdrooh", iotime);
         else if (it == "vdhcho")
             cross.cross_plane(vdhcho.data(), "vdhcho", iotime);
-	else if (switch_surface_fields) {
-		if (it == "surfo3")
-		    cross.cross_plane(surfo3.data(), "surfo3", iotime);
-		else if (it == "surfno")
-		    cross.cross_plane(surfno.data(), "surfno", iotime);
-		else if (it == "surfno2")
-		    cross.cross_plane(surfno2.data(), "surfno2", iotime);
-		else if (it == "surfhno3")
-		    cross.cross_plane(surfhno3.data(), "surfhno3", iotime);
-		else if (it == "surfh2o2")
-		    cross.cross_plane(surfh2o2.data(), "surfh2o2", iotime);
-		else if (it == "surfrooh")
-		    cross.cross_plane(surfrooh.data(), "surfrooh", iotime);
-		else if (it == "surfhcho")
-		    cross.cross_plane(surfhcho.data(), "surfhcho", iotime);
-	}
     }
     // see if to write per tile:
     deposition->exec_cross(cross,iotime);
-
 }
 
 template <typename TF>
@@ -887,17 +821,6 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
 	    gd.icells, gd.ijcells, gd.dz.data(), fields.rhoref.data());
     fields.release_tmp(Temp);
-    if (switch_surface_fields) get_surface_fields(
-	    fields.sp.at("o3")->fld.data(), 
-	    fields.sp.at("no")->fld.data(), 
-	    fields.sp.at("no2")->fld.data(), 
-	    fields.sp.at("hno3")->fld.data(), 
-	    fields.sp.at("h2o2")->fld.data(), 
-	    fields.sp.at("rooh")->fld.data(), 
-	    fields.sp.at("hcho")->fld.data(), 
-	    surfo3.data(),surfno.data(),surfno2.data(),surfhno3.data(),surfh2o2.data(),surfrooh.data(),surfhcho.data(),
-	    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-	    gd.icells, gd.ijcells);
 
 
 //    isop_stat<TF>(
