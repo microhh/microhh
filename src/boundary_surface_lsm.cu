@@ -944,7 +944,7 @@ void Boundary_surface_lsm<TF>::forward_device()
         lsmk::forward_device_tile(tile.second, gd.ijcells);
 
     // 2. Copy 2D surface properties:
-    cuda_safe_call(cudaMemcpy(gD_coeff_g, gD_coeff.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gD_coeff_g, gD_coeff.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(c_veg_g, c_veg.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(lai_g, lai.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(rs_veg_min_g, rs_veg_min.data(), tf_memsize_ij, cudaMemcpyHostToDevice));

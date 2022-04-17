@@ -162,7 +162,7 @@ namespace Land_surface_kernels_g
         {
             const int ij  = i + j*icells;
             const int ijk = i + j*icells + (kend-1)*ijcells;    // Top soil layer
-            const int si  = soil_index[ij];
+            const int si  = soil_index[ijk];
 
             // f1: reduction vegetation resistance as f(sw_in):
             const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
