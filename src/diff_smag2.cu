@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
@@ -496,7 +498,7 @@ namespace
 
     template<typename TF> __global__
     void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc,
-                      TF* __restrict__ dzi, TF tPrfac, const TF dxidxi, const TF dyidyi,
+                      TF* __restrict__ dzi, TF tPrfac_i, const TF dxidxi, const TF dyidyi,
                       const int istart, const int jstart, const int kstart,
                       const int iend,   const int jend,   const int kend,
                       const int jj,     const int kk)
@@ -508,7 +510,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            dnmul[ijk] = fabs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k]));
+            dnmul[ijk] = fabs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k]));
         }
     }
 }
@@ -712,9 +714,9 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxidxi = 1./(gd.dx * gd.dx);
-    const TF dyidyi = 1./(gd.dy * gd.dy);
-    const TF tPri = 1./tPr;
+    const TF dxidxi = TF(1)/(gd.dx * gd.dx);
+    const TF dyidyi = TF(1)/(gd.dy * gd.dy);
+    const TF tPri = TF(1)/tPr;
 
     // Do not use surface model.
     if (boundary.get_switch() == "default")
@@ -734,15 +736,17 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         cuda_check_error();
 
         for (auto it : fields.st)
+        {
             diff_c_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
                     it.second->fld_g, fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                     gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                     fields.rhoref_g, fields.rhorefh_g,
-                    tPri, it.second->visc,
+                    tPri, fields.sp.at(it.first)->visc,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
                     gd.icells, gd.ijcells);
+        }
         cuda_check_error();
     }
     // Use surface model.
@@ -768,7 +772,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
                     gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
                     fields.rhoref_g, fields.rhorefh_g,
-                    tPri, it.second->visc,
+                    tPri, fields.sp.at(it.first)->visc,
                     gd.istart, gd.jstart, gd.kstart,
                     gd.iend,   gd.jend,   gd.kend,
                     gd.icells, gd.ijcells);
@@ -799,16 +803,16 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxidxi = 1./(gd.dx * gd.dx);
-    const TF dyidyi = 1./(gd.dy * gd.dy);
-    const TF tPrfac = std::min(static_cast<TF>(1.), tPr);
+    const TF dxidxi = TF(1)/(gd.dx * gd.dx);
+    const TF dyidyi = TF(1)/(gd.dy * gd.dy);
+    const TF tPrfac_i = TF(1)/std::min(TF(1.), tPr);
 
     auto tmp1 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
             tmp1->fld_g, fields.sd.at("evisc")->fld_g,
-            gd.dzi_g, tPrfac, dxidxi, dyidyi,
+            gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -840,16 +844,16 @@ double Diff_smag2<TF>::get_dn(double dt)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    const TF dxidxi = 1./(gd.dx * gd.dx);
-    const TF dyidyi = 1./(gd.dy * gd.dy);
-    const TF tPrfac = std::min(static_cast<TF>(1.), tPr);
+    const TF dxidxi = TF(1)/(gd.dx * gd.dx);
+    const TF dyidyi = TF(1)/(gd.dy * gd.dy);
+    const TF tPrfac_i = TF(1)/std::min(TF(1.), tPr);
 
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();
 
     calc_dnmul_g<<<gridGPU, blockGPU>>>(
         dnmul_tmp->fld_g, fields.sd.at("evisc")->fld_g,
-        gd.dzi_g, tPrfac, dxidxi, dyidyi,
+        gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
