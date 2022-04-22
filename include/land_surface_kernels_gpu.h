@@ -26,6 +26,7 @@
 #include "tools.h"
 #include "constants.h"
 #include "boundary_surface_kernels_gpu.h"
+#include "thermo_moist_functions.h"
 #include "monin_obukhov.h"
 
 namespace Land_surface_kernels_g
@@ -161,7 +162,7 @@ namespace Land_surface_kernels_g
         {
             const int ij  = i + j*icells;
             const int ijk = i + j*icells + (kend-1)*ijcells;    // Top soil layer
-            const int si  = soil_index[ij];
+            const int si  = soil_index[ijk];
 
             // f1: reduction vegetation resistance as f(sw_in):
             const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
@@ -560,109 +561,79 @@ template<typename TF> __global__
 //                qt_bot [ij] = qt[ijk]  + wqt  * ra[ij];
 //            }
 //    }
-//
-//    template<typename TF>
-//    void set_water_bcs(
-//            TF* const __restrict__ thl_bot,
-//            TF* const __restrict__ qt_bot,
-//            const int* const __restrict__ water_mask,
-//            const TF* const __restrict__ exnerh,
-//            const TF* const __restrict__ prefh,
-//            const TF tskin_water,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int kstart, const int icells)
-//    {
-//        // Water temperature is fixed (for now..), so thl_bot and qt_bot are identical everywhere.
-//        const TF thl_bot_val = tskin_water * TF(1.)/exnerh[kstart];
-//        const TF qt_bot_val  = Thermo_moist_functions::qsat(prefh[kstart], tskin_water);
-//
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij  = i + j*icells;
-//
-//                if (water_mask[ij])
-//                {
-//                    // Set surface values
-//                    thl_bot[ij] = thl_bot_val;
-//                    qt_bot [ij] = qt_bot_val;
-//                }
-//            }
-//    }
-//
-//    template<typename TF>
-//    void set_water_tiles(
-//            TF* const __restrict__ c_veg,
-//            TF* const __restrict__ c_soil,
-//            TF* const __restrict__ c_wet,
-//            TF* const __restrict__ H_veg,
-//            TF* const __restrict__ H_soil,
-//            TF* const __restrict__ H_wet,
-//            TF* const __restrict__ LE_veg,
-//            TF* const __restrict__ LE_soil,
-//            TF* const __restrict__ LE_wet,
-//            TF* const __restrict__ G_veg,
-//            TF* const __restrict__ G_soil,
-//            TF* const __restrict__ G_wet,
-//            TF* const __restrict__ rs_veg,
-//            TF* const __restrict__ rs_soil,
-//            TF* const __restrict__ rs_wet,
-//            TF* const __restrict__ thl_bot_wet,
-//            TF* const __restrict__ qt_bot_wet,
-//            const int* const __restrict__ water_mask,
-//            const TF* const __restrict__ t_bot_water,
-//            const TF* const __restrict__ thl,
-//            const TF* const __restrict__ qt,
-//            const TF* const __restrict__ thl_bot,
-//            const TF* const __restrict__ qt_bot,
-//            const TF* const __restrict__ ra,
-//            const TF* const __restrict__ rhoh,
-//            const TF* const __restrict__ prefh,
-//            const TF* const __restrict__ exnerh,
-//            const int istart, const int iend,
-//            const int jstart, const int jend,
-//            const int kstart,
-//            const int icells, const int ijcells)
-//    {
-//        const TF rhocp = rhoh[kstart] * Constants::cp<TF>;
-//        const TF rholv = rhoh[kstart] * Constants::Lv<TF>;
-//
-//        for (int j=jstart; j<jend; ++j)
-//            #pragma ivdep
-//            for (int i=istart; i<iend; ++i)
-//            {
-//                const int ij  = i + j*icells;
-//                const int ijk = ij + kstart*ijcells;
-//
-//                if (water_mask[ij])
-//                {
-//                    thl_bot_wet[ij] = t_bot_water[ij] / exnerh[kstart];
-//                    qt_bot_wet[ij]  = Thermo_moist_functions::qsat(prefh[kstart], t_bot_water[ij]);
-//
-//                    c_veg[ij]  = TF(0);
-//                    c_soil[ij] = TF(0);
-//                    c_wet[ij]  = TF(1);
-//
-//                    H_veg[ij]  = TF(0);
-//                    H_soil[ij] = TF(0);
-//                    H_wet[ij]  = rhocp / ra[ij] * (thl_bot_wet[ij] - thl[ijk]);
-//
-//                    LE_veg[ij]  = TF(0);
-//                    LE_soil[ij] = TF(0);
-//                    LE_wet[ij]  = rholv / ra[ij] * (qt_bot_wet[ij] - qt[ijk]);
-//
-//                    G_veg[ij]  = TF(0);
-//                    G_soil[ij] = TF(0);
-//                    G_wet[ij]  = TF(0);
-//
-//                    rs_veg[ij]  = TF(0);
-//                    rs_soil[ij] = TF(0);
-//                    rs_wet[ij]  = TF(0);
-//                }
-//            }
-//    }
+
+    template<typename TF> __global__
+    void set_water_tiles(
+            TF* const __restrict__ c_veg,
+            TF* const __restrict__ c_soil,
+            TF* const __restrict__ c_wet,
+            TF* const __restrict__ H_veg,
+            TF* const __restrict__ H_soil,
+            TF* const __restrict__ H_wet,
+            TF* const __restrict__ LE_veg,
+            TF* const __restrict__ LE_soil,
+            TF* const __restrict__ LE_wet,
+            TF* const __restrict__ G_veg,
+            TF* const __restrict__ G_soil,
+            TF* const __restrict__ G_wet,
+            TF* const __restrict__ rs_veg,
+            TF* const __restrict__ rs_soil,
+            TF* const __restrict__ rs_wet,
+            TF* const __restrict__ thl_bot_wet,
+            TF* const __restrict__ qt_bot_wet,
+            const int* const __restrict__ water_mask,
+            const TF* const __restrict__ t_bot_water,
+            const TF* const __restrict__ thl,
+            const TF* const __restrict__ qt,
+            const TF* const __restrict__ thl_bot,
+            const TF* const __restrict__ qt_bot,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ rhoh,
+            const TF* const __restrict__ prefh,
+            const TF* const __restrict__ exnerh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        const TF rhocp = rhoh[kstart] * Constants::cp<TF>;
+        const TF rholv = rhoh[kstart] * Constants::Lv<TF>;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            const int ijk = ij + kstart*ijcells;
+
+            if (water_mask[ij])
+            {
+                thl_bot_wet[ij] = t_bot_water[ij] / exnerh[kstart];
+                qt_bot_wet[ij]  = Thermo_moist_functions::qsat(prefh[kstart], t_bot_water[ij]);
+
+                c_veg[ij]  = TF(0);
+                c_soil[ij] = TF(0);
+                c_wet[ij]  = TF(1);
+
+                H_veg[ij]  = TF(0);
+                H_soil[ij] = TF(0);
+                H_wet[ij]  = rhocp / ra[ij] * (thl_bot_wet[ij] - thl[ijk]);
+
+                LE_veg[ij]  = TF(0);
+                LE_soil[ij] = TF(0);
+                LE_wet[ij]  = rholv / ra[ij] * (qt_bot_wet[ij] - qt[ijk]);
+
+                G_veg[ij]  = TF(0);
+                G_soil[ij] = TF(0);
+                G_wet[ij]  = TF(0);
+
+                rs_veg[ij]  = TF(0);
+                rs_soil[ij] = TF(0);
+                rs_wet[ij]  = TF(0);
+            }
+        }
+    }
 
     template<typename TF> __global__
     void calc_tiled_mean_g(

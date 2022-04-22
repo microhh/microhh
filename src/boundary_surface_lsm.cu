@@ -321,41 +321,40 @@ void Boundary_surface_lsm<TF>::exec(
     // Override grid point with water
     if (sw_water)
     {
-        throw std::runtime_error("LSM with open water is not yet supported!");
-
-    //    // Set BCs for water grid points
-    //    lsmk::set_water_tiles(
-    //            tiles.at("veg").fraction.data(),
-    //            tiles.at("soil").fraction.data(),
-    //            tiles.at("wet").fraction.data(),
-    //            tiles.at("veg").H.data(),
-    //            tiles.at("soil").H.data(),
-    //            tiles.at("wet").H.data(),
-    //            tiles.at("veg").LE.data(),
-    //            tiles.at("soil").LE.data(),
-    //            tiles.at("wet").LE.data(),
-    //            tiles.at("veg").G.data(),
-    //            tiles.at("soil").G.data(),
-    //            tiles.at("wet").G.data(),
-    //            tiles.at("veg").rs.data(),
-    //            tiles.at("soil").rs.data(),
-    //            tiles.at("wet").rs.data(),
-    //            tiles.at("wet").thl_bot.data(),
-    //            tiles.at("wet").qt_bot.data(),
-    //            water_mask.data(),
-    //            t_bot_water.data(),
-    //            fields.sp.at("thl")->fld.data(),
-    //            fields.sp.at("qt")->fld.data(),
-    //            fields.sp.at("thl")->fld_bot.data(),
-    //            fields.sp.at("qt")->fld_bot.data(),
-    //            tiles.at("wet").ra.data(),
-    //            rhorefh.data(),
-    //            prefh.data(),
-    //            exnrefh.data(),
-    //            gd.istart, gd.iend,
-    //            gd.jstart, gd.jend,
-    //            gd.kstart,
-    //            gd.icells, gd.ijcells);
+        // Set BCs for water grid points
+        lsmk::set_water_tiles<<<grid_gpu_2d, block_gpu_2d>>>(
+                tiles.at("veg").fraction_g,
+                tiles.at("soil").fraction_g,
+                tiles.at("wet").fraction_g,
+                tiles.at("veg").H_g,
+                tiles.at("soil").H_g,
+                tiles.at("wet").H_g,
+                tiles.at("veg").LE_g,
+                tiles.at("soil").LE_g,
+                tiles.at("wet").LE_g,
+                tiles.at("veg").G_g,
+                tiles.at("soil").G_g,
+                tiles.at("wet").G_g,
+                tiles.at("veg").rs_g,
+                tiles.at("soil").rs_g,
+                tiles.at("wet").rs_g,
+                tiles.at("wet").thl_bot_g,
+                tiles.at("wet").qt_bot_g,
+                water_mask_g,
+                t_bot_water_g,
+                fields.sp.at("thl")->fld_g,
+                fields.sp.at("qt")->fld_g,
+                fields.sp.at("thl")->fld_bot_g,
+                fields.sp.at("qt")->fld_bot_g,
+                tiles.at("wet").ra_g,
+                rhorefh,
+                prefh,
+                exnrefh,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
     }
 
     // Calculate tile averaged surface fluxes and values.
@@ -945,7 +944,7 @@ void Boundary_surface_lsm<TF>::forward_device()
         lsmk::forward_device_tile(tile.second, gd.ijcells);
 
     // 2. Copy 2D surface properties:
-    cuda_safe_call(cudaMemcpy(gD_coeff_g, gD_coeff.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(gD_coeff_g, gD_coeff.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(c_veg_g, c_veg.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(lai_g, lai.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(rs_veg_min_g, rs_veg_min.data(), tf_memsize_ij, cudaMemcpyHostToDevice));

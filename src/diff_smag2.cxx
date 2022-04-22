@@ -719,7 +719,7 @@ namespace
             const int kstart, const int kend,
             const int jj, const int kk)
     {
-        const TF tPrfac = std::min(TF(1.), tPr);
+        const TF tPrfac_i = TF(1)/std::min(TF(1.), tPr);
         TF dnmul = 0;
 
         // get the maximum time step for diffusion
@@ -729,7 +729,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    dnmul = std::max(dnmul, std::abs(evisc[ijk]/tPrfac*(dxidxi + dyidyi + dzi[k]*dzi[k])));
+                    dnmul = std::max(dnmul, std::abs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k])));
                 }
 
         return dnmul;
@@ -884,9 +884,12 @@ template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
     auto& gd = grid.get_grid_data();
-    double dnmul = calc_dnmul<TF>(fields.sd.at("evisc")->fld.data(), gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
-                                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                  gd.icells, gd.ijcells);
+
+    double dnmul = calc_dnmul<TF>(
+        fields.sd.at("evisc")->fld.data(),
+        gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
+        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
     master.max(&dnmul, 1);
 
     // Avoid zero division.
@@ -901,9 +904,12 @@ template<typename TF>
 double Diff_smag2<TF>::get_dn(const double dt)
 {
     auto& gd = grid.get_grid_data();
-    double dnmul = calc_dnmul<TF>(fields.sd.at("evisc")->fld.data(), gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
-                                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                                  gd.icells, gd.ijcells);
+
+    double dnmul = calc_dnmul<TF>(
+        fields.sd.at("evisc")->fld.data(),
+        gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy), tPr,
+        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
     master.max(&dnmul, 1);
 
     return dnmul*dt;
