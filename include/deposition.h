@@ -42,7 +42,7 @@ template<typename> class Boundary_surface_lsm;
  * Class that creates a deposition liniked to the chemistry
  */
 
-enum class Deposition_type {disabled, enabled, simple};
+enum class Deposition_type {disabled, enabled, simple, average};
 
 template<typename TF>
 struct Deposition_tile
@@ -77,6 +77,7 @@ class Deposition
         void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
 	void update_vd_water(TF*, std::string, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
+	void spatial_avg_vd(TF*);							//MAQ_AV_21042022+ added spatial_avg_vd
 
     protected:
         std::vector<std::string> cross_list;         // List of active cross variables

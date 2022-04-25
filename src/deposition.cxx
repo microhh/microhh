@@ -73,6 +73,41 @@ namespace
             }
     }
 	
+	//MAQ_AV_21042022+ added function calc_spatial_avg_deposition
+	template<typename TF>
+	void calc_spatial_avg_deposition(
+			TF* const restrict fld,
+			const int istart, const int iend,
+			const int jstart, const int jend,
+			const int icells)
+	{
+		//Calculate sum and count
+		TF n_dep = (TF)0.0;
+		TF sum_dep = (TF)0.0;
+		
+		for (int j=jstart; j<jend; ++j)
+			#pragma ivdep
+			for (int i=istart; i<iend; ++i)
+			{
+				const int ij = i + j*icells;
+				
+				sum_dep += fld[ij];
+				n_dep += 1.0;
+			}
+			
+		//Calculate average
+		TF avg_dep = sum_dep / n_dep;
+			
+		for (int j=jstart; j<jend; ++j)
+			#pragma ivdep
+			for (int i=istart; i<iend; ++i)
+			{
+				const int ij = i + j*icells;
+				
+				fld[ij] = avg_dep;
+			}
+	}
+	
 	// MAQ_AV_20200310+ added calc_vd_water
 	template<typename TF>
 	void calc_vd_water(
@@ -282,6 +317,11 @@ void Deposition<TF>::init(Input& inputin)
         {
             cmap[it.first].type = Deposition_type::disabled;
         }
+	//MAQ_AV_21042022+ added option average
+	else if (type == "average")
+	{
+		cmap[it.first].type = Deposition_type::average;
+	}
         else
             throw std::runtime_error("Invalid option for \"Deposition_type\"");
     }
@@ -433,6 +473,17 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     update_vd_water(vdh2o2,"h2o2",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
     update_vd_water(vdrooh,"rooh",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
     update_vd_water(vdhcho,"hcho",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+	
+    //MAQ_AV_21042022+ added call to spatial_avg_vd if Deposition_type != enabled
+    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::enabled) return;
+
+    spatial_avg_vd(vdo3);
+    spatial_avg_vd(vdno);
+    spatial_avg_vd(vdno2);
+    spatial_avg_vd(vdhno3);
+    spatial_avg_vd(vdh2o2);
+    spatial_avg_vd(vdrooh);
+    spatial_avg_vd(vdhcho);
 	
 }
 
@@ -658,6 +709,22 @@ void Deposition<TF>::update_vd_water(
         gd.jstart, gd.jend,
         gd.icells);
 }
+
+//MAQ_AV_21042022+ added spatial_avg_vd
+template<typename TF>
+void Deposition<TF>::spatial_avg_vd(
+	TF* restrict fld_out)
+{
+	auto& gd = grid.get_grid_data();
+	
+	calc_spatial_avg_deposition(
+		fld_out,
+		gd.istart, gd.iend,
+		gd.jstart, gd.jend,
+		gd.icells);
+	
+}
+
 
 template class Deposition<double>;
 //:template class Chemistry<float>;
