@@ -680,7 +680,7 @@ void Radiation_rrtmgp<TF>::solve_longwave_column(
             top_at_1,
             *sources,
             emis_sfc,
-            Array<Float,2>(),
+            Array<Float,2>({n_col, n_gpt}),
             gpt_flux_up,
             gpt_flux_dn,
             n_ang);
