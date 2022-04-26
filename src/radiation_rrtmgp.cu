@@ -1068,6 +1068,19 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                     do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
+                
+                    // clear sky 
+                    if (sw_clear_sky_stats)
+                    {
+                        exec_longwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_net,
+                                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                                !compute_clouds);
+                        
+                        do_gcs(*fields.sd.at("lw_flux_up_clear"), flux_up);
+                        do_gcs(*fields.sd.at("lw_flux_dn_clear"), flux_dn);
+                    }
                 }
             }
 
@@ -1178,15 +1191,38 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                                 gd.imax, gd.imax*gd.jmax);
                     };
 
+                    if (!is_day(this->mu0))
+                    {
+                        flux_up.fill(Float(0.));
+                        flux_dn.fill(Float(0.));
+                        flux_dn_dir.fill(Float(0.));
+                    }
+
                     do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
-                }
-            }
-        } // End try block.
-        catch (std::exception& e)
-        {
-            #ifdef USEMPI
+                    
+                    // clear sky
+                    if (sw_clear_sky_stats)
+                    {
+                        if (is_day(this->mu0))
+                        {
+                            exec_shortwave(
+                                    thermo, timeloop, stats,
+                                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                    !compute_clouds);
+                        }    
+                        do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
+                        do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
+                        do_gcs(*fields.sd.at("sw_flux_dn_dir_clear"), flux_dn_dir);
+                    }
+                 }
+             }
+         } // End try block.
+         catch (std::exception& e)
+         {
+             #ifdef USEMPI
             std::cout << "SINGLE PROCESS EXCEPTION: " << e.what() << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
             #else
@@ -1316,6 +1352,9 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
         }
     }
+
+    stats.set_time_series("sza", std::acos(mu0));
+    stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
 }
 #endif
 
