@@ -461,8 +461,26 @@ namespace
     {
         return Float(2.*M_PI/360. * deg);
     }
-
-
+    void add_ghost_cells(
+            Float* restrict out, const Float* restrict in,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kendh,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        // Value of kend_field is either kend or kend+1.
+        #pragma omp parallel for
+        for (int k=kstart; k<kendh; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ijk_nogc = (i-istart) + (j-jstart)*jj_nogc + (k-kstart)*kk_nogc;
+                    out[ijk] = in[ijk_nogc];
+                }
+    }
 }
 
 
@@ -501,12 +519,6 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     auto& gd = grid.get_grid_data();
     fields.init_diagnostic_field("thlt_rad", "Tendency by radiation", "K s-1", "radiation", gd.sloc);
 
-    #ifdef USECUDA
-    // In case of GPU, we copy out the radiative fluxes on stats steps, to avoid having to
-    // recompute the radiation, because it takes too long.
-    // fields.init_diagnostic_field("sw_flux_up", "", "W m-2", "radiation", gd.wloc);
-    // fields.init_diagnostic_field("sw_flux_dn", "", "W m-2", "radiation", gd.wloc);
-
     fields.init_diagnostic_field("lw_flux_up", "Longwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("lw_flux_dn", "Longwave downwelling flux", "W m-2", "radiation", gd.wloc);
 
@@ -526,7 +538,6 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         fields.init_diagnostic_field("sw_flux_dn_clear", "Clear-sky shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
         fields.init_diagnostic_field("sw_flux_dn_dir_clear", "Clear-sky shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
     }
-    #endif
 }
 
 
@@ -1179,6 +1190,7 @@ void Radiation_rrtmgp<TF>::exec(
     auto& gd = grid.get_grid_data();
 
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
+    const bool do_radiation_stats = timeloop.is_stats_step();
 
     if (do_radiation)
     {
@@ -1238,6 +1250,36 @@ void Radiation_rrtmgp<TF>::exec(
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
+                
+                if (do_radiation_stats)
+                {
+                    // Make sure that the top boundary is taken into account in case of fluxes.
+                    auto do_gcs = [&](Field3d<Float>& out, const Array<Float,2>& in)
+                    {
+                        add_ghost_cells(
+                                out.fld.data(), in.ptr(),
+                                gd.istart, gd.iend,
+                                gd.jstart, gd.jend,
+                                gd.kstart, gd.kend+1,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
+
+                    do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
+                    do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
+                
+                    if (sw_clear_sky_stats)
+                    {
+                        exec_longwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_net,
+                                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                                !compute_clouds, gd.imax*gd.jmax);
+
+                        do_gcs(*fields.sd.at("lw_flux_up_clear"), flux_up);
+                        do_gcs(*fields.sd.at("lw_flux_dn_clear"), flux_dn);
+                    }
+                }
             }
 
             if (sw_shortwave)
@@ -1252,10 +1294,9 @@ void Radiation_rrtmgp<TF>::exec(
                         set_background_column_shortwave(thermo);
                 }
 
+                Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
                 if (is_day(this->mu0))
                 {
-                    Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
@@ -1286,6 +1327,47 @@ void Radiation_rrtmgp<TF>::exec(
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
                     std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), Float(0));
                     std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
+                }
+                
+                if (do_radiation_stats)
+                {
+                    // Make sure that the top boundary is taken into account in case of fluxes.
+                    auto do_gcs = [&](Field3d<Float>& out, const Array<Float,2>& in)
+                    {
+                        add_ghost_cells(
+                                out.fld.data(), in.ptr(),
+                                gd.istart, gd.iend,
+                                gd.jstart, gd.jend,
+                                gd.kstart, gd.kend+1,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
+                
+                    if (!is_day(this->mu0))
+                    {
+                        flux_up.fill(Float(0.));
+                        flux_dn.fill(Float(0.));
+                        flux_dn_dir.fill(Float(0.));
+                    }
+
+                    do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
+                    do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
+                    do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
+                    
+                    if (sw_clear_sky_stats)
+                    {
+                        if (is_day(this->mu0))
+                        {
+                            exec_shortwave(
+                                    thermo, timeloop, stats,
+                                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                    !compute_clouds, gd.imax*gd.jmax);
+                        }
+                        do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
+                        do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
+                        do_gcs(*fields.sd.at("sw_flux_dn_dir_clear"), flux_dn_dir);
+                    }
                 }
             }
         } // End try block.
@@ -1337,32 +1419,6 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 #endif
 
 
-namespace
-{
-    void add_ghost_cells(
-            Float* restrict out, const Float* restrict in,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend_field,
-            const int igc, const int jgc, const int kgc,
-            const int jj, const int kk,
-            const int jj_nogc, const int kk_nogc)
-    {
-        // Value of kend_field is either kend or kend+1.
-        #pragma omp parallel for
-        for (int k=kstart; k<kend_field; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    out[ijk] = in[ijk_nogc];
-                }
-    }
-}
-
-
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_all_stats(
@@ -1382,149 +1438,51 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
     const Float no_offset = 0.;
     const Float no_threshold = 0.;
 
-    // CvH: lots of code repetition with exec()
-    auto& gd = grid.get_grid_data();
-
-    auto t_lay = fields.get_tmp();
-    auto t_lev = fields.get_tmp();
-    auto h2o   = fields.get_tmp(); // This is the volume mixing ratio, not the specific humidity of vapor.
-    auto clwp  = fields.get_tmp();
-    auto ciwp  = fields.get_tmp();
-
-    // Set the input to the radiation on a 3D grid without ghost cells.
-    thermo.get_radiation_fields(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
-
-    const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
-    const int ijmax = gd.imax*gd.jmax;
-
-    Array<Float,2> t_lay_a(t_lay->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<Float,2> t_lev_a(t_lev->fld, {gd.imax*gd.jmax, gd.ktot+1});
-    Array<Float,1> t_sfc_a(t_lev->fld_bot, {gd.imax*gd.jmax});
-    Array<Float,2> h2o_a(h2o->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<Float,2> clwp_a(clwp->fld, {gd.imax*gd.jmax, gd.ktot});
-    Array<Float,2> ciwp_a(ciwp->fld, {gd.imax*gd.jmax, gd.ktot});
-
-    fields.release_tmp(t_lay);
-    fields.release_tmp(t_lev);
-    fields.release_tmp(h2o);
-    fields.release_tmp(clwp);
-    fields.release_tmp(ciwp);
-
-    Array<Float,2> flux_up ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<Float,2> flux_dn ({gd.imax*gd.jmax, gd.ktot+1});
-    Array<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
-
-    auto tmp = fields.get_tmp();
-    tmp->loc = gd.wloc;
-
+     auto& gd = grid.get_grid_data();
     const bool compute_clouds = true;
 
     // Use a lambda function to avoid code repetition.
     auto save_stats_and_cross = [&](
-            const Array<Float,2>& array, const std::string& name, const std::array<int,3>& loc)
+            Field3d<TF>& array, const std::string& name, const std::array<int,3>& loc)
     {
-        if (do_stats || do_cross || do_column)
-        {
-            // Make sure that the top boundary is taken into account in case of fluxes.
-            const int kend = gd.kstart + array.dim(2);
-            add_ghost_cells(
-                    tmp->fld.data(), array.ptr(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, kend,
-                    gd.igc, gd.jgc, gd.kgc,
-                    gd.icells, gd.ijcells,
-                    gd.imax, gd.imax*gd.jmax);
-        }
-
         if (do_stats)
-            stats.calc_stats(name, *tmp, no_offset, no_threshold);
+            stats.calc_stats(name, array, no_offset, no_threshold);
 
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(tmp->fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), name, iotime, loc);
         }
 
         if (do_column)
-            column.calc_column(name, tmp->fld.data(), no_offset);
+            column.calc_column(name, array.fld.data(), no_offset);
     };
 
     try
     {
         if (sw_longwave)
         {
-            exec_longwave(
-                    thermo, timeloop, stats,
-                    flux_up, flux_dn, flux_net,
-                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                    compute_clouds, gd.imax*gd.jmax);
-
-            save_stats_and_cross(flux_up, "lw_flux_up", gd.wloc);
-            save_stats_and_cross(flux_dn, "lw_flux_dn", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("lw_flux_up"), "lw_flux_up", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("lw_flux_dn"), "lw_flux_dn", gd.wloc);
 
             if (sw_clear_sky_stats)
             {
-                exec_longwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_net,
-                        t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        !compute_clouds, gd.imax*gd.jmax);
-
-                save_stats_and_cross(flux_up, "lw_flux_up_clear", gd.wloc);
-                save_stats_and_cross(flux_dn, "lw_flux_dn_clear", gd.wloc);
+                save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
+                save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
             }
         }
 
         if (sw_shortwave)
         {
-            Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
-
-            if (!sw_fixed_sza)
-            {
-                // Update the solar zenith angle and sun-earth distance.
-                set_sun_location(timeloop);
-
-                // Calculate new background column.
-                if (is_day(this->mu0))
-                    set_background_column_shortwave(thermo);
-            }
-
-            if (!is_day(mu0))
-            {
-                flux_up.fill(0.);
-                flux_dn.fill(0.);
-                flux_dn_dir.fill(0.);
-                flux_net.fill(0.);
-            }
-
-            if (is_day(mu0))
-            {
-                exec_shortwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_dn_dir, flux_net,
-                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds, gd.imax*gd.jmax);
-            }
-
-            save_stats_and_cross(flux_up,     "sw_flux_up"    , gd.wloc);
-            save_stats_and_cross(flux_dn,     "sw_flux_dn"    , gd.wloc);
-            save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir", gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_up"),     "sw_flux_up"    , gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn"),     "sw_flux_dn"    , gd.wloc);
+            save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
 
             if (sw_clear_sky_stats)
             {
-                if (is_day(mu0))
-                {
-                    exec_shortwave(
-                            thermo, timeloop, stats,
-                            flux_up, flux_dn, flux_dn_dir, flux_net,
-                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                            !compute_clouds, gd.imax*gd.jmax);
-                }
-
-                save_stats_and_cross(flux_up,     "sw_flux_up_clear"    , gd.wloc);
-                save_stats_and_cross(flux_dn,     "sw_flux_dn_clear"    , gd.wloc);
-                save_stats_and_cross(flux_dn_dir, "sw_flux_dn_dir_clear", gd.wloc);
+                save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"),     "sw_flux_up_clear"    , gd.wloc);
+                save_stats_and_cross(*fields.sd.at("sw_flux_dn_clear"),     "sw_flux_dn_clear"    , gd.wloc);
+                save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
             }
 
             stats.set_time_series("sza", std::acos(mu0));
@@ -1540,8 +1498,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         throw;
         #endif
     }
-
-    fields.release_tmp(tmp);
 }
 #endif
 
