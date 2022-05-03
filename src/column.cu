@@ -30,7 +30,7 @@
 #ifdef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(
-        std::string profname, const TF* const restrict data, const TF offset)
+        std::string profname, const TF* const restrict data, const TF offset, const bool copy_from_gpu)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -41,14 +41,26 @@ void Column<TF>::calc_column(
         {
             const int i_col = col.coord[0] % gd.imax + gd.istart;
             const int j_col = col.coord[1] % gd.jmax + gd.jstart;
-            const int kbeg  = i_col + j_col * gd.icells;
 
-            cuda_safe_call(cudaMemcpy2D(
-                        col.profs.at(profname).data.data(),
-                        sizeof(TF), &data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kcells, cudaMemcpyDeviceToHost));
+            if (copy_from_gpu)
+            {
+                const int kbeg  = i_col + j_col * gd.icells;
 
-            for (int k=0; k<gd.kcells; ++k)
-                col.profs.at(profname).data[k] += offset;
+                cuda_safe_call(cudaMemcpy2D(
+                            col.profs.at(profname).data.data(),
+                            sizeof(TF), &data[kbeg], gd.ijcells*sizeof(TF), sizeof(TF), gd.kcells, cudaMemcpyDeviceToHost));
+
+                for (int k=0; k<gd.kcells; ++k)
+                    col.profs.at(profname).data[k] += offset;
+            }
+            else
+            {
+                for (int k=0; k<gd.kcells; k++)
+                {
+                    const int ijk = i_col + j_col*gd.icells + k*gd.ijcells;
+                    col.profs.at(profname).data[k] = (data[ijk] + offset);
+                }
+            }
         }
     }
 }

@@ -51,7 +51,7 @@ class Column
         void add_prof(std::string, std::string, std::string, std::string);
         void add_time_series(std::string, std::string, std::string);
 
-        void calc_column(std::string, const TF* const, const TF);
+        void calc_column(std::string, const TF* const, const TF, const bool copy_from_gpu=true);
         void calc_time_series(std::string, const TF* const, const TF);
         void set_individual_column(std::string, const TF*, const TF, const int, const int);
 

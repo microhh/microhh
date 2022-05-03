@@ -527,7 +527,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         fields.init_diagnostic_field("lw_flux_up_clear", "Clear-sky longwave upwelling flux", "W m-2", "radiation", gd.wloc);
         fields.init_diagnostic_field("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "radiation", gd.wloc);
     }
-    
+
     fields.init_diagnostic_field("sw_flux_up", "Shortwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn", "Shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
@@ -1250,7 +1250,7 @@ void Radiation_rrtmgp<TF>::exec(
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
-                
+
                 if (do_radiation_stats)
                 {
                     // Make sure that the top boundary is taken into account in case of fluxes.
@@ -1267,7 +1267,7 @@ void Radiation_rrtmgp<TF>::exec(
 
                     do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
-                
+
                     if (sw_clear_sky_stats)
                     {
                         exec_longwave(
@@ -1328,7 +1328,7 @@ void Radiation_rrtmgp<TF>::exec(
                     std::fill(sw_flux_up_sfc.begin(), sw_flux_up_sfc.end(), Float(0));
                     std::fill(sw_flux_dn_sfc.begin(), sw_flux_dn_sfc.end(), Float(0));
                 }
-                
+
                 if (do_radiation_stats)
                 {
                     // Make sure that the top boundary is taken into account in case of fluxes.
@@ -1342,7 +1342,7 @@ void Radiation_rrtmgp<TF>::exec(
                                 gd.icells, gd.ijcells,
                                 gd.imax, gd.imax*gd.jmax);
                     };
-                
+
                     if (!is_day(this->mu0))
                     {
                         flux_up.fill(Float(0.));
@@ -1353,7 +1353,7 @@ void Radiation_rrtmgp<TF>::exec(
                     do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
-                    
+
                     if (sw_clear_sky_stats)
                     {
                         if (is_day(this->mu0))
@@ -1793,14 +1793,14 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ? 
+                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : Float(0.);
 
                     // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ? 
+                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
@@ -2003,14 +2003,14 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 {
                     // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
                     // CvH: Potentially better using moments from microphysics.
-                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ? 
+                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : Float(0.);
 
                     // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ? 
+                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).

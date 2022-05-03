@@ -1213,6 +1213,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                                     t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
                                     !compute_clouds);
                         }    
+
                         do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
                         do_gcs(*fields.sd.at("sw_flux_dn_dir_clear"), flux_dn_dir);
@@ -1324,7 +1325,10 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
 
         if (do_column)
-            column.calc_column(name, array.fld.data(), no_offset);
+        {
+            bool copy_from_gpu = false;
+            column.calc_column(name, array.fld.data(), no_offset, copy_from_gpu);
+        }
     };
 
     if (sw_longwave)
