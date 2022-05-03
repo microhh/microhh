@@ -24,7 +24,7 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = False           # False = prescribed radiation from ERA5.
+    use_rrtmgp = True            # False = prescribed radiation from ERA5.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
@@ -39,14 +39,14 @@ if __name__ == '__main__':
     """
     Read / interpolate (LS)2D initial conditions and forcings
     """
-    ls2d = xr.open_dataset('ls2d_20160815_0600_1800.nc')
+    ls2d = xr.open_dataset('ls2d_20160815.nc')
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
     ls2d_z = ls2d.interp(z=z)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
         # TODO: add to LS2D download...
-        ds_rad = xr.open_dataset('era_rad_20160815_0000_2300.nc')
+        ds_rad = xr.open_dataset('era_rad_20160815.nc')
         ds_rad = ds_rad/3600.
         ds_rad['time'] = ds_rad['time'] - np.timedelta64(30, 'm')
         ds_rad = ds_rad.interp(time=ls2d_z.time)

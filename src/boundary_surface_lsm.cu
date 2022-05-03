@@ -35,6 +35,7 @@
 #include "radiation.h"
 #include "thermo.h"
 #include "microphys.h"
+#include "column.h"
 
 namespace
 {
@@ -706,6 +707,47 @@ void Boundary_surface_lsm<TF>::exec(
 template<typename TF>
 void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 {
+    const TF no_offset = 0.;
+
+    auto tmp = fields.get_tmp_g();
+
+    column.calc_time_series("obuk", obuk_g, no_offset);
+    column.calc_time_series("ustar", ustar_g, no_offset);
+    column.calc_time_series("wl", fields.ap2d.at("wl")->fld_g, no_offset);
+
+    get_tiled_mean_g(tmp->fld_bot_g, "H", TF(1));
+    column.calc_time_series("H", tmp->fld_bot_g, no_offset);
+
+    get_tiled_mean_g(tmp->fld_bot_g, "LE", TF(1));
+    column.calc_time_series("LE", tmp->fld_bot_g, no_offset);
+
+    get_tiled_mean_g(tmp->fld_bot_g, "G", TF(1));
+    column.calc_time_series("G", tmp->fld_bot_g, no_offset);
+
+    get_tiled_mean_g(tmp->fld_bot_g, "S", TF(1));
+    column.calc_time_series("S", tmp->fld_bot_g, no_offset);
+
+    if (sw_tile_stats_col)
+        for (auto& tile : tiles)
+        {
+            column.calc_time_series("c_"+tile.first, tile.second.fraction_g, no_offset);
+
+            column.calc_time_series("ustar_"+tile.first, tile.second.ustar_g, no_offset);
+            column.calc_time_series("obuk_"+tile.first, tile.second.obuk_g, no_offset);
+
+            column.calc_time_series("rs_"+tile.first, tile.second.rs_g, no_offset);
+            column.calc_time_series("ra_"+tile.first, tile.second.ra_g, no_offset);
+
+            column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot_g, no_offset);
+            column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot_g, no_offset);
+
+            column.calc_time_series("H_"+tile.first, tile.second.H_g, no_offset);
+            column.calc_time_series("LE_"+tile.first, tile.second.LE_g, no_offset);
+            column.calc_time_series("G_"+tile.first, tile.second.G_g, no_offset);
+            column.calc_time_series("S_"+tile.first, tile.second.S_g, no_offset);
+        }
+
+    fields.release_tmp_g(tmp);
 }
 
 template<typename TF>
