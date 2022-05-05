@@ -1,12 +1,10 @@
-import matplotlib.pyplot as pl
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
+import os
 
 # Available in `microhh_root/python`:
 import microhh_tools as mht
-
-pl.close('all')
 
 def add_nc_var(name, dims, nc, data):
     """
@@ -18,6 +16,19 @@ def add_nc_var(name, dims, nc, data):
         var = nc.createVariable(name, np.float64, dims)
     var[:] = data
 
+
+def link(f1, f2):
+    """
+    Create symbolic link from `f1` to `f2`, if `f2` does not yet exist.
+    """
+    if os.path.islink(f2):
+        os.remove(f2)
+    if os.path.exists(f1):
+        os.symlink(f1, f2)
+    else:
+        raise Exception('Source file {} does not exist!'.format(f1))
+
+
 if __name__ == '__main__':
     """
     Case switches.
@@ -28,11 +39,29 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
+    gpt_set = '256_224' # or '128_112'
+
+    # Link required files (if not present)
+    if use_htessel:
+        link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
+    if use_rrtmgp:
+        if gpt_set == '256_224':
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
+        elif gpt_set == '128_112':
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
+        else:
+            raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
+
+        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
+        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
+
     """
     Create vertical grid for LES
     """
-    zsize = 3200
-    ktot = 128
+    zsize = 4000
+    ktot = 160
     dz = zsize/ktot
     z = np.arange(dz/2, zsize, dz)
 
