@@ -275,6 +275,16 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Float* sw_flux_dn_dif_inc_g;
         Float* lw_flux_dn_inc_g;
         
+        // raytracing fluxes for stats & cross sections
+        std::vector<Float> sw_flux_sfc_dir_rt;
+        std::vector<Float> sw_flux_sfc_dif_rt;
+        std::vector<Float> sw_flux_sfc_up_rt;
+        std::vector<Float> sw_flux_tod_up_rt;
+        Float* sw_flux_sfc_dir_rt_g;
+        Float* sw_flux_sfc_dif_rt_g;
+        Float* sw_flux_sfc_up_rt_g;
+        Float* sw_flux_tod_up_rt_g;
+
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;

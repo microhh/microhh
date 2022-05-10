@@ -46,6 +46,30 @@ using namespace Radiation_rrtmgp_functions;
 namespace
 {
     __global__
+    void calc_tendency_rt(
+            Float* __restrict__ thlt_rad,
+            const Float* __restrict__ rt_flux_abs_dir, 
+            const Float* __restrict__ rt_flux_abs_dif,
+            const int istart, const int jstart, const int kstart,
+            const int iend, const int jend, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if ( (i < iend) && (j < jend) && (k < kend) )
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+            
+            thlt_rad[ijk] = rt_flux_abs_dir[ijk_nogc] + rt_flux_abs_dif[ijk_nogc];
+        }
+    }
+
+    __global__
     void calc_tendency(
             Float* __restrict__ thlt_rad,  const Float* __restrict__ flux_up,
             const Float* __restrict flux_dn, const Float* __restrict__ rho,
@@ -90,6 +114,29 @@ namespace
         }
     }
 
+    __global__
+    void store_surface_fluxes_rt(
+            Float* __restrict__ flux_up_sfc, Float* __restrict__ flux_dn_sfc,
+            const Float* __restrict__ rt_flux_sfc_dir, const Float* __restrict__ rt_flux_sfc_dif,
+            const Float* __restrict__ rt_flux_sfc_up,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int igc, const int jgc,
+            const int jj, const int kk,
+            const int jj_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if ( (i < iend) && (j < jend) )
+        {
+            const int ij = i + j*jj;
+            const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            flux_up_sfc[ij] = rt_flux_sfc_up[ij_nogc];
+            flux_dn_sfc[ij] = rt_flux_sfc_dir[ij_nogc] + rt_flux_sfc_dif[ij_nogc];
+        }
+    }
+    
     __global__
     void store_surface_fluxes(
             Float* __restrict__ flux_up_sfc, Float* __restrict__ flux_dn_sfc,
@@ -812,6 +859,11 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
+        
+        cuda_safe_call(cudaMalloc(&sw_flux_sfc_dir_rt_g, nsfcsize));
+        cuda_safe_call(cudaMalloc(&sw_flux_sfc_dif_rt_g, nsfcsize));
+        cuda_safe_call(cudaMalloc(&sw_flux_sfc_up_rt_g, nsfcsize));
+        cuda_safe_call(cudaMalloc(&sw_flux_tod_up_rt_g, nsfcsize));
 
         const int ncolgptsize = n_col*kdist_sw_rt->get_ngpt()*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
@@ -1629,11 +1681,9 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
                             compute_clouds);
 
-                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                    calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld_g,
-                            flux_up.ptr(), flux_dn.ptr(),
-                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                            gd.dz_g,
+                            rt_flux_abs_dir.ptr(), rt_flux_abs_dir.ptr(),
                             gd.istart, gd.jstart, gd.kstart,
                             gd.iend, gd.jend, gd.kend,
                             gd.igc, gd.jgc, gd.kgc,
@@ -1641,9 +1691,10 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                             gd.imax, gd.imax*gd.jmax);
                     cuda_check_error();
 
-                    store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
+                    store_surface_fluxes_rt<<<gridGPU_2d, blockGPU_2d>>>(
                             sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
-                            flux_up.ptr(), flux_dn.ptr(),
+                            rt_flux_sfc_dir.ptr(), rt_flux_sfc_dir.ptr(),
+                            rt_flux_sfc_up.ptr(),
                             gd.istart, gd.iend,
                             gd.jstart, gd.jend,
                             gd.igc, gd.jgc,
@@ -1764,6 +1815,11 @@ void Radiation_rrtmgp_rt<TF>::clear_device()
     cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
+        
+    cuda_safe_call(cudaFree(sw_flux_sfc_dir_rt_g));
+    cuda_safe_call(cudaFree(sw_flux_sfc_dif_rt_g));
+    cuda_safe_call(cudaFree(sw_flux_sfc_up_rt_g));
+    cuda_safe_call(cudaFree(sw_flux_tod_up_rt_g));
 }
 
 
@@ -1825,11 +1881,40 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
         save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
 
+        save_stats_and_cross(*fields.sd.at("sw_heat_dir_rt"), "sw_heat_dir_rt", gd.sloc);
+        save_stats_and_cross(*fields.sd.at("sw_heat_dif_rt"), "sw_heat_dif_rt", gd.sloc);
+        
         if (sw_clear_sky_stats)
         {
             save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"), "sw_flux_up_clear", gd.wloc);
             save_stats_and_cross(*fields.sd.at("sw_flux_dn_clear"), "sw_flux_dn_clear", gd.wloc);
             save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
+        }
+    
+        const int nsfcsize = gd.ijcells*sizeof(Float);
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dir_rt.data(), &sw_flux_sfc_dir_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dif_rt.data(), &sw_flux_sfc_dif_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_up_rt.data(), &sw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_tod_up_rt.data(), &sw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+       
+        if (do_stats)
+        {
+            stats.calc_stats_2d("sw_flux_sfc_dir_rt", sw_flux_sfc_dir_rt, no_offset);
+            stats.calc_stats_2d("sw_flux_sfc_dif_rt", sw_flux_sfc_dif_rt, no_offset);
+            stats.calc_stats_2d("sw_flux_sfc_up_rt", sw_flux_sfc_up_rt, no_offset);
+            stats.calc_stats_2d("sw_flux_tod_up_rt", sw_flux_tod_up_rt, no_offset);
+        } 
+        
+        if (do_cross)
+        {
+            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dir_rt") != crosslist.end())
+                cross.cross_plane(sw_flux_sfc_dir_rt.data(), "sw_flux_sfc_dir_rt", iotime);
+            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dif_rt") != crosslist.end())
+                cross.cross_plane(sw_flux_sfc_dif_rt.data(), "sw_flux_sfc_dif_rt", iotime);
+            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_up_rt") != crosslist.end())
+                cross.cross_plane(sw_flux_sfc_up_rt.data(), "sw_flux_sfc_up_rt", iotime);
+            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_up_rt") != crosslist.end())
+                cross.cross_plane(sw_flux_tod_up_rt.data(), "sw_flux_tod_up_rt", iotime);
         }
     }
 
