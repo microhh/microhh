@@ -280,6 +280,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<Float> sw_flux_sfc_dif_rt;
         std::vector<Float> sw_flux_sfc_up_rt;
         std::vector<Float> sw_flux_tod_up_rt;
+        
         Float* sw_flux_sfc_dir_rt_g;
         Float* sw_flux_sfc_dif_rt_g;
         Float* sw_flux_sfc_up_rt_g;

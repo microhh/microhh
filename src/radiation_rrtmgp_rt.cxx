@@ -480,6 +480,12 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 
     sw_flux_dn_sfc.resize(gd.ijcells);
     sw_flux_up_sfc.resize(gd.ijcells);
+
+    sw_flux_sfc_dir_rt.resize(gd.ijcells);
+    sw_flux_sfc_dif_rt.resize(gd.ijcells);
+    sw_flux_sfc_up_rt.resize(gd.ijcells);
+    sw_flux_tod_up_rt.resize(gd.ijcells);
+
 }
 
 
@@ -549,7 +555,7 @@ void Radiation_rrtmgp_rt<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
 
         allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
-        allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
+        allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
         
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");

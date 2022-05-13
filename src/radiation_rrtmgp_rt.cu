@@ -48,8 +48,8 @@ namespace
     __global__
     void calc_tendency_rt(
             Float* __restrict__ thlt_rad,
-            const Float* __restrict__ rt_flux_abs_dir, 
-            const Float* __restrict__ rt_flux_abs_dif,
+            const Float* __restrict__ rt_flux_abs_dir, const Float* __restrict__ rt_flux_abs_dif,
+            const Float* __restrict__ rho, const Float* __restrict__ exner, const Float* __restrict__ dz,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int igc, const int jgc, const int kgc,
@@ -62,10 +62,12 @@ namespace
 
         if ( (i < iend) && (j < jend) && (k < kend) )
         {
+            const Float fac = Float(1.) / (rho[k] * Constants::cp<Float> * exner[k] * dz[k]);
+
             const int ijk = i + j*jj + k*kk;
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
             
-            thlt_rad[ijk] = rt_flux_abs_dir[ijk_nogc] + rt_flux_abs_dif[ijk_nogc];
+            thlt_rad[ijk] += fac * (rt_flux_abs_dir[ijk_nogc] + rt_flux_abs_dif[ijk_nogc]);
         }
     }
 
@@ -208,6 +210,25 @@ namespace
         }
     }
 
+    __global__
+    void add_ghost_cells_2d_g(
+            Float* __restrict__ out, const Float* __restrict__ in,
+            const int istart, const int jstart,
+            const int iend, const int jend,
+            const int jj, const int jj_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij_nogc  = (i-istart) + (j-jstart)*jj_nogc;
+            const int ij = i + j*jj;
+
+            out[ij] = in[ij_nogc];
+        }
+    }
+    
     std::vector<std::string> get_variable_string(
             const std::string& var_name,
             std::vector<int> i_count,
@@ -1311,19 +1332,25 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
-    const int n_gpt = this->kdist_sw_gpu->get_ngpt();
-    const int n_bnd = this->kdist_sw_gpu->get_nband();
+    const int n_gpt = this->kdist_sw_rt->get_ngpt();
+    const int n_bnd = this->kdist_sw_rt->get_nband();
 
     const Bool top_at_1 = 0;
 
-    // initiate rt flux & heating rate arrays to 0
+    // initiate flux & heating rate arrays to 0
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_up.ptr());
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dir.ptr());
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dif.ptr());
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_up.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, rt_flux_abs_dir.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, rt_flux_abs_dif.ptr());
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dir.ptr());
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dif.ptr());
     
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_up.ptr());
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn.ptr());
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn_dir.ptr());
+    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_net.ptr());
+    
+
     // Define the pointers for the subsetting.
     std::unique_ptr<Optical_props_arry_rt> optical_props =
             std::make_unique<Optical_props_2str_rt>(n_col, n_lay, *kdist_sw_rt);
@@ -1331,8 +1358,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
             std::make_unique<Optical_props_2str_rt>(n_col, n_lay, *cloud_sw_rt);
 
     // Make views to the base state pointer.
-    auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
-    auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
+    auto p_lay_tmp = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
+    auto p_lev_tmp = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
 
     // // Make TOD flux arrays
     Array_gpu<Float,1> sw_flux_dn_dir_inc_local({n_col});// = Array_gpu<Float,2>(sw_flux_dn_dir_inc_g, {1, n_gpt});
@@ -1348,9 +1375,13 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
     gas_concs_gpu->set_vmr("h2o", h2o);
 
+    // plev and play need column dimension
+    auto p_lay = p_lay_tmp.subset({{ {1, n_col}, {1, n_lay} }});
+    auto p_lev = p_lev_tmp.subset({{ {1, n_col}, {1, n_lev} }});
+    
     // CvH: This can be done better: we now allocate a complete array.
     Array_gpu<Float,2> col_dry({n_col, n_lay});
-    Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+    Gas_optics_rrtmgp_rt::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev);
 
     Array_gpu<Float,1> toa_src_dummy({n_col});
 
@@ -1401,8 +1432,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 break;
             }
         }
-       
-       kdist_sw_rt->gas_optics(
+        
+        kdist_sw_rt->gas_optics(
                 igpt-1,
                 p_lay,
                 p_lev,
@@ -1437,7 +1468,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         rte_sw_rt.rte_sw(
                 optical_props,
                 top_at_1,
-                mu0,
+                mu0.subset({{ {1, n_col} }}),
                 sw_flux_dn_dir_inc_local,
                 sfc_alb_dir.subset({{ {band, band}, {1, n_col}} }),
                 sfc_alb_dif.subset({{ {band, band}, {1, n_col}} }),
@@ -1445,43 +1476,43 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 (*fluxes).get_flux_up(),
                 (*fluxes).get_flux_dn(),
                 (*fluxes).get_flux_dn_dir());
-
-         Float zenith_angle = std::acos(mu0({1}));
-         // MV: We need to implement a function for azimuth angle!!
-         Float azimuth_angle = 3.14;
-
-         const Int ray_count = Int(4194304);
-         raytracer.trace_rays(
-                 ray_count,
-                 gd.imax, gd.jmax, n_lay,
-                 gd.dx, gd.dy, gd.dz[0],
-                 dynamic_cast<Optical_props_2str_rt&>(*optical_props),
-                 dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props),
-                 sfc_alb_dir, zenith_angle,
-                 azimuth_angle,
-                 sw_flux_dn_dir_inc({1,igpt}), sw_flux_dn_dir_inc({1,igpt}),
-                 (*fluxes).get_flux_tod_up(),
-                 (*fluxes).get_flux_sfc_dir(),
-                 (*fluxes).get_flux_sfc_dif(),
-                 (*fluxes).get_flux_sfc_up(),
-                 (*fluxes).get_flux_abs_dir(),
-                 (*fluxes).get_flux_abs_dif());
-
+        
+        Float zenith_angle = std::acos(mu0({1}));
+        
+        // MV: We need to implement a function for azimuth angle!!
+        Float azimuth_angle = 3.14;
+        
+        //const Int ray_count = Int(4194304/8);
+        const Int ray_count = Int(131072);
+        raytracer.trace_rays(
+                ray_count,
+                gd.imax, gd.jmax, n_lay,
+                gd.dx, gd.dy, gd.dz[gd.kstart],
+                dynamic_cast<Optical_props_2str_rt&>(*optical_props),
+                dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props),
+                sfc_alb_dir, zenith_angle,
+                azimuth_angle,
+                sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
+                (*fluxes).get_flux_tod_up(),
+                (*fluxes).get_flux_sfc_dir(),
+                (*fluxes).get_flux_sfc_dif(),
+                (*fluxes).get_flux_sfc_up(),
+                (*fluxes).get_flux_abs_dir(),
+                (*fluxes).get_flux_abs_dif());
+        
         (*fluxes).net_flux();
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
                   n_col, n_lev, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                   (*fluxes).get_flux_up().ptr(), (*fluxes).get_flux_dn().ptr(), (*fluxes).get_flux_dn_dir().ptr(), (*fluxes).get_flux_net().ptr());
 
-
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
                   gd.imax, gd.jmax, rt_flux_tod_up.ptr(), rt_flux_sfc_dir.ptr(), rt_flux_sfc_dif.ptr(), rt_flux_sfc_up.ptr(),
                   (*fluxes).get_flux_tod_up().ptr(), (*fluxes).get_flux_sfc_dir().ptr(), (*fluxes).get_flux_sfc_dif().ptr(), (*fluxes).get_flux_sfc_up().ptr());
-
+        
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
-                  n_col, n_lev, rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
+                  n_col, n_lay, rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
                   (*fluxes).get_flux_abs_dir().ptr(), (*fluxes).get_flux_abs_dif().ptr());
-
 
     }
 }
@@ -1615,8 +1646,8 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                 Array_gpu<Float,2> rt_flux_sfc_dir({gd.imax,gd.jmax});
                 Array_gpu<Float,2> rt_flux_sfc_dif({gd.imax,gd.jmax});
                 Array_gpu<Float,2> rt_flux_sfc_up({gd.imax,gd.jmax});
-                Array_gpu<Float,3> rt_flux_abs_dir({gd.imax,gd.jmax, gd.ktot+1});
-                Array_gpu<Float,3> rt_flux_abs_dif({gd.imax,gd.jmax, gd.ktot+1});
+                Array_gpu<Float,3> rt_flux_abs_dir({gd.imax,gd.jmax, gd.ktot});
+                Array_gpu<Float,3> rt_flux_abs_dif({gd.imax,gd.jmax, gd.ktot});
 
                 // Single column solve of background profile for TOA conditions
                 if (!sw_fixed_sza)
@@ -1683,7 +1714,9 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
 
                     calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld_g,
-                            rt_flux_abs_dir.ptr(), rt_flux_abs_dir.ptr(),
+                            rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
                             gd.istart, gd.jstart, gd.kstart,
                             gd.iend, gd.jend, gd.kend,
                             gd.igc, gd.jgc, gd.kgc,
@@ -1693,7 +1726,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
 
                     store_surface_fluxes_rt<<<gridGPU_2d, blockGPU_2d>>>(
                             sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
-                            rt_flux_sfc_dir.ptr(), rt_flux_sfc_dir.ptr(),
+                            rt_flux_sfc_dir.ptr(), rt_flux_sfc_dif.ptr(),
                             rt_flux_sfc_up.ptr(),
                             gd.istart, gd.iend,
                             gd.jstart, gd.jend,
@@ -1721,7 +1754,25 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                                 gd.icells, gd.ijcells,
                                 gd.imax, gd.imax*gd.jmax);
                     };
+                    auto do_gcs_rt = [&](Field3d<Float>& out, const Array_gpu<Float,3>& in)
+                    {
+                        add_ghost_cells_g<<<gridGPU_3d, blockGPU_3d>>>(
+                                out.fld_g, in.ptr(),
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                    };
 
+                    auto do_gcs_2d = [&](Float* out, const Array_gpu<Float,2>& in)
+                    {
+                        add_ghost_cells_2d_g<<<gridGPU_3d, blockGPU_3d>>>(
+                                out, in.ptr(),
+                                gd.istart, gd.jstart,
+                                gd.iend, gd.jend,
+                                gd.icells, gd.imax);
+                    };
+                    
                     if (!is_day(this->mu0))
                     {
                         flux_up.fill(Float(0.));
@@ -1732,6 +1783,14 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                     do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
+                    
+                    do_gcs_rt(*fields.sd.at("sw_heat_dir_rt"), rt_flux_abs_dir);
+                    do_gcs_rt(*fields.sd.at("sw_heat_dif_rt"), rt_flux_abs_dif);
+                  
+                    do_gcs_2d(sw_flux_sfc_dir_rt_g,rt_flux_sfc_dir); 
+                    do_gcs_2d(sw_flux_sfc_dif_rt_g,rt_flux_sfc_dif);
+                    do_gcs_2d(sw_flux_sfc_up_rt_g,rt_flux_sfc_up);
+                    do_gcs_2d(sw_flux_tod_up_rt_g,rt_flux_tod_up);
                     
                     // clear sky
                     if (sw_clear_sky_stats)
@@ -1820,6 +1879,10 @@ void Radiation_rrtmgp_rt<TF>::clear_device()
     cuda_safe_call(cudaFree(sw_flux_sfc_dif_rt_g));
     cuda_safe_call(cudaFree(sw_flux_sfc_up_rt_g));
     cuda_safe_call(cudaFree(sw_flux_tod_up_rt_g));
+    
+    cuda_safe_call(cudaFree(lw_flux_dn_inc_g));
+    cuda_safe_call(cudaFree(sw_flux_dn_dir_inc_g));
+    cuda_safe_call(cudaFree(sw_flux_dn_dif_inc_g));
 }
 
 
@@ -1892,10 +1955,10 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         }
     
         const int nsfcsize = gd.ijcells*sizeof(Float);
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dir_rt.data(), &sw_flux_sfc_dir_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dif_rt.data(), &sw_flux_sfc_dif_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_up_rt.data(), &sw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_tod_up_rt.data(), &sw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dir_rt.data(), sw_flux_sfc_dir_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dif_rt.data(), sw_flux_sfc_dif_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_sfc_up_rt.data(), sw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(sw_flux_tod_up_rt.data(), sw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
        
         if (do_stats)
         {
