@@ -213,6 +213,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Float sfc_alb_dir; // Surface albedo.
         Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
+        Float azimuth;     // Azimuth angle.
         Float Nc0;         // Total droplet number concentration.
 
         Float lat; // Latitude (degrees)

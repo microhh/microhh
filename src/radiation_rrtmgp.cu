@@ -1095,7 +1095,8 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     const int day_of_year = int(timeloop.calc_day_of_year());
                     const int year = timeloop.get_year();
                     const Float seconds_after_midnight = Float(timeloop.calc_hour_of_day()*3600);
-                    this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+                    Float azimuth_dummy;
+                    std::tie(this->mu0, azimuth_dummy) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
 
                     // Calculate correction factor for impact Sun's distance on the solar "constant"
                     const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
