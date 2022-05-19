@@ -34,6 +34,7 @@
 #include "timeloop.h"
 #include "timedep.h"
 #include "finite_difference.h"
+#include "netcdf_interface.h"
 
 #include "boundary_cyclic.h"
 #include "boundary_outflow.h"
@@ -156,7 +157,7 @@ Boundary<TF>::Boundary(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
         Fields<TF>& fieldsin, Input& inputin) :
         master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin),
-        boundary_cyclic(master, grid), boundary_outflow(master, grid), field3d_io(master, grid)
+        boundary_cyclic(master, grid), boundary_outflow(master, grid, inputin), field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -294,6 +295,7 @@ void Boundary<TF>::create(
         Cross<TF>& cross, Timeloop<TF>& timeloop)
 {
     process_time_dependent(input, input_nc, timeloop);
+    process_inflow(input, input_nc);
 }
 
 template<typename TF>
@@ -405,6 +407,36 @@ void Boundary<TF>::process_time_dependent(
     }
 }
 
+template<typename TF>
+void Boundary<TF>::process_inflow(
+        Input& input, Netcdf_handle& input_nc)
+{
+    auto& gd = grid.get_grid_data();
+
+    swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
+
+    Netcdf_group& init_group = input_nc.get_group("init");
+    for (auto& scalar : scalar_outflow)
+    {
+        std::vector<TF> prof = std::vector<TF>(gd.kcells);
+        if (!swtimedep_outflow)
+            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+        std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+        inflow_profiles.emplace(scalar, prof);
+    }
+
+    if (swtimedep_outflow)
+    {
+        Netcdf_group& tdep_group = input_nc.get_group("timedep");
+        const TF offset = 0;
+
+        for (auto& scalar : scalar_outflow)
+        {
+            tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
+            tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+        }
+    }
+}
 
 #ifndef USECUDA
 template<typename TF>
@@ -429,7 +461,7 @@ void Boundary<TF>::set_prognostic_outflow_bcs()
 {
     // Overwrite here the ghost cells for the scalars with outflow BCs
     for (auto& s : scalar_outflow)
-        boundary_outflow.exec(fields.sp.at(s)->fld.data());
+        boundary_outflow.exec(fields.sp.at(s)->fld.data(), inflow_profiles.at(s).data());
 }
 #endif
 
@@ -547,6 +579,12 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                     fields.sp.at(it.first)->visc,
                     no_offset, gd.icells, gd.jcells);
         }
+    }
+
+    if (swtimedep_outflow)
+    {
+        for (auto& it : tdep_outflow)
+            it.second->update_time_dependent_prof(inflow_profiles.at(it.first), timeloop);
     }
 }
 #endif

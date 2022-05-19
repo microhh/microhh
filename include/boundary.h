@@ -151,7 +151,12 @@ class Boundary
 
         // Spatial sbot input:
         std::vector<std::string> sbot_2d_list;
+
+        // Scalar in/outflow
         std::vector<std::string> scalar_outflow;
+        std::map<std::string, std::vector<TF>> inflow_profiles;
+        bool swtimedep_outflow;
+        std::map<std::string, Timedep<TF>*> tdep_outflow;
 
         // Time varying spatial sbot input:
         bool swtimedep_sbot_2d;
@@ -163,6 +168,7 @@ class Boundary
 
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
         void process_time_dependent(Input&, Netcdf_handle&, Timeloop<TF>&); ///< Process the time dependent settings from the ini file.
+        void process_inflow(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
 
         #ifdef USECUDA
         void clear_device();
