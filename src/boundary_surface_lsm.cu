@@ -865,6 +865,9 @@ void Boundary_surface_lsm<TF>::prepare_device()
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    // Prepare base boundary, for inflow profiles.
+    Boundary<TF>::prepare_device();
+
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
     const int int_memsize_ij = gd.ijcells*sizeof(int);
     const int float_memsize_mo_lut = nzL_lut*sizeof(float);

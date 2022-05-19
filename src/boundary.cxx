@@ -427,6 +427,10 @@ void Boundary<TF>::process_inflow(
 
     if (swtimedep_outflow)
     {
+        #ifdef USECUDA
+        throw std::runtime_error("Time dependent outflow profiles are not (yet) implemented on the GPU.");
+        #endif
+
         Netcdf_group& tdep_group = input_nc.get_group("timedep");
         const TF offset = 0;
 
@@ -1150,21 +1154,6 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
         std::string msg = swboundary + " is an illegal value for swboundary";
         throw std::runtime_error(msg);
     }
-}
-
-template<typename TF>
-void Boundary<TF>::prepare_device()
-{
-}
-
-template<typename TF>
-void Boundary<TF>::forward_device()
-{
-}
-
-template<typename TF>
-void Boundary<TF>::backward_device()
-{
 }
 
 template class Boundary<double>;

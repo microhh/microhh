@@ -111,19 +111,18 @@ class Boundary
         virtual const std::vector<TF>& get_dvdz() const;
         virtual const std::vector<TF>& get_dbdz() const;
 
+        std::string get_switch();
+
         #ifdef USECUDA
         virtual TF* get_z0m_g();
         virtual TF* get_dudz_g();
         virtual TF* get_dvdz_g();
         virtual TF* get_dbdz_g();
-        #endif
 
-        std::string get_switch();
-
-        // GPU functions and variables
         virtual void prepare_device();
         virtual void forward_device();
         virtual void backward_device();
+        #endif
 
     protected:
         Master& master;
@@ -172,6 +171,7 @@ class Boundary
 
         #ifdef USECUDA
         void clear_device();
+        std::map<std::string, TF*> inflow_profiles_g;
         #endif
 
         // GPU functions and variables
