@@ -97,10 +97,18 @@ class Thermo_moist : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
+
         void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
+        void get_buoyancy_surf_g(TF*, TF*, TF*);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
+        void set_sun_location(Timeloop<TF>&);
+        void set_background_column_shortwave(Thermo<TF>&);
+
+        void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*);
         #endif
 
         // Empty functions that are allowed to pass.
@@ -142,7 +150,7 @@ class Thermo_moist : public Thermo<TF>
         {
             Basestate_type swbasestate;
             bool swupdatebasestate;
-            TF pbot;   ///< Surface pressure.
+            TF pbot;    ///< Surface pressure.
             TF thvref0; ///< Reference potential temperature in case of Boussinesq
 
             std::vector<TF> thl0;
@@ -165,6 +173,8 @@ class Thermo_moist : public Thermo<TF>
             TF* prefh_g;
             TF* exnref_g;
             TF* exnrefh_g;
+            TF* rhoref_g;
+            TF* rhorefh_g;
         };
 
         Background_state bs;

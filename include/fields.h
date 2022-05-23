@@ -52,11 +52,20 @@ template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
+struct Field2d
+{
+    std::vector<TF> fld;
+    #ifdef USECUDA
+    TF* fld_g;
+    #endif
+};
+
+template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
 template<typename TF>
 using Soil_field_map = std::map<std::string, std::shared_ptr<Soil_field3d<TF>>>;
 template<typename TF>
-using Field_2d_map = std::map<std::string, std::vector<TF>>;
+using Field_2d_map = std::map<std::string, std::shared_ptr<Field2d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
 
@@ -162,16 +171,15 @@ class Fields
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
 
+        void forward_field_device(TF*, TF*, int);  ///< Copy of a single array from host to device
         void forward_field_device_3d (TF*, TF*);       ///< Copy of a single 3d field from host to device
         void forward_field_device_2d (TF*, TF*);       ///< Copy of a single 2d field from host to device
-        void forward_field_device_1d (TF*, TF*, int);  ///< Copy of a single array from host to device
+        void backward_field_device(TF*, TF*, int);  ///< Copy of a single array from device to host
         void backward_field_device_3d(TF*, TF*);       ///< Copy of a single 3d field from device to host
         void backward_field_device_2d(TF*, TF*);       ///< Copy of a single 2d field from device to host
-        void backward_field_device_1d(TF*, TF*, int);  ///< Copy of a single array from device to host
 
         TF* rhoref_g;  ///< Reference density at full levels at device
         TF* rhorefh_g; ///< Reference density at half levels at device
-
 
     private:
         Master& master;
@@ -244,5 +252,8 @@ class Fields
          */
         void forward_field3d_device(Field3d<TF> *);  ///< Copy of a complete Field3d instance from host to device
         void backward_field3d_device(Field3d<TF> *); ///< Copy of a complete Field3d instance from device to host
+
+        void forward_soil_field3d_device(Soil_field3d<TF> *);  ///< Copy of a complete Soil_field3d instance from host to device
+        void backward_soil_field3d_device(Soil_field3d<TF> *); ///< Copy of a complete Soil_field3d instance from device to host
 };
 #endif

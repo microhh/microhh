@@ -20,10 +20,13 @@ def add_nc_var(name, dims, nc, data):
 
 if __name__ == '__main__':
     """
-    Case switches. LSM without radiation is not supported (duhh).
+    Case switches.
     """
-    use_interactive_lsm = True    # True = HTESSEL, False = prescribed surface fluxes from ERA5
-    use_radiation = True          # True = RRTMGP, False = no radiation...
+    TF = np.float64              # Switch between double (float64) and single (float32) precision.
+    use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
+    use_rrtmgp = False           # False = prescribed radiation from ERA5.
+    use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
+    use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
     """
     Create vertical grid for LES
@@ -40,16 +43,38 @@ if __name__ == '__main__':
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
     ls2d_z = ls2d.interp(z=z)
 
+    if not use_rrtmgp:
+        # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
+        # TODO: add to LS2D download...
+        ds_rad = xr.open_dataset('era_rad_20160815_0000_2300.nc')
+        ds_rad = ds_rad/3600.
+        ds_rad['time'] = ds_rad['time'] - np.timedelta64(30, 'm')
+        ds_rad = ds_rad.interp(time=ls2d_z.time)
+
+    # Reverse the soil fields. Important NOTE: in MicroHH, the vertical
+    # soil index 0 is the lowest level in the soil. In (LS)2D, this
+    # is reversed, and soil index 0 is the top soil level....
+    # Another NOTE: the soil type in (LS)2D is the ERA5 soil type,
+    # which (FORTRAN....) is 1-based, so we need to subtract 1 to
+    # get the correct C-indexing.
+    theta_soil = ls2d_z.theta_soil[0,::-1].values
+    t_soil = ls2d_z.t_soil[0,::-1].values
+    index_soil = np.ones_like(ls2d.zs)*int(ls2d.type_soil-1)
+    root_frac = ls2d_z.root_frac_low_veg[::-1].values
+
     """
     Update .ini file
     """
     ini = mht.Read_namelist('cabauw.ini.base')
 
+    itot = ini['grid']['itot']
+    jtot = ini['grid']['jtot']
+
     ini['grid']['ktot'] = ktot
     ini['grid']['zsize'] = zsize
     ini['buffer']['zstart'] = zsize*3/4.
 
-    if use_interactive_lsm:
+    if use_htessel:
         ini['boundary']['swboundary'] = 'surface_lsm'
         ini['boundary']['sbcbot'] = 'dirichlet'
     else:
@@ -58,10 +83,14 @@ if __name__ == '__main__':
         ini['boundary']['swtimedep'] = True
         ini['boundary']['timedeplist'] = ['thl_sbot', 'qt_sbot']
 
-    if use_radiation:
+    ini['boundary']['swconstantz0'] = use_homogeneous_z0
+    ini['land_surface']['swhomogeneous'] = use_homogeneous_ls
+
+    if use_rrtmgp:
         ini['radiation']['swradiation'] = 'rrtmgp'
     else:
-        ini['radiation']['swradiation'] = '0'
+        ini['radiation']['swradiation'] = 'prescribed'
+        ini['radiation']['swtimedep_prescribed'] = True
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -96,9 +125,15 @@ if __name__ == '__main__':
     add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, ls2d_z.ug)
     add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, ls2d_z.vg)
 
-    if not use_interactive_lsm:
+    if not use_htessel:
         add_nc_var('thl_sbot', ('time_surface'), nc_tdep, ls2d_z.wth)
         add_nc_var('qt_sbot', ('time_surface'), nc_tdep, ls2d_z.wq)
+
+    if not use_rrtmgp:
+        add_nc_var('sw_flux_dn', ('time_surface'), nc_tdep, ds_rad.ssrd)
+        add_nc_var('sw_flux_up', ('time_surface'), nc_tdep, ds_rad.ssrd-ds_rad.ssr)
+        add_nc_var('lw_flux_dn', ('time_surface'), nc_tdep, ds_rad.strd)
+        add_nc_var('lw_flux_up', ('time_surface'), nc_tdep, ds_rad.strd-ds_rad.str)
 
     add_nc_var('u_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtu_advec)
     add_nc_var('v_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtv_advec)
@@ -114,7 +149,7 @@ if __name__ == '__main__':
     """
     Radiation variables
     """
-    if use_radiation:
+    if use_rrtmgp:
         nc_rad = nc.createGroup('radiation')
         nc_rad.createDimension('lay', ls2d_z.dims['lay'])
         nc_rad.createDimension('lev', ls2d_z.dims['lev'])
@@ -146,15 +181,98 @@ if __name__ == '__main__':
     """
     Land-surface and soil
     """
-    if use_interactive_lsm:
+    if use_htessel:
         nc_soil = nc.createGroup('soil')
         nc_soil.createDimension('z', ls2d_z.dims['zs'])
         add_nc_var('z', ('z'), nc_soil, ls2d.zs[::-1])
-        soil_index = int(ls2d.type_soil-1) # -1 = Fortran -> C indexing.
 
-        add_nc_var('theta_soil', ('z'), nc_soil, ls2d_z.theta_soil[0,::-1])
-        add_nc_var('t_soil', ('z'), nc_soil, ls2d_z.t_soil[0,::-1])
-        add_nc_var('index_soil', ('z'), nc_soil, np.ones_like(ls2d.zs)*soil_index)
-        add_nc_var('root_frac', ('z'), nc_soil, ls2d_z.root_frac_low_veg[::-1])
+        add_nc_var('theta_soil', ('z'), nc_soil, theta_soil)
+        add_nc_var('t_soil', ('z'), nc_soil, t_soil)
+        add_nc_var('index_soil', ('z'), nc_soil, index_soil)
+        add_nc_var('root_frac', ('z'), nc_soil, root_frac)
 
     nc.close()
+
+    """
+    Create 2D binary input files (if needed)
+    """
+    def get_patches(blocksize_i, blocksize_j):
+        """
+        Get mask for the surface patches
+        """
+        mask = np.zeros((jtot, itot), dtype=bool)
+        mask[:] = False
+
+        for j in range(jtot):
+            for i in range(itot):
+                patch_i = i // blocksize_i % 2 == 0
+                patch_j = j // blocksize_j % 2 == 0
+
+                if (patch_i and patch_j) or (not patch_i and not patch_j):
+                    mask[j,i] = True
+
+        return mask
+
+    if not use_homogeneous_z0:
+        """
+        Create checkerboard pattern for z0m and z0h
+        """
+
+        z0m = ini['boundary']['z0m']
+        z0h = ini['boundary']['z0h']
+
+        z0m_2d = np.zeros((jtot, itot), dtype=TF)
+        z0h_2d = np.zeros((jtot, itot), dtype=TF)
+
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
+
+        z0m_2d[ mask] = z0m
+        z0m_2d[~mask] = z0m/2.
+
+        z0h_2d[ mask] = z0h
+        z0h_2d[~mask] = z0h/2.
+
+        z0m_2d.tofile('z0m.0000000')
+        z0h_2d.tofile('z0h.0000000')
+
+    if not use_homogeneous_ls:
+        """
+        Create checkerboard pattern for land-surface fields.
+        """
+
+        # Help-class to define and write the correct input for the land-surface scheme:
+        # `lsm_input.py` is available in the `microhh_root/python` directory.
+        from lsm_input import LSM_input
+
+        exclude = ['z0h', 'z0m', 'water_mask', 't_bot_water']
+        lsm_data = LSM_input(itot, jtot, ktot=4, TF=TF, debug=True, exclude_fields=exclude)
+
+        # Set surface fields:
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
+
+        # Patched fields:
+        lsm_data.c_veg[ mask] = ini['land_surface']['c_veg']
+        lsm_data.c_veg[~mask] = ini['land_surface']['c_veg']/3.
+
+        lsm_data.lai[ mask] = ini['land_surface']['lai']
+        lsm_data.lai[~mask] = ini['land_surface']['lai']/2.
+
+        # Non-patched / homogeneous fields:
+        lsm_data.gD[:,:] = ini['land_surface']['gD']
+        lsm_data.rs_veg_min[:,:] = ini['land_surface']['rs_veg_min']
+        lsm_data.rs_soil_min[:,:] = ini['land_surface']['rs_soil_min']
+        lsm_data.lambda_stable[:,:] = ini['land_surface']['lambda_stable']
+        lsm_data.lambda_unstable[:,:] = ini['land_surface']['lambda_unstable']
+        lsm_data.cs_veg[:,:] = ini['land_surface']['cs_veg']
+
+        lsm_data.t_soil[:,:,:] = t_soil[:, np.newaxis, np.newaxis]
+        lsm_data.theta_soil[:,:,:] = theta_soil[:, np.newaxis, np.newaxis]
+        lsm_data.index_soil[:,:,:] = index_soil[:, np.newaxis, np.newaxis]
+        lsm_data.root_frac[:,:,:] = root_frac[:, np.newaxis, np.newaxis]
+
+        # Check if all the variables have been set:
+        lsm_data.check()
+
+        # Save binary input MicroHH, and NetCDF file for visual validation/plotting/etc.
+        lsm_data.save_binaries(allow_overwrite=True)
+        lsm_data.save_netcdf('lsm_input.nc', allow_overwrite=True)

@@ -22,11 +22,12 @@
 
 #include "timeloop.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "master.h"
 #include "fields.h"
+#include "soil_field3d.h"
 #include "constants.h"
 #include "tools.h"
-
 
 namespace
 {
@@ -126,37 +127,60 @@ template<typename TF>
 void Timeloop<TF>::exec()
 {
     auto& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    auto& sgd = soil_grid.get_grid_data();
 
-    dim3 gridGPU (gridi, gridj, gd.kmax);
-    dim3 blockGPU(blocki, blockj, 1);
+    // Time integration 2D fields with 3D routines:
+    const int kstart_2d = 0;
+    const int kend_2d = 1;
 
     if (rkorder == 3)
     {
-        for (auto& it : fields.at)
+        auto rk3_substep = [&](
+            TF* const __restrict__ tend,
+            TF* const __restrict__ fld,
+            const int kstart, const int kend)
         {
+            const int kmax = kend-kstart;
+
+            const int blocki = gd.ithread_block;
+            const int blockj = gd.jthread_block;
+            const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+            const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+            dim3 gridGPU (gridi, gridj, kmax);
+            dim3 blockGPU(blocki, blockj, 1);
+
             if (substep == 0)
-                rk3_g<TF,0><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                rk3_g<TF, 0><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
             else if (substep == 1)
-                rk3_g<TF,1><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                rk3_g<TF, 1><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
             else if (substep == 2)
-                rk3_g<TF,2><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                rk3_g<TF, 2><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-        }
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+        };
+
+        // Atmospheric fields
+        for (auto& f : fields.at)
+            rk3_substep(fields.ap.at(f.first)->fld_g, f.second->fld_g, gd.kstart, gd.kend);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk3_substep(fields.sps.at(f.first)->fld_g, f.second->fld_g, sgd.kstart, sgd.kend);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk3_substep(fields.ap2d.at(f.first)->fld_g, f.second->fld_g, kstart_2d, kend_2d);
 
         substep = (substep+1) % 3;
 
@@ -170,39 +194,64 @@ void Timeloop<TF>::exec()
 
     else if (rkorder == 4)
     {
-        for (auto& it : fields.at)
+        auto rk4_substep = [&](
+            TF* const __restrict__ tend,
+            TF* const __restrict__ fld,
+            const int kstart, const int kend)
         {
-            if (substep==0)
-                rk4_g<TF,0><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+            const int kmax = kend-kstart;
+
+            const int blocki = gd.ithread_block;
+            const int blockj = gd.jthread_block;
+            const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+            const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+            dim3 gridGPU (gridi, gridj, kmax);
+            dim3 blockGPU(blocki, blockj, 1);
+
+            if (substep == 0)
+                rk4_g<TF, 0><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-            else if (substep==1)
-                rk4_g<TF,1><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+            else if (substep == 1)
+                rk4_g<TF, 1><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-            else if (substep==2)
-                rk4_g<TF,2><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+            else if (substep == 2)
+                rk4_g<TF, 2><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-            else if (substep==3)
-                rk4_g<TF,3><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+            else if (substep == 3)
+                rk4_g<TF, 3><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-            else if (substep==4)
-                rk4_g<TF,4><<<gridGPU, blockGPU>>>(
-                    fields.ap.at(it.first)->fld_g, it.second->fld_g, dt,
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+            else if (substep == 4)
+                rk4_g<TF, 4><<<gridGPU, blockGPU>>>(
+                    tend, fld, dt,
                     gd.icells, gd.ijcells,
-                    gd.istart,  gd.jstart, gd.kstart,
-                    gd.iend,    gd.jend,   gd.kend);
-        }
+                    gd.istart,  gd.jstart, kstart,
+                    gd.iend,    gd.jend,   kend);
+        };
+
+        // Atmospheric fields
+        for (auto& f : fields.at)
+            rk4_substep(fields.ap.at(f.first)->fld_g, f.second->fld_g, gd.kstart, gd.kend);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk4_substep(fields.sps.at(f.first)->fld_g, f.second->fld_g, sgd.kstart, sgd.kend);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk4_substep(fields.ap2d.at(f.first)->fld_g, f.second->fld_g, kstart_2d, kend_2d);
 
         substep = (substep+1) % 5;
 
@@ -211,7 +260,7 @@ void Timeloop<TF>::exec()
            substep, gd.icells, gd.ijcells,
            gd.istart, gd.jstart, gd.kstart,
            gd.iend, gd.jend, gd.kend);
-         */
+        */
     }
 
     cuda_check_error();

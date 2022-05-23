@@ -44,7 +44,7 @@ class Radiation
 {
     public:
         Radiation(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Radiation();
+        virtual ~Radiation(); 
         static std::shared_ptr<Radiation> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
         std::string get_switch();
 
@@ -56,10 +56,11 @@ class Radiation
         virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;
+        virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
-        virtual bool check_field_exists(std::string name) = 0;
-        virtual void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&) = 0;
-        virtual std::vector<TF>& get_surface_radiation(std::string) = 0;
+        virtual bool check_field_exists(const std::string& name) = 0;
+        virtual void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&) = 0;
+        virtual std::vector<TF>& get_surface_radiation(const std::string&) = 0;
 
         // virtual void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
         // virtual void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
@@ -71,6 +72,14 @@ class Radiation
                 const unsigned long, const int) = 0;
         virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
+
+        #ifdef USECUDA
+        virtual TF* get_surface_radiation_g(const std::string&) = 0;
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
+        virtual void forward_device() = 0;
+        virtual void backward_device() = 0;
+        #endif
 
     protected:
         Master& master;

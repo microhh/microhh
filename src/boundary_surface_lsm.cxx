@@ -108,7 +108,7 @@ namespace
             {
                 const int ij  = i + j*icells;
                 obuk[ij] = -fm::pow3(ustar[ij]) / (Constants::kappa<TF> * bfluxbot[ij]);
-                obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], bsk::zL_min<TF>), bsk::zL_max<TF>);
+                obuk[ij] = zsl/std::min(std::max(zsl/obuk[ij], Constants::zL_min<TF>), Constants::zL_max<TF>);
             }
     }
 
@@ -264,7 +264,6 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
     sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
-    sw_iter_seb      = inputin.get_item<bool>("land_surface", "switerseb", "", false);
 
     sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
@@ -289,8 +288,6 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     // Checks:
     if (sw_homogeneous && sw_water)
         throw std::runtime_error("Homogeneous land-surface with water is not supported!\n");
-    if (sw_iter_seb && sw_water)
-        throw std::runtime_error("Iterative SL solver (sw_iter_seb=1) with swwater=1 is not supported!\n");
 
     //#ifdef USECUDA
     //ustar_g = 0;
@@ -307,6 +304,24 @@ Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
     //#ifdef USECUDA
     //clear_device();
     //#endif
+}
+
+namespace
+{
+    template<typename TF>
+    void dump_field(
+        TF* const restrict fld,
+        std::string name,
+        const int size)
+    {
+        std::cout << "Saving: " << name << std::endl;
+        FILE *pFile;
+        pFile = fopen(name.c_str(), "wb");
+        if (pFile == NULL)
+            std::cout << "Error opening file" << std::endl;
+        fwrite(fld, sizeof(TF), size, pFile);
+        fclose(pFile);
+    }
 }
 
 #ifndef USECUDA
@@ -393,7 +408,7 @@ void Boundary_surface_lsm<TF>::exec(
             tiles.at("veg").fraction.data(),
             tiles.at("soil").fraction.data(),
             tiles.at("wet").fraction.data(),
-            fields.ap2d.at("wl").data(),
+            fields.ap2d.at("wl")->fld.data(),
             c_veg.data(),
             lai.data(),
             gd.istart, gd.iend,
@@ -432,7 +447,7 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kend,
             gd.icells, gd.ijcells);
 
-    // Calculate canopy resistance per tile
+    // Calculate canopy resistance for veg and soil tiles.
     lsmk::calc_canopy_resistance(
             tiles.at("veg").rs.data(),
             rs_veg_min.data(), lai.data(),
@@ -453,141 +468,95 @@ void Boundary_surface_lsm<TF>::exec(
     {
         bool use_cs_veg = (tile.first == "veg");
 
-        if (sw_iter_seb)
-        {
-            //
-            // Iteratively calculate thl_bot, qt_bot, and obuk/ustar/ra,
-            // such that the SEB closes (Qn = H + LE + G).
-            //
-            lsmk::calc_stability_and_fluxes(
-                    tile.second.H.data(),
-                    tile.second.LE.data(),
-                    tile.second.G.data(),
-                    tile.second.S.data(),
-                    tile.second.thl_bot.data(),
-                    tile.second.qt_bot.data(),
+        //
+        // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
+        // from previous time step (= old method, similar to DALES).
+        // 2) Calculate new thl_bot such that SEB closes.
+        //
+        thermo.get_buoyancy_surf(
+                buoy->fld_bot,
+                tile.second.thl_bot,
+                tile.second.qt_bot);
+
+        // Calculate Obuk, ustar, and ra.
+        if (sw_constant_z0)
+            lsmk::calc_stability<TF, true>(
                     tile.second.ustar.data(),
                     tile.second.obuk.data(),
-                    tile.second.nobuk.data(),
                     tile.second.bfluxbot.data(),
-                    sw_dn.data(), sw_up.data(),
-                    lw_dn.data(), lw_up.data(),
+                    tile.second.ra.data(),
+                    tile.second.nobuk.data(),
                     (*dutot).data(),
-                    (*T_a).data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
                     buoy->fld.data(),
-                    fields.sps.at("t")->fld.data(),
-                    tile.second.rs.data(),
+                    buoy->fld_bot.data(),
                     z0m.data(), z0h.data(),
-                    lambda_stable.data(),
-                    lambda_unstable.data(),
-                    cs_veg.data(),
-                    rhorefh.data(),
-                    exnrefh.data(),
-                    thvrefh.data(),
-                    prefh.data(),
-                    f_sl.data(),
                     zL_sl.data(),
-                    db_ref, emis_sfc,
+                    f_sl.data(),
+                    db_ref,
                     gd.z[gd.kstart],
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, sgd.kend,
-                    gd.icells, gd.ijcells,
-                    use_cs_veg,
-                    sw_constant_z0,
-                    tile.first,
-                    iter, subs, mpiid);
-        }
+                    gd.kstart,
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
         else
-        {
-            //
-            // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
-            // from previous time step (= old method, similar to DALES).
-            // 2) Calculate new thl_bot such that SEB closes.
-            //
-            thermo.get_buoyancy_surf(
-                    buoy->fld_bot,
-                    tile.second.thl_bot,
-                    tile.second.qt_bot);
-
-            // Calculate Obuk, ustar, and ra.
-            if (sw_constant_z0)
-                lsmk::calc_stability<TF, true>(
-                        tile.second.ustar.data(),
-                        tile.second.obuk.data(),
-                        tile.second.bfluxbot.data(),
-                        tile.second.ra.data(),
-                        tile.second.nobuk.data(),
-                        (*dutot).data(),
-                        buoy->fld.data(),
-                        buoy->fld_bot.data(),
-                        z0m.data(), z0h.data(),
-                        zL_sl.data(),
-                        f_sl.data(),
-                        db_ref,
-                        gd.z[gd.kstart],
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        gd.kstart,
-                        gd.icells, gd.jcells,
-                        gd.ijcells);
-            else
-                lsmk::calc_stability<TF, false>(
-                        tile.second.ustar.data(),
-                        tile.second.obuk.data(),
-                        tile.second.bfluxbot.data(),
-                        tile.second.ra.data(),
-                        tile.second.nobuk.data(),
-                        (*dutot).data(),
-                        buoy->fld.data(),
-                        buoy->fld_bot.data(),
-                        z0m.data(), z0h.data(),
-                        zL_sl.data(),
-                        f_sl.data(),
-                        db_ref,
-                        gd.z[gd.kstart],
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        gd.kstart,
-                        gd.icells, gd.jcells,
-                        gd.ijcells);
-
-            // Calculate surface fluxes
-            lsmk::calc_fluxes(
-                    tile.second.H.data(),
-                    tile.second.LE.data(),
-                    tile.second.G.data(),
-                    tile.second.S.data(),
-                    tile.second.thl_bot.data(),
-                    tile.second.qt_bot.data(),
-                    (*T_a).data(),
-                    fields.sp.at("qt")->fld.data(),
-                    fields.sps.at("t")->fld.data(),
-                    (*qsat_bot).data(),
-                    (*dqsatdT_bot).data(),
+            lsmk::calc_stability<TF, false>(
+                    tile.second.ustar.data(),
+                    tile.second.obuk.data(),
+                    tile.second.bfluxbot.data(),
                     tile.second.ra.data(),
-                    tile.second.rs.data(),
-                    lambda_stable.data(),
-                    lambda_unstable.data(),
-                    cs_veg.data(),
-                    sw_dn.data(),
-                    sw_up.data(),
-                    lw_dn.data(),
-                    lw_up.data(),
+                    tile.second.nobuk.data(),
+                    (*dutot).data(),
                     buoy->fld.data(),
                     buoy->fld_bot.data(),
-                    rhorefh.data(),
-                    exnrefh.data(),
-                    db_ref, emis_sfc,
-                    TF(subdt),
+                    z0m.data(), z0h.data(),
+                    zL_sl.data(),
+                    f_sl.data(),
+                    db_ref,
+                    gd.z[gd.kstart],
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, sgd.kend,
-                    gd.icells, gd.ijcells,
-                    use_cs_veg, tile.first);
-            }
+                    gd.kstart,
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
+
+        //dump_field(tile.second.ustar.data(), "dump_cpu", gd.ijcells);
+        //throw 1;
+
+        // Calculate surface fluxes
+        lsmk::calc_fluxes(
+                tile.second.H.data(),
+                tile.second.LE.data(),
+                tile.second.G.data(),
+                tile.second.S.data(),
+                tile.second.thl_bot.data(),
+                tile.second.qt_bot.data(),
+                (*T_a).data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.sps.at("t")->fld.data(),
+                (*qsat_bot).data(),
+                (*dqsatdT_bot).data(),
+                tile.second.ra.data(),
+                tile.second.rs.data(),
+                lambda_stable.data(),
+                lambda_unstable.data(),
+                cs_veg.data(),
+                sw_dn.data(),
+                sw_up.data(),
+                lw_dn.data(),
+                lw_up.data(),
+                buoy->fld.data(),
+                buoy->fld_bot.data(),
+                rhorefh.data(),
+                exnrefh.data(),
+                db_ref, emis_sfc,
+                TF(subdt),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, sgd.kend,
+                gd.icells, gd.ijcells,
+                use_cs_veg, tile.first);
+
     }
 
     // Override grid point with water
@@ -646,9 +615,6 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d(fields.sp.at("thl")->fld_bot.data());
     boundary_cyclic.exec_2d(fields.sp.at("qt") ->fld_bot.data());
 
-    boundary_cyclic.exec_2d(ustar.data());
-    boundary_cyclic.exec_2d(obuk.data());
-
     // Calculate bulk Obukhov length.
     calc_bulk_obuk(
             obuk.data(),
@@ -658,6 +624,11 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+
+    boundary_cyclic.exec_2d(ustar.data());
+    boundary_cyclic.exec_2d(obuk.data());
+
+
 
     // Redistribute ustar over `uw` and `vw`.
     set_bcs_momentum(
@@ -729,10 +700,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate changes in the liquid water reservoir
     lsmk::calc_liquid_water_reservoir(
-            fields.at2d.at("wl").data(),
+            fields.at2d.at("wl")->fld.data(),
             interception.data(),
             throughfall.data(),
-            fields.ap2d.at("wl").data(),
+            fields.ap2d.at("wl")->fld.data(),
             tiles.at("veg").LE.data(),
             tiles.at("soil").LE.data(),
             tiles.at("wet").LE.data(),
@@ -1018,9 +989,6 @@ void Boundary_surface_lsm<TF>::init_surface_layer(Input& input)
     }
     // else: z0m and z0h are read from 2D input files in `load()`.
 
-    if (sw_water)
-        t_bot_water.resize(gd.ijcells);
-
     // Initialize the obukhov length on a small number.
     std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
 
@@ -1053,7 +1021,10 @@ void Boundary_surface_lsm<TF>::init_land_surface()
     cs_veg.resize(gd.ijcells);
 
     if (sw_water)
+    {
         water_mask.resize(gd.ijcells);
+        t_bot_water.resize(gd.ijcells);
+    }
 
     interception.resize(gd.ijcells);
     throughfall.resize(gd.ijcells);
@@ -1130,7 +1101,7 @@ void Boundary_surface_lsm<TF>::create_cold_start(Netcdf_handle& input_nc)
 
     // Initialise the prognostic surface variables, and/or
     // variables which are needed for consistent restarts.
-    std::fill(fields.ap2d.at("wl").begin(), fields.ap2d.at("wl").end(), TF(0));
+    std::fill(fields.ap2d.at("wl")->fld.begin(), fields.ap2d.at("wl")->fld.end(), TF(0));
 
     // Set initial surface potential temperature and humidity to the atmospheric values (...)
     std::vector<TF> thl_1(1);
@@ -1422,7 +1393,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
     load_3d_field(fields.sps.at("theta")->fld.data(), "theta_soil", iotime);
 
     // Load the surface temperature, humidity and liquid water content.
-    load_2d_field(fields.ap2d.at("wl").data(), "wl_skin", iotime);
+    load_2d_field(fields.ap2d.at("wl")->fld.data(), "wl_skin", iotime);
 
     for (auto& tile : tiles)
     {
@@ -1540,7 +1511,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime)
     }
 
     // Surface fields.
-    save_2d_field(fields.ap2d.at("wl").data(), "wl_skin");
+    save_2d_field(fields.ap2d.at("wl")->fld.data(), "wl_skin");
 
     for (auto& tile : tiles)
     {
@@ -1570,7 +1541,7 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
         else if (it == "obuk")
             cross.cross_plane(obuk.data(), "obuk", iotime);
         else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl").data(), "wl", iotime);
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), "wl", iotime);
     }
 
     fields.release_tmp(tmp1);
@@ -1588,7 +1559,7 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
     stats.calc_stats_2d("ustar", ustar, no_offset);
 
     // Land-surface
-    stats.calc_stats_2d("wl", fields.ap2d.at("wl"), no_offset);
+    stats.calc_stats_2d("wl", fields.ap2d.at("wl")->fld, no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     stats.calc_stats_2d("H", *fld_mean, no_offset);
@@ -1639,7 +1610,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
-    column.calc_time_series("wl", fields.ap2d.at("wl").data(), no_offset);
+    column.calc_time_series("wl", fields.ap2d.at("wl")->fld.data(), no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
     column.calc_time_series("H", (*fld_mean).data(), no_offset);
@@ -1730,7 +1701,6 @@ void Boundary_surface_lsm<TF>::update_slave_bcs()
     // This function does nothing when the surface model is enabled, because
     // the fields are computed by the surface model in update_bcs.
 }
-
 
 template<typename TF>
 void Boundary_surface_lsm<TF>::get_tiled_mean(

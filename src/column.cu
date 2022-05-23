@@ -76,6 +76,13 @@ void Column<TF>::calc_time_series(
         }
     }
 }
+
+template<typename TF>
+void Column<TF>::set_individual_column(
+        std::string profname, const TF* const restrict prof,
+        const TF offset, const int i_col, const int j_col)
+{
+}
 #endif
 
 template class Column<double>;

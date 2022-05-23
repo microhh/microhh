@@ -1,5 +1,5 @@
 # ARCH Linux / Manjaro
-if(USEMPI) 
+if(USEMPI)
   set(ENV{CC}  mpicc)    # C compiler for parallel build
   set(ENV{CXX} mpicxx)   # C++ compiler for parallel build
   set(ENV{FC}  mpif90)   # Fortran compiler for parallel build
@@ -38,7 +38,7 @@ set(NETCDF_LIB_C       "/usr/lib/libnetcdf.so")
 set(HDF5_LIB_1         "/usr/lib/libhdf5.so")
 set(HDF5_LIB_2         "/usr/lib/libhdf5_hl.so")
 set(SZIP_LIB           "/usr/lib/libsz.so")
-set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl dl)
+set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl dl rt)
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 if(USECUDA)

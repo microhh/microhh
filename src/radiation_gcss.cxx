@@ -382,7 +382,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF
 #endif
 
 template<typename TF>
-bool Radiation_gcss<TF>::check_field_exists(const std::string name)
+bool Radiation_gcss<TF>::check_field_exists(const std::string& name)
 {
     if (name == "rflx" || name == "sflx")
         return true;
@@ -391,7 +391,7 @@ bool Radiation_gcss<TF>::check_field_exists(const std::string name)
 }
 
 template<typename TF>
-void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, std::string name, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
+void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string& name, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     if (name == "lflx")
     {
@@ -577,5 +577,8 @@ void Radiation_gcss<TF>::exec_all_stats(
     }
 }
 
-template class Radiation_gcss<double>;
+#ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;
+#else
+template class Radiation_gcss<double>;
+#endif

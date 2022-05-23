@@ -10,8 +10,8 @@ wallclocklimit=1e9
 itot=64
 jtot=64
 ktot=None
-xsize=3200
-ysize=3200
+xsize=6400
+ysize=6400
 zsize=None
 utrans=0.0
 vtrans=0.0
@@ -55,6 +55,7 @@ lon=4.927
 
 [boundary]
 swboundary=None
+swconstantz0=None
 mbcbot=noslip
 mbctop=freeslip
 sbcbot=None
@@ -67,7 +68,7 @@ z0m=0.075
 z0h=0.003
 
 [land_surface]
-swhomogeneous=1
+swhomogeneous=None
 swfreedrainage=1
 swtilestats=0
 switerseb=0
