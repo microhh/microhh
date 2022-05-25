@@ -1317,7 +1317,7 @@ void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
+void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1339,7 +1339,7 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
     solve_shortwave_column(
             optical_props_sw,
             sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
+            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, p_top,
             gas_concs_col,
             *kdist_sw,
             col_dry,
@@ -1460,7 +1460,10 @@ void Radiation_rrtmgp<TF>::exec(
 
                     // Calculate new background column.
                     if (is_day(this->mu0))
-                        set_background_column_shortwave(thermo);
+                    {
+                        const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
+                        set_background_column_shortwave(p_top);
+                    }
                 }
 
                 Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
@@ -1704,6 +1707,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 }
 
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
@@ -1823,7 +1827,10 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
                 // Calculate new background column.
                 if (is_day(this->mu0))
-                    set_background_column_shortwave(thermo);
+                {
+                    const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
+                    set_background_column_shortwave(p_top);
+                }
             }
 
             if (!is_day(this->mu0))
@@ -1884,6 +1891,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     fields.release_tmp(tmp);
 }
+#endif
 
 
 template<typename TF>

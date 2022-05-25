@@ -1091,53 +1091,25 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 // Single column solve of background profile for TOA conditions
                 if (!sw_fixed_sza)
                 {
-                    // Update the solar zenith angle, and calculate new shortwave reference column
-                    const int day_of_year = int(timeloop.calc_day_of_year());
-                    const int year = timeloop.get_year();
-                    const Float seconds_after_midnight = Float(timeloop.calc_hour_of_day()*3600);
-                    this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
-
-                    // Calculate correction factor for impact Sun's distance on the solar "constant"
-                    const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
-                    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+                    // Update the solar zenith angle and sun-earth distance.
+                    set_sun_location(timeloop);
 
                     if (is_day(this->mu0))
                     {
                         const int n_bnd = kdist_sw->get_nband();
                         const int n_gpt = kdist_sw->get_ngpt();
 
-                        // Set the solar zenith angle and albedo.
-                        Array<Float,2> sfc_alb_dir({n_bnd, n_col});
-                        Array<Float,2> sfc_alb_dif({n_bnd, n_col});
+                        // Calculate new background column (on the CPU).
+                        Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                        Float p_top;
+                        cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
 
-                        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-                        {
-                            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-                            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
-                        }
+                        set_background_column_shortwave(p_top);
 
-                        Array<Float,1> mu0({n_col});
-                        mu0({1}) = this->mu0;
-
-                        // sw column solve on cpu for TOD fluxes
-                        solve_shortwave_column(
-                                optical_props_sw,
-                                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
-                                gas_concs_col,
-                                *kdist_sw,
-                                col_dry,
-                                p_lay_col, p_lev_col,
-                                t_lay_col, t_lev_col,
-                                mu0,
-                                sfc_alb_dir, sfc_alb_dif,
-                                tsi_scaling,
-                                n_lay_col);
-
-                        //TOD fluxes to CPU
-                        const int ncolgptsize = n_col*n_gpt*sizeof(Float);
-                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
-                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g,  sw_flux_dn_dif_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
+                        // Copy TOD fluxes to GPU
+                        const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g, sw_flux_dn_dir_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g, sw_flux_dn_dif_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
                     }
                 }
 
@@ -1285,6 +1257,26 @@ void Radiation_rrtmgp<TF>::clear_device()
     cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
+}
+
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_individual_column_stats(
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Get column indices.
+    std::vector<int> col_i;
+    std::vector<int> col_j;
+    column.get_column_locations(col_i, col_j);
+    const int n_cols = col_i.size();
+
+    // We can safely do nothing if there are no columns on this proc.
+    if (n_cols == 0)
+        return;
+
+    // TO-DO: the rest :-)
 }
 #endif
 

@@ -175,8 +175,7 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
-        void set_background_column_shortwave(Thermo<TF>&);
-
+        void set_background_column_shortwave(const TF);
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
